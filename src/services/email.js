@@ -33,7 +33,7 @@ function buildCC(emailUsuario) {
     .filter(Boolean).join(', ');
 }
 
-async function notificarNuevoTraslado({ trabajador, identificacion, operacionOrigen, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, usuario, emailUsuario }) {
+async function notificarNuevoTraslado({ trabajador, identificacion, operacionOrigen, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, usuario, emailUsuario, observaciones }) {
   const asunto = `Nuevo traslado pendiente de revisión — ${trabajador}`;
 
   const cuerpo = `
@@ -50,6 +50,7 @@ async function notificarNuevoTraslado({ trabajador, identificacion, operacionOri
           <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Dirección destino</td><td style="padding:8px 12px">${direccionDestino || '—'}</td></tr>
           <tr><td style="padding:8px 12px;color:#888">Fecha de traslado</td><td style="padding:8px 12px">${formatFecha(fechaTraslado)}${horaTraslado ? ' — ' + horaTraslado : ''}</td></tr>
           <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Registrado por</td><td style="padding:8px 12px">${usuario}</td></tr>
+          ${observaciones ? `<tr><td style="padding:8px 12px;color:#888;vertical-align:top">Observaciones</td><td style="padding:8px 12px">${observaciones}</td></tr>` : ''}
         </table>
         <div style="margin-top:24px;padding:12px 16px;background:#fffbea;border-left:4px solid #f0d060;color:#7a6000;font-size:.88rem">
           Estado: <strong>Pendiente de revisión</strong>

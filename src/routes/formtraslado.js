@@ -108,6 +108,7 @@ router.post('/', async (req, res) => {
       direccionDestino: direccion_destino || '',
       fechaTraslado:    fecha_traslado,
       horaTraslado:     hora_traslado || '',
+      observaciones:    observaciones || '',
       usuario,
       emailUsuario:     usuRows[0].Email || '',
       idTraslado,

@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const pool = require('../services/db');
-const { obtenerPlantilla } = require('../services/plantilla');
+const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
 const { generarToken } = require('../services/token');
 const { notificarFirmaTrabajador } = require('../services/email');
 
@@ -15,8 +15,9 @@ const CAMPO_FK       = 'IdTraslado';
 const ESTADOS_VALIDOS_CAMBIO = ['revisar', 'anulado', 'pendiente'];
 
 const ROLES_ACCESO      = ['AuxiliarR','CoordinadorR','Auxiliar','Coordinador','Control','Nomina','Sistema','Juridica'];
-const ROLES_VALIDAR     = ['Juridica','Sistema'];
-const ROLES_PLANTILLA   = ['Juridica','Sistema'];
+const ROLES_VALIDAR      = ['Juridica','Sistema'];
+const ROLES_PLANTILLA    = ['Juridica','Sistema'];
+const ROLES_PREVIEW      = ['Juridica','Sistema'];
 const ROLES_SIN_FILTRO  = ['Control','Nomina','Sistema','Juridica'];
 const ROLES_REGIONAL    = ['AuxiliarR','CoordinadorR'];
 const ROLES_DISPOSITIVO = ['Auxiliar','Coordinador'];
@@ -93,9 +94,10 @@ async function computarAcceso(usuarioId) {
   const acceso = {
     usuarioId,
     rol: u.Rol,
-    puedeValidar:        ROLES_VALIDAR.includes(u.Rol),
-    puedeEditarPlantilla: ROLES_PLANTILLA.includes(u.Rol),
-    sinFiltro:           ROLES_SIN_FILTRO.includes(u.Rol),
+    puedeValidar:          ROLES_VALIDAR.includes(u.Rol),
+    puedeEditarPlantilla:  ROLES_PLANTILLA.includes(u.Rol),
+    puedePrevisualizar:    ROLES_PREVIEW.includes(u.Rol),
+    sinFiltro:             ROLES_SIN_FILTRO.includes(u.Rol),
     filtroSQL:           [],
     operacionesFiltro:   [],
     opsPorRegional:      {},
@@ -169,15 +171,17 @@ function badge(estado) {
   return `<span style="background:${bg};color:${c};border:1px solid ${border};border-radius:12px;padding:3px 10px;font-size:.73rem;font-weight:700;white-space:nowrap">${label}</span>`;
 }
 
-function acciones(row, puedeValidar) {
+function acciones(row, puedeValidar, puedePrevisualizar, usuarioId) {
   const id = esc(row.IdTraslado);
+  const usuarioEnc = encodeURIComponent(usuarioId || '');
   const btnEditar = `<button class="ba be" title="Editar" onclick="abrirEditar('${id}')">✏️ Editar</button>`;
   const btnValidar = puedeValidar ? `<button class="ba bv" onclick="validar('${id}')">✓ Validar</button>` : '';
   const btnRevisar = puedeValidar ? `<button class="ba br" onclick="cambiar('${id}','revisar')">↩ Revisar</button>` : '';
   const btnAnular  = puedeValidar ? `<button class="ba ban" onclick="cambiar('${id}','anulado')">✗ Anular</button>` : '';
+  const btnPreview = puedePrevisualizar ? `<a class="ba bprev" href="/admin/traslados/${id}/preview?Usuario=${usuarioEnc}" target="_blank">👁 Ver doc</a>` : '';
 
   switch (row.estado_doc) {
-    case 'pendiente': return `${btnEditar}${btnValidar}${btnRevisar}${btnAnular}`;
+    case 'pendiente': return `${btnPreview}${btnEditar}${btnValidar}${btnRevisar}${btnAnular}`;
     case 'validado': {
       const btnWA = row.celular_trabajador
         ? `<button class="ba bwa" onclick="abrirWhatsApp('${id}')">📱 WhatsApp</button>` : '';
@@ -233,8 +237,8 @@ router.get('/traslados', async (req, res) => {
           <td>${formatFecha(r.fecha_traslado)}</td>
           <td style="font-size:.8rem;color:#888">${formatFechaHora(r.Fecha_Registro)}</td>
           <td style="font-size:.8rem;color:#555">${esc(r.Usuario)}</td>
-          <td style="font-size:.82rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.observaciones)}">${esc(r.observaciones)}</td>
-          <td class="td-acc">${acciones(r, acceso.puedeValidar)}</td>
+          <td style="font-size:.82rem;max-width:220px;white-space:normal;word-break:break-word;line-height:1.4">${esc(r.observaciones) || '<span style="color:#ccc">—</span>'}</td>
+          <td class="td-acc">${acciones(r, acceso.puedeValidar, acceso.puedePrevisualizar, acceso.usuarioId)}</td>
         </tr>`).join('');
 
     const safe = s => JSON.stringify(s).replace(/<\/script>/gi, '<\\/script>');
@@ -242,6 +246,7 @@ router.get('/traslados', async (req, res) => {
       usuarioId: acceso.usuarioId,
       puedeValidar: acceso.puedeValidar,
       puedeEditarPlantilla: acceso.puedeEditarPlantilla,
+      puedePrevisualizar: acceso.puedePrevisualizar,
       sinFiltro: acceso.sinFiltro,
       operacionesFiltro: acceso.operacionesFiltro,
       opsPorRegional: acceso.opsPorRegional,
@@ -264,6 +269,87 @@ router.get('/traslados', async (req, res) => {
   }
 });
 
+// ── Previsualización del documento ─────────────────────────────────────────
+
+const URL_FIRMA_REPRESENTANTE_PREV =
+  'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/Firma%20Representante.png';
+
+router.get('/traslados/:id/preview', async (req, res) => {
+  try {
+    const acceso = await computarAcceso(req.query.Usuario);
+    if (!acceso || !acceso.puedePrevisualizar) return res.status(403).send(paginaNoAcceso());
+
+    const { id } = req.params;
+    const [rows] = await pool.execute(
+      'SELECT * FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
+      [id]
+    );
+    if (!rows.length) return res.status(404).send('<p>Registro no encontrado</p>');
+
+    const plantilla = await obtenerPlantilla('traslado');
+    const datos = rows[0];
+
+    let htmlDoc = plantilla.contenido_html || '';
+    htmlDoc = htmlDoc
+      .replace('{{firma_trabajador}}',
+        '<div style="border:1.5px dashed #ccc;border-radius:4px;padding:8px 16px;color:#aaa;font-size:.82rem;display:inline-block;min-width:200px;text-align:center;margin-top:4px">Firma pendiente del trabajador</div>')
+      .replace('{{firma_representante}}',
+        `<img src="${URL_FIRMA_REPRESENTANTE_PREV}" style="max-width:240px;max-height:96px;display:block;margin-top:4px" alt="Firma representante"/>`);
+
+    const documentoHtml = reemplazarVariables(htmlDoc, preprocesarDatos(datos));
+
+    const trabajador = esc(datos.Trabajador || '');
+    const estado = esc(datos.estado_doc || '');
+
+    res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vista previa — ${trabajador}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f0f2f5; }
+    .topbar {
+      background: #1a1a2e; color: #fff; padding: 10px 24px;
+      display: flex; align-items: center; gap: 14px;
+      font-size: .85rem; position: sticky; top: 0; z-index: 10;
+    }
+    .topbar strong { font-size: .95rem; }
+    .badge {
+      background: #fffbea; color: #b7860b; border: 1px solid #f0d060;
+      border-radius: 10px; padding: 2px 10px; font-size: .75rem; font-weight: 700;
+    }
+    .doc-wrap {
+      max-width: 900px; margin: 28px auto; background: #fff;
+      padding: 32px; border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.1);
+    }
+    .aviso {
+      background: #fffbea; border-left: 4px solid #f0d060;
+      padding: 10px 16px; border-radius: 0 4px 4px 0;
+      font-size: .8rem; color: #7a6000; margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span>👁 Vista previa del documento —</span>
+    <strong>${trabajador}</strong>
+    <span class="badge">${estado}</span>
+  </div>
+  <div class="doc-wrap">
+    <div class="aviso">⚠️ Esta es una vista previa del documento. La firma del trabajador aún no ha sido capturada.</div>
+    ${documentoHtml}
+  </div>
+</body>
+</html>`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('<p>Error al generar la vista previa</p>');
+  }
+});
+
 router.post('/traslados/:id/validar', async (req, res) => {
   try {
     const acceso = await computarAcceso(req.query.Usuario);
@@ -273,16 +359,21 @@ router.post('/traslados/:id/validar', async (req, res) => {
     const token = await generarToken(TABLA_TR, CAMPO_FK, id);
     const url = `${req.protocol}://${req.get('host')}/doclogyser/traslado/${id}?token=${encodeURIComponent(token)}`;
 
-    const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ?', [req.query.Usuario]);
-    const emailUsuario = (uRows[0] && uRows[0].Email) || '';
-
     const [rows] = await pool.execute(
-      'SELECT Trabajador, email_trabajador, operacion_destino, direccion_destino, fecha_traslado, hora_traslado FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
+      'SELECT Trabajador, email_trabajador, operacion_destino, direccion_destino, fecha_traslado, hora_traslado, Usuario FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
       [id]
     );
+
     let correoEnviado = false;
     if (rows.length && rows[0].email_trabajador) {
       const t = rows[0];
+
+      const [uRows] = await pool.execute(
+        'SELECT Email FROM Maestro_Usuarios WHERE ID = ?',
+        [t.Usuario]
+      );
+      const emailRegistrador = (uRows[0] && uRows[0].Email) || '';
+
       const partes = (t.Trabajador || '').split(' ** ');
       const nombreCorto = partes.length > 1 ? partes[1].trim() : t.Trabajador;
       const fechaISO = t.fecha_traslado instanceof Date
@@ -297,7 +388,7 @@ router.post('/traslados/:id/validar', async (req, res) => {
           fechaTraslado:    fechaISO,
           horaTraslado:     t.hora_traslado || '',
           urlFirma:         url,
-          emailUsuario,
+          emailUsuario:     emailRegistrador,
         });
         correoEnviado = true;
       } catch (e) {
@@ -350,16 +441,16 @@ router.post('/traslados/:id/correo', async (req, res) => {
     if (!acceso) return res.status(403).json({ ok: false, error: 'Sin autorización' });
     const { id } = req.params;
 
-    const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ?', [req.query.Usuario]);
-    const emailUsuario = (uRows[0] && uRows[0].Email) || '';
-
     const [rows] = await pool.execute(
-      'SELECT Trabajador, email_trabajador, operacion_destino, direccion_destino, fecha_traslado, hora_traslado FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
+      'SELECT Trabajador, email_trabajador, operacion_destino, direccion_destino, fecha_traslado, hora_traslado, Usuario FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
       [id]
     );
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Registro no encontrado' });
     const t = rows[0];
     if (!t.email_trabajador) return res.status(400).json({ ok: false, error: 'El trabajador no tiene correo registrado' });
+
+    const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ?', [t.Usuario]);
+    const emailUsuario = (uRows[0] && uRows[0].Email) || '';
 
     const token = await generarToken(TABLA_TR, CAMPO_FK, id);
     const url   = `${req.protocol}://${req.get('host')}/doclogyser/traslado/${id}?token=${encodeURIComponent(token)}`;
