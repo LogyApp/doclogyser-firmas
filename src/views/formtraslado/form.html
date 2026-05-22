@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Traslado</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; }
+
+    .wrapper { max-width: 700px; margin: 0 auto; padding: 20px 16px 40px; }
+
+    /* ── Tarjeta título ─────────────────────────────────────────── */
+    .card-titulo {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      padding: 20px 24px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .card-titulo img { height: 44px; flex-shrink: 0; }
+    .page-title { font-size: 1.25rem; font-weight: bold; color: #1a1a2e; }
+    .page-sub   { font-size: .82rem; color: #999; margin-top: 3px; }
+    .fecha-reg-live { font-size: .75rem; color: #777; margin-top: 5px; }
+    .fecha-reg-live span { font-weight: 700; color: #1a1a2e; }
+    .usuario-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #eef1ff; border: 1px solid #c5d0ff;
+      border-radius: 20px; padding: 3px 10px;
+      font-size: .78rem; color: #1a1a2e; margin-top: 8px; font-weight: 600;
+    }
+
+    /* ── Tarjetas sección ───────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      border-left: 4px solid #1a1a2e;
+      padding: 22px 24px;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: .72rem; font-weight: bold;
+      color: #1a1a2e; letter-spacing: 1.3px;
+      text-transform: uppercase;
+      padding-bottom: 12px; margin-bottom: 18px;
+      border-bottom: 2px solid #eef1ff;
+    }
+
+    /* ── Campos ─────────────────────────────────────────────────── */
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #444; margin-bottom: 5px; }
+    label .req { color: #e74c3c; margin-left: 2px; }
+    label .opt { font-weight: normal; color: #bbb; font-size: .75rem; margin-left: 4px; }
+
+    input[type="text"], input[type="tel"], input[type="email"],
+    input[type="date"], input[type="time"], select {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      font-size: .93rem; color: #333; background: #fff;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus { outline: none; border-color: #1a1a2e; box-shadow: 0 0 0 3px rgba(26,26,46,.1); }
+    input[readonly] { background: #f5f6fa; color: #777; cursor: not-allowed; border-color: #e8e8e8; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field-hint { font-size: .75rem; color: #bbb; margin-top: 4px; }
+
+    /* ── Autocompletado ─────────────────────────────────────────── */
+    .autocomplete-wrap { position: relative; }
+    #inputTrabajador { padding-left: 36px; }
+    .search-ico {
+      position: absolute; left: 11px; top: 50%;
+      transform: translateY(-50%); font-size: .95rem; color: #bbb; pointer-events: none;
+    }
+    .ac-list {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1.5px solid #1a1a2e;
+      border-radius: 6px; max-height: 230px; overflow-y: auto;
+      z-index: 200; display: none;
+      box-shadow: 0 6px 20px rgba(26,26,46,.15);
+    }
+    .ac-list.open { display: block; }
+    .ac-item {
+      padding: 10px 14px; cursor: pointer; font-size: .88rem; color: #333;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.active { background: #eef1ff; color: #1a1a2e; font-weight: 600; }
+    .ac-empty { padding: 12px 14px; font-size: .85rem; color: #aaa; }
+
+    /* ── Datos del trabajador seleccionado (dentro del card selección) */
+    #datosSeleccionados { display: none; margin-top: 18px; padding-top: 16px; border-top: 1px solid #eef1ff; }
+
+    /* ── Secciones progresivas ──────────────────────────────────── */
+    .seccion { display: none; opacity: 0; transform: translateY(10px); transition: opacity .35s ease, transform .35s ease; }
+    .seccion.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Errores ────────────────────────────────────────────────── */
+    .err { color: #e74c3c; font-size: .78rem; margin-top: 4px; display: none; }
+    .err.visible { display: block; }
+
+    /* ── Botón ──────────────────────────────────────────────────── */
+    .btn-submit {
+      width: 100%; background: #e67e22; color: #fff;
+      border: none; padding: 14px; border-radius: 7px;
+      font-size: 1rem; font-weight: bold; cursor: pointer; transition: background .15s;
+    }
+    .btn-submit:hover { background: #d35400; }
+    .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* ── Éxito ──────────────────────────────────────────────────── */
+    .success-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.1); padding: 40px 24px; text-align: center; display: none; }
+    .check-circle { width: 70px; height: 70px; border-radius: 50%; background: #e8f8ee; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; font-size: 2rem; color: #27ae60; }
+    .success-title { font-size: 1.25rem; font-weight: bold; color: #1a1a2e; margin-bottom: 6px; }
+    .success-sub { font-size: .88rem; color: #999; margin-bottom: 20px; }
+    .id-badge { font-family: monospace; font-size: .8rem; background: #f5f6fa; border: 1px solid #e0e0e0; border-radius: 4px; padding: 8px 16px; color: #555; word-break: break-all; display: inline-block; }
+    .btn-nuevo { display: block; margin: 20px auto 0; background: #1a1a2e; color: #fff; border: none; padding: 12px 32px; border-radius: 6px; font-size: .95rem; cursor: pointer; }
+    .btn-nuevo:hover { background: #2c2c4e; }
+
+    @media (max-width: 480px) {
+      .card { padding: 16px; }
+      .card-titulo { padding: 16px; flex-wrap: wrap; }
+      .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Título + logo -->
+  <div class="card-titulo">
+    <div>
+      <div class="page-title">Registro de Traslado</div>
+      <div class="page-sub">Complete los datos del trabajador a trasladar</div>
+      <div class="fecha-reg-live" id="fechaRegLive"></div>
+      <div class="usuario-badge" id="badgeUsuario"></div>
+    </div>
+    <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER" style="height:64px">
+  </div>
+
+  <form id="formTraslado" novalidate>
+
+    <!-- Sección 1: Selección (siempre visible) -->
+    <div class="card">
+      <div class="section-title">Selección del trabajador</div>
+
+      <div class="field">
+        <label for="inputTrabajador">Trabajador <span class="req">*</span></label>
+        <div class="autocomplete-wrap">
+          <span class="search-ico">&#128269;</span>
+          <input type="text" id="inputTrabajador" placeholder="Escriba cédula o nombre para buscar…" autocomplete="off">
+          <div class="ac-list" id="acList"></div>
+        </div>
+        <div class="err" id="errTrabajador">Seleccione un trabajador de la lista</div>
+      </div>
+
+      <!-- Se revela al seleccionar trabajador -->
+      <div id="datosSeleccionados">
+        <div class="two-col">
+          <div class="field">
+            <label>Identificación</label>
+            <input type="text" id="Identificacion" name="Identificación" readonly>
+          </div>
+          <div class="field">
+            <label>Operación origen</label>
+            <input type="text" id="operacion_origen" name="operacion_origen" readonly>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección 2: Datos del traslado -->
+    <div class="card seccion" id="seccionDatos">
+      <div class="section-title">Datos del traslado</div>
+
+      <div class="field">
+        <label for="selectOperacion">Operación destino <span class="req">*</span></label>
+        <select id="selectOperacion" name="operacion_destino">
+          <option value="">— Seleccione operación destino —</option>
+        </select>
+        <div class="err" id="errOperacion">Seleccione la operación destino</div>
+      </div>
+
+      <div class="field">
+        <label for="direccion_destino">Dirección destino <span class="req">*</span></label>
+        <input type="text" id="direccion_destino" name="direccion_destino" placeholder="Se completa al seleccionar operación">
+        <div class="err" id="errDireccion">Ingrese la dirección destino</div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label for="fecha_traslado">Fecha de traslado <span class="req">*</span></label>
+          <input type="date" id="fecha_traslado" name="fecha_traslado">
+          <div class="err" id="errFecha">Seleccione la fecha de traslado</div>
+        </div>
+        <div class="field">
+          <label for="hora_traslado">Hora <span class="req">*</span></label>
+          <input type="time" id="hora_traslado" name="hora_traslado">
+          <div class="err" id="errHora">Ingrese la hora de traslado</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="observaciones">Observaciones o aclaraciones <span class="req">*</span></label>
+        <textarea id="observaciones" name="observaciones" rows="3"
+          placeholder="Escriba las observaciones o aclaraciones del traslado…"
+          style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:.93rem;font-family:inherit;resize:vertical;transition:border-color .15s"
+          onfocus="this.style.borderColor='#1a1a2e'" onblur="this.style.borderColor='#ddd'"></textarea>
+        <div class="err" id="errObservaciones">Ingrese las observaciones o aclaraciones</div>
+      </div>
+    </div>
+
+    <!-- Sección 3: Contacto -->
+    <div class="card seccion" id="seccionContacto">
+      <div class="section-title">Contacto del trabajador</div>
+      <div class="two-col">
+        <div class="field">
+          <label for="celular_trabajador">Celular</label>
+          <input type="tel" id="celular_trabajador" name="celular_trabajador" placeholder="Automático (editable)">
+        </div>
+        <div class="field">
+          <label for="email_trabajador">Correo electrónico</label>
+          <input type="email" id="email_trabajador" name="email_trabajador" placeholder="Automático (editable)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="seccion" id="seccionSubmit">
+      <button type="submit" class="btn-submit" id="btnEnviar">Registrar traslado</button>
+    </div>
+
+    <input type="hidden" id="hidUsuario"    name="usuario">
+    <input type="hidden" id="hidTrabajador" name="Trabajador">
+
+  </form>
+
+  <!-- Éxito -->
+  <div class="success-card" id="successSection">
+    <div class="check-circle">&#10003;</div>
+    <div class="success-title">Traslado registrado</div>
+    <div class="success-sub">El registro quedó en estado <strong>Pendiente</strong>.<br>Un administrador debe revisarlo y validarlo antes de enviar el enlace de firma al trabajador.</div>
+    <div class="id-badge" id="successId"></div>
+    <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn-nuevo" onclick="location.reload()">Registrar otro traslado</button>
+      <button class="btn-nuevo" id="btnVolver" style="background:#e67e22">← Volver al panel</button>
+    </div>
+  </div>
+
+</div>
+<script>
+  const _cfg        = __CONFIG__;
+  const USUARIO     = _cfg.usuario;
+  const USU_NOMBRE  = _cfg.usuarioNombre;
+  const TRABAJADORES = _cfg.trabajadores;
+  const OPERACIONES  = _cfg.operaciones;
+
+  document.getElementById('hidUsuario').value   = USUARIO;
+  document.getElementById('badgeUsuario').textContent = '👤 ' + USU_NOMBRE;
+
+  // ── Reloj Bogotá ──────────────────────────────────────────────
+  function fechaBogota() {
+    const p = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).formatToParts(new Date());
+    const g = t => p.find(x => x.type === t).value;
+    return g('year')+'-'+g('month')+'-'+g('day')+' '+g('hour')+':'+g('minute')+':'+g('second');
+  }
+  function actualizarReloj() {
+    document.getElementById('fechaRegLive').innerHTML = 'Fecha de registro: <span>' + fechaBogota() + '</span>';
+  }
+  actualizarReloj();
+  setInterval(actualizarReloj, 1000);
+
+  // ── Revelar secciones ─────────────────────────────────────────
+  function revelarSecciones() {
+    ['seccionDatos','seccionContacto','seccionSubmit'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.display = 'block';
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('visible')));
+    });
+    const ds = document.getElementById('datosSeleccionados');
+    ds.style.display = 'block';
+  }
+
+  // ── Autocomplete genérico ─────────────────────────────────────
+  function crearAutocomplete(inputEl, listEl, datos, onSelect) {
+    let activeIdx = -1;
+
+    inputEl.addEventListener('input', function () {
+      const q = this.value.toLowerCase().trim();
+      activeIdx = -1;
+      if (!q) { listEl.classList.remove('open'); return; }
+      const filtrados = datos.filter(d => d.toLowerCase().includes(q)).slice(0, 25);
+      if (!filtrados.length) {
+        listEl.innerHTML = '<div class="ac-empty">Sin resultados</div>';
+        listEl.classList.add('open');
+        return;
+      }
+      listEl.innerHTML = '';
+      filtrados.forEach((d, i) => {
+        const div = document.createElement('div');
+        div.className = 'ac-item';
+        div.textContent = d;
+        div.dataset.idx = i;
+        div.addEventListener('mousedown', e => { e.preventDefault(); onSelect(d); listEl.classList.remove('open'); });
+        listEl.appendChild(div);
+      });
+      listEl.classList.add('open');
+    });
+
+    inputEl.addEventListener('keydown', function (e) {
+      const items = listEl.querySelectorAll('.ac-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx+1, items.length-1); actualizarActivo(items); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx-1, 0); actualizarActivo(items); }
+      else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); items[activeIdx].dispatchEvent(new MouseEvent('mousedown')); }
+      else if (e.key === 'Escape') { listEl.classList.remove('open'); }
+    });
+
+    inputEl.addEventListener('blur', () => setTimeout(() => listEl.classList.remove('open'), 150));
+
+    function actualizarActivo(items) {
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+      if (activeIdx >= 0) items[activeIdx].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  // ── Autocomplete trabajadores ─────────────────────────────────
+  const inputTrab = document.getElementById('inputTrabajador');
+  const listaTrab = document.getElementById('acList');
+
+  crearAutocomplete(inputTrab, listaTrab, TRABAJADORES, async (nombre) => {
+    inputTrab.value = nombre;
+    document.getElementById('hidTrabajador').value = nombre;
+    document.getElementById('errTrabajador').classList.remove('visible');
+    try {
+      const r = await fetch('/formtraslado/api/trabajador?nombre=' + encodeURIComponent(nombre));
+      const d = await r.json();
+      document.getElementById('Identificacion').value     = d.Identificación   || '';
+      document.getElementById('operacion_origen').value   = d.operacion_origen || '';
+      document.getElementById('celular_trabajador').value = d.celular          || '';
+      document.getElementById('email_trabajador').value   = d.email            || '';
+    } catch {}
+    revelarSecciones();
+  });
+
+  // ── Select operaciones ────────────────────────────────────────
+  const selectOp = document.getElementById('selectOperacion');
+  OPERACIONES.forEach(op => {
+    const o = document.createElement('option');
+    o.value = op; o.textContent = op;
+    selectOp.appendChild(o);
+  });
+  selectOp.addEventListener('change', async function () {
+    document.getElementById('errOperacion').classList.remove('visible');
+    document.getElementById('direccion_destino').value = '';
+    if (!this.value) return;
+    try {
+      const r = await fetch('/formtraslado/api/operacion?nombre=' + encodeURIComponent(this.value));
+      const d = await r.json();
+      document.getElementById('direccion_destino').value = d.direccion || '';
+    } catch {}
+  });
+
+  // ── Submit ────────────────────────────────────────────────────
+  document.getElementById('formTraslado').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    let ok = true;
+    function setErr(id, show) { document.getElementById(id).classList.toggle('visible', show); if (show) ok = false; }
+    setErr('errTrabajador', !document.getElementById('hidTrabajador').value);
+    setErr('errOperacion',  !selectOp.value);
+    setErr('errDireccion',     !document.getElementById('direccion_destino').value.trim());
+    setErr('errFecha',         !document.getElementById('fecha_traslado').value);
+    setErr('errHora',          !document.getElementById('hora_traslado').value);
+    setErr('errObservaciones', !document.getElementById('observaciones').value.trim());
+    if (!ok) return;
+
+    const btn = document.getElementById('btnEnviar');
+    btn.disabled = true; btn.textContent = 'Registrando…';
+
+    const body = {
+      usuario:            USUARIO,
+      Trabajador:         document.getElementById('hidTrabajador').value,
+      'Identificación':   document.getElementById('Identificacion').value,
+      operacion_origen:   document.getElementById('operacion_origen').value,
+      operacion_destino:  selectOp.value,
+      direccion_destino:  document.getElementById('direccion_destino').value  || null,
+      fecha_traslado:     document.getElementById('fecha_traslado').value,
+      hora_traslado:      document.getElementById('hora_traslado').value      || null,
+      celular_trabajador: document.getElementById('celular_trabajador').value || null,
+      email_trabajador:   document.getElementById('email_trabajador').value   || null,
+      observaciones:      document.getElementById('observaciones').value.trim() || null,
+    };
+
+    try {
+      const resp = await fetch('/formtraslado?usuario=' + encodeURIComponent(USUARIO), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        document.getElementById('formTraslado').style.display = 'none';
+        document.querySelector('.card-titulo').style.display  = 'none';
+        document.getElementById('successSection').style.display = 'block';
+        document.getElementById('successId').textContent = 'ID de traslado: ' + data.IdTraslado;
+        document.getElementById('btnVolver').onclick = () => {
+          window.location.href = '/admin/traslados?Usuario=' + encodeURIComponent(USUARIO);
+        };
+      } else {
+        alert('Error: ' + (data.error || 'No se pudo registrar'));
+        btn.disabled = false; btn.textContent = 'Registrar traslado';
+      }
+    } catch {
+      alert('Error de conexión. Intente nuevamente.');
+      btn.disabled = false; btn.textContent = 'Registrar traslado';
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Traslados</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; color: #333; min-height: 100vh; }
+
+    .topbar {
+      background: #fff; border-bottom: 1px solid #e4e4e4;
+      padding: 0 24px; height: 66px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-izq { display: flex; align-items: center; gap: 14px; }
+    .topbar img { height: 50px; }
+    .topbar h1 { font-size: 1rem; color: #1a1a2e; font-weight: 700; }
+    .topbar-der a { font-size: .8rem; color: #1a5fa8; text-decoration: none; }
+    .topbar-der a:hover { text-decoration: underline; }
+
+    .filtros {
+      background: #fff; border-bottom: 1px solid #e8e8e8;
+      padding: 0 24px; display: flex; gap: 2px; overflow-x: auto;
+    }
+    .ftab {
+      padding: 13px 16px; border: none; background: none; cursor: pointer;
+      font-size: .84rem; color: #888; border-bottom: 3px solid transparent;
+      white-space: nowrap; transition: color .15s, border-color .15s;
+    }
+    .ftab:hover { color: #1a1a2e; }
+    .ftab.on { color: #1a1a2e; border-bottom-color: #1a1a2e; font-weight: 700; }
+
+    .wrap { padding: 22px 24px; max-width: 1440px; margin: 0 auto; }
+
+    .card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.07); overflow: hidden;
+    }
+    .card-head {
+      padding: 14px 20px; border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-head h2 { font-size: .92rem; color: #1a1a2e; font-weight: 700; }
+    .card-head span { font-size: .8rem; color: #bbb; }
+
+    .tscroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    thead th {
+      background: #f8f9fb; padding: 10px 14px; text-align: left;
+      font-size: .72rem; color: #999; font-weight: 700;
+      letter-spacing: .8px; text-transform: uppercase;
+      border-bottom: 1px solid #eee; white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f5f5f5; transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafbff; }
+    td { padding: 11px 14px; font-size: .87rem; vertical-align: middle; }
+    .td-acc { white-space: normal; min-width: 200px; }
+
+    /* Modal editar */
+    .modal-lg { width: 580px; }
+    .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .edit-field { display: flex; flex-direction: column; gap: 4px; }
+    .edit-field.full { grid-column: 1 / -1; }
+    .edit-field label { font-size: .78rem; font-weight: 700; color: #555; }
+    .edit-field input, .edit-field select {
+      padding: 8px 10px; border: 1.5px solid #ddd; border-radius: 5px;
+      font-size: .87rem; color: #333; background: #fff;
+    }
+    .edit-field input:focus, .edit-field select:focus {
+      outline: none; border-color: #1a1a2e;
+    }
+    .edit-field input[readonly] { background: #f8f9fb; color: #888; cursor: not-allowed; }
+    .edit-sep { grid-column: 1/-1; border: none; border-top: 1px solid #f0f0f0; margin: 4px 0; }
+
+    .ba {
+      border: none; border-radius: 5px; padding: 5px 9px;
+      font-size: .76rem; cursor: pointer; font-weight: 600;
+      transition: opacity .15s; margin: 2px; white-space: nowrap; display: inline-block;
+    }
+    .ba:hover { opacity: .8; }
+    .bv   { background: #eaf3ff; color: #1a5fa8; }
+    .br   { background: #fff3e0; color: #a04000; }
+    .ban  { background: #fdedec; color: #a93226; }
+    .bver { background: #eafaf1; color: #1a7a4a; text-decoration: none; }
+    .be   { background: #f5f5f5; color: #555; }
+    .bwa  { background: #e7f9ee; color: #128C7E; font-weight: 700; }
+    .bem  { background: #eef3ff; color: #1a5fa8; font-weight: 700; }
+
+    /* Modal */
+    .backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 900;
+    }
+    .modal {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff; border-radius: 10px; padding: 28px 26px;
+      width: 540px; max-width: 95vw; z-index: 901;
+      box-shadow: 0 10px 40px rgba(0,0,0,.2);
+    }
+    .modal h3 { font-size: 1.05rem; color: #1a1a2e; margin-bottom: 6px; }
+    .modal p { font-size: .83rem; color: #999; margin-bottom: 16px; }
+    #urlInput {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      font-size: .8rem; font-family: monospace; background: #f8f9fb;
+      color: #333; margin-bottom: 14px; cursor: pointer;
+    }
+    .modal-btns { display: flex; gap: 10px; }
+    .btn-copiar {
+      flex: 1; background: #1a1a2e; color: #fff; border: none;
+      padding: 11px; border-radius: 6px; cursor: pointer;
+      font-size: .9rem; font-weight: bold;
+    }
+    .btn-copiar:hover { background: #2c2c4e; }
+    .btn-cerrar {
+      background: #f0f0f0; color: #555; border: none;
+      padding: 11px 18px; border-radius: 6px; cursor: pointer; font-size: .9rem;
+    }
+    .copiado { color: #27ae60; font-size: .8rem; margin-top: 8px; display: none; font-weight: 700; }
+    .aviso48 { font-size: .73rem; color: #ccc; margin-top: 10px; }
+
+    /* Buscador */
+    .filtros-tabla { padding: 12px 20px; border-bottom: 1px solid #f0f0f0; display: flex; gap: 10px; flex-wrap: wrap; }
+    .filtros-tabla input {
+      flex: 1; min-width: 180px; max-width: 340px;
+      padding: 8px 12px 8px 34px; border: 1.5px solid #ddd;
+      border-radius: 6px; font-size: .87rem; color: #333;
+      background: #f8f9fb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' fill='%23aaa' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zm-5.242 1.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 10px center;
+    }
+    .filtros-tabla input:focus { outline: none; border-color: #1a1a2e; background-color: #fff; }
+
+    /* Columnas redimensionables */
+    th { position: relative; white-space: nowrap; }
+    th .resize-handle {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 5px;
+      cursor: col-resize; background: transparent; z-index: 1;
+    }
+    th .resize-handle:hover { background: rgba(26,26,46,.15); }
+
+    /* Loading */
+    #overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(255,255,255,.55); z-index: 800;
+      align-items: center; justify-content: center;
+      font-size: .95rem; color: #1a1a2e; font-weight: 600;
+    }
+    #overlay.on { display: flex; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-izq">
+    <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER">
+    <h1>Panel de Traslados</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <a href="/formtraslado?usuario=__USUARIO_PARAM__"
+       style="background:#e67e22;color:#fff;text-decoration:none;padding:7px 16px;border-radius:6px;font-size:.84rem;font-weight:700">
+      + Nuevo traslado
+    </a>
+    <div id="linkPlantilla" style="display:none">
+      <a href="/admin/plantillas/editar/traslado" style="color:#1a5fa8;font-size:.8rem;text-decoration:none">✏️ Editar plantilla</a>
+    </div>
+  </div>
+</div>
+
+<div class="filtros">
+  <button class="ftab" data-estado="" onclick="location.href='/admin/traslados?Usuario=__USUARIO_PARAM__'">Todos</button>
+  <button class="ftab" data-estado="pendiente" onclick="location.href='/admin/traslados?Usuario=__USUARIO_PARAM__&estado=pendiente'">⏳ Pendiente</button>
+  <button class="ftab" data-estado="validado" onclick="location.href='/admin/traslados?Usuario=__USUARIO_PARAM__&estado=validado'">✓ Validado</button>
+  <button class="ftab" data-estado="revisar" onclick="location.href='/admin/traslados?Usuario=__USUARIO_PARAM__&estado=revisar'">↩ Revisar</button>
+  <button class="ftab" data-estado="anulado" onclick="location.href='/admin/traslados?Usuario=__USUARIO_PARAM__&estado=anulado'">✗ Anulado</button>
+  <button class="ftab" data-estado="generado" onclick="location.href='/admin/traslados?Usuario=__USUARIO_PARAM__&estado=generado'">📄 Generado</button>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="card-head">
+      <h2>Registros de traslado</h2>
+      <span id="conteo">__TOTAL__ registros</span>
+    </div>
+    <div class="filtros-tabla">
+      <input type="text" id="buscar" placeholder="Buscar general…" oninput="filtrarTabla()">
+      __FILTRO_HTML__
+    </div>
+    <div class="tscroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Estado</th>
+            <th>Trabajador</th>
+            <th>Origen → Destino</th>
+            <th>Teléfono / Email</th>
+            <th>Fecha traslado</th>
+            <th>Registrado</th>
+            <th>Usuario</th>
+            <th>Observaciones</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>__ROWS__</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar -->
+<div class="backdrop" id="backdropEdit" onclick="cerrarEditar()"></div>
+<div class="modal modal-lg" id="modalEdit" style="display:none">
+  <h3>✏️ Editar registro</h3>
+  <p>Solo se pueden editar registros en estado Pendiente, Validado o Revisar.</p>
+  <div class="edit-grid">
+    <div class="edit-field full">
+      <label>Trabajador</label>
+      <input type="text" id="e_trabajador" readonly>
+    </div>
+    <div class="edit-field">
+      <label>Identificación</label>
+      <input type="text" id="e_identificacion" readonly>
+    </div>
+    <div class="edit-field">
+      <label>Operación origen</label>
+      <input type="text" id="e_op_origen" name="operacion_origen">
+    </div>
+    <hr class="edit-sep">
+    <div class="edit-field full">
+      <label>Operación destino *</label>
+      <select id="e_op_destino" name="operacion_destino"></select>
+    </div>
+    <div class="edit-field full">
+      <label>Dirección destino</label>
+      <input type="text" id="e_direccion" name="direccion_destino" placeholder="Se completa al cambiar operación destino">
+    </div>
+    <div class="edit-field">
+      <label>Fecha de traslado *</label>
+      <input type="date" id="e_fecha" name="fecha_traslado">
+    </div>
+    <div class="edit-field">
+      <label>Hora de traslado</label>
+      <input type="time" id="e_hora" name="hora_traslado">
+    </div>
+    <hr class="edit-sep">
+    <div class="edit-field">
+      <label>Celular</label>
+      <input type="tel" id="e_celular" name="celular_trabajador">
+    </div>
+    <div class="edit-field">
+      <label>Correo electrónico</label>
+      <input type="email" id="e_email" name="email_trabajador">
+    </div>
+  </div>
+  <div class="modal-btns">
+    <button class="btn-copiar" onclick="guardarEdicion()">Guardar cambios</button>
+    <button class="btn-cerrar" onclick="cerrarEditar()">Cancelar</button>
+  </div>
+  <div class="copiado" id="editMsg"></div>
+</div>
+
+<!-- Modal enlace -->
+<div class="backdrop" id="backdrop" onclick="cerrarModal()"></div>
+<div class="modal" id="modal">
+  <h3>🔗 Enlace de firma generado</h3>
+  <p>Comparte este enlace con el trabajador. Puedes copiarlo y enviarlo por WhatsApp o correo.</p>
+  <input type="text" id="urlInput" readonly onclick="this.select()">
+  <div class="modal-btns">
+    <button class="btn-copiar" onclick="copiarUrl()">📋 Copiar enlace</button>
+    <button class="btn-cerrar" onclick="cerrarModal()">Cerrar</button>
+  </div>
+  <div class="copiado" id="copiadoMsg">✓ Copiado al portapapeles</div>
+  <div class="aviso48">⚠ El enlace es válido por 48 horas desde que fue generado.</div>
+  <div id="correoEnviadoMsg" style="display:none;margin-top:10px;padding:8px 12px;background:#eafaf1;border-left:4px solid #27ae60;border-radius:0 4px 4px 0;font-size:.82rem;color:#1a7a4a;font-weight:600"></div>
+</div>
+
+<div id="overlay">Procesando…</div>
+
+<script>
+  const estadoActivo = '__ESTADO_ACTIVO__';
+  const OPERACIONES  = __OPERACIONES__;
+  const rolConfig    = __ROL_CONFIG__;
+  const usuarioParam = encodeURIComponent(rolConfig.usuarioId);
+  let idEditando = null;
+
+  if (rolConfig.puedeEditarPlantilla) document.getElementById('linkPlantilla').style.display = '';
+
+  // ── Poblar select operaciones en modal editar ──────────────────
+  const selOpEdit = document.getElementById('e_op_destino');
+  OPERACIONES.forEach(op => {
+    const o = document.createElement('option'); o.value = op; o.textContent = op;
+    selOpEdit.appendChild(o);
+  });
+  selOpEdit.addEventListener('change', async function() {
+    if (!this.value) return;
+    try {
+      const r = await fetch('/formtraslado/api/operacion?nombre=' + encodeURIComponent(this.value));
+      const d = await r.json();
+      if (d.direccion) document.getElementById('e_direccion').value = d.direccion;
+    } catch {}
+  });
+  const totalInicial = __TOTAL__;
+
+  // ── Tabs — marcar activo ─────────────────────────────────────────────────
+  document.querySelectorAll('.ftab').forEach(btn => {
+    if (btn.dataset.estado === estadoActivo) btn.classList.add('on');
+  });
+
+  // ── Filtro por operación origen ──────────────────────────────────────────
+  function actualizarFiltroOp() {
+    const regEl = document.getElementById('filtroRegional');
+    const opEl  = document.getElementById('filtroOrigenDoble');
+    if (!regEl || !opEl) return;
+    const reg = regEl.value;
+    opEl.innerHTML = '<option value="">— Todas las operaciones —</option>';
+    (rolConfig.opsPorRegional && reg ? (rolConfig.opsPorRegional[reg] || []) : [])
+      .forEach(op => { const o = document.createElement('option'); o.value = op; o.textContent = op; opEl.appendChild(o); });
+    filtrarTabla();
+  }
+
+  function filtrarTabla() {
+    const q       = (document.getElementById('buscar').value || '').toLowerCase().trim();
+    const simpleEl = document.getElementById('filtroOrigenSimple');
+    const dobleEl  = document.getElementById('filtroOrigenDoble');
+    const regEl    = document.getElementById('filtroRegional');
+
+    let origenActivo = false, origenOps = [];
+    if (simpleEl && simpleEl.value) {
+      origenActivo = true;
+      origenOps = [simpleEl.value.toLowerCase()];
+    } else if (dobleEl) {
+      const op  = dobleEl.value;
+      const reg = regEl ? regEl.value : '';
+      if (op) {
+        origenActivo = true;
+        origenOps = [op.toLowerCase()];
+      } else if (reg && rolConfig.opsPorRegional) {
+        origenOps = (rolConfig.opsPorRegional[reg] || []).map(o => o.toLowerCase());
+        origenActivo = origenOps.length > 0;
+      }
+    }
+
+    let visibles = 0;
+    document.querySelectorAll('tbody tr').forEach(tr => {
+      const tm = !q || tr.textContent.toLowerCase().includes(q);
+      const om = !origenActivo || origenOps.some(op => (tr.dataset.origen || '').toLowerCase() === op);
+      tr.style.display = tm && om ? '' : 'none';
+      if (tm && om) visibles++;
+    });
+    document.getElementById('conteo').textContent =
+      (q || origenActivo) ? `${visibles} de ${totalInicial} registros` : `${totalInicial} registros`;
+  }
+
+  // ── Columnas redimensionables ────────────────────────────────────────────
+  document.querySelectorAll('thead th').forEach(th => {
+    const h = document.createElement('span'); h.className = 'resize-handle'; th.appendChild(h);
+    h.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const sx = e.pageX, sw = th.offsetWidth;
+      const mv = e => { th.style.width = Math.max(50, sw + e.pageX - sx) + 'px'; };
+      const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+      document.addEventListener('mousemove', mv);
+      document.addEventListener('mouseup', up);
+    });
+  });
+
+  function overlay(show) {
+    document.getElementById('overlay').classList.toggle('on', show);
+  }
+
+  function mostrarModal(url, correoEnviado) {
+    document.getElementById('urlInput').value = url;
+    document.getElementById('copiadoMsg').style.display = 'none';
+    const msgCorreo = document.getElementById('correoEnviadoMsg');
+    if (correoEnviado) {
+      msgCorreo.textContent = '✅ El enlace fue generado y se envió el correo al trabajador.';
+      msgCorreo.style.display = 'block';
+    } else {
+      msgCorreo.style.display = 'none';
+    }
+    document.getElementById('backdrop').style.display = 'block';
+    document.getElementById('modal').style.display    = 'block';
+  }
+
+  function cerrarModal() {
+    document.getElementById('backdrop').style.display = 'none';
+    document.getElementById('modal').style.display    = 'none';
+  }
+
+  function copiarUrl() {
+    const val = document.getElementById('urlInput').value;
+    navigator.clipboard.writeText(val)
+      .catch(() => { document.getElementById('urlInput').select(); document.execCommand('copy'); })
+      .finally(() => { document.getElementById('copiadoMsg').style.display = 'block'; });
+  }
+
+  async function validar(id) {
+    if (!confirm('¿Validar este traslado y generar el enlace de firma?')) return;
+    overlay(true);
+    try {
+      const r = await fetch(`/admin/traslados/${id}/validar?Usuario=${usuarioParam}`, { method: 'POST' });
+      const d = await r.json();
+      overlay(false);
+      if (d.ok) { mostrarModal(d.url, d.correoEnviado); setTimeout(() => location.reload(), 100); }
+      else alert('Error: ' + d.error);
+    } catch { overlay(false); alert('Error de conexión'); }
+  }
+
+  async function abrirEmail(id) {
+    if (!confirm('¿Enviar correo de notificación al trabajador?')) return;
+    overlay(true);
+    try {
+      const r = await fetch(`/admin/traslados/${id}/correo?Usuario=${usuarioParam}`, { method: 'POST' });
+      const d = await r.json();
+      overlay(false);
+      if (d.ok) {
+        alert('✅ Correo enviado correctamente al trabajador.');
+      } else {
+        alert('Error: ' + d.error);
+      }
+    } catch { overlay(false); alert('Error de conexión'); }
+  }
+
+  async function abrirWhatsApp(id) {
+    overlay(true);
+    try {
+      const r = await fetch(`/admin/traslados/${id}/enlace?Usuario=${usuarioParam}`, { method: 'POST' });
+      const d = await r.json();
+      overlay(false);
+      if (!d.ok) { alert('Error al generar enlace: ' + d.error); return; }
+
+      const tr = document.querySelector(`tr[data-id="${id}"]`);
+      const celular = (tr ? tr.dataset.celular : '').replace(/\D/g, '');
+      const nombre  = tr ? tr.dataset.nombre : 'trabajador/a';
+
+      let phone = celular;
+      if (phone.length === 10 && !phone.startsWith('57')) phone = '57' + phone;
+
+      const partes = nombre.split(' ** ');
+      const nombreCorto = partes.length > 1 ? partes[1].trim() : nombre;
+
+      const msg = encodeURIComponent(
+        `Estimado/a ${nombreCorto}, le informamos que tiene un documento de traslado laboral pendiente de su firma.\n\n` +
+        `Por favor ingrese al siguiente enlace para firmarlo:\n\n${d.url}\n\n` +
+        `El enlace tiene una validez de 48 horas.\n\nGracias,\nLOG&SER S.A.S.`
+      );
+
+      if (phone) {
+        window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+      } else {
+        mostrarModal(d.url);
+      }
+    } catch { overlay(false); alert('Error de conexión'); }
+  }
+
+  async function enlace(id) {
+    overlay(true);
+    try {
+      const r = await fetch(`/admin/traslados/${id}/enlace?Usuario=${usuarioParam}`, { method: 'POST' });
+      const d = await r.json();
+      overlay(false);
+      if (d.ok) mostrarModal(d.url);
+      else alert('Error: ' + d.error);
+    } catch { overlay(false); alert('Error de conexión'); }
+  }
+
+  async function abrirEditar(id) {
+    idEditando = id;
+    overlay(true);
+    try {
+      const r = await fetch(`/admin/traslados/${id}/datos?Usuario=${usuarioParam}`);
+      const d = await r.json();
+      overlay(false);
+      if (!d.ok) { alert('No se pudo cargar el registro'); return; }
+      const t = d.datos;
+      document.getElementById('e_trabajador').value    = t.Trabajador    || '';
+      document.getElementById('e_identificacion').value= t['Identificación'] || '';
+      document.getElementById('e_op_origen').value     = t.operacion_origen  || '';
+      document.getElementById('e_direccion').value     = t.direccion_destino || '';
+      document.getElementById('e_fecha').value         = t.fecha_traslado    ? String(t.fecha_traslado).slice(0,10) : '';
+      document.getElementById('e_hora').value          = t.hora_traslado     || '';
+      document.getElementById('e_celular').value       = t.celular_trabajador|| '';
+      document.getElementById('e_email').value         = t.email_trabajador  || '';
+      selOpEdit.value = t.operacion_destino || '';
+      document.getElementById('editMsg').style.display = 'none';
+      document.getElementById('backdropEdit').style.display = 'block';
+      document.getElementById('modalEdit').style.display    = 'block';
+    } catch { overlay(false); alert('Error de conexión'); }
+  }
+
+  function cerrarEditar() {
+    document.getElementById('backdropEdit').style.display = 'none';
+    document.getElementById('modalEdit').style.display    = 'none';
+    idEditando = null;
+  }
+
+  async function guardarEdicion() {
+    if (!idEditando) return;
+    const msg = document.getElementById('editMsg');
+    msg.style.display = 'none';
+    overlay(true);
+    try {
+      const body = {
+        operacion_origen:   document.getElementById('e_op_origen').value  || null,
+        operacion_destino:  selOpEdit.value,
+        direccion_destino:  document.getElementById('e_direccion').value  || null,
+        fecha_traslado:     document.getElementById('e_fecha').value,
+        hora_traslado:      document.getElementById('e_hora').value       || null,
+        celular_trabajador: document.getElementById('e_celular').value    || null,
+        email_trabajador:   document.getElementById('e_email').value      || null,
+      };
+      const r = await fetch(`/admin/traslados/${idEditando}/editar?Usuario=${usuarioParam}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      overlay(false);
+      if (d.ok) {
+        msg.textContent = '✓ Cambios guardados';
+        msg.style.color = '#27ae60';
+        msg.style.display = 'block';
+        setTimeout(() => { cerrarEditar(); location.reload(); }, 800);
+      } else {
+        msg.textContent = 'Error: ' + d.error;
+        msg.style.color = '#e74c3c';
+        msg.style.display = 'block';
+      }
+    } catch { overlay(false); alert('Error de conexión'); }
+  }
+
+  async function cambiar(id, estado) {
+    const msg = { revisar: 'marcar como "Revisar"', anulado: 'anular este traslado', pendiente: 'regresar a Pendiente' };
+    if (!confirm(`¿Desea ${msg[estado] || estado}?`)) return;
+    overlay(true);
+    try {
+      const r = await fetch(`/admin/traslados/${id}/estado?Usuario=${usuarioParam}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado })
+      });
+      const d = await r.json();
+      overlay(false);
+      if (d.ok) location.reload();
+      else alert('Error: ' + d.error);
+    } catch { overlay(false); alert('Error de conexión'); }
+  }
+</script>
+</body>
+</html>
