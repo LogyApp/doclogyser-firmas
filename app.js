@@ -4,6 +4,7 @@ const express = require('express');
 const adminRoutes        = require('./src/routes/admin');
 const firmaRoutes        = require('./src/routes/firma');
 const formtrasladoRoutes = require('./src/routes/formtraslado');
+const formretiroRoutes   = require('./src/routes/formretiro');
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/admin', adminRoutes);
 app.use('/doclogyser', firmaRoutes);
 app.use('/formtraslado', formtrasladoRoutes);
+app.use('/formretiro', formretiroRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   const devRoutes = require('./src/routes/dev');
@@ -25,3 +27,9 @@ app.listen(PORT, () => {
     console.error(`Servidor en http://localhost:${PORT}`);
   }
 });
+
+// Notificador de retiros: captura cambios hechos desde AppSheet u otros sistemas
+// La interfaz /formretiro ya notifica directamente; este cron es el respaldo
+const { verificarRetiros } = require('./src/services/retiroNotifier');
+verificarRetiros(); // verificación inicial al arrancar
+setInterval(verificarRetiros, 2 * 60 * 1000); // cada 2 minutos

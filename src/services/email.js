@@ -177,4 +177,119 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
   });
 }
 
-module.exports = { notificarNuevoTraslado, notificarFirmaTrabajador, notificarDocumentoGenerado };
+// ── Notificación de retiro ───────────────────────────────────────────────────
+
+const CARGOS_ADMIN = [
+  'AUXILIAR ADMINISTRATIVO DE OPERACIÓN',
+  'AUXILIAR ADMINISTRATIVO REGIONAL',
+  'COORDINADOR LOGISTICO',
+  'COORDINADOR REGIONAL',
+  'SUBGERENTE DE OPERACIONES',
+];
+const CARGOS_SST = ['ANALISTA DE SST', 'AUXILIAR SST'];
+
+const CC_ADMIN = [
+  'jefe.facturacion@logyser.com',
+  'jefe.contabilidad@logyser.com',
+  'gestioncalidad@logyser.com',
+  'controlcuentas@logyser.com',
+  'directorrh@logyser.com',
+  'subgerenciaoperaciones@logyser.com',
+  'sst.nacional@logyser.com',
+  'administradorti@logyser.com',
+  'nomina@logyser.com',
+  'seleccion@logyser.com',
+];
+const CC_SST = ['sst.nacional@logyser.com', 'sstadmon@logyser.com'];
+
+const ID_RETIRO_EXCLUIDO = 1117517812;
+
+async function notificarRetiro({
+  trabajador, identificacion, cargo, operacion,
+  fechaRetiro, motivoRetiro, registradoPor, emailRegistrador,
+}) {
+  if (Number(identificacion) === ID_RETIRO_EXCLUIDO) return;
+
+  const cargoNorm = (cargo || '').trim().toUpperCase();
+  const ccBase    = ['admin@logyser.com', emailRegistrador].filter(Boolean);
+  const ccExtra   = CARGOS_ADMIN.includes(cargoNorm) ? CC_ADMIN
+                  : CARGOS_SST.includes(cargoNorm)   ? CC_SST
+                  : [];
+  const cc = [...new Set([...ccBase, ...ccExtra])].join(', ');
+
+  const asunto = `Retiro de personal — ${trabajador}`;
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+
+        <div style="display:inline-block;background:#fdf0f0;border:1px solid #f5c6c6;
+                    border-radius:6px;padding:6px 16px;margin-bottom:18px">
+          <span style="color:#c0392b;font-weight:bold;font-size:.88rem">
+            &#9679; RETIRO DE PERSONAL
+          </span>
+        </div>
+
+        <h2 style="color:#1a1a2e;margin:0 0 6px">Retiro registrado en el sistema</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.92rem;line-height:1.5">
+          Se ha registrado la novedad de retiro de un colaborador.
+          A continuación los datos del proceso:
+        </p>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.93rem">
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888;width:38%">Trabajador</td>
+            <td style="padding:9px 12px;font-weight:bold">${trabajador}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;color:#888">Identificación</td>
+            <td style="padding:9px 12px">${identificacion}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Cargo</td>
+            <td style="padding:9px 12px">${cargo || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;color:#888">Operación</td>
+            <td style="padding:9px 12px">${operacion || '—'}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Fecha de retiro</td>
+            <td style="padding:9px 12px;font-weight:bold">${formatFecha(fechaRetiro)}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;color:#888">Motivo del retiro</td>
+            <td style="padding:9px 12px;font-weight:bold;color:#c0392b">${motivoRetiro || '—'}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Registrado por</td>
+            <td style="padding:9px 12px">${registradoPor || '—'}</td>
+          </tr>
+        </table>
+
+        <div style="padding:11px 16px;background:#fdf0f0;border-left:4px solid #c0392b;
+                    border-radius:0 4px 4px 0;color:#7b241c;font-size:.88rem">
+          Estado: <strong>Retirado</strong>
+        </div>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from:    `"LOG&SER Notificaciones" <noreply@logyser.com>`,
+    to:      'retiros@logyser.com',
+    cc,
+    subject: asunto,
+    html:    cuerpo,
+  });
+}
+
+module.exports = {
+  notificarNuevoTraslado,
+  notificarFirmaTrabajador,
+  notificarDocumentoGenerado,
+  notificarRetiro,
+};

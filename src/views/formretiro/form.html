@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informar Retiro — LOG&amp;SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; }
+    .wrapper { max-width: 700px; margin: 0 auto; padding: 20px 16px 40px; }
+
+    /* ── Tarjeta título ───────────────────────────────────────── */
+    .card-titulo {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      padding: 20px 24px; margin-bottom: 14px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .card-titulo img { height: 44px; flex-shrink: 0; }
+    .page-title { font-size: 1.25rem; font-weight: bold; color: #1a1a2e; }
+    .page-sub   { font-size: .82rem; color: #999; margin-top: 3px; }
+    .usuario-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #fdf0f0; border: 1px solid #f5c6c6;
+      border-radius: 20px; padding: 3px 10px;
+      font-size: .78rem; color: #7b241c; margin-top: 8px; font-weight: 600;
+    }
+
+    /* ── Tarjetas sección ─────────────────────────────────────── */
+    .card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      border-left: 4px solid #1a1a2e;
+      padding: 22px 24px; margin-bottom: 14px;
+    }
+    .card.retiro { border-left-color: #c0392b; }
+
+    .section-title {
+      font-size: .72rem; font-weight: bold; color: #1a1a2e;
+      letter-spacing: 1.3px; text-transform: uppercase;
+      padding-bottom: 12px; margin-bottom: 18px;
+      border-bottom: 2px solid #eef1ff;
+    }
+
+    /* ── Campos ───────────────────────────────────────────────── */
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #444; margin-bottom: 5px; }
+    label .req { color: #c0392b; margin-left: 2px; }
+
+    input[type="text"], input[type="date"], select {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      font-size: .93rem; color: #333; background: #fff;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus { outline: none; border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192,57,43,.1); }
+    input[readonly] { background: #f5f6fa; color: #777; cursor: not-allowed; border-color: #e8e8e8; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .err { color: #c0392b; font-size: .78rem; margin-top: 4px; display: none; }
+    .err.visible { display: block; }
+
+    /* ── Sección firma ────────────────────────────────────────── */
+    .firma-preview {
+      display: flex; align-items: flex-end; gap: 20px;
+      padding: 14px; background: #f8f9fb;
+      border: 1.5px solid #e8e8e8; border-radius: 8px;
+      margin-bottom: 14px;
+    }
+    .firma-preview img { height: 72px; border-radius: 4px; }
+    .firma-label { font-size: .8rem; color: #888; margin-bottom: 4px; }
+    .firma-nombre { font-size: .9rem; font-weight: 600; color: #1a1a2e; }
+
+    .toggle-refirmar {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .85rem; color: #555; margin-bottom: 14px;
+      cursor: pointer; user-select: none;
+    }
+    .toggle-refirmar input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #c0392b; }
+
+    .canvas-wrap { position: relative; }
+    #sigCanvas {
+      width: 100%; height: 160px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      cursor: crosshair; background: #fff; display: block;
+      touch-action: none;
+    }
+    #sigCanvas.activo { border-color: #c0392b; }
+    .canvas-hint { font-size: .75rem; color: #bbb; margin-top: 5px; }
+
+    .btn-limpiar {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 8px; padding: 6px 14px;
+      background: #f5f6fa; border: 1.5px solid #e0e0e0;
+      border-radius: 6px; font-size: .8rem; color: #555; cursor: pointer;
+    }
+    .btn-limpiar:hover { background: #eee; }
+
+    /* ── Botón principal ──────────────────────────────────────── */
+    .btn-submit {
+      width: 100%; background: #c0392b; color: #fff;
+      border: none; padding: 14px; border-radius: 7px;
+      font-size: 1rem; font-weight: bold; cursor: pointer;
+      transition: background .15s; margin-bottom: 14px;
+    }
+    .btn-submit:hover   { background: #a93226; }
+    .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* ── Modal de confirmación ────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 10px; padding: 28px 24px;
+      max-width: 420px; width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,.2);
+    }
+    .modal-title { font-size: 1.05rem; font-weight: bold; color: #1a1a2e; margin-bottom: 10px; }
+    .modal-body  { font-size: .9rem; color: #555; margin-bottom: 20px; line-height: 1.6; }
+    .modal-body strong { color: #1a1a2e; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancelar {
+      background: #f5f6fa; border: 1.5px solid #ddd; color: #555;
+      padding: 10px 20px; border-radius: 6px; font-size: .9rem; cursor: pointer;
+    }
+    .btn-cancelar:hover { background: #eee; }
+    .btn-confirmar {
+      background: #c0392b; border: none; color: #fff;
+      padding: 10px 24px; border-radius: 6px; font-size: .9rem; font-weight: bold; cursor: pointer;
+    }
+    .btn-confirmar:hover { background: #a93226; }
+
+    /* ── Overlay de carga ─────────────────────────────────────── */
+    .loading-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(255,255,255,.88); z-index: 2000;
+      align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    }
+    .loading-overlay.open { display: flex; }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid #f5c6c6; border-top-color: #c0392b;
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: .95rem; color: #555; }
+
+    /* ── Estado éxito ─────────────────────────────────────────── */
+    .success-section { display: none; }
+    .success-header {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      padding: 36px 24px; text-align: center; margin-bottom: 14px;
+    }
+    .check-circle {
+      width: 70px; height: 70px; border-radius: 50%;
+      background: #fdf0f0; border: 3px solid #c0392b;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px; font-size: 2rem; color: #c0392b;
+    }
+    .success-title { font-size: 1.25rem; font-weight: bold; color: #1a1a2e; margin-bottom: 4px; }
+    .success-sub   { font-size: .88rem; color: #aaa; }
+
+    .resumen-card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      border-left: 4px solid #c0392b;
+      padding: 20px 24px; margin-bottom: 14px;
+    }
+    .info-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 9px 0; border-bottom: 1px solid #f5f5f5; font-size: .9rem;
+    }
+    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-label { color: #888; white-space: nowrap; margin-right: 12px; }
+    .info-value { font-weight: 600; color: #1a1a2e; text-align: right; }
+
+    .doc-card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      border-left: 4px solid #27ae60;
+      padding: 20px 24px; margin-bottom: 14px;
+    }
+    .doc-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; background: #f8fdf9;
+      border: 1px solid #d5f0de; border-radius: 6px;
+      text-decoration: none; color: #1a1a2e;
+      margin-top: 10px; transition: background .15s;
+    }
+    .doc-link:hover { background: #eafaf1; }
+    .doc-icon  { font-size: 1.5rem; flex-shrink: 0; }
+    .doc-nombre { font-size: .9rem; font-weight: 600; }
+    .doc-hint   { font-size: .75rem; color: #aaa; margin-top: 2px; }
+
+    @media (max-width: 480px) {
+      .card, .card-titulo { padding: 16px; }
+      .card-titulo { flex-wrap: wrap; }
+      .two-col { grid-template-columns: 1fr; }
+      .modal-actions { flex-direction: column-reverse; }
+      .firma-preview { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Encabezado con logo -->
+  <div class="card-titulo">
+    <div>
+      <div class="page-title">Informar Retiro</div>
+      <div class="page-sub">Registre la fecha y motivo de retiro del trabajador</div>
+      <div class="usuario-badge" id="badgeUsuario"></div>
+    </div>
+    <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER">
+  </div>
+
+  <!-- ── FORMULARIO ─────────────────────────────────────────────── -->
+  <div id="seccionFormulario">
+
+    <!-- Datos del trabajador (solo lectura) -->
+    <div class="card">
+      <div class="section-title">Datos del trabajador</div>
+      <div class="field">
+        <label>Trabajador</label>
+        <input type="text" id="dispTrabajador" readonly>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>Identificación</label>
+          <input type="text" id="dispIdentificacion" readonly>
+        </div>
+        <div class="field">
+          <label>Cargo</label>
+          <input type="text" id="dispCargo" readonly>
+        </div>
+      </div>
+      <div class="field">
+        <label>Fecha de ingreso</label>
+        <input type="text" id="dispFechaIngreso" readonly>
+      </div>
+    </div>
+
+    <!-- Datos del retiro (editables) -->
+    <div class="card retiro">
+      <div class="section-title">Datos del retiro</div>
+      <div class="two-col">
+        <div class="field">
+          <label for="fechaRetiro">Fecha de retiro <span class="req">*</span></label>
+          <input type="date" id="fechaRetiro">
+          <div class="err" id="errFecha">Seleccione la fecha de retiro</div>
+        </div>
+        <div class="field">
+          <label for="motivoRetiro">Motivo del retiro <span class="req">*</span></label>
+          <select id="motivoRetiro">
+            <option value="">— Seleccione motivo —</option>
+          </select>
+          <div class="err" id="errMotivo">Seleccione el motivo de retiro</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Firma del responsable -->
+    <div class="card retiro">
+      <div class="section-title">Firma del responsable</div>
+
+      <!-- Vista cuando ya existe firma guardada -->
+      <div id="bloqueExistente" style="display:none">
+        <div class="firma-preview">
+          <img id="imgFirmaExistente" src="" alt="Firma guardada">
+          <div>
+            <div class="firma-label">Firma guardada</div>
+            <div class="firma-nombre" id="nombreFirmante"></div>
+          </div>
+        </div>
+        <label class="toggle-refirmar">
+          <input type="checkbox" id="chkNuevaFirma" onchange="toggleCanvas()">
+          Quiero firmar nuevamente (reemplaza la firma guardada)
+        </label>
+      </div>
+
+      <!-- Canvas de firma (obligatorio si no hay firma, opcional si hay) -->
+      <div id="bloqueCanvas">
+        <div class="canvas-wrap">
+          <canvas id="sigCanvas" width="640" height="200"></canvas>
+        </div>
+        <div class="canvas-hint">Dibuje su firma con el dedo o el mouse. Esta firma quedará guardada para futuros documentos.</div>
+        <button type="button" class="btn-limpiar" onclick="limpiarFirma()">&#x2715; Limpiar firma</button>
+        <div class="err" id="errFirma">Debe dibujar su firma antes de continuar</div>
+      </div>
+
+    </div>
+
+    <button type="button" class="btn-submit" id="btnEnviar" onclick="abrirModal()">
+      Registrar retiro y generar documentos
+    </button>
+
+  </div>
+
+  <!-- ── ESTADO ÉXITO ───────────────────────────────────────────── -->
+  <div class="success-section" id="successSection">
+
+    <div class="success-header">
+      <div class="check-circle">&#10003;</div>
+      <div class="success-title">Retiro registrado exitosamente</div>
+      <div class="success-sub">Los documentos han sido generados y están disponibles</div>
+    </div>
+
+    <div class="resumen-card">
+      <div class="section-title" style="margin-bottom:12px">Resumen del retiro</div>
+      <div class="info-row">
+        <span class="info-label">Trabajador</span>
+        <span class="info-value" id="resumenTrabajador"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Identificación</span>
+        <span class="info-value" id="resumenId"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Fecha de retiro</span>
+        <span class="info-value" id="resumenFechaRetiro"></span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Motivo</span>
+        <span class="info-value" id="resumenMotivo"></span>
+      </div>
+    </div>
+
+    <div class="doc-card">
+      <div class="section-title" style="margin-bottom:4px">Documentos generados</div>
+      <div id="docList"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ── MODAL DE CONFIRMACIÓN ──────────────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">¿Confirmar registro de retiro?</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-confirmar" onclick="enviarRetiro()">Confirmar y generar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── OVERLAY DE CARGA ────────────────────────────────────────────── -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Generando documentos, por favor espere…</div>
+</div>
+
+<script>
+  const _cfg = __CONFIG__;
+  const { identificacion, usuario, usuarioNombre, trabajador, cargo, fechaIngreso, motivos } = _cfg;
+
+  // ── Datos del trabajador ───────────────────────────────────────
+  document.getElementById('dispTrabajador').value     = trabajador;
+  document.getElementById('dispIdentificacion').value = identificacion;
+  document.getElementById('dispCargo').value          = cargo;
+  document.getElementById('dispFechaIngreso').value   = fechaIngreso;
+  document.getElementById('badgeUsuario').textContent = '\u{1F464} ' + usuarioNombre;
+  document.getElementById('nombreFirmante').textContent = usuarioNombre;
+
+  // ── Poblar motivos ─────────────────────────────────────────────
+  const selMotivo = document.getElementById('motivoRetiro');
+  motivos.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m;
+    selMotivo.appendChild(o);
+  });
+
+  // ── Canvas de firma ────────────────────────────────────────────
+  const canvas  = document.getElementById('sigCanvas');
+  const ctx     = canvas.getContext('2d');
+  let dibujando   = false;
+  let tieneTrazos = false;
+  let firmaExistente = null; // se llena via API después de cargar
+
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src  = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - rect.left) * (canvas.width  / rect.width),
+      y: (src.clientY - rect.top)  * (canvas.height / rect.height),
+    };
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    dibujando = true; tieneTrazos = true;
+    ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y);
+    canvas.classList.add('activo');
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (!dibujando) return;
+    const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke();
+  });
+  canvas.addEventListener('mouseup',    () => { dibujando = false; });
+  canvas.addEventListener('mouseleave', () => { dibujando = false; });
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault(); dibujando = true; tieneTrazos = true;
+    ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y);
+    canvas.classList.add('activo');
+  }, { passive: false });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!dibujando) return;
+    const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke();
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { dibujando = false; });
+
+  function limpiarFirma() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    tieneTrazos = false;
+    canvas.classList.remove('activo');
+  }
+
+  function toggleCanvas() {
+    const quiereReFirmar = document.getElementById('chkNuevaFirma').checked;
+    document.getElementById('bloqueCanvas').style.display = quiereReFirmar ? 'block' : 'none';
+    if (!quiereReFirmar) {
+      limpiarFirma();
+      document.getElementById('errFirma').classList.remove('visible');
+    }
+  }
+
+  // ── Cargar firma existente via API (después de render) ─────────
+  // Se hace en AJAX para que los errores sean visibles en la consola/red del navegador
+  (async function cargarFirmaExistente() {
+    try {
+      const resp = await fetch('/formretiro/api/firma?usuario=' + encodeURIComponent(usuario));
+      const data = await resp.json();
+      if (data.url) {
+        firmaExistente = data.url;
+        document.getElementById('imgFirmaExistente').src = data.url;
+        document.getElementById('bloqueExistente').style.display = 'block';
+        document.getElementById('bloqueCanvas').style.display = 'none';
+      }
+    } catch (e) {
+      // Sin firma existente → el canvas permanece visible
+      console.warn('[firma] No se pudo verificar firma existente:', e.message);
+    }
+  })();
+
+  // ── Validar y abrir modal ──────────────────────────────────────
+  function abrirModal() {
+    let ok = true;
+    function marcarErr(id, show) {
+      document.getElementById(id).classList.toggle('visible', show);
+      if (show) ok = false;
+    }
+
+    marcarErr('errFecha',  !document.getElementById('fechaRetiro').value);
+    marcarErr('errMotivo', !selMotivo.value);
+
+    // Firma obligatoria si no hay guardada, o si eligió re-firmar
+    const necesitaCanvas = !firmaExistente || document.getElementById('chkNuevaFirma').checked;
+    if (necesitaCanvas) marcarErr('errFirma', !tieneTrazos);
+
+    if (!ok) return;
+
+    const fecha  = document.getElementById('fechaRetiro').value;
+    const motivo = selMotivo.value;
+    document.getElementById('modalBody').innerHTML =
+      `Está a punto de registrar el retiro de:<br><br>
+       <strong>${trabajador}</strong><br>
+       <span style="color:#888;font-size:.85rem">CC ${identificacion}</span><br><br>
+       <strong>Fecha de retiro:</strong> ${fecha}<br>
+       <strong>Motivo:</strong> ${motivo}<br><br>
+       <span style="color:#c0392b;font-size:.83rem">
+         Esta acción marcará al trabajador como <strong>Retirado</strong>
+         y generará los documentos correspondientes.
+       </span>`;
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function cerrarModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+
+  // ── Enviar ─────────────────────────────────────────────────────
+  async function enviarRetiro() {
+    cerrarModal();
+    document.getElementById('loadingOverlay').classList.add('open');
+    document.getElementById('btnEnviar').disabled = true;
+
+    const necesitaCanvas = !firmaExistente || document.getElementById('chkNuevaFirma').checked;
+    const firmaBase64 = (necesitaCanvas && tieneTrazos) ? canvas.toDataURL('image/png') : null;
+
+    const body = {
+      fechaRetiro:  document.getElementById('fechaRetiro').value,
+      motivoRetiro: selMotivo.value,
+      firmaBase64,
+    };
+
+    try {
+      const resp = await fetch(window.location.pathname + '?usuario=' + encodeURIComponent(usuario), {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      const data = await resp.json();
+
+      document.getElementById('loadingOverlay').classList.remove('open');
+
+      if (data.ok) {
+        document.getElementById('seccionFormulario').style.display = 'none';
+        document.querySelector('.card-titulo').style.display = 'none';
+
+        const ss = document.getElementById('successSection');
+        ss.style.display = 'block';
+
+        document.getElementById('resumenTrabajador').textContent  = data.trabajador;
+        document.getElementById('resumenId').textContent          = identificacion;
+        document.getElementById('resumenFechaRetiro').textContent = data.fechaRetiro;
+        document.getElementById('resumenMotivo').textContent      = data.motivoRetiro;
+
+        const docList = document.getElementById('docList');
+        (data.documentos || []).forEach(doc => {
+          const a = document.createElement('a');
+          a.href = doc.url;
+          a.target = '_blank';
+          a.className = 'doc-link';
+          a.innerHTML = `
+            <span class="doc-icon">&#128196;</span>
+            <div>
+              <div class="doc-nombre">${doc.titulo}</div>
+              <div class="doc-hint">Haga clic para abrir el PDF en una nueva pestaña</div>
+            </div>`;
+          docList.appendChild(a);
+        });
+      } else {
+        alert('Error: ' + (data.error || 'No se pudo registrar el retiro'));
+        document.getElementById('btnEnviar').disabled = false;
+      }
+    } catch {
+      document.getElementById('loadingOverlay').classList.remove('open');
+      alert('Error de conexión. Intente nuevamente.');
+      document.getElementById('btnEnviar').disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

@@ -46,4 +46,12 @@ async function subirPDF(identificacion, idTraslado, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
-module.exports = { obtenerFirmaBase64Reciente, obtenerUrlFirmaReciente, subirFirma, subirPDF };
+async function subirPDFRetiro(identificacion, tipo, bufferPdf) {
+  const timestamp = Date.now();
+  const nombre = `${identificacion}/${identificacion}.RET.${tipo}.${timestamp}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+module.exports = { obtenerFirmaBase64Reciente, obtenerUrlFirmaReciente, subirFirma, subirPDF, subirPDFRetiro };
