@@ -1,10 +1,11 @@
 const pool = require('./db');
 const { notificarRetiro } = require('./email');
 
-// Marca que se escribe en Observaciones para evitar doble notificación
 const MARCA = '[RN]';
 
-// Retiros recientes sin marcar: cambiados en la última hora, hoy, sin nuestra marca
+// Detecta TODOS los retirados sin marcar, sin restricción de fecha.
+// Depende únicamente de que el registro no tenga la marca [RN].
+// Antes de activar, corre el SQL de inicialización para marcar históricos.
 async function obtenerRetirosPendientes() {
   const [rows] = await pool.execute(
     `SELECT \`Id Vinculación\`         AS id,
@@ -19,8 +20,6 @@ async function obtenerRetirosPendientes() {
      FROM \`Maestro_Vinculación\`
      WHERE Estado = 'Retirado'
        AND \`Fecha de Retiro\` IS NOT NULL
-       AND \`Fecha Actualización\` >= DATE_SUB(NOW(), INTERVAL 60 MINUTE)
-       AND DATE(\`Fecha Actualización\`) = CURDATE()
        AND (
              \`Observaciones Vinculación\` IS NULL
           OR \`Observaciones Vinculación\` NOT LIKE ?
@@ -31,7 +30,6 @@ async function obtenerRetirosPendientes() {
 }
 
 async function marcarNotificado(idVinculacion) {
-  // LEFT(..., 200) protege el límite VARCHAR(200) de la columna
   await pool.execute(
     `UPDATE \`Maestro_Vinculación\`
      SET \`Observaciones Vinculación\` =
@@ -41,7 +39,7 @@ async function marcarNotificado(idVinculacion) {
   );
 }
 
-async function obtenerEmailUsuario(usuarioId) {
+async function obtenerDatosUsuario(usuarioId) {
   if (!usuarioId) return null;
   const [rows] = await pool.execute(
     'SELECT Email, Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
@@ -53,9 +51,16 @@ async function obtenerEmailUsuario(usuarioId) {
 async function verificarRetiros() {
   try {
     const retiros = await obtenerRetirosPendientes();
+
+    if (retiros.length > 0) {
+      console.log(`[retiroNotifier] ${retiros.length} retiro(s) pendiente(s) de notificar`);
+    }
+
     for (const r of retiros) {
       try {
-        const usuData = await obtenerEmailUsuario(r.Usuario);
+        const usuData = await obtenerDatosUsuario(r.Usuario);
+        console.log(`[retiroNotifier] Notificando retiro id=${r.id} trabajador="${r.Trabajador}"`);
+
         await notificarRetiro({
           trabajador:       r.Trabajador,
           identificacion:   r.identificacion,
@@ -66,10 +71,12 @@ async function verificarRetiros() {
           registradoPor:    usuData?.Nombre || r.Usuario || '—',
           emailRegistrador: usuData?.Email  || null,
         });
+
         await marcarNotificado(r.id);
+        console.log(`[retiroNotifier] OK — notificado y marcado id=${r.id}`);
       } catch (err) {
-        // No marca → reintentará en el siguiente ciclo
-        console.error('[retiroNotifier] Error al notificar', r.id, err.message);
+        // Sin marca → reintentará en el siguiente ciclo
+        console.error(`[retiroNotifier] ERROR id=${r.id}:`, err.message);
       }
     }
   } catch (err) {
