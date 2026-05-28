@@ -1,14 +1,26 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const pool = require('../services/db');
+const express  = require('express');
+const fs       = require('fs');
+const path     = require('path');
+const { v4: uuidv4 } = require('uuid');
+const pool     = require('../services/db');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
 const { generarPDF } = require('../services/renderer');
-const { obtenerUrlFirmaReciente, subirFirma, subirPDFRetiro } = require('../services/storage');
-const { notificarRetiro } = require('../services/email');
+const {
+  obtenerUrlFirmaReciente,
+  subirFirma,
+  subirPDFRetiro,
+  subirPDFExamenEgreso,
+  subirPDFCartaRenuncia,
+  subirPDFAceptacionRenuncia,
+  subirPDFEvaluacionDesempeno,
+  subirPDFCesantias,
+} = require('../services/storage');
+const { notificarRetiro, notificarDocumentoRetiroTrabajador } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
+const { generarTokenPZ } = require('../services/token');
+const { determinarNivelYAreas } = require('../services/pazYSalvoService');
 
-const router = express.Router();
+const router   = express.Router();
 const FORM_HTML = path.join(__dirname, '../views/formretiro/form.html');
 
 const MOTIVOS = [
@@ -25,6 +37,7 @@ const MOTIVOS = [
   'Terminación Sin Justa Causa',
 ];
 
+// ── Helpers ────────────────────────────────────────────────────────────────
 function parsearIdentificacion(param) {
   const partes = decodeURIComponent(param).split('&');
   const raw = partes[partes.length - 1];
@@ -53,13 +66,17 @@ function fechaHoraBogota() {
   return `${bogota.getFullYear()}-${p(bogota.getMonth() + 1)}-${p(bogota.getDate())} ${p(bogota.getHours())}:${p(bogota.getMinutes())}:${p(bogota.getSeconds())}`;
 }
 
-// Resuelve Colaborador → Identificación en Maestro_Vinculación → URL firma en GCS
+function toDateStr(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  return String(val).slice(0, 10);
+}
+
 async function resolverFirmaUsuario(colaborador) {
   if (!colaborador) return { identificacionFirmante: null, firmaUrl: null };
   const [rows] = await pool.execute(
     `SELECT \`Identificación\` FROM \`Maestro_Vinculación\`
-     WHERE Trabajador = ?
-     ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+     WHERE Trabajador = ? ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
     [colaborador]
   );
   if (!rows.length) return { identificacionFirmante: null, firmaUrl: null };
@@ -68,18 +85,31 @@ async function resolverFirmaUsuario(colaborador) {
   return { identificacionFirmante, firmaUrl };
 }
 
-// ── GET /api/firma  (debe ir ANTES de /:identificacion) ─────────────────────
-// El frontend lo llama después de cargar para saber si el usuario ya tiene firma
+async function registrarDocTrabajador({ regional, operacion, identificacion, fechaIngreso,
+  tipoDocumento, prefijo, doc, observaciones, usuario }) {
+  const id    = uuidv4();
+  const ahora = fechaHoraBogota();
+  await pool.execute(
+    `INSERT INTO Maestro_docTrabajador
+     (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
+      TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
+      Justificacion_Solicitud, FechaRegistro, Usuario)
+     VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
+    [id, regional || null, operacion || null, identificacion,
+     toDateStr(fechaIngreso), tipoDocumento, prefijo, doc, observaciones || null, ahora, usuario]
+  );
+  return id;
+}
+
+// ── GET /api/firma ─────────────────────────────────────────────────────────
 router.get('/api/firma', async (req, res) => {
   try {
     const { usuario } = req.query;
     if (!usuario) return res.json({ url: null });
-
     const [usuRows] = await pool.execute(
       'SELECT Colaborador FROM Maestro_Usuarios WHERE ID = ?', [usuario]
     );
     if (!usuRows.length || !usuRows[0].Colaborador) return res.json({ url: null });
-
     const { firmaUrl } = await resolverFirmaUsuario(usuRows[0].Colaborador);
     res.json({ url: firmaUrl || null });
   } catch (err) {
@@ -88,7 +118,163 @@ router.get('/api/firma', async (req, res) => {
   }
 });
 
-// ── GET /:identificacion — renderizar formulario ─────────────────────────────
+// ── POST /api/subir-tcr-terminacion ───────────────────────────────────────
+router.post('/api/subir-tcr-terminacion', async (req, res) => {
+  try {
+    const { idVinculacion, tcrBase64, usuario: usuarioBody } = req.body;
+    const usuarioTCRT = usuarioBody || req.query.usuario || 'sistema';
+    if (!idVinculacion || !tcrBase64) {
+      return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+    }
+    // Verificar que no esté validado
+    const [docRows] = await pool.execute(
+      `SELECT Validación FROM Maestro_docTrabajador
+       WHERE Identificación = (
+         SELECT Identificación FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1
+       ) AND Prefijo = 'TCR' ORDER BY FechaRegistro DESC LIMIT 1`,
+      [idVinculacion]
+    );
+    if (docRows.length && docRows[0]['Validación'] === 'OK') {
+      return res.status(403).json({ ok: false, error: 'El documento ya fue validado y no puede ser reemplazado' });
+    }
+    const [vinRows] = await pool.execute(
+      `SELECT \`Identificación\`, Regional, Operación, \`Fecha de Ingreso\`
+       FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1`,
+      [idVinculacion]
+    );
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const vinRow = vinRows[0];
+    const identificacion = vinRow['Identificación'];
+    const buffer = Buffer.from(tcrBase64.replace(/^data:.*;base64,/, ''), 'base64');
+    const url = await subirPDFCartaRenuncia(identificacion, idVinculacion, buffer);
+
+    // Si ya existe registro TCR, actualizar URL; si no, crear nuevo
+    if (docRows.length) {
+      await pool.execute(
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE Prefijo = 'TCR'
+         AND Identificación = ? ORDER BY FechaRegistro DESC LIMIT 1`,
+        [url, fechaHoraBogota(), String(identificacion)]
+      );
+    } else {
+      await registrarDocTrabajador({
+        regional:    vinRow.Regional || null,
+        operacion:   vinRow['Operación'] || null,
+        identificacion,
+        fechaIngreso: vinRow['Fecha de Ingreso'],
+        tipoDocumento: '55',
+        prefijo: 'TCR',
+        doc: url,
+        observaciones: 'Terminación de contrato',
+        usuario: usuarioTCRT,
+      });
+    }
+    res.json({ ok: true, url });
+  } catch (err) {
+    console.error('[subir-tcr-terminacion]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/actualizar-articulos-pz ────────────────────────────────────
+router.post('/api/actualizar-articulos-pz', async (req, res) => {
+  try {
+    const { idPz, articulos, observaciones } = req.body;
+    if (!idPz) return res.status(400).json({ ok: false, error: 'idPz requerido' });
+    await pool.execute(
+      'UPDATE Maestro_pazysalvo SET articulos = ?, observaciones = ? WHERE id = ?',
+      [JSON.stringify(Array.isArray(articulos) ? articulos : []), (observaciones || '').slice(0, 512), idPz]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[actualizar-articulos-pz]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/enviar-trabajador ────────────────────────────────────────────
+// Envía correo unificado al trabajador con todos los docs y enlace PZ
+router.post('/api/enviar-trabajador', async (req, res) => {
+  try {
+    const { emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
+            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, motivoRetiro } = req.body;
+    if (!emailTrabajador) return res.status(400).json({ ok: false, error: 'Email requerido' });
+    await notificarDocumentoRetiroTrabajador({
+      emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
+      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, motivoRetiro,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[enviar-trabajador]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/reemplazar-ed ────────────────────────────────────────────────
+router.post('/api/reemplazar-ed', async (req, res) => {
+  try {
+    const { idVinculacion, edBase64 } = req.body;
+    if (!idVinculacion || !edBase64) {
+      return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+    }
+    const [docRows] = await pool.execute(
+      `SELECT Validación FROM Maestro_docTrabajador
+       WHERE Identificación = (
+         SELECT Identificación FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1
+       ) AND Prefijo = 'ED' ORDER BY FechaRegistro DESC LIMIT 1`,
+      [idVinculacion]
+    );
+    if (docRows.length && docRows[0]['Validación'] === 'OK') {
+      return res.status(403).json({ ok: false, error: 'El documento ya fue validado y no puede ser reemplazado' });
+    }
+    const [vinRows] = await pool.execute(
+      'SELECT `Identificación` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      [idVinculacion]
+    );
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const identificacion = vinRows[0]['Identificación'];
+    const buffer = Buffer.from(edBase64.replace(/^data:.*;base64,/, ''), 'base64');
+    const url = await subirPDFEvaluacionDesempeno(identificacion, idVinculacion, buffer);
+    res.json({ ok: true, url });
+  } catch (err) {
+    console.error('[reemplazar-ed]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/reemplazar-tcr ───────────────────────────────────────────────
+router.post('/api/reemplazar-tcr', async (req, res) => {
+  try {
+    const { idVinculacion, tcrBase64 } = req.body;
+    if (!idVinculacion || !tcrBase64) {
+      return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+    }
+    // Verificar que no esté validado
+    const [docRows] = await pool.execute(
+      `SELECT Validación FROM Maestro_docTrabajador
+       WHERE Identificación = (
+         SELECT Identificación FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1
+       ) AND Prefijo = 'TCR' ORDER BY FechaRegistro DESC LIMIT 1`,
+      [idVinculacion]
+    );
+    if (docRows.length && docRows[0]['Validación'] === 'OK') {
+      return res.status(403).json({ ok: false, error: 'El documento ya fue validado y no puede ser reemplazado' });
+    }
+    const [vinRows] = await pool.execute(
+      'SELECT `Identificación` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      [idVinculacion]
+    );
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const identificacion = vinRows[0]['Identificación'];
+    const buffer = Buffer.from(tcrBase64.replace(/^data:.*;base64,/, ''), 'base64');
+    const url = await subirPDFCartaRenuncia(identificacion, idVinculacion, buffer);
+    res.json({ ok: true, url });
+  } catch (err) {
+    console.error('[reemplazar-tcr]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── GET /:identificacion ───────────────────────────────────────────────────
 router.get('/:identificacion', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -102,7 +288,8 @@ router.get('/:identificacion', async (req, res) => {
     const identificacion = parsearIdentificacion(req.params.identificacion);
 
     const [vinRows] = await pool.execute(
-      `SELECT \`Id Vinculación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado
+      `SELECT \`Id Vinculación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado, Regional,
+              \`Fecha de Retiro\`, \`Motivo del Retiro\`
        FROM \`Maestro_Vinculación\`
        WHERE \`Identificación\` = ?
        ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
@@ -110,19 +297,124 @@ router.get('/:identificacion', async (req, res) => {
     );
     if (!vinRows.length) return res.status(404).send(htmlError('Trabajador no encontrado para esa identificación'));
     const vin = vinRows[0];
-    if (vin.Estado === 'Retirado') {
-      return res.status(409).send(htmlError('Este trabajador ya tiene un retiro registrado en el sistema'));
+
+    let ciudadRegional = '';
+    if (vin.Regional) {
+      const [crRows] = await pool.execute(
+        'SELECT Ciudad FROM Config_Regionales WHERE Regional = ? LIMIT 1',
+        [vin.Regional]
+      );
+      if (crRows.length) ciudadRegional = crRows[0].Ciudad || '';
     }
 
     const template = fs.readFileSync(FORM_HTML, 'utf8');
+
+    // Trabajador ya retirado → mostrar estado resumen sin error
+    if (vin.Estado === 'Retirado') {
+      // Obtener documentos generados al momento del retiro
+      const [docRows] = await pool.execute(
+        `SELECT Prefijo, Doc, \`Validación\`, TipoDocumento, FechaRegistro
+         FROM Maestro_docTrabajador
+         WHERE Identificación = ? AND Estado = 'Retirado'
+         ORDER BY FechaRegistro DESC`,
+        [identificacion]
+      );
+      // Deduplicar por Prefijo: conservar el más reciente de cada tipo
+      const docsMap = {};
+      docRows.forEach(r => {
+        if (!docsMap[r.Prefijo]) docsMap[r.Prefijo] = r;
+      });
+      const documentos = Object.values(docsMap).map(r => ({
+        prefijo:       r.Prefijo,
+        url:           r.Doc,
+        validacion:    r['Validación'],
+        tipoDocumento: r.TipoDocumento,
+      }));
+
+      // Obtener Paz y Salvo activo
+      let pazYSalvoRI = null;
+      const [pzRows] = await pool.execute(
+        `SELECT id, estado, token_trabajador, token_trabajador_expira FROM Maestro_pazysalvo
+         WHERE id_vinculacion = ? ORDER BY fecha_creacion DESC LIMIT 1`,
+        [vin['Id Vinculación']]
+      );
+      if (pzRows.length) {
+        const pzRow = pzRows[0];
+        const baseUrl2 = `${req.protocol}://${req.get('host')}`;
+        const urlFirmaPZ2 = pzRow.token_trabajador
+          ? `${baseUrl2}/firmar-pazysalvo/${pzRow.id}?token=${encodeURIComponent(pzRow.token_trabajador)}`
+          : null;
+        // Obtener contacto
+        const [segCont2] = await pool.execute(
+          'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+          [identificacion]
+        );
+        const ct2 = segCont2[0] || {};
+        pazYSalvoRI = {
+          idPz:     pzRow.id,
+          estado:   pzRow.estado,
+          urlFirma: urlFirmaPZ2,
+          email:    ct2.Email || null,
+          celular:  String(ct2.Celular || '').replace(/\D/g, '') || null,
+        };
+      }
+
+      // firmaRenuncia para envío al trabajador
+      let firmaRenunciaRI = null;
+      if ((vin['Motivo del Retiro'] || '') === 'Renuncia') {
+        const arDoc = docsMap['AR'];
+        const [segCont3] = await pool.execute(
+          'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+          [identificacion]
+        );
+        const ct3 = segCont3[0] || {};
+        firmaRenunciaRI = {
+          nombre:        limpiarNombre(vin.Trabajador),
+          email:         ct3.Email || null,
+          celular:       String(ct3.Celular || '').replace(/\D/g, '') || null,
+          urlDoc:        arDoc ? arDoc.url : null,
+          tipoRenuncia:  vin['Archivo Vinculación'] || null,
+          idVinculacion: vin['Id Vinculación'],
+        };
+      }
+
+      const config = JSON.stringify({
+        identificacion:   String(identificacion),
+        usuario,
+        usuarioNombre:    usuRows[0].Nombre || usuario,
+        trabajador:       limpiarNombre(vin.Trabajador),
+        cargo:            vin.Cargo || '',
+        fechaIngreso:     formatFechaCO(vin['Fecha de Ingreso']),
+        rawFechaIngreso:  toDateStr(vin['Fecha de Ingreso']),
+        motivos:          MOTIVOS,
+        ciudadRegional,
+        yaRetirado:       true,
+        retiroInfo: {
+          trabajador:   limpiarNombre(vin.Trabajador),
+          identificacion: String(identificacion),
+          idVinculacion:  vin['Id Vinculación'],
+          fechaRetiro:  formatFechaCO(vin['Fecha de Retiro']),
+          motivoRetiro: vin['Motivo del Retiro'] || '—',
+          tipoRenuncia: vin['Archivo Vinculación'] || null,
+          documentos,
+          pazYSalvo:    pazYSalvoRI,
+          firmaRenuncia: firmaRenunciaRI,
+        },
+      }).replace(/<\/script>/gi, '<\\/script>');
+      return res.send(template.replace('__CONFIG__', config));
+    }
+
     const config = JSON.stringify({
-      identificacion: String(identificacion),
+      identificacion:   String(identificacion),
       usuario,
-      usuarioNombre: usuRows[0].Nombre || usuario,
-      trabajador: limpiarNombre(vin.Trabajador),
-      cargo: vin.Cargo || '',
-      fechaIngreso: formatFechaCO(vin['Fecha de Ingreso']),
-      motivos: MOTIVOS,
+      usuarioNombre:    usuRows[0].Nombre || usuario,
+      trabajador:       limpiarNombre(vin.Trabajador),
+      cargo:            vin.Cargo || '',
+      fechaIngreso:     formatFechaCO(vin['Fecha de Ingreso']),
+      rawFechaIngreso:  toDateStr(vin['Fecha de Ingreso']),
+      motivos:          MOTIVOS,
+      ciudadRegional,
+      yaRetirado:       false,
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(template.replace('__CONFIG__', config));
@@ -132,7 +424,7 @@ router.get('/:identificacion', async (req, res) => {
   }
 });
 
-// ── POST /:identificacion — registrar retiro y generar documentos ────────────
+// ── POST /:identificacion ──────────────────────────────────────────────────
 router.post('/:identificacion', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -145,15 +437,24 @@ router.post('/:identificacion', async (req, res) => {
     const usuData = usuRows[0];
 
     const identificacion = parsearIdentificacion(req.params.identificacion);
-    const { fechaRetiro, motivoRetiro, firmaBase64 } = req.body;
+    const { fechaRetiro, motivoRetiro, firmaBase64, tipoRenuncia, ciudadRegional, tcrBase64, edBase64 } = req.body;
 
     if (!fechaRetiro) return res.status(400).json({ ok: false, error: 'La fecha de retiro es obligatoria' });
     if (!motivoRetiro || !MOTIVOS.includes(motivoRetiro)) {
       return res.status(400).json({ ok: false, error: 'Motivo de retiro inválido' });
     }
+    if (motivoRetiro === 'Renuncia') {
+      if (!tipoRenuncia || !['Verbal', 'Escrita'].includes(tipoRenuncia)) {
+        return res.status(400).json({ ok: false, error: 'Seleccione el tipo de renuncia (Verbal o Escrita)' });
+      }
+      if (!ciudadRegional || !ciudadRegional.trim()) {
+        return res.status(400).json({ ok: false, error: 'Ingrese la ciudad para los documentos de retiro' });
+      }
+      // TCR y ED se piden después de guardar
+    }
 
     const [vinRows] = await pool.execute(
-      `SELECT \`Id Vinculación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado
+      `SELECT \`Id Vinculación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado, Operación, Regional
        FROM \`Maestro_Vinculación\`
        WHERE \`Identificación\` = ?
        ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
@@ -176,7 +477,6 @@ router.post('/:identificacion', async (req, res) => {
       [fechaRetiro, motivoRetiro, ahora, usuario, vin['Id Vinculación']]
     );
 
-    // Enviar correo de notificación y marcar como notificado (fire & forget)
     notificarRetiro({
       trabajador:       vin.Trabajador,
       identificacion:   String(identificacion),
@@ -189,55 +489,293 @@ router.post('/:identificacion', async (req, res) => {
     }).then(() => marcarNotificado(vin['Id Vinculación']))
       .catch(e => console.error('[retiro email]', e.message));
 
-    const [segRows] = await pool.execute(
-      'SELECT ARL, EPS, `Pensión` FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
-      [identificacion]
-    );
-    const seg = segRows[0] || {};
+    // Motivos que no generan documentos
+    const MOTIVOS_SIN_DOCS = ['No tomó cargo', 'Terminación por Muerte'];
+    if (MOTIVOS_SIN_DOCS.includes(motivoRetiro)) {
+      return res.json({
+        ok: true,
+        trabajador:    limpiarNombre(vin.Trabajador),
+        fechaRetiro,
+        motivoRetiro,
+        documentos:    [],
+        ed:            null,
+        tcr:           null,
+        firmaRenuncia: null,
+      });
+    }
 
-    // Firma: subir nueva si se dibujó, usar existente si no
+    // ── Firma del responsable ──────────────────────────────────────────────
     const { identificacionFirmante, firmaUrl: firmaExistente } = await resolverFirmaUsuario(usuData.Colaborador);
     let firmaUrl = firmaExistente;
-
     if (firmaBase64 && identificacionFirmante) {
       const buffer = Buffer.from(firmaBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
       firmaUrl = await subirFirma(identificacionFirmante, buffer);
     }
-
     const nombreFirmante = limpiarNombre(usuData.Colaborador || usuData.Nombre).toUpperCase();
     const firmaHtml = firmaUrl
       ? `<img src="${firmaUrl}" style="height:80px;display:block;margin-bottom:4px">`
       : `<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>`;
 
-    const plantilla = await obtenerPlantilla('certificado_retiro');
-    const datos = {
-      nombre_trabajador: limpiarNombre(vin.Trabajador).toUpperCase(),
-      identificacion: String(identificacion),
-      cargo: (vin.Cargo || '').toUpperCase(),
-      fecha_ingreso: formatFechaCO(vin['Fecha de Ingreso']),
-      fecha_retiro: formatFechaCO(fechaRetiro),
-      arl: seg.ARL || '—',
-      eps: seg.EPS || '—',
-      pension: seg['Pensión'] || '—',
-      fecha_expedicion: formatFechaCO(new Date()),
-      firma_html: firmaHtml,
-      nombre_firmante: nombreFirmante,
-      cargo_firmante: usuData.Cargo || '',
+    // ── Ciudad para documentos ─────────────────────────────────────────────
+    let ciudadDoc = (motivoRetiro === 'Renuncia' && ciudadRegional)
+      ? ciudadRegional.trim()
+      : '';
+    if (!ciudadDoc && vin.Regional) {
+      const [crRows] = await pool.execute(
+        'SELECT Ciudad FROM Config_Regionales WHERE Regional = ? LIMIT 1',
+        [vin.Regional]
+      );
+      if (crRows.length) ciudadDoc = crRows[0].Ciudad || '';
+    }
+
+    const docBaseParams = {
+      regional:    vin.Regional || null,
+      operacion:   vin['Operación'] || null,
+      identificacion,
+      fechaIngreso: vin['Fecha de Ingreso'],
+      usuario,
     };
 
-    const datosProc = preprocesarDatos(datos);
-    const html = reemplazarVariables(plantilla.contenido_html, datosProc);
-    const pdfBuffer = await generarPDF(html);
-    const urlCert = await subirPDFRetiro(identificacion, 'cert_laboral', pdfBuffer);
+    const documentos = [];
+
+    // ── Certificado laboral ────────────────────────────────────────────────
+    const [segRows] = await pool.execute(
+      'SELECT ARL, EPS, `Pensión`, `Cesantías` FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+      [identificacion]
+    );
+    const seg = segRows[0] || {};
+    const plantillaCert = await obtenerPlantilla('certificado_retiro');
+    const datosCert = {
+      nombre_trabajador: limpiarNombre(vin.Trabajador).toUpperCase(),
+      identificacion:    String(identificacion),
+      cargo:             (vin.Cargo || '').toUpperCase(),
+      fecha_ingreso:     formatFechaCO(vin['Fecha de Ingreso']),
+      fecha_retiro:      formatFechaCO(fechaRetiro),
+      arl:               seg.ARL   || '—',
+      eps:               seg.EPS   || '—',
+      pension:           seg['Pensión'] || '—',
+      fecha_expedicion:  formatFechaCO(new Date()),
+      firma_html:        firmaHtml,
+      nombre_firmante:   nombreFirmante,
+      cargo_firmante:    usuData.Cargo || '',
+    };
+    const htmlCert  = reemplazarVariables(plantillaCert.contenido_html, preprocesarDatos(datosCert));
+    const pdfCert   = await generarPDF(htmlCert);
+    const urlCert   = await subirPDFRetiro(identificacion, 'cert_laboral', pdfCert);
+
+    await registrarDocTrabajador({ ...docBaseParams, tipoDocumento: '57', prefijo: 'CT', doc: urlCert });
+    documentos.push({ titulo: 'Certificado Laboral de Retiro', url: urlCert });
+
+    // ── Examen médico de egreso ────────────────────────────────────────────
+    const plantillaEMOE = await obtenerPlantilla('examen_egreso').catch(() => null);
+    let emoeData = null;
+    if (plantillaEMOE) {
+      const datosEMOE = {
+        ciudad_regional:       ciudadDoc,
+        fecha_expedicion:      formatFechaCO(new Date()),
+        nombre_trabajador:     limpiarNombre(vin.Trabajador).toUpperCase(),
+        identificacion:        String(identificacion),
+        firma_responsable_html: firmaHtml,
+        nombre_firmante:       nombreFirmante,
+        cargo_firmante:        usuData.Cargo || '',
+      };
+      const htmlEMOE = reemplazarVariables(plantillaEMOE.contenido_html, preprocesarDatos(datosEMOE));
+      const pdfEMOE  = await generarPDF(htmlEMOE);
+      const urlEMOE  = await subirPDFExamenEgreso(identificacion, vin['Id Vinculación'], pdfEMOE);
+
+      await registrarDocTrabajador({ ...docBaseParams, tipoDocumento: '58', prefijo: 'EMOE', doc: urlEMOE });
+      documentos.push({ titulo: 'Autorización Examen Médico de Egreso', url: urlEMOE });
+      emoeData = { url: urlEMOE };
+    }
+
+    // ── Carta Retiro Cesantías (CRS) ──────────────────────────────────────
+    // Solo si el año de Fecha de Ingreso es anterior al año actual
+    const anioIngreso  = vin['Fecha de Ingreso']
+      ? new Date(vin['Fecha de Ingreso']).getFullYear()
+      : null;
+    const anioActual   = new Date().getFullYear();
+    const plantillaCRS = anioIngreso && anioIngreso < anioActual
+      ? await obtenerPlantilla('cesantias_retiro').catch(() => null)
+      : null;
+    if (plantillaCRS) {
+      const datosCRS = {
+        ciudad_regional:        ciudadDoc,
+        fecha_expedicion:       formatFechaCO(new Date()),
+        nombre_trabajador:      limpiarNombre(vin.Trabajador).toUpperCase(),
+        identificacion:         String(identificacion),
+        fondo_cesantias:        seg['Cesantías'] || '—',
+        firma_responsable_html: firmaHtml,
+        nombre_firmante:        nombreFirmante,
+        cargo_firmante:         usuData.Cargo || '',
+      };
+      const htmlCRS = reemplazarVariables(plantillaCRS.contenido_html, preprocesarDatos(datosCRS));
+      const pdfCRS  = await generarPDF(htmlCRS);
+      const urlCRS  = await subirPDFCesantias(identificacion, vin['Id Vinculación'], pdfCRS);
+      await registrarDocTrabajador({ ...docBaseParams, tipoDocumento: '60', prefijo: 'CRS', doc: urlCRS });
+      documentos.push({ titulo: 'Carta Retiro Cesantías', url: urlCRS });
+    }
+
+    // ── Evaluación de desempeño (ED) ─────────────────────────────────────
+    let edData = null;
+    if (motivoRetiro === 'Terminación en Periodo de Prueba' && edBase64) {
+      const bufferED = Buffer.from(edBase64.replace(/^data:.*;base64,/, ''), 'base64');
+      const urlED    = await subirPDFEvaluacionDesempeno(identificacion, vin['Id Vinculación'], bufferED);
+      const idDocED  = await registrarDocTrabajador({
+        ...docBaseParams, tipoDocumento: '56', prefijo: 'ED',
+        doc: urlED, observaciones: null,
+      });
+      edData = { url: urlED, idDoc: idDocED, validacion: 'PEND', idVinculacion: vin['Id Vinculación'] };
+    }
+
+    // ── Carta renuncia del trabajador (TCR) ───────────────────────────────
+    let tcrData = null;
+    if (motivoRetiro === 'Renuncia' && tipoRenuncia === 'Escrita' && tcrBase64) {
+      const bufferTCR = Buffer.from(tcrBase64.replace(/^data:.*;base64,/, ''), 'base64');
+      const urlTCR    = await subirPDFCartaRenuncia(identificacion, vin['Id Vinculación'], bufferTCR);
+      const idDocTCR  = await registrarDocTrabajador({
+        ...docBaseParams, tipoDocumento: '55', prefijo: 'TCR',
+        doc: urlTCR, observaciones: 'Carta de renuncia',
+      });
+      tcrData = { url: urlTCR, idDoc: idDocTCR, validacion: 'PEND' };
+    }
+
+    // ── Aceptación de Renuncia (generada automáticamente, sin firma del trabajador) ──
+    let firmaRenuncia = null;
+    if (motivoRetiro === 'Renuncia') {
+      await pool.execute(
+        `UPDATE \`Maestro_Vinculación\`
+         SET \`Archivo Vinculación\` = ?, ar_ciudad_regional = ?
+         WHERE \`Id Vinculación\` = ?`,
+        [tipoRenuncia, ciudadDoc, vin['Id Vinculación']]
+      );
+
+      // Generar PDF de Aceptación de Renuncia automáticamente (sin firma trabajador)
+      try {
+        const plantillaAR = await obtenerPlantilla('aceptacion_renuncia');
+        const datosAR = {
+          nombre_trabajador:      limpiarNombre(vin.Trabajador).toUpperCase(),
+          identificacion:         String(identificacion),
+          ciudad_regional:        ciudadDoc,
+          verbal_marca:           tipoRenuncia === 'Verbal' ? 'X' : '___',
+          escrita_marca:          tipoRenuncia === 'Escrita' ? 'X' : '___',
+          fecha_retiro_texto:     formatFechaCO(fechaRetiro),
+          firma_responsable_html: firmaHtml,
+          nombre_firmante:        nombreFirmante,
+          cargo_firmante:         usuData.Cargo || '',
+          firma_trabajador_html:  '<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>',
+        };
+        const htmlAR  = reemplazarVariables(plantillaAR.contenido_html, preprocesarDatos(datosAR));
+        const pdfAR   = await generarPDF(htmlAR);
+        const urlAR   = await subirPDFAceptacionRenuncia(identificacion, vin['Id Vinculación'], pdfAR);
+        await registrarDocTrabajador({ ...docBaseParams, tipoDocumento: '54', prefijo: 'AR', doc: urlAR });
+        documentos.push({ titulo: 'Aceptación de Renuncia', url: urlAR });
+
+        const [segContactRows] = await pool.execute(
+          'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+          [identificacion]
+        );
+        const contacto = segContactRows[0] || {};
+        firmaRenuncia = {
+          nombre:        limpiarNombre(vin.Trabajador),
+          email:         contacto.Email || null,
+          celular:       String(contacto.Celular || '').replace(/\D/g, '') || null,
+          urlDoc:        urlAR,
+          tipoRenuncia,
+          idVinculacion: vin['Id Vinculación'],
+        };
+      } catch (eAR) {
+        console.error('[AR generacion]', eAR.message);
+      }
+    }
+
+    // ── Paz y Salvo ───────────────────────────────────────────────────────
+    let pazYSalvoData = null;
+    try {
+      const { nivel, areasRequeridas } = determinarNivelYAreas(vin.Cargo);
+      // Los artículos se guardan después por endpoint separado
+
+      // Obtener contacto del trabajador
+      let emailTrab = null, celularTrab = null;
+      const [segContactPZ] = await pool.execute(
+        'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+        [identificacion]
+      );
+      if (segContactPZ.length) {
+        emailTrab  = segContactPZ[0].Email || null;
+        celularTrab = String(segContactPZ[0].Celular || '').replace(/\D/g, '') || null;
+      }
+
+      const idPz = uuidv4();
+      const idVin = vin['Id Vinculación'];
+      const ahoraPZ = new Date();
+
+      await pool.execute(
+        `INSERT INTO Maestro_pazysalvo
+         (id, id_vinculacion, identificacion, nivel_compromiso, areas_requeridas, articulos,
+          observaciones, firma_responsable_url, firma_responsable_nombre, firma_responsable_cargo,
+          fecha_firma_responsable, estado, usuario_registro, fecha_creacion)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'esperando_trabajador', ?, ?)`,
+        [
+          idPz, idVin, String(identificacion), nivel,
+          JSON.stringify(areasRequeridas), JSON.stringify([]),
+          null,
+          firmaUrl || null, nombreFirmante || null, usuData.Cargo || null,
+          ahoraPZ, usuario, ahoraPZ,
+        ]
+      );
+
+      const tokenPZ = await generarTokenPZ(idPz, 'token_trabajador', 'token_trabajador_expira');
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const urlFirmaPZ = `${baseUrl}/firmar-pazysalvo/${idPz}?token=${encodeURIComponent(tokenPZ)}`;
+
+      // Notificación al trabajador deshabilitada temporalmente
+      // if (emailTrab) {
+      //   notificarPazYSalvoTrabajador({
+      //     emailTrabajador:  emailTrab,
+      //     celularTrabajador: celularTrab,
+      //     trabajador:       limpiarNombre(vin.Trabajador),
+      //     identificacion:   String(identificacion),
+      //     cargo:            vin.Cargo || '',
+      //     operacion:        vin['Operación'] || '',
+      //     urlFirma:         urlFirmaPZ,
+      //   }).catch(e => console.error('[PZ email trabajador]', e.message));
+      // }
+
+      pazYSalvoData = {
+        idPz,
+        urlFirma:   urlFirmaPZ,
+        nombre:     limpiarNombre(vin.Trabajador),
+        email:      emailTrab,
+        celular:    celularTrab,
+        nivel,
+        areasRequeridas,
+      };
+    } catch (ePz) {
+      console.error('[PZ creacion]', ePz.message);
+    }
+
+    // Datos del responsable para mensaje al trabajador
+    const responsableNombre = limpiarNombre(usuData.Colaborador || usuData.Nombre);
+    const responsableCargo  = usuData.Cargo || '';
 
     res.json({
       ok: true,
-      trabajador: limpiarNombre(vin.Trabajador),
+      trabajador:        limpiarNombre(vin.Trabajador),
+      identificacion:    String(identificacion),
+      idVinculacion:     vin['Id Vinculación'],
+      cargo:             vin.Cargo || '',
+      operacion:         vin['Operación'] || '',
       fechaRetiro,
       motivoRetiro,
-      documentos: [
-        { titulo: 'Certificado Laboral de Retiro', url: urlCert },
-      ],
+      tipoRenuncia:      (motivoRetiro === 'Renuncia' ? (req.body.tipoRenuncia || null) : null),
+      documentos,
+      ed:                edData,
+      tcr:               tcrData,
+      tcrTerminacion:    null, // se sube post-guardado
+      firmaRenuncia,
+      pazYSalvo:         pazYSalvoData,
+      responsable:       { nombre: responsableNombre, cargo: responsableCargo },
+      tieneCesantias:    documentos.some(d => d.titulo && d.titulo.includes('Cesant')),
     });
   } catch (err) {
     console.error('[formretiro POST]', err);

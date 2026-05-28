@@ -100,6 +100,12 @@ router.post('/', async (req, res) => {
       ]
     );
 
+    const [cargoRows] = await pool.execute(
+      'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [Trabajador]
+    );
+    const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
+
     notificarNuevoTraslado({
       trabajador:       Trabajador,
       identificacion:   Identificacion || '',
@@ -111,6 +117,7 @@ router.post('/', async (req, res) => {
       observaciones:    observaciones || '',
       usuario,
       emailUsuario:     usuRows[0].Email || '',
+      cargo,
       idTraslado,
     }).catch(e => console.error('Error enviando correo:', e.message));
 

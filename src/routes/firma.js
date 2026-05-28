@@ -242,6 +242,12 @@ router.post('/:proceso/:id', async (req, res) => {
     );
     const emailUsuario = (uRows[0] && uRows[0].Email) || '';
 
+    const [cargoRows] = await pool.execute(
+      'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [t.Trabajador]
+    );
+    const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
+
     const partesTrab = (t.Trabajador || '').split(' ** ');
     const nombreTrabajador = partesTrab.length > 1 ? partesTrab[1].trim() : t.Trabajador;
 
@@ -253,6 +259,7 @@ router.post('/:proceso/:id', async (req, res) => {
       horaTraslado:      t.hora_traslado || '',
       urlDoc,
       emailUsuario,
+      cargo,
     }).catch(e => console.error('Error correo generado:', e.message));
 
     res.json({ ok: true, url_doc: urlDoc });

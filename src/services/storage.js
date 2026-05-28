@@ -6,7 +6,7 @@ const storage = process.env.GCS_KEYFILE
   : new Storage();
 
 const BUCKET_FIRMAS = process.env.BUCKET_FIRMAS || 'firmas-images';
-const BUCKET_PDFS = process.env.BUCKET_PDFS || 'talenthub_central';
+const BUCKET_PDFS   = process.env.BUCKET_PDFS   || 'talenthub_central';
 
 function archivosMasRecientesPrimero(files) {
   return files
@@ -54,4 +54,58 @@ async function subirPDFRetiro(identificacion, tipo, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
-module.exports = { obtenerFirmaBase64Reciente, obtenerUrlFirmaReciente, subirFirma, subirPDF, subirPDFRetiro };
+async function subirPDFAceptacionRenuncia(identificacion, idVinculacion, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.AR.${idVinculacion}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFExamenEgreso(identificacion, idVinculacion, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.EMOE.${idVinculacion}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFCartaRenuncia(identificacion, idVinculacion, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.TCR.${idVinculacion}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFEvaluacionDesempeno(identificacion, idVinculacion, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.ED.${idVinculacion}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFCesantias(identificacion, idVinculacion, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.CRS.${idVinculacion}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFPazYSalvo(identificacion, idVinculacion, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.PZ.${idVinculacion}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+module.exports = {
+  obtenerFirmaBase64Reciente,
+  obtenerUrlFirmaReciente,
+  subirFirma,
+  subirPDF,
+  subirPDFRetiro,
+  subirPDFAceptacionRenuncia,
+  subirPDFExamenEgreso,
+  subirPDFCartaRenuncia,
+  subirPDFEvaluacionDesempeno,
+  subirPDFCesantias,
+  subirPDFPazYSalvo,
+};

@@ -374,6 +374,12 @@ router.post('/traslados/:id/validar', async (req, res) => {
       );
       const emailRegistrador = (uRows[0] && uRows[0].Email) || '';
 
+      const [cargoRows] = await pool.execute(
+        'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+        [t.Trabajador]
+      );
+      const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
+
       const partes = (t.Trabajador || '').split(' ** ');
       const nombreCorto = partes.length > 1 ? partes[1].trim() : t.Trabajador;
       const fechaISO = t.fecha_traslado instanceof Date
@@ -389,6 +395,7 @@ router.post('/traslados/:id/validar', async (req, res) => {
           horaTraslado:     t.hora_traslado || '',
           urlFirma:         url,
           emailUsuario:     emailRegistrador,
+          cargo,
         });
         correoEnviado = true;
       } catch (e) {
@@ -452,6 +459,12 @@ router.post('/traslados/:id/correo', async (req, res) => {
     const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ?', [t.Usuario]);
     const emailUsuario = (uRows[0] && uRows[0].Email) || '';
 
+    const [cargoRows] = await pool.execute(
+      'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [t.Trabajador]
+    );
+    const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
+
     const token = await generarToken(TABLA_TR, CAMPO_FK, id);
     const url   = `${req.protocol}://${req.get('host')}/doclogyser/traslado/${id}?token=${encodeURIComponent(token)}`;
 
@@ -470,6 +483,7 @@ router.post('/traslados/:id/correo', async (req, res) => {
       horaTraslado:     t.hora_traslado || '',
       urlFirma:         url,
       emailUsuario,
+      cargo,
     });
 
     res.json({ ok: true });
