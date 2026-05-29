@@ -87,13 +87,13 @@ function determinarNivelYAreas(cargo) {
     return { nivel: 'alto', areasRequeridas: ['tecnologia', 'sst', 'nomina'] };
   }
 
-  // Subgrupo Coordinadores: todas las áreas incluida Gerencia Operaciones
+  // Subgrupo Coordinadores: todas las áreas incluida Gerencia Operaciones (sin SST)
   if (CARGOS_ALTO_COORDINADOR.includes(cargoUpper)) {
-    return { nivel: 'alto', areasRequeridas: ['tecnologia', 'sst', 'facturacion', 'contabilidad', 'cuentas', 'gerencia', 'nomina'] };
+    return { nivel: 'alto', areasRequeridas: ['tecnologia', 'facturacion', 'contabilidad', 'cuentas', 'gerencia', 'nomina'] };
   }
 
-  // Resto de cargos alto: Tecnología, SST, Facturación, Contabilidad, Cuentas y Nómina
-  return { nivel: 'alto', areasRequeridas: ['tecnologia', 'sst', 'facturacion', 'contabilidad', 'cuentas', 'nomina'] };
+  // Resto de cargos alto: Tecnología, Facturación, Contabilidad, Cuentas y Nómina
+  return { nivel: 'alto', areasRequeridas: ['tecnologia', 'facturacion', 'contabilidad', 'cuentas', 'nomina'] };
 }
 
 /**

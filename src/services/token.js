@@ -103,4 +103,98 @@ async function validarTokenPZ(token, idPz, columnaToken, columnaExpira) {
   return { valido: true };
 }
 
-module.exports = { generarToken, validarToken, generarTokenAR, validarTokenAR, generarTokenPZ, validarTokenPZ };
+async function generarTokenCT(idVinculacion) {
+  const jti = crypto.randomBytes(32).toString('hex');
+  const expiraEn = new Date(Date.now() + EXPIRY_HOURS * 3600 * 1000);
+  const token = jwt.sign({ jti, id: idVinculacion }, SECRET, { expiresIn: `${EXPIRY_HOURS}h` });
+  await pool.execute(
+    'UPDATE `Maestro_Vinculación` SET token_firma_ct = ?, token_firma_ct_expira = ? WHERE `Id Vinculación` = ?',
+    [jti, expiraEn, idVinculacion]
+  );
+  return token;
+}
+
+async function validarTokenCT(token, idVinculacion) {
+  let payload;
+  try {
+    payload = jwt.verify(token, SECRET);
+  } catch {
+    return { valido: false, motivo: 'jwt_invalido' };
+  }
+  const [rows] = await pool.execute(
+    'SELECT token_firma_ct, token_firma_ct_expira FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ?',
+    [idVinculacion]
+  );
+  if (!rows.length) return { valido: false, motivo: 'no_encontrado' };
+  const fila = rows[0];
+  if (fila.token_firma_ct !== payload.jti) return { valido: false, motivo: 'token_no_coincide' };
+  if (new Date(fila.token_firma_ct_expira) < new Date()) return { valido: false, motivo: 'expirado' };
+  return { valido: true };
+}
+
+async function generarTokenEMOE(idVinculacion) {
+  const jti = crypto.randomBytes(32).toString('hex');
+  const expiraEn = new Date(Date.now() + EXPIRY_HOURS * 3600 * 1000);
+  const token = jwt.sign({ jti, id: idVinculacion }, SECRET, { expiresIn: `${EXPIRY_HOURS}h` });
+  await pool.execute(
+    'UPDATE `Maestro_Vinculación` SET token_firma_emoe = ?, token_firma_emoe_expira = ? WHERE `Id Vinculación` = ?',
+    [jti, expiraEn, idVinculacion]
+  );
+  return token;
+}
+
+async function validarTokenEMOE(token, idVinculacion) {
+  let payload;
+  try {
+    payload = jwt.verify(token, SECRET);
+  } catch {
+    return { valido: false, motivo: 'jwt_invalido' };
+  }
+  const [rows] = await pool.execute(
+    'SELECT token_firma_emoe, token_firma_emoe_expira FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ?',
+    [idVinculacion]
+  );
+  if (!rows.length) return { valido: false, motivo: 'no_encontrado' };
+  const fila = rows[0];
+  if (fila.token_firma_emoe !== payload.jti) return { valido: false, motivo: 'token_no_coincide' };
+  if (new Date(fila.token_firma_emoe_expira) < new Date()) return { valido: false, motivo: 'expirado' };
+  return { valido: true };
+}
+
+async function generarTokenCRS(idVinculacion) {
+  const jti = crypto.randomBytes(32).toString('hex');
+  const expiraEn = new Date(Date.now() + EXPIRY_HOURS * 3600 * 1000);
+  const token = jwt.sign({ jti, id: idVinculacion }, SECRET, { expiresIn: `${EXPIRY_HOURS}h` });
+  await pool.execute(
+    'UPDATE `Maestro_Vinculación` SET token_firma_crs = ?, token_firma_crs_expira = ? WHERE `Id Vinculación` = ?',
+    [jti, expiraEn, idVinculacion]
+  );
+  return token;
+}
+
+async function validarTokenCRS(token, idVinculacion) {
+  let payload;
+  try {
+    payload = jwt.verify(token, SECRET);
+  } catch {
+    return { valido: false, motivo: 'jwt_invalido' };
+  }
+  const [rows] = await pool.execute(
+    'SELECT token_firma_crs, token_firma_crs_expira FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ?',
+    [idVinculacion]
+  );
+  if (!rows.length) return { valido: false, motivo: 'no_encontrado' };
+  const fila = rows[0];
+  if (fila.token_firma_crs !== payload.jti) return { valido: false, motivo: 'token_no_coincide' };
+  if (new Date(fila.token_firma_crs_expira) < new Date()) return { valido: false, motivo: 'expirado' };
+  return { valido: true };
+}
+
+function reconstruirToken(jti, idVinculacion, expira) {
+  if (!jti || !expira) return null;
+  const msRestante = new Date(expira).getTime() - Date.now();
+  if (msRestante <= 0) return null;
+  return jwt.sign({ jti, id: idVinculacion }, SECRET, { expiresIn: Math.floor(msRestante / 1000) });
+}
+
+module.exports = { generarToken, validarToken, generarTokenAR, validarTokenAR, generarTokenPZ, validarTokenPZ, generarTokenCT, validarTokenCT, generarTokenEMOE, validarTokenEMOE, generarTokenCRS, validarTokenCRS, reconstruirToken };

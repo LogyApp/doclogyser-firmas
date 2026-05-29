@@ -5,10 +5,10 @@ const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
 const { generarPDF } = require('../services/renderer');
-const { subirFirma, subirPDFPazYSalvo } = require('../services/storage');
+const { subirFirma, subirPDFPazYSalvo, obtenerUrlFirmaReciente } = require('../services/storage');
 const { validarTokenPZ } = require('../services/token');
 const { notificarPazYSalvoCompletado } = require('../services/email');
-const { generarFilasArticulosHTML, generarFirmasAreasHtml, estaCompleto, NOMBRES_AREA } = require('../services/pazYSalvoService');
+const { generarFilasArticulosHTML, generarFirmasAreasHtml, estaCompleto, NOMBRES_AREA, EMAILS_AREA } = require('../services/pazYSalvoService');
 
 const router = express.Router();
 const FIRMA_HTML = path.join(__dirname, '../views/pazysalvoarea/firma.html');
@@ -103,6 +103,35 @@ router.get('/:area/:idPz', async (req, res) => {
     const articulos = typeof pz.articulos === 'string' ? JSON.parse(pz.articulos) : (pz.articulos || []);
     const nombreArea = NOMBRES_AREA[area] || area;
 
+    // Buscar responsables del área en Maestro_Usuarios por email
+    let responsablesSugeridos = [];
+    try {
+      const emailsArea = EMAILS_AREA[area] || [];
+      if (emailsArea.length) {
+        const placeholders = emailsArea.map(() => '?').join(', ');
+        const [uRows] = await pool.execute(
+          `SELECT Nombre, Cargo, Colaborador FROM Maestro_Usuarios WHERE Email IN (${placeholders}) LIMIT 5`,
+          emailsArea
+        );
+        responsablesSugeridos = await Promise.all(uRows.map(async u => {
+          const partes = String(u.Colaborador || '').split(' ** ');
+          const cedula = partes[0].trim();
+          let firmaUrl = null;
+          if (cedula) {
+            try { firmaUrl = await obtenerUrlFirmaReciente(cedula); } catch (_) {}
+          }
+          return {
+            nombre:   u.Nombre || (partes.length > 1 ? partes[1].trim() : ''),
+            cargo:    u.Cargo  || '',
+            cedula,
+            firmaUrl,
+          };
+        }));
+      }
+    } catch (e) {
+      console.error('[pazysalvoarea] Error buscando responsable:', e.message);
+    }
+
     const template = fs.readFileSync(FIRMA_HTML, 'utf8');
     const config = JSON.stringify({
       token,
@@ -120,6 +149,7 @@ router.get('/:area/:idPz', async (req, res) => {
       firmaResponsableUrl: pz.firma_responsable_url || null,
       firmaResponsableNombre: pz.firma_responsable_nombre || '',
       firmaResponsableCargo: pz.firma_responsable_cargo || '',
+      responsablesSugeridos,
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(template.replace('__CONFIG__', config));
@@ -133,10 +163,10 @@ router.get('/:area/:idPz', async (req, res) => {
 router.post('/:area/:idPz', async (req, res) => {
   try {
     const { area, idPz } = req.params;
-    const { token, firma_base64, nombre_firmante, cargo_firmante } = req.body;
+    const { token, firma_base64, firma_url_existente, nombre_firmante, cargo_firmante } = req.body;
 
     if (!token) return res.status(401).json({ ok: false, error: 'Token no proporcionado' });
-    if (!firma_base64) return res.status(400).json({ ok: false, error: 'Firma requerida' });
+    if (!firma_base64 && !firma_url_existente) return res.status(400).json({ ok: false, error: 'Firma requerida' });
     if (!nombre_firmante || !cargo_firmante) return res.status(400).json({ ok: false, error: 'Nombre y cargo requeridos' });
 
     const colToken  = `token_${area}`;
@@ -158,10 +188,15 @@ router.post('/:area/:idPz', async (req, res) => {
 
     if (pz[`firma_${area}_url`]) return res.status(410).json({ ok: false, error: 'Área ya validó' });
 
-    // Subir firma del área como imagen
-    const base64Data = firma_base64.replace(/^data:image\/png;base64,/, '');
-    const bufferPng = Buffer.from(base64Data, 'base64');
-    const urlFirmaArea = await subirFirma(`${pz.identificacion}_${area}`, bufferPng);
+    // Subir firma del área como imagen (o usar URL existente del responsable)
+    let urlFirmaArea;
+    if (firma_url_existente) {
+      urlFirmaArea = firma_url_existente;
+    } else {
+      const base64Data = firma_base64.replace(/^data:image\/png;base64,/, '');
+      const bufferPng = Buffer.from(base64Data, 'base64');
+      urlFirmaArea = await subirFirma(`${pz.identificacion}_${area}`, bufferPng);
+    }
 
     const ahora = new Date();
     await pool.execute(

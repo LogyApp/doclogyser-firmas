@@ -182,13 +182,38 @@
   <div class="firma-card" id="firmaCard">
     <div class="firma-titulo">Validación del área — <span id="areaLabel"></span></div>
 
+    <!-- Selector de responsable (visible si hay más de uno) -->
+    <div id="responsableSelector" style="display:none;margin-bottom:16px">
+      <label class="campo-label" for="selectResponsable">Responsable del área *</label>
+      <select id="selectResponsable" class="campo-texto" onchange="seleccionarResponsable(this.value)">
+        <option value="">&#x2014; Seleccione su nombre —</option>
+      </select>
+    </div>
+
     <label class="campo-label" for="inputNombre">Nombre completo del responsable *</label>
     <input type="text" id="inputNombre" class="campo-texto" placeholder="Nombre y apellidos" autocomplete="name">
 
     <label class="campo-label" for="inputCargo">Cargo *</label>
     <input type="text" id="inputCargo" class="campo-texto" placeholder="Cargo en la empresa" autocomplete="organization-title">
 
-    <div class="firma-titulo" style="margin-top:8px">Firma del responsable del área</div>
+    <!-- Firma existente del responsable -->
+    <div id="firmaExistenteWrap" style="display:none;margin-bottom:14px">
+      <div class="firma-titulo" style="margin-top:4px">Firma registrada</div>
+      <div style="background:#f8f9fb;border:1.5px solid #dde;border-radius:8px;padding:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <img id="imgFirmaExistente" src="" alt="Firma responsable" style="height:64px;border-radius:4px;border:1px solid #e0e0e0">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button type="button" class="btn-limpiar-canvas" id="btnUsarFirmaExistente" onclick="usarFirmaExistente()">
+            &#10003; Usar esta firma
+          </button>
+          <button type="button" class="btn-limpiar-canvas" onclick="dibujarNuevaFirma()">
+            &#9998; Dibujar nueva firma
+          </button>
+        </div>
+      </div>
+      <p id="firmaExistenteOkMsg" style="display:none;color:#27ae60;font-size:.82rem;margin-top:6px">&#10003; Se usará la firma registrada</p>
+    </div>
+
+    <div class="firma-titulo" style="margin-top:8px" id="labelCanvas">Firma del responsable del área</div>
     <canvas id="sigCanvas" width="640" height="200"></canvas>
     <div class="canvas-hint">Dibuje su firma con el dedo o el mouse.</div>
     <button type="button" class="btn-limpiar-canvas" onclick="limpiarCanvas()">✕ Limpiar</button>
@@ -252,6 +277,21 @@ function init() {
 
   resizeCanvas();
   bindCanvas();
+
+  const sugeridos = CFG.responsablesSugeridos || [];
+  if (sugeridos.length === 1) {
+    seleccionarResponsable('0');
+  } else if (sugeridos.length > 1) {
+    const sel = document.getElementById('responsableSelector');
+    const select = document.getElementById('selectResponsable');
+    sugeridos.forEach((r, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = r.nombre + (r.cargo ? ' — ' + r.cargo : '');
+      select.appendChild(opt);
+    });
+    sel.style.display = 'block';
+  }
 }
 
 function resizeCanvas() {
@@ -302,6 +342,44 @@ function canvasVacio() {
   return !data.some(v => v !== 0);
 }
 
+// ── Helpers responsable preseleccionado ──────────────────────────
+function seleccionarResponsable(idx) {
+  if (idx === '') return;
+  const r = (CFG.responsablesSugeridos || [])[parseInt(idx, 10)];
+  if (!r) return;
+  document.getElementById('inputNombre').value = r.nombre;
+  document.getElementById('inputCargo').value  = r.cargo;
+  firmaUrlSeleccionada = null;
+  document.getElementById('firmaExistenteOkMsg').style.display = 'none';
+  if (r.firmaUrl) {
+    mostrarFirmaExistente(r.firmaUrl);
+  } else {
+    document.getElementById('firmaExistenteWrap').style.display = 'none';
+  }
+}
+
+function mostrarFirmaExistente(url) {
+  document.getElementById('imgFirmaExistente').src = url;
+  document.getElementById('firmaExistenteWrap').style.display = 'block';
+  document.getElementById('firmaExistenteOkMsg').style.display = 'none';
+  document.getElementById('btnUsarFirmaExistente').style.background = '';
+  firmaUrlSeleccionada = null;
+}
+
+function usarFirmaExistente() {
+  firmaUrlSeleccionada = document.getElementById('imgFirmaExistente').src;
+  document.getElementById('firmaExistenteOkMsg').style.display = 'block';
+  document.getElementById('btnUsarFirmaExistente').style.background = '#eafaf1';
+  limpiarCanvas();
+}
+
+function dibujarNuevaFirma() {
+  firmaUrlSeleccionada = null;
+  document.getElementById('firmaExistenteOkMsg').style.display = 'none';
+  document.getElementById('btnUsarFirmaExistente').style.background = '';
+  canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 async function guardarFirma() {
   const btn      = document.getElementById('btnGuardar');
   const msg      = document.getElementById('mensaje');
@@ -310,7 +388,11 @@ async function guardarFirma() {
 
   if (!nombre) { msg.className = 'mensaje error'; msg.textContent = 'Ingrese su nombre completo.'; return; }
   if (!cargo)  { msg.className = 'mensaje error'; msg.textContent = 'Ingrese su cargo.'; return; }
-  if (canvasVacio()) { msg.className = 'mensaje error'; msg.textContent = 'Por favor dibuje su firma antes de continuar.'; return; }
+  if (!firmaUrlSeleccionada && canvasVacio()) {
+    msg.className = 'mensaje error';
+    msg.textContent = 'Dibuje su firma o seleccione “Usar esta firma” para continuar.';
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Guardando...';
@@ -320,10 +402,14 @@ async function guardarFirma() {
   try {
     const body = {
       token:           CFG.token,
-      firma_base64:    canvas.toDataURL('image/png'),
       nombre_firmante: nombre,
       cargo_firmante:  cargo,
     };
+    if (firmaUrlSeleccionada) {
+      body.firma_url_existente = firmaUrlSeleccionada;
+    } else {
+      body.firma_base64 = canvas.toDataURL('image/png');
+    }
 
     const res = await fetch(window.location.pathname, {
       method:  'POST',

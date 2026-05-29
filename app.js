@@ -1,13 +1,16 @@
 require('dotenv').config();
 const express = require('express');
 
-const adminRoutes          = require('./src/routes/admin');
-const firmaRoutes          = require('./src/routes/firma');
-const formtrasladoRoutes   = require('./src/routes/formtraslado');
-const formretiroRoutes     = require('./src/routes/formretiro');
-const firmarenunciaRoutes  = require('./src/routes/firmarenuncia');
-const pazysalvoRoutes      = require('./src/routes/pazysalvo');
-const pazysalvoareaRoutes  = require('./src/routes/pazysalvoarea');
+const adminRoutes                    = require('./src/routes/admin');
+const firmaRoutes                    = require('./src/routes/firma');
+const formtrasladoRoutes             = require('./src/routes/formtraslado');
+const formretiroRoutes               = require('./src/routes/formretiro');
+const firmarenunciaRoutes            = require('./src/routes/firmarenuncia');
+const firmarcertificadoretiroRoutes  = require('./src/routes/firmarcertificadoretiro');
+const firmarexamenegresoRoutes       = require('./src/routes/firmarexamenegreso');
+const firmarcesantiasRoutes          = require('./src/routes/firmarcesantias');
+const pazysalvoRoutes                = require('./src/routes/pazysalvo');
+const pazysalvoareaRoutes            = require('./src/routes/pazysalvoarea');
 
 const app = express();
 
@@ -19,6 +22,9 @@ app.use('/doclogyser', firmaRoutes);
 app.use('/formtraslado', formtrasladoRoutes);
 app.use('/formretiro', formretiroRoutes);
 app.use('/firmar-renuncia', firmarenunciaRoutes);
+app.use('/firmar-certificado-retiro', firmarcertificadoretiroRoutes);
+app.use('/firmar-examen-egreso', firmarexamenegresoRoutes);
+app.use('/firmar-cesantias', firmarcesantiasRoutes);
 app.use('/firmar-pazysalvo', pazysalvoRoutes);
 app.use('/pazysalvo-area', pazysalvoareaRoutes);
 
@@ -45,3 +51,28 @@ setInterval(verificarRetiros, 2 * 60 * 1000); // cada 2 minutos
 const { verificarIngresos } = require('./src/services/ingresoNotifier');
 verificarIngresos(); // verificación inicial al arrancar
 setInterval(verificarIngresos, 2 * 60 * 1000); // cada 2 minutos
+
+// Generador automático de CT cuando el token expira sin firma del trabajador
+const { verificarCTExpirados } = require('./src/services/ctExpiryNotifier');
+verificarCTExpirados(); // verificación inicial al arrancar
+setInterval(verificarCTExpirados, 5 * 60 * 1000); // cada 5 minutos
+
+// Generador automático de AR cuando el token expira sin firma del trabajador
+const { verificarARExpirados } = require('./src/services/arExpiryNotifier');
+verificarARExpirados(); // verificación inicial al arrancar
+setInterval(verificarARExpirados, 5 * 60 * 1000); // cada 5 minutos
+
+// Generador automático de EMOE cuando el token expira sin firma del trabajador
+const { verificarEMOEExpirados } = require('./src/services/emoeExpiryNotifier');
+verificarEMOEExpirados(); // verificación inicial al arrancar
+setInterval(verificarEMOEExpirados, 5 * 60 * 1000); // cada 5 minutos
+
+// Generador automático de CRS cuando el token expira sin firma del trabajador
+const { verificarCRSExpirados } = require('./src/services/crsExpiryNotifier');
+verificarCRSExpirados(); // verificación inicial al arrancar
+setInterval(verificarCRSExpirados, 5 * 60 * 1000); // cada 5 minutos
+
+// Generador automático de PZ cuando el token expira sin firmas completas
+const { verificarPZExpirados } = require('./src/services/pzExpiryNotifier');
+verificarPZExpirados(); // verificación inicial al arrancar
+setInterval(verificarPZExpirados, 10 * 60 * 1000); // cada 10 minutos

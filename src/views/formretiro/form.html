@@ -337,67 +337,10 @@
         </div>
       </div>
 
-      <!-- Campos adicionales solo visibles cuando motivo = Renuncia -->
-      <div id="seccionRenuncia" style="display:none;border-top:1.5px solid #f5d5d5;margin-top:14px;padding-top:16px">
-        <div class="field">
-          <label>Tipo de renuncia <span class="req">*</span></label>
-          <div class="radio-wrap">
-            <label>
-              <input type="radio" name="tipoRenuncia" value="Verbal" id="rdVerbal">
-              Verbal
-            </label>
-            <label>
-              <input type="radio" name="tipoRenuncia" value="Escrita" id="rdEscrita">
-              Escrita
-            </label>
-          </div>
-          <div class="err" id="errTipoRenuncia">Seleccione el tipo de renuncia</div>
-        </div>
-        <div class="field">
-          <label for="ciudadRegional">Ciudad para documentos de retiro <span class="req">*</span></label>
-          <input type="text" id="ciudadRegional" placeholder="Ej. Bucaramanga, Santander">
-          <div class="err" id="errCiudad">Ingrese la ciudad</div>
-        </div>
-
-        <!-- TCR: se pide DESPUÉS de guardar -->
-      </div>
-    </div>
-
-    <!-- ED: se pide DESPUÉS de guardar -->
-
-    <!-- Firma del responsable -->
-    <div class="card retiro">
-      <div class="section-title">Firma del responsable</div>
-
-      <!-- Vista cuando ya existe firma guardada -->
-      <div id="bloqueExistente" style="display:none">
-        <div class="firma-preview">
-          <img id="imgFirmaExistente" src="" alt="Firma guardada">
-          <div>
-            <div class="firma-label">Firma guardada</div>
-            <div class="firma-nombre" id="nombreFirmante"></div>
-          </div>
-        </div>
-        <label class="toggle-refirmar">
-          <input type="checkbox" id="chkNuevaFirma" onchange="toggleCanvas()">
-          Quiero firmar nuevamente (reemplaza la firma guardada)
-        </label>
-      </div>
-
-      <!-- Canvas de firma (obligatorio si no hay firma, opcional si hay) -->
-      <div id="bloqueCanvas">
-        <div class="canvas-wrap">
-          <canvas id="sigCanvas" width="640" height="200"></canvas>
-        </div>
-        <div class="canvas-hint">Dibuje su firma con el dedo o el mouse. Esta firma quedará guardada para futuros documentos.</div>
-        <button type="button" class="btn-limpiar" onclick="limpiarFirma()">&#x2715; Limpiar firma</button>
-        <div class="err" id="errFirma">Debe dibujar su firma antes de continuar</div>
-      </div>
-
     </div>
 
     <button type="button" class="btn-submit" id="btnEnviar" onclick="abrirModal()">
-      Registrar retiro y generar documentos
+      Registrar retiro
     </button>
 
   </div>
@@ -405,12 +348,80 @@
   <!-- ── ESTADO ÉXITO ───────────────────────────────────────────── -->
   <div class="success-section" id="successSection">
 
+    <!-- ── PASO 2: Firma del responsable + tipo renuncia ─────── -->
+    <div id="cardPaso2" style="display:none">
+      <div class="card retiro" style="margin-bottom:16px">
+        <div class="section-title">Paso 2 — Confirmar responsable</div>
+
+        <!-- Tipo de renuncia (solo si motivo=Renuncia) -->
+        <div id="paso2Renuncia" style="display:none;border-bottom:1.5px solid #f5d5d5;margin-bottom:16px;padding-bottom:16px">
+          <div class="field">
+            <label>Tipo de renuncia <span class="req">*</span></label>
+            <div class="radio-wrap">
+              <label class="radio-option">
+                <input type="radio" name="tipoRenuncia" value="Verbal">
+                <span class="radio-label">Verbal</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="tipoRenuncia" value="Escrita">
+                <span class="radio-label">Escrita</span>
+              </label>
+            </div>
+            <div class="err" id="errTipoRenuncia">Seleccione el tipo de renuncia</div>
+          </div>
+          <div class="field">
+            <label for="ciudadRegional">Ciudad para documentos de retiro <span class="req">*</span></label>
+            <input type="text" id="ciudadRegional" placeholder="Ej. Bucaramanga, Santander">
+            <div class="err" id="errCiudad">Ingrese la ciudad</div>
+          </div>
+        </div>
+
+        <!-- Firma del responsable -->
+        <div class="section-title" style="font-size:.93rem;margin-bottom:12px">Firma del responsable</div>
+
+        <!-- Vista cuando ya existe firma guardada -->
+        <div id="bloqueExistente" style="display:none">
+          <div class="firma-preview">
+            <img id="imgFirmaExistente" src="" alt="Firma guardada">
+            <div>
+              <div class="firma-label">Firma guardada</div>
+              <div class="firma-nombre" id="nombreFirmante"></div>
+            </div>
+          </div>
+          <label class="toggle-refirmar">
+            <input type="checkbox" id="chkNuevaFirma" onchange="toggleCanvas()">
+            Quiero firmar nuevamente (reemplaza la firma guardada)
+          </label>
+        </div>
+
+        <!-- Canvas de firma -->
+        <div id="bloqueCanvas">
+          <div class="canvas-wrap">
+            <canvas id="sigCanvas" width="640" height="200"></canvas>
+          </div>
+          <div class="canvas-hint">Dibuje su firma con el dedo o el mouse. Esta firma quedará guardada para futuros documentos.</div>
+          <button type="button" class="btn-limpiar" onclick="limpiarFirma()">&#x2715; Limpiar firma</button>
+          <div class="err" id="errFirma">Debe dibujar su firma antes de continuar</div>
+        </div>
+
+        <button type="button" class="btn-submit" id="btnConfirmarResponsable" onclick="confirmarResponsable()" style="margin-top:18px">
+          Confirmar firma y generar documentos
+        </button>
+        <div id="loadingPaso2" style="display:none;margin-top:12px;text-align:center;color:#555;font-size:.9rem">
+          Generando documentos, por favor espere…
+        </div>
+      </div>
+    </div>
+
+    <div id="successHeader" style="display:none">
     <div class="success-header">
       <div class="check-circle">&#10003;</div>
       <div class="success-title">Retiro registrado exitosamente</div>
-      <div class="success-sub">Los documentos han sido generados y están disponibles</div>
+      <div class="success-sub">El retiro ha sido registrado correctamente</div>
+    </div>
     </div>
 
+    <div id="resumenCard" style="display:none">
     <div class="resumen-card">
       <div class="section-title" style="margin-bottom:12px">Resumen del retiro</div>
       <div class="info-row">
@@ -430,10 +441,13 @@
         <span class="info-value" id="resumenMotivo"></span>
       </div>
     </div>
+    </div>
 
+    <div id="docCard" style="display:none">
     <div class="doc-card">
       <div class="section-title" style="margin-bottom:4px">Documentos generados</div>
       <div id="docList"></div>
+    </div>
     </div>
 
     <!-- Tarjeta TCR en éxito (carta escrita del trabajador — se pide DESPUÉS de guardar) -->
@@ -478,6 +492,12 @@
       <div id="articulosGuardadosOk" style="display:none;margin-top:8px;color:#16a085;font-size:.84rem;font-weight:600">
         &#10003; Artículos guardados correctamente
       </div>
+      <button type="button" id="btnEditarArticulos" onclick="editarArticulos()" style="
+        display:none;margin-top:8px;padding:7px 16px;background:#f0faf8;
+        border:1.5px solid #16a085;color:#16a085;border-radius:6px;
+        font-size:.82rem;cursor:pointer;font-weight:600">
+        &#9998; Editar artículos
+      </button>
     </div>
 
     <!-- Tarjeta unificada de envío al trabajador (WA + Email) -->
@@ -493,6 +513,21 @@
       <div id="urlCopiaWrapPZ"></div>
     </div>
 
+    <!-- Tarjeta de estado de firmas del Paz y Salvo (solo Nómina/Sistema) -->
+    <div class="doc-card-orange" id="cardEstadoPZ" style="display:none;border-left-color:#16a085">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="section-title" style="margin:0;color:#16a085">Estado del Paz y Salvo</div>
+        <button type="button" id="btnRefreshPZ"
+          style="background:#16a085;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:.78rem;cursor:pointer;font-weight:600"
+          onclick="refrescarEstadoPZ()">&#8635; Actualizar</button>
+      </div>
+      <div id="listadoFirmasPZ" style="display:flex;flex-direction:column;gap:8px"></div>
+      <p id="pzCompletadoMsg" style="display:none;margin:12px 0 0;font-size:.82rem;color:#16a085;font-weight:600">
+        &#10003; Paz y Salvo completado — todos los involucrados han firmado.
+      </p>
+      <p style="margin:10px 0 0;font-size:.75rem;color:#aaa">Se actualiza automáticamente cada 30 s.</p>
+    </div>
+
   </div>
 
 </div>
@@ -504,7 +539,7 @@
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-actions">
       <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-confirmar" onclick="enviarRetiro()">Confirmar y generar</button>
+      <button class="btn-confirmar" onclick="enviarRetiro()">Confirmar</button>
     </div>
   </div>
 </div>
@@ -512,12 +547,12 @@
 <!-- ── OVERLAY DE CARGA ────────────────────────────────────────────── -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
-  <div class="loading-text">Generando documentos, por favor espere…</div>
+  <div class="loading-text">Registrando retiro, por favor espere…</div>
 </div>
 
 <script>
   const _cfg = __CONFIG__;
-  const { identificacion, usuario, usuarioNombre, trabajador, cargo, fechaIngreso, rawFechaIngreso, motivos, ciudadRegional, yaRetirado, retiroInfo } = _cfg;
+  const { identificacion, usuario, usuarioNombre, rolUsuario, trabajador, cargo, fechaIngreso, rawFechaIngreso, motivos, ciudadRegional, yaRetirado, firmaConfirmada, retiroInfo } = _cfg;
 
   // ── Datos del trabajador ───────────────────────────────────────
   document.getElementById('dispTrabajador').value     = trabajador;
@@ -533,7 +568,33 @@
   // Si el trabajador ya esta retirado, mostrar estado directamente
   if (yaRetirado && retiroInfo) {
     document.getElementById('seccionFormulario').style.display = 'none';
+    document.querySelector('.card-titulo').style.display = 'none';
     document.getElementById('successSection').style.display = 'block';
+
+    // Paso 2 pendiente: el responsable aún no confirmó su firma
+    if (!firmaConfirmada) {
+      window._paso1Data = {
+        idVinculacion: retiroInfo.idVinculacion,
+        motivoRetiro:  retiroInfo.motivoRetiro,
+        fechaRetiro:   retiroInfo.fechaRetiro,
+        trabajador:    retiroInfo.trabajador,
+        pazYSalvo:     retiroInfo.pazYSalvo || null,
+      };
+      document.getElementById('cardPaso2').style.display = 'block';
+      if (retiroInfo.motivoRetiro === 'Renuncia') {
+        document.getElementById('paso2Renuncia').style.display = 'block';
+      }
+      // Pre-cargar ciudad si la hay
+      if (ciudadRegional) {
+        const elCiudad = document.getElementById('ciudadRegional');
+        if (elCiudad) elCiudad.value = ciudadRegional;
+      }
+    } else {
+    // Firma confirmada: mostrar todo el contenido de éxito
+
+    document.getElementById('successHeader').style.display = 'block';
+    document.getElementById('resumenCard').style.display = 'block';
+    document.getElementById('docCard').style.display = 'block';
     document.getElementById('resumenTrabajador').textContent  = retiroInfo.trabajador;
     document.getElementById('resumenId').textContent          = retiroInfo.identificacion;
     document.getElementById('resumenFechaRetiro').textContent = retiroInfo.fechaRetiro;
@@ -664,65 +725,77 @@
     // Artículos PZ pendientes
     if (ri.pazYSalvo) {
       document.getElementById('cardArticulos').style.display = 'block';
-      initArticulos();
+      if (ri.pazYSalvo.articulos && ri.pazYSalvo.articulos.length) {
+        cargarArticulosGuardados(ri.pazYSalvo.articulos, ri.pazYSalvo.observaciones);
+      } else {
+        initArticulos();
+      }
       window._idPzActual = ri.pazYSalvo.idPz;
+      if (ri.pazYSalvo.articulosGuardados) {
+        bloquearArticulos();
+        document.getElementById('articulosGuardadosOk').style.display = 'block';
+        document.getElementById('btnGuardarArticulos').style.display = 'none';
+        if ((rolUsuario === 'Nomina' || rolUsuario === 'Sistema') && ri.pazYSalvo.estado !== 'completado') {
+          document.getElementById('btnEditarArticulos').style.display = 'inline-block';
+        }
+      }
     }
 
     // Enlace PZ y envío al trabajador
-    if (ri.pazYSalvo || ri.firmaRenuncia) {
-      document.getElementById('cardEnvioTrabajador').style.display = 'block';
-      const btnsEnvio2 = document.getElementById('btnsEnvioTrabajador');
+    {
       const pz2 = ri.pazYSalvo;
       const fr2 = ri.firmaRenuncia;
-      const celular2   = (pz2 && pz2.celular) || (fr2 && fr2.celular) || null;
-      const emailTrab2 = (pz2 && pz2.email)   || (fr2 && fr2.email)   || null;
-      const urlPZ2     = pz2 ? pz2.urlFirma : null;
-      const urlAR2     = fr2 ? fr2.urlDoc   : null;
-      const getDoc2    = (txt) => { const d = (ri.documentos || []).find(x => x.prefijo === txt); return d ? d.url : null; };
-      const urlCert2   = getDoc2('CT');
-      const urlEMOE2   = getDoc2('EMOE');
-      const urlCRS2    = getDoc2('CRS');
-
-      if (celular2) {
-        const partes2 = [];
-        if (urlCert2)  partes2.push('📄 Cert. Laboral: ' + urlCert2);
-        if (urlEMOE2)  partes2.push('📄 Examen Egreso: ' + urlEMOE2);
-        if (urlCRS2)   partes2.push('📄 Cesantías: '     + urlCRS2);
-        if (urlAR2)    partes2.push('📄 Aceptación Renuncia: ' + urlAR2);
-        if (urlPZ2)    partes2.push('\n✍️ Firmar Paz y Salvo: ' + urlPZ2);
-        const msgWA2 = encodeURIComponent('Estimado(a) ' + ri.trabajador + ', le enviamos los documentos de su proceso de retiro en LOG&SER:\n\n' + partes2.join('\n') + '\n\nPor favor realice la firma del Paz y Salvo a la brevedad. El enlace tiene validez de 120 horas. Gracias.');
-        const btnWA2 = document.createElement('a');
-        btnWA2.href = 'https://wa.me/57' + celular2 + '?text=' + msgWA2;
-        btnWA2.target = '_blank';
-        btnWA2.className = 'btn-wa';
-        btnWA2.innerHTML = '&#128241; Enviar por WhatsApp';
-        btnsEnvio2.appendChild(btnWA2);
-      }
-      if (emailTrab2) {
-        const btnEmail2 = document.createElement('button');
-        btnEmail2.type = 'button'; btnEmail2.className = 'btn-email-envio';
-        btnEmail2.innerHTML = '&#9993; Enviar por correo';
-        btnEmail2.onclick = async () => {
-          btnEmail2.disabled = true; btnEmail2.innerHTML = 'Enviando…';
-          try {
-            const resp2 = await fetch('/formretiro/api/enviar-trabajador', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ emailTrabajador: emailTrab2, nombreTrabajador: ri.trabajador,
-                responsableNombre: usuarioNombre, responsableCargo: '',
-                urlPZ: urlPZ2, urlAR: urlAR2, urlCert: urlCert2, urlEMOE: urlEMOE2, urlCRS: urlCRS2,
-                motivoRetiro: ri.motivoRetiro }),
-            });
-            const d2 = await resp2.json();
-            if (d2.ok) { btnEmail2.innerHTML = '&#10003; Correo enviado'; btnEmail2.style.background = '#27ae60'; }
-            else { btnEmail2.disabled = false; btnEmail2.innerHTML = '&#9993; Enviar por correo'; alert('Error: ' + (d2.error || '')); }
-          } catch { btnEmail2.disabled = false; btnEmail2.innerHTML = '&#9993; Enviar por correo'; }
+      if (pz2 || fr2 || ri.urlFirmaCT) {
+        const getDoc2 = (txt) => { const d = (ri.documentos || []).find(x => x.prefijo === txt); return d ? d.url : null; };
+        window._pzEnvioData = {
+          nombreTrab:       ri.trabajador,
+          celular:          (pz2 && pz2.celular) || (fr2 && fr2.celular) || null,
+          emailTrab:        (pz2 && pz2.email)   || (fr2 && fr2.email)   || null,
+          urlAR:            fr2 ? (fr2.urlFirma || fr2.urlDoc) : null,
+          urlCert:          ri.urlFirmaCT  || getDoc2('CT')   || null,
+          urlEMOE:          ri.urlFirmaEMOE || getDoc2('EMOE') || null,
+          urlCRS:           ri.urlFirmaCRS  || getDoc2('CRS')  || null,
+          motivoRetiro:     ri.motivoRetiro,
+          responsableCargo: '',
         };
-        btnsEnvio2.appendChild(btnEmail2);
-      }
-      if (urlPZ2) {
-        document.getElementById('urlCopiaWrapPZ').innerHTML = '<div class="url-copia-wrap" style="margin-top:12px;border-color:#16a085"><strong style="color:#16a085">Enlace Paz y Salvo:</strong><br><span style="word-break:break-all;font-size:.82rem">' + urlPZ2 + '</span></div>';
+        poblarTarjetaEnvio(pz2 ? pz2.urlFirma : null);
       }
     }
+
+    // ── Documentos pendientes de firma del trabajador (al recargar) ─
+    {
+      const pendItems2 = [
+        { label: 'Certificado de retiro',           url: ri.urlFirmaCT },
+        { label: 'Aceptación de renuncia',          url: ri.firmaRenuncia ? ri.firmaRenuncia.urlFirma : null },
+        { label: 'Examen médico de egreso (EMOE)',  url: ri.urlFirmaEMOE },
+        { label: 'Certificado de cesantías (CRS)',  url: ri.urlFirmaCRS },
+      ].filter(x => x.url);
+      if (pendItems2.length) {
+        const dl2 = document.getElementById('docList');
+        if (dl2) {
+          const wrap2 = document.createElement('div');
+          wrap2.style.cssText = 'margin-top:14px;border-top:1px solid #eef1ff;padding-top:12px';
+          wrap2.innerHTML = '<div style="font-size:.74rem;font-weight:700;color:#1a1a2e;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Pendientes de firma por el trabajador</div>';
+          pendItems2.forEach(item => {
+            const a = document.createElement('a');
+            a.href = item.url; a.target = '_blank'; a.className = 'doc-link';
+            a.innerHTML = '<span class="doc-icon">&#9997;&#65039;</span><div>'
+              + '<div class="doc-nombre">' + item.label + '</div>'
+              + '<div class="doc-hint" style="color:#e67e22">&#9203; Enlace de firma del trabajador (vigente 48 h)</div></div>';
+            wrap2.appendChild(a);
+          });
+          dl2.parentNode.insertBefore(wrap2, dl2.nextSibling);
+        }
+      }
+    }
+
+    // Estado de firmas Paz y Salvo para Nómina/Sistema (vista "ya retirado")
+    const MOTIVOS_SIN_PZ2 = ['No tomó cargo', 'Terminación por Muerte'];
+    if (ri.pazYSalvo && !MOTIVOS_SIN_PZ2.includes(ri.motivoRetiro)
+        && (rolUsuario === 'Nomina' || rolUsuario === 'Sistema')) {
+      iniciarEstadoPZ(ri.pazYSalvo.idPz);
+    }
+    } // end else (firmaConfirmada)
   }
 
   // Función helper para subir docs al recargar
@@ -751,17 +824,6 @@
     const o = document.createElement('option');
     o.value = m; o.textContent = m;
     selMotivo.appendChild(o);
-  });
-
-  // ── Mostrar/ocultar sección Renuncia ───────────────────────────
-  selMotivo.addEventListener('change', () => {
-    const esRenuncia = selMotivo.value === 'Renuncia';
-    document.getElementById('seccionRenuncia').style.display = esRenuncia ? 'block' : 'none';
-    if (!esRenuncia) {
-      document.querySelectorAll('input[name="tipoRenuncia"]').forEach(r => r.checked = false);
-      document.getElementById('errTipoRenuncia').classList.remove('visible');
-      document.getElementById('errCiudad').classList.remove('visible');
-    }
   });
 
   // TCR y ED ya no tienen sección en el formulario
@@ -862,7 +924,6 @@
     const fechaRetiroVal = document.getElementById('fechaRetiro').value;
     marcarErr('errFecha', !fechaRetiroVal);
     if (fechaRetiroVal && fechaIngreso) {
-      // Parsear fecha de ingreso (viene en formato largo español, usar rawFechaIngreso)
       const partesFI = (rawFechaIngreso || '').split('-');
       if (partesFI.length === 3) {
         const fiDate = new Date(partesFI[0], parseInt(partesFI[1])-1, parseInt(partesFI[2]));
@@ -885,37 +946,20 @@
     }
     marcarErr('errMotivo', !selMotivo.value);
 
-    // Validaciones especificas de Renuncia
-    if (selMotivo.value === 'Renuncia') {
-      const tipoSel = document.querySelector('input[name="tipoRenuncia"]:checked');
-      marcarErr('errTipoRenuncia', !tipoSel);
-      marcarErr('errCiudad', !document.getElementById('ciudadRegional').value.trim());
-      // TCR ya no se valida aquí — se pide después de guardar
-    }
-
-    // ED y TCR se piden después de guardar
-
-    // Firma obligatoria si no hay guardada, o si eligió re-firmar
-    const necesitaCanvas = !firmaExistente || document.getElementById('chkNuevaFirma').checked;
-    if (necesitaCanvas) marcarErr('errFirma', !tieneTrazos);
-
     if (!ok) return;
 
-    const fecha   = document.getElementById('fechaRetiro').value;
-    const motivo  = selMotivo.value;
-    const tipoRen = motivo === 'Renuncia'
-      ? document.querySelector('input[name="tipoRenuncia"]:checked')?.value || ''
-      : '';
+    const fecha  = document.getElementById('fechaRetiro').value;
+    const motivo = selMotivo.value;
 
     document.getElementById('modalBody').innerHTML =
       `Está a punto de registrar el retiro de:<br><br>
        <strong>${trabajador}</strong><br>
        <span style="color:#888;font-size:.85rem">CC ${identificacion}</span><br><br>
        <strong>Fecha de retiro:</strong> ${fecha}<br>
-       <strong>Motivo:</strong> ${motivo}${tipoRen ? ' — ' + tipoRen : ''}<br><br>
+       <strong>Motivo:</strong> ${motivo}<br><br>
        <span style="color:#c0392b;font-size:.83rem">
-         Esta acción marcará al trabajador como <strong>Retirado</strong>
-         y generará los documentos correspondientes.
+         Esta acción registrará al trabajador como <strong>Retirado</strong>.
+         En el siguiente paso confirmará la firma y se generarán los documentos.
        </span>`;
     document.getElementById('modalOverlay').classList.add('open');
   }
@@ -924,23 +968,15 @@
     document.getElementById('modalOverlay').classList.remove('open');
   }
 
-  // ── Enviar ─────────────────────────────────────────────────────
+  // ── Enviar paso 1 (solo fechaRetiro + motivoRetiro) ───────────
   async function enviarRetiro() {
     cerrarModal();
     document.getElementById('loadingOverlay').classList.add('open');
     document.getElementById('btnEnviar').disabled = true;
 
-    const necesitaCanvas = !firmaExistente || document.getElementById('chkNuevaFirma').checked;
-    const firmaBase64 = (necesitaCanvas && tieneTrazos) ? canvas.toDataURL('image/png') : null;
-
     const body = {
-      fechaRetiro:   document.getElementById('fechaRetiro').value,
-      motivoRetiro:  selMotivo.value,
-      firmaBase64,
-      tipoRenuncia:  document.querySelector('input[name="tipoRenuncia"]:checked')?.value || null,
-      ciudadRegional: document.getElementById('ciudadRegional').value.trim() || null,
-      tcrBase64:      null,
-      edBase64:       edBase64  || null,
+      fechaRetiro:  document.getElementById('fechaRetiro').value,
+      motivoRetiro: selMotivo.value,
     };
 
     try {
@@ -957,38 +993,149 @@
         document.getElementById('seccionFormulario').style.display = 'none';
         document.querySelector('.card-titulo').style.display = 'none';
 
+        // Guardar datos del paso 1 para usarlos en confirmarResponsable
+        window._paso1Data = data;
+
         const ss = document.getElementById('successSection');
         ss.style.display = 'block';
 
-        document.getElementById('resumenTrabajador').textContent  = data.trabajador;
-        document.getElementById('resumenId').textContent          = identificacion;
-        document.getElementById('resumenFechaRetiro').textContent = data.fechaRetiro;
-        document.getElementById('resumenMotivo').textContent      = data.motivoRetiro;
-
-        const docList = document.getElementById('docList');
-        const docsGenerados = data.documentos || [];
-        if (!docsGenerados.length) {
-          docList.innerHTML = '<p style="font-size:.85rem;color:#aaa;padding:10px 0">No se generan documentos para este motivo de retiro.</p>';
+        if (data.firmaConfirmada) {
+          // Motivo sin documentos (No tomó cargo, Terminación por Muerte) → éxito directo
+          mostrarSeccionExito(data);
         } else {
-          docsGenerados.forEach(doc => {
-            const a = document.createElement('a');
-            a.href = doc.url;
-            a.target = '_blank';
-            a.className = 'doc-link';
-            a.innerHTML = `
-              <span class="doc-icon">&#128196;</span>
-              <div>
-                <div class="doc-nombre">${doc.titulo}</div>
-                <div class="doc-hint">Haga clic para abrir el PDF en una nueva pestaña</div>
-              </div>`;
-            docList.appendChild(a);
-          });
+          // Mostrar paso 2 para confirmar firma del responsable
+          document.getElementById('cardPaso2').style.display = 'block';
+          if (data.motivoRetiro === 'Renuncia') {
+            document.getElementById('paso2Renuncia').style.display = 'block';
+          }
         }
 
-        // ── Tarjeta firma renuncia ─────────────────────────────
-        // ── Tarjeta TCR post-guardado ──────────────────────────
-        // Si renuncia escrita → mostrar zona de carga de carta DESPUÉS de guardar
-        if (data.tipoRenuncia === 'Escrita') {
+      } else {
+        alert('Error: ' + (data.error || 'No se pudo registrar el retiro'));
+        document.getElementById('btnEnviar').disabled = false;
+      }
+    } catch {
+      document.getElementById('loadingOverlay').classList.remove('open');
+      alert('Error de conexión. Intente nuevamente.');
+      document.getElementById('btnEnviar').disabled = false;
+    }
+  }
+
+  // ── Confirmar responsable (paso 2) ────────────────────────────
+  async function confirmarResponsable() {
+    const data = window._paso1Data || {};
+    let ok = true;
+    function marcarErr2(id, show) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('visible', show);
+      if (show) ok = false;
+    }
+
+    // Validar tipo renuncia y ciudad si aplica
+    if (data.motivoRetiro === 'Renuncia') {
+      const tipoSel = document.querySelector('input[name="tipoRenuncia"]:checked');
+      marcarErr2('errTipoRenuncia', !tipoSel);
+      marcarErr2('errCiudad', !document.getElementById('ciudadRegional').value.trim());
+    }
+
+    // Validar firma
+    const necesitaCanvas = !firmaExistente || document.getElementById('chkNuevaFirma').checked;
+    if (necesitaCanvas) marcarErr2('errFirma', !tieneTrazos);
+
+    if (!ok) return;
+
+    const firmaBase64 = (necesitaCanvas && tieneTrazos) ? canvas.toDataURL('image/png') : null;
+
+    const btn = document.getElementById('btnConfirmarResponsable');
+    const loading2 = document.getElementById('loadingPaso2');
+    btn.disabled = true;
+    loading2.style.display = 'block';
+
+    try {
+      const resp = await fetch(`/formretiro/api/confirmar-responsable?usuario=${encodeURIComponent(usuario)}`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idVinculacion:  data.idVinculacion,
+          tipoRenuncia:   data.motivoRetiro === 'Renuncia'
+            ? document.querySelector('input[name="tipoRenuncia"]:checked')?.value || null
+            : null,
+          ciudadRegional: data.motivoRetiro === 'Renuncia'
+            ? document.getElementById('ciudadRegional').value.trim() || null
+            : null,
+          firmaBase64,
+        }),
+      });
+      const resp2 = await resp.json();
+
+      loading2.style.display = 'none';
+
+      if (resp2.ok) {
+        document.getElementById('cardPaso2').style.display = 'none';
+        // Fusionar datos del paso 1 y paso 2 para mostrar sección de éxito
+        mostrarSeccionExito({ ...data, ...resp2, motivoRetiro: data.motivoRetiro });
+      } else {
+        alert('Error: ' + (resp2.error || 'No se pudo confirmar el responsable'));
+        btn.disabled = false;
+      }
+    } catch {
+      loading2.style.display = 'none';
+      alert('Error de conexión. Intente nuevamente.');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Mostrar sección de éxito completa ─────────────────────────
+  function mostrarSeccionExito(data) {
+    document.getElementById('successHeader').style.display = 'block';
+    document.getElementById('resumenCard').style.display = 'block';
+    document.getElementById('docCard').style.display = 'block';
+
+    document.getElementById('resumenTrabajador').textContent  = data.trabajador || trabajador;
+    document.getElementById('resumenId').textContent          = identificacion;
+    document.getElementById('resumenFechaRetiro').textContent = data.fechaRetiro || '';
+    document.getElementById('resumenMotivo').textContent      = data.motivoRetiro || '';
+
+    const docList = document.getElementById('docList');
+    docList.innerHTML = '';
+    const docsGenerados = data.documentos || [];
+    if (!docsGenerados.length) {
+      docList.innerHTML = '<p style="font-size:.85rem;color:#aaa;padding:10px 0">Los documentos se generarán automáticamente cuando el trabajador firme cada uno de ellos. Si no firma en el plazo, el sistema los generará sin firma.</p>';
+    } else {
+      docsGenerados.forEach(doc => {
+        const a = document.createElement('a');
+        a.href = doc.url; a.target = '_blank'; a.className = 'doc-link';
+        a.innerHTML = `<span class="doc-icon">&#128196;</span><div><div class="doc-nombre">${doc.titulo}</div><div class="doc-hint">Haga clic para abrir el PDF en una nueva pestaña</div></div>`;
+        docList.appendChild(a);
+      });
+    }
+
+    // ── Documentos pendientes de firma del trabajador ──────────
+    {
+      const pendItems = [
+        { label: 'Certificado de retiro',           url: data.urlFirmaCT },
+        { label: 'Aceptación de renuncia',          url: data.firmaRenuncia ? data.firmaRenuncia.urlFirma : null },
+        { label: 'Examen médico de egreso (EMOE)',  url: data.emoe       ? data.emoe.urlFirma       : null },
+        { label: 'Certificado de cesantías (CRS)',  url: data.cesantias  ? data.cesantias.urlFirma  : null },
+      ].filter(x => x.url);
+      if (pendItems.length) {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'margin-top:14px;border-top:1px solid #eef1ff;padding-top:12px';
+        wrap.innerHTML = '<div style="font-size:.74rem;font-weight:700;color:#1a1a2e;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Pendientes de firma por el trabajador</div>';
+        pendItems.forEach(item => {
+          const a = document.createElement('a');
+          a.href = item.url; a.target = '_blank'; a.className = 'doc-link';
+          a.innerHTML = '<span class="doc-icon">&#9997;&#65039;</span><div>'
+            + '<div class="doc-nombre">' + item.label + '</div>'
+            + '<div class="doc-hint" style="color:#e67e22">&#9203; Enlace de firma del trabajador (vigente 48 h)</div></div>';
+          wrap.appendChild(a);
+        });
+        docList.parentNode.insertBefore(wrap, docList.nextSibling);
+      }
+    }
+
+    // ── Tarjeta TCR post-guardado ──────────────────────────────
+    if (data.tipoRenuncia === 'Escrita') {
           const cardTCR = document.getElementById('cardTCRSuccess');
           const tcrContent = document.getElementById('tcrSuccessContent');
           cardTCR.style.display = 'block';
@@ -1231,115 +1378,239 @@
           window._idPzActual = data.pazYSalvo.idPz;
         }
 
-        // ── Botón unificado envío al trabajador ───────────────
+        // ── Tarjeta envío al trabajador ─
         {
           const pz = data.pazYSalvo;
           const fr = data.firmaRenuncia;
-          if (pz || fr) {
-            document.getElementById('cardEnvioTrabajador').style.display = 'block';
-            const btnsEnvio = document.getElementById('btnsEnvioTrabajador');
-            const urlWrapPZ = document.getElementById('urlCopiaWrapPZ');
-
-            const nombreTrab = data.trabajador || trabajador;
-            const celular    = (pz && pz.celular) || (fr && fr.celular) || null;
-            const emailTrab  = (pz && pz.email)   || (fr && fr.email)   || null;
-            const urlPZ      = pz ? pz.urlFirma : null;
-            const urlAR      = fr ? fr.urlDoc   : null;
-
-            const docsGen = data.documentos || [];
-            const getUrl  = (txt) => { const d = docsGen.find(x => x.titulo && x.titulo.includes(txt)); return d ? d.url : null; };
-            const urlCert = getUrl('Certificado');
-            const urlEMOE = getUrl('Examen') || getUrl('Egreso');
-            const urlCRS  = getUrl('Cesant');
-
-            if (celular) {
-              const partes = [];
-              if (urlCert) partes.push('📄 Cert. Laboral: ' + urlCert);
-              if (urlEMOE) partes.push('📄 Examen Egreso: ' + urlEMOE);
-              if (urlCRS)  partes.push('📄 Cesantías: '     + urlCRS);
-              if (urlAR)   partes.push('📄 Aceptación Renuncia: ' + urlAR);
-              if (urlPZ)   partes.push('\n✍️ Firmar Paz y Salvo: ' + urlPZ);
-              const msgWA = encodeURIComponent(
-                `Estimado(a) ${nombreTrab}, le enviamos los documentos de su proceso de retiro en LOG&SER:\n\n`
-                + partes.join('\n')
-                + '\n\nPor favor realice la firma del Paz y Salvo a la brevedad. El enlace tiene validez de 120 horas. Gracias.'
-              );
-              const btnWA = document.createElement('a');
-              btnWA.href = `https://wa.me/57${celular}?text=${msgWA}`;
-              btnWA.target = '_blank';
-              btnWA.className = 'btn-wa';
-              btnWA.innerHTML = '&#128241; Enviar por WhatsApp';
-              btnsEnvio.appendChild(btnWA);
-            }
-
-            if (emailTrab) {
-              const btnEmail = document.createElement('button');
-              btnEmail.type = 'button';
-              btnEmail.className = 'btn-email-envio';
-              btnEmail.innerHTML = '&#9993; Enviar por correo';
-              btnEmail.onclick = async () => {
-                btnEmail.disabled = true; btnEmail.innerHTML = 'Enviando…';
-                try {
-                  const r = await fetch('/formretiro/api/enviar-trabajador', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      emailTrabajador:   emailTrab,
-                      nombreTrabajador:  nombreTrab,
-                      responsableNombre: usuarioNombre,
-                      responsableCargo:  data.responsable ? data.responsable.cargo : '',
-                      urlPZ, urlAR, urlCert, urlEMOE, urlCRS,
-                      motivoRetiro:      data.motivoRetiro,
-                    }),
-                  });
-                  const d = await r.json();
-                  if (d.ok) { btnEmail.innerHTML = '&#10003; Correo enviado'; btnEmail.style.background = '#27ae60'; }
-                  else { btnEmail.disabled = false; btnEmail.innerHTML = '&#9993; Enviar por correo'; alert('Error: ' + (d.error || '')); }
-                } catch { btnEmail.disabled = false; btnEmail.innerHTML = '&#9993; Enviar por correo'; alert('Error de conexión.'); }
-              };
-              btnsEnvio.appendChild(btnEmail);
-            }
-
-            if (!celular && !emailTrab) {
-              btnsEnvio.innerHTML = '<p style="font-size:.83rem;color:#888">No hay datos de contacto registrados para este trabajador.</p>';
-            }
-
-            if (urlPZ) {
-              urlWrapPZ.innerHTML = `<div class="url-copia-wrap" style="margin-top:12px;border-color:#16a085"><strong style="color:#16a085">Enlace Paz y Salvo:</strong><br><span style="word-break:break-all;font-size:.82rem">${urlPZ}</span></div>`;
-            }
+          if (pz || fr || data.urlFirmaCT) {
+            window._pzEnvioData = {
+              nombreTrab:       data.trabajador || trabajador,
+              celular:          (pz && pz.celular) || (fr && fr.celular) || null,
+              emailTrab:        (pz && pz.email)   || (fr && fr.email)   || null,
+              urlAR:            fr ? (fr.urlFirma || fr.urlDoc) : null,
+              urlCert:          data.urlFirmaCT  || null,
+              urlEMOE:          data.emoe      ? data.emoe.urlFirma      : null,
+              urlCRS:           data.cesantias ? data.cesantias.urlFirma : null,
+              motivoRetiro:     data.motivoRetiro,
+              responsableCargo: data.responsable ? data.responsable.cargo : '',
+            };
+            poblarTarjetaEnvio(pz ? pz.urlFirma : null);
           }
         }
 
-      } else {
-        alert('Error: ' + (data.error || 'No se pudo registrar el retiro'));
-        document.getElementById('btnEnviar').disabled = false;
-      }
-    } catch {
-      document.getElementById('loadingOverlay').classList.remove('open');
-      alert('Error de conexión. Intente nuevamente.');
-      document.getElementById('btnEnviar').disabled = false;
-    }
+        // ── Estado de firmas Paz y Salvo (solo Nómina/Sistema) ─
+        if (data.pazYSalvo && !MOTIVOS_SIN_PZ.includes(data.motivoRetiro)
+            && (rolUsuario === 'Nomina' || rolUsuario === 'Sistema')) {
+          iniciarEstadoPZ(data.pazYSalvo.idPz);
+        }
+  }
+
+  // ── Estado de firmas Paz y Salvo (Nómina/Sistema) ────────────
+  const NOMBRES_AREA_PZ = {
+    trabajador: 'Trabajador', nomina: 'Nómina', tecnologia: 'Tecnología',
+    sst: 'SST', facturacion: 'Facturación', contabilidad: 'Contabilidad',
+    cuentas: 'Cuentas por Pagar', gerencia: 'Gerencia de Operaciones',
+  };
+
+  let _pzStatusTimer = null;
+  let _pzIdActualStatus = null;
+
+  function renderFirmasPZ(d) {
+    const lista = document.getElementById('listadoFirmasPZ');
+    if (!lista) return;
+    const secuencia = ['trabajador', ...(d.areasRequeridas || [])];
+    lista.innerHTML = secuencia.map(a => {
+      const firmado = d.firmas && d.firmas[a];
+      const nombre  = NOMBRES_AREA_PZ[a] || a;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+        <span style="font-size:1.1rem">${firmado ? '✅' : '⏳'}</span>
+        <span style="font-size:.87rem;font-weight:${firmado ? '600' : '400'};color:${firmado ? '#27ae60' : '#888'}">${nombre}</span>
+        ${firmado ? '<span style="font-size:.75rem;color:#27ae60;margin-left:auto">Firmado</span>' : '<span style="font-size:.75rem;color:#bbb;margin-left:auto">Pendiente</span>'}
+      </div>`;
+    }).join('');
+    const completado = d.estado === 'completado';
+    document.getElementById('pzCompletadoMsg').style.display = completado ? 'block' : 'none';
+    const btnR = document.getElementById('btnRefreshPZ');
+    if (btnR) btnR.style.display = completado ? 'none' : 'inline-block';
+    if (completado && _pzStatusTimer) { clearInterval(_pzStatusTimer); _pzStatusTimer = null; }
+  }
+
+  async function refrescarEstadoPZ() {
+    if (!_pzIdActualStatus) return;
+    try {
+      const r = await fetch(`/formretiro/api/pz-status/${_pzIdActualStatus}?usuario=${encodeURIComponent(usuario)}`);
+      const d = await r.json();
+      if (d.ok) renderFirmasPZ(d);
+    } catch (e) { console.warn('[pz-status]', e.message); }
+  }
+
+  function iniciarEstadoPZ(idPz) {
+    _pzIdActualStatus = idPz;
+    const card = document.getElementById('cardEstadoPZ');
+    if (card) card.style.display = 'block';
+    refrescarEstadoPZ();
+    if (_pzStatusTimer) clearInterval(_pzStatusTimer);
+    _pzStatusTimer = setInterval(refrescarEstadoPZ, 30000);
   }
 
   // ── Guardar artículos al Paz y Salvo ──────────────────────────
   async function guardarArticulos() {
+    const arts = obtenerArticulos();
+    // Validar: al menos un artículo seleccionado
+    if (!arts.length) {
+      alert('Seleccione al menos un artículo de la lista antes de guardar.'); return;
+    }
+    // Validar: al menos uno con "Devuelve" marcado
+    if (!arts.some(a => a.devuelve)) {
+      alert('Marque "Devuelve" en al menos un artículo antes de guardar.'); return;
+    }
     const btn = document.getElementById('btnGuardarArticulos');
     btn.disabled = true; btn.textContent = 'Guardando…';
-    const arts = obtenerArticulos();
-    const obs   = document.getElementById('obsArticulos')?.value?.trim() || '';
+    const obs = document.getElementById('obsArticulos')?.value?.trim() || '';
     try {
       const r = await fetch('/formretiro/api/actualizar-articulos-pz', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idPz: window._idPzActual, articulos: arts, observaciones: obs }),
+        body: JSON.stringify({ idPz: window._idPzActual, articulos: arts, observaciones: obs, usuario }),
       });
       const d = await r.json();
       if (d.ok) {
         btn.style.display = 'none';
         document.getElementById('articulosGuardadosOk').style.display = 'block';
+        bloquearArticulos();
+        // Mostrar botón editar para Nómina/Sistema
+        if (rolUsuario === 'Nomina' || rolUsuario === 'Sistema') {
+          document.getElementById('btnEditarArticulos').style.display = 'inline-block';
+        }
+        // Mostrar tarjeta envío con el enlace PZ generado
+        if (d.urlFirma) {
+          poblarTarjetaEnvio(d.urlFirma);
+        }
       } else {
-        alert('Error: ' + (d.error || '')); btn.disabled = false; btn.textContent = 'Guardar artículos en el Paz y Salvo';
+        alert('Error: ' + (d.error || ''));
+        btn.disabled = false; btn.textContent = 'Guardar artículos en el Paz y Salvo';
       }
     } catch {
-      alert('Error de conexión.'); btn.disabled = false; btn.textContent = 'Guardar artículos en el Paz y Salvo';
+      alert('Error de conexión.');
+      btn.disabled = false; btn.textContent = 'Guardar artículos en el Paz y Salvo';
+    }
+  }
+
+  // ── Bloquear / Desbloquear artículos ──────────────────────────
+  function bloquearArticulos() {
+    const lista = document.getElementById('listaArticulos');
+    if (!lista) return;
+    lista.querySelectorAll('input').forEach(el => el.disabled = true);
+    lista.querySelectorAll('button').forEach(el => el.style.display = 'none');
+    const btnAgregar = document.querySelector('[onclick="agregarArticuloExtra()"]');
+    if (btnAgregar) btnAgregar.style.display = 'none';
+    const obsInput = document.getElementById('obsArticulos');
+    if (obsInput) obsInput.disabled = true;
+  }
+
+  function editarArticulos() {
+    const lista = document.getElementById('listaArticulos');
+    if (!lista) return;
+    lista.querySelectorAll('input').forEach(el => el.disabled = false);
+    lista.querySelectorAll('button').forEach(el => el.style.display = '');
+    const btnAgregar = document.querySelector('[onclick="agregarArticuloExtra()"]');
+    if (btnAgregar) btnAgregar.style.display = '';
+    const obsInput = document.getElementById('obsArticulos');
+    if (obsInput) obsInput.disabled = false;
+    const btnGuardar = document.getElementById('btnGuardarArticulos');
+    if (btnGuardar) { btnGuardar.style.display = 'block'; btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar artículos en el Paz y Salvo'; }
+    document.getElementById('articulosGuardadosOk').style.display = 'none';
+    document.getElementById('btnEditarArticulos').style.display = 'none';
+  }
+
+  // ── Pre-cargar artículos guardados (modo ya-retirado) ─────────
+  function cargarArticulosGuardados(articulos, observaciones) {
+    const lista = document.getElementById('listaArticulos');
+    if (!lista) return;
+    lista.innerHTML = '';
+    articulos.forEach((art, idx) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap';
+      div.innerHTML = `
+        <input type="checkbox" id="art_chk_${idx}" checked style="width:16px;height:16px;accent-color:#16a085">
+        <label for="art_chk_${idx}" style="font-size:.88rem;flex:1;min-width:120px;margin:0">${art.nombre}</label>
+        <input type="number" placeholder="Cant." min="1" value="${art.cantidad || 1}"
+               style="width:60px;padding:5px 7px;border:1.5px solid #ddd;border-radius:5px;font-size:.85rem"
+               class="art-cantidad">
+        <label style="font-size:.78rem;color:#888;margin:0;display:flex;align-items:center;gap:4px">
+          <input type="checkbox" class="art-devuelve" ${art.devuelve ? 'checked' : ''} style="width:14px;height:14px;accent-color:#16a085">
+          Devuelve
+        </label>
+        <button type="button" onclick="this.parentElement.remove()"
+                style="background:none;border:none;color:#ccc;cursor:pointer;font-size:1rem;padding:0 4px">✕</button>`;
+      lista.appendChild(div);
+    });
+    if (observaciones) {
+      const obsInput = document.getElementById('obsArticulos');
+      if (obsInput) obsInput.value = observaciones;
+    }
+  }
+
+  // ── Tarjeta envío al trabajador (se construye al tener PZ link) ─
+  function poblarTarjetaEnvio(urlPZ) {
+    const dat = window._pzEnvioData;
+    if (!dat) return;
+    document.getElementById('cardEnvioTrabajador').style.display = 'block';
+    const btnsEnvio = document.getElementById('btnsEnvioTrabajador');
+    const urlWrapPZ = document.getElementById('urlCopiaWrapPZ');
+    btnsEnvio.innerHTML = '';
+
+    if (dat.celular) {
+      const partes = [];
+      if (dat.urlCert) partes.push('📄 Cert. Laboral: ' + dat.urlCert);
+      if (dat.urlEMOE) partes.push('📄 Examen Egreso: ' + dat.urlEMOE);
+      if (dat.urlCRS)  partes.push('📄 Cesantías: '     + dat.urlCRS);
+      if (dat.urlAR)   partes.push('📄 Aceptación Renuncia: ' + dat.urlAR);
+      if (urlPZ)       partes.push('\n✍️ Firmar Paz y Salvo: ' + urlPZ);
+      const msgWA = encodeURIComponent(
+        'Estimado(a) ' + dat.nombreTrab + ', le enviamos los documentos de su proceso de retiro en LOG&SER:\n\n'
+        + partes.join('\n')
+        + (urlPZ ? '\n\nPor favor realice la firma del Paz y Salvo a la brevedad. El enlace tiene validez de 120 horas. Gracias.' : '\n\nGracias.')
+      );
+      const btnWA = document.createElement('a');
+      btnWA.href = 'https://wa.me/57' + dat.celular + '?text=' + msgWA;
+      btnWA.target = '_blank';
+      btnWA.className = 'btn-wa';
+      btnWA.innerHTML = '&#128241; Enviar por WhatsApp';
+      btnsEnvio.appendChild(btnWA);
+    }
+
+    if (dat.emailTrab) {
+      const btnEmail = document.createElement('button');
+      btnEmail.type = 'button'; btnEmail.className = 'btn-email-envio';
+      btnEmail.innerHTML = '&#9993; Enviar por correo';
+      btnEmail.onclick = async () => {
+        btnEmail.disabled = true; btnEmail.innerHTML = 'Enviando…';
+        try {
+          const r = await fetch('/formretiro/api/enviar-trabajador', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              emailTrabajador:   dat.emailTrab,
+              nombreTrabajador:  dat.nombreTrab,
+              responsableNombre: usuarioNombre,
+              responsableCargo:  dat.responsableCargo,
+              urlPZ, urlAR: dat.urlAR, urlCert: dat.urlCert, urlEMOE: dat.urlEMOE, urlCRS: dat.urlCRS,
+              motivoRetiro:      dat.motivoRetiro,
+            }),
+          });
+          const d = await r.json();
+          if (d.ok) { btnEmail.innerHTML = '&#10003; Correo enviado'; btnEmail.style.background = '#27ae60'; }
+          else { btnEmail.disabled = false; btnEmail.innerHTML = '&#9993; Enviar por correo'; alert('Error: ' + (d.error || '')); }
+        } catch { btnEmail.disabled = false; btnEmail.innerHTML = '&#9993; Enviar por correo'; alert('Error de conexión.'); }
+      };
+      btnsEnvio.appendChild(btnEmail);
+    }
+
+    if (!dat.celular && !dat.emailTrab) {
+      btnsEnvio.innerHTML = '<p style="font-size:.83rem;color:#888">No hay datos de contacto registrados para este trabajador.</p>';
+    }
+
+    if (urlPZ) {
+      urlWrapPZ.innerHTML = '<div class="url-copia-wrap" style="margin-top:12px;border-color:#16a085"><strong style="color:#16a085">Enlace Paz y Salvo:</strong><br><span style="word-break:break-all;font-size:.82rem">' + urlPZ + '</span></div>';
     }
   }
 

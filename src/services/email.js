@@ -41,9 +41,10 @@ const CARGOS_GESTION_CALIDAD = [
 ];
 
 function ccTraslado(emailUsuario, cargo) {
-  const base = ['directorrh@logyser.com', 'gestor.nomina@logyser.com', 'admin@logyser.com', emailUsuario];
+  const base = ['admin@logyser.com', emailUsuario];
   if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
     base.push('gestioncalidad@logyser.com');
+    base.push('directorrh@logyser.com');
   }
   return [...new Set(base.filter(Boolean))].join(', ');
 }
@@ -75,8 +76,8 @@ async function notificarNuevoTraslado({ trabajador, identificacion, operacionOri
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <noreply@logyser.com>`,
-    to:      'juridica@logyser.com, subgerenciaoperaciones@logyser.com',
+    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER}>`,
+    to:      'juridica@logyser.com',
     cc:      ccTraslado(emailUsuario, cargo),
     subject: asunto,
     html:    cuerpo,
@@ -131,14 +132,14 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
       </p>
     </div>`;
 
-  const ccFirma = ['juridica@logyser.com', 'subgerenciaoperaciones@logyser.com',
-    'directorrh@logyser.com', 'gestor.nomina@logyser.com', 'admin@logyser.com', emailUsuario];
+  const ccFirma = ['juridica@logyser.com', 'admin@logyser.com', emailUsuario];
   if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
     ccFirma.push('gestioncalidad@logyser.com');
+    ccFirma.push('directorrh@logyser.com');
   }
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <noreply@logyser.com>`,
+    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER}>`,
     to:      email,
     cc:      [...new Set(ccFirma.filter(Boolean))].join(', '),
     subject: asunto,
@@ -182,13 +183,14 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
       ${FOOTER}
     </div>`;
 
-  const ccList = ['directorrh@logyser.com', 'gestor.nomina@logyser.com', 'admin@logyser.com', emailUsuario];
+  const ccList = ['gestor.nomina@logyser.com', 'admin@logyser.com', emailUsuario];
   if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
     ccList.push('gestioncalidad@logyser.com');
+    ccList.push('directorrh@logyser.com');
   }
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <noreply@logyser.com>`,
+    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER}>`,
     to:      'juridica@logyser.com, subgerenciaoperaciones@logyser.com',
     cc:      [...new Set(ccList.filter(Boolean))].join(', '),
     subject: asunto,
