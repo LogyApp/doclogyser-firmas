@@ -12,7 +12,8 @@ const {
 } = require('../services/storage');
 const { notificarRetiro, notificarDocumentoRetiroTrabajador } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
-const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, reconstruirToken } = require('../services/token');
+const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
+const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenEVR, reconstruirToken } = require('../services/token');
 const { determinarNivelYAreas } = require('../services/pazYSalvoService');
 
 const router   = express.Router();
@@ -31,6 +32,11 @@ const MOTIVOS = [
   'Terminación por Pensión',
   'Terminación Sin Justa Causa',
 ];
+
+const MOTIVOS_SIN_DOCS   = ['No tomó cargo', 'Terminación por Muerte'];
+const MOTIVOS_CON_ED     = ['Terminación en Periodo de Prueba'];
+// Motivos que aceptan TCR de Terminación (excluye Renuncia —que tiene su propio TCR— y los motivos sin docs)
+const MOTIVOS_TCR_TERMINACION = MOTIVOS.filter(m => !MOTIVOS_SIN_DOCS.includes(m) && m !== 'Renuncia');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function parsearIdentificacion(param) {
@@ -121,7 +127,6 @@ router.post('/api/subir-tcr-terminacion', async (req, res) => {
     if (!idVinculacion || !tcrBase64) {
       return res.status(400).json({ ok: false, error: 'Datos incompletos' });
     }
-    // Verificar que no esté validado
     const [docRows] = await pool.execute(
       `SELECT Validación FROM Maestro_docTrabajador
        WHERE Identificación = (
@@ -143,7 +148,6 @@ router.post('/api/subir-tcr-terminacion', async (req, res) => {
     const buffer = Buffer.from(tcrBase64.replace(/^data:.*;base64,/, ''), 'base64');
     const url = await subirPDFCartaRenuncia(identificacion, idVinculacion, buffer);
 
-    // Si ya existe registro TCR, actualizar URL; si no, crear nuevo
     if (docRows.length) {
       await pool.execute(
         `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE Prefijo = 'TCR'
@@ -178,14 +182,11 @@ router.post('/api/actualizar-articulos-pz', async (req, res) => {
     if (!idPz) return res.status(400).json({ ok: false, error: 'idPz requerido' });
 
     const articulosArr = Array.isArray(articulos) ? articulos : [];
-
-    // Debe haber al menos un artículo con devolución marcada
     const tieneDevolucion = articulosArr.some(a => a.devuelve === true || a.devuelve === 'true');
     if (!tieneDevolucion) {
       return res.status(400).json({ ok: false, error: 'Marque al menos un artículo a devolver antes de guardar' });
     }
 
-    // Cargar estado actual del PZ
     const [pzRows] = await pool.execute(
       'SELECT estado, token_trabajador FROM Maestro_pazysalvo WHERE id = ? LIMIT 1',
       [idPz]
@@ -193,12 +194,11 @@ router.post('/api/actualizar-articulos-pz', async (req, res) => {
     if (!pzRows.length) return res.status(404).json({ ok: false, error: 'Paz y Salvo no encontrado' });
     const pzActual = pzRows[0];
 
-    // PZ completado → nadie puede modificar
     if (pzActual.estado === 'completado') {
       return res.status(403).json({ ok: false, error: 'El Paz y Salvo ya está completado y no puede modificarse' });
     }
 
-    // Token ya existe (artículos guardados antes) → solo Nómina/Sistema
+    // Si ya hay token (artículos previamente guardados) → solo Nómina/Sistema pueden modificar
     if (pzActual.token_trabajador && usuarioParam) {
       const [uRows] = await pool.execute(
         'SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioParam]
@@ -213,15 +213,10 @@ router.post('/api/actualizar-articulos-pz', async (req, res) => {
       [JSON.stringify(articulosArr), (observaciones || '').slice(0, 512), idPz]
     );
 
-    // Generar token si aún no existe; si ya existe, devolver URL con el token actual
-    let urlFirma = null;
+    // Siempre generar/regenerar JWT válido (el campo token_trabajador en DB es solo el JTI, no el JWT)
+    const tokenPZ = await generarTokenPZ(idPz, 'token_trabajador', 'token_trabajador_expira');
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
-    if (!pzActual.token_trabajador) {
-      const tokenPZ = await generarTokenPZ(idPz, 'token_trabajador', 'token_trabajador_expira');
-      urlFirma = `${baseUrl}/firmar-pazysalvo/${idPz}?token=${encodeURIComponent(tokenPZ)}`;
-    } else {
-      urlFirma = `${baseUrl}/firmar-pazysalvo/${idPz}?token=${encodeURIComponent(pzActual.token_trabajador)}`;
-    }
+    const urlFirma = `${baseUrl}/firmar-pazysalvo/${idPz}?token=${encodeURIComponent(tokenPZ)}`;
 
     res.json({ ok: true, urlFirma });
   } catch (err) {
@@ -231,13 +226,12 @@ router.post('/api/actualizar-articulos-pz', async (req, res) => {
 });
 
 // ── GET /api/pz-status/:idPz ──────────────────────────────────────────────
-// Devuelve el estado de firmas por área del Paz y Salvo (solo para Nómina/Sistema)
+// Solo Nómina/Sistema
 router.get('/api/pz-status/:idPz', async (req, res) => {
   try {
     const { idPz } = req.params;
     const { usuario } = req.query;
 
-    // Verificar rol del usuario (solo Nomina y Sistema)
     if (usuario) {
       const [uRows] = await pool.execute(
         'SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]
@@ -283,19 +277,42 @@ router.get('/api/pz-status/:idPz', async (req, res) => {
 });
 
 // ── POST /api/enviar-trabajador ────────────────────────────────────────────
-// Envía correo unificado al trabajador con todos los docs y enlace PZ
 router.post('/api/enviar-trabajador', async (req, res) => {
   try {
     const { emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, motivoRetiro } = req.body;
+            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro } = req.body;
     if (!emailTrabajador) return res.status(400).json({ ok: false, error: 'Email requerido' });
     await notificarDocumentoRetiroTrabajador({
       emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, motivoRetiro,
+      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro,
     });
     res.json({ ok: true });
   } catch (err) {
     console.error('[enviar-trabajador]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/actualizar-contacto ─────────────────────────────────────────
+router.post('/api/actualizar-contacto', async (req, res) => {
+  try {
+    const { identificacion, email, celular } = req.body;
+    if (!identificacion) return res.status(400).json({ ok: false, error: 'Identificación requerida' });
+    if (!email && !celular) return res.status(400).json({ ok: false, error: 'Debe enviar email o celular' });
+
+    const campos = [];
+    const valores = [];
+    if (email !== undefined) { campos.push('`Email` = ?'); valores.push(email); }
+    if (celular !== undefined) { campos.push('`Celular` = ?'); valores.push(celular); }
+    valores.push(identificacion);
+
+    await pool.execute(
+      `UPDATE \`Maestro_Segmentación\` SET ${campos.join(', ')} WHERE \`Identificación\` = ?`,
+      valores
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[actualizar-contacto]', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -339,7 +356,6 @@ router.post('/api/reemplazar-tcr', async (req, res) => {
     if (!idVinculacion || !tcrBase64) {
       return res.status(400).json({ ok: false, error: 'Datos incompletos' });
     }
-    // Verificar que no esté validado
     const [docRows] = await pool.execute(
       `SELECT Validación FROM Maestro_docTrabajador
        WHERE Identificación = (
@@ -366,7 +382,7 @@ router.post('/api/reemplazar-tcr', async (req, res) => {
 });
 
 // ── POST /api/confirmar-responsable ───────────────────────────────────────
-// Paso 2: guarda firma del responsable, tipo renuncia, ciudad y genera tokens
+// Paso 2: guarda firma del responsable, ciudad, genera tokens y crea/actualiza Paz y Salvo
 router.post('/api/confirmar-responsable', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -380,6 +396,7 @@ router.post('/api/confirmar-responsable', async (req, res) => {
 
     const { idVinculacion, firmaBase64, tipoRenuncia, ciudadRegional } = req.body;
     if (!idVinculacion) return res.status(400).json({ ok: false, error: 'idVinculacion requerido' });
+    if (!ciudadRegional || !ciudadRegional.trim()) return res.status(400).json({ ok: false, error: 'Ingrese la ciudad para los documentos de retiro' });
 
     const [vinRows] = await pool.execute(
       `SELECT \`Id Vinculación\`, \`Identificación\`, Trabajador, Cargo,
@@ -397,14 +414,24 @@ router.post('/api/confirmar-responsable', async (req, res) => {
       if (!tipoRenuncia || !['Verbal', 'Escrita'].includes(tipoRenuncia)) {
         return res.status(400).json({ ok: false, error: 'Seleccione el tipo de renuncia (Verbal o Escrita)' });
       }
-      if (!ciudadRegional || !ciudadRegional.trim()) {
-        return res.status(400).json({ ok: false, error: 'Ingrese la ciudad para los documentos de retiro' });
-      }
     }
 
-    // Firma del responsable
-    const { identificacionFirmante, firmaUrl: firmaExistente } = await resolverFirmaUsuario(usuData.Colaborador);
-    let firmaUrl = firmaExistente;
+    // Firma del responsable - usar identificación correcta
+    let identificacionFirmante = null;
+    let firmaUrl = null;
+
+    // Intentar resolver usando la nueva función que busca en las tablas
+    const rutaResponsable = await resolverRutaFirmaResponsable(usuario);
+    if (rutaResponsable) {
+      identificacionFirmante = rutaResponsable.identificacion;
+      firmaUrl = rutaResponsable.urlFirma;
+    } else {
+      // Fallback: usar la función original si no se puede resolver
+      const resultado = await resolverFirmaUsuario(usuData.Colaborador);
+      identificacionFirmante = resultado.identificacionFirmante;
+      firmaUrl = resultado.firmaUrl;
+    }
+
     if (firmaBase64 && identificacionFirmante) {
       const buffer = Buffer.from(firmaBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
       firmaUrl = await subirFirma(identificacionFirmante, buffer);
@@ -414,23 +441,18 @@ router.post('/api/confirmar-responsable', async (req, res) => {
     }
     const nombreFirmante = limpiarNombre(usuData.Colaborador || usuData.Nombre).toUpperCase();
 
-    // Guardar tipo de renuncia y ciudad si aplica
-    const ciudadDoc = (motivoRetiro === 'Renuncia' && ciudadRegional) ? ciudadRegional.trim() : '';
-    if (motivoRetiro === 'Renuncia') {
+    const ciudadDoc = ciudadRegional.trim();
+    await pool.execute(
+      `UPDATE \`Maestro_Vinculación\` SET ar_ciudad_regional = ? WHERE \`Id Vinculación\` = ?`,
+      [ciudadDoc, idVinculacion]
+    );
+
+    if (motivoRetiro === 'Renuncia' && tipoRenuncia) {
       await pool.execute(
-        `UPDATE \`Maestro_Vinculación\` SET \`Archivo Vinculación\` = ?, ar_ciudad_regional = ? WHERE \`Id Vinculación\` = ?`,
-        [tipoRenuncia, ciudadDoc, idVinculacion]
+        `UPDATE \`Maestro_Vinculación\` SET \`Archivo Vinculación\` = ? WHERE \`Id Vinculación\` = ?`,
+        [tipoRenuncia, idVinculacion]
       );
     }
-
-    // Actualizar Maestro_pazysalvo con firma del responsable
-    await pool.execute(
-      `UPDATE Maestro_pazysalvo
-       SET firma_responsable_url = ?, firma_responsable_nombre = ?,
-           firma_responsable_cargo = ?, fecha_firma_responsable = ?
-       WHERE id_vinculacion = ?`,
-      [firmaUrl, nombreFirmante, usuData.Cargo || '', new Date(), idVinculacion]
-    );
 
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     const idVin   = vin['Id Vinculación'];
@@ -453,14 +475,13 @@ router.post('/api/confirmar-responsable', async (req, res) => {
         nombre:        limpiarNombre(vin.Trabajador),
         email:         ct.Email || null,
         celular:       String(ct.Celular || '').replace(/\D/g, '') || null,
-        urlDoc:        null,
         urlFirma:      urlFirmaAR,
         tipoRenuncia,
         idVinculacion: idVin,
       };
     }
 
-    // Token EMOE (si existe plantilla)
+    // Token EMOE (siempre que exista plantilla)
     let emoeData = null;
     try {
       const plantillaEMOE = await obtenerPlantilla('examen_egreso');
@@ -483,18 +504,63 @@ router.post('/api/confirmar-responsable', async (req, res) => {
       } catch {}
     }
 
-    // PZ y contacto final
+    // Crear o actualizar Paz y Salvo
+    let idPz = null;
     const [pzRows2] = await pool.execute(
       'SELECT id FROM Maestro_pazysalvo WHERE id_vinculacion = ? ORDER BY fecha_creacion DESC LIMIT 1',
       [idVin]
     );
-    const idPz = pzRows2.length ? pzRows2[0].id : null;
+    if (pzRows2.length) {
+      idPz = pzRows2[0].id;
+      await pool.execute(
+        `UPDATE Maestro_pazysalvo
+         SET firma_responsable_url = ?, firma_responsable_nombre = ?,
+             firma_responsable_cargo = ?, fecha_firma_responsable = ?
+         WHERE id = ?`,
+        [firmaUrl, nombreFirmante, usuData.Cargo || '', new Date(), idPz]
+      );
+    } else if (!MOTIVOS_SIN_DOCS.includes(motivoRetiro)) {
+      const { nivel, areasRequeridas } = determinarNivelYAreas(vin.Cargo);
+      idPz = uuidv4();
+      await pool.execute(
+        `INSERT INTO Maestro_pazysalvo
+         (id, id_vinculacion, identificacion, nivel_compromiso, areas_requeridas, articulos,
+          observaciones, firma_responsable_url, firma_responsable_nombre, firma_responsable_cargo,
+          fecha_firma_responsable, estado, usuario_registro, fecha_creacion)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'esperando_trabajador', ?, ?)`,
+        [idPz, idVin, String(identificacion), nivel, JSON.stringify(areasRequeridas), JSON.stringify([]),
+         null, firmaUrl, nombreFirmante, usuData.Cargo || '', new Date(), usuario, new Date()]
+      );
+    }
 
     const [segFinal] = await pool.execute(
       'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
       [identificacion]
     );
     const ctFinal = segFinal[0] || {};
+
+    // Crear registro EVR y generar token de acceso para el trabajador
+    let urlEVR = null;
+    try {
+      const idEvr   = uuidv4();
+      const idVin   = vin['Id Vinculación'];
+      await pool.execute(
+        `INSERT INTO Maestro_evaluacionretiro
+         (id_evaluacion, id_vinculacion, completada)
+         VALUES (?, ?, 0)
+         ON DUPLICATE KEY UPDATE id_evaluacion = id_evaluacion`,
+        [idEvr, idVin]
+      );
+      // Obtener el id_evaluacion real (puede ser el recién creado o el existente)
+      const [evrRows] = await pool.execute(
+        'SELECT id_evaluacion FROM Maestro_evaluacionretiro WHERE id_vinculacion = ? LIMIT 1',
+        [idVin]
+      );
+      if (evrRows.length) {
+        const tokenEVR = await generarTokenEVR(evrRows[0].id_evaluacion);
+        urlEVR = `${baseUrl}/evaluacion-retiro/${encodeURIComponent(evrRows[0].id_evaluacion)}?token=${encodeURIComponent(tokenEVR)}`;
+      }
+    } catch (e) { console.error('[EVR create]', e.message); }
 
     res.json({
       ok:           true,
@@ -503,6 +569,7 @@ router.post('/api/confirmar-responsable', async (req, res) => {
       emoe:         emoeData,
       cesantias:    crsData,
       idPz,
+      urlEVR,
       email:        ctFinal.Email || null,
       celular:      String(ctFinal.Celular || '').replace(/\D/g, '') || null,
       responsable:  { nombre: limpiarNombre(usuData.Colaborador || usuData.Nombre), cargo: usuData.Cargo || '' },
@@ -515,6 +582,7 @@ router.post('/api/confirmar-responsable', async (req, res) => {
 });
 
 // ── GET /:identificacion ───────────────────────────────────────────────────
+// Formulario de registro de retiro (Paso 1)
 router.get('/:identificacion', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -524,17 +592,14 @@ router.get('/:identificacion', async (req, res) => {
       'SELECT ID, Nombre, Rol FROM Maestro_Usuarios WHERE ID = ?', [usuario]
     );
     if (!usuRows.length) return res.status(403).send(htmlError('Usuario no autorizado'));
-    const rolUsuario = usuRows[0].Rol || '';
+    const rolUsuario      = usuRows[0].Rol || '';
+    const esNominaOSistema = ['Nomina', 'Sistema'].includes(rolUsuario);
 
     const identificacion = parsearIdentificacion(req.params.identificacion);
 
     const [vinRows] = await pool.execute(
-      `SELECT \`Id Vinculación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado, Regional,
-              \`Fecha de Retiro\`, \`Motivo del Retiro\`, \`Archivo Vinculación\`,
-              token_firma_ct, token_firma_ct_expira,
-              token_firma_ar, token_firma_ar_expira,
-              token_firma_emoe, token_firma_emoe_expira,
-              token_firma_crs, token_firma_crs_expira
+      `SELECT \`Id Vinculación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado,
+              \`Fecha de Retiro\`, \`Motivo del Retiro\`, \`Archivo Vinculación\`
        FROM \`Maestro_Vinculación\`
        WHERE \`Identificación\` = ?
        ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
@@ -543,160 +608,59 @@ router.get('/:identificacion', async (req, res) => {
     if (!vinRows.length) return res.status(404).send(htmlError('Trabajador no encontrado para esa identificación'));
     const vin = vinRows[0];
 
-    let ciudadRegional = '';
-    if (vin.Regional) {
-      const [crRows] = await pool.execute(
-        'SELECT Ciudad FROM Config_Regionales WHERE Regional = ? LIMIT 1',
-        [vin.Regional]
+    const yaRetirado   = vin.Estado === 'Retirado';
+    // Todos los roles pueden ver el formulario de registro si el trabajador no está retirado aún
+    const puedeRegistrar = !yaRetirado;
+
+    // Docs subidos en Paso 1 (TCR y ED) para mostrar estado en el resumen
+    let docTCR = null;
+    let docED  = null;
+    if (yaRetirado) {
+      const [docRows] = await pool.execute(
+        `SELECT Prefijo, Doc, \`Validación\` FROM Maestro_docTrabajador
+         WHERE Identificación = ? AND Prefijo IN ('TCR', 'ED')
+         ORDER BY FechaRegistro DESC`,
+        [String(identificacion)]
       );
-      if (crRows.length) ciudadRegional = crRows[0].Ciudad || '';
+      const docsMap = {};
+      docRows.forEach(r => { if (!docsMap[r.Prefijo]) docsMap[r.Prefijo] = r; });
+      if (docsMap['TCR']) docTCR = { url: docsMap['TCR'].Doc, validacion: docsMap['TCR']['Validación'] };
+      if (docsMap['ED'])  docED  = { url: docsMap['ED'].Doc,  validacion: docsMap['ED']['Validación']  };
     }
+
+    const idVin      = vin['Id Vinculación'];
+    const baseUrl    = `${req.protocol}://${req.get('host')}`;
+    const urlGenerarDocs = yaRetirado
+      ? `${baseUrl}/generar-retiro/${encodeURIComponent(idVin)}?usuario=${encodeURIComponent(usuario)}`
+      : null;
 
     const template = fs.readFileSync(FORM_HTML, 'utf8');
-
-    // Trabajador ya retirado → mostrar estado resumen sin error
-    if (vin.Estado === 'Retirado') {
-      // Obtener documentos generados al momento del retiro
-      const [docRows] = await pool.execute(
-        `SELECT Prefijo, Doc, \`Validación\`, TipoDocumento, FechaRegistro
-         FROM Maestro_docTrabajador
-         WHERE Identificación = ? AND Estado = 'Retirado'
-         ORDER BY FechaRegistro DESC`,
-        [identificacion]
-      );
-      // Deduplicar por Prefijo: conservar el más reciente de cada tipo
-      const docsMap = {};
-      docRows.forEach(r => {
-        if (!docsMap[r.Prefijo]) docsMap[r.Prefijo] = r;
-      });
-      const documentos = Object.values(docsMap).map(r => ({
-        prefijo:       r.Prefijo,
-        url:           r.Doc,
-        validacion:    r['Validación'],
-        tipoDocumento: r.TipoDocumento,
-      }));
-
-      // Obtener Paz y Salvo activo
-      let pazYSalvoRI = null;
-      const [pzRows] = await pool.execute(
-        `SELECT id, estado, token_trabajador, token_trabajador_expira, articulos, observaciones,
-                firma_responsable_url
-         FROM Maestro_pazysalvo
-         WHERE id_vinculacion = ? ORDER BY fecha_creacion DESC LIMIT 1`,
-        [vin['Id Vinculación']]
-      );
-      if (pzRows.length) {
-        const pzRow = pzRows[0];
-        const baseUrl2 = `${req.protocol}://${req.get('host')}`;
-        const urlFirmaPZ2 = pzRow.token_trabajador
-          ? `${baseUrl2}/firmar-pazysalvo/${pzRow.id}?token=${encodeURIComponent(pzRow.token_trabajador)}`
-          : null;
-        // Obtener contacto
-        const [segCont2] = await pool.execute(
-          'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
-          [identificacion]
-        );
-        const ct2 = segCont2[0] || {};
-        pazYSalvoRI = {
-          idPz:     pzRow.id,
-          estado:   pzRow.estado,
-          urlFirma: urlFirmaPZ2,
-          email:    ct2.Email || null,
-          celular:  String(ct2.Celular || '').replace(/\D/g, '') || null,
-          articulosGuardados: !!pzRow.token_trabajador,
-          articulos: (() => { try { return JSON.parse(pzRow.articulos || '[]'); } catch { return []; } })(),
-          observaciones: pzRow.observaciones || '',
-        };
-      }
-
-      // Reconstruir URLs de firma pendientes desde tokens almacenados
-      const baseUrlRI = `${req.protocol}://${req.get('host')}`;
-      const idVin = vin['Id Vinculación'];
-      const urlFirmaCTRI = vin.token_firma_ct
-        ? (() => { const t = reconstruirToken(vin.token_firma_ct, idVin, vin.token_firma_ct_expira); return t ? `${baseUrlRI}/firmar-certificado-retiro/${encodeURIComponent(idVin)}?token=${encodeURIComponent(t)}` : null; })()
-        : null;
-      const urlFirmaARRI = vin.token_firma_ar
-        ? (() => { const t = reconstruirToken(vin.token_firma_ar, idVin, vin.token_firma_ar_expira); return t ? `${baseUrlRI}/firmar-renuncia/${encodeURIComponent(idVin)}?token=${encodeURIComponent(t)}` : null; })()
-        : null;
-      const urlFirmaEMOERI = vin.token_firma_emoe
-        ? (() => { const t = reconstruirToken(vin.token_firma_emoe, idVin, vin.token_firma_emoe_expira); return t ? `${baseUrlRI}/firmar-examen-egreso/${encodeURIComponent(idVin)}?token=${encodeURIComponent(t)}` : null; })()
-        : null;
-      const urlFirmaCRSRI = vin.token_firma_crs
-        ? (() => { const t = reconstruirToken(vin.token_firma_crs, idVin, vin.token_firma_crs_expira); return t ? `${baseUrlRI}/firmar-cesantias/${encodeURIComponent(idVin)}?token=${encodeURIComponent(t)}` : null; })()
-        : null;
-
-      // firmaRenuncia para envío al trabajador
-      let firmaRenunciaRI = null;
-      if ((vin['Motivo del Retiro'] || '') === 'Renuncia') {
-        const arDoc = docsMap['AR'];
-        const [segCont3] = await pool.execute(
-          'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
-          [identificacion]
-        );
-        const ct3 = segCont3[0] || {};
-        firmaRenunciaRI = {
-          nombre:        limpiarNombre(vin.Trabajador),
-          email:         ct3.Email || null,
-          celular:       String(ct3.Celular || '').replace(/\D/g, '') || null,
-          urlDoc:        arDoc ? arDoc.url : null,
-          urlFirma:      urlFirmaARRI,
-          tipoRenuncia:  vin['Archivo Vinculación'] || null,
-          idVinculacion: idVin,
-        };
-      }
-
-      const MOTIVOS_SIN_DOCS_RI = ['No tomó cargo', 'Terminación por Muerte'];
-      let firmaConfirmada = MOTIVOS_SIN_DOCS_RI.includes(vin['Motivo del Retiro']);
-      if (!firmaConfirmada) {
-        if (pzRows.length && pzRows[0].firma_responsable_url) {
-          firmaConfirmada = true;
-        } else if (!pzRows.length) {
-          firmaConfirmada = true; // retiro sin PZ (legado), omitir paso 2
-        }
-      }
-
-      const config = JSON.stringify({
-        identificacion:   String(identificacion),
-        usuario,
-        usuarioNombre:    usuRows[0].Nombre || usuario,
-        rolUsuario,
-        trabajador:       limpiarNombre(vin.Trabajador),
-        cargo:            vin.Cargo || '',
-        fechaIngreso:     formatFechaCO(vin['Fecha de Ingreso']),
-        rawFechaIngreso:  toDateStr(vin['Fecha de Ingreso']),
-        motivos:          MOTIVOS,
-        ciudadRegional,
-        yaRetirado:       true,
-        firmaConfirmada,
-        retiroInfo: {
-          trabajador:   limpiarNombre(vin.Trabajador),
-          identificacion: String(identificacion),
-          idVinculacion:  idVin,
-          fechaRetiro:  formatFechaCO(vin['Fecha de Retiro']),
-          motivoRetiro: vin['Motivo del Retiro'] || '—',
-          tipoRenuncia: vin['Archivo Vinculación'] || null,
-          documentos,
-          pazYSalvo:    pazYSalvoRI,
-          firmaRenuncia: firmaRenunciaRI,
-          urlFirmaCT:   urlFirmaCTRI,
-          urlFirmaAR:   urlFirmaARRI,
-          urlFirmaEMOE: urlFirmaEMOERI,
-          urlFirmaCRS:  urlFirmaCRSRI,
-        },
-      }).replace(/<\/script>/gi, '<\\/script>');
-      return res.send(template.replace('__CONFIG__', config));
-    }
-
     const config = JSON.stringify({
-      identificacion:   String(identificacion),
+      identificacion:  String(identificacion),
       usuario,
-      usuarioNombre:    usuRows[0].Nombre || usuario,      rolUsuario,      trabajador:       limpiarNombre(vin.Trabajador),
-      cargo:            vin.Cargo || '',
-      fechaIngreso:     formatFechaCO(vin['Fecha de Ingreso']),
-      rawFechaIngreso:  toDateStr(vin['Fecha de Ingreso']),
-      motivos:          MOTIVOS,
-      ciudadRegional,
-      yaRetirado:       false,
+      usuarioNombre:   usuRows[0].Nombre || usuario,
+      rolUsuario,
+      puedeRegistrar,
+      esNominaOSistema,
+      trabajador:      limpiarNombre(vin.Trabajador),
+      cargo:           vin.Cargo || '',
+      fechaIngreso:    formatFechaCO(vin['Fecha de Ingreso']),
+      rawFechaIngreso: toDateStr(vin['Fecha de Ingreso']),
+      motivos:         MOTIVOS,
+      motivosCONED:    MOTIVOS_CON_ED,
+      motivosTCR:      MOTIVOS_TCR_TERMINACION,
+      yaRetirado,
+      retiroInfo: yaRetirado ? {
+        trabajador:    limpiarNombre(vin.Trabajador),
+        identificacion: String(identificacion),
+        idVinculacion: idVin,
+        fechaRetiro:   formatFechaCO(vin['Fecha de Retiro']),
+        motivoRetiro:  vin['Motivo del Retiro'] || '—',
+        tipoRenuncia:  vin['Archivo Vinculación'] || null,
+        docTCR,
+        docED,
+      } : null,
+      urlGenerarDocs,
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(template.replace('__CONFIG__', config));
@@ -707,24 +671,29 @@ router.get('/:identificacion', async (req, res) => {
 });
 
 // ── POST /:identificacion ──────────────────────────────────────────────────
-// Paso 1: registra el retiro. Firma, tipo de renuncia y documentos van en confirmar-responsable.
+// Paso 1: registra el retiro con documentos opcionales (TCR, ED)
 router.post('/:identificacion', async (req, res) => {
   try {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ ok: false, error: 'Parámetro ?usuario requerido' });
 
     const [usuRows] = await pool.execute(
-      'SELECT ID, Nombre, Colaborador, Cargo FROM Maestro_Usuarios WHERE ID = ?', [usuario]
+      'SELECT ID, Nombre, Colaborador, Cargo, Rol FROM Maestro_Usuarios WHERE ID = ?', [usuario]
     );
     if (!usuRows.length) return res.status(403).json({ ok: false, error: 'Usuario no autorizado' });
     const usuData = usuRows[0];
+    const esNominaOSistema = ['Nomina', 'Sistema'].includes(usuData.Rol || '');
 
     const identificacion = parsearIdentificacion(req.params.identificacion);
-    const { fechaRetiro, motivoRetiro } = req.body;
+    const { fechaRetiro, motivoRetiro, tipoRenuncia, tcrBase64, edBase64, estado } = req.body;
 
     if (!fechaRetiro) return res.status(400).json({ ok: false, error: 'La fecha de retiro es obligatoria' });
     if (!motivoRetiro || !MOTIVOS.includes(motivoRetiro)) {
       return res.status(400).json({ ok: false, error: 'Motivo de retiro inválido' });
+    }
+    // Roles distintos de Nómina/Sistema deben confirmar el estado 'Retirado' en el formulario
+    if (!esNominaOSistema && estado !== 'Retirado') {
+      return res.status(400).json({ ok: false, error: 'Debe seleccionar el estado "Retirado" para continuar' });
     }
 
     const [vinRows] = await pool.execute(
@@ -736,96 +705,127 @@ router.post('/:identificacion', async (req, res) => {
     );
     if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Trabajador no encontrado' });
     const vin = vinRows[0];
-    if (vin.Estado === 'Retirado') return res.status(409).json({ ok: false, error: 'El trabajador ya figura como retirado' });
+
+    // Prevenir re-registro si ya está retirado (solo para roles no-Nómina)
+    if (vin.Estado === 'Retirado' && !esNominaOSistema) {
+      return res.status(409).json({ ok: false, error: 'El trabajador ya figura como retirado' });
+    }
 
     const ahora = fechaHoraBogota();
+    const idVin = vin['Id Vinculación'];
 
+    // Actualizar vinculación y limpiar estado de generación anterior para empezar limpio
     await pool.execute(
       `UPDATE \`Maestro_Vinculación\`
        SET Estado = 'Retirado',
            \`Fecha de Retiro\` = ?,
            \`Motivo del Retiro\` = ?,
+           \`Archivo Vinculación\` = ?,
            \`Fecha Actualización\` = ?,
-           Usuario = ?
-       WHERE \`Id Vinculación\` = ? AND Estado != 'Retirado'`,
-      [fechaRetiro, motivoRetiro, ahora, usuario, vin['Id Vinculación']]
+           Usuario = ?,
+           ar_ciudad_regional      = NULL,
+           token_firma_ct          = NULL, token_firma_ct_expira   = NULL,
+           token_firma_ar          = NULL, token_firma_ar_expira   = NULL,
+           token_firma_emoe        = NULL, token_firma_emoe_expira = NULL,
+           token_firma_crs         = NULL, token_firma_crs_expira  = NULL
+       WHERE \`Id Vinculación\` = ?`,
+      [fechaRetiro, motivoRetiro, tipoRenuncia || null, ahora, usuario, idVin]
     );
 
     notificarRetiro({
-      trabajador:       vin.Trabajador,
-      identificacion:   String(identificacion),
-      cargo:            vin.Cargo,
-      operacion:        vin['Operación'],
+      trabajador:     vin.Trabajador,
+      identificacion: String(identificacion),
+      cargo:          vin.Cargo,
+      operacion:      vin['Operación'],
       fechaRetiro,
       motivoRetiro,
-      registradoPor:    usuData.Nombre || usuario,
-      emailRegistrador: usuData.Email  || null,
-    }).then(() => marcarNotificado(vin['Id Vinculación']))
+      registradoPor:  usuData.Nombre || usuario,
+    }).then(() => marcarNotificado(idVin))
       .catch(e => console.error('[retiro email]', e.message));
 
-    // Motivos que no generan documentos ni Paz y Salvo
-    const MOTIVOS_SIN_DOCS = ['No tomó cargo', 'Terminación por Muerte'];
-    if (MOTIVOS_SIN_DOCS.includes(motivoRetiro)) {
-      return res.json({
-        ok:              true,
-        trabajador:      limpiarNombre(vin.Trabajador),
-        identificacion:  String(identificacion),
-        idVinculacion:   vin['Id Vinculación'],
-        cargo:           vin.Cargo || '',
-        fechaRetiro,
-        motivoRetiro,
-        firmaConfirmada: true,
-        pazYSalvo:       null,
-      });
+    // TCR: Carta de Renuncia (Renuncia Escrita) o Terminación de Contrato (otros motivos aplicables)
+    if (tcrBase64 && !MOTIVOS_SIN_DOCS.includes(motivoRetiro)) {
+      const esCartaRenuncia = motivoRetiro === 'Renuncia' && tipoRenuncia === 'Escrita';
+      const esTCRTerminacion = MOTIVOS_TCR_TERMINACION.includes(motivoRetiro);
+      if (esCartaRenuncia || esTCRTerminacion) {
+        try {
+          const buffer = Buffer.from(tcrBase64.replace(/^data:.*;base64,/, ''), 'base64');
+          const urlTCR = await subirPDFCartaRenuncia(identificacion, idVin, buffer);
+          // Actualizar si ya existe, insertar si no
+          const [existeTCR] = await pool.execute(
+            `SELECT id FROM Maestro_docTrabajador
+             WHERE Identificación = ? AND Prefijo = 'TCR'
+             ORDER BY FechaRegistro DESC LIMIT 1`,
+            [String(identificacion)]
+          );
+          if (existeTCR.length) {
+            await pool.execute(
+              `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ?
+               WHERE id = ?`,
+              [urlTCR, ahora, existeTCR[0].id]
+            );
+          } else {
+            await registrarDocTrabajador({
+              regional: vin.Regional || null,
+              operacion: vin['Operación'] || null,
+              identificacion: String(identificacion),
+              fechaIngreso: vin['Fecha de Ingreso'],
+              tipoDocumento: '55',
+              prefijo: 'TCR',
+              doc: urlTCR,
+              observaciones: esCartaRenuncia ? 'Carta de renuncia del trabajador' : 'Terminación de contrato',
+              usuario,
+            });
+          }
+        } catch (e) { console.error('[TCR Paso1 error]', e.message); }
+      }
     }
 
-    // Crear registro de Paz y Salvo (firma y artículos se completan en pasos posteriores)
-    let pazYSalvoData = null;
-    try {
-      const { nivel, areasRequeridas } = determinarNivelYAreas(vin.Cargo);
-      const idPz  = uuidv4();
-      const idVin = vin['Id Vinculación'];
-      const ahoraPZ = new Date();
-
-      const [segContactPZ] = await pool.execute(
-        'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
-        [identificacion]
-      );
-      const emailTrab   = segContactPZ[0]?.Email || null;
-      const celularTrab = String(segContactPZ[0]?.Celular || '').replace(/\D/g, '') || null;
-
-      await pool.execute(
-        `INSERT INTO Maestro_pazysalvo
-         (id, id_vinculacion, identificacion, nivel_compromiso, areas_requeridas, articulos,
-          observaciones, firma_responsable_url, firma_responsable_nombre, firma_responsable_cargo,
-          fecha_firma_responsable, estado, usuario_registro, fecha_creacion)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'esperando_trabajador', ?, ?)`,
-        [idPz, idVin, String(identificacion), nivel,
-         JSON.stringify(areasRequeridas), JSON.stringify([]),
-         null, null, null, null, null, usuario, ahoraPZ]
-      );
-
-      pazYSalvoData = {
-        idPz, urlFirma: null,
-        nombre: limpiarNombre(vin.Trabajador),
-        email: emailTrab, celular: celularTrab,
-        nivel, areasRequeridas,
-      };
-    } catch (ePz) {
-      console.error('[PZ creacion]', ePz.message);
+    // ED: Evaluación de Desempeño (solo para Terminación en Periodo de Prueba)
+    if (edBase64 && MOTIVOS_CON_ED.includes(motivoRetiro)) {
+      try {
+        const buffer = Buffer.from(edBase64.replace(/^data:.*;base64,/, ''), 'base64');
+        const urlED = await subirPDFEvaluacionDesempeno(identificacion, idVin, buffer);
+        const [existeED] = await pool.execute(
+          `SELECT id FROM Maestro_docTrabajador
+           WHERE Identificación = ? AND Prefijo = 'ED'
+           ORDER BY FechaRegistro DESC LIMIT 1`,
+          [String(identificacion)]
+        );
+        if (existeED.length) {
+          await pool.execute(
+            `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+            [urlED, ahora, existeED[0].id]
+          );
+        } else {
+          await registrarDocTrabajador({
+            regional: vin.Regional || null,
+            operacion: vin['Operación'] || null,
+            identificacion: String(identificacion),
+            fechaIngreso: vin['Fecha de Ingreso'],
+            tipoDocumento: '59',
+            prefijo: 'ED',
+            doc: urlED,
+            observaciones: 'Evaluación de desempeño — Periodo de Prueba',
+            usuario,
+          });
+        }
+      } catch (e) { console.error('[ED Paso1 error]', e.message); }
     }
+
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const urlGenerarDocs = `${baseUrl}/generar-retiro/${encodeURIComponent(idVin)}?usuario=${encodeURIComponent(usuario)}`;
 
     res.json({
-      ok:              true,
-      trabajador:      limpiarNombre(vin.Trabajador),
-      identificacion:  String(identificacion),
-      idVinculacion:   vin['Id Vinculación'],
-      cargo:           vin.Cargo || '',
-      operacion:       vin['Operación'] || '',
+      ok:             true,
+      trabajador:     limpiarNombre(vin.Trabajador),
+      identificacion: String(identificacion),
+      idVinculacion:  idVin,
+      cargo:          vin.Cargo || '',
       fechaRetiro,
       motivoRetiro,
-      firmaConfirmada: false,
-      pazYSalvo:       pazYSalvoData,
+      tipoRenuncia:   tipoRenuncia || null,
+      urlGenerarDocs,
     });
   } catch (err) {
     console.error('[formretiro POST]', err);

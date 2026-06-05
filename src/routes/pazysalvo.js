@@ -5,6 +5,7 @@ const pool = require('../services/db');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { validarTokenPZ, generarTokenPZ } = require('../services/token');
 const { notificarAreaPazYSalvo } = require('../services/email');
+const { resolverRutaFirmaTrabajador } = require('../services/firmaPathResolver');
 const { EMAILS_AREA } = require('../services/pazYSalvoService');
 
 const router = express.Router();
@@ -107,12 +108,15 @@ router.post('/:idPz', async (req, res) => {
       return res.status(410).json({ ok: false, error: 'Documento ya firmado' });
     }
 
-    // Guardar firma del trabajador
+    // Guardar firma del trabajador usando su Identificación
     let urlFirma;
     if (es_nueva_firma && firma_base64) {
       const base64Data = firma_base64.replace(/^data:image\/png;base64,/, '');
       const bufferPng = Buffer.from(base64Data, 'base64');
-      urlFirma = await subirFirma(pz.identificacion, bufferPng);
+      // Usar la Identificación del trabajador para guardar la firma
+      const rutaTrabajador = await resolverRutaFirmaTrabajador(pz.identificacion);
+      const carpetaFirma = rutaTrabajador?.identificacion || pz.identificacion;
+      urlFirma = await subirFirma(carpetaFirma, bufferPng);
     } else {
       const { obtenerUrlFirmaReciente } = require('../services/storage');
       urlFirma = await obtenerUrlFirmaReciente(pz.identificacion);

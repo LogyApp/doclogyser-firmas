@@ -1,0 +1,16 @@
+{
+  "name": "document-classifier-function",
+  "version": "1.0.0",
+  "description": "Cloud Function para clasificar y almacenar documentos PDF via Document AI",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google-cloud/documentai": "^8.0.0",
+    "@google-cloud/functions-framework": "^3.4.0",
+    "@google-cloud/storage": "^7.19.0",
+    "mysql2": "^3.9.0",
+    "uuid": "^9.0.0"
+  }
+}

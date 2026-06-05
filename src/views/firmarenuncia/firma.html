@@ -228,8 +228,10 @@
     badgeEl.innerHTML = '<span class="badge-tipo badge-escrita">Escrita</span>';
   }
 
-  // ── Toggle documento ───────────────────────────────────────────
-  let docVisible = true;
+  // ── Toggle documento — colapsado por defecto ───────────────────
+  let docVisible = false;
+  document.getElementById('docBody').style.display = 'none';
+  document.getElementById('btnToggle').textContent = '▼ Ver documento';
   function toggleDoc() {
     docVisible = !docVisible;
     document.getElementById('docBody').style.display   = docVisible ? '' : 'none';

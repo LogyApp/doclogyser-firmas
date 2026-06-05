@@ -208,7 +208,11 @@
   document.getElementById('contenidoDoc').innerHTML = documentoHtml;
 
   // ── Toggle documento ───────────────────────────────────────────
-  let docVisible = true;
+  // Documento colapsado por defecto — el trabajador decide si lo despliega
+  let docVisible = false;
+  document.getElementById('docBody').style.display = 'none';
+  document.getElementById('btnToggle').textContent = '▼ Ver documento';
+
   function toggleDoc() {
     docVisible = !docVisible;
     document.getElementById('docBody').style.display = docVisible ? '' : 'none';

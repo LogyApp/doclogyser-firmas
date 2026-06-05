@@ -1,32 +1,38 @@
 require('dotenv').config();
 const express = require('express');
 
+const reportesRoutes                 = require('./src/routes/reportes');
 const adminRoutes                    = require('./src/routes/admin');
 const firmaRoutes                    = require('./src/routes/firma');
 const formtrasladoRoutes             = require('./src/routes/formtraslado');
 const formretiroRoutes               = require('./src/routes/formretiro');
+const generarretiroRoutes            = require('./src/routes/generarretiro');
 const firmarenunciaRoutes            = require('./src/routes/firmarenuncia');
 const firmarcertificadoretiroRoutes  = require('./src/routes/firmarcertificadoretiro');
 const firmarexamenegresoRoutes       = require('./src/routes/firmarexamenegreso');
 const firmarcesantiasRoutes          = require('./src/routes/firmarcesantias');
 const pazysalvoRoutes                = require('./src/routes/pazysalvo');
 const pazysalvoareaRoutes            = require('./src/routes/pazysalvoarea');
+const evaluacionretiroRoutes         = require('./src/routes/evaluacionretiro');
 
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+app.use('/reportes', reportesRoutes);
 app.use('/admin', adminRoutes);
 app.use('/doclogyser', firmaRoutes);
 app.use('/formtraslado', formtrasladoRoutes);
 app.use('/formretiro', formretiroRoutes);
+app.use('/generar-retiro', generarretiroRoutes);
 app.use('/firmar-renuncia', firmarenunciaRoutes);
 app.use('/firmar-certificado-retiro', firmarcertificadoretiroRoutes);
 app.use('/firmar-examen-egreso', firmarexamenegresoRoutes);
 app.use('/firmar-cesantias', firmarcesantiasRoutes);
 app.use('/firmar-pazysalvo', pazysalvoRoutes);
 app.use('/pazysalvo-area', pazysalvoareaRoutes);
+app.use('/evaluacion-retiro', evaluacionretiroRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   const devRoutes = require('./src/routes/dev');

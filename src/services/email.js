@@ -632,27 +632,50 @@ async function notificarPazYSalvoCompletado({ trabajador, identificacion, cargo,
 
 async function notificarDocumentoRetiroTrabajador({
   emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-  urlPZ, urlAR, urlCert, urlEMOE, urlCRS, motivoRetiro,
+  urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro,
 }) {
   const esRenuncia = motivoRetiro === 'Renuncia';
   const asunto = 'Documentación de retiro y proceso de liquidación — LOG&SER S.A.S.';
 
-  // Construir lista de docs adjuntos
+  // Lista de documentos (enlaces de firma)
   const docsItems = [
-    urlCert  ? `<li>📄 <a href="${urlCert}" style="color:#1a5fa8">Certificado Laboral</a></li>`          : '',
-    urlEMOE  ? `<li>📄 <a href="${urlEMOE}" style="color:#1a5fa8">Autorización para Examen Médico de Egreso</a></li>` : '',
-    urlCRS   ? `<li>📄 <a href="${urlCRS}"  style="color:#1a5fa8">Autorización de retiro de cesantías</a></li>`       : '',
-    (esRenuncia && urlAR) ? `<li>📄 <a href="${urlAR}" style="color:#1a5fa8">Aceptación de su renuncia</a></li>`      : '',
+    urlCert  ? `<li>📄 <a href="${urlCert}" style="color:#1a5fa8">Certificado Laboral</a></li>`                               : '',
+    urlEMOE  ? `<li>📄 <a href="${urlEMOE}" style="color:#1a5fa8">Autorización para Examen Médico de Egreso</a></li>`        : '',
+    urlCRS   ? `<li>📄 <a href="${urlCRS}"  style="color:#1a5fa8">Autorización de retiro de cesantías</a></li>`              : '',
+    (esRenuncia && urlAR) ? `<li>📄 <a href="${urlAR}" style="color:#1a5fa8">Aceptación de su renuncia</a></li>`             : '',
   ].filter(Boolean).join('\n');
 
-  const linksBtn = urlPZ
-    ? `<div style="text-align:center;margin:24px 0">
-        <a href="${urlPZ}" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
-          ✍️ Firmar Paz y Salvo
-        </a>
-      </div>
-      <p style="color:#aaa;font-size:.78rem;margin-top:8px;word-break:break-all">Si el botón no funciona: <span style="color:#1a5fa8">${urlPZ}</span></p>`
-    : '';
+  // Bloque Paz y Salvo (solo si hay enlace)
+  const bloquePZ = urlPZ ? `
+        <p style="color:#555;margin:0 0 8px;font-size:.93rem;line-height:1.6">
+          Adicionalmente, para proceder con el trámite de su liquidación, es indispensable que realice la
+          <strong>firma digital del Paz y Salvo</strong>:
+        </p>
+        <div style="text-align:center;margin:18px 0">
+          <a href="${urlPZ}" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:13px 32px;border-radius:7px;font-size:.97rem;font-weight:700">
+            ✍️ Firmar Paz y Salvo
+          </a>
+        </div>
+        <p style="color:#aaa;font-size:.75rem;margin:4px 0 16px;word-break:break-all">Si el botón no funciona: <span style="color:#1a5fa8">${urlPZ}</span></p>` : '';
+
+  // Bloque Evaluación de retiro (solo si hay enlace)
+  const bloqueEVR = urlEVR ? `
+        <p style="color:#555;margin:16px 0 8px;font-size:.93rem;line-height:1.6">
+          También le invitamos a diligenciar la <strong>Evaluación de Retiro</strong> (no requiere firma,
+          solo completar el formulario). Su retroalimentación es muy valiosa para nosotros:
+        </p>
+        <div style="text-align:center;margin:14px 0">
+          <a href="${urlEVR}" style="display:inline-block;background:#8e44ad;color:#fff;text-decoration:none;padding:11px 28px;border-radius:7px;font-size:.92rem;font-weight:700">
+            📝 Diligenciar Evaluación de Retiro
+          </a>
+        </div>
+        <p style="color:#aaa;font-size:.75rem;margin:4px 0 16px;word-break:break-all">Si el botón no funciona: <span style="color:#1a5fa8">${urlEVR}</span></p>` : '';
+
+  const hayAcciones = urlPZ || urlEVR;
+  const avisoVigencia = hayAcciones ? `
+        <div style="background:#fffbea;border-left:4px solid #f0d060;padding:12px 16px;border-radius:0 4px 4px 0;font-size:.83rem;color:#7a6000;margin:16px 0">
+          ⚠️ Los enlaces tienen una validez de <strong>120 horas</strong>. Si no puede acceder, comuníquese con el área de Recursos Humanos.
+        </div>` : '';
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
@@ -661,34 +684,21 @@ async function notificarDocumentoRetiroTrabajador({
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <p style="color:#555;margin:0 0 6px;font-size:.95rem">Cordial saludo, <strong>${nombreTrabajador}</strong></p>
-        <p style="color:#555;margin:0 0 20px;font-size:.93rem;line-height:1.6">
+        <p style="color:#555;margin:0 0 18px;font-size:.93rem;line-height:1.6">
           Por medio del presente, en representación de <strong>LOG&SER - Apoyo Logístico y Operativo S.A.S.</strong>,
-          le hacemos entrega de los documentos correspondientes a la finalización de su vínculo laboral con nuestra compañía:
+          le hacemos entrega de los documentos correspondientes a la finalización de su vínculo laboral:
         </p>
-
-        <ul style="color:#333;font-size:.92rem;line-height:2;padding-left:18px;margin:0 0 20px">
+        <ul style="color:#333;font-size:.92rem;line-height:2;padding-left:18px;margin:0 0 18px">
           ${docsItems}
         </ul>
-
-        <p style="color:#555;margin:0 0 16px;font-size:.93rem;line-height:1.6">
-          Asimismo, le informamos que para proceder con el trámite de su liquidación de prestaciones sociales y salarios pendientes,
-          es indispensable que realice la <strong>firma digital del Paz y Salvo</strong>, el cual incluye
-          también la Evaluación de retiro (agradecemos sus comentarios, son muy valiosos para nuestra mejora continua).
-        </p>
-
-        <p style="color:#555;margin:0 0 8px;font-size:.93rem">Para realizar la firma digital, ingrese al siguiente enlace:</p>
-        ${linksBtn}
-
-        <div style="background:#fffbea;border-left:4px solid #f0d060;padding:12px 16px;border-radius:0 4px 4px 0;font-size:.83rem;color:#7a6000;margin:20px 0">
-          ⚠️ El enlace de firma tiene una validez de <strong>120 horas</strong>. Si no puede acceder, comuníquese con el área de Recursos Humanos.
-        </div>
-
+        ${bloquePZ}
+        ${bloqueEVR}
+        ${avisoVigencia}
         <p style="color:#555;font-size:.9rem;line-height:1.6;margin:0 0 4px">
-          Le agradecemos el tiempo dedicado a nuestra organización y le recordamos que la gestión oportuna
-          de estos documentos permitirá que el área administrativa avance sin contratiempos con su liquidación definitiva.
+          Le agradecemos el tiempo dedicado a nuestra organización.
+          La gestión oportuna de estos documentos permitirá que el área administrativa avance sin contratiempos con su liquidación definitiva.
         </p>
-        <p style="color:#555;font-size:.9rem;margin:0 0 20px">Quedamos atentos a cualquier inquietud que pueda surgir durante este proceso.</p>
-
+        <p style="color:#555;font-size:.9rem;margin:0 0 20px">Quedamos atentos a cualquier inquietud que pueda surgir.</p>
         <p style="color:#888;font-size:.85rem;margin:0">Atentamente,</p>
         <p style="color:#1a1a2e;font-weight:700;font-size:.92rem;margin:4px 0 0">${responsableNombre || ''}</p>
         <p style="color:#888;font-size:.82rem;margin:2px 0 0">${responsableCargo || ''}</p>
@@ -707,6 +717,58 @@ async function notificarDocumentoRetiroTrabajador({
   });
 }
 
+// ── Notificación automática: todos los documentos de retiro firmados ───────
+async function notificarDocumentosRetiroConcluidos({
+  emailTrabajador, nombreTrabajador, urlCT, urlAR, urlEMOE, urlCRS,
+}) {
+  const asunto = `Sus documentos de retiro están listos — ${nombreTrabajador}`;
+
+  const items = [
+    urlCT   ? `<li style="margin-bottom:10px">📄 <a href="${urlCT}" style="color:#1a5fa8;font-weight:bold">Certificado Laboral de Retiro</a></li>` : '',
+    urlAR   ? `<li style="margin-bottom:10px">📄 <a href="${urlAR}" style="color:#1a5fa8;font-weight:bold">Carta de Aceptación de Renuncia</a></li>` : '',
+    urlEMOE ? `<li style="margin-bottom:10px">📄 <a href="${urlEMOE}" style="color:#1a5fa8;font-weight:bold">Autorización Examen Médico de Egreso</a></li>` : '',
+    urlCRS  ? `<li style="margin-bottom:10px">📄 <a href="${urlCRS}" style="color:#1a5fa8;font-weight:bold">Autorización Retiro de Cesantías</a></li>` : '',
+  ].filter(Boolean).join('\n');
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #27ae60;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
+          <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso de firma completado</span>
+        </div>
+        <h2 style="color:#1a1a2e;margin:0 0 12px;font-size:1.2rem">Sus documentos de retiro están disponibles</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.93rem;line-height:1.6">
+          Estimado/a <strong>${nombreTrabajador}</strong>, le informamos que el proceso de firma de sus documentos de retiro
+          ha sido completado exitosamente. A continuación puede acceder a sus documentos firmados:
+        </p>
+        <ul style="padding-left:18px;margin:0 0 24px;font-size:.92rem;line-height:1.5">
+          ${items}
+        </ul>
+        <div style="background:#f8f9fb;border-left:4px solid #1a1a2e;padding:12px 16px;font-size:.85rem;color:#555;margin-bottom:20px">
+          Su <strong>Paz y Salvo</strong> se tramitará por separado. Será notificado/a cuando esté disponible para su firma.
+        </div>
+        <p style="color:#888;font-size:.85rem;margin:0;line-height:1.6">
+          Si tiene alguna inquietud, comuníquese con el área de Recursos Humanos.<br>
+          Correo: <a href="mailto:retiros@logyser.com" style="color:#1a5fa8">retiros@logyser.com</a>
+        </p>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S. · NIT 900.318.733-1
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER || 'noreply@logyser.com'}>`,
+    to:      emailTrabajador,
+    cc:      'retiros@logyser.com',
+    subject: asunto,
+    html:    cuerpo,
+  });
+}
+
 module.exports = {
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
@@ -719,4 +781,5 @@ module.exports = {
   notificarPazYSalvoTrabajador,
   notificarPazYSalvoCompletado,
   notificarDocumentoRetiroTrabajador,
+  notificarDocumentosRetiroConcluidos,
 };

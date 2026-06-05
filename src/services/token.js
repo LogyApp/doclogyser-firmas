@@ -190,6 +190,33 @@ async function validarTokenCRS(token, idVinculacion) {
   return { valido: true };
 }
 
+// ── Token EVR (Evaluación de Retiro) — 120 horas, igual que PZ ────────────
+async function generarTokenEVR(idEvaluacion) {
+  const jti      = crypto.randomBytes(32).toString('hex');
+  const expiraEn = new Date(Date.now() + PZ_HOURS * 3600 * 1000);
+  const token    = jwt.sign({ jti, id: idEvaluacion }, SECRET, { expiresIn: `${PZ_HOURS}h` });
+  await pool.execute(
+    'UPDATE Maestro_evaluacionretiro SET token_acceso = ?, token_acceso_expira = ? WHERE id_evaluacion = ?',
+    [jti, expiraEn, idEvaluacion]
+  );
+  return token;
+}
+
+async function validarTokenEVR(token, idEvaluacion) {
+  let payload;
+  try { payload = jwt.verify(token, SECRET); } catch { return { valido: false, motivo: 'jwt_invalido' }; }
+  const [rows] = await pool.execute(
+    'SELECT token_acceso, token_acceso_expira, completada FROM Maestro_evaluacionretiro WHERE id_evaluacion = ?',
+    [idEvaluacion]
+  );
+  if (!rows.length) return { valido: false, motivo: 'no_encontrado' };
+  const fila = rows[0];
+  if (fila.token_acceso !== payload.jti) return { valido: false, motivo: 'token_no_coincide' };
+  if (new Date(fila.token_acceso_expira) < new Date()) return { valido: false, motivo: 'expirado' };
+  if (fila.completada) return { valido: false, motivo: 'ya_completada' };
+  return { valido: true };
+}
+
 function reconstruirToken(jti, idVinculacion, expira) {
   if (!jti || !expira) return null;
   const msRestante = new Date(expira).getTime() - Date.now();
@@ -197,4 +224,4 @@ function reconstruirToken(jti, idVinculacion, expira) {
   return jwt.sign({ jti, id: idVinculacion }, SECRET, { expiresIn: Math.floor(msRestante / 1000) });
 }
 
-module.exports = { generarToken, validarToken, generarTokenAR, validarTokenAR, generarTokenPZ, validarTokenPZ, generarTokenCT, validarTokenCT, generarTokenEMOE, validarTokenEMOE, generarTokenCRS, validarTokenCRS, reconstruirToken };
+module.exports = { generarToken, validarToken, generarTokenAR, validarTokenAR, generarTokenPZ, validarTokenPZ, generarTokenCT, validarTokenCT, generarTokenEMOE, validarTokenEMOE, generarTokenCRS, validarTokenCRS, generarTokenEVR, validarTokenEVR, reconstruirToken };

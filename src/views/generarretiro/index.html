@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentos de Retiro — LOG&amp;SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; min-height: 100vh; }
+    .wrapper { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+
+    /* ── Header ── */
+    .card-titulo {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      padding: 18px 24px; margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .card-titulo img { height: 58px; flex-shrink: 0; }
+    .page-title { font-size: 1.18rem; font-weight: bold; color: #1a1a2e; }
+    .page-sub   { font-size: .8rem; color: #999; margin-top: 2px; }
+    .badge-row  { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      border-radius: 20px; padding: 3px 10px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .badge-user   { background: #fdf0f0; border: 1px solid #f5c6c6; color: #7b241c; }
+    .badge-motivo { background: #f0f4ff; border: 1px solid #c5d0f5; color: #1a1a6e; }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      border-left: 4px solid #1a1a2e;
+      padding: 20px 22px; margin-bottom: 14px;
+    }
+    .card-purple  { border-left-color: #8e44ad; }
+    .card-green   { border-left-color: #27ae60; }
+    .card-orange  { border-left-color: #e67e22; }
+    .card-blue    { border-left-color: #2980b9; }
+    .card-teal    { border-left-color: #16a085; }
+    .card-red     { border-left-color: #c0392b; }
+
+    .section-title {
+      font-size: .7rem; font-weight: bold; color: #1a1a2e;
+      letter-spacing: 1.3px; text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 14px;
+      border-bottom: 2px solid #eef1ff;
+    }
+
+    /* ── Formulario ciudad + firma (Estado A) ── */
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+    label.lbl { display: block; font-size: .82rem; font-weight: 600; color: #444; margin-bottom: 5px; }
+    label.lbl .req { color: #c0392b; margin-left: 2px; }
+    input[type="text"] {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      font-size: .93rem; color: #333;
+    }
+    input[type="text"]:focus { outline: none; border-color: #8e44ad; box-shadow: 0 0 0 3px rgba(142,68,173,.1); }
+    .err { color: #c0392b; font-size: .78rem; margin-top: 4px; display: none; }
+    .err.visible { display: block; }
+
+    .firma-preview {
+      display: flex; align-items: flex-end; gap: 16px;
+      padding: 12px; background: #f8f9fb;
+      border: 1.5px solid #e8e8e8; border-radius: 8px; margin-bottom: 12px;
+    }
+    .firma-preview img { height: 68px; border-radius: 4px; }
+    .firma-label  { font-size: .78rem; color: #888; margin-bottom: 3px; }
+    .firma-nombre { font-size: .88rem; font-weight: 600; color: #1a1a2e; }
+    .toggle-refirmar {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .84rem; color: #555; margin-bottom: 12px;
+      cursor: pointer; user-select: none;
+    }
+    .toggle-refirmar input { width: 16px; height: 16px; cursor: pointer; accent-color: #8e44ad; }
+    .canvas-wrap { position: relative; }
+    #sigCanvas {
+      width: 100%; height: 150px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      cursor: crosshair; background: #fff; display: block; touch-action: none;
+    }
+    #sigCanvas.activo { border-color: #8e44ad; }
+    .canvas-hint { font-size: .74rem; color: #bbb; margin-top: 4px; }
+    .btn-limpiar-firma {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 7px; padding: 5px 13px;
+      background: #f5f6fa; border: 1.5px solid #e0e0e0;
+      border-radius: 6px; font-size: .79rem; color: #555; cursor: pointer;
+    }
+    .btn-limpiar-firma:hover { background: #eee; }
+
+    /* ── Dashboard 2 columnas (Estado B) ── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 780px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+    .col-izq, .col-der { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Doc rows */
+    .doc-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 6px; margin-bottom: 6px;
+      background: #f8f9fb; border: 1px solid #e8e8e8;
+    }
+    .doc-row:last-child { margin-bottom: 0; }
+    .doc-icon-big { font-size: 1.3rem; flex-shrink: 0; }
+    .doc-info { flex: 1; }
+    .doc-nombre { font-size: .87rem; font-weight: 600; color: #1a1a2e; }
+    .doc-estado { font-size: .74rem; margin-top: 2px; }
+    .doc-estado.ok      { color: #27ae60; }
+    .doc-estado.pending { color: #e67e22; }
+    .doc-estado.done    { color: #888; }
+    .btn-ver-doc {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; background: #f0f4ff;
+      border: 1px solid #c5d0f5; border-radius: 6px;
+      font-size: .78rem; color: #1a1a6e; text-decoration: none;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-ver-doc:hover { background: #e0e8ff; }
+
+    /* Docs opcionales (TCR / ED) */
+    .doc-opc-card {
+      padding: 12px; background: #f8f9fb;
+      border: 1.5px solid #e0e0e0; border-radius: 8px; margin-bottom: 10px;
+    }
+    .doc-opc-card:last-child { margin-bottom: 0; }
+    .doc-opc-label { font-size: .78rem; font-weight: 700; color: #555; margin-bottom: 8px; }
+    .file-drop-area {
+      border: 2px dashed #ddd; border-radius: 6px;
+      padding: 14px 12px; text-align: center; cursor: pointer;
+      background: #fafafa; transition: border-color .15s, background .15s;
+      font-size: .82rem; color: #888;
+    }
+    .file-drop-area:hover, .file-drop-area.drag-over { border-color: #c0392b; background: #fdf0f0; }
+    .file-preview {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; background: #fff;
+      border: 1.5px solid #e0e0e0; border-radius: 6px; margin-top: 6px;
+    }
+    .file-preview-nombre { flex: 1; font-size: .83rem; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-quitar {
+      background: none; border: 1px solid #f5c6c6; cursor: pointer;
+      color: #c0392b; font-size: .78rem; padding: 2px 7px; border-radius: 4px; flex-shrink: 0;
+    }
+    .btn-quitar:hover { background: #fdf0f0; }
+
+    /* Artículos PZ */
+    .art-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 7px; flex-wrap: wrap;
+    }
+    .art-row label { font-size: .85rem; flex: 1; min-width: 100px; margin: 0; }
+    .art-cant {
+      width: 56px; padding: 5px 7px;
+      border: 1.5px solid #ddd; border-radius: 5px; font-size: .83rem;
+    }
+    .art-devuelve-label {
+      font-size: .76rem; color: #888;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .art-devuelve-label input { width: 14px; height: 14px; accent-color: #16a085; }
+    .btn-quitar-art {
+      background: none; border: none; color: #ccc; cursor: pointer; font-size: .95rem; padding: 0 3px;
+    }
+    .btn-quitar-art:hover { color: #c0392b; }
+
+    /* PZ estado de firmas */
+    .firma-area-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: .86rem;
+    }
+    .firma-area-row:last-child { border-bottom: none; }
+    .firma-area-nombre { flex: 1; }
+    .firma-estado-badge {
+      font-size: .73rem; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+    }
+    .firmado   { background: #eafaf1; color: #1a7a4a; }
+    .pendiente { background: #fef9f0; color: #a04000; }
+
+    /* Envío */
+    .contacto-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    @media (max-width: 500px) { .contacto-grid { grid-template-columns: 1fr; } }
+    .contacto-grid input {
+      width: 100%; padding: 8px 10px;
+      border: 1.5px solid #ddd; border-radius: 6px; font-size: .85rem;
+    }
+    .contacto-grid label { font-size: .75rem; color: #888; display: block; margin-bottom: 4px; }
+    .btns-envio { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .btn-wa {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 18px; background: #25d366; color: #fff;
+      text-decoration: none; border-radius: 7px; font-weight: bold; font-size: .86rem;
+    }
+    .btn-wa:hover { background: #1ebe5d; }
+    .btn-email-send {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 18px; background: #1a1a2e; color: #fff;
+      border: none; border-radius: 7px; cursor: pointer;
+      font-weight: bold; font-size: .86rem;
+    }
+    .btn-email-send:hover { background: #2c2c4a; }
+    .btn-email-send:disabled { background: #ccc; cursor: not-allowed; }
+    .url-copy-box {
+      margin-top: 10px; padding: 8px 12px;
+      background: #f5f6fa; border: 1.5px solid #e0e0e0;
+      border-radius: 6px; font-size: .78rem; color: #555; word-break: break-all;
+    }
+
+    /* Botones principales */
+    .btn-primary {
+      width: 100%; background: #8e44ad; color: #fff;
+      border: none; padding: 13px; border-radius: 7px;
+      font-size: .97rem; font-weight: bold; cursor: pointer;
+      transition: background .15s; margin-top: 14px;
+    }
+    .btn-primary:hover   { background: #7d3c98; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+
+    .btn-secondary {
+      padding: 7px 15px; background: #f0faf8;
+      border: 1.5px solid #16a085; color: #16a085;
+      border-radius: 6px; font-size: .82rem; cursor: pointer; font-weight: 600;
+    }
+    .btn-secondary:hover { background: #d5f0eb; }
+
+    .btn-save-arts {
+      width: 100%; padding: 11px; background: #16a085; color: #fff;
+      border: none; border-radius: 7px; font-size: .92rem;
+      font-weight: bold; cursor: pointer; margin-top: 10px;
+    }
+    .btn-save-arts:hover { background: #148a72; }
+    .btn-save-arts:disabled { background: #ccc; cursor: not-allowed; }
+
+    .btn-save-contact {
+      padding: 6px 14px; background: #1a1a2e; color: #fff;
+      border: none; border-radius: 6px; font-size: .8rem; cursor: pointer; font-weight: 600;
+    }
+    .btn-save-contact:hover { background: #2c2c4a; }
+
+    /* Completado (Estado C) */
+    .completado-card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      padding: 48px 24px; text-align: center; margin-bottom: 14px;
+    }
+    .completado-icon { font-size: 3rem; margin-bottom: 16px; }
+    .completado-title { font-size: 1.3rem; font-weight: bold; color: #1a1a2e; margin-bottom: 8px; }
+    .completado-desc  { font-size: .95rem; color: #555; line-height: 1.8; max-width: 480px; margin: 0 auto; }
+
+    /* Loading */
+    .loading-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(255,255,255,.88); z-index: 2000;
+      align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    }
+    .loading-overlay.open { display: flex; }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid #e0d0f0; border-top-color: #8e44ad;
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: .93rem; color: #555; }
+
+    /* Misc */
+    .msg-ok { color: #27ae60; font-size: .83rem; font-weight: 600; margin-top: 8px; }
+    .refresh-hint { font-size: .73rem; color: #bbb; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="card-titulo">
+    <div>
+      <div class="page-title" id="headerTitle">Gestión de Documentos de Retiro</div>
+      <div class="page-sub" id="headerSub"></div>
+      <div class="badge-row">
+        <span class="badge badge-user" id="badgeUsuario"></span>
+        <span class="badge badge-motivo" id="badgeMotivo"></span>
+      </div>
+    </div>
+    <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER">
+  </div>
+
+  <!-- ══════════════ ESTADO A: Formulario ciudad + firma ══════════════ -->
+  <div id="estadoFormulario" style="display:none">
+    <div class="card card-purple">
+      <div class="section-title" style="color:#8e44ad">Datos para documentos de retiro</div>
+
+      <div class="field">
+        <label class="lbl" for="ciudadInput">Ciudad para los documentos <span class="req">*</span></label>
+        <input type="text" id="ciudadInput" placeholder="Ej. Bucaramanga, Santander">
+        <div class="err" id="errCiudad">Ingrese la ciudad</div>
+      </div>
+
+      <div class="section-title" style="font-size:.82rem;margin-top:16px;margin-bottom:10px;border:none;padding-bottom:0">Firma del responsable</div>
+
+      <div id="bloqueExistente" style="display:none">
+        <div class="firma-preview">
+          <img id="imgFirmaExistente" src="" alt="Firma">
+          <div>
+            <div class="firma-label">Firma guardada</div>
+            <div class="firma-nombre" id="nombreFirmante"></div>
+          </div>
+        </div>
+        <label class="toggle-refirmar">
+          <input type="checkbox" id="chkNuevaFirma" onchange="toggleCanvas()">
+          Quiero firmar nuevamente
+        </label>
+      </div>
+
+      <div id="bloqueCanvas">
+        <div class="canvas-wrap">
+          <canvas id="sigCanvas" width="640" height="150"></canvas>
+        </div>
+        <button type="button" class="btn-limpiar-firma" onclick="limpiarFirma()">&#x2715; Limpiar</button>
+        <div class="canvas-hint">Dibuje su firma en el recuadro</div>
+        <div class="err" id="errFirma">Debe dibujar su firma antes de continuar</div>
+      </div>
+
+      <button type="button" class="btn-primary" id="btnConfirmar" onclick="confirmarResponsable()">
+        &#128203; Generar documentos
+      </button>
+      <div id="loadingPaso2" style="display:none;margin-top:10px;text-align:center;color:#555;font-size:.88rem">Generando documentos, por favor espere…</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ ESTADO B: Dashboard ══════════════ -->
+  <div id="estadoDashboard" style="display:none">
+    <div class="dashboard-grid">
+
+      <!-- Columna izquierda -->
+      <div class="col-izq">
+
+        <!-- Bloque 1: Documentos para firma (CT, AR, EMOE, CRS) -->
+        <div class="card card-green">
+          <div class="section-title">Documentos para firma</div>
+          <div id="listaDocs"></div>
+        </div>
+
+        <!-- Bloque 2: Documentos adjuntos (TCR, ED) -->
+        <div class="card card-blue" id="cardDocsAdjuntos" style="display:none">
+          <div class="section-title" style="color:#2980b9">Documentos adjuntos</div>
+          <div id="bloqueDocsTCR"></div>
+          <div id="bloqueDocsED"></div>
+        </div>
+
+        <!-- Evaluación de retiro (EVR) -->
+        <div class="card card-orange" id="cardEVR" style="display:none;border-left-color:#8e44ad">
+          <div class="section-title" style="color:#8e44ad">Evaluación de retiro</div>
+          <div id="evrContenido"></div>
+        </div>
+
+        <!-- Enviar al trabajador -->
+        <div class="card card-red">
+          <div class="section-title" style="color:#c0392b">Enviar documentación al trabajador</div>
+          <p style="font-size:.8rem;color:#777;margin-bottom:12px">
+            Revise los datos de contacto y envíe los enlaces de firma.
+          </p>
+          <div class="contacto-grid">
+            <div>
+              <label>Celular (WhatsApp)</label>
+              <input type="text" id="notifCelular">
+            </div>
+            <div>
+              <label>Correo Electrónico</label>
+              <input type="text" id="notifEmail">
+            </div>
+          </div>
+          <button type="button" class="btn-save-contact" onclick="guardarContacto()">
+            &#128190; Guardar contacto
+          </button>
+          <div class="btns-envio" id="btnsEnvio"></div>
+          <div id="urlCopiaWrapPZ"></div>
+        </div>
+
+      </div>
+
+      <!-- Columna derecha -->
+      <div class="col-der">
+
+        <!-- Artículos Paz y Salvo -->
+        <div class="card card-teal" id="cardArticulos" style="display:none">
+          <div class="section-title" style="color:#16a085">Artículos — Paz y Salvo</div>
+          <p style="font-size:.79rem;color:#777;margin-bottom:10px">
+            Seleccione los artículos que el trabajador debe devolver.
+          </p>
+          <div id="listaArticulos"></div>
+          <button type="button" onclick="agregarArticuloExtra()"
+            style="margin-top:6px;padding:6px 14px;background:#f0faf8;border:1.5px dashed #16a085;
+                   color:#16a085;border-radius:6px;font-size:.79rem;cursor:pointer;font-weight:600">
+            + Agregar artículo
+          </button>
+          <div class="field" style="margin-top:12px">
+            <label class="lbl" for="obsArticulos" style="font-size:.78rem">Observaciones (opcional)</label>
+            <input type="text" id="obsArticulos" placeholder="Observaciones del Paz y Salvo" maxlength="512">
+          </div>
+          <button type="button" class="btn-save-arts" id="btnGuardarArts" onclick="guardarArticulos()">
+            Guardar artículos en el Paz y Salvo
+          </button>
+          <div id="artsGuardadosOk" class="msg-ok" style="display:none">&#10003; Artículos guardados</div>
+          <button type="button" class="btn-secondary" id="btnEditarArts" onclick="editarArticulos()"
+            style="display:none;margin-top:8px">&#9998; Editar artículos</button>
+        </div>
+
+        <!-- Estado firmas PZ (solo Nómina/Sistema) -->
+        <div class="card" id="cardEstadoPZ" style="display:none;border-left-color:#16a085">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="section-title" style="margin:0;color:#16a085">Estado del Paz y Salvo</div>
+            <button type="button" id="btnRefreshPZ"
+              style="background:#16a085;color:#fff;border:none;border-radius:6px;padding:4px 11px;font-size:.76rem;cursor:pointer;font-weight:600"
+              onclick="refrescarEstadoPZ()">&#8635; Actualizar</button>
+          </div>
+          <div id="listadoFirmasPZ"></div>
+          <p id="pzCompletadoMsg" style="display:none;margin-top:10px;font-size:.82rem;color:#27ae60;font-weight:600">
+            &#10003; Paz y Salvo completado — todos los involucrados han firmado.
+          </p>
+          <button type="button" id="btnReenviarPZ"
+            style="margin-top:10px;width:100%;padding:9px;background:#8e44ad;color:#fff;border:none;border-radius:6px;font-size:.83rem;font-weight:600;cursor:pointer"
+            onclick="reenviarCorreosPZ()">&#128231; Reenviar recordatorio a áreas pendientes</button>
+          <div id="reenvioMsg" style="display:none;margin-top:6px;font-size:.78rem;color:#27ae60;font-weight:600"></div>
+          <p class="refresh-hint">Se actualiza cada 30 s.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ ESTADO C: Proceso completado ══════════════ -->
+  <div id="estadoCompletado" style="display:none">
+    <div class="completado-card">
+      <div class="completado-icon">&#9989;</div>
+      <div class="completado-title">Proceso de retiro completado</div>
+      <div class="completado-desc">
+        Todos los documentos han sido firmados y el Paz y Salvo ha sido procesado.<br><br>
+        <strong>Consulte los documentos de retiro en la carpeta digital del empleado.</strong>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Procesando, por favor espere…</div>
+</div>
+
+<script>
+  const _cfg = __CONFIG__;
+  const {
+    estadoPagina, idVinculacion, usuario, usuarioNombre, rolUsuario, esNominaOSistema,
+    trabajador, cargo, identificacion, motivoRetiro, tipoRenuncia, fechaRetiro, ciudadRegional,
+    firmaResponsableUrl, ciudadSugerida, docs, docsOpcionales,
+    urlFirmaCT, urlFirmaAR, urlFirmaEMOE, urlFirmaCRS,
+    pazYSalvo, evr, contacto,
+  } = _cfg;
+
+  const NOMBRES_AREA_PZ = {
+    trabajador: 'Trabajador', nomina: 'Nómina', tecnologia: 'Tecnología',
+    sst: 'SST', facturacion: 'Facturación', contabilidad: 'Contabilidad',
+    cuentas: 'Cuentas por Pagar', gerencia: 'Gerencia de Operaciones',
+  };
+
+  // Variables declaradas antes de cualquier llamada a initFormulario() / initDashboard()
+  let firmaExistente = null;
+  let tieneTrazos    = false;
+  let dibujando      = false;
+  const canvas = document.getElementById('sigCanvas');
+  const ctx    = canvas ? canvas.getContext('2d') : null;
+
+  // PZ state
+  let _idPzActual          = pazYSalvo?.idPz || null;
+  let _pzStatusTimer       = null;
+  let _urlFirmaPZActual    = pazYSalvo?.urlFirma || null;
+  // Copia de los artículos guardados (se actualiza en bloquearArticulos)
+  let _articulosGuardados  = Array.isArray(pazYSalvo?.articulos) ? [...pazYSalvo.articulos] : [];
+  let _obsGuardadas        = pazYSalvo?.observaciones || '';
+
+  // Artículos por defecto del Paz y Salvo
+  const ARTICULOS_BASE = [
+    'Buzo manga larga', 'Jean operativo', 'Botas de seguridad', 'Guantes',
+    'Casco', 'Carnet', 'Llaves', 'Celular', 'Computador',
+  ];
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  document.getElementById('badgeUsuario').textContent = '\u{1F464} ' + usuarioNombre;
+  document.getElementById('badgeMotivo').textContent  = motivoRetiro + (tipoRenuncia ? ` (${tipoRenuncia})` : '');
+  document.getElementById('headerSub').textContent    = trabajador + ' · CC ' + identificacion + ' · ' + (fechaRetiro || '');
+
+  // ── Mostrar estado correcto ───────────────────────────────────────────────
+  if (estadoPagina === 'formulario') {
+    document.getElementById('headerTitle').textContent = 'Generar documentos de retiro';
+    document.getElementById('estadoFormulario').style.display = 'block';
+    initFormulario();
+  } else if (estadoPagina === 'dashboard') {
+    document.getElementById('estadoDashboard').style.display = 'block';
+    initDashboard();
+  } else {
+    document.getElementById('estadoCompletado').style.display = 'block';
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ESTADO A — Formulario ciudad + firma
+  // ══════════════════════════════════════════════════════════════════════════
+
+  function initFormulario() {
+    // ciudadRegional = guardada previamente; ciudadSugerida = de la operación del usuario
+    document.getElementById('ciudadInput').value = ciudadRegional || ciudadSugerida || '';
+    document.getElementById('nombreFirmante').textContent = usuarioNombre;
+
+    if (firmaResponsableUrl) {
+      firmaExistente = firmaResponsableUrl;
+      document.getElementById('imgFirmaExistente').src = firmaResponsableUrl;
+      document.getElementById('bloqueExistente').style.display = 'block';
+      document.getElementById('bloqueCanvas').style.display    = 'none';
+    }
+
+    if (ctx) {
+      ctx.strokeStyle = '#1a1a2e';
+      ctx.lineWidth   = 2.5;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const src  = e.touches ? e.touches[0] : e;
+        return {
+          x: (src.clientX - rect.left) * (canvas.width / rect.width),
+          y: (src.clientY - rect.top)  * (canvas.height / rect.height),
+        };
+      }
+      canvas.addEventListener('mousedown', e => {
+        dibujando = true; tieneTrazos = true;
+        ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y);
+        canvas.classList.add('activo');
+      });
+      canvas.addEventListener('mousemove', e => {
+        if (!dibujando) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke();
+      });
+      canvas.addEventListener('mouseup',    () => { dibujando = false; });
+      canvas.addEventListener('mouseleave', () => { dibujando = false; });
+      canvas.addEventListener('touchstart', e => {
+        e.preventDefault(); dibujando = true; tieneTrazos = true;
+        ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y);
+        canvas.classList.add('activo');
+      }, { passive: false });
+      canvas.addEventListener('touchmove', e => {
+        e.preventDefault(); if (!dibujando) return;
+        const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke();
+      }, { passive: false });
+      canvas.addEventListener('touchend', () => { dibujando = false; });
+    }
+  }
+
+  function limpiarFirma() {
+    if (ctx) { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+    tieneTrazos = false;
+    if (canvas) canvas.classList.remove('activo');
+  }
+
+  function toggleCanvas() {
+    const quiere = document.getElementById('chkNuevaFirma').checked;
+    document.getElementById('bloqueCanvas').style.display = quiere ? 'block' : 'none';
+    if (quiere && ctx) {
+      // Forzar re-cálculo del tamaño del canvas tras mostrarlo
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      tieneTrazos = false;
+      ctx.strokeStyle = '#1a1a2e';
+      ctx.lineWidth   = 2.5;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+    } else if (!quiere) {
+      limpiarFirma();
+      document.getElementById('errFirma').classList.remove('visible');
+    }
+  }
+
+  async function confirmarResponsable() {
+    let ok = true;
+    function marcarErr(id, show) {
+      document.getElementById(id).classList.toggle('visible', show);
+      if (show) ok = false;
+    }
+    marcarErr('errCiudad', !document.getElementById('ciudadInput').value.trim());
+    const necesitaCanvas = !firmaExistente || document.getElementById('chkNuevaFirma')?.checked;
+    if (necesitaCanvas) marcarErr('errFirma', !tieneTrazos);
+    if (!ok) return;
+
+    // Usar referencia fresca al canvas (por si canvas fue null al cargar la página)
+    const canvasEl   = canvas || document.getElementById('sigCanvas');
+    const firmaBase64 = (necesitaCanvas && tieneTrazos && canvasEl) ? canvasEl.toDataURL('image/png') : null;
+    const btn = document.getElementById('btnConfirmar');
+    btn.disabled = true;
+    document.getElementById('loadingPaso2').style.display = 'block';
+
+    try {
+      const resp = await fetch(`/formretiro/api/confirmar-responsable?usuario=${encodeURIComponent(usuario)}`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idVinculacion,
+          ciudadRegional: document.getElementById('ciudadInput').value.trim(),
+          tipoRenuncia: tipoRenuncia || null,
+          firmaBase64,
+        }),
+      });
+      const data = await resp.json();
+      document.getElementById('loadingPaso2').style.display = 'none';
+      if (data.ok) {
+        location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'No se pudo generar los documentos'));
+        btn.disabled = false;
+      }
+    } catch {
+      document.getElementById('loadingPaso2').style.display = 'none';
+      alert('Error de conexión. Intente nuevamente.');
+      btn.disabled = false;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ESTADO B — Dashboard
+  // ══════════════════════════════════════════════════════════════════════════
+
+  function initDashboard() {
+    renderDocs();
+    renderDocsOpcionales();
+    renderPazYSalvo();
+    renderEVR();
+    renderEnvioTrabajador();
+    document.getElementById('notifCelular').value = contacto?.celular || '';
+    document.getElementById('notifEmail').value   = contacto?.email   || '';
+  }
+
+  // ── Bloque 1: Documentos para firma (CT, AR, EMOE, CRS) ──────────────────
+  function renderDocs() {
+    const lista = document.getElementById('listaDocs');
+    lista.innerHTML = '';
+
+    // Mapa de docs ya firmados (por prefijo)
+    const docsMap = {};
+    (docs || []).forEach(d => { docsMap[d.prefijo] = d; });
+
+    // Definición de los 4 docs automáticos con su URL de firma vigente
+    const AUTODOCS = [
+      { prefijo: 'CT',   label: 'Certificado de Retiro',        urlFirma: urlFirmaCT   },
+      { prefijo: 'AR',   label: 'Aceptación de Renuncia',       urlFirma: urlFirmaAR   },
+      { prefijo: 'EMOE', label: 'Examen Médico de Egreso',      urlFirma: urlFirmaEMOE },
+      { prefijo: 'CRS',  label: 'Retiro de Cesantías',          urlFirma: urlFirmaCRS  },
+    ];
+
+    AUTODOCS.forEach(({ prefijo, label, urlFirma }) => {
+      const firmado = docsMap[prefijo];
+      if (!firmado && !urlFirma) return; // doc no aplica (ej. AR cuando no es Renuncia)
+
+      const row = document.createElement('div');
+      row.className = 'doc-row';
+
+      if (firmado) {
+        const esOk = firmado.validacion === 'OK';
+        row.innerHTML = `
+          <span class="doc-icon-big">${esOk ? '&#128193;' : '&#128196;'}</span>
+          <div class="doc-info">
+            <div class="doc-nombre">${label}</div>
+            <div class="doc-estado ${esOk ? 'ok' : 'done'}">${esOk ? '✓ En expediente digital' : '✓ Firmado'}</div>
+          </div>
+          ${firmado.url ? `<a href="${firmado.url}" target="_blank" class="btn-ver-doc">&#128196; Ver</a>` : ''}`;
+      } else {
+        row.innerHTML = `
+          <span class="doc-icon-big">&#9997;&#65039;</span>
+          <div class="doc-info">
+            <div class="doc-nombre">${label}</div>
+            <div class="doc-estado pending">&#9203; Enlace vigente — pendiente de firma del trabajador</div>
+          </div>
+          <a href="${urlFirma}" target="_blank" class="btn-ver-doc">&#128279; Enlace</a>`;
+      }
+      lista.appendChild(row);
+    });
+  }
+
+  // ── Bloque 2: Documentos adjuntos (TCR, ED) ───────────────────────────────
+  function renderDocsOpcionales() {
+    const card  = document.getElementById('cardDocsAdjuntos');
+    const tcrEl = document.getElementById('bloqueDocsTCR');
+    const edEl  = document.getElementById('bloqueDocsED');
+    tcrEl.innerHTML = '';
+    edEl.innerHTML  = '';
+
+    let tieneAlgo = false;
+    const MOTIVOS_SIN_TCR = ['No tomó cargo', 'Terminación por Muerte'];
+
+    // TCR: Carta de Renuncia o Terminación de contrato
+    if (!MOTIVOS_SIN_TCR.includes(motivoRetiro)) {
+      tieneAlgo = true;
+      const labelTCR = motivoRetiro === 'Renuncia' ? 'Carta de Renuncia' : 'Terminación de Contrato';
+      if (docsOpcionales?.tcr) {
+        tcrEl.innerHTML = buildAdjuntoBlock(labelTCR, docsOpcionales.tcr, 'reemplazar-tcr', 'tcrBase64');
+      } else {
+        tcrEl.innerHTML = buildSubirBlock('tcr-nuevo', labelTCR, 'subir-tcr-terminacion', 'tcrBase64');
+      }
+    }
+
+    // ED: Evaluación de Desempeño
+    if (motivoRetiro === 'Terminación en Periodo de Prueba') {
+      tieneAlgo = true;
+      if (docsOpcionales?.ed) {
+        edEl.innerHTML = buildAdjuntoBlock('Evaluación de Desempeño', docsOpcionales.ed, 'reemplazar-ed', 'edBase64');
+      } else {
+        edEl.innerHTML = buildSubirBlock('ed-nuevo', 'Evaluación de Desempeño', 'reemplazar-ed', 'edBase64');
+      }
+    }
+
+    card.style.display = tieneAlgo ? 'block' : 'none';
+  }
+
+  // Bloque para doc ya subido: Ver siempre; Reemplazar solo si Validación != 'OK'
+  function buildAdjuntoBlock(label, doc, endpoint, campo) {
+    const esOk      = doc.validacion === 'OK';
+    const btnReempl = esOk
+      ? `<span style="font-size:.75rem;color:#aaa;padding:5px 10px">&#128274; Validado</span>`
+      : `<button type="button" class="btn-quitar" style="border-color:#e67e22;color:#e67e22"
+           onclick="reemplazarDoc('${endpoint}','${campo}',this)">&#128260; Reemplazar</button>`;
+    return `<div class="doc-opc-card">
+      <div class="doc-opc-label">&#128196; ${label}${esOk ? ' <span style="color:#27ae60;font-weight:400">&#10003; Validado</span>' : ''}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <a href="${doc.url}" target="_blank" class="btn-ver-doc">&#128196; Ver</a>
+        ${btnReempl}
+      </div>
+    </div>`;
+  }
+
+  function buildSubirBlock(id, label, endpoint, campo) {
+    return `<div class="doc-opc-card" id="blk-${id}">
+      <div class="doc-opc-label">&#128206; ${label} <span style="font-weight:400;color:#aaa">(Opcional)</span></div>
+      <div class="file-drop-area" onclick="document.getElementById('inp-${id}').click()">
+        Haga clic o arrastre el PDF aquí
+      </div>
+      <div id="prev-${id}" class="file-preview" style="display:none">
+        <span>&#128196;</span>
+        <span class="file-preview-nombre" id="nom-${id}"></span>
+        <button type="button" class="btn-quitar" onclick="limpiarDocOpc('${id}')">Quitar</button>
+      </div>
+      <input type="file" id="inp-${id}" accept="application/pdf" style="display:none"
+        onchange="manejarDocOpc('${id}', '${endpoint}', '${campo}')">
+    </div>`;
+  }
+
+  async function manejarDocOpc(id, endpoint, campo) {
+    const inp = document.getElementById('inp-' + id);
+    const f   = inp?.files[0];
+    if (!f || f.type !== 'application/pdf') { alert('Solo se aceptan archivos PDF.'); return; }
+    document.getElementById('prev-' + id).style.display = 'flex';
+    document.getElementById('nom-'  + id).textContent   = f.name;
+    document.querySelector(`#blk-${id} .file-drop-area`).style.display = 'none';
+
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const r = await fetch('/formretiro/api/' + endpoint, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idVinculacion, [campo]: ev.target.result, usuario }),
+        });
+        const d = await r.json();
+        if (d.ok) location.reload();
+        else { alert('Error: ' + (d.error || '')); limpiarDocOpc(id); }
+      } catch { alert('Error de conexión.'); limpiarDocOpc(id); }
+    };
+    reader.readAsDataURL(f);
+  }
+
+  function limpiarDocOpc(id) {
+    const inp = document.getElementById('inp-' + id);
+    if (inp) inp.value = '';
+    const prev = document.getElementById('prev-' + id);
+    if (prev) prev.style.display = 'none';
+    const drop = document.querySelector(`#blk-${id} .file-drop-area`);
+    if (drop) drop.style.display = 'block';
+  }
+
+  async function reemplazarDoc(endpoint, campo, btn) {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'application/pdf';
+    inp.onchange = async () => {
+      const f = inp.files[0]; if (!f) return;
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        btn.disabled = true; btn.textContent = 'Subiendo…';
+        try {
+          const r = await fetch('/formretiro/api/' + endpoint, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idVinculacion, [campo]: ev.target.result }),
+          });
+          const d = await r.json();
+          if (d.ok) location.reload();
+          else { alert('Error: ' + (d.error || '')); btn.disabled = false; btn.textContent = '↺ Reemplazar'; }
+        } catch { alert('Error de conexión.'); btn.disabled = false; btn.textContent = '↺ Reemplazar'; }
+      };
+      reader.readAsDataURL(f);
+    };
+    inp.click();
+  }
+
+  // ── Paz y Salvo ───────────────────────────────────────────────────────────
+  function renderPazYSalvo() {
+    if (!pazYSalvo) return;
+
+    const card = document.getElementById('cardArticulos');
+    card.style.display = 'block';
+
+    if (pazYSalvo.articulosGuardados) {
+      // Si hay artículos guardados, mostrarlos siempre (aunque estén vacíos)
+      if (pazYSalvo.articulos.length) {
+        cargarArticulosGuardados(pazYSalvo.articulos, pazYSalvo.observaciones);
+      } else {
+        // Mostrar mensaje de sin artículos
+        const lista = document.getElementById('listaArticulos');
+        lista.innerHTML = '<p style="font-size:.82rem;color:#aaa;margin:4px 0">Sin artículos registrados.</p>';
+      }
+      bloquearArticulos(pazYSalvo.articulos);
+      document.getElementById('artsGuardadosOk').style.display   = 'block';
+      document.getElementById('btnGuardarArts').style.display     = 'none';
+      if (esNominaOSistema && pazYSalvo.estado !== 'completado') {
+        document.getElementById('btnEditarArts').style.display = 'inline-block';
+      }
+      if (esNominaOSistema && pazYSalvo.workerSigned) {
+        document.getElementById('cardEstadoPZ').style.display = 'block';
+        iniciarEstadoPZ(_idPzActual);
+      }
+    } else {
+      // Si NO hay artículos guardados, cargar los artículos por defecto para editar
+      initArticulos();
+    }
+  }
+
+  function initArticulos() {
+    const lista = document.getElementById('listaArticulos');
+    lista.innerHTML = '';
+    ARTICULOS_BASE.forEach(n => agregarArticulo(n));
+  }
+
+  function cargarArticulosGuardados(arts, obs) {
+    const lista = document.getElementById('listaArticulos');
+    lista.innerHTML = '';
+    arts.forEach((art, i) => {
+      const div = document.createElement('div');
+      div.className = 'art-row';
+      div.innerHTML = `
+        <input type="checkbox" id="ac${i}" class="art-sel" ${art.nombre ? 'checked' : ''} style="width:16px;height:16px;accent-color:#16a085">
+        <label for="ac${i}">${art.nombre}</label>
+        <input type="number" class="art-cant" min="1" value="${art.cantidad || 1}">
+        <label class="art-devuelve-label">
+          <input type="checkbox" class="art-devuelve" ${art.devuelve ? 'checked' : ''}>Devuelve
+        </label>
+        <button type="button" class="btn-quitar-art" onclick="this.parentElement.remove()">✕</button>`;
+      lista.appendChild(div);
+    });
+    if (obs) document.getElementById('obsArticulos').value = obs;
+  }
+
+  function agregarArticulo(nombre) {
+    const lista = document.getElementById('listaArticulos');
+    const i = lista.children.length;
+    const div = document.createElement('div');
+    div.className = 'art-row';
+    div.innerHTML = `
+      <input type="checkbox" id="ac${i}" class="art-sel" style="width:16px;height:16px;accent-color:#16a085">
+      <label for="ac${i}">${nombre}</label>
+      <input type="number" class="art-cant" min="1" value="1">
+      <label class="art-devuelve-label">
+        <input type="checkbox" class="art-devuelve">Devuelve
+      </label>
+      <button type="button" class="btn-quitar-art" onclick="this.parentElement.remove()">✕</button>`;
+    lista.appendChild(div);
+  }
+
+  function agregarArticuloExtra() {
+    const nombre = prompt('Nombre del artículo:');
+    if (nombre && nombre.trim()) agregarArticulo(nombre.trim());
+  }
+
+  function obtenerArticulos() {
+    return Array.from(document.getElementById('listaArticulos').children)
+      .map(div => {
+        const chk    = div.querySelector('input.art-sel, input[type="checkbox"]:not(.art-devuelve)');
+        const label  = div.querySelector('label');
+        const cant   = parseInt(div.querySelector('.art-cant')?.value || '1', 10);
+        const dev    = !!div.querySelector('.art-devuelve')?.checked;
+        if (!chk?.checked || !label) return null;
+        return { nombre: label.textContent.trim(), cantidad: isNaN(cant) ? 1 : cant, devuelve: dev };
+      })
+      .filter(Boolean);
+  }
+
+  // artsParam: array de artículos a mostrar. Si se omite, usa _articulosGuardados.
+  function bloquearArticulos(artsParam) {
+    if (Array.isArray(artsParam)) _articulosGuardados = artsParam;
+    // Nunca leer del DOM — siempre renderizar desde _articulosGuardados
+
+    const obs = document.getElementById('obsArticulos');
+    if (obs) { _obsGuardadas = obs.value.trim() || _obsGuardadas; obs.disabled = true; }
+
+    // Renderizar vista informativa (solo lectura)
+    const lista = document.getElementById('listaArticulos');
+    lista.innerHTML = '';
+    _articulosGuardados.forEach(art => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f5f5f5';
+      const marcaDev = art.devuelve
+        ? '<span style="background:#d5f0eb;color:#16a085;font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:10px">Devuelve</span>'
+        : '<span style="background:#f5f5f5;color:#aaa;font-size:.72rem;padding:2px 7px;border-radius:10px">No devuelve</span>';
+      div.innerHTML = `
+        <span style="font-size:1rem;color:#16a085">&#10003;</span>
+        <span style="flex:1;font-size:.87rem;color:#333">${art.nombre}</span>
+        <span style="font-size:.8rem;color:#888;margin-right:6px">&#215;${art.cantidad || 1}</span>
+        ${marcaDev}`;
+      lista.appendChild(div);
+    });
+    if (!_articulosGuardados.length) {
+      lista.innerHTML = '<p style="font-size:.82rem;color:#aaa;margin:4px 0">Sin artículos registrados.</p>';
+    }
+    const btnAgregar = document.querySelector('[onclick="agregarArticuloExtra()"]');
+    if (btnAgregar) btnAgregar.style.display = 'none';
+  }
+
+  function editarArticulos() {
+    // Reconstruir lista editable desde los artículos guardados
+    cargarArticulosGuardados(_articulosGuardados, _obsGuardadas);
+
+    const obs = document.getElementById('obsArticulos');
+    if (obs) obs.disabled = false;
+
+    const btnAgregar = document.querySelector('[onclick="agregarArticuloExtra()"]');
+    if (btnAgregar) btnAgregar.style.display = '';
+
+    document.getElementById('btnGuardarArts').style.display  = 'block';
+    document.getElementById('btnGuardarArts').disabled       = false;
+    document.getElementById('artsGuardadosOk').style.display = 'none';
+    document.getElementById('btnEditarArts').style.display   = 'none';
+  }
+
+  async function guardarArticulos() {
+    const arts = obtenerArticulos();
+    if (!arts.length) { alert('Seleccione al menos un artículo.'); return; }
+    if (!arts.some(a => a.devuelve)) { alert('Marque "Devuelve" en al menos un artículo.'); return; }
+
+    const btn = document.getElementById('btnGuardarArts');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    const obs = document.getElementById('obsArticulos')?.value?.trim() || '';
+
+    try {
+      const r = await fetch('/formretiro/api/actualizar-articulos-pz', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idPz: _idPzActual, articulos: arts, observaciones: obs, usuario }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        _obsGuardadas = obs;
+        btn.style.display = 'none';
+        document.getElementById('artsGuardadosOk').style.display = 'block';
+        bloquearArticulos(arts);   // pasar arts directamente — sin leer del DOM
+        if (esNominaOSistema) {
+          document.getElementById('btnEditarArts').style.display = 'inline-block';
+        }
+        if (d.urlFirma) {
+          _urlFirmaPZActual = d.urlFirma;
+          renderEnvioTrabajador();
+        }
+      } else {
+        alert('Error: ' + (d.error || ''));
+        btn.disabled = false; btn.textContent = 'Guardar artículos en el Paz y Salvo';
+      }
+    } catch {
+      alert('Error de conexión.');
+      btn.disabled = false; btn.textContent = 'Guardar artículos en el Paz y Salvo';
+    }
+  }
+
+  // ── Estado PZ (Nómina/Sistema) ────────────────────────────────────────────
+  function renderFirmasPZ(d) {
+    const lista = document.getElementById('listadoFirmasPZ');
+    if (!lista) return;
+    const secuencia = ['trabajador', ...(d.areasRequeridas || [])];
+    lista.innerHTML = secuencia.map(a => {
+      const firmado = d.firmas?.[a];
+      const nombre  = NOMBRES_AREA_PZ[a] || a;
+      return `<div class="firma-area-row">
+        <span style="font-size:1rem">${firmado ? '✅' : '⏳'}</span>
+        <span class="firma-area-nombre" style="font-weight:${firmado ? '600' : '400'};color:${firmado ? '#1a1a2e' : '#888'}">${nombre}</span>
+        <span class="firma-estado-badge ${firmado ? 'firmado' : 'pendiente'}">${firmado ? 'Firmado' : 'Pendiente'}</span>
+      </div>`;
+    }).join('');
+
+    const completado = d.estado === 'completado';
+    document.getElementById('pzCompletadoMsg').style.display = completado ? 'block' : 'none';
+    document.getElementById('btnRefreshPZ').style.display    = completado ? 'none' : 'inline-block';
+    if (completado && _pzStatusTimer) { clearInterval(_pzStatusTimer); _pzStatusTimer = null; }
+  }
+
+  async function refrescarEstadoPZ() {
+    if (!_idPzActual) return;
+    try {
+      const r = await fetch(`/formretiro/api/pz-status/${_idPzActual}?usuario=${encodeURIComponent(usuario)}`);
+      const d = await r.json();
+      if (d.ok) renderFirmasPZ(d);
+    } catch {}
+  }
+
+  function iniciarEstadoPZ(idPz) {
+    _idPzActual = idPz;
+    document.getElementById('cardEstadoPZ').style.display = 'block';
+    refrescarEstadoPZ();
+    if (_pzStatusTimer) clearInterval(_pzStatusTimer);
+    _pzStatusTimer = setInterval(refrescarEstadoPZ, 30000);
+  }
+
+  // ── Envío al trabajador ───────────────────────────────────────────────────
+  function renderEnvioTrabajador() {
+    const btns    = document.getElementById('btnsEnvio');
+    const urlWrap = document.getElementById('urlCopiaWrapPZ');
+    btns.innerHTML    = '';
+    urlWrap.innerHTML = '';
+
+    // Detectar estado final: todos los documentos firmados
+    const docsMap = {};
+    (docs || []).forEach(d => { docsMap[d.prefijo] = d; });
+    const pzCompletado = pazYSalvo?.estado === 'completado';
+    const hayPZ        = !!_urlFirmaPZActual;  // hay enlace de firma (aún no firmado)
+    const todosFirmados =
+      !urlFirmaCT && !urlFirmaEMOE && !urlFirmaCRS && !urlFirmaAR &&
+      (!hayPZ || pzCompletado);
+
+    // ── Construir contenido del mensaje ───────────────────────────────────
+    let msgWATexto, urlPZParaEmail, urlARParaEmail, urlCertParaEmail,
+        urlEMOEParaEmail, urlCRSParaEmail, urlEVRParaEmail;
+
+    if (todosFirmados) {
+      // Mensaje de cierre: links a PDFs firmados
+      const lineas = ['✅ Sus documentos de retiro están disponibles:'];
+      if (docsMap['CT'])   lineas.push('📄 Cert. Laboral: '        + docsMap['CT'].url);
+      if (docsMap['EMOE']) lineas.push('📄 Examen de Egreso: '     + docsMap['EMOE'].url);
+      if (docsMap['CRS'])  lineas.push('📄 Cesantías: '            + docsMap['CRS'].url);
+      if (docsMap['AR'])   lineas.push('📄 Aceptación Renuncia: '  + docsMap['AR'].url);
+      if (pazYSalvo?.urlPdfFinal) lineas.push('✅ Paz y Salvo: '   + pazYSalvo.urlPdfFinal);
+      msgWATexto = `Estimado/a ${trabajador}, le informamos que todos sus documentos de retiro en LOG&SER están disponibles:\n\n`
+        + lineas.join('\n') + '\n\nGracias por el tiempo dedicado a nuestra organización.';
+      // Para email enviamos las URLs de los docs firmados como "links" directos
+      urlCertParaEmail = docsMap['CT']?.url   || null;
+      urlEMOEParaEmail = docsMap['EMOE']?.url || null;
+      urlCRSParaEmail  = docsMap['CRS']?.url  || null;
+      urlARParaEmail   = docsMap['AR']?.url   || null;
+      urlPZParaEmail   = null; // no hay link de firma, el PZ ya se mandó su PDF por otro canal
+      urlEVRParaEmail  = null;
+    } else {
+      // Mensaje de proceso en curso: links de firma
+      const lineas = [];
+      if (urlFirmaCT)   lineas.push('📄 Cert. Laboral: '       + urlFirmaCT);
+      if (urlFirmaEMOE) lineas.push('📄 Examen de Egreso: '    + urlFirmaEMOE);
+      if (urlFirmaCRS)  lineas.push('📄 Cesantías: '           + urlFirmaCRS);
+      if (urlFirmaAR)   lineas.push('📄 Aceptación Renuncia: ' + urlFirmaAR);
+      if (hayPZ)        lineas.push('\n✍️ Paz y Salvo: '       + _urlFirmaPZActual);
+      if (evr?.urlAcceso && !evr?.completada)
+                        lineas.push('📝 Evaluación de retiro: ' + evr.urlAcceso);
+      msgWATexto = `Estimado/a ${trabajador}, le enviamos la documentación de su proceso de retiro en LOG&SER:\n\n`
+        + lineas.join('\n') + (lineas.length ? '\n\nGracias.' : '');
+      urlCertParaEmail = urlFirmaCT   || null;
+      urlEMOEParaEmail = urlFirmaEMOE || null;
+      urlCRSParaEmail  = urlFirmaCRS  || null;
+      urlARParaEmail   = urlFirmaAR   || null;
+      urlPZParaEmail   = hayPZ ? _urlFirmaPZActual : null;
+      urlEVRParaEmail  = (evr?.urlAcceso && !evr?.completada) ? evr.urlAcceso : null;
+    }
+
+    // WhatsApp
+    const btnWA = document.createElement('a');
+    btnWA.href = '#'; btnWA.className = 'btn-wa';
+    btnWA.innerHTML = '&#128241; WhatsApp';
+    btnWA.onclick = e => {
+      e.preventDefault();
+      const c = document.getElementById('notifCelular').value.trim();
+      if (!c) { alert('Ingrese un número de celular.'); return; }
+      window.open('https://wa.me/57' + c + '?text=' + encodeURIComponent(msgWATexto), '_blank');
+    };
+    btns.appendChild(btnWA);
+
+    // Email
+    const btnEmail = document.createElement('button');
+    btnEmail.type = 'button'; btnEmail.className = 'btn-email-send';
+    btnEmail.innerHTML = '&#9993; Correo';
+    btnEmail.onclick = async () => {
+      const em = document.getElementById('notifEmail').value.trim();
+      if (!em) { alert('Ingrese un correo electrónico.'); return; }
+      btnEmail.disabled = true; btnEmail.innerHTML = 'Enviando…';
+      try {
+        const r = await fetch('/formretiro/api/enviar-trabajador', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emailTrabajador: em, nombreTrabajador: trabajador,
+            responsableNombre: usuarioNombre, responsableCargo: '',
+            urlPZ:   urlPZParaEmail,
+            urlAR:   urlARParaEmail,
+            urlCert: urlCertParaEmail,
+            urlEMOE: urlEMOEParaEmail,
+            urlCRS:  urlCRSParaEmail,
+            urlEVR:  urlEVRParaEmail,
+            motivoRetiro,
+          }),
+        });
+        const d = await r.json();
+        if (d.ok) { btnEmail.innerHTML = '&#10003; Enviado'; btnEmail.style.background = '#27ae60'; }
+        else { btnEmail.disabled = false; btnEmail.innerHTML = '&#9993; Correo'; alert('Error: ' + (d.error || '')); }
+      } catch { btnEmail.disabled = false; btnEmail.innerHTML = '&#9993; Correo'; alert('Error de conexión.'); }
+    };
+    btns.appendChild(btnEmail);
+
+    // Mostrar enlace PZ si está activo
+    if (hayPZ && !todosFirmados) {
+      urlWrap.innerHTML = `<div class="url-copy-box" style="border-color:#16a085">
+        <strong style="color:#16a085;display:block;margin-bottom:4px">Enlace Paz y Salvo:</strong>
+        <span style="font-size:.8rem;word-break:break-all">${_urlFirmaPZActual}</span>
+      </div>`;
+    }
+  }
+
+  // ── Guardar contacto ──────────────────────────────────────────────────────
+  function renderEVR() {
+    if (!evr) return;
+    const card = document.getElementById('cardEVR');
+    const cont = document.getElementById('evrContenido');
+    card.style.display = 'block';
+    if (evr.completada) {
+      cont.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0">
+          <span style="font-size:1.4rem">&#9989;</span>
+          <div style="flex:1">
+            <div style="font-size:.88rem;font-weight:600;color:#27ae60">Evaluación completada</div>
+            ${evr.fechaRegistro ? `<div style="font-size:.76rem;color:#aaa">Diligenciada el ${evr.fechaRegistro}</div>` : ''}
+          </div>
+          ${evr.urlPdf ? `<a href="${evr.urlPdf}" target="_blank" class="btn-ver-doc">&#128196; Ver PDF</a>` : ''}
+        </div>`;
+    } else if (evr.urlAcceso) {
+      cont.innerHTML = `
+        <p style="font-size:.82rem;color:#777;margin-bottom:10px">
+          Enlace para que el trabajador diligencie la entrevista de retiro (vigente 120 horas).
+          Incluya este enlace en el mensaje de WhatsApp o correo.
+        </p>
+        <a href="${evr.urlAcceso}" target="_blank" class="btn-ver-doc">&#128203; Abrir formulario</a>
+        <div class="url-copy-box" style="margin-top:8px;border-color:#8e44ad">
+          <strong style="color:#8e44ad;display:block;margin-bottom:3px">Enlace evaluación de retiro:</strong>
+          <span style="font-size:.78rem;word-break:break-all">${evr.urlAcceso}</span>
+        </div>`;
+    } else {
+      cont.innerHTML = `<p style="font-size:.82rem;color:#aaa">Enlace de evaluación aún no generado.</p>`;
+    }
+  }
+
+  async function reenviarCorreosPZ() {
+    if (!_idPzActual) return;
+    const btn = document.getElementById('btnReenviarPZ');
+    const msg = document.getElementById('reenvioMsg');
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    msg.style.display = 'none';
+    try {
+      const r = await fetch('/generar-retiro/api/reenviar-pz-areas', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idPz: _idPzActual, usuario }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        msg.style.display = 'block';
+        msg.textContent = d.reenviados > 0
+          ? `✓ Recordatorio enviado a ${d.reenviados} área(s) pendiente(s).`
+          : '✓ No hay áreas pendientes de firma.';
+      } else { alert('Error: ' + (d.error || '')); }
+    } catch { alert('Error de conexión.'); }
+    btn.disabled = false; btn.textContent = '📧 Reenviar recordatorio a áreas pendientes';
+  }
+
+  async function guardarContacto() {
+    const celular = document.getElementById('notifCelular').value.trim();
+    const email   = document.getElementById('notifEmail').value.trim();
+    if (!celular && !email) { alert('Ingrese al menos un dato de contacto.'); return; }
+    try {
+      const r = await fetch('/formretiro/api/actualizar-contacto', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identificacion, celular: celular || undefined, email: email || undefined }),
+      });
+      const d = await r.json();
+      if (d.ok) alert('Datos de contacto guardados.');
+      else alert('Error: ' + (d.error || ''));
+    } catch { alert('Error de conexión.'); }
+  }
+</script>
+</body>
+</html>

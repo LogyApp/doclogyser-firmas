@@ -12,6 +12,7 @@ const {
   subirPDFAceptacionRenuncia,
 } = require('../services/storage');
 const { validarTokenAR } = require('../services/token');
+const { verificarYEnviarEmailConcluido } = require('../services/retiroCompletadoChecker');
 // notificarRenunciaFirmada se enviara en conjunto con todos los documentos
 // const { notificarRenunciaFirmada } = require('../services/email');
 
@@ -234,6 +235,9 @@ router.post('/:idVinculacion', async (req, res) => {
     // notificarRenunciaFirmada({ ... }).catch(...);
 
     res.json({ ok: true, urlPdf });
+
+    // Verificar si todos los docs están firmados → enviar email automático al trabajador
+    verificarYEnviarEmailConcluido(idVinculacion).catch(e => console.error('[auto-email AR]', e.message));
   } catch (err) {
     console.error('[firmarenuncia POST]', err);
     res.status(500).json({ ok: false, error: err.message });

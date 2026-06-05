@@ -103,6 +103,13 @@ async function subirPDFCertificadoRetiro(identificacion, idVinculacion, bufferPd
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirPDFEvaluacionRetiro(identificacion, idVinculacion, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.EVR.${idVinculacion}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -116,4 +123,5 @@ module.exports = {
   subirPDFCesantias,
   subirPDFPazYSalvo,
   subirPDFCertificadoRetiro,
+  subirPDFEvaluacionRetiro,
 };

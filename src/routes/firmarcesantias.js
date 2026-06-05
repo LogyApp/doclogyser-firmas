@@ -24,6 +24,7 @@ const {
   subirPDFCesantias,
 } = require('../services/storage');
 const { validarTokenCRS } = require('../services/token');
+const { verificarYEnviarEmailConcluido } = require('../services/retiroCompletadoChecker');
 
 const router = express.Router();
 const FIRMA_HTML = path.join(__dirname, '../views/firmarcesantias/firma.html');
@@ -224,6 +225,9 @@ router.post('/:idVinculacion', async (req, res) => {
     );
 
     res.json({ ok: true, urlPdf });
+
+    // Verificar si todos los docs están firmados → enviar email automático al trabajador
+    verificarYEnviarEmailConcluido(idVinculacion).catch(e => console.error('[auto-email CRS]', e.message));
   } catch (err) {
     console.error('[firmarcesantias POST]', err);
     res.status(500).json({ ok: false, error: 'Error interno. Intente más tarde.' });

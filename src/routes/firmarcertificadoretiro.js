@@ -12,6 +12,7 @@ const {
   subirPDFCertificadoRetiro,
 } = require('../services/storage');
 const { validarTokenCT } = require('../services/token');
+const { verificarYEnviarEmailConcluido } = require('../services/retiroCompletadoChecker');
 
 function fechaHoraBogota() {
   const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -219,6 +220,9 @@ router.post('/:idVinculacion', async (req, res) => {
     );
 
     res.json({ ok: true, urlPdf });
+
+    // Verificar si todos los docs están firmados → enviar email automático al trabajador
+    verificarYEnviarEmailConcluido(idVinculacion).catch(e => console.error('[auto-email CT]', e.message));
   } catch (err) {
     console.error('[firmarcertificadoretiro POST]', err);
     res.status(500).json({ ok: false, error: err.message });

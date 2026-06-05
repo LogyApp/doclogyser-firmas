@@ -343,12 +343,15 @@ function canvasVacio() {
 }
 
 // ── Helpers responsable preseleccionado ──────────────────────────
+let cedulaFirmanteSeleccionada = null;
+
 function seleccionarResponsable(idx) {
   if (idx === '') return;
   const r = (CFG.responsablesSugeridos || [])[parseInt(idx, 10)];
   if (!r) return;
   document.getElementById('inputNombre').value = r.nombre;
   document.getElementById('inputCargo').value  = r.cargo;
+  cedulaFirmanteSeleccionada = r.cedula || null;
   firmaUrlSeleccionada = null;
   document.getElementById('firmaExistenteOkMsg').style.display = 'none';
   if (r.firmaUrl) {
@@ -401,9 +404,10 @@ async function guardarFirma() {
 
   try {
     const body = {
-      token:           CFG.token,
-      nombre_firmante: nombre,
-      cargo_firmante:  cargo,
+      token:            CFG.token,
+      nombre_firmante:  nombre,
+      cargo_firmante:   cargo,
+      cedula_firmante:  cedulaFirmanteSeleccionada || null,
     };
     if (firmaUrlSeleccionada) {
       body.firma_url_existente = firmaUrlSeleccionada;

@@ -8,6 +8,7 @@ const { generarPDF } = require('../services/renderer');
 const { subirFirma, subirPDFPazYSalvo, obtenerUrlFirmaReciente } = require('../services/storage');
 const { validarTokenPZ } = require('../services/token');
 const { notificarPazYSalvoCompletado } = require('../services/email');
+const { resolverRutaFirmaArea } = require('../services/firmaPathResolver');
 const { generarFilasArticulosHTML, generarFirmasAreasHtml, estaCompleto, NOMBRES_AREA, EMAILS_AREA } = require('../services/pazYSalvoService');
 
 const router = express.Router();
@@ -163,7 +164,7 @@ router.get('/:area/:idPz', async (req, res) => {
 router.post('/:area/:idPz', async (req, res) => {
   try {
     const { area, idPz } = req.params;
-    const { token, firma_base64, firma_url_existente, nombre_firmante, cargo_firmante } = req.body;
+    const { token, firma_base64, firma_url_existente, nombre_firmante, cargo_firmante, cedula_firmante } = req.body;
 
     if (!token) return res.status(401).json({ ok: false, error: 'Token no proporcionado' });
     if (!firma_base64 && !firma_url_existente) return res.status(400).json({ ok: false, error: 'Firma requerida' });
@@ -188,14 +189,25 @@ router.post('/:area/:idPz', async (req, res) => {
 
     if (pz[`firma_${area}_url`]) return res.status(410).json({ ok: false, error: 'Área ya validó' });
 
-    // Subir firma del área como imagen (o usar URL existente del responsable)
+    // Subir firma del área usando la identificación correcta del responsable del área
     let urlFirmaArea;
+    let cedulaParaGuardar = cedula_firmante;
+
+    if (!cedulaParaGuardar && nombre_firmante) {
+      // Si no viene cedula_firmante, buscar usando el nombre del responsable (Colaborador)
+      const rutaArea = await resolverRutaFirmaArea(nombre_firmante);
+      if (rutaArea) {
+        cedulaParaGuardar = rutaArea.identificacion;
+      }
+    }
+
     if (firma_url_existente) {
       urlFirmaArea = firma_url_existente;
     } else {
       const base64Data = firma_base64.replace(/^data:image\/png;base64,/, '');
-      const bufferPng = Buffer.from(base64Data, 'base64');
-      urlFirmaArea = await subirFirma(`${pz.identificacion}_${area}`, bufferPng);
+      const bufferPng  = Buffer.from(base64Data, 'base64');
+      const carpetaFirma = cedulaParaGuardar || `${pz.identificacion}_${area}`;
+      urlFirmaArea = await subirFirma(carpetaFirma, bufferPng);
     }
 
     const ahora = new Date();
