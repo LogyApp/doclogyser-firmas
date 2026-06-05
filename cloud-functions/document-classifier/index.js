@@ -55,33 +55,33 @@ const formatTimestamp = (date) => {
 
 // ─── Document AI ──────────────────────────────────────────────────────────────
 
+const { GoogleAuth } = require('google-auth-library');
+
 async function extractFieldsFromPDF(bucket, fileName) {
-  const client = new DocumentProcessorServiceClient({
-    apiEndpoint: 'us-documentai.googleapis.com'
-  });
+  const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
+  const client = await auth.getClient();
 
-  // Asegúrate de que este ID sea el correcto y el procesador esté "Enabled"
-  const name = `projects/${process.env.DOCAI_PROJECT_ID}/locations/us/processors/${process.env.DOCAI_PROCESSOR_ID}`;
+  const projectId = process.env.DOCAI_PROJECT_ID;
+  const location = 'us'; // Tu procesador está en 'us'
+  const processorId = process.env.DOCAI_PROCESSOR_ID;
+  const url = `https://us-documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`;
 
-  // LA ESTRUCTURA CORRECTA PARA GCS
-  const request = {
-    name: name,
-    rawDocument: null, // Aseguramos que esto esté vacío
+  const requestBody = {
     gcsDocument: {
       gcsUri: `gs://${bucket}/${fileName}`,
       mimeType: 'application/pdf',
     },
   };
 
-  console.log('[DocAI] Intentando proceso vía GCS URI...');
+  console.log('[DocAI] Llamada HTTP directa a:', url);
 
-  try {
-    const [result] = await client.processDocument(request);
-    return result.document;
-  } catch (err) {
-    console.error('[DocAI] Error crítico detectado:', err.message);
-    throw err;
-  }
+  const response = await client.request({
+    url,
+    method: 'POST',
+    data: requestBody,
+  });
+
+  return response.data.document;
 }
 
 // ─── GCS ──────────────────────────────────────────────────────────────────────
