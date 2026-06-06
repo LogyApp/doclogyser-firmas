@@ -73,25 +73,36 @@ async function extractFieldsFromPDF(bucket, fileName) {
     },
   };
 
-  console.log('[DocAI] Enviando request a:', url);
+  console.log('[DocAI] URL:', url);
+  console.log('[DocAI] Request Body:', JSON.stringify(requestBody));
+  console.log('[DocAI] Token Present:', !!credentials.token);
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${credentials.token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${credentials.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('[DocAI] Error:', error);
-    throw new Error(`Document AI error: ${error}`);
+    console.log('[DocAI] Response Status:', response.status);
+    console.log('[DocAI] Response Headers:', JSON.stringify(Object.fromEntries(response.headers)));
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('[DocAI] Error Response:', error);
+      throw new Error(`Document AI error: ${error}`);
+    }
+
+    const data = await response.json();
+    console.log('[DocAI] Success - Document extracted');
+    return data.document;
+  } catch (err) {
+    console.error('[DocAI] Catch Error:', err.message);
+    throw err;
   }
-
-  const data = await response.json();
-  return data.document;
 }
 
 // ─── GCS ──────────────────────────────────────────────────────────────────────
