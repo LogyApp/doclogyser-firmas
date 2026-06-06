@@ -66,16 +66,21 @@ async function extractFieldsFromPDF(bucket, fileName) {
   const processorId = process.env.DOCAI_PROCESSOR_ID;
   const url = `https://us-documentai.googleapis.com/v1/projects/${projectId}/locations/us/processors/${processorId}:process`;
 
+  // Descargar archivo
+  console.log('[DocAI] Descargando archivo desde GCS...');
+  const [fileBuffer] = await storage.bucket(bucket).file(fileName).download();
+  const base64Content = fileBuffer.toString('base64');
+
   const requestBody = {
-    gcsDocument: {
-      gcsUri: `gs://${bucket}/${fileName}`,
+    rawDocument: {
+      content: base64Content,
       mimeType: 'application/pdf',
     },
   };
 
+  console.log('[DocAI] Usando rawDocument (contenido descargado)');
   console.log('[DocAI] URL:', url);
-  console.log('[DocAI] Request Body:', JSON.stringify(requestBody));
-  console.log('[DocAI] Token Present:', !!credentials.token);
+  console.log('[DocAI] File size:', fileBuffer.length, 'bytes');
 
   try {
     const response = await fetch(url, {
@@ -88,7 +93,6 @@ async function extractFieldsFromPDF(bucket, fileName) {
     });
 
     console.log('[DocAI] Response Status:', response.status);
-    console.log('[DocAI] Response Headers:', JSON.stringify(Object.fromEntries(response.headers)));
 
     if (!response.ok) {
       const error = await response.text();
