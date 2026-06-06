@@ -56,15 +56,16 @@ const formatTimestamp = (date) => {
 // ─── Document AI ──────────────────────────────────────────────────────────────
 
 const { GoogleAuth } = require('google-auth-library');
+const axios = require('axios');
 
 async function extractFieldsFromPDF(bucket, fileName) {
   const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
   const client = await auth.getClient();
+  const accessToken = await client.getAccessToken();
 
   const projectId = process.env.DOCAI_PROJECT_ID;
-  const location = 'us'; // Tu procesador está en 'us'
   const processorId = process.env.DOCAI_PROCESSOR_ID;
-  const url = `https://us-documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`;
+  const url = `https://us-documentai.googleapis.com/v1/projects/${projectId}/locations/us/processors/${processorId}:process`;
 
   const requestBody = {
     gcsDocument: {
@@ -73,15 +74,22 @@ async function extractFieldsFromPDF(bucket, fileName) {
     },
   };
 
-  console.log('[DocAI] Llamada HTTP directa a:', url);
+  console.log('[DocAI] Enviando request:', JSON.stringify(requestBody));
 
-  const response = await client.request({
-    url,
-    method: 'POST',
-    data: requestBody,
-  });
+  try {
+    const response = await axios.post(url, requestBody, {
+      headers: {
+        Authorization: `Bearer ${accessToken.token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-  return response.data.document;
+    console.log('[DocAI] Respuesta exitosa recibida');
+    return response.data.document;
+  } catch (err) {
+    console.error('[DocAI] Error en request:', err.response?.data || err.message);
+    throw err;
+  }
 }
 
 // ─── GCS ──────────────────────────────────────────────────────────────────────
