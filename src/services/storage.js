@@ -11,7 +11,11 @@ const BUCKET_PDFS   = process.env.BUCKET_PDFS   || 'talenthub_central';
 function archivosMasRecientesPrimero(files) {
   return files
     .filter(f => f.name.endsWith('.png'))
-    .sort((a, b) => b.name.localeCompare(a.name));
+    .sort((a, b) => {
+      const ta = new Date(a.metadata?.timeCreated || 0).getTime();
+      const tb = new Date(b.metadata?.timeCreated || 0).getTime();
+      return tb - ta;
+    });
 }
 
 async function obtenerFirmaBase64Reciente(identificacion) {

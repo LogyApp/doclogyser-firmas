@@ -41,4 +41,21 @@ async function generarPDF(htmlContenido) {
   }
 }
 
-module.exports = { generarPDF };
+async function generarPDFDesdeHTML(htmlCompleto) {
+  const browser = await puppeteer.launch({
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(htmlCompleto, { waitUntil: 'networkidle2', timeout: 30000 });
+    const buffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+    });
+    return buffer;
+  } finally {
+    await browser.close();
+  }
+}
+
+module.exports = { generarPDF, generarPDFDesdeHTML };

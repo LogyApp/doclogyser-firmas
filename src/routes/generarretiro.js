@@ -116,7 +116,9 @@ router.get('/:idVinculacion', async (req, res) => {
     );
     if (pzRows.length) {
       const p = pzRows[0];
-      const articulosParsed = (() => { try { return JSON.parse(p.articulos || '[]'); } catch { return []; } })();
+      const articulosParsed = Array.isArray(p.articulos) ? p.articulos
+        : typeof p.articulos === 'string' ? (() => { try { return JSON.parse(p.articulos); } catch { return []; } })()
+        : [];
       const baseUrl2 = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
       // p.token_trabajador es solo el JTI; hay que reconstruir el JWT completo para que sea válido
       let urlFirmaPZ = null;

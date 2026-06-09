@@ -702,9 +702,10 @@
 
     let tieneAlgo = false;
     const MOTIVOS_SIN_TCR = ['No tomó cargo', 'Terminación por Muerte'];
+    const esRenunciaVerbal = motivoRetiro === 'Renuncia' && tipoRenuncia === 'Verbal';
 
-    // TCR: Carta de Renuncia o Terminación de contrato
-    if (!MOTIVOS_SIN_TCR.includes(motivoRetiro)) {
+    // TCR: Carta de Renuncia o Terminación de contrato (la renuncia verbal no requiere carta escrita)
+    if (!MOTIVOS_SIN_TCR.includes(motivoRetiro) && !esRenunciaVerbal) {
       tieneAlgo = true;
       const labelTCR = motivoRetiro === 'Renuncia' ? 'Carta de Renuncia' : 'Terminación de Contrato';
       if (docsOpcionales?.tcr) {
@@ -911,7 +912,11 @@
     // Nunca leer del DOM — siempre renderizar desde _articulosGuardados
 
     const obs = document.getElementById('obsArticulos');
-    if (obs) { _obsGuardadas = obs.value.trim() || _obsGuardadas; obs.disabled = true; }
+    if (obs) {
+      _obsGuardadas = obs.value.trim() || _obsGuardadas;
+      obs.value    = _obsGuardadas;
+      obs.disabled = true;
+    }
 
     // Renderizar vista informativa (solo lectura)
     const lista = document.getElementById('listaArticulos');

@@ -3,7 +3,7 @@ const fs      = require('fs');
 const path    = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool    = require('../services/db');
-const { generarPDF }  = require('../services/renderer');
+const { generarPDFDesdeHTML } = require('../services/renderer');
 const { subirPDFEvaluacionRetiro } = require('../services/storage');
 const { validarTokenEVR }          = require('../services/token');
 
@@ -155,8 +155,8 @@ router.post('/:idEvaluacion', async (req, res) => {
     }
     const htmlPDF = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
     <style>
-      body { font-family: Arial, sans-serif; font-size: 12pt; margin: 24px 28px 100px; color: #222; }
-      @page { margin-bottom: 100px; }
+      @page { margin: 14mm 18mm 16mm 20mm; }
+      body { font-family: Arial, sans-serif; font-size: 12pt; margin: 0; color: #222; }
       .header { display: flex; align-items: center; margin-bottom: 14px; border-bottom: 2px solid #000; padding-bottom: 10px; }
       .header img { height: 52px; margin-right: 16px; }
       .header-title { flex: 1; }
@@ -276,7 +276,7 @@ router.post('/:idEvaluacion', async (req, res) => {
     </div>
     <div class="pregunta-abierta">5.4. Comentarios adicionales:</div>
     <div class="respuesta-abierta">${comentarios_adicionales || ''}</div>
-    <div style="margin-top:60px;text-align:center;position:fixed;bottom:20px;left:28px;right:28px">
+    <div style="margin-top:40px;text-align:center;width:100%">
       <div style="width:100%;height:2px;background:#F55400;margin-bottom:12px"></div>
       <div style="color:#000b59;font-family:Arial,sans-serif;font-size:8pt;line-height:1.4;letter-spacing:0.3px">
         DIAGONAL 74B No. 33° 51-55 — ANTIGUA TRANSVERSAL 39° No 70° 51-55 — LAURELES - MEDELLÍN
@@ -284,7 +284,7 @@ router.post('/:idEvaluacion', async (req, res) => {
     </div>
     </body></html>`;
 
-    const pdfBuffer = await generarPDF(htmlPDF);
+    const pdfBuffer = await generarPDFDesdeHTML(htmlPDF);
     const urlPdf    = await subirPDFEvaluacionRetiro(String(identificacion), evr.id_vinculacion, pdfBuffer);
 
     // Actualizar url_pdf en EVR
