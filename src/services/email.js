@@ -11,6 +11,8 @@ const transporter = nodemailer.createTransport({
   auth:   authConfig,
 });
 
+const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
+
 const HEADER = `
   <div style="border-top:5px solid #e67e22;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
     <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
@@ -76,7 +78,7 @@ async function notificarNuevoTraslado({ trabajador, identificacion, operacionOri
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER}>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      'juridica@logyser.com',
     cc:      ccTraslado(emailUsuario, cargo),
     subject: asunto,
@@ -139,7 +141,7 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
   }
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER}>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      email,
     cc:      [...new Set(ccFirma.filter(Boolean))].join(', '),
     subject: asunto,
@@ -190,7 +192,7 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
   }
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER}>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      'juridica@logyser.com, subgerenciaoperaciones@logyser.com',
     cc:      [...new Set(ccList.filter(Boolean))].join(', '),
     subject: asunto,
@@ -300,7 +302,7 @@ async function notificarRetiro({
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Notificaciones" <noreply@logyser.com>`,
+    from:    `"LOG&SER Notificaciones" <${EMAIL_FROM}>`,
     to:      'retiros@logyser.com',
     cc,
     subject: asunto,
@@ -342,7 +344,7 @@ async function notificarFirmaRenuncia({ emailTrabajador, nombreTrabajador, urlFi
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <noreply@logyser.com>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      emailTrabajador,
     subject: asunto,
     html:    cuerpo,
@@ -379,7 +381,7 @@ async function notificarRenunciaFirmada({ nombreTrabajador, identificacion, urlD
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <noreply@logyser.com>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      'retiros@logyser.com',
     cc:      'directorrh@logyser.com, gestor.nomina@logyser.com, admin@logyser.com',
     subject: asunto,
@@ -465,7 +467,7 @@ async function notificarIngreso({ trabajador, identificacion, cargo, operacion, 
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Notificaciones" <noreply@logyser.com>`,
+    from:    `"LOG&SER Notificaciones" <${EMAIL_FROM}>`,
     to:      DESTINATARIOS_INGRESO.join(', '),
     subject: asunto,
     html:    cuerpo,
@@ -515,7 +517,7 @@ async function notificarPazYSalvoTrabajador({ emailTrabajador, celularTrabajador
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <noreply@logyser.com>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      emailTrabajador,
     subject: asunto,
     html:    cuerpo,
@@ -579,7 +581,7 @@ async function notificarAreaPazYSalvo({ area, destinatarios, trabajador, identif
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <noreply@logyser.com>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      destinatarios.join(', '),
     subject: asunto,
     html:    cuerpo,
@@ -620,7 +622,7 @@ async function notificarPazYSalvoCompletado({ trabajador, identificacion, cargo,
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <noreply@logyser.com>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      'retiros@logyser.com',
     cc:      'directorrh@logyser.com, gestor.nomina@logyser.com, admin@logyser.com',
     subject: asunto,
@@ -710,7 +712,7 @@ async function notificarDocumentoRetiroTrabajador({
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER || 'noreply@logyser.com'}>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      emailTrabajador,
     subject: asunto,
     html:    cuerpo,
@@ -761,7 +763,7 @@ async function notificarDocumentosRetiroConcluidos({
     </div>`;
 
   await transporter.sendMail({
-    from:    `"LOG&SER Documentos" <${process.env.SMTP_USER || 'noreply@logyser.com'}>`,
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      emailTrabajador,
     cc:      'retiros@logyser.com',
     subject: asunto,
