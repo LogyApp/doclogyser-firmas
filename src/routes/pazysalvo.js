@@ -149,9 +149,9 @@ router.post('/:idPz', async (req, res) => {
         console.log(`[pazysalvo POST] Generando token para área: ${area}`);
         const tokenArea = await generarTokenPZ(idPz, `token_${area}`, `token_${area}_expira`);
         const urlFirmaArea = `${baseUrl}/pazysalvo-area/${area}/${idPz}?token=${encodeURIComponent(tokenArea)}`;
-        // MODO PRUEBA: redirigir todos los correos a admin para verificación
-        const destinatarios = ['admin@logyser.com'];
-        // const destinatarios = EMAILS_AREA[area] || []; // ← restaurar cuando se confirme OK
+        // CC 1117517812 permanece en modo prueba; el resto usa correos reales por área
+        const esPrueba = String(pz.identificacion) === '1117517812';
+        const destinatarios = esPrueba ? ['admin@logyser.com'] : (EMAILS_AREA[area] || []);
         console.log(`[pazysalvo POST] Enviando email ${area} a:`, destinatarios);
         if (destinatarios.length) {
           await notificarAreaPazYSalvo({
