@@ -837,7 +837,7 @@
       if (esNominaOSistema && pazYSalvo.estado !== 'completado') {
         document.getElementById('btnEditarArts').style.display = 'inline-block';
       }
-      if (esNominaOSistema && pazYSalvo.workerSigned) {
+      if (pazYSalvo.workerSigned) {
         document.getElementById('cardEstadoPZ').style.display = 'block';
         iniciarEstadoPZ(_idPzActual);
       }

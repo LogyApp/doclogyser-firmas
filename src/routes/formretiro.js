@@ -227,20 +227,10 @@ router.post('/api/actualizar-articulos-pz', async (req, res) => {
 });
 
 // ── GET /api/pz-status/:idPz ──────────────────────────────────────────────
-// Solo Nómina/Sistema
 router.get('/api/pz-status/:idPz', async (req, res) => {
   try {
     const { idPz } = req.params;
     const { usuario } = req.query;
-
-    if (usuario) {
-      const [uRows] = await pool.execute(
-        'SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]
-      );
-      if (!uRows.length || !['Nomina', 'Sistema'].includes(uRows[0].Rol)) {
-        return res.status(403).json({ ok: false, error: 'Sin permiso' });
-      }
-    }
 
     const [rows] = await pool.execute(
       `SELECT estado, nivel_compromiso, areas_requeridas, url_pdf_final,
