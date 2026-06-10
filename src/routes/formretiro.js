@@ -39,11 +39,6 @@ const MOTIVOS_CON_ED     = ['Terminación en Periodo de Prueba'];
 const MOTIVOS_TCR_TERMINACION = MOTIVOS.filter(m => !MOTIVOS_SIN_DOCS.includes(m) && m !== 'Renuncia');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-function parsearIdentificacion(param) {
-  const partes = decodeURIComponent(param).split('&');
-  const raw = partes[partes.length - 1];
-  return parseInt(raw, 10) || raw;
-}
 
 function limpiarNombre(trabajador) {
   if (!trabajador) return '';
@@ -572,9 +567,9 @@ router.post('/api/confirmar-responsable', async (req, res) => {
   }
 });
 
-// ── GET /:identificacion ───────────────────────────────────────────────────
+// ── GET /:idVinculacion ────────────────────────────────────────────────────
 // Formulario de registro de retiro (Paso 1)
-router.get('/:identificacion', async (req, res) => {
+router.get('/:idVinculacion', async (req, res) => {
   try {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).send(htmlError('Parámetro ?usuario requerido'));
@@ -586,18 +581,18 @@ router.get('/:identificacion', async (req, res) => {
     const rolUsuario      = usuRows[0].Rol || '';
     const esNominaOSistema = ['Nomina', 'Sistema'].includes(rolUsuario);
 
-    const identificacion = parsearIdentificacion(req.params.identificacion);
+    const idVinculacion = decodeURIComponent(req.params.idVinculacion);
 
     const [vinRows] = await pool.execute(
-      `SELECT \`Id Vinculación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado,
+      `SELECT \`Id Vinculación\`, \`Identificación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado,
               \`Fecha de Retiro\`, \`Motivo del Retiro\`, \`Archivo Vinculación\`
        FROM \`Maestro_Vinculación\`
-       WHERE \`Identificación\` = ?
-       ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-      [identificacion]
+       WHERE \`Id Vinculación\` = ?`,
+      [idVinculacion]
     );
-    if (!vinRows.length) return res.status(404).send(htmlError('Trabajador no encontrado para esa identificación'));
+    if (!vinRows.length) return res.status(404).send(htmlError('Vinculación no encontrada'));
     const vin = vinRows[0];
+    const identificacion = vin['Identificación'];
 
     const yaRetirado   = vin.Estado === 'Retirado';
     // Todos los roles pueden ver el formulario de registro si el trabajador no está retirado aún
@@ -661,9 +656,9 @@ router.get('/:identificacion', async (req, res) => {
   }
 });
 
-// ── POST /:identificacion ──────────────────────────────────────────────────
+// ── POST /:idVinculacion ───────────────────────────────────────────────────
 // Paso 1: registra el retiro con documentos opcionales (TCR, ED)
-router.post('/:identificacion', async (req, res) => {
+router.post('/:idVinculacion', async (req, res) => {
   try {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ ok: false, error: 'Parámetro ?usuario requerido' });
@@ -675,7 +670,7 @@ router.post('/:identificacion', async (req, res) => {
     const usuData = usuRows[0];
     const esNominaOSistema = ['Nomina', 'Sistema'].includes(usuData.Rol || '');
 
-    const identificacion = parsearIdentificacion(req.params.identificacion);
+    const idVinculacion = decodeURIComponent(req.params.idVinculacion);
     const { fechaRetiro, motivoRetiro, tipoRenuncia, tcrBase64, edBase64, estado } = req.body;
 
     if (!fechaRetiro) return res.status(400).json({ ok: false, error: 'La fecha de retiro es obligatoria' });
@@ -688,14 +683,14 @@ router.post('/:identificacion', async (req, res) => {
     }
 
     const [vinRows] = await pool.execute(
-      `SELECT \`Id Vinculación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado, \`Operación\`, Regional
+      `SELECT \`Id Vinculación\`, \`Identificación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado, \`Operación\`, Regional
        FROM \`Maestro_Vinculación\`
-       WHERE \`Identificación\` = ?
-       ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-      [identificacion]
+       WHERE \`Id Vinculación\` = ?`,
+      [idVinculacion]
     );
-    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Trabajador no encontrado' });
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
     const vin = vinRows[0];
+    const identificacion = vin['Identificación'];
 
     // Prevenir re-registro si ya está retirado (solo para roles no-Nómina)
     if (vin.Estado === 'Retirado' && !esNominaOSistema) {
