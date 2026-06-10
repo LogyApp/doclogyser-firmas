@@ -22,7 +22,8 @@ function limpiarNombre(n) {
 
 function formatFechaCO(fecha) {
   if (!fecha) return '';
-  const d = new Date(typeof fecha === 'string' ? fecha + 'T12:00:00' : fecha);
+  const str = fecha instanceof Date ? fecha.toISOString().slice(0, 10) : String(fecha).slice(0, 10);
+  const d = new Date(str + 'T12:00:00');
   if (isNaN(d)) return '';
   return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
 }
