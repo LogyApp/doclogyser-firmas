@@ -711,7 +711,7 @@ async function notificarDocumentoRetiroTrabajador({
       </p>
     </div>`;
 
-  const ccRetiro = ['retiros@logyser.com', 'admin@logyser.com', emailUsuario].filter(Boolean).join(', ');
+  const ccRetiro = ['retiros@logyser.com', 'admin@logyser.com', 'gestor.nomina@logyser.com', 'nomina@logyser.com', emailUsuario].filter(Boolean).join(', ');
 
   await transporter.sendMail({
     from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
