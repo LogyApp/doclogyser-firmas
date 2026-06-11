@@ -266,7 +266,8 @@ router.get('/api/pz-status/:idPz', async (req, res) => {
 router.post('/api/enviar-trabajador', async (req, res) => {
   try {
     const { emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro, usuario } = req.body;
+            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, urlTCR, urlED,
+            motivoRetiro, tipoRenuncia, usuario } = req.body;
     if (!emailTrabajador) return res.status(400).json({ ok: false, error: 'Email requerido' });
 
     let emailUsuario = null;
@@ -279,7 +280,8 @@ router.post('/api/enviar-trabajador', async (req, res) => {
 
     await notificarDocumentoRetiroTrabajador({
       emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro, emailUsuario,
+      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, urlTCR, urlED,
+      motivoRetiro, tipoRenuncia, emailUsuario,
     });
     res.json({ ok: true });
   } catch (err) {

@@ -1075,7 +1075,8 @@
 
     // ── Construir contenido del mensaje ───────────────────────────────────
     let msgWATexto, urlPZParaEmail, urlARParaEmail, urlCertParaEmail,
-        urlEMOEParaEmail, urlCRSParaEmail, urlEVRParaEmail;
+      urlEMOEParaEmail, urlCRSParaEmail, urlEVRParaEmail,
+      urlTCRParaEmail, urlEDParaEmail;
 
     if (todosFirmados) {
       // Mensaje de cierre: links a PDFs firmados
@@ -1092,6 +1093,8 @@
       urlEMOEParaEmail = docsMap['EMOE']?.url || null;
       urlCRSParaEmail  = docsMap['CRS']?.url  || null;
       urlARParaEmail   = docsMap['AR']?.url   || null;
+      urlTCRParaEmail  = docsOpcionales?.tcr?.url || null;
+      urlEDParaEmail   = docsOpcionales?.ed?.url  || null;
       urlPZParaEmail   = null; // no hay link de firma, el PZ ya se mandó su PDF por otro canal
       urlEVRParaEmail  = null;
     } else {
@@ -1110,6 +1113,8 @@
       urlEMOEParaEmail = urlFirmaEMOE || null;
       urlCRSParaEmail  = urlFirmaCRS  || null;
       urlARParaEmail   = urlFirmaAR   || null;
+      urlTCRParaEmail  = docsOpcionales?.tcr?.url || null;
+      urlEDParaEmail   = docsOpcionales?.ed?.url  || null;
       urlPZParaEmail   = hayPZ ? _urlFirmaPZActual : null;
       urlEVRParaEmail  = (evr?.urlAcceso && !evr?.completada) ? evr.urlAcceso : null;
     }
@@ -1146,7 +1151,11 @@
             urlEMOE: urlEMOEParaEmail,
             urlCRS:  urlCRSParaEmail,
             urlEVR:  urlEVRParaEmail,
-            motivoRetiro, usuario,
+            urlTCR:  urlTCRParaEmail,
+            urlED:   urlEDParaEmail,
+            motivoRetiro,
+            tipoRenuncia,
+            usuario,
           }),
         });
         const d = await r.json();

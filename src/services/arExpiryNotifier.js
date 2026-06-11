@@ -93,6 +93,7 @@ async function verificarARExpirados() {
           nombre_trabajador:      limpiarNombre(r.Trabajador).toUpperCase(),
           identificacion:         String(r.identificacion),
           ciudad_regional:        r.ciudadRegional || '',
+          fecha_expedicion:       formatFechaCO(new Date()),
           verbal_marca:           tipo === 'Verbal'  ? 'X' : '___',
           escrita_marca:          tipo === 'Escrita' ? 'X' : '___',
           fecha_retiro_texto:     formatFechaCO(r.fechaRetiro),

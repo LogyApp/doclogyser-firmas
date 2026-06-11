@@ -107,6 +107,7 @@ function buildDatosPlantilla(vin, firmante, firmaTrabajadorHtml) {
     nombre_trabajador:    limpiarNombre(vin.Trabajador).toUpperCase(),
     identificacion:       String(vin['Identificación']),
     ciudad_regional:      vin.ar_ciudad_regional || '',
+    fecha_expedicion:     formatFechaCO(new Date()),
     verbal_marca:         tipo === 'Verbal' ? 'X' : '___',
     escrita_marca:        tipo === 'Escrita' ? 'X' : '___',
     fecha_retiro_texto:   formatFechaCO(vin['Fecha de Retiro']),

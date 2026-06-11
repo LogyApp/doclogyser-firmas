@@ -634,9 +634,13 @@ async function notificarPazYSalvoCompletado({ trabajador, identificacion, cargo,
 
 async function notificarDocumentoRetiroTrabajador({
   emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-  urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro, emailUsuario,
+  urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, urlTCR, urlED,
+  motivoRetiro, tipoRenuncia, emailUsuario,
 }) {
   const esRenuncia = motivoRetiro === 'Renuncia';
+  const detalleMotivo = esRenuncia && tipoRenuncia
+    ? `${motivoRetiro} (${tipoRenuncia})`
+    : (motivoRetiro || 'No informado');
   const asunto = 'Documentación de retiro y proceso de liquidación — LOG&SER S.A.S.';
 
   // Lista de documentos (enlaces de firma)
@@ -645,6 +649,9 @@ async function notificarDocumentoRetiroTrabajador({
     urlEMOE  ? `<li>📄 <a href="${urlEMOE}" style="color:#1a5fa8">Autorización para Examen Médico de Egreso</a></li>`        : '',
     urlCRS   ? `<li>📄 <a href="${urlCRS}"  style="color:#1a5fa8">Autorización de retiro de cesantías</a></li>`              : '',
     (esRenuncia && urlAR) ? `<li>📄 <a href="${urlAR}" style="color:#1a5fa8">Aceptación de su renuncia</a></li>`             : '',
+    (esRenuncia && urlTCR) ? `<li>📎 <a href="${urlTCR}" style="color:#1a5fa8">Carta de renuncia</a></li>`                   : '',
+    (!esRenuncia && urlTCR) ? `<li>📎 <a href="${urlTCR}" style="color:#1a5fa8">Terminación de contrato</a></li>`           : '',
+    urlED ? `<li>📎 <a href="${urlED}" style="color:#1a5fa8">Evaluación de desempeño</a></li>`                               : '',
   ].filter(Boolean).join('\n');
 
   // Bloque Paz y Salvo (solo si hay enlace)
@@ -690,6 +697,9 @@ async function notificarDocumentoRetiroTrabajador({
           Por medio del presente, en representación de <strong>LOG&SER - Apoyo Logístico y Operativo S.A.S.</strong>,
           le hacemos entrega de los documentos correspondientes a la finalización de su vínculo laboral:
         </p>
+        <div style="background:#f8f9fb;border-left:4px solid #1a1a2e;padding:10px 14px;font-size:.88rem;color:#444;margin:0 0 16px">
+          Motivo de retiro: <strong>${detalleMotivo}</strong>
+        </div>
         <ul style="color:#333;font-size:.92rem;line-height:2;padding-left:18px;margin:0 0 18px">
           ${docsItems}
         </ul>
