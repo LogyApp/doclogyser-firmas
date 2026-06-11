@@ -266,11 +266,20 @@ router.get('/api/pz-status/:idPz', async (req, res) => {
 router.post('/api/enviar-trabajador', async (req, res) => {
   try {
     const { emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro } = req.body;
+            urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro, usuario } = req.body;
     if (!emailTrabajador) return res.status(400).json({ ok: false, error: 'Email requerido' });
+
+    let emailUsuario = null;
+    if (usuario) {
+      const [uRows] = await pool.execute(
+        'SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]
+      );
+      emailUsuario = uRows[0]?.Email || null;
+    }
+
     await notificarDocumentoRetiroTrabajador({
       emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro,
+      urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro, emailUsuario,
     });
     res.json({ ok: true });
   } catch (err) {
@@ -306,28 +315,50 @@ router.post('/api/actualizar-contacto', async (req, res) => {
 // ── POST /api/reemplazar-ed ────────────────────────────────────────────────
 router.post('/api/reemplazar-ed', async (req, res) => {
   try {
-    const { idVinculacion, edBase64 } = req.body;
+    const { idVinculacion, edBase64, usuario: usuarioBody } = req.body;
     if (!idVinculacion || !edBase64) {
       return res.status(400).json({ ok: false, error: 'Datos incompletos' });
     }
-    const [docRows] = await pool.execute(
-      `SELECT Validación FROM Maestro_docTrabajador
-       WHERE Identificación = (
-         SELECT Identificación FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1
-       ) AND Prefijo = 'ED' ORDER BY FechaRegistro DESC LIMIT 1`,
+    const [vinRows] = await pool.execute(
+      `SELECT \`Identificación\`, Regional, Operación, \`Fecha de Ingreso\`
+       FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1`,
       [idVinculacion]
+    );
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const vinRow = vinRows[0];
+    const identificacion = vinRow['Identificación'];
+
+    const [docRows] = await pool.execute(
+      `SELECT id, \`Validación\` FROM Maestro_docTrabajador
+       WHERE Identificación = ? AND Prefijo = 'ED' ORDER BY FechaRegistro DESC LIMIT 1`,
+      [String(identificacion)]
     );
     if (docRows.length && docRows[0]['Validación'] === 'OK') {
       return res.status(403).json({ ok: false, error: 'El documento ya fue validado y no puede ser reemplazado' });
     }
-    const [vinRows] = await pool.execute(
-      'SELECT `Identificación` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
-      [idVinculacion]
-    );
-    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
-    const identificacion = vinRows[0]['Identificación'];
+
     const buffer = Buffer.from(edBase64.replace(/^data:.*;base64,/, ''), 'base64');
-    const url = await subirPDFEvaluacionDesempeno(identificacion, idVinculacion, buffer);
+    const url    = await subirPDFEvaluacionDesempeno(identificacion, idVinculacion, buffer);
+    const ahora  = fechaHoraBogota();
+
+    if (docRows.length) {
+      await pool.execute(
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+        [url, ahora, docRows[0].id]
+      );
+    } else {
+      await registrarDocTrabajador({
+        regional:      vinRow.Regional || null,
+        operacion:     vinRow['Operación'] || null,
+        identificacion: String(identificacion),
+        fechaIngreso:  vinRow['Fecha de Ingreso'],
+        tipoDocumento: '59',
+        prefijo:       'ED',
+        doc:           url,
+        observaciones: 'Evaluación de desempeño — Periodo de Prueba',
+        usuario:       usuarioBody || 'sistema',
+      });
+    }
     res.json({ ok: true, url });
   } catch (err) {
     console.error('[reemplazar-ed]', err);
@@ -338,28 +369,51 @@ router.post('/api/reemplazar-ed', async (req, res) => {
 // ── POST /api/reemplazar-tcr ───────────────────────────────────────────────
 router.post('/api/reemplazar-tcr', async (req, res) => {
   try {
-    const { idVinculacion, tcrBase64 } = req.body;
+    const { idVinculacion, tcrBase64, usuario: usuarioBody } = req.body;
     if (!idVinculacion || !tcrBase64) {
       return res.status(400).json({ ok: false, error: 'Datos incompletos' });
     }
-    const [docRows] = await pool.execute(
-      `SELECT Validación FROM Maestro_docTrabajador
-       WHERE Identificación = (
-         SELECT Identificación FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1
-       ) AND Prefijo = 'TCR' ORDER BY FechaRegistro DESC LIMIT 1`,
+    const [vinRows] = await pool.execute(
+      `SELECT \`Identificación\`, Regional, Operación, \`Fecha de Ingreso\`, \`Motivo del Retiro\`
+       FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1`,
       [idVinculacion]
+    );
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const vinRow = vinRows[0];
+    const identificacion = vinRow['Identificación'];
+
+    const [docRows] = await pool.execute(
+      `SELECT id, \`Validación\` FROM Maestro_docTrabajador
+       WHERE Identificación = ? AND Prefijo = 'TCR' ORDER BY FechaRegistro DESC LIMIT 1`,
+      [String(identificacion)]
     );
     if (docRows.length && docRows[0]['Validación'] === 'OK') {
       return res.status(403).json({ ok: false, error: 'El documento ya fue validado y no puede ser reemplazado' });
     }
-    const [vinRows] = await pool.execute(
-      'SELECT `Identificación` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
-      [idVinculacion]
-    );
-    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
-    const identificacion = vinRows[0]['Identificación'];
+
     const buffer = Buffer.from(tcrBase64.replace(/^data:.*;base64,/, ''), 'base64');
-    const url = await subirPDFCartaRenuncia(identificacion, idVinculacion, buffer);
+    const url    = await subirPDFCartaRenuncia(identificacion, idVinculacion, buffer);
+    const ahora  = fechaHoraBogota();
+
+    if (docRows.length) {
+      await pool.execute(
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+        [url, ahora, docRows[0].id]
+      );
+    } else {
+      const esCartaRenuncia = vinRow['Motivo del Retiro'] === 'Renuncia';
+      await registrarDocTrabajador({
+        regional:      vinRow.Regional || null,
+        operacion:     vinRow['Operación'] || null,
+        identificacion: String(identificacion),
+        fechaIngreso:  vinRow['Fecha de Ingreso'],
+        tipoDocumento: '55',
+        prefijo:       'TCR',
+        doc:           url,
+        observaciones: esCartaRenuncia ? 'Carta de renuncia del trabajador' : 'Terminación de contrato',
+        usuario:       usuarioBody || 'sistema',
+      });
+    }
     res.json({ ok: true, url });
   } catch (err) {
     console.error('[reemplazar-tcr]', err);

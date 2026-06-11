@@ -634,7 +634,7 @@ async function notificarPazYSalvoCompletado({ trabajador, identificacion, cargo,
 
 async function notificarDocumentoRetiroTrabajador({
   emailTrabajador, nombreTrabajador, responsableNombre, responsableCargo,
-  urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro,
+  urlPZ, urlAR, urlCert, urlEMOE, urlCRS, urlEVR, motivoRetiro, emailUsuario,
 }) {
   const esRenuncia = motivoRetiro === 'Renuncia';
   const asunto = 'Documentación de retiro y proceso de liquidación — LOG&SER S.A.S.';
@@ -711,9 +711,12 @@ async function notificarDocumentoRetiroTrabajador({
       </p>
     </div>`;
 
+  const ccRetiro = ['retiros@logyser.com', 'admin@logyser.com', emailUsuario].filter(Boolean).join(', ');
+
   await transporter.sendMail({
     from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      emailTrabajador,
+    cc:      ccRetiro,
     subject: asunto,
     html:    cuerpo,
   });

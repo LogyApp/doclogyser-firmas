@@ -305,6 +305,19 @@
         <div class="err" id="errCiudad">Ingrese la ciudad</div>
       </div>
 
+      <div class="field" id="campoTipoRenuncia" style="display:none">
+        <label class="lbl">Tipo de renuncia <span class="req">*</span></label>
+        <div style="display:flex;gap:20px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:.88rem;cursor:pointer">
+            <input type="radio" name="tipoRenuncia" value="Verbal" style="accent-color:#8e44ad;width:16px;height:16px"> Verbal
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.88rem;cursor:pointer">
+            <input type="radio" name="tipoRenuncia" value="Escrita" style="accent-color:#8e44ad;width:16px;height:16px"> Escrita
+          </label>
+        </div>
+        <div class="err" id="errTipoRenuncia">Seleccione el tipo de renuncia</div>
+      </div>
+
       <div class="section-title" style="font-size:.82rem;margin-top:16px;margin-bottom:10px;border:none;padding-bottom:0">Firma del responsable</div>
 
       <div id="bloqueExistente" style="display:none">
@@ -521,6 +534,10 @@
     document.getElementById('ciudadInput').value = ciudadRegional || ciudadSugerida || '';
     document.getElementById('nombreFirmante').textContent = usuarioNombre;
 
+    if (motivoRetiro === 'Renuncia' && !tipoRenuncia) {
+      document.getElementById('campoTipoRenuncia').style.display = 'block';
+    }
+
     if (firmaResponsableUrl) {
       firmaExistente = firmaResponsableUrl;
       document.getElementById('imgFirmaExistente').src = firmaResponsableUrl;
@@ -597,6 +614,14 @@
     marcarErr('errCiudad', !document.getElementById('ciudadInput').value.trim());
     const necesitaCanvas = !firmaExistente || document.getElementById('chkNuevaFirma')?.checked;
     if (necesitaCanvas) marcarErr('errFirma', !tieneTrazos);
+
+    let tipoRenunciaFinal = tipoRenuncia;
+    if (motivoRetiro === 'Renuncia' && !tipoRenuncia) {
+      const radio = document.querySelector('input[name="tipoRenuncia"]:checked');
+      marcarErr('errTipoRenuncia', !radio);
+      if (radio) tipoRenunciaFinal = radio.value;
+    }
+
     if (!ok) return;
 
     // Usar referencia fresca al canvas (por si canvas fue null al cargar la página)
@@ -613,7 +638,7 @@
         body: JSON.stringify({
           idVinculacion,
           ciudadRegional: document.getElementById('ciudadInput').value.trim(),
-          tipoRenuncia: tipoRenuncia || null,
+          tipoRenuncia: tipoRenunciaFinal || null,
           firmaBase64,
         }),
       });
@@ -1121,7 +1146,7 @@
             urlEMOE: urlEMOEParaEmail,
             urlCRS:  urlCRSParaEmail,
             urlEVR:  urlEVRParaEmail,
-            motivoRetiro,
+            motivoRetiro, usuario,
           }),
         });
         const d = await r.json();
