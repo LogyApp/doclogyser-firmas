@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('../services/db');
 const { randomUUID } = require('crypto');
+const { notificarSolicitudCambioEstado } = require('../services/email');
+const { despacharSolicitud } = require('../solicitudes/kardex.service');
 
 const router = express.Router();
 const HTML_PATH = path.join(__dirname, '../views/solicitudes/index.html');
@@ -42,6 +44,66 @@ function agruparOperacionesPorRegional(rows) {
     opsPorRegional[regional].push(operacion);
   });
   return opsPorRegional;
+}
+
+// Envía correo de notificación al solicitante y a los aprobadores según categoría.
+// Fire-and-forget: no lanza excepciones.
+async function _enviarEmailEstado(idSolicitud, estadoAnterior, estadoNuevo, quienCambioId) {
+  try {
+    const [[sol]] = await pool.execute(
+      'SELECT *, `Operación` FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
+      [idSolicitud]
+    );
+    if (!sol) return;
+
+    const [[solicitanteRow]] = await pool.execute(
+      'SELECT Nombre, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+      [sol.Usuario]
+    );
+
+    const rolesAprobadores = rolesPermitidosPorCategoria(sol.Categoria);
+    const ph = rolesAprobadores.map(() => '?').join(',');
+    const [aprobadoresRows] = await pool.execute(
+      `SELECT Email FROM Maestro_Usuarios WHERE Rol IN (${ph}) AND Email IS NOT NULL AND Email != ''`,
+      rolesAprobadores
+    );
+
+    const [items] = await pool.execute(
+      `SELECT i.Cantidad, a.Articulo
+       FROM Dynamic_Solicitudes_Items i
+       LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
+       WHERE i.IdSolicitud = ?`,
+      [idSolicitud]
+    );
+
+    let quienCambioNombre = quienCambioId;
+    if (quienCambioId && quienCambioId !== sol.Usuario) {
+      const [[whoRow]] = await pool.execute(
+        'SELECT Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+        [quienCambioId]
+      );
+      if (whoRow) quienCambioNombre = whoRow.Nombre || quienCambioId;
+    }
+
+    await notificarSolicitudCambioEstado({
+      idSolicitud,
+      operacion: sol['Operación'],
+      regional: sol.Regional,
+      categoria: sol.Categoria,
+      prioridad: sol.Prioridad,
+      estadoNuevo,
+      estadoAnterior,
+      fechaSolicitud: sol.FechaSolicitud,
+      usuarioSolicitante: solicitanteRow?.Nombre || sol.Usuario,
+      emailSolicitante: solicitanteRow?.Email || null,
+      emailsAprobadores: aprobadoresRows.map(r => r.Email).filter(Boolean),
+      items,
+      observaciones: sol.Observaciones,
+      quienCambio: quienCambioNombre,
+    });
+  } catch (err) {
+    console.error('[solicitudes] Error enviando email cambio estado:', err);
+  }
 }
 
 async function computarAccesoSolicitud(usuarioId) {
@@ -362,6 +424,12 @@ router.put('/api/solicitud/:id', async (req, res) => {
     }
 
     await conn.commit();
+
+    // Email: notificar cuando el usuario envía la solicitud a PENDIENTE
+    if (nuevoEstado === 'PENDIENTE') {
+      _enviarEmailEstado(id, 'BORRADOR', 'PENDIENTE', usuario);
+    }
+
     res.json({ ok: true, idSolicitud: id, estado: nuevoEstado });
   } catch (err) {
     await conn.rollback();
@@ -434,7 +502,7 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
     }
 
     const [[solicitud]] = await pool.execute(
-      'SELECT Categoria FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1',
+      'SELECT Categoria, Estado, `Operación`, Regional FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1',
       [id]
     );
     if (!solicitud) {
@@ -448,6 +516,8 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
         error: `El rol ${rolUsuario || 'N/A'} no tiene permiso para gestionar estado en la categoría ${solicitud.Categoria || 'N/A'}`,
       });
     }
+
+    const estadoAnterior = solicitud.Estado;
 
     if (estado === 'APROBADA') {
       await pool.execute(
@@ -466,6 +536,18 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
         [estado, usuario, observaciones || null, id]
       );
     }
+
+    // Kardex: registrar movimiento de transferencia al despachar
+    if (['DESPACHADA', 'PARCIAL'].includes(estado)) {
+      try {
+        await despacharSolicitud(id, solicitud['Operación'], solicitud.Regional, usuario);
+      } catch (kErr) {
+        console.error('[solicitudes] Error al registrar kardex:', kErr);
+      }
+    }
+
+    // Email: notificar cambio de estado (fire and forget)
+    _enviarEmailEstado(id, estadoAnterior, estado, usuario);
 
     res.json({ ok: true, idSolicitud: id, estado });
   } catch (err) {

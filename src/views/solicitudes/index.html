@@ -291,7 +291,7 @@
       <table id="tabla-solicitudes">
         <thead>
           <tr>
-            <th style="width: 220px;">ID</th>
+            <th style="width: 180px;">Usuario</th>
             <th>Fecha</th>
             <th>Operación</th>
             <th>Regional</th>
@@ -683,7 +683,7 @@
 
     tbody.innerHTML = solicitudes.map(sol => `
       <tr class="clickable" onclick="verDetalle('${sol.IdSolicitud}')">
-        <td style="font-family: monospace; font-size: .8rem; cursor: help;" title="${sol.IdSolicitud}">${sol.IdSolicitud}</td>
+        <td>${sol.Usuario || '—'}</td>
         <td>${formatearFecha(sol.FechaSolicitud)}</td>
         <td>${sol['Operación'] || '—'}</td>
         <td>${sol.Regional || '—'}</td>
@@ -725,8 +725,7 @@
     }
   }
 
-  function habilitarRedimensionColumnas() {
-    const table = document.getElementById('tabla-solicitudes');
+  function habilitarRedimensionTabla(table) {
     if (!table || table.dataset.resizable === '1') return;
 
     const headers = table.querySelectorAll('thead th');
@@ -735,17 +734,14 @@
 
       th.addEventListener('mousedown', (event) => {
         const rect = th.getBoundingClientRect();
-        const cercaDelBorde = (rect.right - event.clientX) <= 10;
-        if (!cercaDelBorde) return;
+        if ((rect.right - event.clientX) > 10) return;
 
         event.preventDefault();
         const startX = event.clientX;
         const startWidth = th.offsetWidth;
 
         const onMouseMove = (moveEvent) => {
-          const delta = moveEvent.clientX - startX;
-          const newWidth = Math.max(80, startWidth + delta);
-          th.style.width = `${newWidth}px`;
+          th.style.width = `${Math.max(60, startWidth + moveEvent.clientX - startX)}px`;
         };
 
         const onMouseUp = () => {
@@ -759,6 +755,10 @@
     });
 
     table.dataset.resizable = '1';
+  }
+
+  function habilitarRedimensionColumnas() {
+    habilitarRedimensionTabla(document.getElementById('tabla-solicitudes'));
   }
 
   // ═════ VISTA: NUEVA SOLICITUD ═════
@@ -1131,6 +1131,7 @@
 
       document.getElementById('detalle-contenido').innerHTML = html;
       document.getElementById('detalle-subtitulo').innerHTML = `${solicitudActual['Operación']} • ${solicitudActual.Regional}`;
+      document.querySelectorAll('#detalle-contenido table').forEach(habilitarRedimensionTabla);
       mostrarVista('detalle');
     } catch (err) {
       mostrarToast(err.message, 'error');

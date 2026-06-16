@@ -784,6 +784,154 @@ async function notificarDocumentosRetiroConcluidos({
   });
 }
 
+// ── Notificaciones de Solicitudes de Inventario ──────────────────────────────
+
+const SOLICITUD_ESTADO_CFG = {
+  PENDIENTE:  { color: '#d97706', bg: '#fffbea', borde: '#f0d060', icono: '⏳', etiqueta: 'Pendiente de aprobación' },
+  APROBADA:   { color: '#16a34a', bg: '#eafaf1', borde: '#6dcf9e', icono: '✅', etiqueta: 'Aprobada' },
+  DESPACHADA: { color: '#2563eb', bg: '#eef4ff', borde: '#93c5fd', icono: '📦', etiqueta: 'Despachada' },
+  PARCIAL:    { color: '#ea580c', bg: '#fff4ef', borde: '#fdba74', icono: '📦', etiqueta: 'Despacho Parcial' },
+  COMPLETADA: { color: '#15803d', bg: '#eafaf1', borde: '#6dcf9e', icono: '✔️', etiqueta: 'Completada' },
+  RECHAZADA:  { color: '#dc2626', bg: '#fdf0f0', borde: '#f5c6c6', icono: '❌', etiqueta: 'Rechazada' },
+  CANCELADA:  { color: '#991b1b', bg: '#fdf0f0', borde: '#f5c6c6', icono: '🚫', etiqueta: 'Cancelada' },
+};
+
+async function notificarSolicitudCambioEstado({
+  idSolicitud,
+  operacion,
+  regional,
+  categoria,
+  prioridad,
+  estadoNuevo,
+  estadoAnterior,
+  fechaSolicitud,
+  usuarioSolicitante,
+  emailSolicitante,
+  emailsAprobadores = [],
+  items = [],
+  observaciones = null,
+  quienCambio = null,
+}) {
+  const est = SOLICITUD_ESTADO_CFG[estadoNuevo] || { color: '#555', bg: '#f9f9f9', borde: '#ddd', icono: '•', etiqueta: estadoNuevo };
+  const esParaAprobadores = estadoNuevo === 'PENDIENTE';
+
+  const destinatarios = esParaAprobadores
+    ? emailsAprobadores.filter(Boolean).join(', ')
+    : (emailSolicitante || '');
+  const copia = esParaAprobadores
+    ? (emailSolicitante || '')
+    : emailsAprobadores.filter(Boolean).join(', ');
+
+  if (!destinatarios) return;
+
+  const asunto = `[${estadoNuevo}] Solicitud de ${categoria} — ${operacion}`;
+
+  const itemsHTML = items.length
+    ? `<table style="width:100%;border-collapse:collapse;font-size:.88rem;margin-top:8px">
+        <thead><tr style="background:#f0ecfa">
+          <th style="padding:7px 10px;text-align:left;color:#5b2c8d;font-weight:600;border-bottom:2px solid #d6c5f0">Artículo</th>
+          <th style="padding:7px 10px;text-align:center;color:#5b2c8d;font-weight:600;border-bottom:2px solid #d6c5f0;width:80px">Cant.</th>
+        </tr></thead>
+        <tbody>${items.map((item, i) => `
+          <tr style="background:${i % 2 === 0 ? '#fff' : '#f8f9fb'}">
+            <td style="padding:7px 10px;border-bottom:1px solid #f0f0f0">${item.Articulo || item.articulo || '—'}</td>
+            <td style="padding:7px 10px;text-align:center;font-weight:bold;border-bottom:1px solid #f0f0f0">${item.Cantidad || item.cantidad || 0}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`
+    : '<p style="color:#aaa;font-size:.85rem;font-style:italic;margin:4px 0">Sin artículos registrados</p>';
+
+  const tituloPrincipal = esParaAprobadores
+    ? `Solicitud de ${categoria} requiere tu aprobación`
+    : `Tu solicitud de ${categoria} ha sido actualizada`;
+
+  const descripcion = esParaAprobadores
+    ? `Se ha registrado una nueva solicitud de <strong>${categoria}</strong> que requiere revisión y aprobación.`
+    : `El estado ha cambiado de <strong>${estadoAnterior || '—'}</strong> a <strong style="color:${est.color}">${est.etiqueta}</strong>.`;
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+
+        <div style="display:inline-block;background:${est.bg};border:1px solid ${est.borde};
+                    border-radius:6px;padding:6px 16px;margin-bottom:18px">
+          <span style="color:${est.color};font-weight:bold;font-size:.88rem">
+            ${est.icono} ${est.etiqueta.toUpperCase()}
+          </span>
+        </div>
+
+        <h2 style="color:#1a1a2e;margin:0 0 6px">${tituloPrincipal}</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.92rem;line-height:1.5">${descripcion}</p>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.93rem">
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888;width:38%">Operación</td>
+            <td style="padding:9px 12px;font-weight:bold">${operacion}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;color:#888">Regional</td>
+            <td style="padding:9px 12px">${regional}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Categoría</td>
+            <td style="padding:9px 12px">${categoria}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;color:#888">Prioridad</td>
+            <td style="padding:9px 12px">${prioridad || '—'}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Solicitante</td>
+            <td style="padding:9px 12px">${usuarioSolicitante}</td>
+          </tr>
+          ${fechaSolicitud ? `<tr>
+            <td style="padding:9px 12px;color:#888">Fecha solicitud</td>
+            <td style="padding:9px 12px">${formatFecha(String(fechaSolicitud).slice(0, 10))}</td>
+          </tr>` : ''}
+          ${quienCambio && quienCambio !== usuarioSolicitante ? `<tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Gestionado por</td>
+            <td style="padding:9px 12px">${quienCambio}</td>
+          </tr>` : ''}
+          ${observaciones ? `<tr>
+            <td style="padding:9px 12px;color:#888;vertical-align:top">Observaciones</td>
+            <td style="padding:9px 12px">${observaciones}</td>
+          </tr>` : ''}
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">ID Solicitud</td>
+            <td style="padding:9px 12px;font-size:.78rem;color:#8e44ad;word-break:break-all">${idSolicitud}</td>
+          </tr>
+        </table>
+
+        <div style="margin-bottom:20px">
+          <div style="font-weight:bold;color:#1a1a2e;font-size:.82rem;letter-spacing:1px;text-transform:uppercase;
+                      padding-bottom:6px;margin-bottom:8px;border-bottom:2px solid #eef1ff">
+            Artículos solicitados
+          </div>
+          ${itemsHTML}
+        </div>
+
+        <div style="padding:11px 16px;background:${est.bg};border-left:4px solid ${est.color};
+                    border-radius:0 4px 4px 0;font-size:.88rem;color:${est.color}">
+          Estado actual: <strong>${est.etiqueta}</strong>
+        </div>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  const mailOpts = {
+    from:    `"LOG&SER Inventario" <${EMAIL_FROM}>`,
+    to:      destinatarios,
+    subject: asunto,
+    html:    cuerpo,
+  };
+  if (copia) mailOpts.cc = copia;
+
+  await transporter.sendMail(mailOpts);
+}
+
 module.exports = {
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
@@ -797,4 +945,5 @@ module.exports = {
   notificarPazYSalvoCompletado,
   notificarDocumentoRetiroTrabajador,
   notificarDocumentosRetiroConcluidos,
+  notificarSolicitudCambioEstado,
 };
