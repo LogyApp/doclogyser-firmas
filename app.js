@@ -14,6 +14,7 @@ const firmarcesantiasRoutes          = require('./src/routes/firmarcesantias');
 const pazysalvoRoutes                = require('./src/routes/pazysalvo');
 const pazysalvoareaRoutes            = require('./src/routes/pazysalvoarea');
 const evaluacionretiroRoutes         = require('./src/routes/evaluacionretiro');
+const solicitudesRoutes              = require('./src/routes/solicitudes');
 
 const app = express();
 
@@ -33,6 +34,8 @@ app.use('/firmar-cesantias', firmarcesantiasRoutes);
 app.use('/firmar-pazysalvo', pazysalvoRoutes);
 app.use('/pazysalvo-area', pazysalvoareaRoutes);
 app.use('/evaluacion-retiro', evaluacionretiroRoutes);
+app.use('/solicitudes', solicitudesRoutes);
+app.use('/formsolicitud', solicitudesRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   const devRoutes = require('./src/routes/dev');

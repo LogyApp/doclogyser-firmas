@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitudes — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; min-height: 100vh; }
+    .wrapper { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+
+    /* ── Header ── */
+    .card-titulo {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      padding: 18px 24px; margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .card-titulo img { height: 58px; flex-shrink: 0; }
+    .page-title { font-size: 1.18rem; font-weight: bold; color: #1a1a2e; }
+    .page-sub   { font-size: .8rem; color: #999; margin-top: 2px; }
+    .badge-row  { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      border-radius: 20px; padding: 3px 10px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .badge-user   { background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; }
+    .badge-estado { background: #f0f4ff; border: 1px solid #c5d0f5; color: #1a1a6e; }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      border-left: 4px solid #1a1a2e;
+      padding: 20px 22px; margin-bottom: 14px;
+    }
+    .card-purple  { border-left-color: #8e44ad; }
+    .card-green   { border-left-color: #27ae60; }
+    .card-blue    { border-left-color: #2980b9; }
+    .card-teal    { border-left-color: #16a085; }
+    .card-red     { border-left-color: #c0392b; }
+    .card-orange  { border-left-color: #e67e22; }
+
+    .section-title {
+      font-size: .7rem; font-weight: bold; color: #1a1a2e;
+      letter-spacing: 1.3px; text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 14px;
+      border-bottom: 2px solid #eef1ff;
+    }
+
+    /* ── Formulario ── */
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+    label.lbl { display: block; font-size: .82rem; font-weight: 600; color: #444; margin-bottom: 5px; }
+    label.lbl .req { color: #c0392b; margin-left: 2px; }
+    input[type="text"], input[type="number"], input[type="date"],
+    select, textarea {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      font-size: .93rem; color: #333; background: #fff;
+      font-family: Arial, sans-serif;
+    }
+    input:focus, select:focus, textarea:focus { 
+      outline: none; border-color: #8e44ad; box-shadow: 0 0 0 3px rgba(142,68,173,.1); 
+    }
+    input[readonly] { background: #f5f6fa; color: #777; cursor: not-allowed; }
+    
+    textarea { resize: vertical; min-height: 80px; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .err { color: #c0392b; font-size: .78rem; margin-top: 4px; display: none; }
+    .err.visible { display: block; }
+
+    /* ── Autocomplete ── */
+    .autocomplete-wrap { position: relative; }
+    .ac-list {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1.5px solid #8e44ad;
+      border-radius: 6px; max-height: 200px; overflow-y: auto;
+      z-index: 200; display: none;
+      box-shadow: 0 6px 20px rgba(142,68,173,.15);
+    }
+    .ac-list.open { display: block; }
+    .ac-item {
+      padding: 10px 14px; cursor: pointer; font-size: .88rem; color: #333;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .ac-item:last-child { border-bottom: none; }
+    .ac-item:hover, .ac-item.active { background: #eef1ff; color: #1a1a2e; font-weight: 600; }
+
+    /* ── Items ── */
+    .items-section { margin-top: 16px; }
+    .item-card {
+      background: #f8f9fb; border: 1.5px solid #e8e8e8;
+      border-radius: 6px; padding: 12px; margin-bottom: 10px;
+    }
+    .item-card:last-child { margin-bottom: 0; }
+    .item-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .item-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: #f0f0f0; }
+    .item-info { flex: 1; }
+    .item-nombre { font-size: .88rem; font-weight: 600; color: #1a1a2e; }
+    .item-categoria { font-size: .73rem; color: #888; }
+    .btn-quitar-item {
+      background: none; border: 1px solid #f5c6c6; cursor: pointer;
+      color: #c0392b; font-size: .78rem; padding: 2px 7px; border-radius: 4px;
+    }
+    .btn-quitar-item:hover { background: #fdf0f0; }
+    
+    .item-cantidad-wrap { display: flex; align-items: center; gap: 8px; }
+    .item-cantidad { width: 70px; padding: 8px 10px; border: 1.5px solid #ddd; border-radius: 6px; font-size: .88rem; }
+
+    /* ── Grid 2 columnas ── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 780px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    /* ── Tabla solicitudes ── */
+    .table-container { overflow-x: auto; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; table-layout: fixed; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e8e8e8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    th { background: #f9fafb; font-weight: 600; color: #666; position: relative; }
+    th::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 3px; background: transparent; cursor: col-resize; }
+    th:hover::after { background: #8e44ad; }
+    #tabla-solicitudes tbody tr:hover td { background: #eef4ff; }
+    tr.clickable:hover { cursor: pointer; }
+    
+    .estado-badge {
+      display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: .73rem; font-weight: 600; color: white;
+    }
+    .estado-BORRADOR { background: #6b7280; }
+    .estado-PENDIENTE { background: #d97706; }
+    .estado-APROBADA { background: #16a34a; }
+    .estado-DESPACHADA { background: #2563eb; }
+    .estado-PARCIAL { background: #ea580c; }
+    .estado-COMPLETADA { background: #15803d; }
+    .estado-RECHAZADA { background: #dc2626; }
+    .estado-CANCELADA { background: #991b1b; }
+
+    /* ── Botones ── */
+    .btns-grupo {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 16px; border: none; border-radius: 6px;
+      font-size: .83rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: all .15s;
+    }
+    .btn-primary {
+      background: #8e44ad; color: white;
+    }
+    .btn-primary:hover { background: #7a37a0; box-shadow: 0 2px 8px rgba(142,68,173,.3); }
+    
+    .btn-secondary {
+      background: #f5f6fa; border: 1.5px solid #ddd; color: #444;
+    }
+    .btn-secondary:hover { background: #eef1ff; border-color: #8e44ad; }
+    
+    .btn-small {
+      padding: 5px 10px; font-size: .75rem;
+    }
+    
+    .btn-success {
+      background: #27ae60; color: white;
+    }
+    .btn-success:hover { background: #229954; }
+    
+    .btn-danger {
+      background: #c0392b; color: white;
+    }
+    .btn-danger:hover { background: #a93226; }
+
+    /* ── Vistas ── */
+    .vista { display: none; }
+    .vista.active { display: block; }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed; top: 20px; right: 20px; z-index: 2000;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .toast {
+      padding: 12px 16px; border-radius: 6px; color: white;
+      font-size: .85rem; box-shadow: 0 2px 10px rgba(0,0,0,.2);
+      animation: slideIn .3s ease;
+    }
+    .toast.success { background: #27ae60; }
+    .toast.error { background: #c0392b; }
+    .toast.info { background: #2980b9; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Loading ── */
+    .loading { text-align: center; padding: 20px; color: #888; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #ddd; border-top-color: #8e44ad; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .card-titulo { flex-direction: column; text-align: center; }
+      .card-titulo img { height: 40px; }
+      .page-title { font-size: 1rem; }
+      .page-sub { font-size: .75rem; }
+      .two-col, .dashboard-grid { grid-template-columns: 1fr; }
+      .item-header { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div id="toast-container"></div>
+
+  <!-- ═════ VISTA: LISTADO DE SOLICITUDES ═════ -->
+  <div id="vista-listado" class="vista active">
+    
+    <div class="card-titulo">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logo LOG&SER">
+      <div>
+        <div class="page-title">Gestión de Solicitudes</div>
+        <div class="page-sub">Administra tus solicitudes de equipos y recursos</div>
+        <div class="badge-row">
+          <div class="badge badge-user" id="badge-usuario">Usuario: —</div>
+          <div class="badge badge-estado" id="badge-total">Total: 0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-purple">
+      <div class="section-title">Filtros</div>
+      <div class="two-col">
+        <div class="field">
+          <label class="lbl">Estado</label>
+          <select id="filtro-estado">
+            <option value="">Todos</option>
+            <option value="BORRADOR">Borrador</option>
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="APROBADA">Aprobada</option>
+            <option value="DESPACHADA">Despachada</option>
+            <option value="PARCIAL">Parcial</option>
+            <option value="COMPLETADA">Completada</option>
+            <option value="RECHAZADA">Rechazada</option>
+            <option value="CANCELADA">Cancelada</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">Regional</label>
+          <select id="filtro-regional"></select>
+        </div>
+        <div class="field">
+          <label class="lbl">Operación</label>
+          <select id="filtro-operacion"></select>
+        </div>
+        <div class="field">
+          <label class="lbl">Categoría</label>
+          <select id="filtro-categoria">
+            <option value="">Todas</option>
+            <option value="DOTACIÓN">DOTACIÓN</option>
+            <option value="EPP">EPP</option>
+            <option value="HERRAMIENTA">HERRAMIENTA</option>
+            <option value="TECNOLOGIA">TECNOLOGIA</option>
+            <option value="ACTIVO FIJO">ACTIVO FIJO</option>
+            <option value="PAPELERIA">PAPELERIA</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">Fecha Desde</label>
+          <input type="date" id="filtro-desde">
+        </div>
+      </div>
+      
+      <div class="btns-grupo">
+        <button class="btn btn-primary" onclick="aplicarFiltros()">🔍 Buscar</button>
+        <button class="btn btn-secondary" onclick="mostrarVista('formulario')">➕ Nueva Solicitud</button>
+      </div>
+    </div>
+
+    <div id="loading-listado" class="loading" style="display: none;">
+      <span class="spinner"></span> Cargando solicitudes...
+    </div>
+
+    <div class="table-container">
+      <table id="tabla-solicitudes">
+        <thead>
+          <tr>
+            <th style="width: 220px;">ID</th>
+            <th>Fecha</th>
+            <th>Operación</th>
+            <th>Regional</th>
+            <th>Categoría</th>
+            <th>Estado</th>
+            <th style="width: 60px; text-align: center;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="7" style="text-align: center; padding: 40px; color: #bbb;">Cargando solicitudes...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ═════ VISTA: NUEVA SOLICITUD ═════ -->
+  <div id="vista-formulario" class="vista">
+    
+    <div class="card-titulo">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logo LOG&SER">
+      <div>
+        <div class="page-title">Nueva Solicitud</div>
+        <div class="page-sub">Completa los datos para crear una solicitud</div>
+      </div>
+    </div>
+
+    <form id="form-solicitud" onsubmit="guardarSolicitud(event)">
+      
+      <!-- Datos Básicos -->
+      <div class="card card-purple">
+        <div class="section-title">Datos Básicos</div>
+        
+        <div class="two-col">
+          <div class="field">
+            <label class="lbl">Regional <span class="req">*</span></label>
+            <select id="fn-regional" required></select>
+          </div>
+
+          <div class="field">
+            <label class="lbl">Operación <span class="req">*</span></label>
+            <select id="fn-operacion" required></select>
+            <div id="err-operacion" class="err"></div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label class="lbl">Categoría <span class="req">*</span></label>
+            <select id="fn-categoria" required onchange="actualizarPrioridad()">
+              <option value="">Seleccione...</option>
+              <option value="DOTACIÓN">DOTACIÓN</option>
+              <option value="EPP">EPP</option>
+              <option value="HERRAMIENTA">HERRAMIENTA</option>
+              <option value="TECNOLOGIA">TECNOLOGIA</option>
+              <option value="ACTIVO FIJO">ACTIVO FIJO</option>
+              <option value="PAPELERIA">PAPELERIA</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="lbl">Prioridad</label>
+            <select id="fn-prioridad">
+              <option value="MEDIA">MEDIA</option>
+              <option value="ALTA">ALTA</option>
+              <option value="BAJA">BAJA</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" id="fn-monto-wrap" style="display: none;">
+          <label class="lbl">Monto Estimado (COP)</label>
+          <input type="number" id="fn-monto" step="0.01" min="0" placeholder="0.00">
+        </div>
+
+        <div class="field">
+          <label class="lbl">Justificación</label>
+          <textarea id="fn-justificacion" placeholder="Explica por qué necesitas estos artículos..."></textarea>
+        </div>
+
+        <div class="field">
+          <label class="lbl">Observaciones</label>
+          <textarea id="fn-observaciones" placeholder="Notas adicionales..."></textarea>
+        </div>
+      </div>
+
+      <!-- Items Requeridos -->
+      <div class="card card-blue">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center; border: none; padding: 0 0 10px 0;">
+          <span>Items Requeridos</span>
+          <button type="button" class="btn btn-small btn-primary" onclick="abrirBuscadorArticulo()">➕ Agregar Artículo</button>
+        </div>
+        <div id="fn-items-container" class="items-section"></div>
+        <div id="err-items" class="err"></div>
+      </div>
+
+      <!-- Botones -->
+      <div class="btns-grupo">
+        <button type="submit" class="btn btn-success">💾 Guardar Solicitud</button>
+        <button type="button" class="btn btn-secondary" onclick="mostrarVista('listado')">❌ Cancelar</button>
+      </div>
+
+    </form>
+
+  </div>
+
+  <!-- ═════ VISTA: DETALLE ═════ -->
+  <div id="vista-detalle" class="vista">
+    
+    <div class="card-titulo">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logo LOG&SER">
+      <div>
+        <div class="page-title">Detalle de Solicitud</div>
+        <div class="page-sub" id="detalle-subtitulo">—</div>
+      </div>
+    </div>
+
+    <div id="detalle-contenido"></div>
+
+    <div class="btns-grupo">
+      <button class="btn btn-secondary" onclick="mostrarVista('listado')">⬅️ Volver</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  window.__SOLICITUDES_CONFIG__ = __CONFIG__;
+</script>
+
+<!-- ═════ MODAL: BUSCAR ARTÍCULO ═════ -->
+<div id="modal-articulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; align-items: center; justify-content: center;">
+  <div style="background: white; border-radius: 8px; padding: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+    <div class="page-title" style="margin-bottom: 16px;">Buscar Artículo</div>
+    
+    <div class="field">
+      <label class="lbl">Categoría del formulario</label>
+      <input type="text" id="modal-categoria-actual" readonly>
+    </div>
+
+    <div class="field">
+      <label class="lbl">Buscar Artículo</label>
+      <input type="text" id="modal-articulo-busqueda" placeholder="Escribe para buscar..." onkeyup="filtrarArticulosPorCategoria()">
+    </div>
+
+    <div id="modal-articulos-lista" style="max-height: 300px; overflow-y: auto; margin: 15px 0; border: 1.5px solid #ddd; border-radius: 6px;"></div>
+
+    <p style="font-size:.8rem;color:#666;margin-top:6px;">
+      Ingresa <strong>Cantidad</strong> y <strong>Nota</strong> en cada artículo que quieras incluir. Solo se agregarán los que tengan cantidad mayor a 0.
+    </p>
+
+    <div style="display: flex; gap: 10px; margin-top: 16px;">
+      <button type="button" class="btn btn-success" id="btn-ingresar-seleccionados" onclick="agregarArticulosSeleccionados()">✓ Ingresar seleccionados (0)</button>
+      <button type="button" class="btn btn-secondary" onclick="cerrarModalArticulo()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ═════ CONFIG INICIAL ═════
+  const APP_CONFIG = window.__SOLICITUDES_CONFIG__ || {};
+  const params = new URLSearchParams(window.location.search);
+  const usuarioId = params.get('usuario') || APP_CONFIG.usuarioId || '';
+  
+  let config = {
+    usuarioId,
+    usuarioNombre: APP_CONFIG.usuarioNombre || '—',
+    initialView: APP_CONFIG.initialView || 'listado',
+    rol: APP_CONFIG.rol || '',
+    regional: APP_CONFIG.regional || '',
+    dispositivo: APP_CONFIG.dispositivo || '',
+    operacion: APP_CONFIG.operacion || '',
+    sinFiltro: !!APP_CONFIG.sinFiltro,
+    operacionesFiltro: APP_CONFIG.operacionesFiltro || [],
+    opsPorRegional: APP_CONFIG.opsPorRegional || {},
+    regionalesFiltro: APP_CONFIG.regionalesFiltro || [],
+  };
+  let solicitudes = [];
+  let articulos = [];
+  let modalItemsDraft = {};
+  let solicitudActual = null;
+  const API_BASE = '/solicitudes/api';
+
+  function navegar(path) {
+    const q = new URLSearchParams();
+    if (usuarioId) q.set('usuario', usuarioId);
+    const suffix = q.toString();
+    window.location.href = suffix ? `${path}?${suffix}` : path;
+  }
+
+  function ordenarTexto(a, b) {
+    return String(a).localeCompare(String(b), 'es', { sensitivity: 'base' });
+  }
+
+  function normalizarCategoria(categoria) {
+    return String(categoria || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase();
+  }
+
+  function rolesPermitidosPorCategoria(categoria) {
+    const cat = normalizarCategoria(categoria);
+    if (cat === 'EPP') return ['AdmSst', 'LiderSst', 'Sistema', 'Cuentas'];
+    if (cat === 'DOTACION') return ['Inventario', 'Cuentas', 'Sistema'];
+    if (cat === 'TECNOLOGIA') return ['Control', 'Cuentas', 'Sistema'];
+    return ['Sistema', 'Cuentas'];
+  }
+
+  function puedeGestionarEstadoPorCategoria(categoria) {
+    return rolesPermitidosPorCategoria(categoria).includes(config.rol || '');
+  }
+
+  function accionesPorEstado(estadoActual) {
+    const estado = String(estadoActual || '').toUpperCase();
+    if (estado === 'PENDIENTE') {
+      return [
+        { estado: 'APROBADA', label: 'Aprobar', clase: 'btn-success' },
+        { estado: 'RECHAZADA', label: 'Rechazar', clase: 'btn-danger' },
+        { estado: 'CANCELADA', label: 'Cancelar', clase: 'btn-secondary' },
+      ];
+    }
+    if (estado === 'APROBADA') {
+      return [
+        { estado: 'DESPACHADA', label: 'Despachar', clase: 'btn-primary' },
+        { estado: 'PARCIAL', label: 'Marcar Parcial', clase: 'btn-secondary' },
+      ];
+    }
+    if (estado === 'DESPACHADA') {
+      return [
+        { estado: 'COMPLETADA', label: 'Completar', clase: 'btn-success' },
+        { estado: 'PARCIAL', label: 'Marcar Parcial', clase: 'btn-secondary' },
+      ];
+    }
+    if (estado === 'PARCIAL') {
+      return [
+        { estado: 'DESPACHADA', label: 'Despachar Restante', clase: 'btn-primary' },
+        { estado: 'COMPLETADA', label: 'Completar', clase: 'btn-success' },
+      ];
+    }
+    return [];
+  }
+
+  function regionalesPermitidas() {
+    if (config.sinFiltro) return Object.keys(config.opsPorRegional).sort(ordenarTexto);
+    if (config.rol === 'AuxiliarR' || config.rol === 'CoordinadorR') {
+      return config.regional ? [config.regional] : [];
+    }
+    return Object.keys(config.opsPorRegional).sort(ordenarTexto);
+  }
+
+  function operacionesPermitidasPorRegional(regional) {
+    const ops = config.opsPorRegional[regional] || [];
+    return [...new Set(ops)].sort(ordenarTexto);
+  }
+
+  function poblarSelectRegional(selectId, incluirTodas) {
+    const select = document.getElementById(selectId);
+    const regionales = regionalesPermitidas();
+    select.innerHTML = incluirTodas
+      ? '<option value="">Todas</option>'
+      : '<option value="">Seleccione...</option>';
+
+    regionales.forEach((regional) => {
+      select.innerHTML += `<option value="${regional}">${regional}</option>`;
+    });
+
+    if (regionales.length === 1) {
+      select.value = regionales[0];
+      if (selectId === 'fn-regional') select.disabled = true;
+    } else {
+      select.disabled = false;
+      if (selectId === 'fn-regional' && config.regional && regionales.includes(config.regional)) {
+        select.value = config.regional;
+      }
+    }
+  }
+
+  function poblarSelectOperacion(regionalSeleccionada) {
+    const select = document.getElementById('fn-operacion');
+    const regional = regionalSeleccionada || document.getElementById('fn-regional').value;
+    const operaciones = operacionesPermitidasPorRegional(regional);
+
+    select.innerHTML = '<option value="">Seleccione...</option>';
+    operaciones.forEach((operacion) => {
+      select.innerHTML += `<option value="${operacion}">${operacion}</option>`;
+    });
+
+    if (operaciones.length === 1) {
+      select.value = operaciones[0];
+    } else if (config.operacion && operaciones.includes(config.operacion)) {
+      select.value = config.operacion;
+    }
+  }
+
+  function poblarFiltroOperacion(regionalSeleccionada) {
+    const select = document.getElementById('filtro-operacion');
+    const regional = regionalSeleccionada || document.getElementById('filtro-regional').value;
+
+    let operaciones = [];
+    if (regional) {
+      operaciones = operacionesPermitidasPorRegional(regional);
+    } else {
+      operaciones = [...new Set(Object.values(config.opsPorRegional).flat())].sort(ordenarTexto);
+    }
+
+    select.innerHTML = '<option value="">Todas</option>';
+    operaciones.forEach((operacion) => {
+      select.innerHTML += `<option value="${operacion}">${operacion}</option>`;
+    });
+
+    if (operaciones.length === 1) {
+      select.value = operaciones[0];
+    }
+  }
+
+  function prepararFormularioAcceso() {
+    poblarSelectRegional('filtro-regional', true);
+    poblarFiltroOperacion(document.getElementById('filtro-regional').value);
+    poblarSelectRegional('fn-regional', false);
+    poblarSelectOperacion(document.getElementById('fn-regional').value);
+
+    if (document.getElementById('fn-regional').value) {
+      poblarSelectOperacion(document.getElementById('fn-regional').value);
+    }
+  }
+
+  // ═════ INICIALIZACIÓN ═════
+  async function init() {
+    if (!usuarioId) {
+      mostrarToast('Usuario no especificado en la URL', 'error');
+      return;
+    }
+
+    try {
+      document.getElementById('badge-usuario').innerHTML = `👤 Usuario: ${config.usuarioNombre}`;
+
+      prepararFormularioAcceso();
+      habilitarRedimensionColumnas();
+
+      // Obtener artículos
+      const resArt = await fetch(`${API_BASE}/articulos`);
+      if (resArt.ok) {
+        articulos = await resArt.json();
+      }
+
+      // Cargar solicitudes o abrir formulario según entrada
+      if (config.initialView === 'formulario') {
+        mostrarVista('formulario', { enSitio: true });
+      } else {
+        cargarSolicitudes();
+      }
+    } catch (err) {
+      console.error('Error en init:', err);
+      mostrarToast('Error al cargar datos', 'error');
+    }
+  }
+
+  // ═════ CARGAR SOLICITUDES ═════
+  async function cargarSolicitudes() {
+    const loading = document.getElementById('loading-listado');
+    loading.style.display = 'block';
+
+    try {
+      const res = await fetch(`${API_BASE}/solicitudes?usuario=${encodeURIComponent(usuarioId)}`);
+      if (!res.ok) throw new Error('Error cargando solicitudes');
+
+      solicitudes = await res.json();
+      document.getElementById('badge-total').innerHTML = `📊 Total: ${solicitudes.length}`;
+      renderizarTabla();
+    } catch (err) {
+      console.error('Error:', err);
+      mostrarToast('Error cargando solicitudes', 'error');
+    } finally {
+      loading.style.display = 'none';
+    }
+  }
+
+  // ═════ RENDERIZAR TABLA ═════
+  function renderizarTabla() {
+    const tbody = document.querySelector('#tabla-solicitudes tbody');
+    
+    if (solicitudes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #bbb;">No hay solicitudes</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = solicitudes.map(sol => `
+      <tr class="clickable" onclick="verDetalle('${sol.IdSolicitud}')">
+        <td style="font-family: monospace; font-size: .8rem; cursor: help;" title="${sol.IdSolicitud}">${sol.IdSolicitud}</td>
+        <td>${formatearFecha(sol.FechaSolicitud)}</td>
+        <td>${sol['Operación'] || '—'}</td>
+        <td>${sol.Regional || '—'}</td>
+        <td>${sol.Categoria || '—'}</td>
+        <td><span class="estado-badge estado-${sol.Estado}">${sol.Estado}</span></td>
+        <td style="text-align: center;">
+          ${sol.Estado === 'BORRADOR' ? `<button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); editarSolicitud('${sol.IdSolicitud}')">✎</button>` : `<span style="color:#999;">—</span>`}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ═════ APLICAR FILTROS ═════
+  async function aplicarFiltros() {
+    const estado = document.getElementById('filtro-estado').value;
+    const regional = document.getElementById('filtro-regional').value;
+    const operacion = document.getElementById('filtro-operacion').value;
+    const categoria = document.getElementById('filtro-categoria').value;
+    const desde = document.getElementById('filtro-desde').value;
+
+    try {
+      const q = new URLSearchParams();
+      if (estado) q.append('estado', estado);
+      if (regional) q.append('regional', regional);
+      if (operacion) q.append('operacion', operacion);
+      if (categoria) q.append('categoria', categoria);
+      if (desde) q.append('fechaDesde', desde);
+      q.append('usuario', usuarioId);
+
+      const res = await fetch(`${API_BASE}/solicitudes?${q.toString()}`);
+      if (!res.ok) throw new Error('Error en filtros');
+
+      solicitudes = await res.json();
+      document.getElementById('badge-total').innerHTML = `📊 Total: ${solicitudes.length}`;
+      renderizarTabla();
+      mostrarToast(`${solicitudes.length} solicitudes encontradas`, 'info');
+    } catch (err) {
+      mostrarToast('Error aplicando filtros', 'error');
+    }
+  }
+
+  function habilitarRedimensionColumnas() {
+    const table = document.getElementById('tabla-solicitudes');
+    if (!table || table.dataset.resizable === '1') return;
+
+    const headers = table.querySelectorAll('thead th');
+    headers.forEach((th, idx) => {
+      if (idx === headers.length - 1) return;
+
+      th.addEventListener('mousedown', (event) => {
+        const rect = th.getBoundingClientRect();
+        const cercaDelBorde = (rect.right - event.clientX) <= 10;
+        if (!cercaDelBorde) return;
+
+        event.preventDefault();
+        const startX = event.clientX;
+        const startWidth = th.offsetWidth;
+
+        const onMouseMove = (moveEvent) => {
+          const delta = moveEvent.clientX - startX;
+          const newWidth = Math.max(80, startWidth + delta);
+          th.style.width = `${newWidth}px`;
+        };
+
+        const onMouseUp = () => {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    });
+
+    table.dataset.resizable = '1';
+  }
+
+  // ═════ VISTA: NUEVA SOLICITUD ═════
+  function mostrarVista(vista, opciones = {}) {
+    const enSitio = !!opciones.enSitio;
+    const pathActual = (window.location.pathname || '').toLowerCase();
+
+    if (!enSitio) {
+      if (vista === 'formulario' && !pathActual.includes('/formsolicitud')) {
+        navegar('/formsolicitud');
+        return;
+      }
+      if (vista === 'listado' && !pathActual.includes('/solicitudes')) {
+        navegar('/solicitudes');
+        return;
+      }
+    }
+
+    document.querySelectorAll('.vista').forEach(v => v.classList.remove('active'));
+    document.getElementById(`vista-${vista}`).classList.add('active');
+
+    if (vista === 'formulario') {
+      if (!opciones.esEdicion) {
+        solicitudActual = null;
+        modalItemsDraft = {};
+
+        document.getElementById('form-solicitud').reset();
+        document.getElementById('fn-items-container').innerHTML = '';
+        document.getElementById('fn-regional').disabled = false;
+        prepararFormularioAcceso();
+
+        const rolesEPP = ['AnaSst', 'AuxSst', 'AdmSst', 'LiderSst'];
+        if (rolesEPP.includes(config.rol)) {
+          document.getElementById('fn-categoria').value = 'EPP';
+          actualizarPrioridad();
+        }
+      }
+    }
+  }
+
+  // ═════ CAMBIAR PRIORIDAD SI CATEGORIA ES EPP ═════
+  function actualizarPrioridad() {
+    const categoria = document.getElementById('fn-categoria').value;
+    const montoWrap = document.getElementById('fn-monto-wrap');
+    
+    if (categoria === 'EPP') {
+      document.getElementById('fn-prioridad').value = 'MEDIA';
+    }
+
+    // Mostrar Monto Estimado solo para HERRAMIENTA y ACTIVO FIJO
+    montoWrap.style.display = ['HERRAMIENTA', 'ACTIVO FIJO'].includes(categoria) ? 'block' : 'none';
+
+    const modalCategoria = document.getElementById('modal-categoria-actual');
+    if (modalCategoria) modalCategoria.value = categoria || 'Sin categoría seleccionada';
+  }
+
+  document.getElementById('fn-regional').addEventListener('change', (event) => {
+    poblarSelectOperacion(event.target.value);
+  });
+
+  document.getElementById('filtro-regional').addEventListener('change', (event) => {
+    poblarFiltroOperacion(event.target.value);
+  });
+
+  // ═════ MODAL ARTÍCULOS ═════
+  function abrirBuscadorArticulo() {
+    const categoria = document.getElementById('fn-categoria').value;
+    if (!categoria) {
+      mostrarToast('Selecciona la categoría en DATOS BÁSICOS antes de agregar ítems', 'error');
+      return;
+    }
+
+    document.getElementById('modal-articulo').style.display = 'flex';
+    document.getElementById('modal-categoria-actual').value = categoria;
+    document.getElementById('modal-articulo-busqueda').value = '';
+    document.getElementById('modal-articulos-lista').innerHTML = '';
+    modalItemsDraft = {};
+    actualizarContadorSeleccionados();
+    filtrarArticulosPorCategoria();
+  }
+
+  function cerrarModalArticulo() {
+    document.getElementById('modal-articulo').style.display = 'none';
+    modalItemsDraft = {};
+    actualizarContadorSeleccionados();
+  }
+
+  function filtrarArticulosPorCategoria() {
+    const categoria = document.getElementById('fn-categoria').value;
+    const busqueda = document.getElementById('modal-articulo-busqueda').value.toLowerCase();
+    const lista = document.getElementById('modal-articulos-lista');
+
+    if (!categoria) {
+      lista.innerHTML = '<p style="padding: 10px; text-align: center; color: #888;">Selecciona una categoría</p>';
+      return;
+    }
+
+    const filtrados = articulos.filter(a => 
+      a.Categoria === categoria &&
+      a.Articulo.toLowerCase().includes(busqueda)
+    );
+
+    lista.innerHTML = filtrados.map(art => {
+      const key = String(art.Id);
+      const draft = modalItemsDraft[key] || { cantidad: 0, nota: '' };
+      const rowActive = Number(draft.cantidad) > 0;
+      const notaEsc = String(draft.nota || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/"/g, '&quot;');
+      return `
+      <div style="display:grid;grid-template-columns:1fr 78px 150px;gap:8px;align-items:center;padding:10px;border-bottom:1px solid #eee;background:${rowActive ? '#eef9f0' : '#fff'};">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+          ${art.Imagen ? `<img src="${art.Imagen}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">` : '<div style="width: 40px; height: 40px; background: #f0f0f0; border-radius: 4px;"></div>'}
+          <div style="min-width:0;">
+            <div style="font-size:.86rem;font-weight:600;color:#1a1a2e;line-height:1.2;">${art.Articulo}</div>
+            <div style="font-size:.73rem;color:#888;">${art.Referencia || '—'} | ${art.Talla || '—'}</div>
+          </div>
+        </div>
+        <input type="number" min="0" value="${draft.cantidad || 0}" onchange="actualizarModalItemCantidad('${key}', this.value)" style="width:100%;padding:7px 8px;border:1px solid #ddd;border-radius:6px;font-size:.84rem;" title="Cantidad">
+        <input type="text" value="${notaEsc}" oninput="actualizarModalItemNota('${key}', this.value)" placeholder="Nota" style="width:100%;padding:7px 8px;border:1px solid #ddd;border-radius:6px;font-size:.82rem;" title="Nota del ítem">
+      </div>
+    `;
+    }).join('') || '<p style="padding: 10px; text-align: center; color: #888;">No hay artículos</p>';
+
+    actualizarContadorSeleccionados();
+  }
+
+  function actualizarModalItemCantidad(id, value) {
+    const key = String(id);
+    const cantidad = Number(value || 0);
+    if (!modalItemsDraft[key]) modalItemsDraft[key] = { cantidad: 0, nota: '' };
+    modalItemsDraft[key].cantidad = Number.isFinite(cantidad) && cantidad > 0 ? Math.floor(cantidad) : 0;
+    filtrarArticulosPorCategoria();
+    actualizarContadorSeleccionados();
+  }
+
+  function actualizarModalItemNota(id, value) {
+    const key = String(id);
+    if (!modalItemsDraft[key]) modalItemsDraft[key] = { cantidad: 0, nota: '' };
+    modalItemsDraft[key].nota = value || '';
+  }
+
+  function actualizarContadorSeleccionados() {
+    const btn = document.getElementById('btn-ingresar-seleccionados');
+    if (!btn) return;
+    const total = Object.values(modalItemsDraft)
+      .filter((d) => Number(d.cantidad || 0) > 0)
+      .length;
+    btn.textContent = `✓ Ingresar seleccionados (${total})`;
+  }
+
+  function agregarArticulosSeleccionados() {
+    const seleccionados = Object.entries(modalItemsDraft)
+      .map(([id, d]) => ({ id, cantidad: Number(d.cantidad || 0), nota: String(d.nota || '').trim() }))
+      .filter((d) => d.cantidad > 0);
+
+    if (!seleccionados.length) {
+      mostrarToast('Ingresa cantidad mayor a 0 en al menos un artículo', 'error');
+      return;
+    }
+
+    seleccionados.forEach((sel) => {
+      const art = articulos.find((a) => String(a.Id) === String(sel.id));
+      if (!art) return;
+      agregarItemFormulario({
+        id: art.Id,
+        nombre: art.Articulo,
+        imagen: art.Imagen || '',
+        categoria: art.Categoria || '',
+      }, sel.cantidad, sel.nota);
+    });
+
+    cerrarModalArticulo();
+    mostrarToast(`${seleccionados.length} ítem(s) agregados.`, 'success');
+  }
+
+  // ═════ AGREGAR ITEM AL FORMULARIO ═════
+  function agregarItemFormulario(articulo, cantidad = 1, nota = '') {
+    const container = document.getElementById('fn-items-container');
+    const idElemento = 'item_' + Math.random().toString(36).substr(2, 9);
+    const notaInputId = `nota_${idElemento}`;
+
+    const html = `
+      <div class="item-card" id="${idElemento}">
+        <div class="item-header">
+          ${articulo.imagen ? `<img src="${articulo.imagen}" class="item-img">` : '<div class="item-img" style="background: #f0f0f0;"></div>'}
+          <div class="item-info">
+            <div class="item-nombre">${articulo.nombre}</div>
+            <div class="item-categoria">${articulo.categoria || 'General'}</div>
+          </div>
+          <button type="button" class="btn-quitar-item" onclick="document.getElementById('${idElemento}').remove()">✕ Quitar</button>
+        </div>
+        <div class="item-cantidad-wrap">
+          <label style="font-size: .82rem; color: #444;">Cantidad:</label>
+          <input type="number" class="item-cantidad" value="${cantidad}" min="1" data-articulo-id="${articulo.id}">
+        </div>
+        <div class="field" style="margin-top: 10px; margin-bottom: 0;">
+          <label class="lbl" style="font-size: .78rem;">Nota del ítem</label>
+          <input type="text" id="${notaInputId}" class="item-nota" placeholder="Ejemplo: entrega urgente / talla específica">
+        </div>
+      </div>
+    `;
+
+    container.innerHTML += html;
+    const notaInput = document.getElementById(notaInputId);
+    if (notaInput) notaInput.value = nota;
+  }
+
+  // ═════ GUARDAR SOLICITUD ═════
+  async function guardarSolicitud(event) {
+    event.preventDefault();
+
+    const categoria = document.getElementById('fn-categoria').value;
+    const prioridad = document.getElementById('fn-prioridad').value;
+    const operacion = document.getElementById('fn-operacion').value;
+    const regional = document.getElementById('fn-regional').value;
+    const monto = document.getElementById('fn-monto').value;
+    const justificacion = document.getElementById('fn-justificacion').value;
+    const observaciones = document.getElementById('fn-observaciones').value;
+
+    let items = [];
+    
+    if (solicitudActual?.items) {
+      items = solicitudActual.items.filter(i => i.Cantidad > 0).map(item => ({
+        IdArticulo: item.IdArticulo,
+        Cantidad: item.Cantidad,
+        Nota: item.Nota || ''
+      }));
+    } else {
+      items = Array.from(document.querySelectorAll('.item-card')).map(card => ({
+        idArticulo: card.querySelector('.item-cantidad').dataset.articuloId,
+        cantidad: parseInt(card.querySelector('.item-cantidad').value),
+        nota: card.querySelector('.item-nota')?.value?.trim() || '',
+      }));
+    }
+
+    if (items.length === 0) {
+      mostrarToast('Debe agregar al menos un artículo', 'error');
+      return;
+    }
+
+    const isEdicion = !!solicitudActual?.IdSolicitud;
+    const endpoint = isEdicion 
+      ? `${API_BASE}/solicitud/${solicitudActual.IdSolicitud}`
+      : `${API_BASE}/solicitudes`;
+    
+    const nuevoEstado = isEdicion ? 'PENDIENTE' : undefined;
+    const payload = {
+      operacion,
+      regional,
+      prioridad,
+      categoria,
+      justificacion: justificacion || null,
+      montoEstimado: monto ? parseFloat(monto) : null,
+      observaciones: observaciones || null,
+      usuario: usuarioId,
+      items,
+      estado: nuevoEstado
+    };
+
+    const button = event.target.querySelector('[type="submit"]');
+    button.disabled = true;
+    button.textContent = '⏳ Guardando...';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: isEdicion ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Error al guardar');
+      }
+
+      const data = await res.json();
+      const msg = isEdicion 
+        ? 'Solicitud actualizada y enviada' 
+        : 'Solicitud creada exitosamente';
+      mostrarToast(msg, 'success');
+      
+      modalItemsDraft = {};
+      solicitudActual = null;
+      setTimeout(() => {
+        navegar('/solicitudes');
+      }, 800);
+    } catch (err) {
+      mostrarToast('Error: ' + err.message, 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = '💾 Guardar Solicitud';
+    }
+  }
+
+  // ═════ VER DETALLE ═════
+  async function verDetalle(id) {
+    try {
+      const res = await fetch(`${API_BASE}/solicitud/${id}`);
+      if (!res.ok) throw new Error('Error cargando solicitud');
+
+      solicitudActual = await res.json();
+      const puedeGestionar = puedeGestionarEstadoPorCategoria(solicitudActual.Categoria);
+      const accionesEstado = accionesPorEstado(solicitudActual.Estado);
+
+      const htmlAccionesEstado = accionesEstado.length
+        ? `
+        <div class="card card-orange">
+          <div class="section-title">Gestión de Estado</div>
+          <p style="font-size:.85rem; color:#4b5563; margin-bottom:10px;">
+            Estado actual: <span class="estado-badge estado-${solicitudActual.Estado}">${solicitudActual.Estado}</span>
+          </p>
+          ${puedeGestionar ? `
+          <div class="btns-grupo">
+            ${accionesEstado.map((accion) => `
+              <button
+                type="button"
+                class="btn ${accion.clase}"
+                onclick="cambiarEstadoSolicitud('${accion.estado}')"
+                title="Cambiar a ${accion.estado}"
+              >${accion.label}</button>
+            `).join('')}
+          </div>
+          ` : ''}
+        </div>`
+        : '';
+
+      const html = `
+        <div class="card card-purple">
+          <div class="section-title">Información General</div>
+          <div class="two-col">
+            <div><strong>ID:</strong> <code>${solicitudActual.IdSolicitud}</code></div>
+            <div><strong>Estado:</strong> <span class="estado-badge estado-${solicitudActual.Estado}">${solicitudActual.Estado}</span></div>
+            <div><strong>Fecha:</strong> ${formatearFecha(solicitudActual.FechaSolicitud)}</div>
+            <div><strong>Regional:</strong> ${solicitudActual.Regional}</div>
+            <div><strong>Operación:</strong> ${solicitudActual['Operación']}</div>
+            <div><strong>Categoría:</strong> ${solicitudActual.Categoria}</div>
+            <div><strong>Prioridad:</strong> ${solicitudActual.Prioridad}</div>
+            ${solicitudActual.Monto_Estimado ? `<div><strong>Monto:</strong> $${parseFloat(solicitudActual.Monto_Estimado).toLocaleString('es-CO')}</div>` : ''}
+          </div>
+        </div>
+
+        ${solicitudActual.Justificación ? `<div class="card card-green">
+          <div class="section-title">Justificación</div>
+          <p style="font-size: .88rem; line-height: 1.5;">${solicitudActual.Justificación}</p>
+        </div>` : ''}
+
+        ${solicitudActual.items && solicitudActual.items.length > 0 ? `<div class="card card-blue">
+          <div class="section-title">Artículos</div>
+          <div class="table-container">
+            <table style="font-size: .85rem;">
+              <thead><tr><th>Artículo</th><th>Cantidad</th><th>Categoría</th><th>Nota</th></tr></thead>
+              <tbody>
+                ${solicitudActual.items.map(item => `
+                  <tr>
+                    <td>${item.Articulo || '—'}</td>
+                    <td>${item.Cantidad}</td>
+                    <td>${item.CategoriaArticulo || '—'}</td>
+                    <td>${item.Nota || '—'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>` : ''}
+
+        ${htmlAccionesEstado}
+      `;
+
+      document.getElementById('detalle-contenido').innerHTML = html;
+      document.getElementById('detalle-subtitulo').innerHTML = `${solicitudActual['Operación']} • ${solicitudActual.Regional}`;
+      mostrarVista('detalle');
+    } catch (err) {
+      mostrarToast(err.message, 'error');
+    }
+  }
+
+  async function cambiarEstadoSolicitud(estadoDestino) {
+    if (!solicitudActual?.IdSolicitud) {
+      mostrarToast('No hay solicitud seleccionada', 'error');
+      return;
+    }
+
+    if (!puedeGestionarEstadoPorCategoria(solicitudActual.Categoria)) {
+      const permitidos = rolesPermitidosPorCategoria(solicitudActual.Categoria).join(', ');
+      mostrarToast(`Sin permiso. Roles permitidos: ${permitidos}`, 'error');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `Confirma cambiar el estado de ${solicitudActual.Estado} a ${estadoDestino}?`
+    );
+    if (!confirmar) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/solicitud/${solicitudActual.IdSolicitud}/estado`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          estado: estadoDestino,
+          usuario: usuarioId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo cambiar el estado');
+
+      mostrarToast(`Estado actualizado a ${estadoDestino}`, 'success');
+      await verDetalle(solicitudActual.IdSolicitud);
+      await cargarSolicitudes();
+    } catch (err) {
+      mostrarToast(err.message, 'error');
+    }
+  }
+
+  // ═════ EDITAR SOLICITUD ═════
+  async function editarSolicitud(id) {
+    try {
+      const resp = await fetch(`${API_BASE}/solicitud/${id}?usuario=${usuarioId}`);
+      if (!resp.ok) throw new Error('No se pudo cargar la solicitud');
+      
+      const data = await resp.json();
+      solicitudActual = data;
+
+      mostrarVista('formulario', { enSitio: true, esEdicion: true });
+
+      poblarSelectRegional('fn-regional', false);
+      document.getElementById('form-solicitud').reset();
+      document.getElementById('fn-regional').value = data.Regional || '';
+      poblarSelectOperacion(data.Regional);
+      document.getElementById('fn-operacion').value = data.Operación || '';
+      document.getElementById('fn-categoria').value = data.Categoria || '';
+      actualizarPrioridad();
+      document.getElementById('fn-prioridad').value = data.Prioridad || 'MEDIA';
+      document.getElementById('fn-monto').value = data.Monto_Estimado || '';
+      document.getElementById('fn-justificacion').value = data.Justificación || '';
+      document.getElementById('fn-observaciones').value = data.Observaciones || '';
+      document.getElementById('fn-regional').disabled = true;
+      
+      if (data.items && data.items.length > 0) {
+        document.getElementById('fn-items-container').innerHTML = data.items.map((item, idx) => `
+          <div class="item-card" data-item-idx="${idx}">
+            <div class="item-header">
+              <img src="${item.Imagen || 'https://via.placeholder.com/50'}" alt="${item.Articulo}" class="item-img">
+              <div class="item-info">
+                <div class="item-nombre">${item.Articulo}</div>
+                <div class="item-categoria">${item.Categoria}</div>
+              </div>
+              <button type="button" class="btn-quitar-item" onclick="removerItem(${idx})">✕</button>
+            </div>
+            <div class="item-cantidad-wrap">
+              <label style="font-size: .8rem; color: #666;">Cantidad:</label>
+              <input type="number" class="item-cantidad" value="${item.Cantidad}" min="1" data-articulo-id="${item.IdArticulo}" onchange="actualizarCantidadItem(${idx})">
+              <label style="font-size: .8rem; color: #666; margin-left: 16px;">Nota:</label>
+              <input type="text" class="item-nota" style="flex:1; margin-left:4px;" value="${item.Nota || ''}" onchange="actualizarNotaItem(${idx})">
+            </div>
+          </div>
+        `).join('');
+      }
+    } catch (err) {
+      mostrarToast('Error: ' + err.message, 'error');
+      console.error('editarSolicitud:', err);
+    }
+  }
+  
+  function actualizarCantidadItem(idx) {
+    const input = document.querySelector(`.item-card[data-item-idx="${idx}"] .item-cantidad`);
+    if (solicitudActual && solicitudActual.items) {
+      solicitudActual.items[idx].Cantidad = parseInt(input.value) || 0;
+    }
+  }
+  
+  function actualizarNotaItem(idx) {
+    const inputs = document.querySelectorAll(`.item-card[data-item-idx="${idx}"] input[type="text"]`);
+    if (solicitudActual && solicitudActual.items && inputs.length > 0) {
+      solicitudActual.items[idx].Nota = inputs[inputs.length - 1].value;
+    }
+  }
+  
+  function removerItem(idx) {
+    if (solicitudActual && solicitudActual.items) {
+      solicitudActual.items.splice(idx, 1);
+      const container = document.getElementById('fn-items-container');
+      container.innerHTML = solicitudActual.items.map((item, i) => `
+        <div class="item-card" data-item-idx="${i}">
+          <div class="item-header">
+            <img src="${item.Imagen || 'https://via.placeholder.com/50'}" alt="${item.Articulo}" class="item-img">
+            <div class="item-info">
+              <div class="item-nombre">${item.Articulo}</div>
+              <div class="item-categoria">${item.Categoria}</div>
+            </div>
+            <button type="button" class="btn-quitar-item" onclick="removerItem(${i})">✕</button>
+          </div>
+          <div class="item-cantidad-wrap">
+            <label style="font-size: .8rem; color: #666;">Cantidad:</label>
+            <input type="number" class="item-cantidad" value="${item.Cantidad}" min="1" data-articulo-id="${item.IdArticulo}" onchange="actualizarCantidadItem(${i})">
+            <label style="font-size: .8rem; color: #666; margin-left: 16px;">Nota:</label>
+            <input type="text" class="item-nota" style="flex:1; margin-left:4px;" value="${item.Nota || ''}" onchange="actualizarNotaItem(${i})">
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // ═════ UTILIDADES ═════
+  function formatearFecha(fecha) {
+    if (!fecha) return '—';
+    const d = new Date(fecha);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  }
+
+  function mostrarToast(mensaje, tipo = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${tipo}`;
+    toast.textContent = mensaje;
+    container.appendChild(toast);
+
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  // ═════ INICIAR ═════
+  window.addEventListener('load', init);
+</script>
+
+</body>
+</html>
