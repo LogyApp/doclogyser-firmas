@@ -1009,14 +1009,18 @@
     const observaciones = document.getElementById('fn-observaciones').value;
 
     let items = [];
-    
-    if (solicitudActual?.items) {
-      items = solicitudActual.items.filter(i => i.Cantidad > 0).map(item => ({
-        IdArticulo: item.IdArticulo,
-        Cantidad: item.Cantidad,
-        Nota: item.Nota || ''
-      }));
+
+    if (solicitudActual?.IdSolicitud) {
+      // Editing: read directly from DOM so user's latest input is always captured.
+      // onchange-based sync to solicitudActual.items is unreliable when the user
+      // clicks submit without first blurring the input.
+      items = Array.from(document.querySelectorAll('.item-card')).map(card => ({
+        IdArticulo: card.querySelector('.item-cantidad').dataset.articuloId,
+        Cantidad: parseInt(card.querySelector('.item-cantidad').value) || 0,
+        Nota: card.querySelector('.item-nota')?.value?.trim() || '',
+      })).filter(i => i.Cantidad > 0);
     } else {
+      // New solicitud: POST handler expects lowercase keys
       items = Array.from(document.querySelectorAll('.item-card')).map(card => ({
         idArticulo: card.querySelector('.item-cantidad').dataset.articuloId,
         cantidad: parseInt(card.querySelector('.item-cantidad').value),
