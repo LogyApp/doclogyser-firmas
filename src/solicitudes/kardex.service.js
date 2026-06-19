@@ -4,51 +4,57 @@ const pool = require('../services/db');
 const { randomUUID } = require('crypto');
 
 /**
- * Registra movimientos de salida (TRANSFERENCIA) en Dynamic_Kardex
- * para todos los ítems de una solicitud al momento de despacharla.
+ * Despacha una solicitud aprobada en una única transacción:
+ *  1. Por cada ítem busca stock en Vista_Inventario (prioriza misma operación).
+ *  2. INSERT Dynamic_Kardex  (TRANSFERENCIA, cantidad negativa = salida del origen).
+ *  3. INSERT Kardex_Pendiente (Procesado = 1 si mismo regional, 0 si inter-regional).
+ *  4. UPDATE Dynamic_Solicitudes: Estado = 'DESPACHADA' si todos los ítems
+ *     tuvieron stock, 'PARCIAL' si alguno quedó sin stock.
  *
- * Por cada ítem:
- *  1. Busca el stock disponible más cercano en Vista_Inventario,
- *     priorizando la misma operación de la solicitud.
- *  2. Inserta un registro de SALIDA (cantidad negativa) en Dynamic_Kardex.
- *  3. Inserta el pendiente en Kardex_Pendiente para que el SP lo procese.
- *     Procesado = 1 si el stock viene de la misma regional que la solicitud,
- *     0 si viene de otra regional (requiere transferencia física).
- *
- * La deduplicación la maneja proc_CompletarTransferencia; NO se verifica aquí.
+ * Todo ocurre en la misma transacción: si cualquier paso falla se hace rollback.
+ * La deduplicación de entradas la maneja proc_CompletarTransferencia en la BD.
  *
  * @param {string} idSolicitud
- * @param {string} operacionDestino  - `Operación` de la solicitud (destino)
- * @param {string} regionalDestino   - Regional de la solicitud (destino)
- * @param {string} usuario           - ID del usuario que despacha
+ * @param {string} usuario  — ID del usuario que ejecuta el despacho
+ * @returns {{ ok: boolean, idSolicitud: string, estado: 'DESPACHADA'|'PARCIAL' }}
  */
-async function despacharSolicitud(idSolicitud, operacionDestino, regionalDestino, usuario) {
-  const [items] = await pool.execute(
-    `SELECT i.IdArticulo, i.Cantidad, a.Categoria, a.Costo
-     FROM Dynamic_Solicitudes_Items i
-     LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
-     WHERE i.IdSolicitud = ?`,
-    [idSolicitud]
-  );
-
-  if (!items.length) return;
-
+async function despacharSolicitud(idSolicitud, usuario) {
   const conn = await pool.getConnection();
   await conn.beginTransaction();
   try {
+    // FOR UPDATE bloquea la fila: impide que dos requests simultáneos
+    // al mismo endpoint dupliquen movimientos en Dynamic_Kardex.
+    const [[sol]] = await conn.execute(
+      'SELECT `Operación`, Regional, Estado FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
+      [idSolicitud]
+    );
+    if (!sol) throw new Error('Solicitud no encontrada');
+    if (sol.Estado !== 'APROBADA') throw new Error(`Estado inválido para despacho: ${sol.Estado}`);
+
+    const [items] = await conn.execute(
+      `SELECT i.IdArticulo, i.Cantidad, a.Categoria, a.Costo
+       FROM Dynamic_Solicitudes_Items i
+       LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
+       WHERE i.IdSolicitud = ?`,
+      [idSolicitud]
+    );
+    if (!items.length) throw new Error('La solicitud no tiene ítems para despachar');
+
+    let itemsSinStock = 0;
+
     for (const item of items) {
-      // Buscar stock disponible; priorizar misma operación de la solicitud
       const [[stock]] = await conn.execute(
         `SELECT Regional, Operacion, \`Stock Disponible\`
          FROM Vista_Inventario
          WHERE IdArticulo = ? AND Categoria = ? AND \`Stock Disponible\` > 0
          ORDER BY CASE WHEN Operacion = ? THEN 0 ELSE 1 END, \`Stock Disponible\` DESC
          LIMIT 1`,
-        [item.IdArticulo, item.Categoria, operacionDestino]
+        [item.IdArticulo, item.Categoria, sol['Operación']]
       );
 
       if (!stock) {
-        console.warn(`[kardex] Sin stock disponible para artículo ${item.IdArticulo}`);
+        itemsSinStock++;
+        console.warn(`[kardex] Sin stock para artículo ${item.IdArticulo} en solicitud ${idSolicitud}`);
         continue;
       }
 
@@ -63,7 +69,7 @@ async function despacharSolicitud(idSolicitud, operacionDestino, regionalDestino
           idKardex,
           stock.Regional,
           stock.Operacion,
-          operacionDestino,
+          sol['Operación'],
           item.Categoria,
           item.IdArticulo,
           -item.Cantidad,
@@ -72,8 +78,8 @@ async function despacharSolicitud(idSolicitud, operacionDestino, regionalDestino
         ]
       );
 
-      // Procesado = 1 si el stock ya está en la misma regional que la solicitud
-      const procesado = stock.Regional === regionalDestino ? 1 : 0;
+      // Procesado = 1 → mismo regional (sin transferencia física), 0 → inter-regional
+      const procesado = stock.Regional === sol.Regional ? 1 : 0;
 
       await conn.execute(
         'INSERT INTO Kardex_Pendiente (IdKardexOriginal, Procesado, Procesando) VALUES (?, ?, 0)',
@@ -81,7 +87,17 @@ async function despacharSolicitud(idSolicitud, operacionDestino, regionalDestino
       );
     }
 
+    const estadoFinal = itemsSinStock > 0 ? 'PARCIAL' : 'DESPACHADA';
+
+    await conn.execute(
+      `UPDATE Dynamic_Solicitudes
+       SET Estado = ?, Usuario = ?, \`Fecha_Actualización\` = NOW()
+       WHERE IdSolicitud = ?`,
+      [estadoFinal, usuario, idSolicitud]
+    );
+
     await conn.commit();
+    return { ok: true, idSolicitud, estado: estadoFinal };
   } catch (err) {
     await conn.rollback();
     throw err;

@@ -389,7 +389,7 @@
       </div>
 
       <!-- Botones -->
-      <div class="btns-grupo">
+      <div id="form-btns-grupo" class="btns-grupo">
         <button type="submit" class="btn btn-success">💾 Guardar Solicitud</button>
         <button type="button" class="btn btn-secondary" onclick="mostrarVista('listado')">❌ Cancelar</button>
       </div>
@@ -474,6 +474,7 @@
   let articulos = [];
   let modalItemsDraft = {};
   let solicitudActual = null;
+  let _estadoFormDestino = undefined;
   const API_BASE = '/solicitudes/api';
 
   function navegar(path) {
@@ -796,6 +797,7 @@
           actualizarPrioridad();
         }
       }
+      actualizarBotonesFormulario();
     }
   }
 
@@ -969,6 +971,32 @@
   }
 
   // ═════ GUARDAR SOLICITUD ═════
+  function actualizarBotonesFormulario() {
+    const container = document.getElementById('form-btns-grupo');
+    if (!container) return;
+    const estadoActual = solicitudActual?.Estado;
+    if (!solicitudActual?.IdSolicitud) {
+      _estadoFormDestino = undefined;
+      container.innerHTML = `
+        <button type="submit" class="btn btn-success">💾 Guardar Solicitud</button>
+        <button type="button" class="btn btn-secondary" onclick="mostrarVista('listado')">❌ Cancelar</button>
+      `;
+    } else if (estadoActual === 'BORRADOR') {
+      _estadoFormDestino = 'BORRADOR';
+      container.innerHTML = `
+        <button type="submit" class="btn btn-primary">💾 Guardar Borrador</button>
+        <button type="button" class="btn btn-success" onclick="_estadoFormDestino='PENDIENTE'; document.getElementById('form-solicitud').requestSubmit()">📤 Enviar a Pendiente</button>
+        <button type="button" class="btn btn-secondary" onclick="mostrarVista('listado')">❌ Cancelar</button>
+      `;
+    } else if (estadoActual === 'PENDIENTE') {
+      _estadoFormDestino = 'PENDIENTE';
+      container.innerHTML = `
+        <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
+        <button type="button" class="btn btn-secondary" onclick="verDetalle('${solicitudActual.IdSolicitud}')">↩ Cancelar</button>
+      `;
+    }
+  }
+
   async function guardarSolicitud(event) {
     event.preventDefault();
 
@@ -1002,11 +1030,11 @@
     }
 
     const isEdicion = !!solicitudActual?.IdSolicitud;
-    const endpoint = isEdicion 
+    const estadoAnterior = solicitudActual?.Estado;
+    const endpoint = isEdicion
       ? `${API_BASE}/solicitud/${solicitudActual.IdSolicitud}`
       : `${API_BASE}/solicitudes`;
-    
-    const nuevoEstado = isEdicion ? 'PENDIENTE' : undefined;
+
     const payload = {
       operacion,
       regional,
@@ -1017,7 +1045,7 @@
       observaciones: observaciones || null,
       usuario: usuarioId,
       items,
-      estado: nuevoEstado
+      estado: _estadoFormDestino
     };
 
     const button = event.target.querySelector('[type="submit"]');
@@ -1037,21 +1065,26 @@
       }
 
       const data = await res.json();
-      const msg = isEdicion 
-        ? 'Solicitud actualizada y enviada' 
-        : 'Solicitud creada exitosamente';
+      let msg = 'Solicitud creada exitosamente';
+      if (isEdicion) {
+        if (data.estado === 'PENDIENTE' && estadoAnterior !== 'PENDIENTE') msg = 'Solicitud enviada a revisión';
+        else if (data.estado === 'PENDIENTE') msg = 'Cambios guardados';
+        else msg = 'Borrador guardado';
+      }
       mostrarToast(msg, 'success');
-      
+
       modalItemsDraft = {};
+      const idParaDetalle = solicitudActual?.IdSolicitud;
       solicitudActual = null;
-      setTimeout(() => {
-        navegar('/solicitudes');
-      }, 800);
+      if (isEdicion && data.estado === 'PENDIENTE' && estadoAnterior === 'PENDIENTE') {
+        setTimeout(() => verDetalle(idParaDetalle), 800);
+      } else {
+        setTimeout(() => navegar('/solicitudes'), 800);
+      }
     } catch (err) {
       mostrarToast('Error: ' + err.message, 'error');
     } finally {
-      button.disabled = false;
-      button.textContent = '💾 Guardar Solicitud';
+      actualizarBotonesFormulario();
     }
   }
 
@@ -1082,6 +1115,9 @@
                 title="Cambiar a ${accion.estado}"
               >${accion.label}</button>
             `).join('')}
+            ${solicitudActual.Estado === 'PENDIENTE' ? `
+              <button type="button" class="btn btn-secondary" onclick="editarSolicitud('${solicitudActual.IdSolicitud}')">✎ Editar ítems</button>
+            ` : ''}
           </div>
           ` : ''}
         </div>`
@@ -1111,11 +1147,12 @@
           <div class="section-title">Artículos</div>
           <div class="table-container">
             <table style="font-size: .85rem;">
-              <thead><tr><th>Artículo</th><th>Cantidad</th><th>Categoría</th><th>Nota</th></tr></thead>
+              <thead><tr><th>Referencia</th><th>Elemento</th><th>Cantidad</th><th>Categoría</th><th>Nota</th></tr></thead>
               <tbody>
                 ${solicitudActual.items.map(item => `
                   <tr>
-                    <td>${item.Articulo || '—'}</td>
+                    <td>${item.Referencia || '—'}</td>
+                    <td>${item.Elemento || item.Articulo || '—'}</td>
                     <td>${item.Cantidad}</td>
                     <td>${item.CategoriaArticulo || '—'}</td>
                     <td>${item.Nota || '—'}</td>
@@ -1220,6 +1257,7 @@
           </div>
         `).join('');
       }
+      actualizarBotonesFormulario();
     } catch (err) {
       mostrarToast('Error: ' + err.message, 'error');
       console.error('editarSolicitud:', err);

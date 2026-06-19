@@ -365,9 +365,9 @@ router.put('/api/solicitud/:id', async (req, res) => {
     const { id } = req.params;
     const { operacion, regional, prioridad, categoria, justificacion, montoEstimado, observaciones, usuario, items, estado } = req.body;
 
-    // Verificar que existe y está en BORRADOR
+    // Verificar que existe y que el usuario tiene permiso para editar
     const [[solicitud]] = await pool.execute(
-      'SELECT Estado FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
+      'SELECT Estado, Categoria FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
       [id]
     );
 
@@ -375,8 +375,16 @@ router.put('/api/solicitud/:id', async (req, res) => {
       return res.status(404).json({ error: 'Solicitud no encontrada' });
     }
 
-    if (solicitud.Estado !== 'BORRADOR') {
-      return res.status(400).json({ error: 'Solo se pueden editar solicitudes en estado BORRADOR' });
+    const estadoActual = solicitud.Estado;
+    const [[usuarioRow]] = await pool.execute(
+      'SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+      [usuario]
+    );
+    const usuarioRol = usuarioRow?.Rol || '';
+    const esAprobador = rolesPermitidosPorCategoria(solicitud.Categoria).includes(usuarioRol);
+
+    if (estadoActual !== 'BORRADOR' && !(estadoActual === 'PENDIENTE' && esAprobador)) {
+      return res.status(400).json({ error: 'No tiene permiso para editar esta solicitud en su estado actual' });
     }
 
     // Validar campos
@@ -391,7 +399,7 @@ router.put('/api/solicitud/:id', async (req, res) => {
     await conn.beginTransaction();
 
     // Actualizar solicitud
-    const nuevoEstado = estado === 'PENDIENTE' ? 'PENDIENTE' : 'BORRADOR';
+    const nuevoEstado = estadoActual === 'PENDIENTE' ? 'PENDIENTE' : (estado === 'PENDIENTE' ? 'PENDIENTE' : 'BORRADOR');
     await conn.execute(
       `UPDATE Dynamic_Solicitudes
        SET \`Operación\` = ?, Regional = ?, Prioridad = ?, Categoria = ?,
@@ -425,8 +433,8 @@ router.put('/api/solicitud/:id', async (req, res) => {
 
     await conn.commit();
 
-    // Email: notificar cuando el usuario envía la solicitud a PENDIENTE
-    if (nuevoEstado === 'PENDIENTE') {
+    // Email: solo cuando se promueve de BORRADOR a PENDIENTE
+    if (estadoActual === 'BORRADOR' && nuevoEstado === 'PENDIENTE') {
       _enviarEmailEstado(id, 'BORRADOR', 'PENDIENTE', usuario);
     }
 
@@ -453,7 +461,7 @@ router.get('/api/solicitud/:id', async (req, res) => {
     if (!solicitud) return res.status(404).json({ error: 'Solicitud no encontrada' });
 
     const [items] = await pool.execute(
-      `SELECT i.*, a.Articulo, a.Referencia, a.Talla, a.Categoria AS CategoriaArticulo
+      `SELECT i.*, a.Articulo, a.Referencia, a.Elemento, a.Talla, a.Categoria AS CategoriaArticulo
        FROM Dynamic_Solicitudes_Items i
        LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
        WHERE i.IdSolicitud = ?`,
@@ -518,8 +526,13 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
     }
 
     const estadoAnterior = solicitud.Estado;
+    let estadoFinal = estado;
 
-    if (estado === 'APROBADA') {
+    if (['DESPACHADA', 'PARCIAL'].includes(estado)) {
+      // Una sola transacción: kardex inserts + UPDATE estado (todo en kardex.service.js)
+      const resultado = await despacharSolicitud(id, usuario);
+      estadoFinal = resultado.estado;
+    } else if (estado === 'APROBADA') {
       await pool.execute(
         `UPDATE Dynamic_Solicitudes
          SET Estado = ?, Usuario = ?, Observaciones = COALESCE(?, Observaciones),
@@ -537,19 +550,10 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
       );
     }
 
-    // Kardex: registrar movimiento de transferencia al despachar
-    if (['DESPACHADA', 'PARCIAL'].includes(estado)) {
-      try {
-        await despacharSolicitud(id, solicitud['Operación'], solicitud.Regional, usuario);
-      } catch (kErr) {
-        console.error('[solicitudes] Error al registrar kardex:', kErr);
-      }
-    }
-
     // Email: notificar cambio de estado (fire and forget)
-    _enviarEmailEstado(id, estadoAnterior, estado, usuario);
+    _enviarEmailEstado(id, estadoAnterior, estadoFinal, usuario);
 
-    res.json({ ok: true, idSolicitud: id, estado });
+    res.json({ ok: true, idSolicitud: id, estado: estadoFinal });
   } catch (err) {
     console.error('[solicitudes] PATCH /api/solicitud/:id/estado:', err);
     res.status(500).json({ error: err.message });
