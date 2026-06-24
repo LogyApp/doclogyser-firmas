@@ -149,10 +149,12 @@ router.post('/:idEvaluacion', async (req, res) => {
 
     // Generar PDF
     function marca(val, opcion) {
-      return val === opcion ? '&#9746;' : '&#9744;';
+      const checked = val === opcion;
+      return `<span class="box">${checked ? 'X' : '&nbsp;'}</span>`;
     }
     function motivoCheck(val, clave) {
-      return val === clave ? '&#9746;' : '&#9744;';
+      const checked = val === clave || (clave === 'Otro' && val && val.startsWith('Otro:'));
+      return `<span class="box">${checked ? 'X' : '&nbsp;'}</span>`;
     }
     const htmlPDF = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
     <style>
@@ -170,6 +172,19 @@ router.post('/:idEvaluacion', async (req, res) => {
       h3 { font-size: 10pt; margin: 8px 0 4px; }
       .opciones { display: flex; gap: 18px; flex-wrap: wrap; margin: 3px 0 6px 12px; font-size: 9.5pt; }
       .opcion { display: flex; align-items: center; gap: 4px; }
+      .box {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border: 1px solid #000;
+        text-align: center;
+        line-height: 10px;
+        font-size: 8pt;
+        font-family: Arial, sans-serif;
+        font-weight: bold;
+        margin-right: 4px;
+        flex-shrink: 0;
+      }
       .otros-row { display: flex; gap: 6px; align-items: center; font-size: 9.5pt; margin: 3px 0 6px 12px; }
       .linea { border-bottom: 1px solid #888; min-width: 160px; display: inline-block; }
       .pregunta-abierta { margin: 6px 0 3px; font-weight: bold; font-size: 9.5pt; }
@@ -272,8 +287,8 @@ router.post('/:idEvaluacion', async (req, res) => {
     <div class="respuesta-abierta">${aspectos_mejorar || ''}</div>
     <div class="pregunta-abierta">5.3. ¿Recomendaría la empresa a otras personas para trabajar?</div>
     <div class="opciones">
-      <div class="opcion">${recomienda ? '&#9746;' : '&#9744;'} Sí</div>
-      <div class="opcion">${!recomienda ? '&#9746;' : '&#9744;'} No</div>
+      <div class="opcion"><span class="box">${recomienda ? 'X' : '&nbsp;'}</span> Sí</div>
+      <div class="opcion"><span class="box">${!recomienda ? 'X' : '&nbsp;'}</span> No</div>
     </div>
     <div class="pregunta-abierta">5.4. Comentarios adicionales:</div>
     <div class="respuesta-abierta">${comentarios_adicionales || ''}</div>

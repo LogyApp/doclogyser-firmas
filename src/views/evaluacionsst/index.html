@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluaciones de Inducción/Capacitación SST — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Header */
+    .header-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid #14b8a6;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .88rem; color: #64748b; margin-top: 4px; }
+    .badge-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; font-weight: 600;
+    }
+    .badge-user { background: #ccfbf1; border: 1px solid #99f6e4; color: #0f766e; }
+    .badge-total { background: #e2e8f0; border: 1px solid #cbd5e1; color: #475569; }
+
+    .btn {
+      padding: 10px 20px; font-size: .92rem; font-weight: bold;
+      border-radius: 8px; border: none; cursor: pointer; transition: all .2s;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-crear {
+      background: #14b8a6; color: #fff;
+      box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.2);
+    }
+    .btn-crear:hover { background: #0d9488; }
+    .btn-primary { background: #1e293b; color: #fff; }
+    .btn-primary:hover { background: #0f172a; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+    .btn-small { padding: 6px 12px; font-size: .8rem; border-radius: 6px; }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid #14b8a6;
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: #0d9488; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #ccfbf1;
+    }
+
+    .grid-5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    
+    input[type="text"], input[type="date"], input[type="email"], select {
+      width: 100%; padding: 8px 12px;
+      border: 1.5px solid #cbd5e1; border-radius: 6px;
+      font-size: .9rem; color: #334155; background: #ffffff;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: #14b8a6; box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+    }
+
+    /* List view vs Detail view layout */
+    .view-container { display: flex; gap: 20px; flex-direction: column; }
+    .view-container.detail-active {
+      display: grid; grid-template-columns: 1.7fr 1fr;
+    }
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+    }
+
+    /* Table */
+    .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .92rem; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
+    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    tr:hover td { background: #f8fafc; cursor: pointer; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700;
+    }
+    .badge-firma-aceptada { background: #d1fae5; color: #065f46; }
+    .badge-firma-prefilled { background: #fee2e2; color: #991b1b; }
+    .badge-firma-sin { background: #fef3c7; color: #92400e; }
+
+    /* Detail Card */
+    .detail-card {
+      background: #ffffff; border-radius: 12px; border-left: 4px solid #10b981;
+      padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+      position: sticky; top: 20px; display: none;
+    }
+    .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+    .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #ccfbf1; border-top-color: #14b8a6;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .9rem; font-weight: 600;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div id="toast" class="toast">Mensaje...</div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card">
+      <div class="title-box">
+        <div class="page-title">Evaluaciones de Inducción - Capacitación SST</div>
+        <div class="page-sub">Panel de administración y control de evaluaciones legales del Sistema de Gestión SST</div>
+        <div class="badge-row">
+          <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
+          <div class="badge badge-total" id="total-badge-count">Total: 0 registros</div>
+        </div>
+      </div>
+      <button class="btn btn-crear" id="btn-nueva-evaluacion">+ Crear Evaluación</button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card">
+      <div class="section-title">Filtros de Búsqueda</div>
+      <div class="grid-5">
+        <div class="field">
+          <label for="filtro-trabajador">Trabajador</label>
+          <input type="text" id="filtro-trabajador" placeholder="Nombre o C.C...">
+        </div>
+        <div class="field">
+          <label for="filtro-regional">Regional</label>
+          <select id="filtro-regional">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filtro-operacion">Operación</label>
+          <select id="filtro-operacion">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filtro-desde">Fecha Desde</label>
+          <input type="date" id="filtro-desde">
+        </div>
+        <div class="field">
+          <label for="filtro-hasta">Fecha Hasta</label>
+          <input type="date" id="filtro-hasta">
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px;">
+        <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
+        <button class="btn btn-primary" id="btn-filtrar">Aplicar Filtros</button>
+      </div>
+    </div>
+
+    <!-- Layout listado y detalle -->
+    <div class="view-container" id="layout-container">
+      
+      <!-- Listado Principal -->
+      <div class="card" style="border-left-color: #3b82f6;">
+        <div class="section-title">Evaluaciones Registradas</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Trabajador</th>
+                <th>Identificación</th>
+                <th>Tipo</th>
+                <th>Puntaje</th>
+                <th>Resultado</th>
+                <th>Documento PDF</th>
+              </tr>
+            </thead>
+            <tbody id="evaluaciones-body">
+              <tr>
+                <td colspan="7" style="text-align: center; color: #888; padding: 30px;">Cargando registros...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Detalle Lateral -->
+      <div class="detail-card" id="detalle-card">
+        <div class="section-title">Detalle de la Evaluación</div>
+        <div class="detail-info-box" id="detalle-info">
+          <!-- Dinámico -->
+        </div>
+
+        <div id="opciones-contacto" style="margin-top: 20px; display: none;">
+          <div class="section-title" style="margin-bottom: 12px; font-size: .75rem;">Actualizar Datos de Contacto</div>
+          <div class="field">
+            <label for="contacto-email">Correo Electrónico</label>
+            <input type="email" id="contacto-email" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="field">
+            <label for="contacto-celular">Celular (WhatsApp)</label>
+            <input type="text" id="contacto-celular" placeholder="3XXXXXXXXX">
+          </div>
+          <button class="btn btn-secondary" onclick="actualizarContacto()" style="width: 100%; margin-top: 5px;">Actualizar Contacto</button>
+        </div>
+
+        <div id="opciones-control" style="margin-top: 20px;">
+          <!-- Dinámico -->
+        </div>
+        
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;" onclick="cerrarDetalle()">Volver al Listado</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG__;
+
+    let selectedEvaluacionId = null;
+    let selectedTrabajadorId = null;
+    let evaluacionesList = [];
+
+    // Inicialización del dashboard
+    document.getElementById('user-badge-name').textContent = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+
+    // Configurar redirección a formulario de creación
+    document.getElementById('btn-nueva-evaluacion').addEventListener('click', () => {
+      window.location.href = `/formevaluacionsst?usuario=${CONFIG.usuarioId}`;
+    });
+
+    // Cargar listas de filtros
+    const filtroReg = document.getElementById('filtro-regional');
+    const filtroOp = document.getElementById('filtro-operacion');
+
+    // Llenar Regionales
+    CONFIG.regionalesFiltro.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.textContent = r;
+      filtroReg.appendChild(opt);
+    });
+
+    // Manejar cambio de Regional para filtrar operaciones
+    filtroReg.addEventListener('change', () => {
+      const reg = filtroReg.value;
+      filtroOp.innerHTML = '<option value="">Todas</option>';
+      if (reg && CONFIG.opsPorRegional[reg]) {
+        CONFIG.opsPorRegional[reg].forEach(op => {
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = op;
+          filtroOp.appendChild(opt);
+        });
+      } else if (!reg) {
+        // Mostrar todas las permitidas
+        CONFIG.regionalesFiltro.forEach(r => {
+          CONFIG.opsPorRegional[r].forEach(op => {
+            if (![...filtroOp.options].some(o => o.value === op)) {
+              const opt = document.createElement('option');
+              opt.value = op;
+              opt.textContent = op;
+              filtroOp.appendChild(opt);
+            }
+          });
+        });
+      }
+    });
+    // Trigger inicial
+    filtroReg.dispatchEvent(new Event('change'));
+
+    // Botones de filtro
+    document.getElementById('btn-filtrar').addEventListener('click', cargarListado);
+    document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+      document.getElementById('filtro-trabajador').value = '';
+      filtroReg.value = '';
+      filtroReg.dispatchEvent(new Event('change'));
+      document.getElementById('filtro-desde').value = '';
+      document.getElementById('filtro-hasta').value = '';
+      cargarListado();
+    });
+
+    // Cargar Listado Inicial
+    cargarListado();
+
+    async function cargarListado() {
+      showLoading('Cargando evaluaciones...');
+      try {
+        const tr = document.getElementById('filtro-trabajador').value.trim();
+        const reg = filtroReg.value;
+        const op = filtroOp.value;
+        const fd = document.getElementById('filtro-desde').value;
+        const fh = document.getElementById('filtro-hasta').value;
+
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          trabajador: tr,
+          regional: reg,
+          operacion: op,
+          fechaDesde: fd,
+          fechaHasta: fh
+        });
+
+        const res = await fetch(`/evaluacionsst/api/evaluaciones?${params.toString()}`);
+        evaluacionesList = await res.json();
+
+        document.getElementById('total-badge-count').textContent = `Total: ${evaluacionesList.length} registros`;
+
+        const tbody = document.getElementById('evaluaciones-body');
+        tbody.innerHTML = '';
+
+        if (!evaluacionesList.length) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #888; padding: 30px;">No se encontraron evaluaciones registradas.</td></tr>`;
+          return;
+        }
+
+        evaluacionesList.forEach(item => {
+          const fila = document.createElement('tr');
+          fila.addEventListener('click', () => abrirDetalle(item.id_evaluacion));
+
+          const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+          const resultBadge = item.url_doc 
+            ? (item.resultado === 'APROBADO' 
+                ? '<span class="status-badge badge-firma-aceptada">✓ Aprobado</span>'
+                : '<span class="status-badge badge-firma-prefilled">✗ No Aprobado</span>')
+            : '<span class="status-badge badge-firma-sin">⏱ Pendiente</span>';
+
+          const docLink = item.url_doc 
+            ? `<a href="${item.url_doc}" target="_blank" onclick="event.stopPropagation();" style="color:#0d9488; font-weight:bold; text-decoration:none;">📄 Abrir PDF</a>` 
+            : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+
+          fila.innerHTML = `
+            <td><strong>${fechaFmt}</strong></td>
+            <td>${item.nombre_trabajador || 'Cargando...'}</td>
+            <td>${item.identificacion}</td>
+            <td>${item.tipo}</td>
+            <td><strong>${item.puntaje !== null ? item.puntaje + ' / 13' : '—'}</strong></td>
+            <td>${resultBadge}</td>
+            <td>${docLink}</td>
+          `;
+          tbody.appendChild(fila);
+        });
+      } catch (err) {
+        console.error(err);
+        showToast('Error al cargar listado', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Abrir detalle
+    function abrirDetalle(id) {
+      selectedEvaluacionId = id;
+      const item = evaluacionesList.find(x => x.id_evaluacion === id);
+      if (!item) return;
+
+      selectedTrabajadorId = item.identificacion;
+
+      // Layout split
+      document.getElementById('layout-container').classList.add('detail-active');
+      document.getElementById('detalle-card').style.display = 'block';
+
+      // Llenar datos de contacto
+      document.getElementById('contacto-email').value = item.email_trabajador || '';
+      document.getElementById('contacto-celular').value = item.celular_trabajador || '';
+      document.getElementById('opciones-contacto').style.display = 'block';
+
+      // Dibujar detalle informativo
+      const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+      const resultTxt = item.url_doc 
+        ? `<strong style="color: ${item.resultado === 'APROBADO' ? '#10b981' : '#ef4444'}">${item.resultado} (${item.puntaje} / 13)</strong>`
+        : '<span style="color: #f59e0b; font-weight: bold;">Pendiente de Firma</span>';
+
+      document.getElementById('detalle-info').innerHTML = `
+        <p><strong>Fecha Eval:</strong> ${fechaFmt}</p>
+        <p><strong>Trabajador:</strong> ${item.nombre_trabajador || '—'}</p>
+        <p><strong>Cédula:</strong> ${item.identificacion}</p>
+        <p><strong>Cargo:</strong> ${item.Cargo || '—'}</p>
+        <p><strong>Regional:</strong> ${item.Regional || '—'}</p>
+        <p><strong>Operación:</strong> ${item.operacion || '—'}</p>
+        <p><strong>Tipo Eval:</strong> ${item.tipo}</p>
+        <p><strong>Evaluador:</strong> ${item.nombre_evaluador || item.usuario}</p>
+        <p><strong>Resultado:</strong> ${resultTxt}</p>
+        ${item.url_doc ? `<p style="margin-top: 15px;"><a href="${item.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
+      `;
+
+      // Dibujar botones de control (Enviar Correo / WhatsApp)
+      const optsBox = document.getElementById('opciones-control');
+      optsBox.innerHTML = '';
+
+      if (!item.url_doc) {
+        // Enlace de firma del trabajador
+        const urlFirmaLink = `${window.location.origin}/evaluacionsst/responder?item=${item.id_evaluacion}`;
+        const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaLink}`);
+        
+        // Construir link de WhatsApp con número si existe
+        let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+        if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+        const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
+
+        optsBox.innerHTML = `
+          <div class="section-title" style="margin-top: 25px; margin-bottom: 12px; font-size: .75rem;">Acciones de Control</div>
+          <button class="btn btn-primary" onclick="notificarCorreo()" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
+          <a href="${waUrl}" target="_blank" class="btn btn-success" style="width: 100%;">Enviar WhatsApp</a>
+        `;
+      }
+    }
+
+    function cerrarDetalle() {
+      document.getElementById('layout-container').classList.remove('detail-active');
+      document.getElementById('detalle-card').style.display = 'none';
+      selectedEvaluacionId = null;
+      selectedTrabajadorId = null;
+    }
+
+    // Actualizar contacto en BD
+    async function actualizarContacto() {
+      const email = document.getElementById('contacto-email').value.trim();
+      const celular = document.getElementById('contacto-celular').value.trim();
+
+      if (!selectedTrabajadorId) return;
+      showLoading('Actualizando contacto...');
+
+      try {
+        const res = await fetch('/evaluacionsst/api/actualizar-contacto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identificacion: selectedTrabajadorId,
+            email,
+            celular
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Contacto actualizado correctamente', 'success');
+          // Actualizar en memoria
+          const idx = evaluacionesList.findIndex(x => x.id_evaluacion === selectedEvaluacionId);
+          if (idx !== -1) {
+            evaluacionesList[idx].email_trabajador = email;
+            evaluacionesList[idx].celular_trabajador = celular;
+            // Refrescar detalle para recalcular link de whatsapp
+            abrirDetalle(selectedEvaluacionId);
+          }
+        } else {
+          showToast(data.error || 'Error al actualizar', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Reenviar correo de notificación
+    async function notificarCorreo() {
+      if (!selectedEvaluacionId) return;
+      showLoading('Enviando correo...');
+      try {
+        const res = await fetch('/evaluacionsst/api/reenviar-firma', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_evaluacion: selectedEvaluacionId,
+            canal: 'email'
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Correo de notificación enviado correctamente', 'success');
+        } else {
+          showToast(data.error || 'Error al enviar correo', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Helpers UI
+    function showLoading(text = 'Cargando...') {
+      document.getElementById('loading-text').textContent = text;
+      document.getElementById('loading').style.display = 'flex';
+    }
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.background = type === 'success' ? '#10b981' : '#ef4444';
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+  </script>
+</body>
+</html>

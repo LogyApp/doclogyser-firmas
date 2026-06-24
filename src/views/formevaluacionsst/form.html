@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nueva Evaluación SST — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 750px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Header */
+    .header-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid #14b8a6;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .85rem; color: #64748b; margin-top: 4px; }
+    .badge-user {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #ccfbf1; border: 1px solid #99f6e4;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; color: #0f766e; margin-top: 8px; font-weight: 600;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid #14b8a6;
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: #0d9488; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #ccfbf1;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 580px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .field { margin-bottom: 20px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .85rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    label .req { color: #ef4444; margin-left: 2px; }
+    
+    input[type="text"], input[type="date"], select, textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #cbd5e1; border-radius: 8px;
+      font-size: .95rem; color: #334155; background: #ffffff;
+      transition: all .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #14b8a6; box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+    }
+    input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; }
+
+    .btn-submit {
+      width: 100%; background: #14b8a6; color: #ffffff; border: none;
+      padding: 14px 20px; font-size: 1rem; font-weight: 700;
+      border-radius: 8px; cursor: pointer; transition: background .2s;
+      box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.2);
+    }
+    .btn-submit:hover { background: #0d9488; }
+
+    /* Success card */
+    .success-card {
+      display: none; background: #ffffff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 30px 24px; text-align: center;
+      border-top: 5px solid #10b981;
+    }
+    .success-icon { font-size: 3rem; color: #10b981; margin-bottom: 16px; }
+    .success-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+    .success-text { font-size: .95rem; color: #64748b; margin-bottom: 24px; }
+    
+    .link-box {
+      background: #f8fafc; border: 1.5px dashed #cbd5e1;
+      border-radius: 8px; padding: 14px; margin-bottom: 24px;
+      word-break: break-all; font-size: .9rem; color: #1e293b;
+    }
+    
+    .btn-group-success {
+      display: flex; gap: 12px; justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-success-action {
+      padding: 10px 20px; font-size: .9rem; font-weight: bold;
+      border-radius: 6px; text-decoration: none; cursor: pointer;
+    }
+    .btn-wa { background: #25d366; color: #fff; }
+    .btn-wa:hover { background: #20ba5a; }
+    .btn-pri { background: #14b8a6; color: #fff; }
+    .btn-pri:hover { background: #0d9488; }
+    .btn-sec { background: #e2e8f0; color: #475569; }
+    .btn-sec:hover { background: #cbd5e1; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #ccfbf1; border-top-color: #14b8a6;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card" id="form-header">
+      <div class="title-box">
+        <div class="page-title">Programar Evaluación SST</div>
+        <div class="page-sub">Formulario de asignación de Evaluación de Inducción/Capacitación SST</div>
+        <div class="badge-row">
+          <div class="badge-user" id="user-badge">Cargando usuario...</div>
+        </div>
+      </div>
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER">
+    </div>
+
+    <!-- Formulario principal -->
+    <form id="form-evsst">
+      <!-- Ubicación del Trabajador -->
+      <div class="card">
+        <div class="section-title">Ubicación del Trabajador</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="select-regional">Regional <span class="req">*</span></label>
+            <select id="select-regional" required>
+              <option value="">Seleccione Regional...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="select-operacion">Operación <span class="req">*</span></label>
+            <select id="select-operacion" required disabled>
+              <option value="">Seleccione Operación...</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detalles de la Evaluación -->
+      <div class="card">
+        <div class="section-title">Datos del Colaborador y Evaluación</div>
+        
+        <div class="field">
+          <label for="select-trabajador">Trabajador <span class="req">*</span></label>
+          <select id="select-trabajador" required disabled>
+            <option value="">Seleccione Trabajador...</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="input-cc">Identificación (C.C.)</label>
+            <input type="text" id="input-cc" readonly placeholder="Cédula del colaborador">
+          </div>
+          <div class="field">
+            <label for="input-cargo">Cargo</label>
+            <input type="text" id="input-cargo" readonly placeholder="Cargo del colaborador">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="input-fecha">Fecha de Evaluación <span class="req">*</span></label>
+            <input type="date" id="input-fecha" required>
+          </div>
+          <div class="field">
+            <label for="select-tipo">Tipo de Evaluación <span class="req">*</span></label>
+            <select id="select-tipo" required>
+              <option value="Inducción">Inducción</option>
+              <option value="Reinducción">Reinducción</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Correo / Celular prellenado -->
+        <div class="grid-2" style="background:#f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+          <div class="field">
+            <label for="input-email">Correo (Para notificación)</label>
+            <input type="text" id="input-email" readonly placeholder="No registrado" style="background:transparent; border:none; padding:4px 0;">
+          </div>
+          <div class="field">
+            <label for="input-celular">Celular (WhatsApp)</label>
+            <input type="text" id="input-celular" readonly placeholder="No registrado" style="background:transparent; border:none; padding:4px 0;">
+          </div>
+        </div>
+
+        <div class="field" style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="check-correo" checked style="width: 18px; height: 18px; accent-color: #14b8a6;">
+          <label for="check-correo" style="margin-bottom: 0; font-weight: 500; cursor: pointer;">Notificar por correo electrónico al trabajador automáticamente</label>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn-success-action btn-sec" style="flex: 1; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s;" onclick="volverPanel()">Cancelar</button>
+        <button type="submit" class="btn-submit" id="btn-submit" style="flex: 2; margin-top: 0;">Registrar y Generar Enlace</button>
+      </div>
+    </form>
+
+    <!-- Pantalla de éxito -->
+    <div class="success-card" id="pantalla-exito">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">¡Evaluación registrada correctamente!</h2>
+      <p class="success-text">
+        Se ha registrado la evaluación SST. El trabajador ahora debe acceder al siguiente enlace para responder las 13 preguntas y registrar su firma digital.
+      </p>
+      
+      <div class="link-box" id="link-firma">Cargando enlace...</div>
+
+      <div class="btn-group-success">
+        <button class="btn-success-action btn-sec" onclick="copiarAlPortapapeles()">Copiar Enlace</button>
+        <a id="btn-whatsapp" href="#" target="_blank" class="btn-success-action btn-wa">Enviar por WhatsApp</a>
+        <button class="btn-success-action btn-pri" onclick="volverPanel()">Volver al Listado</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG__;
+    
+    // Set user info
+    document.getElementById('user-badge').textContent = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+
+    // Default date to today
+    document.getElementById('input-fecha').value = new Date().toISOString().slice(0, 10);
+
+    // References
+    const selectReg = document.getElementById('select-regional');
+    const selectOp = document.getElementById('select-operacion');
+    const selectTrab = document.getElementById('select-trabajador');
+    const inputCc = document.getElementById('input-cc');
+    const inputCargo = document.getElementById('input-cargo');
+    const inputEmail = document.getElementById('input-email');
+    const inputCelular = document.getElementById('input-celular');
+
+    let trabajadoresActivos = [];
+    let urlFirmaGenerada = '';
+
+    // Load Regionales
+    CONFIG.regionalesFiltro.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.textContent = r;
+      selectReg.appendChild(opt);
+    });
+
+    // Handle Regional Change
+    selectReg.addEventListener('change', () => {
+      const reg = selectReg.value;
+      selectOp.innerHTML = '<option value="">Seleccione Operación...</option>';
+      selectOp.disabled = !reg;
+      selectTrab.innerHTML = '<option value="">Seleccione Trabajador...</option>';
+      selectTrab.disabled = true;
+      limpiarCamposTrabajador();
+
+      if (reg && CONFIG.opsPorRegional[reg]) {
+        CONFIG.opsPorRegional[reg].forEach(op => {
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = op;
+          selectOp.appendChild(opt);
+        });
+      }
+    });
+
+    // Handle Operacion Change
+    selectOp.addEventListener('change', async () => {
+      const reg = selectReg.value;
+      const op = selectOp.value;
+      selectTrab.innerHTML = '<option value="">Cargando trabajadores...</option>';
+      selectTrab.disabled = true;
+      limpiarCamposTrabajador();
+
+      if (!reg || !op) return;
+
+      try {
+        const res = await fetch(`/evaluacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+        trabajadoresActivos = await res.json();
+        
+        selectTrab.innerHTML = '<option value="">Seleccione Trabajador...</option>';
+        selectTrab.disabled = false;
+
+        trabajadoresActivos.forEach((t, index) => {
+          const opt = document.createElement('option');
+          opt.value = index;
+          opt.textContent = t.Trabajador;
+          selectTrab.appendChild(opt);
+        });
+      } catch (err) {
+        console.error(err);
+        selectTrab.innerHTML = '<option value="">Error al cargar trabajadores</option>';
+      }
+    });
+
+    // Handle Trabajador Change
+    selectTrab.addEventListener('change', async () => {
+      const idx = selectTrab.value;
+      limpiarCamposTrabajador();
+      if (idx === '') return;
+
+      const t = trabajadoresActivos[idx];
+      inputCc.value = t.identificacion;
+      inputCargo.value = t.Cargo;
+
+      // Fetch segmentacion contact info
+      try {
+        const res = await fetch(`/evaluacionsst/api/contacto/${t.identificacion}`);
+        const c = await res.json();
+        inputEmail.value = c.Email || 'No registrado';
+        inputCelular.value = c.Celular || 'No registrado';
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    function limpiarCamposTrabajador() {
+      inputCc.value = '';
+      inputCargo.value = '';
+      inputEmail.value = '';
+      inputCelular.value = '';
+    }
+
+    // Submit Form
+    document.getElementById('form-evsst').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const idx = selectTrab.value;
+      if (idx === '') return;
+      
+      const t = trabajadoresActivos[idx];
+      const dateVal = document.getElementById('input-fecha').value;
+      const tipoVal = document.getElementById('select-tipo').value;
+      const sendMail = document.getElementById('check-correo').checked;
+
+      showLoading('Registrando evaluación...');
+
+      try {
+        const res = await fetch('/evaluacionsst/api/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fecha: dateVal,
+            identificacion: t.identificacion,
+            tipo: tipoVal,
+            usuario: CONFIG.usuarioId,
+            enviar_correo: sendMail
+          })
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          urlFirmaGenerada = data.urlFirma;
+
+          // Configure success card
+          document.getElementById('link-firma').textContent = urlFirmaGenerada;
+          
+          // Configure WhatsApp link
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaGenerada}`);
+          let celNum = inputCelular.value.trim().replace(/\D/g, '');
+          if (celNum.length === 10 && celNum.startsWith('3')) celNum = '57' + celNum;
+          
+          const waUrl = celNum ? `https://api.whatsapp.com/send?phone=${celNum}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
+          document.getElementById('btn-whatsapp').href = waUrl;
+
+          // Switch view
+          document.getElementById('form-evsst').style.display = 'none';
+          document.getElementById('form-header').style.display = 'none';
+          document.getElementById('pantalla-exito').style.display = 'block';
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo crear la evaluación'));
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error de conexión');
+      } finally {
+        hideLoading();
+      }
+    });
+
+    // Actions
+    function copiarAlPortapapeles() {
+      navigator.clipboard.writeText(urlFirmaGenerada).then(() => {
+        alert('Enlace copiado al portapapeles');
+      });
+    }
+
+    function volverPanel() {
+      window.location.href = `/evaluacionsst?usuario=${CONFIG.usuarioId}`;
+    }
+
+    // UI Helpers
+    function showLoading(text = 'Cargando...') {
+      document.getElementById('loading-text').textContent = text;
+      document.getElementById('loading').style.display = 'flex';
+    }
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+  </script>
+</body>
+</html>

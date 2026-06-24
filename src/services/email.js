@@ -1205,6 +1205,94 @@ async function enviarNotificacionCompletadoSST({ emailUsuario, nombreTrabajador,
   });
 }
 
+async function notificarFirmaEvaluacionSST({ email, nombreTrabajador, tipo, urlFirma, emailUsuario }) {
+  const asunto = `Evaluación de Inducción/Capacitación SST (${tipo}) — LOG&SER`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #1abc9c;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
+          Le informamos que tiene una <strong>Evaluación de Inducción/Capacitación SST (${tipo})</strong> pendiente de diligenciar y firmar digitalmente.
+          Por favor, ingrese al enlace para responder las preguntas y registrar su firma.
+        </p>
+        <div style="text-align:center;margin-bottom:28px">
+          <a href="${urlFirma}"
+             style="display:inline-block;background:#1abc9c;color:#fff;text-decoration:none;
+                    padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
+            ✍️ Responder y Firmar Evaluación
+          </a>
+        </div>
+        <div style="background:#fffbea;border-left:4px solid #f0d060;padding:12px 16px;border-radius:0 4px 4px 0;font-size:.83rem;color:#7a6000;margin-bottom:24px">
+          ⚠️ Este enlace tiene una validez de <strong>48 horas</strong>.
+        </div>
+        <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
+          Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
+        </p>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function notificarEvaluacionSSTCompletada({ email, nombreTrabajador, tipo, puntaje, resultado, urlDoc, emailUsuario }) {
+  const asunto = `Evaluación de Inducción/Capacitación SST (${tipo}) Completada — LOG&SER`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #2ecc71;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
+          Su <strong>Evaluación de Inducción/Capacitación SST (${tipo})</strong> ha sido calificada y completada.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:28px">
+          <tr style="background:#f8f9fb;border-bottom:1px solid #eee">
+            <td style="padding:10px 14px;color:#888;width:40%">Puntaje</td>
+            <td style="padding:10px 14px;font-weight:700;color:#1a1a2e">${puntaje} / 13</td>
+          </tr>
+          <tr style="border-bottom:1px solid #eee">
+            <td style="padding:10px 14px;color:#888">Resultado</td>
+            <td style="padding:10px 14px;font-weight:700;color:${resultado === 'APROBADO' ? '#2ecc71' : '#e74c3c'}">${resultado}</td>
+          </tr>
+        </table>
+        ${urlDoc ? `
+        <div style="text-align:center;margin-bottom:28px">
+          <a href="${urlDoc}" target="_blank"
+             style="display:inline-block;background:#2ecc71;color:#fff;text-decoration:none;
+                    padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
+            📄 Ver PDF de Evaluación
+          </a>
+        </div>
+        ` : ''}
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
 module.exports = {
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
@@ -1226,4 +1314,6 @@ module.exports = {
   enviarNotificacionTrabajadorFirmoSST,
   enviarCorreoFirmaLiderSST,
   enviarNotificacionCompletadoSST,
+  notificarFirmaEvaluacionSST,
+  notificarEvaluacionSSTCompletada,
 };

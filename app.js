@@ -18,6 +18,7 @@ const solicitudesRoutes              = require('./src/routes/solicitudes');
 const participacionRoutes            = require('./src/routes/participacion');
 const pruebaconsumoRoutes            = require('./src/routes/pruebaconsumo');
 const compromisosstRoutes            = require('./src/routes/compromisosst');
+const evaluacionsstRoutes            = require('./src/routes/evaluacionsst');
 
 const app = express();
 
@@ -45,6 +46,8 @@ app.use('/pruebaconsumo', pruebaconsumoRoutes);
 app.use('/formpruebaconsumo', pruebaconsumoRoutes);
 app.use('/compromisosst', compromisosstRoutes);
 app.use('/formcompromisosst', compromisosstRoutes);
+app.use('/evaluacionsst', evaluacionsstRoutes);
+app.use('/formevaluacionsst', evaluacionsstRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   const devRoutes = require('./src/routes/dev');
@@ -99,3 +102,8 @@ setInterval(verificarPZExpirados, 10 * 60 * 1000); // cada 10 minutos
 const { verificarCPCExpirados } = require('./src/services/cpcExpiryNotifier');
 verificarCPCExpirados(); // verificación inicial al arrancar
 setInterval(verificarCPCExpirados, 5 * 60 * 1000); // cada 5 minutos
+
+// Generador automático de EVSST (Evaluación SST) cuando el token expira sin firma
+const { verificarEVSSTExpirados } = require('./src/services/evsstExpiryNotifier');
+verificarEVSSTExpirados(); // verificación inicial al arrancar
+setInterval(verificarEVSSTExpirados, 5 * 60 * 1000); // cada 5 minutos
