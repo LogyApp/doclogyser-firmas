@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Asistencias y Capacitaciones — LOG&SER</title>
+  <title>Seguimiento de Participación — LOG&SER</title>
   <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recibos-public/logo.png">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,91 +51,18 @@
     .field { margin-bottom: 16px; position: relative; }
     .field:last-child { margin-bottom: 0; }
     label.lbl { display: block; font-size: .82rem; font-weight: 600; color: #444; margin-bottom: 6px; }
-    label.lbl .req { color: #c0392b; margin-left: 2px; }
-    input[type="text"], input[type="time"], input[type="date"],
-    select, textarea {
+    input[type="text"], input[type="date"], select {
       width: 100%; padding: 10px 12px;
       border: 1.5px solid #ddd; border-radius: 6px;
       font-size: .93rem; color: #333; background: #fff;
       font-family: Arial, sans-serif;
     }
-    input:focus, select:focus, textarea:focus {
+    input:focus, select:focus {
       outline: none; border-color: #8e44ad; box-shadow: 0 0 0 3px rgba(142,68,173,.12);
     }
-    textarea { resize: vertical; min-height: 80px; }
     
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
     .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-
-    /* ── Autocomplete ── */
-    .ac-list {
-      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-      background: #fff; border: 1.5px solid #8e44ad;
-      border-radius: 6px; max-height: 220px; overflow-y: auto;
-      z-index: 999; display: none;
-      box-shadow: 0 6px 20px rgba(142,68,173,.15);
-    }
-    .ac-list.open { display: block; }
-    .ac-item {
-      padding: 10px 14px; cursor: pointer; font-size: .88rem; color: #333;
-      border-bottom: 1px solid #f5f5f5;
-    }
-    .ac-item:hover { background: #eef1ff; color: #1a1a2e; font-weight: 600; }
-
-    /* ── Scrollable Checklist for Attendees ── */
-    .checklist-card {
-      border: 1.5px solid #ddd;
-      border-radius: 6px;
-      background: #fff;
-      max-height: 300px;
-      overflow-y: auto;
-      margin-top: 10px;
-    }
-    .checklist-header {
-      padding: 10px 12px;
-      background: #f8fafc;
-      border-bottom: 1.5px solid #ddd;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .checklist-search {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: .85rem;
-    }
-    .checklist-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-bottom: 1px solid #f1f5f9;
-      cursor: pointer;
-    }
-    .checklist-item:last-child {
-      border-bottom: none;
-    }
-    .checklist-item:hover {
-      background: #f8fafc;
-    }
-    .checklist-item input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: #8e44ad;
-      cursor: pointer;
-    }
-    .checklist-item label {
-      font-size: .88rem;
-      color: #1e293b;
-      cursor: pointer;
-      flex: 1;
-    }
 
     /* ── Buttons ── */
     .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
@@ -148,7 +75,6 @@
     .btn-primary { background: #8e44ad; color: #fff; }
     .btn-primary:hover { background: #763693; box-shadow: 0 3px 10px rgba(142,68,173,.3); }
     
-    /* Botón Crear Formato Custom Green */
     .btn-crear { background: #10b981; color: #fff; }
     .btn-crear:hover { background: #059669; box-shadow: 0 3px 10px rgba(16,185,129,.3); }
 
@@ -156,8 +82,6 @@
     .btn-secondary:hover { background: #eef1ff; border-color: #8e44ad; }
     .btn-success { background: #27ae60; color: #fff; }
     .btn-success:hover { background: #1e8449; }
-    .btn-danger { background: #c0392b; color: #fff; }
-    .btn-danger:hover { background: #922b21; }
     .btn-small { padding: 5px 10px; font-size: .75rem; border-radius: 4px; }
 
     /* ── Tables ── */
@@ -227,7 +151,7 @@
     @media (max-width: 768px) {
       .card-titulo { flex-direction: column; text-align: center; }
       .card-titulo img { height: 42px; }
-      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .grid-2, .grid-4 { grid-template-columns: 1fr; }
       .detail-grid { grid-template-columns: 1fr; }
       th, td { padding: 10px; }
     }
@@ -317,105 +241,6 @@
     </div>
   </div>
 
-  <!-- ════════ VISTA: FORMULARIO ════════ -->
-  <div id="vista-formulario" class="vista">
-    <div class="card-titulo">
-      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logo LOG&SER">
-      <div>
-        <div class="page-title" id="form-titulo">Crear Formato de Asistencia</div>
-        <div class="page-sub">Diligencia los campos requeridos y adiciona a los asistentes</div>
-      </div>
-    </div>
-
-    <form id="form-asistencia">
-      <div class="card card-purple">
-        <div class="section-title">Información Básica</div>
-        <div class="field">
-          <label class="lbl">Tema de la Jornada <span class="req">*</span></label>
-          <input type="text" id="form-tema" required placeholder="Ej. Capacitación sobre riesgos laborales">
-        </div>
-
-        <div class="grid-3">
-          <div class="field">
-            <label class="lbl">Fecha <span class="req">*</span></label>
-            <input type="date" id="form-fecha" required>
-          </div>
-          <div class="field">
-            <label class="lbl">Hora Inicial <span class="req">*</span></label>
-            <input type="time" id="form-hora-inicial" required>
-          </div>
-          <div class="field">
-            <label class="lbl">Hora Final <span class="req">*</span></label>
-            <input type="time" id="form-hora-final" required>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="field">
-            <label class="lbl">Lugar de Capacitación <span class="req">*</span></label>
-            <input type="text" id="form-lugar" required placeholder="Ej. Oficina Principal - Sala A">
-          </div>
-          <div class="field" style="position: relative;">
-            <label class="lbl">Responsable del Registro (Cédula) <span class="req">*</span></label>
-            <input type="text" id="form-responsable-input" placeholder="Buscar únicamente por Identificación..." autocomplete="off">
-            <input type="hidden" id="form-responsable-id">
-            <div id="ac-responsable" class="ac-list"></div>
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="lbl">Objetivo / Propósito</label>
-          <textarea id="form-objetivo" placeholder="Describe brevemente el objetivo..."></textarea>
-        </div>
-      </div>
-
-      <div class="card card-blue">
-        <div class="section-title">Adicionar Asistentes (Por Regional y Operación)</div>
-        
-        <div class="grid-2">
-          <div class="field">
-            <label class="lbl">Regional de los Asistentes</label>
-            <select id="form-asistente-regional">
-              <option value="">Seleccione Regional...</option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="lbl">Operación de los Asistentes</label>
-            <select id="form-asistente-operacion">
-              <option value="">Seleccione Operación...</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Scrollable checklist list -->
-        <div style="margin-top: 15px; display: none;" id="form-asistentes-checklist-wrap">
-          <label class="lbl">Selección de Trabajadores Activos</label>
-          <div class="checklist-card">
-            <div class="checklist-header">
-              <input type="text" class="checklist-search" id="checklist-search-input" placeholder="Buscar asistente por Nombre o Cédula...">
-              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 2px;">
-                <input type="checkbox" id="chk-seleccionar-todos" style="width: 16px; height: 16px; cursor: pointer;">
-                <label for="chk-seleccionar-todos" style="font-size: .82rem; font-weight: bold; cursor: pointer;">Seleccionar Todos</label>
-              </div>
-            </div>
-            <div id="form-checklist-body">
-              <!-- Cargado dinámicamente -->
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top: 18px;">
-          <label class="lbl">Asistentes Agregados: <span id="form-asistentes-count" style="font-weight: bold;">0</span></label>
-        </div>
-      </div>
-
-      <div class="btn-group" style="justify-content: space-between;">
-        <button type="button" class="btn btn-secondary" id="btn-cancelar-form">Volver al Listado</button>
-        <button type="submit" class="btn btn-success" id="btn-guardar-form">Guardar Formato</button>
-      </div>
-    </form>
-  </div>
-
   <!-- ════════ VISTA: DETALLE ════════ -->
   <div id="vista-detalle" class="vista">
     <div class="card-titulo">
@@ -503,12 +328,10 @@
 <script>
   // State variables
   let creadas = [];
-  let formAsistentes = []; // Lista de objetos { id_vinculacion, Trabajador, Identificación, Cargo, Operación, Regional }
   let selectedAsistenciaId = null;
 
   // DOM Elements
   const vistaListado = document.getElementById('vista-listado');
-  const vistaFormulario = document.getElementById('vista-formulario');
   const vistaDetalle = document.getElementById('vista-detalle');
   const loading = document.getElementById('loading');
   const loadingText = document.getElementById('loading-text');
@@ -517,15 +340,16 @@
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('user-badge-name').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
     
-    // Configurar selectores de Regional y Operación en Filtros y Formulario
-    poblarFiltrosYFormDropdowns();
+    // Configurar selectores de Regional y Operación en Filtros
+    poblarFiltrosDropdowns();
     
     // Cargar Listado inicial
     cargarListado();
 
     // Event Listeners
-    document.getElementById('btn-nueva-asistencia').addEventListener('click', () => abrirFormulario());
-    document.getElementById('btn-cancelar-form').addEventListener('click', () => cerrarFormulario());
+    document.getElementById('btn-nueva-asistencia').addEventListener('click', () => {
+      window.location.href = `/formparticipacion?usuario=${CONFIG.usuarioId}`;
+    });
     document.getElementById('btn-volver-detalle').addEventListener('click', () => {
       vistaDetalle.classList.remove('active');
       vistaListado.classList.add('active');
@@ -542,55 +366,10 @@
     });
 
     // Form Submits
-    document.getElementById('form-asistencia').addEventListener('submit', guardarAsistencia);
     document.getElementById('form-contacto').addEventListener('submit', guardarContacto);
     document.getElementById('btn-cerrar-modal').addEventListener('click', () => {
       document.getElementById('modal-contacto').classList.remove('open');
     });
-
-    // Autocomplete Responsable (BÚSQUEDA EXCLUSIVAMENTE POR IDENTIFICACIÓN)
-    setupAutocomplete(
-      document.getElementById('form-responsable-input'),
-      document.getElementById('ac-responsable'),
-      '/asistenciaycapacitaciones/api/responsables-buscar',
-      (item) => {
-        document.getElementById('form-responsable-input').value = `${item.Identificación} ** ${item.Trabajador}`;
-        document.getElementById('form-responsable-id').value = item.id_vinculacion;
-      }
-    );
-
-    // Búsqueda en el checklist de asistentes
-    document.getElementById('checklist-search-input').addEventListener('input', (e) => {
-      const val = e.target.value.toLowerCase();
-      const items = document.querySelectorAll('.checklist-item');
-      items.forEach(item => {
-        const text = item.innerText.toLowerCase();
-        if (text.includes(val)) {
-          item.style.display = 'flex';
-        } else {
-          item.style.display = 'none';
-        }
-      });
-    });
-
-    // Seleccionar Todos en checklist
-    document.getElementById('chk-seleccionar-todos').addEventListener('change', (e) => {
-      const checked = e.target.checked;
-      const visibleCheckboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
-      visibleCheckboxes.forEach(cb => {
-        const itemDom = cb.closest('.checklist-item');
-        if (itemDom.style.display !== 'none') {
-          cb.checked = checked;
-          // Disparar evento change manualmente
-          cb.dispatchEvent(new Event('change'));
-        }
-      });
-    });
-
-    // Si la vista inicial debe ser el formulario
-    if (CONFIG.initialView === 'formulario') {
-      abrirFormulario();
-    }
   });
 
   // Helper Toast
@@ -612,21 +391,15 @@
     loading.classList.remove('active');
   }
 
-  function poblarFiltrosYFormDropdowns() {
+  function poblarFiltrosDropdowns() {
     const rFilter = document.getElementById('filtro-regional');
     const oFilter = document.getElementById('filtro-operacion');
-    const rForm = document.getElementById('form-asistente-regional');
-    const oForm = document.getElementById('form-asistente-operacion');
 
-    // Poblamos Regionales en Filtros y Formulario
+    // Poblamos Regionales en Filtros
     CONFIG.regionalesFiltro.forEach(reg => {
       const optF = document.createElement('option');
       optF.value = reg; optF.innerText = reg;
       rFilter.appendChild(optF);
-
-      const optForm = document.createElement('option');
-      optForm.value = reg; optForm.innerText = reg;
-      rForm.appendChild(optForm);
     });
 
     // Cambio de regional en Filtros
@@ -641,161 +414,12 @@
       });
     });
 
-    // Cambio de regional en Formulario
-    rForm.addEventListener('change', () => {
-      oForm.innerHTML = '<option value="">Seleccione Operación...</option>';
-      document.getElementById('form-asistentes-checklist-wrap').style.display = 'none';
-      const reg = rForm.value;
-      const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : [];
-      ops.forEach(op => {
-        const opt = document.createElement('option');
-        opt.value = op; opt.innerText = op;
-        oForm.appendChild(opt);
-      });
-    });
-
-    oForm.addEventListener('change', cargarTrabajadoresParaChecklist);
-
     // Poblar operaciones iniciales en Filtros
     CONFIG.operacionesFiltro.forEach(op => {
       const opt = document.createElement('option');
       opt.value = op; opt.innerText = op;
       oFilter.appendChild(opt);
     });
-  }
-
-  // ════════ LÓGICA DE CHECKLIST (ASISTENTES) ════════
-  async function cargarTrabajadoresParaChecklist() {
-    const regional = document.getElementById('form-asistente-regional').value;
-    const operacion = document.getElementById('form-asistente-operacion').value;
-    const wrap = document.getElementById('form-asistentes-checklist-wrap');
-    const body = document.getElementById('form-checklist-body');
-    const chkTodos = document.getElementById('chk-seleccionar-todos');
-
-    if (!regional || !operacion) {
-      wrap.style.display = 'none';
-      return;
-    }
-
-    showLoading('Cargando colaboradores de la operación...');
-    try {
-      chkTodos.checked = false;
-      const res = await fetch(`/asistenciaycapacitaciones/api/trabajadores-por-operacion?regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}`);
-      const trabajadores = await res.json();
-
-      body.innerHTML = '';
-      if (!trabajadores.length) {
-        body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos en esta operación.</div>';
-        wrap.style.display = 'block';
-        return;
-      }
-
-      trabajadores.forEach(t => {
-        const isChecked = formAsistentes.some(x => x.id_vinculacion === t.id_vinculacion);
-
-        const div = document.createElement('div');
-        div.className = 'checklist-item';
-        
-        const idCheckbox = `chk-t-${t.id_vinculacion}`;
-        
-        div.innerHTML = `
-          <input type="checkbox" id="${idCheckbox}" ${isChecked ? 'checked' : ''}>
-          <label for="${idCheckbox}"><strong>${t.identificacion}</strong> ** ${t.Trabajador}</label>
-        `;
-
-        const checkbox = div.querySelector('input[type="checkbox"]');
-        checkbox.addEventListener('change', (e) => {
-          if (e.target.checked) {
-            // Agregar
-            if (!formAsistentes.some(x => x.id_vinculacion === t.id_vinculacion)) {
-              formAsistentes.push({
-                id_vinculacion: t.id_vinculacion,
-                Trabajador: t.Trabajador,
-                Identificación: t.identificacion,
-                Cargo: t.Cargo,
-                Operación: t.Operación,
-                Regional: t.Regional
-              });
-            }
-          } else {
-            // Remover
-            formAsistentes = formAsistentes.filter(x => x.id_vinculacion !== t.id_vinculacion);
-          }
-          document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
-        });
-
-        // Permitir hacer click en toda la fila para checkear
-        div.addEventListener('click', (e) => {
-          if (e.target !== checkbox && e.target.tagName !== 'LABEL') {
-            checkbox.checked = !checkbox.checked;
-            checkbox.dispatchEvent(new Event('change'));
-          }
-        });
-
-        body.appendChild(div);
-      });
-
-      wrap.style.display = 'block';
-    } catch (err) {
-      console.error(err);
-      showToast('Error al cargar colaboradores.', 'error');
-    } finally {
-      hideLoading();
-    }
-  }
-
-  // ════════ LÓGICA DE AUTOCOMPLETE ════════
-  function setupAutocomplete(input, listDiv, url, onSelect) {
-    input.addEventListener('input', debounce(async () => {
-      const val = input.value.trim();
-      if (!val || val.length < 2) {
-        listDiv.innerHTML = '';
-        listDiv.classList.remove('open');
-        return;
-      }
-
-      try {
-        const res = await fetch(`${url}?q=${encodeURIComponent(val)}`);
-        const items = await res.json();
-
-        listDiv.innerHTML = '';
-        if (!items.length) {
-          listDiv.classList.remove('open');
-          return;
-        }
-
-        items.forEach(item => {
-          const div = document.createElement('div');
-          div.className = 'ac-item';
-          div.innerText = `${item.Identificación} ** ${item.Trabajador}`;
-
-          div.addEventListener('click', () => {
-            onSelect(item);
-            listDiv.innerHTML = '';
-            listDiv.classList.remove('open');
-          });
-          listDiv.appendChild(div);
-        });
-        listDiv.classList.add('open');
-      } catch (err) {
-        console.error(err);
-      }
-    }, 300));
-
-    document.addEventListener('click', (e) => {
-      if (e.target !== input && e.target !== listDiv) {
-        listDiv.innerHTML = '';
-        listDiv.classList.remove('open');
-      }
-    });
-  }
-
-  function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), wait);
-    };
   }
 
   // ════════ LISTADO ════════
@@ -815,7 +439,7 @@
       if (desde) query += `&fechaDesde=${desde}`;
       if (hasta) query += `&fechaHasta=${hasta}`;
 
-      const res = await fetch(`/asistenciaycapacitaciones/api/asistencias${query}`);
+      const res = await fetch(`/participacion/api/asistencias${query}`);
       const data = await res.json();
       creadas = data;
 
@@ -867,125 +491,9 @@
     }
   }
 
-  // ════════ FORMULARIO ════════
-  function abrirFormulario(id = null) {
-    vistaListado.classList.remove('active');
-    vistaFormulario.classList.add('active');
-    
-    // Reset form
-    document.getElementById('form-asistencia').reset();
-    document.getElementById('form-responsable-id').value = '';
-    document.getElementById('form-objetivo').value = '';
-    document.getElementById('form-asistentes-checklist-wrap').style.display = 'none';
-    formAsistentes = [];
-    selectedAsistenciaId = id;
-
-    if (id) {
-      document.getElementById('form-titulo').innerText = 'Editar Formato de Asistencia';
-      cargarAsistenciaParaEditar(id);
-    } else {
-      document.getElementById('form-titulo').innerText = 'Crear Formato de Asistencia';
-      document.getElementById('form-fecha').value = new Date().toISOString().slice(0, 10);
-      
-      // Pre-llenar el responsable automáticamente
-      if (CONFIG.prefillResponsable) {
-        document.getElementById('form-responsable-input').value = CONFIG.prefillResponsable.nombre;
-        document.getElementById('form-responsable-id').value = CONFIG.prefillResponsable.id_vinculacion;
-      }
-      document.getElementById('form-asistentes-count').innerText = '0';
-    }
-  }
-
-  function cerrarFormulario() {
-    vistaFormulario.classList.remove('active');
-    vistaListado.classList.add('active');
-    cargarListado();
-  }
-
-  async function cargarAsistenciaParaEditar(id) {
-    showLoading('Cargando datos del formato...');
-    try {
-      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${id}`);
-      const data = await res.json();
-
-      document.getElementById('form-tema').value = data.tema;
-      document.getElementById('form-fecha').value = data.fecha.slice(0, 10);
-      document.getElementById('form-hora-inicial').value = data.hora_inicial.slice(0, 5);
-      document.getElementById('form-hora-final').value = data.hora_final.slice(0, 5);
-      document.getElementById('form-lugar').value = data.lugar;
-      document.getElementById('form-objetivo').value = data.objetivo;
-      document.getElementById('form-responsable-input').value = data.nombre_responsable || '';
-      document.getElementById('form-responsable-id').value = data.responsable;
-
-      formAsistentes = data.items.map(i => ({
-        id_vinculacion: i.id_vinculacion,
-        Trabajador: i.nombre_trabajador,
-        Identificación: i.identificacion,
-        Cargo: i.cargo,
-        Operación: i.operacion,
-        Regional: i.regional
-      }));
-      document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
-    } catch (err) {
-      console.error(err);
-      showToast('Error al cargar datos del formato', 'error');
-    } finally {
-      hideLoading();
-    }
-  }
-
-  async function guardarAsistencia(e) {
-    e.preventDefault();
-
-    const responsable = document.getElementById('form-responsable-id').value;
-    if (!responsable) {
-      showToast('Por favor selecciona un responsable válido utilizando su identificación.', 'error');
-      return;
-    }
-
-    if (!formAsistentes.length) {
-      showToast('Por favor selecciona al menos un asistente.', 'error');
-      return;
-    }
-
-    const payload = {
-      tema: document.getElementById('form-tema').value,
-      fecha: document.getElementById('form-fecha').value,
-      hora_inicial: document.getElementById('form-hora-inicial').value,
-      hora_final: document.getElementById('form-hora-final').value,
-      lugar: document.getElementById('form-lugar').value,
-      objetivo: document.getElementById('form-objetivo').value,
-      responsable,
-      usuario: CONFIG.usuarioId,
-      asistentes: formAsistentes.map(x => x.id_vinculacion)
-    };
-
-    showLoading('Guardando registro...');
-    try {
-      const url = selectedAsistenciaId 
-        ? `/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}` 
-        : '/asistenciaycapacitaciones/api/asistencias';
-      const method = selectedAsistenciaId ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const resData = await res.json();
-
-      if (resData.ok) {
-        showToast('Formato de asistencia guardado exitosamente.');
-        cerrarFormulario();
-      } else {
-        showToast(resData.error || 'Error al guardar.', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Error de red al guardar el formato.', 'error');
-    } finally {
-      hideLoading();
-    }
+  // Redirect to edit form
+  function abrirFormulario(id) {
+    window.location.href = `/formparticipacion?usuario=${CONFIG.usuarioId}&id=${id}`;
   }
 
   // ════════ DETALLE ════════
@@ -999,7 +507,7 @@
   async function cargarDetalle() {
     showLoading('Cargando detalle...');
     try {
-      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}`);
+      const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}`);
       const data = await res.json();
 
       const infoBox = document.getElementById('detalle-evento-info');
@@ -1025,13 +533,11 @@
       
       const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
       
-      // Si el PDF ya está generado, quitamos los de generar y deshabilitamos enviar correo / editar
       if (esCreadorOSistema) {
         if (!data.url_doc) {
           optsBox.innerHTML = `
             <div class="section-title" style="margin-top: 25px;">Acciones de Control</div>
             <button class="btn btn-success" onclick="generarPDF(false)" style="width: 100%; margin-bottom: 8px;">Generar PDF (Solo Firmas Listas)</button>
-            <button class="btn btn-danger" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">Forzar Generación de PDF</button>
             <button class="btn btn-primary" onclick="notificarTodos()" style="width: 100%; margin-bottom: 8px;">Enviar Correo a Todos</button>
             <button class="btn btn-secondary" onclick="abrirFormulario(${data.id_asistencia})" style="width: 100%;">Editar Formato</button>
           `;
@@ -1063,11 +569,10 @@
         let controlButtons = '—';
         if (esCreadorOSistema) {
           const celNum = item.celular ? item.celular.trim() : '';
-          const urlFirmaLink = `${window.location.origin}/asistenciaycapacitaciones/firmar?item=${item.id_item_asistencia}`;
+          const urlFirmaLink = `${window.location.origin}/participacion/firmar?item=${item.id_item_asistencia}`;
           const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para verificar y firmar digitalmente tu asistencia a la actividad sobre "${data.tema}": ${urlFirmaLink}.`);
           
           if (data.url_doc) {
-            // Si el documento ya fue generado, deshabilitamos el envío de WhatsApp y Correo
             controlButtons = `
               <div style="display: flex; gap: 5px;">
                 <button class="btn btn-secondary btn-small" onclick="abrirModalContacto('${item.identificacion}', '${item.nombre_trabajador}', '${item.celular || ''}', '${item.email || ''}')">Datos</button>
@@ -1111,7 +616,7 @@
   async function generarPDF(force = false) {
     showLoading('Generando documento PDF...');
     try {
-      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}/generar-pdf`, {
+      const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/generar-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ force })
@@ -1136,7 +641,7 @@
   async function notificarTodos() {
     showLoading('Enviando correos a todos...');
     try {
-      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}/enviar-notificacion`, {
+      const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/enviar-notificacion`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enviarATodos: true })
@@ -1158,7 +663,7 @@
   async function notificarIndividual(idItemAsistencia) {
     showLoading('Enviando correo...');
     try {
-      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}/enviar-notificacion`, {
+      const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/enviar-notificacion`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id_item_asistencia: idItemAsistencia })
@@ -1195,7 +700,7 @@
 
     showLoading('Actualizando datos en Maestro_Segmentación...');
     try {
-      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}/guardar-contacto`, {
+      const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/guardar-contacto`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identificacion, celular, email })

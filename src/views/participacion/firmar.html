@@ -152,7 +152,6 @@
         <span style="color: #c0392b; font-weight: bold; font-size: .88rem; margin-bottom: 6px;">No tienes firmas en el sistema</span>
         <span style="color: #666; font-size: .78rem; text-align: center;">Debes dibujar una nueva firma para registrar tu asistencia.</span>
       `;
-      // Mostrar lienzo automáticamente
       sectionPrefilled.style.display = 'none';
       sectionCanvasWrap.classList.add('active');
     }
@@ -184,7 +183,7 @@
   async function aceptarFirmaExistente() {
     showLoading(true);
     try {
-      const res = await fetch('/asistenciaycapacitaciones/api/firmar-asistente', {
+      const res = await fetch('/participacion/api/firmar-asistente', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -213,7 +212,6 @@
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
 
-    // Mouse drawing
     canvas.addEventListener('mousedown', (e) => {
       drawing = true;
       ctx.beginPath();
@@ -227,7 +225,6 @@
     canvas.addEventListener('mouseup', () => drawing = false);
     canvas.addEventListener('mouseleave', () => drawing = false);
 
-    // Touch drawing (Mobile)
     canvas.addEventListener('touchstart', (e) => {
       drawing = true;
       const touch = e.touches[0];
@@ -266,7 +263,6 @@
   }
 
   function resizeCanvas() {
-    // Asegurar tamaño correcto del canvas
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width;
     canvas.height = rect.height;
@@ -293,7 +289,7 @@
 
     showLoading(true);
     try {
-      const res = await fetch('/asistenciaycapacitaciones/api/firmar-asistente', {
+      const res = await fetch('/participacion/api/firmar-asistente', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

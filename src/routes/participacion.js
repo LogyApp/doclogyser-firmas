@@ -8,7 +8,9 @@ const { obtenerFirmaBase64Reciente, subirPDFAstAsistencia, subirPDFGeneralAsiste
 const { generarPDFDesdeHTML } = require('../services/renderer');
 
 const router = express.Router();
-const HTML_PATH = path.join(__dirname, '../views/asistencia/index.html');
+const HTML_INDEX_PATH = path.join(__dirname, '../views/participacion/index.html');
+const HTML_FORM_PATH = path.join(__dirname, '../views/formparticipacion/form.html');
+const HTML_SIGN_PATH = path.join(__dirname, '../views/participacion/firmar.html');
 
 const ROLES_SIN_FILTRO = [
   'AdmSst', 'Archivo', 'Calidad', 'Contabilidad', 'Contratación', 'Control',
@@ -50,7 +52,7 @@ function formatFechaEspanol(dateVal) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-async function computarAccesoAsistencia(usuarioId) {
+async function computarAccesoParticipacion(usuarioId) {
   if (!usuarioId) return null;
 
   const [uRows] = await pool.execute(
@@ -141,15 +143,17 @@ router.get('/', async (req, res) => {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
     }
 
-    const acceso = await computarAccesoAsistencia(usuario);
+    const acceso = await computarAccesoParticipacion(usuario);
     if (!acceso) {
       return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
     }
 
-    const html = fs.readFileSync(HTML_PATH, 'utf8');
-    const initialView = (req.baseUrl || '').toLowerCase().includes('/formformatoasistencia')
+    const initialView = (req.baseUrl || '').toLowerCase().includes('/formparticipacion')
       ? 'formulario'
       : 'listado';
+
+    const pathTemplate = initialView === 'formulario' ? HTML_FORM_PATH : HTML_INDEX_PATH;
+    const html = fs.readFileSync(pathTemplate, 'utf8');
 
     const config = JSON.stringify({
       ...acceso,
@@ -159,7 +163,7 @@ router.get('/', async (req, res) => {
 
     res.send(html.replace('__CONFIG__', config));
   } catch (err) {
-    console.error('[asistencia] Error sirviendo interfaz:', err);
+    console.error('[participacion] Error sirviendo interfaz:', err);
     res.status(500).send('<h2>Error interno del servidor</h2>');
   }
 });
@@ -183,7 +187,7 @@ router.get('/api/usuario', async (req, res) => {
       usuario: rows[0].ID,
     });
   } catch (err) {
-    console.error('[asistencia] GET /api/usuario:', err);
+    console.error('[participacion] GET /api/usuario:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -204,7 +208,7 @@ router.get('/api/responsables-buscar', async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error('[asistencia] GET /api/responsables-buscar:', err);
+    console.error('[participacion] GET /api/responsables-buscar:', err);
     res.status(500).json([]);
   }
 });
@@ -225,7 +229,7 @@ router.get('/api/asistentes-buscar', async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error('[asistencia] GET /api/asistentes-buscar:', err);
+    console.error('[participacion] GET /api/asistentes-buscar:', err);
     res.status(500).json([]);
   }
 });
@@ -248,7 +252,7 @@ router.get('/api/trabajadores-por-operacion', async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error('[asistencia] GET /api/trabajadores-por-operacion:', err);
+    console.error('[participacion] GET /api/trabajadores-por-operacion:', err);
     res.status(500).json([]);
   }
 });
@@ -262,7 +266,7 @@ router.get('/api/asistencias', async (req, res) => {
       return res.status(400).json({ error: 'usuario requerido' });
     }
 
-    const acceso = await computarAccesoAsistencia(usuario);
+    const acceso = await computarAccesoParticipacion(usuario);
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
@@ -315,7 +319,7 @@ router.get('/api/asistencias', async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error('[asistencia] GET /api/asistencias:', err);
+    console.error('[participacion] GET /api/asistencias:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -376,7 +380,7 @@ router.get('/api/asistencia/:id', async (req, res) => {
 
     res.json({ ...asistencia, items: itemsConFirmaStatus });
   } catch (err) {
-    console.error('[asistencia] GET /api/asistencia/:id:', err);
+    console.error('[participacion] GET /api/asistencia/:id:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -430,7 +434,7 @@ router.post('/api/asistencias', async (req, res) => {
     res.status(201).json({ ok: true, id_asistencia: idAsistencia });
   } catch (err) {
     await conn.rollback();
-    console.error('[asistencia] POST /api/asistencias:', err);
+    console.error('[participacion] POST /api/asistencias:', err);
     res.status(500).json({ error: err.message });
   } finally {
     conn.release();
@@ -504,7 +508,7 @@ router.put('/api/asistencia/:id', async (req, res) => {
     res.json({ ok: true, id_asistencia: id });
   } catch (err) {
     await conn.rollback();
-    console.error('[asistencia] PUT /api/asistencia/:id:', err);
+    console.error('[participacion] PUT /api/asistencia/:id:', err);
     res.status(500).json({ error: err.message });
   } finally {
     conn.release();
@@ -518,7 +522,7 @@ router.delete('/api/asistencia/:id', async (req, res) => {
     await pool.execute('DELETE FROM Dynamic_formato_asistencia WHERE id_asistencia = ?', [id]);
     res.json({ ok: true, id_asistencia: id });
   } catch (err) {
-    console.error('[asistencia] DELETE /api/asistencia/:id:', err);
+    console.error('[participacion] DELETE /api/asistencia/:id:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -540,7 +544,7 @@ router.patch('/api/asistencia/:id/guardar-contacto', async (req, res) => {
 
     res.json({ ok: true });
   } catch (err) {
-    console.error('[asistencia] PATCH /api/asistencia/:id/guardar-contacto:', err);
+    console.error('[participacion] PATCH /api/asistencia/:id/guardar-contacto:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -585,7 +589,7 @@ router.post('/api/asistencia/:id/enviar-notificacion', async (req, res) => {
     for (const item of items) {
       if (item.Email) {
         // Enlace para firmar que se incluye en el correo
-        const urlFirmaLink = `${protocol}://${host}/asistenciaycapacitaciones/firmar?item=${item.id_item_asistencia}`;
+        const urlFirmaLink = `${protocol}://${host}/participacion/firmar?item=${item.id_item_asistencia}`;
         
         await enviarEmailAsistencia({
           email: item.Email,
@@ -601,7 +605,7 @@ router.post('/api/asistencia/:id/enviar-notificacion', async (req, res) => {
 
     res.json({ ok: true, enviados });
   } catch (err) {
-    console.error('[asistencia] POST /api/asistencia/:id/enviar-notificacion:', err);
+    console.error('[participacion] POST /api/asistencia/:id/enviar-notificacion:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -843,9 +847,9 @@ router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
             asistencia.usuario
           ]
         );
-        console.log(`[asistencia] [Maestro_docTrabajador] Registrado documento ACTASI para ${ast.identificacion}`);
+        console.log(`[participacion] [Maestro_docTrabajador] Registrado documento ACTASI para ${ast.identificacion}`);
       } catch (err) {
-        console.error(`[asistencia] [Maestro_docTrabajador] Error registrando documento para ${ast.identificacion}:`, err.message);
+        console.error(`[participacion] [Maestro_docTrabajador] Error registrando documento para ${ast.identificacion}:`, err.message);
       }
     }
 
@@ -864,7 +868,7 @@ router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
       firmasCompletas: todasFirmadas,
     });
   } catch (err) {
-    console.error('[asistencia] POST /api/asistencia/:id/generar-pdf:', err);
+    console.error('[participacion] POST /api/asistencia/:id/generar-pdf:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -889,7 +893,7 @@ router.get('/firmar', async (req, res) => {
 
     if (!ast) return res.status(404).send('<h2>Registro de asistente no encontrado</h2>');
 
-    const htmlFirma = fs.readFileSync(path.join(__dirname, '../views/asistencia/firmar.html'), 'utf8');
+    const htmlFirma = fs.readFileSync(HTML_SIGN_PATH, 'utf8');
     
     // Resolvemos firma del bucket de GCS
     const firmaBase64 = await obtenerFirmaBase64Reciente(ast.identificacion).catch(() => null);
@@ -908,7 +912,7 @@ router.get('/firmar', async (req, res) => {
 
     res.send(htmlFirma.replace('__CONFIG_FIRMA__', config));
   } catch (err) {
-    console.error('[asistencia] GET /firmar:', err);
+    console.error('[participacion] GET /firmar:', err);
     res.status(500).send('<h2>Error interno del servidor</h2>');
   }
 });
@@ -945,7 +949,7 @@ router.post('/api/firmar-asistente', async (req, res) => {
 
     res.json({ ok: true });
   } catch (err) {
-    console.error('[asistencia] POST /api/firmar-asistente:', err);
+    console.error('[participacion] POST /api/firmar-asistente:', err);
     res.status(500).json({ error: err.message });
   }
 });
