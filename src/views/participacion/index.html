@@ -263,6 +263,13 @@
         <div id="opciones-documento" style="margin-top: 20px;">
           <!-- Dinámico según creador o Sistema -->
         </div>
+
+        <div id="evidencias-seccion" style="margin-top: 25px;">
+          <div class="section-title">Fotos de Evidencia</div>
+          <div id="evidencias-galeria" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 10px;">
+            <!-- Dinámico -->
+          </div>
+        </div>
       </div>
 
       <!-- Tabla de asistentes -->
@@ -320,6 +327,14 @@
   </div>
 </div>
 
+<!-- Lightbox Modal -->
+<div class="modal" id="modal-lightbox" onclick="cerrarLightbox()">
+  <div class="modal-content" style="max-width: 600px; padding: 10px; position: relative;" onclick="event.stopPropagation()">
+    <button class="btn btn-secondary btn-small" onclick="cerrarLightbox()" style="position: absolute; top: 10px; right: 10px; z-index: 10; border-radius: 50%; padding: 4px 8px;">✕</button>
+    <img id="lightbox-img" src="" style="width: 100%; border-radius: 6px; display: block;">
+  </div>
+</div>
+
 <!-- Configuración Inicial -->
 <script>
   window.CONFIG = __CONFIG__;
@@ -329,6 +344,7 @@
   // State variables
   let creadas = [];
   let selectedAsistenciaId = null;
+  let currentEvidenciasCount = 0;
 
   // DOM Elements
   const vistaListado = document.getElementById('vista-listado');
@@ -514,6 +530,11 @@
       const fechaFmt = data.fecha ? data.fecha.slice(0, 10).split('-').reverse().join('/') : '';
       const duracionFmt = data.duracion ? data.duracion.slice(0, 5) : '—';
 
+      let cleanResponsable = data.nombre_responsable || data.responsable || '';
+      if (cleanResponsable.includes(' ** ')) {
+        cleanResponsable = cleanResponsable.split(' ** ')[1];
+      }
+
       infoBox.innerHTML = `
         <p><strong>Tema:</strong> ${data.tema}</p>
         <p><strong>Fecha:</strong> ${fechaFmt}</p>
@@ -521,7 +542,7 @@
         <p><strong>Hora Final:</strong> ${data.hora_final.slice(0,5)} Hs</p>
         <p><strong>Duración:</strong> ${duracionFmt} Hs</p>
         <p><strong>Lugar:</strong> ${data.lugar}</p>
-        <p><strong>Responsable:</strong> ${data.nombre_responsable || data.responsable}</p>
+        <p><strong>Responsable:</strong> ${cleanResponsable}</p>
         <p><strong>Objetivo:</strong> ${data.objetivo || '—'}</p>
         <p><strong>Creador por:</strong> ${data.nombre_creador || (data.usuario && data.usuario.includes(' - ') ? data.usuario.split(' - ')[0] : data.usuario)}</p>
         ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
@@ -548,6 +569,27 @@
             <button class="btn btn-secondary" disabled style="width: 100%; opacity: 0.5; pointer-events: none;">Editar Formato</button>
           `;
         }
+      }
+
+      // Render de fotos de evidencia
+      currentEvidenciasCount = (data.evidencias || []).length;
+      const galeriaBox = document.getElementById('evidencias-galeria');
+      galeriaBox.innerHTML = '';
+      if (Array.isArray(data.evidencias) && data.evidencias.length > 0) {
+        data.evidencias.forEach(ev => {
+          const img = document.createElement('img');
+          img.src = ev.url_evidencia;
+          img.style.width = '100%';
+          img.style.height = '80px';
+          img.style.objectFit = 'cover';
+          img.style.borderRadius = '6px';
+          img.style.cursor = 'pointer';
+          img.style.border = '1px solid #ddd';
+          img.addEventListener('click', () => abrirLightbox(ev.url_evidencia));
+          galeriaBox.appendChild(img);
+        });
+      } else {
+        galeriaBox.innerHTML = '<div style="font-size: 0.82rem; color: #888; font-style: italic;">Sin fotos de evidencia</div>';
       }
 
       // Render de asistentes
@@ -594,8 +636,13 @@
           }
         }
 
+        let cleanNombreTrabajador = item.nombre_trabajador || '';
+        if (cleanNombreTrabajador.includes(' ** ')) {
+          cleanNombreTrabajador = cleanNombreTrabajador.split(' ** ')[1];
+        }
+
         tr.innerHTML = `
-          <td><strong>${item.nombre_trabajador}</strong></td>
+          <td><strong>${cleanNombreTrabajador}</strong></td>
           <td>${item.identificacion}</td>
           <td>${item.cargo}<br><span style="font-size: 11px; color:#64748b;">Op: ${item.operacion}</span></td>
           <td>${badgeFirma}</td>
@@ -614,6 +661,10 @@
 
   // ════════ PDF GENERATION ════════
   async function generarPDF(force = false) {
+    if (currentEvidenciasCount === 0) {
+      showToast('Debe adjuntar al menos una foto de evidencia para poder generar el PDF.', 'error');
+      return;
+    }
     showLoading('Generando documento PDF...');
     try {
       const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/generar-pdf`, {
@@ -720,6 +771,15 @@
     } finally {
       hideLoading();
     }
+  }
+
+  // Lightbox helper functions
+  function abrirLightbox(url) {
+    document.getElementById('lightbox-img').src = url;
+    document.getElementById('modal-lightbox').classList.add('open');
+  }
+  function cerrarLightbox() {
+    document.getElementById('modal-lightbox').classList.remove('open');
   }
 </script>
 

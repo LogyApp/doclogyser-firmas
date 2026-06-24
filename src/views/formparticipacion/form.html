@@ -276,6 +276,19 @@
       </div>
     </div>
 
+    <!-- Fotos de Evidencia -->
+    <div class="card card-purple" style="border-left-color: #e67e22;">
+      <div class="section-title">Fotos de Evidencia</div>
+      <div class="field">
+        <label class="lbl">Subir o Tomar Fotos de Evidencia (Máx. 5 fotos)</label>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('input-evidencia').click()">＋ Adicionar Fotos</button>
+        <input type="file" accept="image/*" multiple id="input-evidencia" style="display:none">
+      </div>
+      <div id="evidencias-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px;">
+        <!-- Dinámico -->
+      </div>
+    </div>
+
     <div class="btn-group" style="justify-content: space-between;">
       <button type="button" class="btn btn-secondary" id="btn-cancelar-form">Volver al Listado</button>
       <button type="submit" class="btn btn-success" id="btn-guardar-form">Guardar Formato</button>
@@ -291,6 +304,7 @@
 <script>
   // State variables
   let formAsistentes = []; // Lista de objetos { id_vinculacion, Trabajador, Identificación, Cargo, Operación, Regional }
+  let evidenciasList = []; // Lista de evidencias: { url_evidencia } o { filename, contentType, base64 }
   let selectedAsistenciaId = null;
 
   // DOM Elements
@@ -307,6 +321,7 @@
     // Event Listeners
     document.getElementById('btn-cancelar-form').addEventListener('click', () => volverAlListado());
     document.getElementById('form-asistencia').addEventListener('submit', guardarAsistencia);
+    document.getElementById('input-evidencia').addEventListener('change', manejarArchivosEvidencia);
 
     // Autocomplete Responsable (BÚSQUEDA EXCLUSIVAMENTE POR IDENTIFICACIÓN)
     setupAutocomplete(
@@ -572,6 +587,9 @@
         Regional: i.regional
       }));
       document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
+
+      evidenciasList = data.evidencias || [];
+      renderEvidencias();
     } catch (err) {
       console.error(err);
       showToast('Error al cargar datos del formato', 'error');
@@ -604,7 +622,8 @@
       objetivo: document.getElementById('form-objetivo').value,
       responsable,
       usuario: CONFIG.usuarioId,
-      asistentes: formAsistentes.map(x => x.id_vinculacion)
+      asistentes: formAsistentes.map(x => x.id_vinculacion),
+      evidencias: evidenciasList
     };
 
     showLoading('Guardando registro...');
@@ -633,6 +652,109 @@
     } finally {
       hideLoading();
     }
+  }
+
+  // ════════ EVIDENCIAS FOTOGRÁFICAS HELPERS ════════
+  async function manejarArchivosEvidencia(e) {
+    const files = Array.from(e.target.files);
+    if (evidenciasList.length + files.length > 5) {
+      showToast('Solo puedes cargar un máximo de 5 fotos de evidencia.', 'error');
+      return;
+    }
+    showLoading('Comprimiendo imágenes...');
+    try {
+      for (const file of files) {
+        const compressed = await comprimirImagen(file);
+        evidenciasList.push(compressed);
+      }
+      renderEvidencias();
+    } catch (err) {
+      console.error(err);
+      showToast('Error al procesar imágenes.', 'error');
+    } finally {
+      hideLoading();
+      e.target.value = ''; // reset file input
+    }
+  }
+
+  function comprimirImagen(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDimension = 1024;
+          let width = img.width;
+          let height = img.height;
+          if (width > height && width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve({
+            filename: file.name,
+            contentType: 'image/jpeg',
+            base64: canvas.toDataURL('image/jpeg', 0.7)
+          });
+        };
+      };
+    });
+  }
+
+  function renderEvidencias() {
+    const preview = document.getElementById('evidencias-preview');
+    preview.innerHTML = '';
+    evidenciasList.forEach((ev, idx) => {
+      const container = document.createElement('div');
+      container.style.position = 'relative';
+      container.style.width = '100%';
+      container.style.height = '100px';
+      container.style.border = '1px solid #ddd';
+      container.style.borderRadius = '6px';
+      container.style.overflow = 'hidden';
+
+      const img = document.createElement('img');
+      img.src = ev.url_evidencia || ev.base64;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      container.appendChild(img);
+
+      const btnDelete = document.createElement('button');
+      btnDelete.type = 'button';
+      btnDelete.innerText = '✕';
+      btnDelete.style.position = 'absolute';
+      btnDelete.style.top = '4px';
+      btnDelete.style.right = '4px';
+      btnDelete.style.background = 'rgba(192, 57, 43, 0.9)';
+      btnDelete.style.color = '#fff';
+      btnDelete.style.border = 'none';
+      btnDelete.style.borderRadius = '50%';
+      btnDelete.style.width = '20px';
+      btnDelete.style.height = '20px';
+      btnDelete.style.fontSize = '10px';
+      btnDelete.style.cursor = 'pointer';
+      btnDelete.style.fontWeight = 'bold';
+      btnDelete.style.display = 'flex';
+      btnDelete.style.alignItems = 'center';
+      btnDelete.style.justifyContent = 'center';
+      btnDelete.addEventListener('click', () => {
+        evidenciasList.splice(idx, 1);
+        renderEvidencias();
+      });
+      container.appendChild(btnDelete);
+
+      preview.appendChild(container);
+    });
   }
 </script>
 

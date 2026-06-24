@@ -4,7 +4,7 @@ const path = require('path');
 const pool = require('../services/db');
 const { randomUUID } = require('crypto');
 const { enviarEmailAsistencia } = require('../services/email');
-const { obtenerFirmaBase64Reciente, subirPDFAstAsistencia, subirPDFGeneralAsistencia } = require('../services/storage');
+const { obtenerFirmaBase64Reciente, subirPDFAstAsistencia, subirPDFGeneralAsistencia, subirEvidenciaAsistencia } = require('../services/storage');
 const { generarPDFDesdeHTML } = require('../services/renderer');
 
 const router = express.Router();
@@ -378,7 +378,12 @@ router.get('/api/asistencia/:id', async (req, res) => {
       };
     }));
 
-    res.json({ ...asistencia, items: itemsConFirmaStatus });
+    const [evidencias] = await pool.execute(
+      `SELECT id_evidencia, url_evidencia FROM Dynamic_formato_evidencias WHERE id_asistencia = ?`,
+      [id]
+    );
+
+    res.json({ ...asistencia, items: itemsConFirmaStatus, evidencias });
   } catch (err) {
     console.error('[participacion] GET /api/asistencia/:id:', err);
     res.status(500).json({ error: err.message });
@@ -389,7 +394,7 @@ router.get('/api/asistencia/:id', async (req, res) => {
 router.post('/api/asistencias', async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, asistentes } = req.body;
+    const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, asistentes, evidencias } = req.body;
 
     if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !responsable || !usuario) {
       return res.status(400).json({ error: 'Faltan campos requeridos en la información básica.' });
@@ -430,6 +435,20 @@ router.post('/api/asistencias', async (req, res) => {
       }
     }
 
+    // 3. Subir fotos de evidencia a GCS e insertar en DB
+    if (Array.isArray(evidencias) && evidencias.length > 0) {
+      for (const ev of evidencias) {
+        if (ev.base64) {
+          const buffer = Buffer.from(ev.base64.replace(/^data:.*;base64,/, ''), 'base64');
+          const urlGcs = await subirEvidenciaAsistencia(idAsistencia, ev.filename, buffer, ev.contentType);
+          await conn.execute(
+            `INSERT INTO Dynamic_formato_evidencias (id_asistencia, url_evidencia) VALUES (?, ?)`,
+            [idAsistencia, urlGcs]
+          );
+        }
+      }
+    }
+
     await conn.commit();
     res.status(201).json({ ok: true, id_asistencia: idAsistencia });
   } catch (err) {
@@ -446,7 +465,7 @@ router.put('/api/asistencia/:id', async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, asistentes } = req.body;
+    const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, asistentes, evidencias } = req.body;
 
     if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !responsable || !usuario) {
       return res.status(400).json({ error: 'Faltan campos requeridos en la información básica.' });
@@ -501,6 +520,28 @@ router.put('/api/asistencia/:id', async (req, res) => {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [id, idVinculacion, v.Trabajador, v.Identificación, v.Cargo, v.Operación, v.Regional, firmaPreviaAceptada]
         );
+      }
+    }
+
+    // 5. Manejar fotos de evidencia (eliminar anteriores y volver a insertar guardadas + nuevas)
+    await conn.execute('DELETE FROM Dynamic_formato_evidencias WHERE id_asistencia = ?', [id]);
+    if (Array.isArray(evidencias) && evidencias.length > 0) {
+      for (const ev of evidencias) {
+        if (ev.url_evidencia) {
+          // Mantener foto existente
+          await conn.execute(
+            `INSERT INTO Dynamic_formato_evidencias (id_asistencia, url_evidencia) VALUES (?, ?)`,
+            [id, ev.url_evidencia]
+          );
+        } else if (ev.base64) {
+          // Subir nueva foto
+          const buffer = Buffer.from(ev.base64.replace(/^data:.*;base64,/, ''), 'base64');
+          const urlGcs = await subirEvidenciaAsistencia(id, ev.filename, buffer, ev.contentType);
+          await conn.execute(
+            `INSERT INTO Dynamic_formato_evidencias (id_asistencia, url_evidencia) VALUES (?, ?)`,
+            [id, urlGcs]
+          );
+        }
       }
     }
 
@@ -642,6 +683,18 @@ router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
       return res.status(404).json({ error: 'Asistencia no encontrada' });
     }
 
+    // 1.5 Verificar que tenga fotos de evidencia cargadas
+    const [evRows] = await pool.execute(
+      'SELECT 1 FROM Dynamic_formato_evidencias WHERE id_asistencia = ? LIMIT 1',
+      [id]
+    );
+    if (!evRows.length) {
+      return res.status(400).json({
+        error: 'Debe adjuntar al menos una foto de evidencia para poder generar el PDF.',
+        firmasCompletas: false,
+      });
+    }
+
     // 2. Obtener asistentes
     const [items] = await pool.execute(
       'SELECT nombre_trabajador, identificacion, cargo FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ?',
@@ -685,10 +738,15 @@ router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
         ? `<img src="${ast.firmaBase64}" style="height: 38px; display: block; margin: 0 auto;" />` 
         : '<span style="color: #ccc; font-size: 8px;">Pendiente</span>';
 
+      let cleanNombre = ast.nombre_trabajador || '';
+      if (cleanNombre.includes(' ** ')) {
+        cleanNombre = cleanNombre.split(' ** ')[1];
+      }
+
       filasAsistentesHtml += `
         <tr>
           <td style="border: 1px solid #111; padding: 6px; text-align: center;">${num++}</td>
-          <td style="border: 1px solid #111; padding: 6px; font-weight: bold;">${ast.nombre_trabajador}</td>
+          <td style="border: 1px solid #111; padding: 6px; font-weight: bold;">${cleanNombre}</td>
           <td style="border: 1px solid #111; padding: 6px;">${ast.identificacion}</td>
           <td style="border: 1px solid #111; padding: 6px;">${ast.cargo}</td>
           <td style="border: 1px solid #111; padding: 6px; text-align: center; vertical-align: middle;">${imgFirma}</td>
@@ -699,6 +757,11 @@ router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
     const imgFirmaResponsable = firmaResponsableBase64
       ? `<img src="${firmaResponsableBase64}" style="height: 55px; display: block; margin: 0 auto;" />`
       : '<div style="height: 50px; width: 200px; margin: 0 auto; border-bottom: 1px dashed #999;"></div>';
+
+    let cleanResponsable = asistencia.nombre_responsable || '—';
+    if (cleanResponsable.includes(' ** ')) {
+      cleanResponsable = cleanResponsable.split(' ** ')[1];
+    }
 
     const htmlCompleto = `
       <!DOCTYPE html>
@@ -793,9 +856,8 @@ router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
           <tr>
             <td>
               <p style="margin: 0 0 8px; font-weight: bold; font-size: 10pt; text-transform: uppercase;">RESPONSABLE DEL REGISTRO</p>
-              <p style="margin: 3px 0; font-size: 9pt;">Nombre: <strong>${asistencia.nombre_responsable || '—'}</strong></p>
+              <p style="margin: 3px 0; font-size: 9pt;">Nombre: <strong>${cleanResponsable}</strong></p>
               <p style="margin: 3px 0; font-size: 9pt;">Cargo: ${asistencia.cargo_responsable || '—'}</p>
-              <p style="margin: 3px 0; font-size: 9pt;">C.C.: ${asistencia.identificacion_responsable || '—'}</p>
               <div style="margin-top: 14px;">
                 ${imgFirmaResponsable}
               </div>
