@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consentimiento de Prueba de Consumo — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Header */
+    .header-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid #8e44ad;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .88rem; color: #64748b; margin-top: 4px; }
+    .badge-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; font-weight: 600;
+    }
+    .badge-user { background: #f3e8ff; border: 1px solid #d8b4fe; color: #6b21a8; }
+    .badge-total { background: #e2e8f0; border: 1px solid #cbd5e1; color: #475569; }
+
+    .btn {
+      padding: 10px 20px; font-size: .92rem; font-weight: bold;
+      border-radius: 8px; border: none; cursor: pointer; transition: all .2s;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-crear {
+      background: #8e44ad; color: #fff;
+      box-shadow: 0 4px 6px -1px rgba(142, 68, 173, 0.2);
+    }
+    .btn-crear:hover { background: #7d3c98; }
+    .btn-primary { background: #1e293b; color: #fff; }
+    .btn-primary:hover { background: #0f172a; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-small { padding: 6px 12px; font-size: .8rem; border-radius: 6px; }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid #8e44ad;
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: #8e44ad; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #f3e8ff;
+    }
+
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    
+    input[type="text"], input[type="date"], select {
+      width: 100%; padding: 8px 12px;
+      border: 1.5px solid #cbd5e1; border-radius: 6px;
+      font-size: .9rem; color: #334155; background: #ffffff;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: #8e44ad; box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.1);
+    }
+
+    /* List view vs Detail view layout */
+    .view-container { display: flex; gap: 20px; flex-direction: column; }
+    .view-container.detail-active {
+      display: grid; grid-template-columns: 1.7fr 1fr;
+    }
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+    }
+
+    /* Table */
+    .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .92rem; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
+    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    tr:hover td { background: #f8fafc; cursor: pointer; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700;
+    }
+    .badge-firma-aceptada { background: #d1fae5; color: #065f46; }
+    .badge-firma-prefilled { background: #fef3c7; color: #92400e; }
+    .badge-firma-sin { background: #fee2e2; color: #991b1b; }
+
+    /* Detail Card */
+    .detail-card {
+      background: #ffffff; border-radius: 12px; border-left: 4px solid #10b981;
+      padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+      position: sticky; top: 20px; display: none;
+    }
+    .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+    .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #f3e8ff; border-top-color: #8e44ad;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .9rem; font-weight: 600;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div id="toast" class="toast">Mensaje...</div>
+
+  <!-- Modal Editar -->
+  <div id="modal-editar" class="loading-overlay" style="display: none; background: rgba(0,0,0,0.5); justify-content: center; align-items: center;">
+    <div class="card" style="background: #fff; width: 95%; max-width: 500px; padding: 24px; border-radius: 12px; border-left: 5px solid #8e44ad; position: relative; margin: auto;">
+      <div class="section-title" style="margin-bottom: 15px;">Editar Consentimiento</div>
+      
+      <div class="field">
+        <label for="edit-ciudad">Ciudad <span style="color:red">*</span></label>
+        <input type="text" id="edit-ciudad" required>
+      </div>
+      
+      <div class="field">
+        <label for="edit-fecha">Fecha de la Prueba <span style="color:red">*</span></label>
+        <input type="date" id="edit-fecha" required>
+      </div>
+      
+      <div class="field">
+        <label for="edit-cliente">Cliente Asociado <span style="color:red">*</span></label>
+        <select id="edit-cliente" required>
+          <option value="">Seleccione Cliente...</option>
+        </select>
+      </div>
+      
+      <div class="field">
+        <label for="edit-observaciones">Observaciones</label>
+        <textarea id="edit-observaciones" style="width:100%; height:80px; padding:8px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; resize: vertical; font-family: inherit; font-size: .95rem;"></textarea>
+      </div>
+      
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn-secondary" id="btn-cerrar-modal-editar">Cancelar</button>
+        <button class="btn btn-crear" id="btn-guardar-editar">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card">
+      <div class="title-box">
+        <div class="page-title">Consentimientos de Prueba de Toxicología</div>
+        <div class="page-sub">Panel de administración y control de firmas de seguridad y salud en el trabajo</div>
+        <div class="badge-row">
+          <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
+          <div class="badge badge-total" id="total-badge-count">Total: 0 registros</div>
+        </div>
+      </div>
+      <button class="btn btn-crear" id="btn-nueva-prueba">+ Crear Consentimiento</button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card">
+      <div class="section-title">Filtros de Búsqueda</div>
+      <div class="grid-4" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="field">
+          <label for="filtro-trabajador">Trabajador</label>
+          <input type="text" id="filtro-trabajador" placeholder="Buscar por nombre...">
+        </div>
+        <div class="field">
+          <label for="filtro-regional">Regional</label>
+          <select id="filtro-regional">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filtro-operacion">Operación</label>
+          <select id="filtro-operacion">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filtro-desde">Fecha Desde</label>
+          <input type="date" id="filtro-desde">
+        </div>
+        <div class="field">
+          <label for="filtro-hasta">Fecha Hasta</label>
+          <input type="date" id="filtro-hasta">
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px;">
+        <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
+        <button class="btn btn-primary" id="btn-filtrar">Aplicar Filtros</button>
+      </div>
+    </div>
+
+    <!-- Layout listado y detalle -->
+    <div class="view-container" id="layout-container">
+      
+      <!-- Listado Principal -->
+      <div class="card" style="border-left-color: #3b82f6;">
+        <div class="section-title">Registros del Consentimiento (SST-F-02)</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Trabajador</th>
+                <th>Identificación</th>
+                <th>Cliente</th>
+                <th>Ciudad</th>
+                <th>Documento PDF</th>
+              </tr>
+            </thead>
+            <tbody id="lista-pruebas-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #888; padding: 24px;">Cargando consentimientos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Detalle Lateral -->
+      <div class="detail-card" id="vista-detalle">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+          <h3 style="color: #0f172a; font-size: 1.1rem;" id="detalle-titulo">Detalle del Registro</h3>
+          <button class="btn btn-secondary btn-small" id="btn-cerrar-detalle" style="padding: 4px 8px;">Cerrar</button>
+        </div>
+        
+        <div class="detail-info-box" id="detalle-info">
+          <!-- Dinámico -->
+        </div>
+
+        <div id="opciones-documento" style="margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+          <!-- Dinámico -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    window.CONFIG = __CONFIG__;
+  </script>
+
+  <script>
+    const CONFIG = window.CONFIG;
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const toast = document.getElementById('toast');
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+    function showToast(msg, type = 'success') {
+      toast.innerText = msg;
+      toast.style.background = type === 'error' ? '#ef4444' : '#334155';
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    // Inicializar
+    document.getElementById('user-badge-name').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+    document.getElementById('btn-nueva-prueba').addEventListener('click', () => {
+      window.location.href = `/formpruebaconsumo?usuario=${CONFIG.usuarioId}`;
+    });
+
+    let selectedPruebaId = null;
+    let listadoCargado = [];
+
+    // Cargar pruebas
+    async function cargarPruebas() {
+      showLoading('Buscando registros...');
+      try {
+        const tr = document.getElementById('filtro-trabajador').value;
+        const desde = document.getElementById('filtro-desde').value;
+        const hasta = document.getElementById('filtro-hasta').value;
+        const reg = document.getElementById('filtro-regional').value;
+        const op = document.getElementById('filtro-operacion').value;
+ 
+        let query = `?usuario=${CONFIG.usuarioId}`;
+        if (tr) query += `&trabajador=${encodeURIComponent(tr)}`;
+        if (desde) query += `&fechaDesde=${encodeURIComponent(desde)}`;
+        if (hasta) query += `&fechaHasta=${encodeURIComponent(hasta)}`;
+        if (reg) query += `&regional=${encodeURIComponent(reg)}`;
+        if (op) query += `&operacion=${encodeURIComponent(op)}`;
+
+        const r = await fetch(`/pruebaconsumo/api/pruebas${query}`);
+        const data = await r.json();
+        listadoCargado = data;
+
+        document.getElementById('total-badge-count').innerText = `Total: ${data.length} registros`;
+
+        const tbody = document.getElementById('lista-pruebas-body');
+        tbody.innerHTML = '';
+
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888; padding: 24px;">No se encontraron registros</td></tr>';
+          return;
+        }
+
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          row.dataset.id = item.idprueba;
+          
+          const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+          
+          let pdfLink = '—';
+          if (item.url_doc) {
+            pdfLink = `<a href="${item.url_doc}" target="_blank" style="color: #10b981; font-weight: bold; text-decoration: none;">📄 PDF</a>`;
+          }
+
+          row.innerHTML = `
+            <td>${fechaFmt}</td>
+            <td><strong>${item.nombre_trabajador}</strong></td>
+            <td>${item.identificacion}</td>
+            <td>${item.cliente}</td>
+            <td>${item.ciudad}</td>
+            <td onclick="event.stopPropagation()">${pdfLink}</td>
+          `;
+
+          row.addEventListener('click', () => {
+            abrirDetalle(item.idprueba);
+          });
+
+          tbody.appendChild(row);
+        });
+
+      } catch (e) {
+        console.error(e);
+        showToast('Error al cargar listado', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    document.getElementById('btn-filtrar').addEventListener('click', cargarPruebas);
+    document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+      document.getElementById('filtro-trabajador').value = '';
+      document.getElementById('filtro-desde').value = '';
+      document.getElementById('filtro-hasta').value = '';
+      document.getElementById('filtro-regional').value = '';
+      document.getElementById('filtro-operacion').value = '';
+      document.getElementById('filtro-regional').dispatchEvent(new Event('change'));
+      cargarPruebas();
+    });
+ 
+    let clientesCargados = [];
+    async function cargarClientesParaEditar() {
+      try {
+        const r = await fetch('/pruebaconsumo/api/clientes');
+        clientesCargados = await r.json();
+        const editClienteSelect = document.getElementById('edit-cliente');
+        editClienteSelect.innerHTML = '<option value="">Seleccione Cliente...</option>';
+        clientesCargados.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          editClienteSelect.appendChild(opt);
+        });
+      } catch (e) {
+        console.error('Error cargando clientes para edición:', e);
+      }
+    }
+ 
+    function poblarFiltrosDashboard() {
+      const rFilter = document.getElementById('filtro-regional');
+      const oFilter = document.getElementById('filtro-operacion');
+ 
+      CONFIG.regionalesFiltro.forEach(reg => {
+        const opt = document.createElement('option');
+        opt.value = reg; opt.innerText = reg;
+        rFilter.appendChild(opt);
+      });
+ 
+      CONFIG.operacionesFiltro.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.innerText = op;
+        oFilter.appendChild(opt);
+      });
+ 
+      rFilter.addEventListener('change', () => {
+        oFilter.innerHTML = '<option value="">Todas</option>';
+        const reg = rFilter.value;
+        const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
+        ops.forEach(op => {
+          const opt = document.createElement('option');
+          opt.value = op; opt.innerText = op;
+          oFilter.appendChild(opt);
+        });
+      });
+    }
+ 
+    poblarFiltrosDashboard();
+    cargarClientesParaEditar();
+    cargarPruebas();
+
+    // Detalle
+    const layoutContainer = document.getElementById('layout-container');
+    const vistaDetalle = document.getElementById('vista-detalle');
+
+    function abrirDetalle(id) {
+      selectedPruebaId = id;
+      layoutContainer.classList.add('detail-active');
+      vistaDetalle.style.display = 'block';
+      cargarDetalle();
+    }
+
+    document.getElementById('btn-cerrar-detalle').addEventListener('click', () => {
+      selectedPruebaId = null;
+      layoutContainer.classList.remove('detail-active');
+      vistaDetalle.style.display = 'none';
+    });
+
+    async function cargarDetalle() {
+      showLoading('Cargando detalle...');
+      try {
+        const r = await fetch(`/pruebaconsumo/api/prueba/${selectedPruebaId}`);
+        const data = await r.json();
+
+        const fechaFmt = data.fecha ? data.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+        const creadorNombre = data.nombre_creador || (data.usuario && data.usuario.includes(' - ') ? data.usuario.split(' - ')[0] : data.usuario);
+
+        let badgeFirma = '';
+        if (data.estado_firma === 'ACEPTADA') {
+          badgeFirma = `<span class="status-badge badge-firma-aceptada">✓ Aceptada</span>`;
+        } else if (data.estado_firma === 'PREFILLED') {
+          badgeFirma = `<span class="status-badge badge-firma-prefilled">Firma Prellenada</span>`;
+        } else {
+          badgeFirma = `<span class="status-badge badge-firma-sin">Sin Firma</span>`;
+        }
+
+        const infoBox = document.getElementById('detalle-info');
+        infoBox.innerHTML = `
+          <p><strong>Trabajador:</strong> ${data.nombre_trabajador}</p>
+          <p><strong>Identificación:</strong> ${data.identificacion}</p>
+          <p><strong>Cargo:</strong> ${data.cargo}</p>
+          <p><strong>Cliente:</strong> ${data.cliente}</p>
+          <p><strong>Ciudad:</strong> ${data.ciudad}</p>
+          <p><strong>Fecha:</strong> ${fechaFmt}</p>
+          <p><strong>Estado Firma:</strong> ${badgeFirma}</p>
+          <p><strong>Creador por:</strong> ${creadorNombre}</p>
+          ${data.observaciones ? `<p><strong>Observaciones:</strong> ${data.observaciones}</p>` : ''}
+          ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
+        `;
+
+        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+        const optsBox = document.getElementById('opciones-documento');
+        optsBox.innerHTML = '';
+ 
+        if (esCreadorOSistema) {
+          if (!data.url_doc) {
+            // Documento sin generar: acciones habilitadas
+            const urlFirmaLink = `${window.location.origin}/pruebaconsumo/firmar?item=${data.idprueba}`;
+            const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Consentimiento Informado de Prueba de Toxicología: ${urlFirmaLink}`);
+            const waUrl = `https://wa.me/?text=${msgWaText}`;
+ 
+            optsBox.innerHTML = `
+              <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
+              <button class="btn btn-secondary" id="btn-editar-registro" style="width: 100%; margin-bottom: 8px;">Editar Registro</button>
+              <button class="btn btn-danger" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">Forzar Generación de PDF</button>
+              <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
+              <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
+            `;
+ 
+            document.getElementById('btn-editar-registro').addEventListener('click', () => {
+              abrirModalEditar(data);
+            });
+          } else {
+            // Documento ya generado: acciones deshabilitadas o quitadas
+            optsBox.innerHTML = `
+              <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
+              <button class="btn btn-primary" disabled style="width: 100%; margin-bottom: 8px; opacity: 0.5; pointer-events: none;">Enviar WhatsApp</button>
+              <button class="btn btn-secondary" disabled style="width: 100%; opacity: 0.5; pointer-events: none;">Enviar Correo</button>
+            `;
+          }
+        }
+ 
+      } catch (e) {
+        console.error(e);
+        showToast('Error al cargar detalle', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+ 
+    let datosEdicionActual = null;
+    function abrirModalEditar(data) {
+      datosEdicionActual = data;
+      document.getElementById('edit-ciudad').value = data.ciudad || '';
+      document.getElementById('edit-fecha').value = data.fecha ? data.fecha.slice(0, 10) : '';
+      document.getElementById('edit-cliente').value = data.cliente || '';
+      document.getElementById('edit-observaciones').value = data.observaciones || '';
+      document.getElementById('modal-editar').style.display = 'flex';
+    }
+ 
+    document.getElementById('btn-cerrar-modal-editar').addEventListener('click', () => {
+      document.getElementById('modal-editar').style.display = 'none';
+      datosEdicionActual = null;
+    });
+ 
+    document.getElementById('btn-guardar-editar').addEventListener('click', async () => {
+      if (!datosEdicionActual) return;
+      const id = datosEdicionActual.idprueba;
+      const ciudad = document.getElementById('edit-ciudad').value;
+      const fecha = document.getElementById('edit-fecha').value;
+      const cliente = document.getElementById('edit-cliente').value;
+      const observaciones = document.getElementById('edit-observaciones').value;
+ 
+      if (!ciudad || !fecha || !cliente) {
+        alert('Ciudad, fecha y cliente son obligatorios.');
+        return;
+      }
+ 
+      showLoading('Guardando cambios...');
+      try {
+        const r = await fetch(`/pruebaconsumo/api/prueba/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ciudad, fecha, cliente, observaciones })
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          showToast('Registro actualizado con éxito');
+          document.getElementById('modal-editar').style.display = 'none';
+          cargarDetalle();
+          cargarPruebas();
+        } else {
+          showToast(resp.error || 'Error al actualizar registro', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al actualizar registro', 'error');
+      } finally {
+        hideLoading();
+      }
+    });
+
+    // Acciones de control
+    async function generarPDF(force = false) {
+      showLoading('Generando documento PDF...');
+      try {
+        const r = await fetch(`/pruebaconsumo/api/prueba/${selectedPruebaId}/generar-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force })
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          showToast('PDF generado con éxito');
+          cargarDetalle();
+          cargarPruebas();
+        } else {
+          showToast(resp.error || 'Error al generar PDF', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al generar PDF', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function notificarCorreo() {
+      showLoading('Enviando enlace por correo...');
+      try {
+        const r = await fetch(`/pruebaconsumo/api/prueba/${selectedPruebaId}/enviar-enlace`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ canal: 'email' })
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          showToast('Enlace enviado con éxito');
+        } else {
+          showToast(resp.error || 'Error al enviar correo', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al enviar correo', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+  </script>
+</body>
+</html>

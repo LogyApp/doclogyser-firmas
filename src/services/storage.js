@@ -114,6 +114,34 @@ async function subirPDFEvaluacionRetiro(identificacion, idVinculacion, bufferPdf
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirPDFAstAsistencia(identificacion, formattedDate, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.ACTASI.${formattedDate}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFGeneralAsistencia(idAsistencia, formattedDate, bufferPdf) {
+  const nombre = `asistencias/asistencia_${idAsistencia}_${formattedDate}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFPruebaConsumo(identificacion, formattedDate, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.CPC.${formattedDate}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFCompromisoSST(identificacion, formattedDate, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.CSST.${formattedDate}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -128,4 +156,8 @@ module.exports = {
   subirPDFPazYSalvo,
   subirPDFCertificadoRetiro,
   subirPDFEvaluacionRetiro,
+  subirPDFAstAsistencia,
+  subirPDFGeneralAsistencia,
+  subirPDFPruebaConsumo,
+  subirPDFCompromisoSST,
 };

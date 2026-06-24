@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asistencias y Capacitaciones — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recibos-public/logo.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f4f6f9; min-height: 100vh; color: #333; }
+    .wrapper { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+
+    /* ── Header Card ── */
+    .card-titulo {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      padding: 20px 24px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    }
+    .card-titulo img { height: 55px; flex-shrink: 0; }
+    .page-title { font-size: 1.3rem; font-weight: bold; color: #1a1a2e; }
+    .page-sub   { font-size: .85rem; color: #777; margin-top: 2px; }
+    .badge-row  { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .badge-user   { background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; }
+    .badge-total { background: #f0f4ff; border: 1px solid #c5d0f5; color: #1a1a6e; }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.06);
+      border-left: 4px solid #8e44ad;
+      padding: 20px 22px; margin-bottom: 16px;
+    }
+    .card-purple  { border-left-color: #8e44ad; }
+    .card-green   { border-left-color: #10b981; }
+    .card-blue    { border-left-color: #2980b9; }
+
+    .section-title {
+      font-size: .8rem; font-weight: bold; color: #1a1a2e;
+      letter-spacing: 1.3px; text-transform: uppercase;
+      padding-bottom: 8px; margin-bottom: 16px;
+      border-bottom: 2px solid #eef1ff;
+    }
+
+    /* ── Forms ── */
+    .field { margin-bottom: 16px; position: relative; }
+    .field:last-child { margin-bottom: 0; }
+    label.lbl { display: block; font-size: .82rem; font-weight: 600; color: #444; margin-bottom: 6px; }
+    label.lbl .req { color: #c0392b; margin-left: 2px; }
+    input[type="text"], input[type="time"], input[type="date"],
+    select, textarea {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      font-size: .93rem; color: #333; background: #fff;
+      font-family: Arial, sans-serif;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #8e44ad; box-shadow: 0 0 0 3px rgba(142,68,173,.12);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+    /* ── Autocomplete ── */
+    .ac-list {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1.5px solid #8e44ad;
+      border-radius: 6px; max-height: 220px; overflow-y: auto;
+      z-index: 999; display: none;
+      box-shadow: 0 6px 20px rgba(142,68,173,.15);
+    }
+    .ac-list.open { display: block; }
+    .ac-item {
+      padding: 10px 14px; cursor: pointer; font-size: .88rem; color: #333;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .ac-item:hover { background: #eef1ff; color: #1a1a2e; font-weight: 600; }
+
+    /* ── Scrollable Checklist for Attendees ── */
+    .checklist-card {
+      border: 1.5px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 10px;
+    }
+    .checklist-header {
+      padding: 10px 12px;
+      background: #f8fafc;
+      border-bottom: 1.5px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .checklist-search {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: .85rem;
+    }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+    }
+    .checklist-item:last-child {
+      border-bottom: none;
+    }
+    .checklist-item:hover {
+      background: #f8fafc;
+    }
+    .checklist-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #8e44ad;
+      cursor: pointer;
+    }
+    .checklist-item label {
+      font-size: .88rem;
+      color: #1e293b;
+      cursor: pointer;
+      flex: 1;
+    }
+
+    /* ── Buttons ── */
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 18px; border: none; border-radius: 6px;
+      font-size: .85rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: all .15s;
+    }
+    .btn-primary { background: #8e44ad; color: #fff; }
+    .btn-primary:hover { background: #763693; box-shadow: 0 3px 10px rgba(142,68,173,.3); }
+    
+    /* Botón Crear Formato Custom Green */
+    .btn-crear { background: #10b981; color: #fff; }
+    .btn-crear:hover { background: #059669; box-shadow: 0 3px 10px rgba(16,185,129,.3); }
+
+    .btn-secondary { background: #f5f6fa; border: 1.5px solid #ddd; color: #444; }
+    .btn-secondary:hover { background: #eef1ff; border-color: #8e44ad; }
+    .btn-success { background: #27ae60; color: #fff; }
+    .btn-success:hover { background: #1e8449; }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-danger:hover { background: #922b21; }
+    .btn-small { padding: 5px 10px; font-size: .75rem; border-radius: 4px; }
+
+    /* ── Tables ── */
+    .table-container { overflow-x: auto; margin-top: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 600px; }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; font-weight: 600; color: #475569; }
+    tbody tr:hover { background: #f8fafc; }
+    
+    /* ── Status badges ── */
+    .status-badge {
+      display: inline-flex; padding: 4px 8px; border-radius: 20px;
+      font-size: .75rem; font-weight: bold;
+    }
+    .status-generado { background: #def7ec; color: #03543f; }
+    .status-pendiente { background: #fde8e8; color: #9b1c1c; }
+
+    /* ── Firma Status badges ── */
+    .badge-firma-aceptada { background: #def7ec; color: #03543f; }
+    .badge-firma-prefilled { background: #fef08a; color: #713f12; }
+    .badge-firma-sin { background: #fee2e2; color: #991b1b; }
+
+    /* ── Vistas ── */
+    .vista { display: none; }
+    .vista.active { display: block; }
+
+    /* ── Detalle grid ── */
+    .detail-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-top: 14px; }
+    .detail-info-box p { font-size: .9rem; margin-bottom: 10px; line-height: 1.5; }
+    .detail-info-box strong { color: #475569; }
+
+    /* ── Toast ── */
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+    .toast { padding: 12px 18px; border-radius: 6px; color: #fff; font-size: .88rem; box-shadow: 0 4px 12px rgba(0,0,0,.15); animation: slideIn .3s ease; }
+    .toast.success { background: #27ae60; }
+    .toast.error { background: #c0392b; }
+    .toast.info { background: #2980b9; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Modal ── */
+    .modal {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center;
+      z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .modal.open { opacity: 1; pointer-events: auto; }
+    .modal-content {
+      background: #fff; padding: 24px; border-radius: 8px;
+      width: 100%; max-width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,.2);
+      transform: translateY(-20px); transition: transform .2s;
+    }
+    .modal.open .modal-content { transform: translateY(0); }
+    .modal-header { font-size: 1.1rem; font-weight: bold; margin-bottom: 16px; color: #1e293b; }
+
+    /* ── Loading Spinner ── */
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,.8); display: flex; align-items: center; justify-content: center;
+      z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .2s;
+      flex-direction: column; gap: 12px;
+    }
+    .loading-overlay.active { opacity: 1; pointer-events: auto; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #8e44ad; border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .card-titulo { flex-direction: column; text-align: center; }
+      .card-titulo img { height: 42px; }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
+      th, td { padding: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div id="toast-container"></div>
+  <div id="loading" class="loading-overlay">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <!-- ════════ VISTA: LISTADO ════════ -->
+  <div id="vista-listado" class="vista active">
+    <div class="card-titulo">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logo LOG&SER">
+      <div>
+        <div class="page-title">Seguimiento de Participación</div>
+        <div class="page-sub">Visualiza, filtra y administra tus formatos de asistencia</div>
+        <div class="badge-row">
+          <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
+          <div class="badge badge-total" id="total-badge-count">Total: 0 registros</div>
+        </div>
+      </div>
+      <button class="btn btn-crear" id="btn-nueva-asistencia">+ Crear Formato</button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card card-purple">
+      <div class="section-title">Filtros de Búsqueda</div>
+      <div class="grid-4">
+        <div class="field">
+          <label class="lbl">Tema de la Jornada</label>
+          <input type="text" id="filtro-tema" placeholder="Buscar tema...">
+        </div>
+        <div class="field">
+          <label class="lbl">Regional</label>
+          <select id="filtro-regional">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">Operación</label>
+          <select id="filtro-operacion">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">Fecha Desde / Hasta</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="date" id="filtro-desde" style="padding: 8px;">
+            <input type="date" id="filtro-hasta" style="padding: 8px;">
+          </div>
+        </div>
+      </div>
+      <div class="btn-group" style="justify-content: flex-end;">
+        <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
+        <button class="btn btn-primary" id="btn-filtrar">Aplicar Filtros</button>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card card-purple" style="border-left-color: #2980b9;">
+      <div class="section-title">Registros de Asistencia</div>
+      <div class="table-container">
+        <table id="tabla-asistencias">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tema</th>
+              <th>Lugar</th>
+              <th>Responsable</th>
+              <th>Duración</th>
+              <th>Documento PDF</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="lista-asistencias-body">
+            <tr>
+              <td colspan="7" style="text-align: center; color: #888;">Cargando asistencias...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ VISTA: FORMULARIO ════════ -->
+  <div id="vista-formulario" class="vista">
+    <div class="card-titulo">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logo LOG&SER">
+      <div>
+        <div class="page-title" id="form-titulo">Crear Formato de Asistencia</div>
+        <div class="page-sub">Diligencia los campos requeridos y adiciona a los asistentes</div>
+      </div>
+    </div>
+
+    <form id="form-asistencia">
+      <div class="card card-purple">
+        <div class="section-title">Información Básica</div>
+        <div class="field">
+          <label class="lbl">Tema de la Jornada <span class="req">*</span></label>
+          <input type="text" id="form-tema" required placeholder="Ej. Capacitación sobre riesgos laborales">
+        </div>
+
+        <div class="grid-3">
+          <div class="field">
+            <label class="lbl">Fecha <span class="req">*</span></label>
+            <input type="date" id="form-fecha" required>
+          </div>
+          <div class="field">
+            <label class="lbl">Hora Inicial <span class="req">*</span></label>
+            <input type="time" id="form-hora-inicial" required>
+          </div>
+          <div class="field">
+            <label class="lbl">Hora Final <span class="req">*</span></label>
+            <input type="time" id="form-hora-final" required>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="lbl">Lugar de Capacitación <span class="req">*</span></label>
+            <input type="text" id="form-lugar" required placeholder="Ej. Oficina Principal - Sala A">
+          </div>
+          <div class="field" style="position: relative;">
+            <label class="lbl">Responsable del Registro (Cédula) <span class="req">*</span></label>
+            <input type="text" id="form-responsable-input" placeholder="Buscar únicamente por Identificación..." autocomplete="off">
+            <input type="hidden" id="form-responsable-id">
+            <div id="ac-responsable" class="ac-list"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="lbl">Objetivo / Propósito</label>
+          <textarea id="form-objetivo" placeholder="Describe brevemente el objetivo..."></textarea>
+        </div>
+      </div>
+
+      <div class="card card-blue">
+        <div class="section-title">Adicionar Asistentes (Por Regional y Operación)</div>
+        
+        <div class="grid-2">
+          <div class="field">
+            <label class="lbl">Regional de los Asistentes</label>
+            <select id="form-asistente-regional">
+              <option value="">Seleccione Regional...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="lbl">Operación de los Asistentes</label>
+            <select id="form-asistente-operacion">
+              <option value="">Seleccione Operación...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Scrollable checklist list -->
+        <div style="margin-top: 15px; display: none;" id="form-asistentes-checklist-wrap">
+          <label class="lbl">Selección de Trabajadores Activos</label>
+          <div class="checklist-card">
+            <div class="checklist-header">
+              <input type="text" class="checklist-search" id="checklist-search-input" placeholder="Buscar asistente por Nombre o Cédula...">
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 2px;">
+                <input type="checkbox" id="chk-seleccionar-todos" style="width: 16px; height: 16px; cursor: pointer;">
+                <label for="chk-seleccionar-todos" style="font-size: .82rem; font-weight: bold; cursor: pointer;">Seleccionar Todos</label>
+              </div>
+            </div>
+            <div id="form-checklist-body">
+              <!-- Cargado dinámicamente -->
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 18px;">
+          <label class="lbl">Asistentes Agregados: <span id="form-asistentes-count" style="font-weight: bold;">0</span></label>
+        </div>
+      </div>
+
+      <div class="btn-group" style="justify-content: space-between;">
+        <button type="button" class="btn btn-secondary" id="btn-cancelar-form">Volver al Listado</button>
+        <button type="submit" class="btn btn-success" id="btn-guardar-form">Guardar Formato</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ════════ VISTA: DETALLE ════════ -->
+  <div id="vista-detalle" class="vista">
+    <div class="card-titulo">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logo LOG&SER">
+      <div>
+        <div class="page-title">Detalle de Formato de Asistencia</div>
+        <div class="page-sub">Visualiza el estado de las firmas y administra notificaciones</div>
+      </div>
+      <button class="btn btn-secondary" id="btn-volver-detalle">Volver al Listado</button>
+    </div>
+
+    <div class="detail-grid">
+      <!-- Ficha técnica -->
+      <div class="card card-purple">
+        <div class="section-title">Información del Evento</div>
+        <div class="detail-info-box" id="detalle-evento-info">
+          <!-- Dinámico -->
+        </div>
+        
+        <div id="opciones-documento" style="margin-top: 20px;">
+          <!-- Dinámico según creador o Sistema -->
+        </div>
+      </div>
+
+      <!-- Tabla de asistentes -->
+      <div class="card card-blue" style="border-left-color: #10b981;">
+        <div class="section-title">Estado de Firmas y Notificaciones de Asistentes</div>
+        <div style="margin-bottom: 12px; font-size: .8rem; color: #475569; display: flex; gap: 14px; flex-wrap: wrap;">
+          <div><span class="status-badge badge-firma-aceptada">✓ Aceptada</span> Firma aceptada explícitamente</div>
+          <div><span class="status-badge badge-firma-prefilled">Firma Prellenada</span> Firma registrada en GCS (sin aceptar)</div>
+          <div><span class="status-badge badge-firma-sin">Sin Firma</span> Sin firma en el sistema</div>
+        </div>
+        <div class="table-container">
+          <table id="tabla-detalle-asistentes">
+            <thead>
+              <tr>
+                <th>Asistente</th>
+                <th>Identificación</th>
+                <th>Cargo / Operación</th>
+                <th>Firma</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="detalle-asistentes-body">
+              <!-- Dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODALES ════════ -->
+<div class="modal" id="modal-contacto">
+  <div class="modal-content">
+    <div class="modal-header">Editar Datos de Contacto</div>
+    <form id="form-contacto">
+      <input type="hidden" id="modal-identificacion">
+      <div class="field">
+        <label class="lbl">Nombre</label>
+        <input type="text" id="modal-nombre" readonly>
+      </div>
+      <div class="field">
+        <label class="lbl">Teléfono Celular</label>
+        <input type="text" id="modal-celular" placeholder="Escribe el número...">
+      </div>
+      <div class="field">
+        <label class="lbl">Correo Electrónico</label>
+        <input type="text" id="modal-email" placeholder="Escribe el correo...">
+      </div>
+      <div class="btn-group" style="justify-content: flex-end; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary btn-small" id="btn-cerrar-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-small">Guardar Cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Configuración Inicial -->
+<script>
+  window.CONFIG = __CONFIG__;
+</script>
+
+<script>
+  // State variables
+  let creadas = [];
+  let formAsistentes = []; // Lista de objetos { id_vinculacion, Trabajador, Identificación, Cargo, Operación, Regional }
+  let selectedAsistenciaId = null;
+
+  // DOM Elements
+  const vistaListado = document.getElementById('vista-listado');
+  const vistaFormulario = document.getElementById('vista-formulario');
+  const vistaDetalle = document.getElementById('vista-detalle');
+  const loading = document.getElementById('loading');
+  const loadingText = document.getElementById('loading-text');
+
+  // Initialization
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('user-badge-name').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+    
+    // Configurar selectores de Regional y Operación en Filtros y Formulario
+    poblarFiltrosYFormDropdowns();
+    
+    // Cargar Listado inicial
+    cargarListado();
+
+    // Event Listeners
+    document.getElementById('btn-nueva-asistencia').addEventListener('click', () => abrirFormulario());
+    document.getElementById('btn-cancelar-form').addEventListener('click', () => cerrarFormulario());
+    document.getElementById('btn-volver-detalle').addEventListener('click', () => {
+      vistaDetalle.classList.remove('active');
+      vistaListado.classList.add('active');
+      cargarListado();
+    });
+    document.getElementById('btn-filtrar').addEventListener('click', () => cargarListado());
+    document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+      document.getElementById('filtro-tema').value = '';
+      document.getElementById('filtro-regional').value = '';
+      document.getElementById('filtro-operacion').value = '';
+      document.getElementById('filtro-desde').value = '';
+      document.getElementById('filtro-hasta').value = '';
+      cargarListado();
+    });
+
+    // Form Submits
+    document.getElementById('form-asistencia').addEventListener('submit', guardarAsistencia);
+    document.getElementById('form-contacto').addEventListener('submit', guardarContacto);
+    document.getElementById('btn-cerrar-modal').addEventListener('click', () => {
+      document.getElementById('modal-contacto').classList.remove('open');
+    });
+
+    // Autocomplete Responsable (BÚSQUEDA EXCLUSIVAMENTE POR IDENTIFICACIÓN)
+    setupAutocomplete(
+      document.getElementById('form-responsable-input'),
+      document.getElementById('ac-responsable'),
+      '/asistenciaycapacitaciones/api/responsables-buscar',
+      (item) => {
+        document.getElementById('form-responsable-input').value = `${item.Identificación} ** ${item.Trabajador}`;
+        document.getElementById('form-responsable-id').value = item.id_vinculacion;
+      }
+    );
+
+    // Búsqueda en el checklist de asistentes
+    document.getElementById('checklist-search-input').addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase();
+      const items = document.querySelectorAll('.checklist-item');
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        if (text.includes(val)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+
+    // Seleccionar Todos en checklist
+    document.getElementById('chk-seleccionar-todos').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const visibleCheckboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+      visibleCheckboxes.forEach(cb => {
+        const itemDom = cb.closest('.checklist-item');
+        if (itemDom.style.display !== 'none') {
+          cb.checked = checked;
+          // Disparar evento change manualmente
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    // Si la vista inicial debe ser el formulario
+    if (CONFIG.initialView === 'formulario') {
+      abrirFormulario();
+    }
+  });
+
+  // Helper Toast
+  function showToast(msg, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerText = msg;
+    container.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+
+  function showLoading(text = 'Cargando...') {
+    loadingText.innerText = text;
+    loading.classList.add('active');
+  }
+
+  function hideLoading() {
+    loading.classList.remove('active');
+  }
+
+  function poblarFiltrosYFormDropdowns() {
+    const rFilter = document.getElementById('filtro-regional');
+    const oFilter = document.getElementById('filtro-operacion');
+    const rForm = document.getElementById('form-asistente-regional');
+    const oForm = document.getElementById('form-asistente-operacion');
+
+    // Poblamos Regionales en Filtros y Formulario
+    CONFIG.regionalesFiltro.forEach(reg => {
+      const optF = document.createElement('option');
+      optF.value = reg; optF.innerText = reg;
+      rFilter.appendChild(optF);
+
+      const optForm = document.createElement('option');
+      optForm.value = reg; optForm.innerText = reg;
+      rForm.appendChild(optForm);
+    });
+
+    // Cambio de regional en Filtros
+    rFilter.addEventListener('change', () => {
+      oFilter.innerHTML = '<option value="">Todas</option>';
+      const reg = rFilter.value;
+      const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
+      ops.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.innerText = op;
+        oFilter.appendChild(opt);
+      });
+    });
+
+    // Cambio de regional en Formulario
+    rForm.addEventListener('change', () => {
+      oForm.innerHTML = '<option value="">Seleccione Operación...</option>';
+      document.getElementById('form-asistentes-checklist-wrap').style.display = 'none';
+      const reg = rForm.value;
+      const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : [];
+      ops.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.innerText = op;
+        oForm.appendChild(opt);
+      });
+    });
+
+    oForm.addEventListener('change', cargarTrabajadoresParaChecklist);
+
+    // Poblar operaciones iniciales en Filtros
+    CONFIG.operacionesFiltro.forEach(op => {
+      const opt = document.createElement('option');
+      opt.value = op; opt.innerText = op;
+      oFilter.appendChild(opt);
+    });
+  }
+
+  // ════════ LÓGICA DE CHECKLIST (ASISTENTES) ════════
+  async function cargarTrabajadoresParaChecklist() {
+    const regional = document.getElementById('form-asistente-regional').value;
+    const operacion = document.getElementById('form-asistente-operacion').value;
+    const wrap = document.getElementById('form-asistentes-checklist-wrap');
+    const body = document.getElementById('form-checklist-body');
+    const chkTodos = document.getElementById('chk-seleccionar-todos');
+
+    if (!regional || !operacion) {
+      wrap.style.display = 'none';
+      return;
+    }
+
+    showLoading('Cargando colaboradores de la operación...');
+    try {
+      chkTodos.checked = false;
+      const res = await fetch(`/asistenciaycapacitaciones/api/trabajadores-por-operacion?regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}`);
+      const trabajadores = await res.json();
+
+      body.innerHTML = '';
+      if (!trabajadores.length) {
+        body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos en esta operación.</div>';
+        wrap.style.display = 'block';
+        return;
+      }
+
+      trabajadores.forEach(t => {
+        const isChecked = formAsistentes.some(x => x.id_vinculacion === t.id_vinculacion);
+
+        const div = document.createElement('div');
+        div.className = 'checklist-item';
+        
+        const idCheckbox = `chk-t-${t.id_vinculacion}`;
+        
+        div.innerHTML = `
+          <input type="checkbox" id="${idCheckbox}" ${isChecked ? 'checked' : ''}>
+          <label for="${idCheckbox}"><strong>${t.identificacion}</strong> ** ${t.Trabajador}</label>
+        `;
+
+        const checkbox = div.querySelector('input[type="checkbox"]');
+        checkbox.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            // Agregar
+            if (!formAsistentes.some(x => x.id_vinculacion === t.id_vinculacion)) {
+              formAsistentes.push({
+                id_vinculacion: t.id_vinculacion,
+                Trabajador: t.Trabajador,
+                Identificación: t.identificacion,
+                Cargo: t.Cargo,
+                Operación: t.Operación,
+                Regional: t.Regional
+              });
+            }
+          } else {
+            // Remover
+            formAsistentes = formAsistentes.filter(x => x.id_vinculacion !== t.id_vinculacion);
+          }
+          document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
+        });
+
+        // Permitir hacer click en toda la fila para checkear
+        div.addEventListener('click', (e) => {
+          if (e.target !== checkbox && e.target.tagName !== 'LABEL') {
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change'));
+          }
+        });
+
+        body.appendChild(div);
+      });
+
+      wrap.style.display = 'block';
+    } catch (err) {
+      console.error(err);
+      showToast('Error al cargar colaboradores.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // ════════ LÓGICA DE AUTOCOMPLETE ════════
+  function setupAutocomplete(input, listDiv, url, onSelect) {
+    input.addEventListener('input', debounce(async () => {
+      const val = input.value.trim();
+      if (!val || val.length < 2) {
+        listDiv.innerHTML = '';
+        listDiv.classList.remove('open');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${url}?q=${encodeURIComponent(val)}`);
+        const items = await res.json();
+
+        listDiv.innerHTML = '';
+        if (!items.length) {
+          listDiv.classList.remove('open');
+          return;
+        }
+
+        items.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'ac-item';
+          div.innerText = `${item.Identificación} ** ${item.Trabajador}`;
+
+          div.addEventListener('click', () => {
+            onSelect(item);
+            listDiv.innerHTML = '';
+            listDiv.classList.remove('open');
+          });
+          listDiv.appendChild(div);
+        });
+        listDiv.classList.add('open');
+      } catch (err) {
+        console.error(err);
+      }
+    }, 300));
+
+    document.addEventListener('click', (e) => {
+      if (e.target !== input && e.target !== listDiv) {
+        listDiv.innerHTML = '';
+        listDiv.classList.remove('open');
+      }
+    });
+  }
+
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  // ════════ LISTADO ════════
+  async function cargarListado() {
+    showLoading('Cargando registros...');
+    try {
+      const tema = document.getElementById('filtro-tema').value;
+      const regional = document.getElementById('filtro-regional').value;
+      const operacion = document.getElementById('filtro-operacion').value;
+      const desde = document.getElementById('filtro-desde').value;
+      const hasta = document.getElementById('filtro-hasta').value;
+
+      let query = `?usuario=${CONFIG.usuarioId}`;
+      if (tema) query += `&tema=${encodeURIComponent(tema)}`;
+      if (regional) query += `&regional=${encodeURIComponent(regional)}`;
+      if (operacion) query += `&operacion=${encodeURIComponent(operacion)}`;
+      if (desde) query += `&fechaDesde=${desde}`;
+      if (hasta) query += `&fechaHasta=${hasta}`;
+
+      const res = await fetch(`/asistenciaycapacitaciones/api/asistencias${query}`);
+      const data = await res.json();
+      creadas = data;
+
+      document.getElementById('total-badge-count').innerText = `Total: ${creadas.length} registros`;
+
+      const tbody = document.getElementById('lista-asistencias-body');
+      tbody.innerHTML = '';
+
+      if (!creadas.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888;">No se encontraron registros.</td></tr>';
+        return;
+      }
+
+      creadas.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+        const duracionFmt = item.duracion ? item.duracion.slice(0, 5) : '—';
+        
+        const pdfBadge = item.url_doc 
+          ? `<span class="status-badge status-generado">Generado</span>` 
+          : `<span class="status-badge status-pendiente">Pendiente</span>`;
+
+        const btnPdf = item.url_doc
+          ? `<a href="${item.url_doc}" target="_blank" class="btn btn-secondary btn-small">Ver PDF</a>`
+          : `<button class="btn btn-secondary btn-small" disabled style="opacity: 0.5;">Ver PDF</button>`;
+
+        tr.innerHTML = `
+          <td><strong>${fechaFmt}</strong></td>
+          <td>${item.tema}</td>
+          <td>${item.lugar}</td>
+          <td>${item.nombre_responsable || item.responsable}</td>
+          <td>${duracionFmt} Hs</td>
+          <td>${pdfBadge}</td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-primary btn-small" onclick="abrirDetalle(${item.id_asistencia})">Ver Detalle</button>
+              ${btnPdf}
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error(err);
+      showToast('Error al cargar listado', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // ════════ FORMULARIO ════════
+  function abrirFormulario(id = null) {
+    vistaListado.classList.remove('active');
+    vistaFormulario.classList.add('active');
+    
+    // Reset form
+    document.getElementById('form-asistencia').reset();
+    document.getElementById('form-responsable-id').value = '';
+    document.getElementById('form-objetivo').value = '';
+    document.getElementById('form-asistentes-checklist-wrap').style.display = 'none';
+    formAsistentes = [];
+    selectedAsistenciaId = id;
+
+    if (id) {
+      document.getElementById('form-titulo').innerText = 'Editar Formato de Asistencia';
+      cargarAsistenciaParaEditar(id);
+    } else {
+      document.getElementById('form-titulo').innerText = 'Crear Formato de Asistencia';
+      document.getElementById('form-fecha').value = new Date().toISOString().slice(0, 10);
+      
+      // Pre-llenar el responsable automáticamente
+      if (CONFIG.prefillResponsable) {
+        document.getElementById('form-responsable-input').value = CONFIG.prefillResponsable.nombre;
+        document.getElementById('form-responsable-id').value = CONFIG.prefillResponsable.id_vinculacion;
+      }
+      document.getElementById('form-asistentes-count').innerText = '0';
+    }
+  }
+
+  function cerrarFormulario() {
+    vistaFormulario.classList.remove('active');
+    vistaListado.classList.add('active');
+    cargarListado();
+  }
+
+  async function cargarAsistenciaParaEditar(id) {
+    showLoading('Cargando datos del formato...');
+    try {
+      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${id}`);
+      const data = await res.json();
+
+      document.getElementById('form-tema').value = data.tema;
+      document.getElementById('form-fecha').value = data.fecha.slice(0, 10);
+      document.getElementById('form-hora-inicial').value = data.hora_inicial.slice(0, 5);
+      document.getElementById('form-hora-final').value = data.hora_final.slice(0, 5);
+      document.getElementById('form-lugar').value = data.lugar;
+      document.getElementById('form-objetivo').value = data.objetivo;
+      document.getElementById('form-responsable-input').value = data.nombre_responsable || '';
+      document.getElementById('form-responsable-id').value = data.responsable;
+
+      formAsistentes = data.items.map(i => ({
+        id_vinculacion: i.id_vinculacion,
+        Trabajador: i.nombre_trabajador,
+        Identificación: i.identificacion,
+        Cargo: i.cargo,
+        Operación: i.operacion,
+        Regional: i.regional
+      }));
+      document.getElementById('form-asistentes-count').innerText = formAsistentes.length;
+    } catch (err) {
+      console.error(err);
+      showToast('Error al cargar datos del formato', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  async function guardarAsistencia(e) {
+    e.preventDefault();
+
+    const responsable = document.getElementById('form-responsable-id').value;
+    if (!responsable) {
+      showToast('Por favor selecciona un responsable válido utilizando su identificación.', 'error');
+      return;
+    }
+
+    if (!formAsistentes.length) {
+      showToast('Por favor selecciona al menos un asistente.', 'error');
+      return;
+    }
+
+    const payload = {
+      tema: document.getElementById('form-tema').value,
+      fecha: document.getElementById('form-fecha').value,
+      hora_inicial: document.getElementById('form-hora-inicial').value,
+      hora_final: document.getElementById('form-hora-final').value,
+      lugar: document.getElementById('form-lugar').value,
+      objetivo: document.getElementById('form-objetivo').value,
+      responsable,
+      usuario: CONFIG.usuarioId,
+      asistentes: formAsistentes.map(x => x.id_vinculacion)
+    };
+
+    showLoading('Guardando registro...');
+    try {
+      const url = selectedAsistenciaId 
+        ? `/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}` 
+        : '/asistenciaycapacitaciones/api/asistencias';
+      const method = selectedAsistenciaId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const resData = await res.json();
+
+      if (resData.ok) {
+        showToast('Formato de asistencia guardado exitosamente.');
+        cerrarFormulario();
+      } else {
+        showToast(resData.error || 'Error al guardar.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error de red al guardar el formato.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // ════════ DETALLE ════════
+  async function abrirDetalle(id) {
+    vistaListado.classList.remove('active');
+    vistaDetalle.classList.add('active');
+    selectedAsistenciaId = id;
+    await cargarDetalle();
+  }
+
+  async function cargarDetalle() {
+    showLoading('Cargando detalle...');
+    try {
+      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}`);
+      const data = await res.json();
+
+      const infoBox = document.getElementById('detalle-evento-info');
+      const fechaFmt = data.fecha ? data.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+      const duracionFmt = data.duracion ? data.duracion.slice(0, 5) : '—';
+
+      infoBox.innerHTML = `
+        <p><strong>Tema:</strong> ${data.tema}</p>
+        <p><strong>Fecha:</strong> ${fechaFmt}</p>
+        <p><strong>Hora Inicial:</strong> ${data.hora_inicial.slice(0,5)} Hs</p>
+        <p><strong>Hora Final:</strong> ${data.hora_final.slice(0,5)} Hs</p>
+        <p><strong>Duración:</strong> ${duracionFmt} Hs</p>
+        <p><strong>Lugar:</strong> ${data.lugar}</p>
+        <p><strong>Responsable:</strong> ${data.nombre_responsable || data.responsable}</p>
+        <p><strong>Objetivo:</strong> ${data.objetivo || '—'}</p>
+        <p><strong>Creador por:</strong> ${data.nombre_creador || (data.usuario && data.usuario.includes(' - ') ? data.usuario.split(' - ')[0] : data.usuario)}</p>
+        ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
+      `;
+
+      // Render de botones de control para creador o Sistema
+      const optsBox = document.getElementById('opciones-documento');
+      optsBox.innerHTML = '';
+      
+      const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+      
+      // Si el PDF ya está generado, quitamos los de generar y deshabilitamos enviar correo / editar
+      if (esCreadorOSistema) {
+        if (!data.url_doc) {
+          optsBox.innerHTML = `
+            <div class="section-title" style="margin-top: 25px;">Acciones de Control</div>
+            <button class="btn btn-success" onclick="generarPDF(false)" style="width: 100%; margin-bottom: 8px;">Generar PDF (Solo Firmas Listas)</button>
+            <button class="btn btn-danger" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">Forzar Generación de PDF</button>
+            <button class="btn btn-primary" onclick="notificarTodos()" style="width: 100%; margin-bottom: 8px;">Enviar Correo a Todos</button>
+            <button class="btn btn-secondary" onclick="abrirFormulario(${data.id_asistencia})" style="width: 100%;">Editar Formato</button>
+          `;
+        } else {
+          optsBox.innerHTML = `
+            <div class="section-title" style="margin-top: 25px;">Acciones de Control</div>
+            <button class="btn btn-primary" disabled style="width: 100%; margin-bottom: 8px; opacity: 0.5; pointer-events: none;">Enviar Correo a Todos</button>
+            <button class="btn btn-secondary" disabled style="width: 100%; opacity: 0.5; pointer-events: none;">Editar Formato</button>
+          `;
+        }
+      }
+
+      // Render de asistentes
+      const tbody = document.getElementById('detalle-asistentes-body');
+      tbody.innerHTML = '';
+
+      data.items.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        let badgeFirma = '';
+        if (item.estado_firma === 'ACEPTADA') {
+          badgeFirma = `<span class="status-badge badge-firma-aceptada">✓ Aceptada</span>`;
+        } else if (item.estado_firma === 'PREFILLED') {
+          badgeFirma = `<span class="status-badge badge-firma-prefilled">Firma Prellenada</span>`;
+        } else {
+          badgeFirma = `<span class="status-badge badge-firma-sin">Sin Firma</span>`;
+        }
+
+        let controlButtons = '—';
+        if (esCreadorOSistema) {
+          const celNum = item.celular ? item.celular.trim() : '';
+          const urlFirmaLink = `${window.location.origin}/asistenciaycapacitaciones/firmar?item=${item.id_item_asistencia}`;
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para verificar y firmar digitalmente tu asistencia a la actividad sobre "${data.tema}": ${urlFirmaLink}.`);
+          
+          if (data.url_doc) {
+            // Si el documento ya fue generado, deshabilitamos el envío de WhatsApp y Correo
+            controlButtons = `
+              <div style="display: flex; gap: 5px;">
+                <button class="btn btn-secondary btn-small" onclick="abrirModalContacto('${item.identificacion}', '${item.nombre_trabajador}', '${item.celular || ''}', '${item.email || ''}')">Datos</button>
+                <button class="btn btn-success btn-small" disabled style="opacity: 0.5; pointer-events: none;">WhatsApp</button>
+                <button class="btn btn-primary btn-small" disabled style="opacity: 0.5; pointer-events: none;">Correo</button>
+              </div>
+            `;
+          } else {
+            const waUrl = celNum ? `https://wa.me/57${celNum}?text=${msgWaText}` : '#';
+            const waDisabled = celNum ? '' : 'disabled style="opacity: 0.5; pointer-events: none;"';
+
+            controlButtons = `
+              <div style="display: flex; gap: 5px;">
+                <button class="btn btn-secondary btn-small" onclick="abrirModalContacto('${item.identificacion}', '${item.nombre_trabajador}', '${item.celular || ''}', '${item.email || ''}')">Datos</button>
+                <a href="${waUrl}" target="_blank" class="btn btn-success btn-small" ${waDisabled}>WhatsApp</a>
+                <button class="btn btn-primary btn-small" onclick="notificarIndividual(${item.id_item_asistencia})">Correo</button>
+              </div>
+            `;
+          }
+        }
+
+        tr.innerHTML = `
+          <td><strong>${item.nombre_trabajador}</strong></td>
+          <td>${item.identificacion}</td>
+          <td>${item.cargo}<br><span style="font-size: 11px; color:#64748b;">Op: ${item.operacion}</span></td>
+          <td>${badgeFirma}</td>
+          <td>${controlButtons}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+    } catch (err) {
+      console.error(err);
+      showToast('Error al cargar detalle de asistencia.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // ════════ PDF GENERATION ════════
+  async function generarPDF(force = false) {
+    showLoading('Generando documento PDF...');
+    try {
+      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}/generar-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        showToast('PDF generado y guardado en carpetas de asistentes con éxito.');
+        cargarDetalle();
+      } else {
+        showToast(data.error || 'Error al generar PDF.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error de red al generar PDF.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // ════════ NOTIFICACIONES ════════
+  async function notificarTodos() {
+    showLoading('Enviando correos a todos...');
+    try {
+      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}/enviar-notificacion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enviarATodos: true })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`Notificaciones enviadas a ${data.enviados} asistentes.`);
+      } else {
+        showToast(data.error || 'Error al notificar.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error al notificar.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  async function notificarIndividual(idItemAsistencia) {
+    showLoading('Enviando correo...');
+    try {
+      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}/enviar-notificacion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_item_asistencia: idItemAsistencia })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Notificación individual enviada con éxito.');
+      } else {
+        showToast(data.error || 'Error al notificar.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error al notificar.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // ════════ MODAL CONTACTO ════════
+  function abrirModalContacto(identificacion, nombre, celular, email) {
+    document.getElementById('modal-identificacion').value = identificacion;
+    document.getElementById('modal-nombre').value = nombre;
+    document.getElementById('modal-celular').value = celular;
+    document.getElementById('modal-email').value = email;
+
+    document.getElementById('modal-contacto').classList.add('open');
+  }
+
+  async function guardarContacto(e) {
+    e.preventDefault();
+    const identificacion = document.getElementById('modal-identificacion').value;
+    const celular = document.getElementById('modal-celular').value;
+    const email = document.getElementById('modal-email').value;
+
+    showLoading('Actualizando datos en Maestro_Segmentación...');
+    try {
+      const res = await fetch(`/asistenciaycapacitaciones/api/asistencia/${selectedAsistenciaId}/guardar-contacto`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identificacion, celular, email })
+      });
+
+      if (res.ok) {
+        showToast('Datos de contacto actualizados correctamente.');
+        document.getElementById('modal-contacto').classList.remove('open');
+        cargarDetalle();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Error al actualizar contacto.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error al conectar con el servidor.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+</script>
+
+</body>
+</html>

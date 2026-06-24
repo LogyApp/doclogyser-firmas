@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compromisos SST — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    .header-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid #8e44ad;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .88rem; color: #64748b; margin-top: 4px; }
+    .badge-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; font-weight: 600;
+    }
+    .badge-user { background: #f3e8ff; border: 1px solid #d8b4fe; color: #6b21a8; }
+    .badge-total { background: #e2e8f0; border: 1px solid #cbd5e1; color: #475569; }
+
+    .btn {
+      padding: 10px 20px; font-size: .92rem; font-weight: bold;
+      border-radius: 8px; border: none; cursor: pointer; transition: all .2s;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-crear {
+      background: #8e44ad; color: #fff;
+      box-shadow: 0 4px 6px -1px rgba(142, 68, 173, 0.2);
+    }
+    .btn-crear:hover { background: #7d3c98; }
+    .btn-primary { background: #1e293b; color: #fff; }
+    .btn-primary:hover { background: #0f172a; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-small { padding: 6px 12px; font-size: .8rem; border-radius: 6px; }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid #8e44ad;
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: #8e44ad; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #f3e8ff;
+    }
+
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    
+    input[type="text"], input[type="date"], select {
+      width: 100%; padding: 8px 12px;
+      border: 1.5px solid #cbd5e1; border-radius: 6px;
+      font-size: .9rem; color: #334155; background: #ffffff;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: #8e44ad; box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.1);
+    }
+
+    .view-container { display: flex; gap: 20px; flex-direction: column; }
+    .view-container.detail-active {
+      display: grid; grid-template-columns: 1.7fr 1fr;
+    }
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+    }
+
+    .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .92rem; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
+    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    tr:hover td { background: #f8fafc; cursor: pointer; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700;
+    }
+    .badge-rojo { background: #fee2e2; color: #991b1b; }      /* No signatures */
+    .badge-amarillo { background: #fef3c7; color: #92400e; }  /* Worker signed */
+    .badge-azul { background: #dbeafe; color: #1e40af; }      /* Analyst signed */
+    .badge-verde { background: #d1fae5; color: #065f46; }     /* Completed */
+
+    .detail-card {
+      background: #ffffff; border-radius: 12px; border-left: 4px solid #10b981;
+      padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+      position: sticky; top: 20px; display: none;
+    }
+    .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+    .detail-info-box p strong { color: #475569; min-width: 130px; display: inline-block; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #f3e8ff; border-top-color: #8e44ad;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .9rem; font-weight: 600;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <!-- Modal para que firmen como Analista SST -->
+  <div id="modal-firmar-analista" class="loading-overlay" style="display: none; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 9999;">
+    <div class="card" style="background: #fff; width: 95%; max-width: 500px; padding: 24px; border-radius: 12px; border-left: 5px solid #8e44ad; position: relative; margin: auto; text-align: center;">
+      <div class="section-title">Firma del Analista SST</div>
+      <p style="font-size: .88rem; color: #64748b; margin-bottom: 15px;">Dibuja tu firma a continuación para autorizar el Compromiso SST:</p>
+      
+      <!-- Sección firma prellenada (si existe) -->
+      <div id="modal-prefilled-section" style="display: none; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+        <p style="color: #15803d; font-weight: bold; font-size: .85rem; margin-bottom: 8px;">Tienes una firma registrada en el sistema:</p>
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; display: inline-block; padding: 4px; margin-bottom: 10px;">
+          <img id="modal-prefilled-img" src="" style="max-height: 70px; display: block;" alt="Firma registrada">
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: center;">
+          <button class="btn btn-success btn-small" id="btn-usar-prefilled-modal" style="width: auto;">Usar firma registrada</button>
+          <button class="btn btn-secondary btn-small" id="btn-dibujar-nueva-modal" style="width: auto;">Dibujar otra firma...</button>
+        </div>
+      </div>
+
+      <!-- Sección dibujar firma (lienzo canvas) -->
+      <div id="modal-canvas-section">
+        <div style="border: 2px dashed #cbd5e1; border-radius: 8px; background: #fafafa; margin-bottom: 15px; position: relative; overflow: hidden; height: 180px;">
+          <canvas id="canvas-firma" width="450" height="180" style="cursor: crosshair; display: block; width: 100%; height: 100%;"></canvas>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: center; margin-top: 20px;">
+          <button class="btn btn-secondary" id="btn-cancelar-firma">Cancelar</button>
+          <button class="btn btn-secondary" id="btn-limpiar-canvas">Limpiar</button>
+          <button class="btn btn-crear" id="btn-guardar-firma">Confirmar Firma</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Mensaje...</div>
+
+  <div class="wrapper">
+    <div class="header-card">
+      <div class="title-box">
+        <div class="page-title">Compromisos de Normas de SST</div>
+        <div class="page-sub">Panel de firmas y control de los compromisos de cumplimiento SST (SST-F-005)</div>
+        <div class="badge-row">
+          <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
+          <div class="badge badge-total" id="total-badge-count">Total: 0 registros</div>
+        </div>
+      </div>
+      <button class="btn btn-crear" id="btn-nuevo-compromiso">+ Crear Compromiso</button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card">
+      <div class="section-title">Filtros de Búsqueda</div>
+      <div class="grid-4">
+        <div class="field">
+          <label for="filtro-trabajador">Trabajador</label>
+          <input type="text" id="filtro-trabajador" placeholder="Buscar por nombre...">
+        </div>
+        <div class="field">
+          <label for="filtro-regional">Regional</label>
+          <select id="filtro-regional">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filtro-operacion">Operación</label>
+          <select id="filtro-operacion">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filtro-desde">Fecha Desde</label>
+          <input type="date" id="filtro-desde">
+        </div>
+        <div class="field">
+          <label for="filtro-hasta">Fecha Hasta</label>
+          <input type="date" id="filtro-hasta">
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px;">
+        <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
+        <button class="btn btn-primary" id="btn-filtrar">Aplicar Filtros</button>
+      </div>
+    </div>
+
+    <!-- Layout listado y detalle -->
+    <div class="view-container" id="layout-container">
+      
+      <!-- Listado Principal -->
+      <div class="card" style="border-left-color: #3b82f6;">
+        <div class="section-title">Registros del Compromiso (SST-F-005)</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha de Registro</th>
+                <th>Trabajador</th>
+                <th>Identificación</th>
+                <th>Analista SST</th>
+                <th>Estado Firmas</th>
+                <th>Documento PDF</th>
+              </tr>
+            </thead>
+            <tbody id="lista-compromisos-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #888; padding: 24px;">Cargando compromisos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Detalle Lateral -->
+      <div class="detail-card" id="vista-detalle">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+          <h3 style="color: #0f172a; font-size: 1.1rem;">Detalle del Registro</h3>
+          <button class="btn btn-secondary btn-small" id="btn-cerrar-detalle" style="padding: 4px 8px;">Cerrar</button>
+        </div>
+        
+        <div class="detail-info-box" id="detalle-info">
+          <!-- Dinámico -->
+        </div>
+
+        <div id="opciones-documento" style="margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+          <!-- Dinámico -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    window.CONFIG = __CONFIG__;
+  </script>
+
+  <script>
+    const CONFIG = window.CONFIG;
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const toast = document.getElementById('toast');
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+    function showToast(msg, type = 'success') {
+      toast.innerText = msg;
+      toast.style.background = type === 'error' ? '#ef4444' : '#334155';
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    document.getElementById('user-badge-name').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+    document.getElementById('btn-nuevo-compromiso').addEventListener('click', () => {
+      window.location.href = `/formcompromisosst?usuario=${CONFIG.usuarioId}`;
+    });
+
+    let selectedCompromisoId = null;
+
+    // Poblar Filtros
+    const rFilter = document.getElementById('filtro-regional');
+    const oFilter = document.getElementById('filtro-operacion');
+
+    CONFIG.regionalesFiltro.forEach(reg => {
+      const opt = document.createElement('option');
+      opt.value = reg; opt.innerText = reg;
+      rFilter.appendChild(opt);
+    });
+    CONFIG.operacionesFiltro.forEach(op => {
+      const opt = document.createElement('option');
+      opt.value = op; opt.innerText = op;
+      oFilter.appendChild(opt);
+    });
+    rFilter.addEventListener('change', () => {
+      oFilter.innerHTML = '<option value="">Todas</option>';
+      const reg = rFilter.value;
+      const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
+      ops.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.innerText = op;
+        oFilter.appendChild(opt);
+      });
+    });
+
+    async function cargarCompromisos() {
+      showLoading('Buscando registros...');
+      try {
+        const tr = document.getElementById('filtro-trabajador').value;
+        const desde = document.getElementById('filtro-desde').value;
+        const hasta = document.getElementById('filtro-hasta').value;
+        const reg = rFilter.value;
+        const op = oFilter.value;
+
+        let query = `?usuario=${CONFIG.usuarioId}`;
+        if (tr) query += `&trabajador=${encodeURIComponent(tr)}`;
+        if (desde) query += `&fechaDesde=${encodeURIComponent(desde)}`;
+        if (hasta) query += `&fechaHasta=${encodeURIComponent(hasta)}`;
+        if (reg) query += `&regional=${encodeURIComponent(reg)}`;
+        if (op) query += `&operacion=${encodeURIComponent(op)}`;
+
+        const r = await fetch(`/compromisosst/api/compromisos${query}`);
+        const data = await r.json();
+
+        document.getElementById('total-badge-count').innerText = `Total: ${data.length} registros`;
+
+        const tbody = document.getElementById('lista-compromisos-body');
+        tbody.innerHTML = '';
+
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888; padding: 24px;">No se encontraron registros</td></tr>';
+          return;
+        }
+
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          row.dataset.id = item.idcsst;
+          
+          const fechaFmt = item.fecha_registro ? item.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '';
+          
+          let pdfLink = '—';
+          if (item.url_doc) {
+            pdfLink = `<a href="${item.url_doc}" target="_blank" style="color: #10b981; font-weight: bold; text-decoration: none;">📄 PDF</a>`;
+          }
+
+          let badgeFirma = '';
+          const tF = !!item.firma_trabajador;
+          const aF = !!item.firma_analista;
+          const lF = !!item.firma_lidersst;
+
+          if (tF && aF && lF) {
+            badgeFirma = `<span class="status-badge badge-verde">✓ Verde</span>`;
+          } else if (tF && aF && !lF) {
+            badgeFirma = `<span class="status-badge badge-azul">✓ Azul</span>`;
+          } else if (tF && !aF) {
+            badgeFirma = `<span class="status-badge badge-amarillo">✓ Amarillo</span>`;
+          } else {
+            badgeFirma = `<span class="status-badge badge-rojo">Rojo</span>`;
+          }
+
+          row.innerHTML = `
+            <td>${fechaFmt}</td>
+            <td><strong>${item.nombre_trabajador}</strong></td>
+            <td>${item.identificaciontrabajador}</td>
+            <td>${item.nombre_analista || '—'}</td>
+            <td>${badgeFirma}</td>
+            <td onclick="event.stopPropagation()">${pdfLink}</td>
+          `;
+
+          row.addEventListener('click', () => {
+            abrirDetalle(item.idcsst);
+          });
+
+          tbody.appendChild(row);
+        });
+
+      } catch (e) {
+        console.error(e);
+        showToast('Error al cargar listado', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    document.getElementById('btn-filtrar').addEventListener('click', cargarCompromisos);
+    document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+      document.getElementById('filtro-trabajador').value = '';
+      document.getElementById('filtro-desde').value = '';
+      document.getElementById('filtro-hasta').value = '';
+      rFilter.value = '';
+      oFilter.value = '';
+      rFilter.dispatchEvent(new Event('change'));
+      cargarCompromisos();
+    });
+
+    cargarCompromisos();
+
+    // Detalle
+    const layoutContainer = document.getElementById('layout-container');
+    const vistaDetalle = document.getElementById('vista-detalle');
+
+    function abrirDetalle(id) {
+      selectedCompromisoId = id;
+      layoutContainer.classList.add('detail-active');
+      vistaDetalle.style.display = 'block';
+      cargarDetalle();
+    }
+
+    document.getElementById('btn-cerrar-detalle').addEventListener('click', () => {
+      selectedCompromisoId = null;
+      layoutContainer.classList.remove('detail-active');
+      vistaDetalle.style.display = 'none';
+    });
+
+    let tieneFirmaGcsDetalle = null;
+
+    async function cargarDetalle() {
+      showLoading('Cargando detalle...');
+      try {
+        const r = await fetch(`/compromisosst/api/compromiso/${selectedCompromisoId}?usuario=${CONFIG.usuarioId}`);
+        const data = await r.json();
+        tieneFirmaGcsDetalle = data.firma_usuario_base64;
+
+        const fechaFmt = data.fecha_registro ? data.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '';
+        
+        let badgeFirma = '';
+        if (data.estado === 'VERDE') {
+          badgeFirma = `<span class="status-badge badge-verde">✓ Completado (Verde)</span>`;
+        } else if (data.estado === 'AZUL') {
+          badgeFirma = `<span class="status-badge badge-azul">Firmado Trabajador y Analista (Azul)</span>`;
+        } else if (data.estado === 'AMARILLO') {
+          badgeFirma = `<span class="status-badge badge-amarillo">Firmado Trabajador (Amarillo)</span>`;
+        } else {
+          badgeFirma = `<span class="status-badge badge-rojo">Pendiente Firma (Rojo)</span>`;
+        }
+
+        const infoBox = document.getElementById('detalle-info');
+        infoBox.innerHTML = `
+          <p><strong>Trabajador:</strong> ${data.nombre_trabajador}</p>
+          <p><strong>Identificación:</strong> ${data.identificaciontrabajador}</p>
+          <p><strong>Cargo:</strong> ${data.cargo_trabajador}</p>
+          <p><strong>Analista SST:</strong> ${data.nombre_analista} (C.C. ${data.identificacionanalista})</p>
+          <p><strong>Fecha Registro:</strong> ${fechaFmt}</p>
+          <p><strong>Estado Firmas:</strong> ${badgeFirma}</p>
+          ${data.observaciones ? `<p><strong>Observaciones:</strong> ${data.observaciones}</p>` : ''}
+          ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
+        `;
+
+        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+        const optsBox = document.getElementById('opciones-documento');
+        optsBox.innerHTML = '';
+
+        if (esCreadorOSistema) {
+          if (data.estado === 'ROJO') {
+            const urlFirmaLink = `${window.location.origin}/compromisosst/firmar-trabajador?item=${data.idcsst}&token=${data.token_trabajador}`;
+            const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Normas SST: ${urlFirmaLink}`);
+            const waUrl = `https://wa.me/?text=${msgWaText}`;
+
+            optsBox.innerHTML = `
+              <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
+              <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
+              <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
+            `;
+          } else if (data.estado === 'AMARILLO') {
+            optsBox.innerHTML = `
+              <div class="section-title" style="margin-top: 15px;">Firma del Analista</div>
+              <button class="btn btn-success" id="btn-firmar-analista" style="width: 100%;">Firmar como Analista SST</button>
+            `;
+
+            document.getElementById('btn-firmar-analista').addEventListener('click', () => {
+              abrirModalFirmaAnalista();
+            });
+          } else if (data.estado === 'AZUL') {
+            const esLiderOAdmin = ['LiderSst', 'AdmSst', 'Sistema'].includes(CONFIG.rol);
+            if (esLiderOAdmin) {
+              optsBox.innerHTML = `
+                <div class="section-title" style="margin-top: 15px;">Firma de Líder SST</div>
+                <button class="btn btn-success" id="btn-firmar-lider-dashboard" style="width: 100%;">Firmar como Líder SST</button>
+              `;
+              document.getElementById('btn-firmar-lider-dashboard').addEventListener('click', () => {
+                abrirModalFirmaLider();
+              });
+            } else {
+              optsBox.innerHTML = `
+                <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
+                <p style="font-size: .82rem; color: #64748b; line-height: 1.4; margin-bottom: 10px;">
+                  Pendiente de firma de la Líder SST (sst.nacional@logyser.com). Se ha enviado un token de firma por correo.
+                </p>
+              `;
+            }
+          }
+        }
+
+      } catch (e) {
+        console.error(e);
+        showToast('Error al cargar detalle', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function notificarCorreo() {
+      showLoading('Enviando enlace por correo...');
+      try {
+        const r = await fetch(`/compromisosst/api/compromiso/${selectedCompromisoId}/enviar-enlace`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ canal: 'email' })
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          showToast('Enlace enviado con éxito');
+        } else {
+          showToast(resp.error || 'Error al enviar correo', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al enviar correo', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Modal Canvas para Firma Analista
+    const modalFirma = document.getElementById('modal-firmar-analista');
+    const canvas = document.getElementById('canvas-firma');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    let modalMode = 'analista';
+
+    function abrirModalFirmaAnalista() {
+      modalMode = 'analista';
+      document.querySelector('#modal-firmar-analista .section-title').innerText = 'Firma del Analista SST';
+      document.querySelector('#modal-firmar-analista p').innerText = 'Dibuja tu firma a continuación para autorizar el Compromiso SST como Analista:';
+      
+      const prefilledSec = document.getElementById('modal-prefilled-section');
+      const canvasSec = document.getElementById('modal-canvas-section');
+      if (tieneFirmaGcsDetalle) {
+        document.getElementById('modal-prefilled-img').src = tieneFirmaGcsDetalle;
+        prefilledSec.style.display = 'block';
+        canvasSec.style.display = 'none';
+      } else {
+        prefilledSec.style.display = 'none';
+        canvasSec.style.display = 'block';
+      }
+      modalFirma.style.display = 'flex';
+      limpiarCanvas();
+    }
+
+    function abrirModalFirmaLider() {
+      modalMode = 'lider';
+      document.querySelector('#modal-firmar-analista .section-title').innerText = 'Firma del Líder SST';
+      document.querySelector('#modal-firmar-analista p').innerText = 'Dibuja tu firma a continuación para autorizar el Compromiso SST como Líder y generar el documento:';
+      
+      const prefilledSec = document.getElementById('modal-prefilled-section');
+      const canvasSec = document.getElementById('modal-canvas-section');
+      if (tieneFirmaGcsDetalle) {
+        document.getElementById('modal-prefilled-img').src = tieneFirmaGcsDetalle;
+        prefilledSec.style.display = 'block';
+        canvasSec.style.display = 'none';
+      } else {
+        prefilledSec.style.display = 'none';
+        canvasSec.style.display = 'block';
+      }
+      modalFirma.style.display = 'flex';
+      limpiarCanvas();
+    }
+
+    document.getElementById('btn-cancelar-firma').addEventListener('click', () => {
+      modalFirma.style.display = 'none';
+    });
+
+    function limpiarCanvas() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000000';
+    }
+
+    document.getElementById('btn-limpiar-canvas').addEventListener('click', limpiarCanvas);
+
+    // Eventos Mouse y Touch
+    canvas.addEventListener('mousedown', (e) => { drawing = true; draw(e); });
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
+    canvas.addEventListener('mouseleave', () => { drawing = false; ctx.beginPath(); });
+
+    canvas.addEventListener('touchstart', (e) => { drawing = true; drawTouch(e); });
+    canvas.addEventListener('touchmove', drawTouch);
+    canvas.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
+
+    function getMousePos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    function draw(e) {
+      if (!drawing) return;
+      const pos = getMousePos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+
+    function drawTouch(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const pos = {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY
+      };
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+
+    async function enviarFirma(imgBase64) {
+      modalFirma.style.display = 'none';
+      if (modalMode === 'analista') {
+        showLoading('Guardando firma del Analista...');
+        try {
+          const r = await fetch('/compromisosst/api/firmar-analista', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idcsst: selectedCompromisoId, firma_base64: imgBase64, usuario: CONFIG.usuarioId })
+          });
+          const resp = await r.json();
+          if (r.ok && resp.ok) {
+            showToast('Firma del Analista registrada. Enlace enviado a Líder SST.');
+            cargarDetalle();
+            cargarCompromisos();
+          } else {
+            showToast(resp.error || 'Error al guardar firma', 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          showToast('Error de red', 'error');
+        } finally {
+          hideLoading();
+        }
+      } else {
+        showLoading('Guardando firma del Líder y generando PDF...');
+        try {
+          const r = await fetch('/compromisosst/api/firmar-lider-directo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idcsst: selectedCompromisoId, firma_base64: imgBase64, usuario: CONFIG.usuarioId })
+          });
+          const resp = await r.json();
+          if (r.ok && resp.ok) {
+            showToast('Compromiso completado y PDF generado con éxito.');
+            cargarDetalle();
+            cargarCompromisos();
+          } else {
+            showToast(resp.error || 'Error al guardar firma', 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          showToast('Error de red', 'error');
+        } finally {
+          hideLoading();
+        }
+      }
+    }
+
+    document.getElementById('btn-guardar-firma').addEventListener('click', () => {
+      const imgBase64 = canvas.toDataURL('image/png');
+      enviarFirma(imgBase64);
+    });
+
+    document.getElementById('btn-usar-prefilled-modal').addEventListener('click', () => {
+      if (tieneFirmaGcsDetalle) {
+        enviarFirma(tieneFirmaGcsDetalle);
+      }
+    });
+
+    document.getElementById('btn-dibujar-nueva-modal').addEventListener('click', () => {
+      document.getElementById('modal-prefilled-section').style.display = 'none';
+      document.getElementById('modal-canvas-section').style.display = 'block';
+    });
+  </script>
+</body>
+</html>

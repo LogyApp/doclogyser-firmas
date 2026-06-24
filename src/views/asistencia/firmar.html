@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aceptar Firma de Asistencia — LOG&SER</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f4f6f9; color: #333; padding: 15px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,.08); width: 100%; max-width: 500px; padding: 24px; border-top: 5px solid #8e44ad; }
+    
+    .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #eef1ff; padding-bottom: 15px; }
+    .header img { height: 48px; margin-bottom: 8px; }
+    .title { font-size: 1.1rem; font-weight: bold; color: #1a1a2e; text-transform: uppercase; }
+    
+    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 6px; margin-bottom: 20px; font-size: .88rem; line-height: 1.5; }
+    .info-box p { margin-bottom: 8px; }
+    .info-box p:last-child { margin-bottom: 0; }
+    .info-box strong { color: #475569; }
+
+    .signature-section { margin-bottom: 20px; }
+    .section-title { font-size: .85rem; font-weight: bold; color: #1a1a2e; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1.5px dashed #ddd; padding-bottom: 4px; }
+
+    .preview-box { border: 1.5px solid #ddd; border-radius: 6px; padding: 10px; background: #fff; text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center; flex-direction: column; margin-bottom: 12px; }
+    .preview-box img { max-height: 80px; max-width: 100%; display: block; }
+    
+    /* ── Canvas styling ── */
+    .canvas-wrap { position: relative; margin-bottom: 12px; display: none; }
+    .canvas-wrap.active { display: block; }
+    canvas { border: 2px dashed #8e44ad; border-radius: 6px; background: #fff; cursor: crosshair; display: block; touch-action: none; width: 100%; height: 160px; }
+
+    /* ── Buttons ── */
+    .btn-group { display: flex; flex-direction: column; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 18px; border: none; border-radius: 6px; font-size: .9rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .15s; width: 100%; }
+    .btn-primary { background: #8e44ad; color: #fff; }
+    .btn-primary:hover { background: #763693; }
+    .btn-secondary { background: #f5f6fa; border: 1.5px solid #ddd; color: #444; }
+    .btn-secondary:hover { background: #eef1ff; }
+    .btn-success { background: #27ae60; color: #fff; }
+    .btn-success:hover { background: #1e8449; }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-danger:hover { background: #922b21; }
+
+    .success-view { display: none; text-align: center; padding: 30px 10px; }
+    .success-icon { font-size: 3rem; color: #27ae60; margin-bottom: 15px; }
+
+    /* ── Loading Spinner ── */
+    .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.8); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .2s; flex-direction: column; gap: 12px; }
+    .loading-overlay.active { opacity: 1; pointer-events: auto; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #8e44ad; border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div id="loading" class="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-weight: bold; color: #475569;">Procesando firma...</div>
+</div>
+
+<div class="card">
+  <!-- Vista éxito -->
+  <div class="success-view" id="vista-exito">
+    <div class="success-icon">✓</div>
+    <h2 style="color: #1a1a2e; margin-bottom: 10px;">¡Firma Registrada!</h2>
+    <p style="color: #555; font-size: .92rem; line-height: 1.5;">Tu firma y aceptación para el registro de participantes de esta capacitación ha sido guardada correctamente en el sistema.</p>
+    <p style="color: #888; font-size: .8rem; margin-top: 15px;">Puedes cerrar esta ventana de forma segura.</p>
+  </div>
+
+  <!-- Vista firma -->
+  <div id="vista-firma">
+    <div class="header">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="LOG&SER">
+      <div class="title">Aceptación de Firma de Asistencia</div>
+    </div>
+
+    <div class="info-box">
+      <p><strong>Capacitación:</strong> <span id="info-tema">...</span></p>
+      <p><strong>Fecha:</strong> <span id="info-fecha">...</span></p>
+      <p><strong>Lugar:</strong> <span id="info-lugar">...</span></p>
+      <p><strong>Responsable:</strong> <span id="info-responsable">...</span></p>
+      <p style="border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 8px;"><strong>Asistente:</strong> <span id="info-asistente">...</span></p>
+      <p><strong>Cargo:</strong> <span id="info-cargo">...</span></p>
+    </div>
+
+    <!-- Firma Prefirmada -->
+    <div class="signature-section" id="section-prefilled">
+      <div class="section-title">Firma Registrada en el Sistema</div>
+      <div class="preview-box" id="prefilled-box">
+        <span style="color: #888; font-size: .85rem;">Buscando firma...</span>
+      </div>
+      <div class="btn-group" id="prefilled-btns" style="display: none;">
+        <button class="btn btn-success" id="btn-aceptar-existente">Aceptar Firma del Sistema</button>
+        <button class="btn btn-secondary" id="btn-dibujar-nueva">Dibujar Nueva Firma</button>
+      </div>
+    </div>
+
+    <!-- Dibujar Nueva Firma -->
+    <div class="signature-section canvas-wrap" id="section-canvas-wrap">
+      <div class="section-title">Dibujar Nueva Firma</div>
+      <canvas id="sig-canvas" width="450" height="160"></canvas>
+      <div class="btn-group" style="flex-direction: row; margin-top: 10px;">
+        <button class="btn btn-secondary btn-small" id="btn-sig-clear" style="width: 50%;">Limpiar lienzo</button>
+        <button class="btn btn-secondary btn-small" id="btn-cancel-canvas" style="width: 50%;">Volver</button>
+      </div>
+      <div style="margin-top: 15px;">
+        <button class="btn btn-success" id="btn-guardar-canvas">Guardar y Aceptar Nueva Firma</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.CONFIG = __CONFIG_FIRMA__;
+
+  // DOM Elements
+  const infoTema = document.getElementById('info-tema');
+  const infoFecha = document.getElementById('info-fecha');
+  const infoLugar = document.getElementById('info-lugar');
+  const infoResponsable = document.getElementById('info-responsable');
+  const infoAsistente = document.getElementById('info-asistente');
+  const infoCargo = document.getElementById('info-cargo');
+
+  const prefilledBox = document.getElementById('prefilled-box');
+  const prefilledBtns = document.getElementById('prefilled-btns');
+  const sectionCanvasWrap = document.getElementById('section-canvas-wrap');
+  const sectionPrefilled = document.getElementById('section-prefilled');
+  const vistaFirma = document.getElementById('vista-firma');
+  const vistaExito = document.getElementById('vista-exito');
+  const loading = document.getElementById('loading');
+
+  // Canvas context
+  const canvas = document.getElementById('sig-canvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Cargar información
+    infoTema.innerText = CONFIG.tema;
+    infoFecha.innerText = CONFIG.fecha ? CONFIG.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+    infoLugar.innerText = CONFIG.lugar;
+    infoResponsable.innerText = CONFIG.nombre_responsable || '—';
+    infoAsistente.innerText = `${CONFIG.identificacion} - ${CONFIG.nombre_trabajador}`;
+    infoCargo.innerText = CONFIG.cargo;
+
+    // Verificar firma prefirmada
+    if (CONFIG.firmaBase64) {
+      prefilledBox.innerHTML = `<img src="${CONFIG.firmaBase64}" alt="Firma registrada">`;
+      prefilledBtns.style.display = 'flex';
+    } else {
+      prefilledBox.innerHTML = `
+        <span style="color: #c0392b; font-weight: bold; font-size: .88rem; margin-bottom: 6px;">No tienes firmas en el sistema</span>
+        <span style="color: #666; font-size: .78rem; text-align: center;">Debes dibujar una nueva firma para registrar tu asistencia.</span>
+      `;
+      // Mostrar lienzo automáticamente
+      sectionPrefilled.style.display = 'none';
+      sectionCanvasWrap.classList.add('active');
+    }
+
+    // Canvas Events (Mouse & Touch)
+    setupCanvas();
+
+    // Event Listeners
+    document.getElementById('btn-aceptar-existente').addEventListener('click', aceptarFirmaExistente);
+    document.getElementById('btn-dibujar-nueva').addEventListener('click', () => {
+      sectionPrefilled.style.display = 'none';
+      sectionCanvasWrap.classList.add('active');
+      resizeCanvas();
+    });
+    document.getElementById('btn-cancel-canvas').addEventListener('click', () => {
+      sectionCanvasWrap.classList.remove('active');
+      sectionPrefilled.style.display = 'block';
+    });
+    document.getElementById('btn-sig-clear').addEventListener('click', clearCanvas);
+    document.getElementById('btn-guardar-canvas').addEventListener('click', guardarNuevaFirma);
+  });
+
+  function showLoading(active) {
+    if (active) loading.classList.add('active');
+    else loading.classList.remove('active');
+  }
+
+  // ════════ FIRMAR EXISTENTE ════════
+  async function aceptarFirmaExistente() {
+    showLoading(true);
+    try {
+      const res = await fetch('/asistenciaycapacitaciones/api/firmar-asistente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_item_asistencia: CONFIG.id_item_asistencia,
+          aceptarExistente: true
+        })
+      });
+
+      if (res.ok) {
+        vistaFirma.style.display = 'none';
+        vistaExito.style.display = 'block';
+      } else {
+        alert('Error al aceptar firma. Intente nuevamente.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de red al conectar con el servidor.');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // ════════ CANVAS DRAWING ════════
+  function setupCanvas() {
+    ctx.strokeStyle = '#222222';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+
+    // Mouse drawing
+    canvas.addEventListener('mousedown', (e) => {
+      drawing = true;
+      ctx.beginPath();
+      ctx.moveTo(getMousePos(canvas, e).x, getMousePos(canvas, e).y);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      if (!drawing) return;
+      ctx.lineTo(getMousePos(canvas, e).x, getMousePos(canvas, e).y);
+      ctx.stroke();
+    });
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseleave', () => drawing = false);
+
+    // Touch drawing (Mobile)
+    canvas.addEventListener('touchstart', (e) => {
+      drawing = true;
+      const touch = e.touches[0];
+      ctx.beginPath();
+      ctx.moveTo(getTouchPos(canvas, touch).x, getTouchPos(canvas, touch).y);
+      e.preventDefault();
+    });
+    canvas.addEventListener('touchmove', (e) => {
+      if (!drawing) return;
+      const touch = e.touches[0];
+      ctx.lineTo(getTouchPos(canvas, touch).x, getTouchPos(canvas, touch).y);
+      ctx.stroke();
+      e.preventDefault();
+    });
+    canvas.addEventListener('touchend', () => drawing = false);
+  }
+
+  function getMousePos(canvasDom, mouseEvent) {
+    const rect = canvasDom.getBoundingClientRect();
+    return {
+      x: (mouseEvent.clientX - rect.left) * (canvasDom.width / rect.width),
+      y: (mouseEvent.clientY - rect.top) * (canvasDom.height / rect.height)
+    };
+  }
+
+  function getTouchPos(canvasDom, touch) {
+    const rect = canvasDom.getBoundingClientRect();
+    return {
+      x: (touch.clientX - rect.left) * (canvasDom.width / rect.width),
+      y: (touch.clientY - rect.top) * (canvasDom.height / rect.height)
+    };
+  }
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function resizeCanvas() {
+    // Asegurar tamaño correcto del canvas
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    ctx.strokeStyle = '#222222';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+  }
+
+  function isCanvasBlank() {
+    const blank = document.createElement('canvas');
+    blank.width = canvas.width;
+    blank.height = canvas.height;
+    return canvas.toDataURL() === blank.toDataURL();
+  }
+
+  // ════════ GUARDAR NUEVA FIRMA ════════
+  async function guardarNuevaFirma() {
+    if (isCanvasBlank()) {
+      alert('Por favor dibuja tu firma antes de guardar.');
+      return;
+    }
+
+    const dataUrl = canvas.toDataURL('image/png');
+
+    showLoading(true);
+    try {
+      const res = await fetch('/asistenciaycapacitaciones/api/firmar-asistente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_item_asistencia: CONFIG.id_item_asistencia,
+          firmaBase64: dataUrl,
+          aceptarExistente: false
+        })
+      });
+
+      if (res.ok) {
+        vistaFirma.style.display = 'none';
+        vistaExito.style.display = 'block';
+      } else {
+        alert('Error al guardar firma. Intente nuevamente.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al subir firma.');
+    } finally {
+      showLoading(false);
+    }
+  }
+</script>
+
+</body>
+</html>

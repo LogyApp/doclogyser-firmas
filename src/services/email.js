@@ -932,6 +932,279 @@ async function notificarSolicitudCambioEstado({
   await transporter.sendMail(mailOpts);
 }
 
+async function enviarEmailAsistencia({ email, trabajador, tema, fecha, lugar, urlDoc }) {
+  const asunto = `Registro de Asistencia a Capacitación: ${tema}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      ${HEADER}
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+        <h2 style="color:#1a1a2e;margin-top:0">Registro de Asistencia</h2>
+        <p style="color:#555">Hola <strong>${trabajador}</strong>,</p>
+        <p style="color:#555">Se ha registrado su asistencia a la capacitación sobre: <strong>${tema}</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:.93rem">
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Tema</td><td style="padding:8px 12px;font-weight:bold">${tema}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Fecha</td><td style="padding:8px 12px">${formatFecha(fecha)}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Lugar</td><td style="padding:8px 12px">${lugar}</td></tr>
+        </table>
+        ${urlDoc ? `
+        <div style="margin-top:24px;text-align:center">
+          <a href="${urlDoc}" target="_blank" style="background:#8e44ad;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;display:inline-block">Ver Documento de Asistencia</a>
+        </div>` : ''}
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Gestión" <${EMAIL_FROM}>`,
+    to: email,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function notificarFirmaPruebaConsumo({ email, nombreTrabajador, cliente, urlFirma, emailUsuario }) {
+  const asunto = 'Consentimiento Informado para Toma de Prueba de Toxicología — LOG&SER';
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
+          Le informamos que tiene un <strong>Consentimiento Informado para la Toma de Prueba de Toxicología</strong> (SST-F-02) pendiente de su firma digital.
+          Por favor revise los detalles y proceda con la firma.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:28px">
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#888;width:40%">Cliente asociado</td>
+            <td style="padding:10px 14px;font-weight:700;color:#1a1a2e">${cliente}</td>
+          </tr>
+        </table>
+        <div style="text-align:center;margin-bottom:28px">
+          <a href="${urlFirma}"
+             style="display:inline-block;background:#8e44ad;color:#fff;text-decoration:none;
+                    padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
+            ✍️ Firmar consentimiento ahora
+          </a>
+        </div>
+        <div style="background:#fffbea;border-left:4px solid #f0d060;padding:12px 16px;border-radius:0 4px 4px 0;font-size:.83rem;color:#7a6000;margin-bottom:24px">
+          ⚠️ Este enlace tiene una validez de <strong>48 horas</strong>.
+        </div>
+        <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
+          Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
+        </p>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: email,
+    cc: emailUsuario || undefined,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function notificarPruebaConsumoFirmada({ nombreTrabajador, identificacion, cliente, urlDoc, emailUsuario }) {
+  const asunto = `Consentimiento de Prueba de Toxicología Firmado — ${nombreTrabajador}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
+          <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso completado</span>
+        </div>
+        <h2 style="color:#1a1a2e;margin:0 0 8px">Consentimiento Firmado Exitosamente</h2>
+        <p style="color:#555;margin:0 0 20px;line-height:1.6">
+          El trabajador ha firmado el consentimiento informado para la toma de prueba de toxicología (alcohol y sustancias psicoactivas).
+          El documento final ya ha sido generado y cargado en el bucket.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.93rem;margin-bottom:24px">
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Trabajador</td><td style="padding:8px 12px;font-weight:bold">${nombreTrabajador}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Identificación</td><td style="padding:8px 12px">${identificacion}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Cliente</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${cliente}</td></tr>
+        </table>
+        <div style="text-align:center;margin-bottom:20px">
+          <a href="${urlDoc}" target="_blank"
+             style="display:inline-block;background:#8e44ad;color:#fff;text-decoration:none;
+                    padding:12px 32px;border-radius:7px;font-size:.95rem;font-weight:700">
+            📄 Ver consentimiento firmado
+          </a>
+        </div>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  const ccList = ['admin@logyser.com', 'juridica@logyser.com', 'directorrh@logyser.com'];
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: emailUsuario,
+    cc: ccList.join(', '),
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function enviarCorreoFirmaTrabajadorSST({ email, nombreTrabajador, urlFirma, emailUsuario }) {
+  const asunto = 'Compromiso de Cumplimiento de las Normas de SST — LOG&SER';
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
+          Le informamos que tiene un <strong>Compromiso de Cumplimiento de las Normas de Seguridad y Salud en el Trabajo</strong> (SST-F-005) pendiente de su firma digital.
+          Por favor revise los detalles del documento y proceda con su firma.
+        </p>
+        <div style="text-align:center;margin-bottom:28px">
+          <a href="${urlFirma}"
+             style="display:inline-block;background:#8e44ad;color:#fff;text-decoration:none;
+                    padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
+            ✍️ Firmar compromiso ahora
+          </a>
+        </div>
+        <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
+          Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
+        </p>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: email,
+    cc: emailUsuario || undefined,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function enviarNotificacionTrabajadorFirmoSST({ emailUsuario, nombreTrabajador, identificacion }) {
+  const asunto = `Trabajador Firmó Compromiso SST — ${nombreTrabajador}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px">Firma del Trabajador Registrada</h2>
+        <p style="color:#555;margin:0 0 20px;line-height:1.6;font-size:.95rem">
+          El trabajador <strong>${nombreTrabajador}</strong> (C.C. ${identificacion}) ha firmado digitalmente el <strong>Compromiso de Cumplimiento SST (SST-F-005)</strong>.
+        </p>
+        <p style="color:#555;margin:0 0 20px;line-height:1.6;font-size:.95rem">
+          Por favor, ingrese al panel de administración de Compromisos SST para realizar su firma como Analista SST y avanzar con el flujo.
+        </p>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: emailUsuario,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function enviarCorreoFirmaLiderSST({ emailLider, nombreTrabajador, nombreAnalista, urlFirma }) {
+  const asunto = `Firma Pendiente Líder SST: Compromiso Normas SST — ${nombreTrabajador}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Estimado Líder SST,</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
+          Se ha completado la firma del <strong>Compromiso de Cumplimiento de las Normas de Seguridad y Salud en el Trabajo</strong> (SST-F-005) por parte del trabajador <strong>${nombreTrabajador}</strong> y la Analista SST <strong>${nombreAnalista}</strong>.
+        </p>
+        <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
+          Por favor, ingrese al siguiente enlace para realizar su firma digital y finalizar el documento:
+        </p>
+        <div style="text-align:center;margin-bottom:28px">
+          <a href="${urlFirma}"
+             style="display:inline-block;background:#8e44ad;color:#fff;text-decoration:none;
+                    padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
+            ✍️ Firmar como Líder SST
+          </a>
+        </div>
+        <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
+          Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
+        </p>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: emailLider,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function enviarNotificacionCompletadoSST({ emailUsuario, nombreTrabajador, identificacion, urlDoc }) {
+  const asunto = `Compromiso SST Completado y Guardado — ${nombreTrabajador}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
+          <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso completado</span>
+        </div>
+        <h2 style="color:#1a1a2e;margin:0 0 8px">Compromiso SST Completado</h2>
+        <p style="color:#555;margin:0 0 20px;line-height:1.6">
+          El <strong>Compromiso de Cumplimiento de las Normas de SST (SST-F-005)</strong> para el trabajador <strong>${nombreTrabajador}</strong> (C.C. ${identificacion}) ha sido completamente firmado por todas las partes (Trabajador, Analista y Líder SST).
+        </p>
+        <p style="color:#555;margin:0 0 20px;line-height:1.6">
+          El documento PDF final ha sido generado y guardado en la carpeta digital del empleado en el bucket.
+        </p>
+        <div style="text-align:center;margin-bottom:20px">
+          <a href="${urlDoc}" target="_blank"
+             style="display:inline-block;background:#8e44ad;color:#fff;text-decoration:none;
+                    padding:12px 32px;border-radius:7px;font-size:.95rem;font-weight:700">
+            📄 Ver compromiso completado
+          </a>
+        </div>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  const ccList = ['admin@logyser.com', 'juridica@logyser.com', 'directorrh@logyser.com'];
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: emailUsuario,
+    cc: ccList.join(', '),
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
 module.exports = {
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
@@ -946,4 +1219,11 @@ module.exports = {
   notificarDocumentoRetiroTrabajador,
   notificarDocumentosRetiroConcluidos,
   notificarSolicitudCambioEstado,
+  enviarEmailAsistencia,
+  notificarFirmaPruebaConsumo,
+  notificarPruebaConsumoFirmada,
+  enviarCorreoFirmaTrabajadorSST,
+  enviarNotificacionTrabajadorFirmoSST,
+  enviarCorreoFirmaLiderSST,
+  enviarNotificacionCompletadoSST,
 };

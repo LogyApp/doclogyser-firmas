@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consentimiento de Prueba de Consumo — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 750px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Header styling matching premium look */
+    .header-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid #8e44ad;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .85rem; color: #64748b; margin-top: 4px; }
+    .badge-user {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #f3e8ff; border: 1px solid #d8b4fe;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; color: #6b21a8; margin-top: 8px; font-weight: 600;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid #8e44ad;
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: #8e44ad; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #f3e8ff;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 580px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .field { margin-bottom: 20px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .85rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    label .req { color: #ef4444; margin-left: 2px; }
+    
+    input[type="text"], input[type="date"], select, textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #cbd5e1; border-radius: 8px;
+      font-size: .95rem; color: #334155; background: #ffffff;
+      transition: all .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #8e44ad; box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.15);
+    }
+    input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; }
+
+    textarea { height: 100px; resize: vertical; }
+
+    .btn-submit {
+      width: 100%; background: #8e44ad; color: #ffffff; border: none;
+      padding: 14px 20px; font-size: 1rem; font-weight: 700;
+      border-radius: 8px; cursor: pointer; transition: background .2s;
+      box-shadow: 0 4px 6px -1px rgba(142, 68, 173, 0.2), 0 2px 4px -2px rgba(142, 68, 173, 0.2);
+    }
+    .btn-submit:hover { background: #7d3c98; }
+
+    /* Success / Result card */
+    .success-card {
+      display: none; background: #ffffff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 30px 24px; text-align: center;
+      border-top: 5px solid #10b981;
+    }
+    .success-icon {
+      font-size: 3rem; color: #10b981; margin-bottom: 16px;
+    }
+    .success-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+    .success-text { font-size: .95rem; color: #64748b; margin-bottom: 24px; }
+    
+    .link-box {
+      background: #f8fafc; border: 1.5px dashed #cbd5e1;
+      border-radius: 8px; padding: 14px; margin-bottom: 24px;
+      word-break: break-all; font-size: .9rem; color: #1e293b;
+    }
+    
+    .btn-group-success {
+      display: flex; gap: 12px; justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-success-action {
+      padding: 10px 20px; font-size: .9rem; font-weight: bold;
+      border-radius: 6px; text-decoration: none; cursor: pointer;
+    }
+    .btn-wa { background: #25d366; color: #fff; }
+    .btn-wa:hover { background: #20ba5a; }
+    .btn-pri { background: #8e44ad; color: #fff; }
+    .btn-pri:hover { background: #7d3c98; }
+    .btn-sec { background: #e2e8f0; color: #475569; }
+    .btn-sec:hover { background: #cbd5e1; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #f3e8ff; border-top-color: #8e44ad;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card" id="form-header">
+      <div class="title-box">
+        <div class="page-title">Consentimiento de Prueba de Consumo</div>
+        <div class="page-sub">Formulario de registro y autorización para prueba de toxicología</div>
+        <div class="badge-row">
+          <div class="badge-user" id="user-badge">Cargando usuario...</div>
+        </div>
+      </div>
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="Logo LOG&SER">
+    </div>
+
+    <!-- Formulario principal -->
+    <form id="form-cpc">
+      <!-- 1. Filtros de regional y operación (Requisito previo) -->
+      <div class="card">
+        <div class="section-title">Ubicación del Trabajador</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="select-regional">Regional <span class="req">*</span></label>
+            <select id="select-regional" required>
+              <option value="">Seleccione Regional...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="select-operacion">Operación <span class="req">*</span></label>
+            <select id="select-operacion" required disabled>
+              <option value="">Seleccione Operación...</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Información del trabajador y la prueba -->
+      <div class="card">
+        <div class="section-title">Detalles del Consentimiento</div>
+        
+        <div class="field">
+          <label for="select-trabajador">Trabajador <span class="req">*</span></label>
+          <select id="select-trabajador" required disabled>
+            <option value="">Seleccione Trabajador...</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="input-cc">Identificación (C.C.)</label>
+            <input type="text" id="input-cc" readonly placeholder="Cédula del trabajador">
+          </div>
+          <div class="field">
+            <label for="input-cargo">Cargo</label>
+            <input type="text" id="input-cargo" readonly placeholder="Cargo del trabajador">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="input-ciudad">Ciudad <span class="req">*</span></label>
+            <input type="text" id="input-ciudad" required placeholder="Ej. Medellín">
+          </div>
+          <div class="field">
+            <label for="input-fecha">Fecha de la Prueba <span class="req">*</span></label>
+            <input type="date" id="input-fecha" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="select-cliente">Cliente Asociado <span class="req">*</span></label>
+          <select id="select-cliente" required>
+            <option value="">Seleccione Cliente...</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="input-obs">Observaciones <span class="opt">(Opcional)</span></label>
+          <textarea id="input-obs" placeholder="Notas o detalles adicionales..."></textarea>
+        </div>
+
+        <div class="field" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+          <input type="checkbox" id="chk-enviar-correo" style="width: auto; cursor: pointer; height: 18px; width: 18px;" checked>
+          <label for="chk-enviar-correo" style="display: inline; margin-bottom: 0; cursor: pointer; font-size: 0.92rem; color: #475569;">Enviar enlace de firma por correo electrónico al trabajador</label>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button type="button" id="btn-cancelar-form" class="btn-submit" style="flex: 1; width: auto; background: #cbd5e1; color: #334155; box-shadow: none;">Cancelar</button>
+        <button type="submit" class="btn-submit" id="btn-registrar" style="flex: 3; width: auto;">Registrar Consentimiento y Generar Enlace</button>
+      </div>
+    </form>
+
+    <!-- Éxito y enlace generado -->
+    <div class="success-card" id="success-panel">
+      <div class="success-icon">✓</div>
+      <div class="success-title">Consentimiento Registrado con Éxito</div>
+      <div class="success-text">
+        Se ha registrado la solicitud y enviado el enlace al correo del colaborador.
+        También puedes copiar el enlace y enviárselo directamente por WhatsApp:
+      </div>
+      <div class="link-box" id="link-firma">...</div>
+      <div class="btn-group-success">
+        <a id="btn-firmar-ahora" href="#" target="_blank" class="btn-success-action btn-pri" style="background: #10b981;">Firmar Ahora</a>
+        <a id="btn-whatsapp" href="#" target="_blank" class="btn-success-action btn-wa">Enviar por WhatsApp</a>
+        <button id="btn-copiar" class="btn-success-action btn-sec">Copiar Enlace</button>
+        <a id="btn-volver" href="#" class="btn-success-action btn-pri">Ir al Listado</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configuración Inicial -->
+  <script>
+    window.CONFIG = __CONFIG__;
+  </script>
+
+  <script>
+    const CONFIG = window.CONFIG;
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+
+    // Inicializar datos del usuario
+    document.getElementById('user-badge').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+    document.getElementById('input-ciudad').value = CONFIG.ciudad || '';
+    document.getElementById('input-fecha').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('btn-volver').href = `/pruebaconsumo?usuario=${CONFIG.usuarioId}`;
+
+    // Llenar Regionales
+    const regSelect = document.getElementById('select-regional');
+    const opSelect = document.getElementById('select-operacion');
+    const trabSelect = document.getElementById('select-trabajador');
+    const clienteSelect = document.getElementById('select-cliente');
+
+    CONFIG.regionalesFiltro.forEach(reg => {
+      const opt = document.createElement('option');
+      opt.value = reg;
+      opt.textContent = reg;
+      regSelect.appendChild(opt);
+    });
+
+    regSelect.addEventListener('change', function() {
+      const reg = this.value;
+      opSelect.innerHTML = '<option value="">Seleccione Operación...</option>';
+      opSelect.disabled = true;
+      trabSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
+      trabSelect.disabled = true;
+      document.getElementById('input-cc').value = '';
+      document.getElementById('input-cargo').value = '';
+
+      if (reg) {
+        const ops = CONFIG.opsPorRegional[reg] || [];
+        ops.forEach(op => {
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = op;
+          opSelect.appendChild(opt);
+        });
+        opSelect.disabled = false;
+      }
+    });
+
+    opSelect.addEventListener('change', async function() {
+      const op = this.value;
+      const reg = regSelect.value;
+      trabSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
+      trabSelect.disabled = true;
+      document.getElementById('input-cc').value = '';
+      document.getElementById('input-cargo').value = '';
+
+      if (op && reg) {
+        showLoading('Buscando trabajadores...');
+        try {
+          const r = await fetch(`/pruebaconsumo/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+          const workers = await r.json();
+          workers.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w.identificacion;
+            const nombreLimpio = w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador;
+            opt.textContent = nombreLimpio;
+            opt.dataset.nombre = nombreLimpio;
+            opt.dataset.cargo = w.Cargo;
+            trabSelect.appendChild(opt);
+          });
+          trabSelect.disabled = false;
+        } catch (e) {
+          console.error(e);
+          alert('Error al buscar trabajadores');
+        } finally {
+          hideLoading();
+        }
+      }
+    });
+
+    trabSelect.addEventListener('change', function() {
+      const opt = this.options[this.selectedIndex];
+      if (opt && opt.value) {
+        document.getElementById('input-cc').value = opt.value;
+        document.getElementById('input-cargo').value = opt.dataset.cargo || '';
+      } else {
+        document.getElementById('input-cc').value = '';
+        document.getElementById('input-cargo').value = '';
+      }
+    });
+
+    // Cargar clientes
+    async function cargarClientes() {
+      try {
+        const r = await fetch('/pruebaconsumo/api/clientes');
+        const clientes = await r.json();
+        clientes.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          clienteSelect.appendChild(opt);
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    cargarClientes();
+
+    // Enviar formulario
+    document.getElementById('btn-cancelar-form').addEventListener('click', () => {
+      window.location.href = `/pruebaconsumo?usuario=${CONFIG.usuarioId}`;
+    });
+
+    document.getElementById('form-cpc').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const opt = trabSelect.options[trabSelect.selectedIndex];
+      if (!opt || !opt.value) {
+        alert('Debe seleccionar un trabajador');
+        return;
+      }
+
+      const payload = {
+        fecha: document.getElementById('input-fecha').value,
+        identificacion: opt.value,
+        nombre_trabajador: opt.dataset.nombre,
+        cargo: opt.dataset.cargo,
+        ciudad: document.getElementById('input-ciudad').value,
+        cliente: clienteSelect.value,
+        observaciones: document.getElementById('input-obs').value,
+        usuario: CONFIG.usuarioId,
+        enviar_correo: document.getElementById('chk-enviar-correo').checked
+      };
+
+      showLoading('Registrando consentimiento...');
+      try {
+        const r = await fetch('/pruebaconsumo/api/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          // Ocultar formulario, mostrar éxito
+          document.getElementById('form-cpc').style.display = 'none';
+          document.getElementById('form-header').style.display = 'none';
+          
+          document.getElementById('link-firma').innerText = resp.urlFirma;
+          
+          // Configurar botón Firmar Ahora
+          document.getElementById('btn-firmar-ahora').href = resp.urlFirma;
+
+          // Configurar WhatsApp
+          const celNum = ''; // El celular se puede rellenar o se asocia en WhatsApp si hay datos
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Consentimiento Informado de Prueba de Toxicología: ${resp.urlFirma}`);
+          document.getElementById('btn-whatsapp').href = `https://wa.me/?text=${msgWaText}`;
+          
+          // Botón copiar
+          document.getElementById('btn-copiar').addEventListener('click', function() {
+            navigator.clipboard.writeText(resp.urlFirma);
+            alert('Enlace copiado al portapapeles');
+          });
+
+          document.getElementById('success-panel').style.display = 'block';
+        } else {
+          alert(resp.error || 'Error al registrar consentimiento');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Error de red');
+      } finally {
+        hideLoading();
+      }
+    });
+  </script>
+</body>
+</html>

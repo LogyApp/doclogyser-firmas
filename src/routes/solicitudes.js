@@ -11,8 +11,9 @@ const HTML_PATH = path.join(__dirname, '../views/solicitudes/index.html');
 
 const ROLES_SIN_FILTRO = [
   'AdmSst', 'Archivo', 'Calidad', 'Contabilidad', 'Contratación', 'Control',
-  'Cuentas', 'Facturación', 'Generalista', 'Juridica', 'Nomina', 'LiderSst',
-  'Selección', 'Selección Centro', 'Sistema',
+  'Cuentas', 'Facturación', 'Generalista', 'Juridica', 'Jurídica', 'Nomina', 'Nómina', 'LiderSst',
+  'Selección', 'Selección Centro', 'Sistema', 'Administración', 'Administrador',
+  'Dirección Hseq', 'Dirección Operaciones', 'Dirección RRHH', 'Gestor Nómina'
 ];
 const ROLES_REGIONAL = ['AuxiliarR', 'CoordinadorR'];
 const ROLES_DISPOSITIVO = ['Auxiliar', 'Coordinador', 'AuxSst'];
