@@ -121,16 +121,23 @@ async function moveFileCross(srcBucketName, srcPath, destBucketName, destPath) {
   console.log(`[GCS] Archivo movido: gs://${srcBucketName}/${srcPath} → gs://${destBucketName}/${destPath}`);
 }
 
-async function moveToErrors(bucketName, fileName) {
+async function routeToError(bucketName, fileName, errorType, details = {}) {
   if (fileName.startsWith('Errores/')) {
     console.log(`[Skip] El archivo ya está en Errores/: gs://${bucketName}/${fileName}`);
     return;
   }
 
-  // Aseguramos que el nombre en Errores/ no arrastre carpetas previas si las hubiera
-  const destPath = `Errores/${path.basename(fileName)}`;
+  const base = path.basename(fileName);
+  let destPath = `Errores/${base}`;
+
+  if (errorType === 'no_identificacion' && details.prefijo) {
+    destPath = `Errores/${details.prefijo}/${base}`;
+  } else if (errorType === 'no_doc' && details.identificacion) {
+    destPath = `Errores/Identificacion/${details.identificacion}/${base}`;
+  }
+
   await moveFileCross(bucketName, fileName, bucketName, destPath);
-  console.log(`[GCS] Archivo movido a la ruta de errores: gs://${bucketName}/${destPath}`);
+  console.log(`[GCS] Archivo enrutado a errores (${errorType}): gs://${bucketName}/${destPath}`);
 }
 
 // ─── Base de datos ────────────────────────────────────────────────────────────
@@ -138,9 +145,6 @@ async function moveToErrors(bucketName, fileName) {
 /**
  * Calcula qué porcentaje de las palabras de `candidate` (registro en BD)
  * aparecen en `extracted` (texto extraído por Document AI).
- * Ejemplo: candidate="Manipulación de alimentos", extracted="MANIPULACIÓN HIGIÉNICA DE ALIMENTOS"
- * → palabras significativas de candidate: ["manipulacion", "alimentos"] (excluye stopwords)
- * → ambas aparecen en extracted → score 1.0
  */
 const STOPWORDS = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'en', 'y', 'a', 'al', 'por', 'con', 'para']);
 
@@ -153,7 +157,7 @@ function matchScore(candidate, extracted) {
 }
 
 async function getPrefijo(pool, docTitle) {
-  // 1. Intento exacto (acento/case insensitive)
+  // 1. Intento exacto
   const [exactRows] = await pool.execute(
     `SELECT \`Id\`, \`Prefijo\`, \`Documento\`
      FROM \`Config_Doc_Trabajador\`
@@ -166,7 +170,7 @@ async function getPrefijo(pool, docTitle) {
     return { idConfig: exactRows[0].Id, prefijo: exactRows[0].Prefijo };
   }
 
-  // 2. Coincidencia por palabras clave (fuzzy): carga todos los registros y puntúa
+  // 2. Coincidencia por palabras clave (fuzzy)
   const [allRows] = await pool.execute(`SELECT \`Id\`, \`Prefijo\`, \`Documento\` FROM \`Config_Doc_Trabajador\``);
   const THRESHOLD = 0.6;
   let best = null;
@@ -190,11 +194,11 @@ async function getPrefijo(pool, docTitle) {
 }
 
 async function getVinculacion(pool, identificacion) {
-  // Nota el uso de backticks y los nombres exactos de tu tabla
   const [rows] = await pool.execute(
     `SELECT \`Id Vinculación\` AS IdVinculacion, Regional, \`Operación\` AS Operacion, Estado, \`Fecha de Ingreso\` AS Fecha_Ingreso
      FROM \`Maestro_Vinculación\`
      WHERE \`Identificación\` = ?
+     ORDER BY \`Fecha de Ingreso\` DESC
      LIMIT 1`,
     [identificacion]
   );
@@ -211,7 +215,6 @@ async function insertarDocTrabajador(pool, {
 }) {
   const { Regional, Operacion, Estado, Fecha_Ingreso } = vinculacion;
 
-  // Insertar respetando las columnas exactas solicitadas
   await pool.execute(
     `INSERT INTO Maestro_docTrabajador
        (id, \`Validación\`, Regional, \`Operación\`, \`Identificación\`, Estado, Fecha_Ingreso,
@@ -221,6 +224,16 @@ async function insertarDocTrabajador(pool, {
   );
 
   console.log(`[DB] Registro insertado — id: ${id}`);
+}
+
+function formatTimestampColombia() {
+  const date = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const yy = String(date.getFullYear()).slice(-2);
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${yy}${mm}${dd}${hh}${ss}`;
 }
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -242,13 +255,11 @@ exports.classifyDocument = async (cloudEvent) => {
     return;
   }
 
-  // 1. Cambio de Bucket de Entrada: Forzar procesamiento solo de 'document_inbox'
   if (bucket !== 'document_inbox') {
     console.log(`[Skip] Bucket ignorado: ${bucket}. Solo se procesa 'document_inbox'.`);
     return;
   }
 
-  // 2. Soporte Multiformato
   const ext = path.extname(fileName).toLowerCase();
   const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.bmp'];
 
@@ -263,12 +274,11 @@ exports.classifyDocument = async (cloudEvent) => {
     const mimeType = getMimeType(ext);
     let document;
     
-    // 3. Robustez: Capturar error específico de DocAI o de archivos corruptos sin matar la CF
     try {
       document = await extractFieldsFromDocument(bucket, fileName, mimeType);
     } catch (docAiErr) {
       console.error(`[Error] Fallo en procesamiento de Document AI (archivo posiblemente corrupto o formato inválido):`, docAiErr.message);
-      await moveToErrors(bucket, fileName);
+      await routeToError(bucket, fileName, 'general');
       return;
     }
 
@@ -279,65 +289,69 @@ exports.classifyDocument = async (cloudEvent) => {
         ?.mentionText
         ?.trim() ?? null;
 
-    // 4. Arquitectura de Mapeo y Clasificación: Extraer "identificacion" y "doc"
-    const identificacion = findEntity('identificacion');
-    const docTitle = findEntity('doc'); // Cambio: ahora busca la entidad 'doc'
+    let identificacion = findEntity('identificacion');
+    if (identificacion) {
+      identificacion = identificacion.replace(/[\.\s,]/g, '').trim();
+    }
+    const docTitle = findEntity('doc');
 
     console.log(`[DocAI] Campos extraídos — identificacion: "${identificacion}", doc: "${docTitle}"`);
 
-    // Validar si es clasificable por entidades
-    if (!identificacion || !docTitle) {
-      console.error('[Error] No se extrajeron los campos requeridos (identificacion y doc). Moviendo a Errores/');
-      await moveToErrors(bucket, fileName);
-      return;
-    }
-
     const pool = getPool();
-    // 4.1. Normalización y búsqueda de Prefijo en BD (la normalización ocurre dentro de getPrefijo vía 'normalize')
-    const configDoc = await getPrefijo(pool, docTitle);
+    const hasDoc = !!docTitle;
+    const hasId = !!identificacion;
 
-    // Validar si es clasificable por prefijo existente
-    if (!configDoc) {
-      console.error(`[Error] Sin coincidencia en Config_Doc_Trabajador para doc: "${docTitle}". Moviendo a Errores/`);
-      await moveToErrors(bucket, fileName);
-      return;
+    if (hasDoc && hasId) {
+      const configDoc = await getPrefijo(pool, docTitle);
+      const vinculacion = await getVinculacion(pool, identificacion);
+
+      if (configDoc && vinculacion) {
+        // success!
+        const { idConfig, prefijo } = configDoc;
+        const timestamp = formatTimestampColombia();
+        const destBucket = 'talenthub_central';
+        const destPath = `${identificacion}/${identificacion}.${prefijo}.${timestamp}${ext}`;
+        
+        await moveFileCross(bucket, fileName, destBucket, destPath);
+
+        const docId = uuidv4();
+        await insertarDocTrabajador(pool, {
+          id: docId,
+          identificacion,
+          idConfig,
+          prefijo,
+          vinculacion,
+          rutaArchivo: `gs://${destBucket}/${destPath}`
+        });
+
+        console.log(`[Done] Clasificación exitosa registrada: gs://${destBucket}/${destPath}`);
+      } else if (configDoc && !vinculacion) {
+        // Doc recognized but ID not in DB -> Error 1
+        console.error(`[Error] Identificacion "${identificacion}" no encontrada en Maestro_Vinculación. Enrutando.`);
+        await routeToError(bucket, fileName, 'no_identificacion', { prefijo: configDoc.Prefijo });
+      } else if (!configDoc && vinculacion) {
+        // ID recognized but Doc not in DB -> Error 2
+        console.error(`[Error] Doc "${docTitle}" no mapea a prefijo en Config_Doc_Trabajador. Enrutando.`);
+        await routeToError(bucket, fileName, 'no_doc', { identificacion });
+      } else {
+        // Neither matched in DB -> Error General
+        console.error(`[Error] Ni doc ni identificacion encontrados en base de datos. Enrutando.`);
+        await routeToError(bucket, fileName, 'general');
+      }
+    } else if (hasDoc && !hasId) {
+      // Doc recognized but ID missing -> Error 1
+      const configDoc = await getPrefijo(pool, docTitle);
+      const prefijo = configDoc ? configDoc.Prefijo : 'UNK';
+      await routeToError(bucket, fileName, 'no_identificacion', { prefijo });
+    } else if (!hasDoc && hasId) {
+      // ID recognized but Doc missing -> Error 2
+      await routeToError(bucket, fileName, 'no_doc', { identificacion });
+    } else {
+      // Neither recognized -> Error General
+      await routeToError(bucket, fileName, 'general');
     }
-
-    const { idConfig, prefijo } = configDoc;
-    console.log(`[Config] Config encontrada: Id=${idConfig}, Prefijo="${prefijo}"`);
-
-    // Extraer datos adicionales de BD antes de mover el archivo (para obtener el Id Vinculación)
-    const vinculacion = await getVinculacion(pool, identificacion);
-
-    if (!vinculacion) {
-      console.error(`[Error] Identificacion "${identificacion}" no encontrada en Maestro_Vinculación. Moviendo a Errores/`);
-      await moveToErrors(bucket, fileName);
-      return;
-    }
-
-    const idVinculacion = vinculacion.IdVinculacion;
-    
-    // 5. Organización Final: Mover hacia talenthub_central
-    // gs://talenthub_central/[identificacion]/[identificacion].[Prefijo].[IdVinculación]
-    const destBucket = 'talenthub_central';
-    const destPath = `${identificacion}/${identificacion}.${prefijo}.${idVinculacion}${ext}`;
-    
-    await moveFileCross(bucket, fileName, destBucket, destPath);
-
-    // Insertar el registro final
-    const docId = uuidv4();
-    await insertarDocTrabajador(pool, {
-      id: docId,
-      identificacion,
-      idConfig,
-      prefijo,
-      vinculacion,
-      rutaArchivo: `gs://${destBucket}/${destPath}`
-    });
-
-    console.log(`[Done] Procesamiento completo, registrado exitosamente: gs://${destBucket}/${destPath}`);
   } catch (err) {
     console.error('[Fatal] Error inesperado en la base de datos o lógica principal:', err);
-    throw err; // Solo lanzamos error fatal si falla la BD u otro componente crítico para permitir reintentos del evento
+    throw err;
   }
 };

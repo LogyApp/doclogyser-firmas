@@ -19,6 +19,7 @@ const participacionRoutes            = require('./src/routes/participacion');
 const pruebaconsumoRoutes            = require('./src/routes/pruebaconsumo');
 const compromisosstRoutes            = require('./src/routes/compromisosst');
 const evaluacionsstRoutes            = require('./src/routes/evaluacionsst');
+const documentClassifierRoutes       = require('./src/routes/documentClassifier');
 
 const app = express();
 
@@ -48,6 +49,8 @@ app.use('/compromisosst', compromisosstRoutes);
 app.use('/formcompromisosst', compromisosstRoutes);
 app.use('/evaluacionsst', evaluacionsstRoutes);
 app.use('/formevaluacionsst', evaluacionsstRoutes);
+app.use('/document-classifier', documentClassifierRoutes);
+
 
 if (process.env.NODE_ENV !== 'production') {
   const devRoutes = require('./src/routes/dev');

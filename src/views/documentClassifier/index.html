@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pruebas de Clasificación de Documentos (Document AI) — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    :root {
+      --primary: #0f172a;
+      --primary-hover: #1e293b;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --success: #10b981;
+      --success-hover: #059669;
+      --error: #ef4444;
+      --error-hover: #dc2626;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #334155;
+      --text-light: #64748b;
+      --border: #e2e8f0;
+      --purple: #8e44ad;
+      --purple-hover: #7d3c98;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px 16px 80px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      padding: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid var(--purple);
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+    .page-sub { font-size: 0.88rem; color: var(--text-light); margin-top: 4px; }
+
+    /* Grid layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 900px) {
+      .grid {
+        grid-template-columns: 1.2fr 1.8fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      padding: 24px;
+      margin-bottom: 24px;
+      border-left: 4px solid var(--purple);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Upload Area */
+    .dropzone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      position: relative;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--purple);
+      background: #f5f3ff;
+    }
+    .dropzone-icon {
+      font-size: 40px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+    .dropzone-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .dropzone-sub {
+      font-size: 0.8rem;
+      color: var(--text-light);
+      margin-top: 6px;
+    }
+    .file-input { display: none; }
+
+    /* Processing Overlay */
+    .loader {
+      display: none;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border-left-color: var(--purple);
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Results */
+    .result-box {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .result-success {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+    .result-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+    .result-box h4 {
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+    .result-details {
+      margin-top: 8px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      background: rgba(0, 0, 0, 0.03);
+      padding: 8px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 16px;
+      gap: 8px;
+    }
+    .tab-btn {
+      padding: 10px 16px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-light);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      bottom: -2px;
+    }
+    .tab-btn:hover {
+      color: var(--purple);
+    }
+    .tab-btn.active {
+      color: var(--purple);
+      border-bottom-color: var(--purple);
+    }
+    .tab-count {
+      background: #e2e8f0;
+      color: var(--text);
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      margin-left: 6px;
+    }
+    .tab-btn.active .tab-count {
+      background: var(--purple);
+      color: #fff;
+    }
+
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Table */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+    th {
+      background: #f1f5f9;
+      color: var(--primary);
+      font-weight: 600;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: #f8fafc;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-error-type {
+      background: #fee2e2;
+      color: #ef4444;
+      border: 1px solid #fca5a5;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--purple);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--purple-hover);
+    }
+    .btn-danger {
+      background: var(--error);
+      color: #fff;
+    }
+    .btn-danger:hover {
+      background: var(--error-hover);
+    }
+    .btn-secondary {
+      background: #e2e8f0;
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+    .btn-xs {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 4px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-light);
+    }
+    .empty-state-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+      color: #cbd5e1;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      width: 100%;
+      max-width: 500px;
+      overflow: hidden;
+      animation: modalEnter 0.2s ease-out;
+    }
+    @keyframes modalEnter {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 16px 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-close {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.8);
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .modal-body {
+      padding: 20px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: #fff;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.15);
+    }
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: #f8fafc;
+    }
+
+    .worker-search-info {
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+    .worker-found { color: var(--success); }
+    .worker-not-found { color: var(--error); }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="header-card">
+      <div class="title-box">
+        <h1 class="page-title">Clasificador de Documentos (Document AI)</h1>
+        <p class="page-sub">Panel de Pruebas y Control de Errores Corporativos</p>
+      </div>
+      <img src="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png" alt="LOG&SER Logo">
+    </header>
+
+    <div class="grid">
+      <!-- Left Column: Upload & Test -->
+      <section>
+        <div class="card">
+          <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Subir Documento de Prueba
+          </h2>
+          
+          <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">📥</div>
+            <div class="dropzone-text">Arrastra tu archivo aquí o haz clic para buscar</div>
+            <div class="dropzone-sub">Formatos soportados: PDF, JPG, PNG, TIFF (Máx. 10MB)</div>
+            <input type="file" id="fileInput" class="file-input" accept=".pdf,.jpg,.jpeg,.png,.tiff,.bmp">
+          </div>
+
+          <!-- Loading state -->
+          <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p style="font-weight: 600;">Procesando con Document AI...</p>
+            <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 4px;">Esto puede tardar unos segundos</p>
+          </div>
+
+          <!-- Result box -->
+          <div class="result-box" id="resultBox"></div>
+        </div>
+
+        <!-- Preview Card -->
+        <div class="card" id="previewCard" style="display: none; border-left-color: var(--accent);">
+          <h2 class="card-title" style="color: var(--primary);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            Vista Previa del Documento
+          </h2>
+          <div id="previewContainer" style="width: 100%; min-height: 400px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;">
+            <!-- Document preview (img or iframe) -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Error Control Panel -->
+      <section>
+        <div class="card" style="border-left-color: var(--error);">
+          <h2 class="card-title" style="color: var(--primary);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+            Control de Errores de Enrutamiento
+          </h2>
+
+          <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('tab-no-id')">
+              Identificación Ilegible <span class="tab-count" id="count-no-id">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('tab-no-doc')">
+              Doc No Reconocido <span class="tab-count" id="count-no-doc">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('tab-general')">
+              Otros Errores <span class="tab-count" id="count-general">0</span>
+            </button>
+          </div>
+
+          <!-- Tab Content: No ID -->
+          <div class="tab-content active" id="tab-no-id">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Archivo</th>
+                    <th>Prefijo</th>
+                    <th>Fecha</th>
+                    <th style="text-align: right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="list-no-id">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab Content: No Doc -->
+          <div class="tab-content" id="tab-no-doc">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Archivo</th>
+                    <th>Identificación</th>
+                    <th>Fecha</th>
+                    <th style="text-align: right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="list-no-doc">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab Content: General -->
+          <div class="tab-content" id="tab-general">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Archivo</th>
+                    <th>Tamaño</th>
+                    <th>Fecha</th>
+                    <th style="text-align: right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="list-general">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Correction Modal -->
+  <div class="modal-overlay" id="correctionModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span>Corregir Enrutamiento y Datos</span>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="correctionForm" onsubmit="submitCorrection(event)">
+          <input type="hidden" id="modalFilePath">
+          
+          <div class="form-group">
+            <label for="modalWorkerId">Número de Identificación</label>
+            <input type="number" id="modalWorkerId" class="form-control" placeholder="Ej: 1005231258" required oninput="validateWorker()">
+            <div class="worker-search-info" id="workerSearchInfo"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="modalDocPrefix">Tipo de Documento (Prefijo)</label>
+            <select id="modalDocPrefix" class="form-control" required>
+              <option value="" disabled selected>Seleccione un tipo de documento...</option>
+              <!-- Dynamic options -->
+            </select>
+          </div>
+
+          <p style="font-size: 0.78rem; color: var(--text-light); border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px;">
+            ⚠️ <strong>Nota:</strong> Al guardar, el archivo será reubicado a su ruta final en <code>talenthub_central</code>, se registrará en la base de datos y se guardará la corrección para entrenamiento de Document AI.
+          </p>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" id="btnSaveCorrection" onclick="document.getElementById('correctionForm').requestSubmit()">Guardar Corrección</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Constants
+    const BASE_API = '/document-classifier/api';
+
+    // Global variables
+    let documentTypes = [];
+    let currentErrors = [];
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', async () => {
+      setupDropzone();
+      await fetchDocumentTypes();
+      await fetchErrors();
+    });
+
+    // Setup drag & drop
+    function setupDropzone() {
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('fileInput');
+
+      dropzone.addEventListener('click', () => fileInput.click());
+      
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+          processFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+          processFile(fileInput.files[0]);
+        }
+      });
+    }
+
+    // Process file to base64 and upload
+    function processFile(file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('El archivo no debe superar los 10MB.');
+        return;
+      }
+
+      // Generate local preview URL
+      const objectUrl = URL.createObjectURL(file);
+      const previewCard = document.getElementById('previewCard');
+      const previewContainer = document.getElementById('previewContainer');
+
+      previewCard.style.display = 'block';
+      if (file.type === 'application/pdf') {
+        previewContainer.innerHTML = `<iframe src="${objectUrl}" style="width:100%; height:500px; border:none; display:block;"></iframe>`;
+      } else if (file.type.startsWith('image/')) {
+        previewContainer.innerHTML = `<img src="${objectUrl}" style="max-width:100%; max-height:500px; object-fit:contain; display:block;" />`;
+      } else {
+        previewContainer.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-light)">Previsualización no disponible para este tipo de archivo</div>`;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target.result;
+        await uploadAndClassify(base64, file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Upload API Call
+    async function uploadAndClassify(base64, filename) {
+      const loader = document.getElementById('loader');
+      const resultBox = document.getElementById('resultBox');
+      const dropzone = document.getElementById('dropzone');
+
+      dropzone.style.display = 'none';
+      loader.style.display = 'block';
+      resultBox.style.display = 'none';
+
+      try {
+        const response = await fetch(`${BASE_API}/classify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64, filename })
+        });
+
+        const res = await response.json();
+        loader.style.display = 'none';
+        dropzone.style.display = 'block';
+        resultBox.style.display = 'block';
+
+        if (res.error) {
+          resultBox.className = 'result-box result-error';
+          resultBox.innerHTML = `
+            <h4>❌ Error de Servidor</h4>
+            <p>${res.error}</p>
+          `;
+          return;
+        }
+
+        if (res.status === 'success') {
+          resultBox.className = 'result-box result-success';
+          resultBox.innerHTML = `
+            <h4>✅ Clasificación Exitosa</h4>
+            <p><strong>Trabajador:</strong> ${res.trabajador || 'N/A'} (ID: ${res.identificacion})</p>
+            <p><strong>Documento:</strong> ${res.documento} (Prefijo: ${res.prefijo})</p>
+            <p style="margin-top: 8px; font-weight: 600;">Destino GCS:</p>
+            <div class="result-details">${res.destination}</div>
+          `;
+        } else {
+          resultBox.className = 'result-box result-error';
+          resultBox.innerHTML = `
+            <h4>⚠️ Clasificación Incorrecta</h4>
+            <p><strong>Estado:</strong> ${res.message}</p>
+            ${res.prefijo ? `<p><strong>Tipo Documento Reconocido:</strong> ${res.prefijo}</p>` : ''}
+            ${res.extractedDoc ? `<p><strong>Entidad Doc Extraída:</strong> "${res.extractedDoc}"</p>` : ''}
+            ${res.identificacion ? `<p><strong>Identificación Reconocida:</strong> ${res.identificacion}</p>` : ''}
+            ${res.extractedID ? `<p><strong>Entidad ID Extraída:</strong> "${res.extractedID}"</p>` : ''}
+            <p style="margin-top: 8px; font-weight: 600;">Enrutado a:</p>
+            <div class="result-details">${res.gcsPath}</div>
+          `;
+        }
+
+        // Refresh lists after processing
+        await fetchErrors();
+      } catch (err) {
+        console.error(err);
+        loader.style.display = 'none';
+        dropzone.style.display = 'block';
+        resultBox.style.display = 'block';
+        resultBox.className = 'result-box result-error';
+        resultBox.innerHTML = `
+          <h4>❌ Error de Conexión</h4>
+          <p>${err.message}</p>
+        `;
+      }
+    }
+
+    // Fetch config document types
+    async function fetchDocumentTypes() {
+      try {
+        const response = await fetch(`${BASE_API}/document-types`);
+        documentTypes = await response.json();
+        
+        const select = document.getElementById('modalDocPrefix');
+        select.innerHTML = '<option value="" disabled selected>Seleccione un tipo de documento...</option>';
+        documentTypes.forEach(t => {
+          select.innerHTML += `<option value="${t.Prefijo}">${t.Documento} (${t.Prefijo})</option>`;
+        });
+      } catch (err) {
+        console.error('Error fetching document types:', err);
+      }
+    }
+
+    // Fetch errors
+    async function fetchErrors() {
+      try {
+        const response = await fetch(`${BASE_API}/errors`);
+        currentErrors = await response.json();
+        renderErrors();
+      } catch (err) {
+        console.error('Error fetching errors:', err);
+      }
+    }
+
+    // Render errors in tables
+    function renderErrors() {
+      const listNoId = document.getElementById('list-no-id');
+      const listNoDoc = document.getElementById('list-no-doc');
+      const listGeneral = document.getElementById('list-general');
+
+      listNoId.innerHTML = '';
+      listNoDoc.innerHTML = '';
+      listGeneral.innerHTML = '';
+
+      let countNoId = 0;
+      let countNoDoc = 0;
+      let countGeneral = 0;
+
+      currentErrors.forEach(file => {
+        const dateStr = new Date(file.timeCreated).toLocaleString('es-CO');
+        const sizeStr = (file.sizeBytes / 1024).toFixed(1) + ' KB';
+
+        if (file.errorType === 'no_identificacion') {
+          countNoId++;
+          listNoId.innerHTML += `
+            <tr>
+              <td style="font-weight: 600;">${file.name}</td>
+              <td><span class="badge badge-error-type" style="background:#e0f2fe; color:#0284c7; border-color:#bae6fd;">${file.prefijo || 'UNK'}</span></td>
+              <td style="font-size:0.8rem; color:var(--text-light);">${dateStr}</td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-xs" onclick="viewErrorFile('${file.path}')">Ver</button>
+                <button class="btn btn-primary btn-xs" onclick="openCorrectModal('${file.path}', '', '${file.prefijo}')">Corregir</button>
+                <button class="btn btn-danger btn-xs" onclick="deleteFile('${file.path}')">Eliminar</button>
+              </td>
+            </tr>
+          `;
+        } else if (file.errorType === 'no_doc') {
+          countNoDoc++;
+          listNoDoc.innerHTML += `
+            <tr>
+              <td style="font-weight: 600;">${file.name}</td>
+              <td><strong>${file.identificacion || 'N/A'}</strong></td>
+              <td style="font-size:0.8rem; color:var(--text-light);">${dateStr}</td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-xs" onclick="viewErrorFile('${file.path}')">Ver</button>
+                <button class="btn btn-primary btn-xs" onclick="openCorrectModal('${file.path}', '${file.identificacion}', '')">Corregir</button>
+                <button class="btn btn-danger btn-xs" onclick="deleteFile('${file.path}')">Eliminar</button>
+              </td>
+            </tr>
+          `;
+        } else {
+          countGeneral++;
+          listGeneral.innerHTML += `
+            <tr>
+              <td style="font-weight: 600;">${file.name}</td>
+              <td>${sizeStr}</td>
+              <td style="font-size:0.8rem; color:var(--text-light);">${dateStr}</td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-xs" onclick="viewErrorFile('${file.path}')">Ver</button>
+                <button class="btn btn-primary btn-xs" onclick="openCorrectModal('${file.path}', '', '')">Corregir</button>
+                <button class="btn btn-danger btn-xs" onclick="deleteFile('${file.path}')">Eliminar</button>
+              </td>
+            </tr>
+          `;
+        }
+      });
+
+      // Update counters
+      document.getElementById('count-no-id').textContent = countNoId;
+      document.getElementById('count-no-doc').textContent = countNoDoc;
+      document.getElementById('count-general').textContent = countGeneral;
+
+      // Empty states
+      if (countNoId === 0) listNoId.innerHTML = `<tr><td colspan="4" class="empty-state"><div class="empty-state-icon">📂</div>Sin errores de identificación</td></tr>`;
+      if (countNoDoc === 0) listNoDoc.innerHTML = `<tr><td colspan="4" class="empty-state"><div class="empty-state-icon">📂</div>Sin errores de tipo de documento</td></tr>`;
+      if (countGeneral === 0) listGeneral.innerHTML = `<tr><td colspan="4" class="empty-state"><div class="empty-state-icon">📂</div>Sin otros errores generales</td></tr>`;
+    }
+
+    // Switch between tabs
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+      document.getElementById(tabId).classList.add('active');
+      
+      // Select corresponding button
+      const index = tabId === 'tab-no-id' ? 0 : tabId === 'tab-no-doc' ? 1 : 2;
+      document.querySelectorAll('.tab-btn')[index].classList.add('active');
+    }
+
+    // Delete a file
+    async function deleteFile(filePath) {
+      const name = filePath.split('/').pop();
+      if (!confirm(`¿Está seguro de que desea eliminar el archivo "${name}" de los errores en GCS?`)) return;
+
+      try {
+        const response = await fetch(`${BASE_API}/errors/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filePath })
+        });
+        const res = await response.json();
+        if (res.ok) {
+          alert('Archivo eliminado correctamente.');
+          await fetchErrors();
+        } else {
+          alert(`Error: ${res.error}`);
+        }
+      } catch (err) {
+        alert(`Error de red: ${err.message}`);
+      }
+    }
+
+    // Modal Control
+    function openCorrectModal(filePath, identificacion, prefijo) {
+      document.getElementById('modalFilePath').value = filePath;
+      document.getElementById('modalWorkerId').value = identificacion || '';
+      document.getElementById('modalDocPrefix').value = prefijo || '';
+      document.getElementById('workerSearchInfo').innerHTML = '';
+      
+      document.getElementById('correctionModal').style.display = 'flex';
+      
+      if (identificacion) {
+        validateWorker();
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('correctionModal').style.display = 'none';
+    }
+
+    // Validate identification dynamically
+    let debounceTimer;
+    function validateWorker() {
+      clearTimeout(debounceTimer);
+      const workerId = document.getElementById('modalWorkerId').value.trim();
+      const infoDiv = document.getElementById('workerSearchInfo');
+
+      if (workerId.length < 5) {
+        infoDiv.innerHTML = '';
+        return;
+      }
+
+      infoDiv.className = 'worker-search-info';
+      infoDiv.innerHTML = '<span style="color:var(--text-light)">Buscando trabajador...</span>';
+
+      debounceTimer = setTimeout(async () => {
+        try {
+          const response = await fetch(`${BASE_API}/search-worker/${workerId}`);
+          const res = await response.json();
+          if (res.found) {
+            infoDiv.className = 'worker-search-info worker-found';
+            infoDiv.innerHTML = `👤 Trabajador: ${res.worker.Trabajador} (${res.worker.Regional} - ${res.worker.Estado})`;
+            document.getElementById('btnSaveCorrection').disabled = false;
+          } else {
+            infoDiv.className = 'worker-search-info worker-not-found';
+            infoDiv.innerHTML = '❌ No encontrado en Maestro_Vinculación';
+            document.getElementById('btnSaveCorrection').disabled = true;
+          }
+        } catch (err) {
+          infoDiv.innerHTML = '';
+        }
+      }, 400);
+    }
+
+    // Submit correction
+    async function submitCorrection(e) {
+      e.preventDefault();
+
+      const filePath = document.getElementById('modalFilePath').value;
+      const identificacion = document.getElementById('modalWorkerId').value;
+      const prefijo = document.getElementById('modalDocPrefix').value;
+
+      if (!filePath || !identificacion || !prefijo) {
+        alert('Por favor complete todos los campos.');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BASE_API}/correct`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filePath, identificacion, prefijo })
+        });
+        const res = await response.json();
+        if (res.ok) {
+          alert(`Corrección guardada con éxito.\nArchivo movido a talenthub_central.`);
+          closeModal();
+          await fetchErrors();
+        } else {
+          alert(`Error: ${res.error}`);
+        }
+      } catch (err) {
+        alert(`Error de red: ${err.message}`);
+      }
+    }
+
+    // View GCS error file
+    function viewErrorFile(filePath) {
+      const previewCard = document.getElementById('previewCard');
+      const previewContainer = document.getElementById('previewContainer');
+      const viewUrl = `${BASE_API}/errors/view?filePath=${encodeURIComponent(filePath)}`;
+      
+      const ext = filePath.split('.').pop().toLowerCase();
+      previewCard.style.display = 'block';
+      
+      if (ext === 'pdf') {
+        previewContainer.innerHTML = `<iframe src="${viewUrl}" style="width:100%; height:500px; border:none; display:block;"></iframe>`;
+      } else if (['jpg', 'jpeg', 'png', 'tiff', 'bmp'].includes(ext)) {
+        previewContainer.innerHTML = `<img src="${viewUrl}" style="max-width:100%; max-height:500px; object-fit:contain; display:block;" />`;
+      } else {
+        previewContainer.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-light)">Previsualización no disponible para la extensión .${ext}</div>`;
+      }
+      
+      // Scroll to preview card
+      previewCard.scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+
+</body>
+</html>
