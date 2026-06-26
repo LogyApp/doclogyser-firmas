@@ -96,6 +96,14 @@
     }
     .btn-guardar:hover    { background: #a93226; }
     .btn-guardar:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-novedad {
+      width: 100%; background: #e67e22; color: #fff;
+      border: none; padding: 14px; border-radius: 7px;
+      font-size: 1rem; font-weight: bold; cursor: pointer;
+      transition: background .15s; margin-top: 16px;
+    }
+    .btn-novedad:hover    { background: #d35400; }
+    .btn-novedad:disabled { background: #ccc; cursor: not-allowed; }
 
     .mensaje { text-align: center; margin-top: 14px; font-size: .9rem; min-height: 20px; line-height: 1.5; }
     .mensaje.ok    { color: #27ae60; font-weight: bold; }
@@ -224,6 +232,27 @@
     <div class="mensaje" id="mensaje"></div>
   </div>
 
+  <!-- Novedades / Pendientes del área -->
+  <div class="firma-card" id="novedadCard">
+    <div class="firma-titulo">Registrar Pendiente o Novedad</div>
+    <p style="font-size:.82rem;color:#666;margin-bottom:12px;line-height:1.4">
+      Si el trabajador tiene pendientes con su área (deudas, equipos sin entregar, etc.), registre la novedad a continuación. Esto pausará el proceso de Paz y Salvo sin firmar el documento, permitiéndole firmar una vez sea solucionado.
+    </p>
+
+    <div id="novedadPreviaWrap" style="display:none;background:#fff8f8;border:1px solid #f5c2c2;border-radius:6px;padding:12px;margin-bottom:12px">
+      <p style="font-size:.78rem;font-weight:bold;color:#c0392b;margin-bottom:4px">Novedad registrada previamente:</p>
+      <p style="font-size:.88rem;color:#333;white-space:pre-wrap;margin-bottom:0" id="novedadPreviaTexto"></p>
+    </div>
+
+    <label class="campo-label" for="textareaNovedad">Descripción de la Novedad o Pendiente</label>
+    <textarea id="textareaNovedad" class="campo-texto" style="height:100px;font-family:inherit;resize:vertical;margin-bottom:12px" placeholder="Escriba aquí los detalles del pendiente..."></textarea>
+
+    <button type="button" class="btn-novedad" id="btnNovedad" onclick="registrarNovedad()">
+      ✕ Registrar Novedad (Sin Firmar)
+    </button>
+    <div class="mensaje" id="mensajeNovedad"></div>
+  </div>
+
   <!-- Éxito -->
   <div class="success-card" id="successCard">
     <div class="check-circle">✓</div>
@@ -273,6 +302,12 @@ function init() {
   if (CFG.firmaTrabajadorUrl) {
     document.getElementById('firmaTrabajadorWrap').style.display = 'block';
     document.getElementById('imgFirmaTrabajador').src = CFG.firmaTrabajadorUrl;
+  }
+
+  if (CFG.novedad) {
+    document.getElementById('novedadPreviaWrap').style.display = 'block';
+    document.getElementById('novedadPreviaTexto').textContent = CFG.novedad;
+    document.getElementById('textareaNovedad').value = CFG.novedad;
   }
 
   resizeCanvas();
@@ -446,6 +481,51 @@ async function guardarFirma() {
     msg.textContent = err.message || 'Error al guardar la firma. Intente de nuevo.';
     btn.disabled = false;
     btn.textContent = '✅ Validar y firmar Paz y Salvo';
+  }
+}
+
+async function registrarNovedad() {
+  const btn = document.getElementById('btnNovedad');
+  const msg = document.getElementById('mensajeNovedad');
+  const novedad = document.getElementById('textareaNovedad').value.trim();
+
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+  msg.className = 'mensaje';
+  msg.textContent = '';
+
+  try {
+    const res = await fetch(`${window.location.pathname}/novedad`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: CFG.token,
+        novedad: novedad
+      }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      msg.className = 'mensaje ok';
+      msg.textContent = '¡Novedad registrada exitosamente!';
+      if (data.novedad) {
+        document.getElementById('novedadPreviaWrap').style.display = 'block';
+        document.getElementById('novedadPreviaTexto').textContent = data.novedad;
+        CFG.novedad = data.novedad;
+      } else {
+        document.getElementById('novedadPreviaWrap').style.display = 'none';
+        document.getElementById('novedadPreviaTexto').textContent = '';
+        CFG.novedad = '';
+      }
+    } else {
+      throw new Error(data.error || 'Error al guardar la novedad');
+    }
+  } catch (err) {
+    msg.className = 'mensaje error';
+    msg.textContent = err.message || 'Error al registrar la novedad. Intente de nuevo.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✕ Registrar Novedad (Sin Firmar)';
   }
 }
 

@@ -650,8 +650,9 @@ router.get('/:idVinculacion', async (req, res) => {
     const vin = vinRows[0];
     const identificacion = vin['Identificación'];
 
-    const yaRetirado   = vin.Estado === 'Retirado';
+    const yaRetirado = (vin.Estado === 'Retirado') || (vin['Motivo del Retiro'] && vin['Motivo del Retiro'] !== 'SI' && vin['Motivo del Retiro'].trim() !== '');
     // Todos los roles pueden ver el formulario de registro si el trabajador no está retirado aún
+
     const puedeRegistrar = !yaRetirado;
 
     // Docs subidos en Paso 1 (TCR y ED) para mostrar estado en el resumen
@@ -724,7 +725,8 @@ router.post('/:idVinculacion', async (req, res) => {
     );
     if (!usuRows.length) return res.status(403).json({ ok: false, error: 'Usuario no autorizado' });
     const usuData = usuRows[0];
-    const esNominaOSistema = ['Nomina', 'Sistema'].includes(usuData.Rol || '');
+    const rolUsuario = usuData.Rol || '';
+    const esNominaOSistema = ['Nomina', 'Sistema'].includes(rolUsuario);
 
     const idVinculacion = decodeURIComponent(req.params.idVinculacion);
     const { fechaRetiro, motivoRetiro, tipoRenuncia, tcrBase64, edBase64, estado } = req.body;
@@ -749,7 +751,8 @@ router.post('/:idVinculacion', async (req, res) => {
     const identificacion = vin['Identificación'];
 
     // Prevenir re-registro si ya está retirado (solo para roles no-Nómina)
-    if (vin.Estado === 'Retirado' && !esNominaOSistema) {
+    const esRetirado = (vin.Estado === 'Retirado') || (vin['Motivo del Retiro'] && vin['Motivo del Retiro'] !== 'SI' && vin['Motivo del Retiro'].trim() !== '');
+    if (esRetirado && !esNominaOSistema) {
       return res.status(409).json({ ok: false, error: 'El trabajador ya figura como retirado' });
     }
 
@@ -757,22 +760,31 @@ router.post('/:idVinculacion', async (req, res) => {
     const idVin = vin['Id Vinculación'];
 
     // Actualizar vinculación y limpiar estado de generación anterior para empezar limpio
-    await pool.execute(
-      `UPDATE \`Maestro_Vinculación\`
-       SET Estado = 'Retirado',
-           \`Fecha de Retiro\` = ?,
-           \`Motivo del Retiro\` = ?,
-           \`Archivo Vinculación\` = ?,
-           \`Fecha Actualización\` = ?,
-           Usuario = ?,
-           ar_ciudad_regional      = NULL,
-           token_firma_ct          = NULL, token_firma_ct_expira   = NULL,
-           token_firma_ar          = NULL, token_firma_ar_expira   = NULL,
-           token_firma_emoe        = NULL, token_firma_emoe_expira = NULL,
-           token_firma_crs         = NULL, token_firma_crs_expira  = NULL
-       WHERE \`Id Vinculación\` = ?`,
-      [fechaRetiro, motivoRetiro, tipoRenuncia || null, ahora, usuario, idVin]
-    );
+    // EXCEPCIÓN: El Rol de Nómina no debe modificar la columna Estado
+    let query = `
+      UPDATE \`Maestro_Vinculación\`
+      SET \`Fecha de Retiro\` = ?,
+          \`Motivo del Retiro\` = ?,
+          \`Archivo Vinculación\` = ?,
+          \`Fecha Actualización\` = ?,
+          Usuario = ?,
+          ar_ciudad_regional      = NULL,
+          token_firma_ct          = NULL, token_firma_ct_expira   = NULL,
+          token_firma_ar          = NULL, token_firma_ar_expira   = NULL,
+          token_firma_emoe        = NULL, token_firma_emoe_expira = NULL,
+          token_firma_crs         = NULL, token_firma_crs_expira  = NULL
+    `;
+    const params = [fechaRetiro, motivoRetiro, tipoRenuncia || null, ahora, usuario];
+
+    if (rolUsuario !== 'Nomina') {
+      query += `, Estado = 'Retirado'`;
+    }
+
+    query += ` WHERE \`Id Vinculación\` = ?`;
+    params.push(idVin);
+
+    await pool.execute(query, params);
+
 
     notificarRetiro({
       trabajador:     vin.Trabajador,

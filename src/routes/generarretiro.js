@@ -82,7 +82,8 @@ router.get('/:idVinculacion', async (req, res) => {
     const motivoRetiro  = vin['Motivo del Retiro'] || '';
     const esMotivoFinal = MOTIVOS_SIN_DOCS.includes(motivoRetiro);
 
-    if (vin.Estado !== 'Retirado') {
+    const esRetirado = (vin.Estado === 'Retirado') || (vin['Motivo del Retiro'] && vin['Motivo del Retiro'] !== 'SI' && vin['Motivo del Retiro'].trim() !== '');
+    if (!esRetirado) {
       return res.status(400).send(paginaError('El trabajador aún no ha sido registrado como retirado.'));
     }
 

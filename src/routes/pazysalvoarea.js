@@ -150,6 +150,7 @@ router.get('/:area/:idPz', async (req, res) => {
       firmaResponsableUrl: pz.firma_responsable_url || null,
       firmaResponsableNombre: pz.firma_responsable_nombre || '',
       firmaResponsableCargo: pz.firma_responsable_cargo || '',
+      novedad: pz['novedad_' + area] || '',
       responsablesSugeridos,
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -215,6 +216,7 @@ router.post('/:area/:idPz', async (req, res) => {
       `UPDATE Maestro_pazysalvo
        SET \`firma_${area}_url\` = ?, \`firma_${area}_nombre\` = ?, \`firma_${area}_cargo\` = ?,
            \`fecha_firma_${area}\` = ?,
+           \`novedad_${area}\` = NULL,
            \`${colToken}\` = NULL, \`${colExpira}\` = NULL
        WHERE id = ?`,
       [urlFirmaArea, nombre_firmante.trim().toUpperCase(), cargo_firmante.trim().toUpperCase(), ahora, idPz]
@@ -305,6 +307,50 @@ router.post('/:area/:idPz', async (req, res) => {
     res.json({ ok: true, completado: false });
   } catch (err) {
     console.error('[pazysalvoarea POST]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /:area/:idPz/novedad ────────────────────────────────────────────────
+router.post('/:area/:idPz/novedad', async (req, res) => {
+  try {
+    const { area, idPz } = req.params;
+    const { token, novedad } = req.body;
+
+    if (!token) return res.status(401).json({ ok: false, error: 'Token no proporcionado' });
+    if (novedad === undefined || novedad === null) {
+      return res.status(400).json({ ok: false, error: 'La novedad es requerida' });
+    }
+
+    const colToken  = `token_${area}`;
+    const colExpira = `token_${area}_expira`;
+
+    const resultado = await validarTokenPZ(token, idPz, colToken, colExpira);
+    if (!resultado.valido) return res.status(401).json({ ok: false, error: 'Token inválido o expirado' });
+
+    const [rows] = await pool.execute(
+      `SELECT pz.* FROM Maestro_pazysalvo pz WHERE pz.id = ?`,
+      [idPz]
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Registro no encontrado' });
+    const pz = rows[0];
+
+    if (pz[`firma_${area}_url`]) {
+      return res.status(400).json({ ok: false, error: 'Esta área ya firmó y no puede registrar novedades' });
+    }
+
+    // Guardar la novedad
+    const novedadTexto = String(novedad).trim();
+    await pool.execute(
+      `UPDATE Maestro_pazysalvo
+       SET \`novedad_${area}\` = ?
+       WHERE id = ?`,
+      [novedadTexto || null, idPz]
+    );
+
+    res.json({ ok: true, novedad: novedadTexto || null });
+  } catch (err) {
+    console.error('[pazysalvoarea novedad POST]', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
