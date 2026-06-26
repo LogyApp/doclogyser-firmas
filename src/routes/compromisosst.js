@@ -942,4 +942,27 @@ router.post('/api/compromiso/:id/enviar-enlace', async (req, res) => {
   }
 });
 
+// ═════ API: DELETE /api/compromiso/:id ═════
+router.delete('/api/compromiso/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const acceso = await computarAccesoCSST(usuario);
+    if (!acceso || !['AdmSst', 'LiderSst', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado para eliminar registros de compromiso' });
+    }
+
+    await pool.execute('DELETE FROM Dynamic_compromisosst WHERE idcsst = ?', [id]);
+    res.json({ ok: true, idcsst: id });
+  } catch (err) {
+    console.error('[compromisosst] DELETE /api/compromiso/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

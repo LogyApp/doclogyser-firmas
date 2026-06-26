@@ -424,8 +424,11 @@
       `;
 
       // Dibujar botones de control (Enviar Correo / WhatsApp)
+      const esAutorizadoEliminar = ['AdmSst', 'LiderSst', 'Sistema'].includes(CONFIG.rol);
       const optsBox = document.getElementById('opciones-control');
       optsBox.innerHTML = '';
+
+      let optsHtml = '';
 
       if (!item.url_doc) {
         // Enlace de firma del trabajador
@@ -437,12 +440,23 @@
         if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
         const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
 
-        optsBox.innerHTML = `
+        optsHtml += `
           <div class="section-title" style="margin-top: 25px; margin-bottom: 12px; font-size: .75rem;">Acciones de Control</div>
           <button class="btn btn-primary" onclick="notificarCorreo()" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
           <a href="${waUrl}" target="_blank" class="btn btn-success" style="width: 100%;">Enviar WhatsApp</a>
         `;
       }
+
+      if (esAutorizadoEliminar) {
+        if (!optsHtml) {
+          optsHtml += `<div class="section-title" style="margin-top: 25px; margin-bottom: 12px; font-size: .75rem;">Acciones de Control</div>`;
+        }
+        optsHtml += `
+          <button class="btn" onclick="eliminarEvaluacion('${item.id_evaluacion}')" style="width: 100%; margin-top: 8px; background: #c0392b; color: #fff;">✕ Eliminar Registro</button>
+        `;
+      }
+
+      optsBox.innerHTML = optsHtml;
     }
 
     function cerrarDetalle() {
@@ -487,6 +501,26 @@
       } catch (err) {
         console.error(err);
         showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
+    async function eliminarEvaluacion(id) {
+      if (!confirm('¿Está seguro de que desea eliminar permanentemente esta evaluación?')) return;
+      showLoading('Eliminando registro...');
+      try {
+        const res = await fetch(`/evaluacionsst/api/evaluacion/${id}?usuario=${CONFIG.usuarioId}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Evaluación eliminada con éxito', 'success');
+          cerrarDetalle();
+          cargarListado();
+        } else {
+          throw new Error(data.error || 'Error al eliminar');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
       } finally {
         hideLoading();
       }

@@ -471,8 +471,11 @@
         `;
 
         const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+        const esAutorizadoEliminar = ['AdmSst', 'LiderSst', 'Sistema'].includes(CONFIG.rol);
         const optsBox = document.getElementById('opciones-documento');
         optsBox.innerHTML = '';
+
+        let optsHtml = '';
 
         if (esCreadorOSistema) {
           if (data.estado === 'ROJO') {
@@ -480,32 +483,25 @@
             const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Normas SST: ${urlFirmaLink}`);
             const waUrl = `https://wa.me/?text=${msgWaText}`;
 
-            optsBox.innerHTML = `
+            optsHtml += `
               <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
               <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
               <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
             `;
           } else if (data.estado === 'AMARILLO') {
-            optsBox.innerHTML = `
+            optsHtml += `
               <div class="section-title" style="margin-top: 15px;">Firma del Analista</div>
               <button class="btn btn-success" id="btn-firmar-analista" style="width: 100%;">Firmar como Analista SST</button>
             `;
-
-            document.getElementById('btn-firmar-analista').addEventListener('click', () => {
-              abrirModalFirmaAnalista();
-            });
           } else if (data.estado === 'AZUL') {
             const esLiderOAdmin = ['LiderSst', 'AdmSst', 'Sistema'].includes(CONFIG.rol);
             if (esLiderOAdmin) {
-              optsBox.innerHTML = `
+              optsHtml += `
                 <div class="section-title" style="margin-top: 15px;">Firma de Líder SST</div>
                 <button class="btn btn-success" id="btn-firmar-lider-dashboard" style="width: 100%;">Firmar como Líder SST</button>
               `;
-              document.getElementById('btn-firmar-lider-dashboard').addEventListener('click', () => {
-                abrirModalFirmaLider();
-              });
             } else {
-              optsBox.innerHTML = `
+              optsHtml += `
                 <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
                 <p style="font-size: .82rem; color: #64748b; line-height: 1.4; margin-bottom: 10px;">
                   Pendiente de firma de la Líder SST (sst.nacional@logyser.com). Se ha enviado un token de firma por correo.
@@ -513,6 +509,28 @@
               `;
             }
           }
+        }
+
+        if (esAutorizadoEliminar) {
+          if (!optsHtml) {
+            optsHtml += `<div class="section-title" style="margin-top: 15px;">Acciones de Control</div>`;
+          }
+          optsHtml += `
+            <button class="btn" onclick="eliminarCompromiso('${data.idcsst}')" style="width: 100%; margin-top: 8px; background: #c0392b; color: #fff;">✕ Eliminar Registro</button>
+          `;
+        }
+
+        optsBox.innerHTML = optsHtml;
+
+        if (document.getElementById('btn-firmar-analista')) {
+          document.getElementById('btn-firmar-analista').addEventListener('click', () => {
+            abrirModalFirmaAnalista();
+          });
+        }
+        if (document.getElementById('btn-firmar-lider-dashboard')) {
+          document.getElementById('btn-firmar-lider-dashboard').addEventListener('click', () => {
+            abrirModalFirmaLider();
+          });
         }
 
       } catch (e) {
@@ -710,6 +728,29 @@
         enviarFirma(tieneFirmaGcsDetalle);
       }
     });
+
+    async function eliminarCompromiso(idcsst) {
+      if (!confirm('¿Está seguro de que desea eliminar permanentemente este compromiso?')) return;
+      showLoading('Eliminando registro...');
+      try {
+        const res = await fetch(`/compromisosst/api/compromiso/${idcsst}?usuario=${CONFIG.usuarioId}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Compromiso eliminado con éxito');
+          vistaDetalle.classList.remove('active');
+          vistaListado.classList.add('active');
+          cargarCompromisos();
+        } else {
+          throw new Error(data.error || 'Error al eliminar');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
 
     document.getElementById('btn-dibujar-nueva-modal').addEventListener('click', () => {
       document.getElementById('modal-prefilled-section').style.display = 'none';

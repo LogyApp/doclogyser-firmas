@@ -626,4 +626,27 @@ router.post('/api/reenviar-firma', async (req, res) => {
   }
 });
 
+// ═════ API: DELETE /api/evaluacion/:id ═════
+router.delete('/api/evaluacion/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const acceso = await computarAccesoEVSST(usuario);
+    if (!acceso || !['AdmSst', 'LiderSst', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado para eliminar registros de evaluación' });
+    }
+
+    await pool.execute('DELETE FROM Maestro_evaluacionsst WHERE id_evaluacion = ?', [id]);
+    res.json({ ok: true, id_evaluacion: id });
+  } catch (err) {
+    console.error('[evaluacionsst] DELETE /api/evaluacion/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

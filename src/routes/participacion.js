@@ -558,13 +558,33 @@ router.put('/api/asistencia/:id', async (req, res) => {
 
 // ═════ API: DELETE /api/asistencia/:id ═════
 router.delete('/api/asistencia/:id', async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    await pool.execute('DELETE FROM Dynamic_formato_asistencia WHERE id_asistencia = ?', [id]);
+    const { usuario } = req.query;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const acceso = await computarAccesoParticipacion(usuario);
+    if (!acceso || acceso.rol !== 'Sistema') {
+      return res.status(403).json({ error: 'Solo el rol de Sistema puede eliminar registros.' });
+    }
+
+    await conn.beginTransaction();
+    await conn.execute('DELETE FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ?', [id]);
+    await conn.execute('DELETE FROM Dynamic_formato_evidencias WHERE id_asistencia = ?', [id]);
+    await conn.execute('DELETE FROM Dynamic_formato_asistencia WHERE id_asistencia = ?', [id]);
+    await conn.commit();
+
     res.json({ ok: true, id_asistencia: id });
   } catch (err) {
+    await conn.rollback();
     console.error('[participacion] DELETE /api/asistencia/:id:', err);
     res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 

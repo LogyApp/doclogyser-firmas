@@ -555,20 +555,25 @@
       const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
       
       if (esCreadorOSistema) {
+        let btnsHtml = `<div class="section-title" style="margin-top: 25px;">Acciones de Control</div>`;
         if (!data.url_doc) {
-          optsBox.innerHTML = `
-            <div class="section-title" style="margin-top: 25px;">Acciones de Control</div>
+          btnsHtml += `
             <button class="btn btn-success" onclick="generarPDF(false)" style="width: 100%; margin-bottom: 8px;">Generar PDF (Solo Firmas Listas)</button>
             <button class="btn btn-primary" onclick="notificarTodos()" style="width: 100%; margin-bottom: 8px;">Enviar Correo a Todos</button>
             <button class="btn btn-secondary" onclick="abrirFormulario(${data.id_asistencia})" style="width: 100%;">Editar Formato</button>
           `;
         } else {
-          optsBox.innerHTML = `
-            <div class="section-title" style="margin-top: 25px;">Acciones de Control</div>
+          btnsHtml += `
             <button class="btn btn-primary" disabled style="width: 100%; margin-bottom: 8px; opacity: 0.5; pointer-events: none;">Enviar Correo a Todos</button>
             <button class="btn btn-secondary" disabled style="width: 100%; opacity: 0.5; pointer-events: none;">Editar Formato</button>
           `;
         }
+        if (CONFIG.rol === 'Sistema') {
+          btnsHtml += `
+            <button class="btn" onclick="eliminarAsistencia(${data.id_asistencia})" style="width: 100%; margin-top: 8px; background: #c0392b; color: #fff;">✕ Eliminar Registro</button>
+          `;
+        }
+        optsBox.innerHTML = btnsHtml;
       }
 
       // Render de fotos de evidencia
@@ -683,6 +688,30 @@
     } catch (err) {
       console.error(err);
       showToast('Error de red al generar PDF.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  async function eliminarAsistencia(id) {
+    if (!confirm('¿Está seguro de que desea eliminar permanentemente este registro de asistencia?')) return;
+    
+    showLoading('Eliminando registro...');
+    try {
+      const res = await fetch(`/participacion/api/asistencia/${id}?usuario=${CONFIG.usuarioId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('Registro eliminado con éxito', 'success');
+        vistaDetalle.classList.remove('active');
+        vistaListado.classList.add('active');
+        cargarListado();
+      } else {
+        throw new Error(data.error || 'Error al eliminar');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
     } finally {
       hideLoading();
     }

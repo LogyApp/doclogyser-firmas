@@ -713,4 +713,27 @@ router.post('/api/prueba/:id/enviar-enlace', async (req, res) => {
   }
 });
 
+// ═════ API: DELETE /api/prueba/:id ═════
+router.delete('/api/prueba/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const acceso = await computarAccesoCPC(usuario);
+    if (!acceso || !['AdmSst', 'LiderSst', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado para eliminar registros de prueba de consumo' });
+    }
+
+    await pool.execute('DELETE FROM Dynamic_pruebaconsumo WHERE idprueba = ?', [id]);
+    res.json({ ok: true, idprueba: id });
+  } catch (err) {
+    console.error('[pruebaconsumo] DELETE /api/prueba/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
