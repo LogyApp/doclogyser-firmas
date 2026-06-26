@@ -219,6 +219,27 @@
           <input type="date" id="filtro-hasta">
         </div>
       </div>
+      <!-- Leyenda de colores -->
+      <div class="leyenda-colores" style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 15px; padding-top: 12px; border-top: 1px solid #f1f5f9; font-size: .8rem; color: #475569;">
+        <span style="font-weight: bold; color: #1e293b; display: inline-flex; align-items: center; margin-right: 4px;">Estados de Firma:</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
+          <strong>Rojo:</strong> Sin firma
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 4px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+          <strong>Amarillo:</strong> Solo firma trabajador
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 4px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; display: inline-block;"></span>
+          <strong>Azul:</strong> Firma trabajador y analista
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 4px;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+          <strong>Verde:</strong> Firma trabajador, analista y líder (PDF listo)
+        </span>
+      </div>
+
       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px;">
         <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
         <button class="btn btn-primary" id="btn-filtrar">Aplicar Filtros</button>
@@ -477,37 +498,37 @@
 
         let optsHtml = '';
 
-        if (esCreadorOSistema) {
-          if (data.estado === 'ROJO') {
-            const urlFirmaLink = `${window.location.origin}/compromisosst/firmar-trabajador?item=${data.idcsst}&token=${data.token_trabajador}`;
-            const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Normas SST: ${urlFirmaLink}`);
-            const waUrl = `https://wa.me/?text=${msgWaText}`;
+        const esPlanBAnalista = ['AdmSst', 'LiderSst'].includes(CONFIG.rol);
 
+        if (data.estado === 'ROJO' && esCreadorOSistema) {
+          const urlFirmaLink = `${window.location.origin}/compromisosst/firmar-trabajador?item=${data.idcsst}&token=${data.token_trabajador}`;
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Normas SST: ${urlFirmaLink}`);
+          const waUrl = `https://wa.me/?text=${msgWaText}`;
+
+          optsHtml += `
+            <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
+            <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
+            <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
+          `;
+        } else if (data.estado === 'AMARILLO' && (esCreadorOSistema || esPlanBAnalista)) {
+          optsHtml += `
+            <div class="section-title" style="margin-top: 15px;">Firma del Analista</div>
+            <button class="btn btn-success" id="btn-firmar-analista" style="width: 100%;">Firmar como Analista SST</button>
+          `;
+        } else if (data.estado === 'AZUL') {
+          const esLiderOAdmin = ['LiderSst', 'AdmSst', 'Sistema'].includes(CONFIG.rol);
+          if (esLiderOAdmin) {
+            optsHtml += `
+              <div class="section-title" style="margin-top: 15px;">Firma de Líder SST</div>
+              <button class="btn btn-success" id="btn-firmar-lider-dashboard" style="width: 100%;">Firmar como Líder SST</button>
+            `;
+          } else if (esCreadorOSistema) {
             optsHtml += `
               <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
-              <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
-              <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
+              <p style="font-size: .82rem; color: #64748b; line-height: 1.4; margin-bottom: 10px;">
+                Pendiente de firma de la Líder SST (sst.nacional@logyser.com). Se ha enviado un token de firma por correo.
+              </p>
             `;
-          } else if (data.estado === 'AMARILLO') {
-            optsHtml += `
-              <div class="section-title" style="margin-top: 15px;">Firma del Analista</div>
-              <button class="btn btn-success" id="btn-firmar-analista" style="width: 100%;">Firmar como Analista SST</button>
-            `;
-          } else if (data.estado === 'AZUL') {
-            const esLiderOAdmin = ['LiderSst', 'AdmSst', 'Sistema'].includes(CONFIG.rol);
-            if (esLiderOAdmin) {
-              optsHtml += `
-                <div class="section-title" style="margin-top: 15px;">Firma de Líder SST</div>
-                <button class="btn btn-success" id="btn-firmar-lider-dashboard" style="width: 100%;">Firmar como Líder SST</button>
-              `;
-            } else {
-              optsHtml += `
-                <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
-                <p style="font-size: .82rem; color: #64748b; line-height: 1.4; margin-bottom: 10px;">
-                  Pendiente de firma de la Líder SST (sst.nacional@logyser.com). Se ha enviado un token de firma por correo.
-                </p>
-              `;
-            }
           }
         }
 

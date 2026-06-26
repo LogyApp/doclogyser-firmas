@@ -629,11 +629,13 @@ router.post('/api/firmar-analista', async (req, res) => {
       return res.status(400).json({ error: 'idcsst y firma_base64 requeridos' });
     }
 
-    if (usuario) {
-      const acceso = await computarAccesoCSST(usuario);
-      if (!acceso) {
-        return res.status(403).json({ error: 'Usuario no autorizado para firmar como Analista.' });
-      }
+    if (!usuario) {
+      return res.status(400).json({ error: 'Usuario requerido para firmar.' });
+    }
+
+    const acceso = await computarAccesoCSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado para firmar como Analista.' });
     }
 
     const [rows] = await pool.execute(
@@ -652,9 +654,37 @@ router.post('/api/firmar-analista', async (req, res) => {
       return res.status(400).json({ error: 'El Analista SST ya ha firmado anteriormente.' });
     }
 
+    // Resolver datos del firmante actual (Plan B / Analista)
+    const [userRows] = await pool.execute('SELECT Colaborador FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    let signerCC = '';
+    let signerName = '';
+    let signerCargo = '';
+    if (userRows.length && userRows[0].Colaborador) {
+      const colaborador = userRows[0].Colaborador;
+      const [vinRows] = await pool.execute(
+        `SELECT Identificación, Trabajador, Cargo 
+         FROM \`Maestro_Vinculación\` 
+         WHERE Trabajador = ? 
+         ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+        [colaborador]
+      );
+      if (vinRows.length) {
+        signerCC = vinRows[0].Identificación;
+        signerName = vinRows[0].Trabajador;
+        if (signerName.includes(' ** ')) {
+          signerName = signerName.split(' ** ')[1];
+        }
+        signerCargo = vinRows[0].Cargo;
+      }
+    }
+
+    const finalCC = signerCC || c.identificacionanalista;
+    const finalName = signerName || c.nombre_analista;
+    const finalCargo = signerCargo || c.cargo_analista;
+
     // Subir firma del Analista a GCS
     const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-    const urlFirmaAna = await subirFirma(c.identificacionanalista, buffer);
+    const urlFirmaAna = await subirFirma(finalCC, buffer);
 
     // Generar token para Líder SST
     const tokenLider = crypto.randomBytes(32).toString('hex');
@@ -662,9 +692,11 @@ router.post('/api/firmar-analista', async (req, res) => {
 
     await pool.execute(
       `UPDATE Dynamic_compromisosst 
-       SET firma_analista = ?, url_firma_analista = ?, token_lidersst = ?, token_lidersst_expira = ? 
+       SET firma_analista = ?, url_firma_analista = ?, 
+           identificacionanalista = ?, nombre_analista = ?, cargo_analista = ?,
+           token_lidersst = ?, token_lidersst_expira = ? 
        WHERE idcsst = ?`,
-      [firma_base64, urlFirmaAna, tokenLider, tokenLiderExp, idcsst]
+      [firma_base64, urlFirmaAna, finalCC, finalName, finalCargo, tokenLider, tokenLiderExp, idcsst]
     );
 
     // Notificar al Líder SST (sst.nacional@logyser.com)
@@ -675,7 +707,7 @@ router.post('/api/firmar-analista', async (req, res) => {
     await enviarCorreoFirmaLiderSST({
       emailLider: 'sst.nacional@logyser.com',
       nombreTrabajador: c.nombre_trabajador,
-      nombreAnalista: c.nombre_analista,
+      nombreAnalista: finalName,
       urlFirma: urlFirmaLider
     }).catch(e => console.error('[compromisosst] Error enviando correo a Líder SST:', e.message));
 
@@ -807,7 +839,7 @@ router.post('/api/firmar-lider-directo', async (req, res) => {
     }
 
     let nombreLiderSst = 'YULIED ECHAVARRÍA VASCO';
-    if (acceso.rol === 'LiderSst') {
+    if (acceso.rol === 'LiderSst' || acceso.rol === 'AdmSst') {
       nombreLiderSst = acceso.usuarioNombre;
     } else {
       const [[liderRow]] = await pool.execute(
@@ -818,7 +850,9 @@ router.post('/api/firmar-lider-directo', async (req, res) => {
 
     // Subir firma de la Líder SST a GCS
     const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-    const urlFirmaLider = await subirFirma('1035427104', buffer); // C.C. Líder
+    const signerCC = await obtenerIdentificacionPorUsuarioORol(usuario, null);
+    const finalCC = signerCC || '1035427104';
+    const urlFirmaLider = await subirFirma(finalCC, buffer);
 
     // ═════ GENERACIÓN DE PDF COMPROMISO ═════
     const plantilla = await obtenerPlantilla('compromisosst');
