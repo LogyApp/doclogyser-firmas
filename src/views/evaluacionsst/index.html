@@ -504,6 +504,8 @@
       } finally {
         hideLoading();
       }
+    }
+
     async function eliminarEvaluacion(id) {
       if (!confirm('¿Está seguro de que desea eliminar permanentemente esta evaluación?')) return;
       showLoading('Eliminando registro...');

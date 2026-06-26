@@ -309,7 +309,7 @@ router.get('/api/pruebas', async (req, res) => {
 
     if (trabajador) {
       conds.push('a.nombre_trabajador LIKE ?');
-      params.push(`%${trabajador}%`);
+      params.push(`%${trabajador.toUpperCase()}%`);
     }
     if (fechaDesde) {
       conds.push('a.fecha >= ?');

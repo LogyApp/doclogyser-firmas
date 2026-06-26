@@ -347,7 +347,7 @@ router.get('/api/evaluaciones', async (req, res) => {
     }
     if (trabajador) {
       conds.push('(ev.identificacion LIKE ? OR vin.Trabajador LIKE ?)');
-      params.push(`%${trabajador}%`, `%${trabajador}%`);
+      params.push(`%${trabajador.toUpperCase()}%`, `%${trabajador.toUpperCase()}%`);
     }
     if (fechaDesde) {
       conds.push('ev.fecha >= ?');

@@ -197,13 +197,14 @@ router.get('/api/responsables-buscar', async (req, res) => {
   try {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json([]);
+    const qUpper = q.toUpperCase();
 
     const [rows] = await pool.execute(
       `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación, Cargo, Operación, Regional 
        FROM \`Maestro_Vinculación\` 
-       WHERE Estado = 'Activo' AND Identificación LIKE ? 
+       WHERE Estado = 'Activo' AND (Identificación LIKE ? OR Trabajador LIKE ?) 
        LIMIT 30`,
-      [`%${q}%`]
+      [`%${qUpper}%`, `%${qUpper}%`]
     );
 
     res.json(rows);
@@ -218,13 +219,14 @@ router.get('/api/asistentes-buscar', async (req, res) => {
   try {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json([]);
+    const qUpper = q.toUpperCase();
 
     const [rows] = await pool.execute(
       `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación, Cargo, Operación, Regional 
        FROM \`Maestro_Vinculación\` 
        WHERE Estado = 'Activo' AND (Identificación LIKE ? OR Trabajador LIKE ?) 
        LIMIT 30`,
-      [`%${q}%`, `%${q}%`]
+      [`%${qUpper}%`, `%${qUpper}%`]
     );
 
     res.json(rows);

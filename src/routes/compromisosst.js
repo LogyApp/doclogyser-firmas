@@ -361,7 +361,7 @@ router.get('/api/compromisos', async (req, res) => {
 
     if (trabajador) {
       conds.push('a.nombre_trabajador LIKE ?');
-      params.push(`%${trabajador}%`);
+      params.push(`%${trabajador.toUpperCase()}%`);
     }
     if (fechaDesde) {
       conds.push('a.fecha_registro >= ?');
@@ -488,19 +488,43 @@ router.post('/api/crear', async (req, res) => {
     cleanNombreTrabajador = cleanNombreTrabajador.trim();
 
     // Resolving Analyst metadata
-    const [userRows] = await pool.execute('SELECT Colaborador FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const [userRows] = await pool.execute('SELECT Colaborador, Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
     let analystCC = '';
     let analystName = '';
     let analystCargo = '';
-    if (userRows.length && userRows[0].Colaborador) {
-      const colaborador = userRows[0].Colaborador;
-      const [vinRows] = await pool.execute(
-        `SELECT Identificación, Trabajador, Cargo 
-         FROM \`Maestro_Vinculación\` 
-         WHERE Trabajador = ? 
-         ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-        [colaborador]
-      );
+    
+    if (userRows.length) {
+      const u = userRows[0];
+      const colaborador = u.Colaborador || '';
+      let parsedCC = '';
+      if (colaborador.includes(' ** ')) {
+        parsedCC = colaborador.split(' ** ')[0].trim();
+      }
+
+      let vinRows = [];
+      if (parsedCC) {
+        const [rows] = await pool.execute(
+          `SELECT Identificación, Trabajador, Cargo 
+           FROM \`Maestro_Vinculación\` 
+           WHERE Identificación = ? 
+           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+          [parsedCC]
+        );
+        vinRows = rows;
+      }
+
+      if (!vinRows.length && colaborador) {
+        // Fallback to name search
+        const [rows] = await pool.execute(
+          `SELECT Identificación, Trabajador, Cargo 
+           FROM \`Maestro_Vinculación\` 
+           WHERE Trabajador = ? 
+           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+          [colaborador]
+        );
+        vinRows = rows;
+      }
+
       if (vinRows.length) {
         analystCC = vinRows[0].Identificación;
         analystName = vinRows[0].Trabajador;
@@ -508,11 +532,16 @@ router.post('/api/crear', async (req, res) => {
           analystName = analystName.split(' ** ')[1];
         }
         analystCargo = vinRows[0].Cargo;
+      } else {
+        // Fallback for admin/system users not in Maestro_Vinculación
+        analystCC = '0000000000';
+        analystName = u.Nombre || usuario;
+        analystCargo = 'SST ADMINISTRADOR/SISTEMA';
       }
-    }
-
-    if (!analystCC) {
-      return res.status(400).json({ error: 'No se pudo resolver la identificación del Analista SST logueado en Maestro_Vinculación.' });
+    } else {
+      analystCC = '0000000000';
+      analystName = usuario;
+      analystCargo = 'SST ADMINISTRADOR/SISTEMA';
     }
 
     const idcsst = uuidv4();

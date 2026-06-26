@@ -617,6 +617,8 @@
       } finally {
         hideLoading();
       }
+    }
+
     async function eliminarPrueba(id) {
       if (!confirm('¿Está seguro de que desea eliminar permanentemente este registro de prueba de consumo?')) return;
       showLoading('Eliminando registro...');
