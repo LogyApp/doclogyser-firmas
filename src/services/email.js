@@ -1044,7 +1044,7 @@ async function notificarPruebaConsumoFirmada({ nombreTrabajador, identificacion,
       </p>
     </div>`;
 
-  const ccList = ['admin@logyser.com', 'juridica@logyser.com', 'directorrh@logyser.com'];
+  const ccList = ['admin@logyser.com', 'sst.nacional@logyser.com', 'sstadmon@logyser.com'];
 
   await transporter.sendMail({
     from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
@@ -1194,7 +1194,7 @@ async function enviarNotificacionCompletadoSST({ emailUsuario, nombreTrabajador,
       </p>
     </div>`;
 
-  const ccList = ['admin@logyser.com', 'juridica@logyser.com', 'directorrh@logyser.com'];
+  const ccList = ['admin@logyser.com', 'sst.nacional@logyser.com', 'sstadmon@logyser.com'];
 
   await transporter.sendMail({
     from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
@@ -1285,9 +1285,12 @@ async function notificarEvaluacionSSTCompletada({ email, nombreTrabajador, tipo,
     </div>
   `;
 
+  const ccList = ['admin@logyser.com', 'sst.nacional@logyser.com', 'sstadmon@logyser.com'];
+
   await transporter.sendMail({
     from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER}>`,
     to: email,
+    cc: ccList.join(', '),
     subject: asunto,
     html: cuerpo,
   });

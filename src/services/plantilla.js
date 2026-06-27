@@ -1,4 +1,5 @@
 const pool = require('./db');
+const { LOGO_BASE64 } = require('./assets');
 
 async function obtenerPlantilla(proceso) {
   const [rows] = await pool.execute(
@@ -9,7 +10,7 @@ async function obtenerPlantilla(proceso) {
   return rows[0];
 }
 
-const LOGO_HTML = '<div style="overflow:hidden;margin-bottom:20px"><div style="float:right;margin-left:16px"><img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:75px;display:block"></div></div>';
+const LOGO_HTML = `<div style="overflow:hidden;margin-bottom:20px"><div style="float:right;margin-left:16px"><img src="${LOGO_BASE64}" style="height:75px;display:block"></div></div>`;
 
 function preprocesarDatos(datos) {
   const d = { ...datos };

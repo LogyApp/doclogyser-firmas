@@ -1,4 +1,5 @@
 const { generarPDF } = require('./renderer');
+const { LOGO_BASE64, ACTO_INSEGURO_1_BASE64, ACTO_INSEGURO_2_BASE64 } = require('./assets');
 
 function formatFechaCO(fecha) {
   if (!fecha) return '';
@@ -113,7 +114,7 @@ async function renderPDF(ev, vin, evaluadorNombre) {
   <table class="header-table">
     <tr>
       <td class="logo-col">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER">
+        <img src="${LOGO_BASE64}" alt="LOG&SER">
       </td>
       <td class="title-col">
         EVALUACIÓN DE INDUCCIÓN - CAPACITACIÓN<br>SST
@@ -172,11 +173,11 @@ async function renderPDF(ev, vin, evaluadorNombre) {
     <div class="question-title">1. Indique cuál de las siguientes imágenes es un acto inseguro:</div>
     <div class="q1-images">
       <div class="q1-img-box">
-        <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Actoinseguro1.png" alt="Acto Inseguro 1">
+        <img src="${ACTO_INSEGURO_1_BASE64}" alt="Acto Inseguro 1">
         <div class="option">${box(ev.p1 === 'Imagen 1')} Imagen 1</div>
       </div>
       <div class="q1-img-box">
-        <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Actoinseguro2.png" alt="Acto Inseguro 2">
+        <img src="${ACTO_INSEGURO_2_BASE64}" alt="Acto Inseguro 2">
         <div class="option">${box(ev.p1 === 'Imagen 2')} Imagen 2</div>
       </div>
     </div>
