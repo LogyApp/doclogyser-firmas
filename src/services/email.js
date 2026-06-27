@@ -1296,6 +1296,49 @@ async function notificarEvaluacionSSTCompletada({ email, nombreTrabajador, tipo,
   });
 }
 
+async function notificarMovilidadRegistrada({ emailUsuario, nombreCompleto, identificacion, operacionSede, cargo, seDesplaza, medioTransporte }) {
+  const asunto = `Registro Movilidad y Riesgo Vial SST — ${nombreCompleto}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #f59e0b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="display:inline-block;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px 16px;margin-bottom:20px">
+          <span style="color:#92400e;font-weight:700;font-size:.9rem">✅ Registro completado</span>
+        </div>
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.1rem">Registro de Movilidad y Riesgo Vial SST</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.95rem;line-height:1.6">
+          Se ha registrado/actualizado la información de movilidad y riesgo vial del siguiente trabajador:
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:24px">
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Trabajador</td><td style="padding:8px 12px;font-weight:700">${nombreCompleto}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Identificación</td><td style="padding:8px 12px">${identificacion}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Operación / Sede</td><td style="padding:8px 12px">${operacionSede || '—'}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Cargo</td><td style="padding:8px 12px">${cargo || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">¿Se desplaza?</td><td style="padding:8px 12px;font-weight:700;color:${seDesplaza === 'Sí' ? '#065f46' : '#991b1b'}">${seDesplaza}</td></tr>
+          ${seDesplaza === 'Sí' ? `<tr><td style="padding:8px 12px;color:#888">Medio de transporte</td><td style="padding:8px 12px">${medioTransporte || '—'}</td></tr>` : ''}
+        </table>
+        <p style="color:#94a3b8;font-size:.8rem;margin:0">
+          Este registro fue diligenciado a través del Sistema de Gestión Documental de LOG&amp;SER.
+        </p>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  const ccList = ['admin@logyser.com', 'sst.nacional@logyser.com', 'sstadmon@logyser.com'];
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: emailUsuario,
+    cc: ccList.join(', '),
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
 module.exports = {
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
@@ -1319,4 +1362,5 @@ module.exports = {
   enviarNotificacionCompletadoSST,
   notificarFirmaEvaluacionSST,
   notificarEvaluacionSSTCompletada,
+  notificarMovilidadRegistrada,
 };

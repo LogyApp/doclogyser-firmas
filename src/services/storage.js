@@ -156,6 +156,20 @@ async function subirEvidenciaAsistencia(idAsistencia, filename, buffer, contentT
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirDocMovilidadTrabajador(identificacion, tipoConTs, buffer, contentType) {
+  const nombre = `${identificacion}/${identificacion}.OTROS.${tipoConTs}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(buffer, { contentType: contentType || 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirDocMovilidadExterno(identificacion, filename, buffer, contentType) {
+  const nombre = `movilidad/${identificacion}/${filename}`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(buffer, { contentType: contentType || 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -176,4 +190,6 @@ module.exports = {
   subirPDFCompromisoSST,
   subirPDFEvaluacionSST,
   subirEvidenciaAsistencia,
+  subirDocMovilidadTrabajador,
+  subirDocMovilidadExterno,
 };

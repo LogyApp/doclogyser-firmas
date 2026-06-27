@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movilidad y Riesgo Vial — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 780px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    .header-card {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 16px;
+      border-top: 5px solid #f59e0b;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .page-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .85rem; color: #64748b; margin-top: 4px; }
+
+    .card {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px; margin-bottom: 20px; border-left: 4px solid #f59e0b;
+    }
+    .section-title {
+      font-size: .8rem; font-weight: 700; color: #d97706; letter-spacing: 1px;
+      text-transform: uppercase; padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #fef3c7;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 580px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .85rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    label .req { color: #ef4444; margin-left: 2px; }
+
+    input[type="text"], input[type="date"], input[type="number"], input[type="email"], select, textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #cbd5e1; border-radius: 8px;
+      font-size: .95rem; color: #334155; background: #fff; transition: all .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+    }
+    input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; }
+    input[type="file"] { padding: 6px 10px; font-size: .88rem; }
+
+    .radio-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+    .radio-label {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border: 1.5px solid #cbd5e1; border-radius: 8px;
+      cursor: pointer; font-size: .92rem; transition: all .2s;
+    }
+    .radio-label:hover { border-color: #f59e0b; background: #fffbeb; }
+    .radio-label input[type="radio"] { accent-color: #f59e0b; width: 16px; height: 16px; }
+    .radio-label.selected { border-color: #f59e0b; background: #fffbeb; font-weight: 600; }
+
+    .alert-info {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
+      padding: 12px 16px; font-size: .88rem; color: #92400e; margin-bottom: 20px;
+    }
+
+    .btn-submit {
+      width: 100%; background: #f59e0b; color: #fff; border: none;
+      padding: 14px 20px; font-size: 1rem; font-weight: 700;
+      border-radius: 8px; cursor: pointer; transition: background .2s;
+      box-shadow: 0 4px 6px -1px rgba(245,158,11,0.2);
+    }
+    .btn-submit:hover { background: #d97706; }
+    .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; }
+
+    .btn-buscar {
+      background: #f59e0b; color: #fff; border: none;
+      padding: 12px 28px; font-size: 1rem; font-weight: 700;
+      border-radius: 8px; cursor: pointer; width: 100%; margin-top: 12px;
+    }
+    .btn-buscar:hover { background: #d97706; }
+
+    .file-preview { font-size: .8rem; color: #64748b; margin-top: 4px; }
+    .file-preview a { color: #d97706; text-decoration: none; }
+
+    .hidden { display: none !important; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.75); display: none;
+      align-items: center; justify-content: center; z-index: 1000; flex-direction: column; gap: 12px;
+    }
+    .spinner { width: 40px; height: 40px; border: 4px solid #fef3c7; border-top-color: #f59e0b; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .9rem; font-weight: 600;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; display: none;
+    }
+
+    .success-banner {
+      display: none; background: #d1fae5; border: 1px solid #6ee7b7; border-radius: 12px;
+      padding: 32px; text-align: center; margin-bottom: 20px;
+    }
+    .success-banner h2 { color: #065f46; margin-bottom: 8px; }
+    .success-banner p  { color: #047857; font-size: .95rem; }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight:bold;color:#475569;" id="loading-text">Procesando...</div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <div class="wrapper">
+
+    <div class="header-card">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER">
+      <div>
+        <div class="page-title">Movilidad y Riesgo Vial SST</div>
+        <div class="page-sub">Registro de información de movilidad y riesgo vial del trabajador</div>
+      </div>
+    </div>
+
+    <!-- Banner de éxito -->
+    <div class="success-banner" id="success-banner">
+      <h2>✅ Registro guardado exitosamente</h2>
+      <p>La información de movilidad y riesgo vial ha sido registrada correctamente.</p>
+    </div>
+
+    <!-- PASO 1: Solo identificación (modoSoloId) -->
+    <div id="modo-solo-id" class="card">
+      <div class="section-title">Identificación del Trabajador</div>
+      <div class="alert-info">
+        Ingrese su número de identificación para cargar o actualizar su registro de movilidad y riesgo vial.
+      </div>
+      <div class="field">
+        <label for="input-id-busqueda">Número de identificación <span class="req">*</span></label>
+        <input type="text" id="input-id-busqueda" placeholder="Ej: 1234567890" maxlength="20" inputmode="numeric">
+      </div>
+      <button class="btn-buscar" id="btn-buscar">Continuar →</button>
+    </div>
+
+    <!-- FORMULARIO COMPLETO -->
+    <form id="form-movilidad" class="hidden" autocomplete="off">
+
+      <!-- I. Información del Trabajador -->
+      <div class="card">
+        <div class="section-title">I. Información del Trabajador</div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Número de identificación</label>
+            <input type="text" id="f-identificacion" readonly>
+          </div>
+          <div class="field">
+            <label for="f-nombre">Nombre completo <span class="req">*</span></label>
+            <input type="text" id="f-nombre" placeholder="Nombre completo" maxlength="150">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-operacion">Operación / Sede <span class="req">*</span></label>
+            <input type="text" id="f-operacion" placeholder="Nombre de la operación" maxlength="150">
+          </div>
+          <div class="field">
+            <label for="f-cargo">Cargo <span class="req">*</span></label>
+            <input type="text" id="f-cargo" placeholder="Cargo actual" maxlength="150">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-email">Correo electrónico</label>
+            <input type="email" id="f-email" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="field">
+            <label for="f-celular">Celular</label>
+            <input type="text" id="f-celular" placeholder="3XXXXXXXXX" maxlength="15">
+          </div>
+        </div>
+      </div>
+
+      <!-- II. Dinámica de Movilidad -->
+      <div class="card">
+        <div class="section-title">II. Dinámica de Movilidad</div>
+        <div class="field">
+          <label>¿Se desplaza frecuentemente entre operaciones o a puntos externos? <span class="req">*</span></label>
+          <div class="radio-group" id="rg-desplaza">
+            <label class="radio-label"><input type="radio" name="se_desplaza" value="Sí"> Sí</label>
+            <label class="radio-label"><input type="radio" name="se_desplaza" value="No" checked> No</label>
+          </div>
+        </div>
+
+        <div id="seccion-si-desplaza" class="hidden">
+          <div class="field">
+            <label>Medio de transporte principal <span class="req">*</span></label>
+            <div class="radio-group" id="rg-medio">
+              <label class="radio-label"><input type="radio" name="medio_transporte" value="Vehículo propio (Particular)"> Vehículo propio (Particular)</label>
+              <label class="radio-label"><input type="radio" name="medio_transporte" value="Vehículo corporativo/asignado"> Vehículo corporativo/asignado</label>
+              <label class="radio-label"><input type="radio" name="medio_transporte" value="Transporte público"> Transporte público</label>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>¿Gasto de rodamiento cubierto por la empresa? <span class="req">*</span></label>
+              <div class="radio-group" id="rg-gasto">
+                <label class="radio-label"><input type="radio" name="gasto_cubierto" value="Sí"> Sí</label>
+                <label class="radio-label"><input type="radio" name="gasto_cubierto" value="No"> No</label>
+                <label class="radio-label"><input type="radio" name="gasto_cubierto" value="Parcialmente"> Parcialmente</label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="f-km">Kilometraje diario promedio (km)</label>
+              <input type="number" id="f-km" placeholder="Ej: 40" min="0" step="0.1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- III. Información Complementaria -->
+      <div class="card" id="seccion-complementaria">
+        <div class="section-title">III. Información Complementaria</div>
+        <div class="field">
+          <label for="f-tipo-movilidad">Tipo de movilidad</label>
+          <select id="f-tipo-movilidad">
+            <option value="">Seleccione...</option>
+            <option value="Conductor liviano">Conductor liviano</option>
+            <option value="Operario maquinaria pesada / Montacarguista">Operario maquinaria pesada / Montacarguista</option>
+            <option value="Acompañante de ruta">Acompañante de ruta</option>
+            <option value="Motociclista">Motociclista</option>
+            <option value="Peatón / Ciclista">Peatón / Ciclista</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="field" id="campo-montacarguistas" style="display:none;">
+          <label for="f-montacarguistas">¿Cuántas personas en su operación cumplen función de montacarguista?</label>
+          <input type="number" id="f-montacarguistas" placeholder="Ej: 3" min="0" step="1">
+        </div>
+      </div>
+
+      <!-- IV. Información del Vehículo -->
+      <div class="card" id="seccion-vehiculo">
+        <div class="section-title">IV. Información del Vehículo (si aplica)</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-placa">Placa del vehículo</label>
+            <input type="text" id="f-placa" placeholder="Ej: ABC123" maxlength="10">
+          </div>
+          <div class="field">
+            <label for="f-venc-licencia">Vencimiento Licencia de Conducción</label>
+            <input type="date" id="f-venc-licencia">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-venc-soat">Vencimiento SOAT</label>
+            <input type="date" id="f-venc-soat">
+          </div>
+          <div class="field">
+            <label for="f-venc-tecno">Vencimiento Revisión Técnico-Mecánica</label>
+            <input type="date" id="f-venc-tecno">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-observaciones">Observaciones</label>
+          <textarea id="f-observaciones" rows="3" placeholder="Información adicional relevante..."></textarea>
+        </div>
+      </div>
+
+      <!-- V. Carga de Documentos -->
+      <div class="card" id="seccion-docs">
+        <div class="section-title">V. Carga de Documentos (PDF o imagen)</div>
+        <div class="alert-info">
+          Los documentos cargados se almacenarán de forma segura. Solo cargue los documentos que apliquen a su caso.
+        </div>
+        <div class="field">
+          <label>Licencia de Conducción</label>
+          <input type="file" id="file-licencia" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="file-preview" id="prev-licencia"></div>
+        </div>
+        <div class="field">
+          <label>SOAT</label>
+          <input type="file" id="file-soat" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="file-preview" id="prev-soat"></div>
+        </div>
+        <div class="field">
+          <label>Revisión Técnico-Mecánica (CDA)</label>
+          <input type="file" id="file-tecno" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="file-preview" id="prev-tecno"></div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="btn-guardar">Guardar Registro</button>
+    </form>
+
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG__;
+
+    // ── Estado interno ──────────────────────────────────────────────────────────
+    let prefillData     = null;
+    let existenteData   = null;
+    let esTrabajador    = 0;
+    let identificacion  = CONFIG.identificacion || '';
+    const usuarioId     = CONFIG.usuarioId || '';
+
+    // ── Modo solo ID ────────────────────────────────────────────────────────────
+    if (!CONFIG.modoSoloId) {
+      document.getElementById('modo-solo-id').classList.add('hidden');
+      iniciarFormulario(CONFIG.identificacion);
+    }
+
+    document.getElementById('btn-buscar').addEventListener('click', () => {
+      const val = document.getElementById('input-id-busqueda').value.trim();
+      if (!val) { showToast('Ingrese un número de identificación', 'error'); return; }
+      let url = `/formmovilidadyriesgo?identificacion=${encodeURIComponent(val)}`;
+      if (usuarioId) url += `&usuario=${encodeURIComponent(usuarioId)}`;
+      window.location.href = url;
+    });
+    document.getElementById('input-id-busqueda').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-buscar').click();
+    });
+
+    // ── Iniciar formulario completo ──────────────────────────────────────────────
+    async function iniciarFormulario(id) {
+      identificacion = id;
+      showLoading('Cargando información...');
+      try {
+        const res  = await fetch(`/movilidadyriesgo/api/prefill?identificacion=${encodeURIComponent(id)}`);
+        const data = await res.json();
+        prefillData   = data.prefill;
+        existenteData = data.existente;
+        esTrabajador  = prefillData.es_trabajador;
+
+        poblarFormulario();
+        document.getElementById('form-movilidad').classList.remove('hidden');
+      } catch (err) {
+        showToast('Error al cargar datos', 'error');
+        console.error(err);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function poblarFormulario() {
+      document.getElementById('f-identificacion').value = identificacion;
+
+      if (esTrabajador) {
+        document.getElementById('f-nombre').value    = prefillData.nombre_completo || '';
+        document.getElementById('f-nombre').readOnly = true;
+        document.getElementById('f-operacion').value    = prefillData.operacion_sede || '';
+        document.getElementById('f-operacion').readOnly = true;
+        document.getElementById('f-cargo').value    = prefillData.cargo || '';
+        document.getElementById('f-cargo').readOnly = true;
+      }
+
+      document.getElementById('f-email').value   = prefillData.email   || '';
+      document.getElementById('f-celular').value = prefillData.celular || '';
+
+      if (existenteData) {
+        // Precargar datos existentes
+        const e = existenteData;
+        if (!esTrabajador) {
+          document.getElementById('f-nombre').value    = e.nombre_completo || '';
+          document.getElementById('f-operacion').value = e.operacion_sede  || '';
+          document.getElementById('f-cargo').value     = e.cargo           || '';
+        }
+        document.getElementById('f-email').value   = e.email   || prefillData.email   || '';
+        document.getElementById('f-celular').value = e.celular || prefillData.celular || '';
+
+        // Desplazamiento
+        setRadio('se_desplaza', e.se_desplaza || 'No');
+        if (e.se_desplaza === 'Sí' || e.se_desplaza === 'Si') {
+          document.getElementById('seccion-si-desplaza').classList.remove('hidden');
+          if (e.medio_transporte)  setRadio('medio_transporte', e.medio_transporte);
+          if (e.gasto_cubierto)    setRadio('gasto_cubierto',   e.gasto_cubierto);
+          if (e.km_diario_promedio != null) document.getElementById('f-km').value = e.km_diario_promedio;
+        }
+
+        document.getElementById('f-tipo-movilidad').value = e.tipo_movilidad || '';
+        if (e.num_montacarguistas) document.getElementById('f-montacarguistas').value = e.num_montacarguistas;
+        document.getElementById('f-placa').value        = e.placa           || '';
+        document.getElementById('f-venc-licencia').value = e.venc_licencia  ? e.venc_licencia.slice(0, 10) : '';
+        document.getElementById('f-venc-soat').value     = e.venc_soat      ? e.venc_soat.slice(0, 10)     : '';
+        document.getElementById('f-venc-tecno').value    = e.venc_tecnomecanica ? e.venc_tecnomecanica.slice(0, 10) : '';
+        document.getElementById('f-observaciones').value = e.observaciones  || '';
+
+        if (e.url_licencia)      document.getElementById('prev-licencia').innerHTML = `Archivo actual: <a href="${e.url_licencia}" target="_blank">Ver</a>`;
+        if (e.url_soat)          document.getElementById('prev-soat').innerHTML      = `Archivo actual: <a href="${e.url_soat}" target="_blank">Ver</a>`;
+        if (e.url_tecnomecanica) document.getElementById('prev-tecno').innerHTML     = `Archivo actual: <a href="${e.url_tecnomecanica}" target="_blank">Ver</a>`;
+      }
+
+      actualizarRadioStyles();
+      actualizarVisibilidadMontacarguista();
+    }
+
+    // ── Lógica de visibilidad dinámica ──────────────────────────────────────────
+    document.querySelectorAll('input[name="se_desplaza"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const val = r.value;
+        document.getElementById('seccion-si-desplaza').classList.toggle('hidden', val !== 'Sí');
+        actualizarRadioStyles();
+      });
+    });
+
+    document.querySelectorAll('input[name="medio_transporte"], input[name="gasto_cubierto"]').forEach(r => {
+      r.addEventListener('change', actualizarRadioStyles);
+    });
+
+    document.getElementById('f-tipo-movilidad').addEventListener('change', actualizarVisibilidadMontacarguista);
+
+    function actualizarVisibilidadMontacarguista() {
+      const val = document.getElementById('f-tipo-movilidad').value;
+      document.getElementById('campo-montacarguistas').style.display = val.includes('Montacarguista') || val.includes('montacarguista') ? 'block' : 'none';
+    }
+
+    function actualizarRadioStyles() {
+      document.querySelectorAll('.radio-label').forEach(lbl => {
+        const inp = lbl.querySelector('input[type="radio"]');
+        lbl.classList.toggle('selected', inp && inp.checked);
+      });
+    }
+
+    // ── Lectura de archivos como base64 ─────────────────────────────────────────
+    function leerArchivoBase64(input) {
+      return new Promise((resolve) => {
+        if (!input.files || !input.files[0]) { resolve(null); return; }
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = () => resolve({ base64: reader.result, filename: file.name, contentType: file.type || 'application/pdf' });
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ── Submit ───────────────────────────────────────────────────────────────────
+    document.getElementById('form-movilidad').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const nombre    = document.getElementById('f-nombre').value.trim();
+      const operacion = document.getElementById('f-operacion').value.trim();
+      if (!nombre || !operacion) {
+        showToast('Nombre completo y Operación/Sede son requeridos', 'error');
+        return;
+      }
+
+      const seDesplaza = document.querySelector('input[name="se_desplaza"]:checked')?.value || 'No';
+
+      showLoading('Guardando registro...');
+      document.getElementById('btn-guardar').disabled = true;
+
+      try {
+        const [docLicencia, docSoat, docTecno] = await Promise.all([
+          leerArchivoBase64(document.getElementById('file-licencia')),
+          leerArchivoBase64(document.getElementById('file-soat')),
+          leerArchivoBase64(document.getElementById('file-tecno')),
+        ]);
+
+        const payload = {
+          identificacion,
+          es_trabajador:       esTrabajador,
+          nombre_completo:     nombre,
+          operacion_sede:      operacion,
+          cargo:               document.getElementById('f-cargo').value.trim(),
+          regional:            prefillData?.regional || existenteData?.regional || '',
+          email:               document.getElementById('f-email').value.trim(),
+          celular:             document.getElementById('f-celular').value.trim(),
+          se_desplaza:         seDesplaza,
+          medio_transporte:    seDesplaza === 'Sí' ? (document.querySelector('input[name="medio_transporte"]:checked')?.value || null) : null,
+          gasto_cubierto:      seDesplaza === 'Sí' ? (document.querySelector('input[name="gasto_cubierto"]:checked')?.value || null) : null,
+          km_diario_promedio:  seDesplaza === 'Sí' ? (document.getElementById('f-km').value || null) : null,
+          tipo_movilidad:      document.getElementById('f-tipo-movilidad').value || null,
+          num_montacarguistas: document.getElementById('f-montacarguistas').value || null,
+          placa:               document.getElementById('f-placa').value.trim() || null,
+          venc_licencia:       document.getElementById('f-venc-licencia').value || null,
+          venc_soat:           document.getElementById('f-venc-soat').value || null,
+          venc_tecnomecanica:  document.getElementById('f-venc-tecno').value || null,
+          observaciones:       document.getElementById('f-observaciones').value.trim() || null,
+          usuario:             usuarioId || identificacion,
+          doc_licencia:        docLicencia,
+          doc_soat:            docSoat,
+          doc_tecnomecanica:   docTecno,
+        };
+
+        const res = await fetch('/movilidadyriesgo/api/guardar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          document.getElementById('form-movilidad').classList.add('hidden');
+          document.getElementById('success-banner').style.display = 'block';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          showToast(data.error || 'Error al guardar', 'error');
+          document.getElementById('btn-guardar').disabled = false;
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
+        document.getElementById('btn-guardar').disabled = false;
+      } finally {
+        hideLoading();
+      }
+    });
+
+    // ── Helpers ──────────────────────────────────────────────────────────────────
+    function setRadio(name, value) {
+      const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
+      if (el) el.checked = true;
+    }
+
+    function showLoading(text = 'Procesando...') {
+      document.getElementById('loading-text').textContent = text;
+      document.getElementById('loading').style.display = 'flex';
+    }
+    function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.background = type === 'success' ? '#10b981' : '#ef4444';
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+  </script>
+</body>
+</html>
