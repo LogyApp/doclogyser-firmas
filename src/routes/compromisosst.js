@@ -430,14 +430,11 @@ router.get('/api/compromiso/:id', async (req, res) => {
     // Resolving signatures
     const tieneFirmaTrab = !!c.firma_trabajador;
     const tieneFirmaAna = !!c.firma_analista;
-    const tieneFirmaLid = !!c.firma_lidersst;
 
     let estado = 'ROJO'; // No signatures
     if (tieneFirmaTrab && !tieneFirmaAna) {
       estado = 'AMARILLO';
-    } else if (tieneFirmaTrab && tieneFirmaAna && !tieneFirmaLid) {
-      estado = 'AZUL';
-    } else if (tieneFirmaTrab && tieneFirmaAna && tieneFirmaLid) {
+    } else if (tieneFirmaTrab && tieneFirmaAna) {
       estado = 'VERDE';
     }
 
@@ -455,7 +452,7 @@ router.get('/api/compromiso/:id', async (req, res) => {
       estado,
       tiene_firma_trabajador: tieneFirmaTrab,
       tiene_firma_analista: tieneFirmaAna,
-      tiene_firma_lidersst: tieneFirmaLid,
+      tiene_firma_lidersst: !!c.firma_lidersst,
       firma_usuario_base64: firmaUsuarioBase64
     });
   } catch (err) {
@@ -715,32 +712,95 @@ router.post('/api/firmar-analista', async (req, res) => {
     const buffer = Buffer.from(firma_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     const urlFirmaAna = await subirFirma(finalCC, buffer);
 
-    // Generar token para Líder SST
-    const tokenLider = crypto.randomBytes(32).toString('hex');
-    const tokenLiderExp = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 horas para Líder
+    // 1. Obtener el nombre del Líder SST de la tabla Maestro_Usuarios (Rol = 'LiderSst')
+    const [liderUserRows] = await pool.execute(
+      "SELECT Nombre FROM Maestro_Usuarios WHERE Rol = 'LiderSst' LIMIT 1"
+    );
+    const nombreLiderSst = liderUserRows.length && liderUserRows[0].Nombre
+      ? liderUserRows[0].Nombre
+      : 'YULIED ECHAVARRÍA VASCO';
 
+    // 2. Obtener firma del Líder SST en base64 y su URL
+    const urlFirmaLider = 'https://storage.googleapis.com/firmas-images/1035427104/firmalidersst.png';
+    const firmaLiderBase64 = await obtenerFirmaBase64Reciente('1035427104').catch(() => null) || 'FIRMADO_LIDER_AUTOMATICO';
+
+    // 3. Generar PDF del compromiso inmediatamente
+    const plantilla = await obtenerPlantilla('compromisosst');
+    const fechaFmt = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    // Obtener regional del trabajador para el PDF
+    const [vinRows] = await pool.execute(
+      'SELECT Regional, `Operación` FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [c.identificaciontrabajador]
+    );
+    const opTrabajador = vinRows.length ? `${vinRows[0]['Operación']} (${vinRows[0].Regional})` : 'LOG&SER S.A.S.';
+
+    const datos = {
+      fecha:             fechaFmt,
+      nombre_trabajador: String(c.nombre_trabajador).toUpperCase(),
+      identificacion:    String(c.identificaciontrabajador),
+      operacion:         opTrabajador,
+      nombre_analista:   finalName || '—',
+      nombre_lidersst:   nombreLiderSst,
+      firma_trabajador:  `<img src="${c.url_firma_trabajador}" style="height:70px;display:block;margin:0 auto">`,
+      firma_analista:    `<img src="${urlFirmaAna}" style="height:70px;display:block;margin:0 auto">`,
+      firma_lidersst:    `<img src="${urlFirmaLider}" style="height:70px;display:block;margin:0 auto">`
+    };
+
+    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
+    const pdfBuffer = await generarPDF(htmlFinal, {
+      margin: { top: '7mm', bottom: '7mm', left: '7mm', right: '7mm' }
+    });
+
+    // Guardar PDF en el bucket
+    const timestamp = formatTimestamp();
+    const urlDoc = await subirPDFCompromisoSST(c.identificaciontrabajador, timestamp, pdfBuffer);
+
+    // 4. Actualizar registro en la base de datos (con firmas de Analista y Líder, y url_doc)
     await pool.execute(
       `UPDATE Dynamic_compromisosst 
        SET firma_analista = ?, url_firma_analista = ?, 
            identificacionanalista = ?, nombre_analista = ?, cargo_analista = ?,
-           token_lidersst = ?, token_lidersst_expira = ? 
+           firma_lidersst = ?, url_firma_lidersst = ?, url_doc = ?,
+           token_lidersst = NULL, token_lidersst_expira = NULL 
        WHERE idcsst = ?`,
-      [firma_base64, urlFirmaAna, finalCC, finalName, finalCargo, tokenLider, tokenLiderExp, idcsst]
+      [
+        firma_base64, 
+        urlFirmaAna, 
+        finalCC, 
+        finalName, 
+        finalCargo, 
+        firmaLiderBase64, 
+        urlFirmaLider, 
+        urlDoc, 
+        idcsst
+      ]
     );
 
-    // Notificar al Líder SST (sst.nacional@logyser.com)
-    const protocol = req.secure ? 'https' : 'http';
-    const host = req.get('host');
-    const urlFirmaLider = `${protocol}://${host}/compromisosst/firmar-lider?item=${idcsst}&token=${tokenLider}`;
+    // 5. Registrar en Maestro_docTrabajador (Tipo 72, Prefijo CSST)
+    await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
 
+    // 6. Notificar al Analista SST que el proceso concluyó
+    const [usuRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [c.usuario]);
+    const emailUsuario = usuRows.length ? usuRows[0].Email : null;
+    if (emailUsuario) {
+      await enviarNotificacionCompletadoSST({
+        emailUsuario,
+        nombreTrabajador: c.nombre_trabajador,
+        identificacion: c.identificaciontrabajador,
+        urlDoc
+      }).catch(e => console.error('[compromisosst] Error enviando correo de completado al Analista SST:', e.message));
+    }
+
+    // 7. Notificar al Líder SST (sst.nacional@logyser.com) indicando que el trabajador y analista firmaron y el PDF fue generado
     await enviarCorreoFirmaLiderSST({
       emailLider: 'sst.nacional@logyser.com',
       nombreTrabajador: c.nombre_trabajador,
       nombreAnalista: finalName,
-      urlFirma: urlFirmaLider
+      urlDoc
     }).catch(e => console.error('[compromisosst] Error enviando correo a Líder SST:', e.message));
 
-    res.json({ ok: true });
+    res.json({ ok: true, urlDoc });
   } catch (err) {
     console.error('[compromisosst] POST /api/firmar-analista:', err);
     res.status(500).json({ error: err.message });
@@ -802,7 +862,9 @@ router.post('/api/firmar-lider', async (req, res) => {
     };
 
     const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
-    const pdfBuffer = await generarPDF(htmlFinal);
+    const pdfBuffer = await generarPDF(htmlFinal, {
+      margin: { top: '7mm', bottom: '7mm', left: '7mm', right: '7mm' }
+    });
 
     // Guardar PDF en el bucket
     const timestamp = formatTimestamp();
@@ -907,7 +969,9 @@ router.post('/api/firmar-lider-directo', async (req, res) => {
     };
 
     const htmlFinal = reemplazarVariables(plantilla.contenido_html, datos);
-    const pdfBuffer = await generarPDF(htmlFinal);
+    const pdfBuffer = await generarPDF(htmlFinal, {
+      margin: { top: '7mm', bottom: '7mm', left: '7mm', right: '7mm' }
+    });
 
     // Guardar PDF en el bucket
     const timestamp = formatTimestamp();

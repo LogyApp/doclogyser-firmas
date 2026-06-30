@@ -1123,8 +1123,8 @@ async function enviarNotificacionTrabajadorFirmoSST({ emailUsuario, nombreTrabaj
   });
 }
 
-async function enviarCorreoFirmaLiderSST({ emailLider, nombreTrabajador, nombreAnalista, urlFirma }) {
-  const asunto = `Firma Pendiente Líder SST: Compromiso Normas SST — ${nombreTrabajador}`;
+async function enviarCorreoFirmaLiderSST({ emailLider, nombreTrabajador, nombreAnalista, urlDoc }) {
+  const asunto = `Compromiso SST Firmado y Generado — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
@@ -1133,22 +1133,18 @@ async function enviarCorreoFirmaLiderSST({ emailLider, nombreTrabajador, nombreA
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Estimado Líder SST,</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
-          Se ha completado la firma del <strong>Compromiso de Cumplimiento de las Normas de Seguridad y Salud en el Trabajo</strong> (SST-F-005) por parte del trabajador <strong>${nombreTrabajador}</strong> y la Analista SST <strong>${nombreAnalista}</strong>.
+          Se informa que el trabajador <strong>${nombreTrabajador}</strong> y la Analista SST <strong>${nombreAnalista}</strong> han firmado el <strong>Compromiso de Cumplimiento de las Normas de Seguridad y Salud en el Trabajo</strong> (SST-F-005).
         </p>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
-          Por favor, ingrese al siguiente enlace para realizar su firma digital y finalizar el documento:
+          El documento PDF ha sido generado exitosamente con las firmas correspondientes, incluyendo su firma digital autorizada. Puede visualizar el documento final en el siguiente enlace:
         </p>
         <div style="text-align:center;margin-bottom:28px">
-          <a href="${urlFirma}"
+          <a href="${urlDoc}" target="_blank"
              style="display:inline-block;background:#8e44ad;color:#fff;text-decoration:none;
                     padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
-            ✍️ Firmar como Líder SST
+            📄 Ver Compromiso Completado
           </a>
         </div>
-        <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
-          Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
-          <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
-        </p>
       </div>
       <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
         Sistema de Gestión Documental — LOG&amp;SER S.A.S.

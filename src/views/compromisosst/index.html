@@ -231,12 +231,8 @@
           <strong>Amarillo:</strong> Solo firma trabajador
         </span>
         <span style="display: inline-flex; align-items: center; gap: 4px;">
-          <span style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; display: inline-block;"></span>
-          <strong>Azul:</strong> Firma trabajador y analista
-        </span>
-        <span style="display: inline-flex; align-items: center; gap: 4px;">
           <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
-          <strong>Verde:</strong> Firma trabajador, analista y líder (PDF listo)
+          <strong>Verde:</strong> Firma trabajador y analista (PDF listo)
         </span>
       </div>
 
@@ -391,13 +387,10 @@
           let badgeFirma = '';
           const tF = !!item.firma_trabajador;
           const aF = !!item.firma_analista;
-          const lF = !!item.firma_lidersst;
 
-          if (tF && aF && lF) {
+          if (tF && aF) {
             badgeFirma = `<span class="status-badge badge-verde">✓ Verde</span>`;
-          } else if (tF && aF && !lF) {
-            badgeFirma = `<span class="status-badge badge-azul">✓ Azul</span>`;
-          } else if (tF && !aF) {
+          } else if (tF) {
             badgeFirma = `<span class="status-badge badge-amarillo">✓ Amarillo</span>`;
           } else {
             badgeFirma = `<span class="status-badge badge-rojo">Rojo</span>`;
@@ -471,8 +464,6 @@
         let badgeFirma = '';
         if (data.estado === 'VERDE') {
           badgeFirma = `<span class="status-badge badge-verde">✓ Completado (Verde)</span>`;
-        } else if (data.estado === 'AZUL') {
-          badgeFirma = `<span class="status-badge badge-azul">Firmado Trabajador y Analista (Azul)</span>`;
         } else if (data.estado === 'AMARILLO') {
           badgeFirma = `<span class="status-badge badge-amarillo">Firmado Trabajador (Amarillo)</span>`;
         } else {
@@ -515,21 +506,6 @@
             <div class="section-title" style="margin-top: 15px;">Firma del Analista</div>
             <button class="btn btn-success" id="btn-firmar-analista" style="width: 100%;">Firmar como Analista SST</button>
           `;
-        } else if (data.estado === 'AZUL') {
-          const esLiderOAdmin = ['LiderSst', 'AdmSst', 'Sistema'].includes(CONFIG.rol);
-          if (esLiderOAdmin) {
-            optsHtml += `
-              <div class="section-title" style="margin-top: 15px;">Firma de Líder SST</div>
-              <button class="btn btn-success" id="btn-firmar-lider-dashboard" style="width: 100%;">Firmar como Líder SST</button>
-            `;
-          } else if (esCreadorOSistema) {
-            optsHtml += `
-              <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
-              <p style="font-size: .82rem; color: #64748b; line-height: 1.4; margin-bottom: 10px;">
-                Pendiente de firma de la Líder SST (sst.nacional@logyser.com). Se ha enviado un token de firma por correo.
-              </p>
-            `;
-          }
         }
 
         if (esAutorizadoEliminar) {

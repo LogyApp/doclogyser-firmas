@@ -17,7 +17,7 @@ const CSS_PDF = `
   div { max-width: 100%; }
 `;
 
-async function generarPDF(htmlContenido) {
+async function generarPDF(htmlContenido, options = {}) {
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><style>${CSS_PDF}</style></head>
@@ -33,7 +33,8 @@ async function generarPDF(htmlContenido) {
     const buffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '12mm', bottom: '18mm', left: '20mm', right: '18mm' },
+      margin: options.margin || { top: '12mm', bottom: '18mm', left: '20mm', right: '18mm' },
+      ...options
     });
     return buffer;
   } finally {
