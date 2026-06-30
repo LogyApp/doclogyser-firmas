@@ -217,7 +217,7 @@ router.get('/api/prefill', async (req, res) => {
 // ═════ API: GET /api/listado ═════
 router.get('/api/listado', async (req, res) => {
   try {
-    const { usuario, trabajador, regional, operacion, fechaDesde, fechaHasta } = req.query;
+    const { usuario, trabajador, regional, operacion, fechaDesde, fechaHasta, seDesplaza } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoMVR(usuario);
@@ -243,6 +243,7 @@ router.get('/api/listado', async (req, res) => {
     }
     if (fechaDesde)  { conds.push('DATE(m.fecha_registro) >= ?'); params.push(fechaDesde); }
     if (fechaHasta)  { conds.push('DATE(m.fecha_registro) <= ?'); params.push(fechaHasta); }
+    if (seDesplaza)  { conds.push('m.se_desplaza = ?');           params.push(seDesplaza); }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const [rows] = await pool.execute(

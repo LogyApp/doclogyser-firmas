@@ -144,6 +144,14 @@
           <label for="filtro-hasta">Fecha Hasta</label>
           <input type="date" id="filtro-hasta">
         </div>
+        <div class="field">
+          <label for="filtro-desplaza">¿Se desplaza?</label>
+          <select id="filtro-desplaza">
+            <option value="">Todos</option>
+            <option value="Sí">Sí</option>
+            <option value="No">No</option>
+          </select>
+        </div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:15px;">
         <button class="btn btn-secondary" id="btn-limpiar">Limpiar</button>
@@ -161,17 +169,15 @@
               <tr>
                 <th>Fecha Registro</th>
                 <th>Nombre</th>
-                <th>Identificación</th>
                 <th>Regional</th>
                 <th>Operación / Sede</th>
                 <th>Cargo</th>
                 <th>¿Se desplaza?</th>
                 <th>Medio transporte</th>
-                <th>Tipo trabajador</th>
               </tr>
             </thead>
             <tbody id="tabla-body">
-              <tr><td colspan="9" style="text-align:center;color:#888;padding:30px;">Cargando registros...</td></tr>
+              <tr><td colspan="7" style="text-align:center;color:#888;padding:30px;">Cargando registros...</td></tr>
             </tbody>
           </table>
         </div>
@@ -230,6 +236,7 @@
       filtroReg.dispatchEvent(new Event('change'));
       document.getElementById('filtro-desde').value = '';
       document.getElementById('filtro-hasta').value = '';
+      document.getElementById('filtro-desplaza').value = '';
       cargarListado();
     });
 
@@ -239,12 +246,13 @@
       showLoading('Cargando registros...');
       try {
         const params = new URLSearchParams({
-          usuario:    CONFIG.usuarioId,
-          trabajador: document.getElementById('filtro-trabajador').value.trim(),
-          regional:   filtroReg.value,
-          operacion:  filtroOp.value,
-          fechaDesde: document.getElementById('filtro-desde').value,
-          fechaHasta: document.getElementById('filtro-hasta').value,
+          usuario:     CONFIG.usuarioId,
+          trabajador:  document.getElementById('filtro-trabajador').value.trim(),
+          regional:    filtroReg.value,
+          operacion:   filtroOp.value,
+          fechaDesde:  document.getElementById('filtro-desde').value,
+          fechaHasta:  document.getElementById('filtro-hasta').value,
+          seDesplaza:  document.getElementById('filtro-desplaza').value,
         });
         const res = await fetch(`/movilidadyriesgo/api/listado?${params}`);
         registros = await res.json();
@@ -255,7 +263,7 @@
         tbody.innerHTML = '';
 
         if (!registros.length) {
-          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#888;padding:30px;">No se encontraron registros.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#888;padding:30px;">No se encontraron registros.</td></tr>`;
           return;
         }
 
@@ -267,18 +275,15 @@
           const despBadge = item.se_desplaza === 'Sí' || item.se_desplaza === 'Si'
             ? '<span class="status-badge badge-si">✓ Sí</span>'
             : '<span class="status-badge badge-no">✗ No</span>';
-          const tipoTrab = item.es_trabajador ? 'Trabajador' : 'Externo';
 
           tr.innerHTML = `
             <td>${fecha}</td>
             <td><strong>${item.nombre_completo || '—'}</strong></td>
-            <td>${item.identificacion}</td>
             <td>${item.regional || '—'}</td>
             <td>${item.operacion_sede || '—'}</td>
             <td>${item.cargo || '—'}</td>
             <td>${despBadge}</td>
             <td>${item.medio_transporte || '—'}</td>
-            <td><span class="status-badge" style="background:${item.es_trabajador ? '#dbeafe' : '#f3f4f6'};color:${item.es_trabajador ? '#1e40af' : '#374151'}">${tipoTrab}</span></td>
           `;
           tbody.appendChild(tr);
         });
