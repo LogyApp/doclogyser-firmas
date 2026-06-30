@@ -231,7 +231,8 @@
             <option value="Operario maquinaria pesada / Montacarguista">Operario maquinaria pesada / Montacarguista</option>
             <option value="Acompañante de ruta">Acompañante de ruta</option>
             <option value="Motociclista">Motociclista</option>
-            <option value="Peatón / Ciclista">Peatón / Ciclista</option>
+            <option value="Peatón">Peatón</option>
+            <option value="Ciclista">Ciclista</option>
             <option value="Otro">Otro</option>
           </select>
         </div>
@@ -271,7 +272,7 @@
       </div>
 
       <!-- V. Carga de Documentos -->
-      <div class="card" id="seccion-docs">
+      <div class="card hidden" id="seccion-docs">
         <div class="section-title">V. Carga de Documentos (PDF o imagen)</div>
         <div class="alert-info">
           Los documentos cargados se almacenarán de forma segura. Solo cargue los documentos que apliquen a su caso.
@@ -376,6 +377,7 @@
         setRadio('se_desplaza', e.se_desplaza || 'No');
         if (e.se_desplaza === 'Sí' || e.se_desplaza === 'Si') {
           document.getElementById('seccion-si-desplaza').classList.remove('hidden');
+          document.getElementById('seccion-docs').classList.remove('hidden');
           if (e.medio_transporte)  setRadio('medio_transporte', e.medio_transporte);
           if (e.gasto_cubierto)    setRadio('gasto_cubierto',   e.gasto_cubierto);
           if (e.km_diario_promedio != null) document.getElementById('f-km').value = e.km_diario_promedio;
@@ -395,14 +397,17 @@
       }
 
       actualizarRadioStyles();
-      actualizarVisibilidadMontacarguista();
+      actualizarSeccionesCondicionales();
     }
 
     // ── Lógica de visibilidad dinámica ──────────────────────────────────────────
+    const TIPOS_SIN_VEHICULO = ['Peatón', 'Ciclista', 'Acompañante de ruta'];
+
     document.querySelectorAll('input[name="se_desplaza"]').forEach(r => {
       r.addEventListener('change', () => {
         const val = r.value;
         document.getElementById('seccion-si-desplaza').classList.toggle('hidden', val !== 'Sí');
+        document.getElementById('seccion-docs').classList.toggle('hidden', val !== 'Sí');
         actualizarRadioStyles();
       });
     });
@@ -411,11 +416,14 @@
       r.addEventListener('change', actualizarRadioStyles);
     });
 
-    document.getElementById('f-tipo-movilidad').addEventListener('change', actualizarVisibilidadMontacarguista);
+    document.getElementById('f-tipo-movilidad').addEventListener('change', actualizarSeccionesCondicionales);
 
-    function actualizarVisibilidadMontacarguista() {
+    function actualizarSeccionesCondicionales() {
       const val = document.getElementById('f-tipo-movilidad').value;
-      document.getElementById('campo-montacarguistas').style.display = val.includes('Montacarguista') || val.includes('montacarguista') ? 'block' : 'none';
+      document.getElementById('campo-montacarguistas').style.display =
+        (val.includes('Montacarguista') || val.includes('montacarguista')) ? 'block' : 'none';
+      const ocultarVehiculo = TIPOS_SIN_VEHICULO.includes(val);
+      document.getElementById('seccion-vehiculo').classList.toggle('hidden', ocultarVehiculo);
     }
 
     function actualizarRadioStyles() {
