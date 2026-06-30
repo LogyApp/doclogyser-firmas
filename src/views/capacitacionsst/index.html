@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluaciones de Capacitación SST — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Header */
+    .header-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid #0d9488;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .88rem; color: #64748b; margin-top: 4px; }
+    .badge-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; font-weight: 600;
+    }
+    .badge-user { background: #ccfbf1; border: 1px solid #99f6e4; color: #0f766e; }
+    .badge-total { background: #e2e8f0; border: 1px solid #cbd5e1; color: #475569; }
+
+    .btn {
+      padding: 10px 20px; font-size: .92rem; font-weight: bold;
+      border-radius: 8px; border: none; cursor: pointer; transition: all .2s;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-crear {
+      background: #0d9488; color: #fff;
+      box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2);
+    }
+    .btn-crear:hover { background: #0f766e; }
+    .btn-primary { background: #1e293b; color: #fff; }
+    .btn-primary:hover { background: #0f172a; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+    .btn-small { padding: 6px 12px; font-size: .8rem; border-radius: 6px; }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid #0d9488;
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: #0d9488; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #ccfbf1;
+    }
+
+    .grid-5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    
+    input[type="text"], input[type="date"], input[type="email"], select {
+      width: 100%; padding: 8px 12px;
+      border: 1.5px solid #cbd5e1; border-radius: 6px;
+      font-size: .9rem; color: #334155; background: #ffffff;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    }
+
+    /* Layout listado y detalle */
+    .view-container { display: flex; gap: 20px; flex-direction: column; }
+    .view-container.detail-active {
+      display: grid; grid-template-columns: 1.7fr 1fr;
+    }
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+    }
+
+    /* Table */
+    .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .92rem; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
+    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    tr:hover td { background: #f8fafc; cursor: pointer; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700;
+    }
+    .badge-verde { background: #d1fae5; color: #065f46; }
+    .badge-rojo { background: #fee2e2; color: #991b1b; }
+    .badge-amarillo { background: #fef3c7; color: #92400e; }
+
+    /* Detail Card */
+    .detail-card {
+      background: #ffffff; border-radius: 12px; border-left: 4px solid #10b981;
+      padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+      position: sticky; top: 20px; display: none;
+    }
+    .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+    .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #ccfbf1; border-top-color: #0d9488;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .9rem; font-weight: 600;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div id="toast" class="toast">Mensaje...</div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card">
+      <div class="title-box">
+        <div class="page-title">Evaluaciones de Capacitación SST</div>
+        <div class="page-sub">Panel de administración y control de capacitaciones SST (Formulario F-SST-002)</div>
+        <div class="badge-row">
+          <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
+          <div class="badge badge-total" id="total-badge-count">Total: 0 registros</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary" id="btn-admin-plantilla" style="display: none;">⚙️ Editar Plantilla</button>
+        <button class="btn btn-crear" id="btn-nueva-capacitacion">+ Crear Capacitación</button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card">
+      <div class="section-title">Filtros de Búsqueda</div>
+      <div class="grid-5">
+        <div class="field">
+          <label for="filtro-trabajador">Trabajador</label>
+          <input type="text" id="filtro-trabajador" placeholder="Nombre o C.C...">
+        </div>
+        <div class="field">
+          <label for="filtro-regional">Regional</label>
+          <select id="filtro-regional">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filtro-operacion">Operación</label>
+          <select id="filtro-operacion">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filtro-desde">Fecha Desde</label>
+          <input type="date" id="filtro-desde">
+        </div>
+        <div class="field">
+          <label for="filtro-hasta">Fecha Hasta</label>
+          <input type="date" id="filtro-hasta">
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px;">
+        <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
+        <button class="btn btn-primary" id="btn-filtrar">Aplicar Filtros</button>
+      </div>
+    </div>
+
+    <!-- Layout listado y detalle -->
+    <div class="view-container" id="layout-container">
+      
+      <!-- Listado Principal -->
+      <div class="card" style="border-left-color: #3b82f6;">
+        <div class="section-title">Capacitaciones Registradas</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Trabajador</th>
+                <th>Identificación</th>
+                <th>Puntaje</th>
+                <th>Resultado</th>
+                <th>Documento PDF</th>
+              </tr>
+            </thead>
+            <tbody id="capacitaciones-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #888; padding: 30px;">Cargando registros...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Detalle Lateral -->
+      <div class="detail-card" id="detalle-card">
+        <div class="section-title">Detalle de la Capacitación</div>
+        <div class="detail-info-box" id="detalle-info">
+          <!-- Dinámico -->
+        </div>
+
+        <div id="opciones-contacto" style="margin-top: 20px; display: none;">
+          <div class="section-title" style="margin-bottom: 12px; font-size: .75rem;">Actualizar Datos de Contacto</div>
+          <div class="field">
+            <label for="contacto-email">Correo Electrónico</label>
+            <input type="email" id="contacto-email" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="field">
+            <label for="contacto-celular">Celular (WhatsApp)</label>
+            <input type="text" id="contacto-celular" placeholder="3XXXXXXXXX">
+          </div>
+          <button class="btn btn-secondary" onclick="actualizarContacto()" style="width: 100%; margin-top: 5px;">Actualizar Contacto</button>
+        </div>
+
+        <div id="opciones-control" style="margin-top: 20px;">
+          <!-- Dinámico -->
+        </div>
+        
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;" onclick="cerrarDetalle()">Volver al Listado</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    window.CONFIG = __CONFIG__;
+  </script>
+
+  <script>
+    const CONFIG = window.CONFIG;
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const toast = document.getElementById('toast');
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+    function showToast(msg, type = 'success') {
+      toast.innerText = msg;
+      toast.style.background = type === 'error' ? '#ef4444' : '#334155';
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    // Configurar usuario en la interfaz
+    document.getElementById('user-badge-name').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+    
+    // Habilitar botón de administración si aplica
+    if (['LiderSst', 'Sistema'].includes(CONFIG.rol)) {
+      const btnAdmin = document.getElementById('btn-admin-plantilla');
+      btnAdmin.style.display = 'inline-flex';
+      btnAdmin.addEventListener('click', () => {
+        window.location.href = `/admin/capacitacionsst?usuario=${CONFIG.usuarioId}`;
+      });
+    }
+
+    document.getElementById('btn-nueva-capacitacion').addEventListener('click', () => {
+      window.location.href = `/formcapacitacionsst?usuario=${CONFIG.usuarioId}`;
+    });
+
+    let selectedCapacitacionId = null;
+
+    // Poblar filtros
+    const rFilter = document.getElementById('filtro-regional');
+    const oFilter = document.getElementById('filtro-operacion');
+
+    CONFIG.regionalesFiltro.forEach(reg => {
+      const opt = document.createElement('option');
+      opt.value = reg; opt.innerText = reg;
+      rFilter.appendChild(opt);
+    });
+    CONFIG.operacionesFiltro.forEach(op => {
+      const opt = document.createElement('option');
+      opt.value = op; opt.innerText = op;
+      oFilter.appendChild(opt);
+    });
+
+    rFilter.addEventListener('change', () => {
+      oFilter.innerHTML = '<option value="">Todas</option>';
+      const reg = rFilter.value;
+      const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
+      ops.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.innerText = op;
+        oFilter.appendChild(opt);
+      });
+    });
+
+    // Cargar Listado
+    async function cargarCapacitaciones() {
+      showLoading('Cargando registros...');
+      try {
+        const tr = document.getElementById('filtro-trabajador').value;
+        const desde = document.getElementById('filtro-desde').value;
+        const hasta = document.getElementById('filtro-hasta').value;
+        const reg = rFilter.value;
+        const op = oFilter.value;
+
+        let query = `?usuario=${CONFIG.usuarioId}`;
+        if (tr) query += `&trabajador=${encodeURIComponent(tr)}`;
+        if (desde) query += `&fechaDesde=${encodeURIComponent(desde)}`;
+        if (hasta) query += `&fechaHasta=${encodeURIComponent(hasta)}`;
+        if (reg) query += `&regional=${encodeURIComponent(reg)}`;
+        if (op) query += `&operacion=${encodeURIComponent(op)}`;
+
+        const r = await fetch(`/capacitacionsst/api/capacitaciones${query}`);
+        const data = await r.json();
+
+        document.getElementById('total-badge-count').innerText = `Total: ${data.length} registros`;
+
+        const tbody = document.getElementById('capacitaciones-body');
+        tbody.innerHTML = '';
+
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888; padding: 24px;">No se encontraron registros</td></tr>';
+          return;
+        }
+
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          row.dataset.id = item.id_capacitacion;
+          
+          const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+          
+          let pdfLink = '—';
+          if (item.url_doc) {
+            pdfLink = `<a href="${item.url_doc}" target="_blank" style="color: #10b981; font-weight: bold; text-decoration: none;">📄 PDF</a>`;
+          }
+
+          let badgeFirma = '';
+          if (item.url_doc) {
+            badgeFirma = `<span class="status-badge badge-verde">✓ Verde</span>`; // Completado
+          } else if (item.token_firma) {
+            badgeFirma = `<span class="status-badge badge-amarillo">✓ Amarillo</span>`; // Pendiente de firma
+          } else {
+            badgeFirma = `<span class="status-badge badge-rojo">Rojo</span>`; // Vencido/Sin firmas
+          }
+
+          row.innerHTML = `
+            <td>${fechaFmt}</td>
+            <td><strong>${item.nombre_trabajador}</strong></td>
+            <td>${item.identificacion}</td>
+            <td>${item.puntaje !== null ? item.puntaje : '—'}</td>
+            <td>${item.resultado || 'PENDIENTE'}</td>
+            <td onclick="event.stopPropagation()">${pdfLink}</td>
+          `;
+
+          row.addEventListener('click', () => {
+            abrirDetalle(item.id_capacitacion);
+          });
+
+          tbody.appendChild(row);
+        });
+
+      } catch (e) {
+        console.error(e);
+        showToast('Error al cargar listado', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    document.getElementById('btn-filtrar').addEventListener('click', cargarCapacitaciones);
+    document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+      document.getElementById('filtro-trabajador').value = '';
+      document.getElementById('filtro-desde').value = '';
+      document.getElementById('filtro-hasta').value = '';
+      rFilter.value = '';
+      oFilter.value = '';
+      rFilter.dispatchEvent(new Event('change'));
+      cargarCapacitaciones();
+    });
+
+    cargarCapacitaciones();
+
+    // Detalle Lateral
+    const layoutContainer = document.getElementById('layout-container');
+    const vistaDetalle = document.getElementById('detalle-card');
+
+    function abrirDetalle(id) {
+      selectedCapacitacionId = id;
+      layoutContainer.classList.add('detail-active');
+      vistaDetalle.style.display = 'block';
+      cargarDetalle();
+    }
+
+    function cerrarDetalle() {
+      selectedCapacitacionId = null;
+      layoutContainer.classList.remove('detail-active');
+      vistaDetalle.style.display = 'none';
+    }
+
+    async function cargarDetalle() {
+      showLoading('Cargando detalle...');
+      try {
+        const r = await fetch(`/capacitacionsst/api/capacitacion/${selectedCapacitacionId}`);
+        const data = await r.json();
+
+        const fechaFmt = data.fecha ? data.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+        
+        let badgeFirma = '';
+        if (data.url_doc) {
+          badgeFirma = `<span class="status-badge badge-verde">✓ Completado (Verde)</span>`;
+        } else if (data.token_firma) {
+          badgeFirma = `<span class="status-badge badge-amarillo">Pendiente Firma (Amarillo)</span>`;
+        } else {
+          badgeFirma = `<span class="status-badge badge-rojo">Vencido / Sin Firma (Rojo)</span>`;
+        }
+
+        const infoBox = document.getElementById('detalle-info');
+        infoBox.innerHTML = `
+          <p><strong>Identificación:</strong> ${data.identificacion}</p>
+          <p><strong>Tema:</strong> ${data.tema}</p>
+          <p><strong>Fecha Registro:</strong> ${fechaFmt}</p>
+          <p><strong>Evaluador:</strong> ${data.nombre_evaluador || data.usuario}</p>
+          <p><strong>Puntaje:</strong> ${data.puntaje !== null ? data.puntaje : '—'}</p>
+          <p><strong>Resultado:</strong> ${data.resultado || 'PENDIENTE'}</p>
+          <p><strong>Estado:</strong> ${badgeFirma}</p>
+          ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
+        `;
+
+        // Opciones de control
+        const controlBox = document.getElementById('opciones-control');
+        controlBox.innerHTML = '';
+        
+        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+        const esAutorizadoEliminar = ['AdmSst', 'LiderSst', 'Sistema'].includes(CONFIG.rol);
+
+        let optsHtml = '';
+
+        if (!data.url_doc && esCreadorOSistema) {
+          const urlFirmaLink = `${window.location.origin}/capacitacionsst/responder?item=${data.id_capacitacion}`;
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${urlFirmaLink}`);
+          const waUrl = `https://wa.me/?text=${msgWaText}`;
+
+          optsHtml += `
+            <div class="section-title" style="margin-top: 15px; font-size: .75rem;">Acciones de Control</div>
+            <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
+            <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
+          `;
+
+          // Cargar datos de contacto para edición
+          document.getElementById('opciones-contacto').style.display = 'block';
+          const rContact = await fetch(`/capacitacionsst/api/contacto/${data.identificacion}`);
+          const contact = await rContact.json();
+          document.getElementById('contacto-email').value = contact.Email || '';
+          document.getElementById('contacto-celular').value = contact.Celular || '';
+        } else {
+          document.getElementById('opciones-contacto').style.display = 'none';
+        }
+
+        if (esAutorizadoEliminar) {
+          if (!optsHtml) {
+            optsHtml += `<div class="section-title" style="margin-top: 15px; font-size: .75rem;">Acciones de Control</div>`;
+          }
+          optsHtml += `
+            <button class="btn" onclick="eliminarCapacitacion('${data.id_capacitacion}')" style="width: 100%; margin-top: 8px; background: #c0392b; color: #fff;">✕ Eliminar Registro</button>
+          `;
+        }
+
+        controlBox.innerHTML = optsHtml;
+
+      } catch (e) {
+        console.error(e);
+        showToast('Error al cargar detalle', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function notificarCorreo() {
+      showLoading('Enviando correo...');
+      try {
+        const r = await fetch('/capacitacionsst/api/reenviar-firma', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_capacitacion: selectedCapacitacionId, canal: 'email' })
+        });
+        const res = await r.json();
+        if (res.ok) {
+          showToast('Enlace enviado correctamente al trabajador');
+        } else {
+          showToast(res.error || 'Error al enviar enlace', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al enviar correo', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function actualizarContacto() {
+      const email = document.getElementById('contacto-email').value;
+      const celular = document.getElementById('contacto-celular').value;
+      
+      showLoading('Actualizando contacto...');
+      try {
+        // Obtener identificación del registro actual
+        const rDet = await fetch(`/capacitacionsst/api/capacitacion/${selectedCapacitacionId}`);
+        const det = await rDet.json();
+
+        const r = await fetch('/capacitacionsst/api/actualizar-contacto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identificacion: det.identificacion, email, celular })
+        });
+        const res = await r.json();
+        if (res.ok) {
+          showToast('Datos de contacto actualizados');
+        } else {
+          showToast(res.error || 'Error al actualizar contacto', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al actualizar contacto', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function eliminarCapacitacion(id) {
+      if (!confirm('¿Está seguro de que desea eliminar permanentemente esta evaluación de capacitación? Esta acción no se puede deshacer.')) return;
+      showLoading('Eliminando registro...');
+      try {
+        const r = await fetch(`/capacitacionsst/api/capacitacion/${id}?usuario=${CONFIG.usuarioId}`, { method: 'DELETE' });
+        const res = await r.json();
+        if (res.ok) {
+          showToast('Registro eliminado con éxito');
+          cerrarDetalle();
+          cargarCapacitaciones();
+        } else {
+          showToast(res.error || 'Error al eliminar registro', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al eliminar registro', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+  </script>
+</body>
+</html>

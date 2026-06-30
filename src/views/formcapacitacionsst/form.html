@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nueva Capacitación SST — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 750px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Header */
+    .header-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid #0d9488;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .85rem; color: #64748b; margin-top: 4px; }
+    .badge-user {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #ccfbf1; border: 1px solid #99f6e4;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; color: #0f766e; margin-top: 8px; font-weight: 600;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid #0d9488;
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: #0d9488; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #ccfbf1;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 580px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .field { margin-bottom: 20px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .85rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    label .req { color: #ef4444; margin-left: 2px; }
+    
+    input[type="text"], input[type="date"], select, textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #cbd5e1; border-radius: 8px;
+      font-size: .95rem; color: #334155; background: #ffffff;
+      transition: all .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    }
+    input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; }
+
+    .btn-submit {
+      width: 100%; background: #0d9488; color: #ffffff; border: none;
+      padding: 14px 20px; font-size: 1rem; font-weight: 700;
+      border-radius: 8px; cursor: pointer; transition: background .2s;
+      box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2);
+    }
+    .btn-submit:hover { background: #0f766e; }
+
+    /* Success card */
+    .success-card {
+      display: none; background: #ffffff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 30px 24px; text-align: center;
+      border-top: 5px solid #10b981;
+    }
+    .success-icon { font-size: 3rem; color: #10b981; margin-bottom: 16px; }
+    .success-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+    .success-text { font-size: .95rem; color: #64748b; margin-bottom: 24px; }
+    
+    .link-box {
+      background: #f8fafc; border: 1.5px dashed #cbd5e1;
+      border-radius: 8px; padding: 14px; margin-bottom: 24px;
+      word-break: break-all; font-size: .9rem; color: #1e293b;
+    }
+    
+    .btn-group-success {
+      display: flex; gap: 12px; justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-success-action {
+      padding: 10px 20px; font-size: .9rem; font-weight: bold;
+      border-radius: 6px; text-decoration: none; cursor: pointer;
+    }
+    .btn-wa { background: #25d366; color: #fff; }
+    .btn-wa:hover { background: #20ba5a; }
+    .btn-pri { background: #0d9488; color: #fff; }
+    .btn-pri:hover { background: #0f766e; }
+    .btn-sec { background: #e2e8f0; color: #475569; }
+    .btn-sec:hover { background: #cbd5e1; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #ccfbf1; border-top-color: #0d9488;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card" id="form-header">
+      <div class="title-box">
+        <div class="page-title">Programar Capacitación SST</div>
+        <div class="page-sub">Formulario de asignación de Evaluación de Capacitación SST (F-SST-002)</div>
+        <div class="badge-row">
+          <div class="badge-user" id="user-badge">Cargando usuario...</div>
+        </div>
+      </div>
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height: 48px;" alt="LOG&SER">
+    </div>
+
+    <!-- Formulario principal -->
+    <form id="form-capsst">
+      <!-- Ubicación del Trabajador -->
+      <div class="card">
+        <div class="section-title">Ubicación del Trabajador</div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="select-regional">Regional <span class="req">*</span></label>
+            <select id="select-regional" required>
+              <option value="">Seleccione Regional...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="select-operacion">Operación <span class="req">*</span></label>
+            <select id="select-operacion" required disabled>
+              <option value="">Seleccione Operación...</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detalles de la Capacitación -->
+      <div class="card">
+        <div class="section-title">Datos del Colaborador y Capacitación</div>
+        
+        <div class="field">
+          <label for="select-trabajador">Trabajador <span class="req">*</span></label>
+          <select id="select-trabajador" required disabled>
+            <option value="">Seleccione Trabajador...</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="input-cc">Identificación (C.C.)</label>
+            <input type="text" id="input-cc" readonly placeholder="Cédula del colaborador">
+          </div>
+          <div class="field">
+            <label for="input-cargo">Cargo</label>
+            <input type="text" id="input-cargo" readonly placeholder="Cargo del colaborador">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="input-fecha">Fecha de la Capacitación <span class="req">*</span></label>
+          <input type="date" id="input-fecha" required style="width: 50%;">
+        </div>
+
+        <!-- Correo / Celular prellenado -->
+        <div class="grid-2" style="background:#f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+          <div class="field">
+            <label for="input-email">Correo (Para notificación)</label>
+            <input type="text" id="input-email" readonly placeholder="No registrado" style="background:transparent; border:none; padding:4px 0;">
+          </div>
+          <div class="field">
+            <label for="input-celular">Celular (WhatsApp)</label>
+            <input type="text" id="input-celular" readonly placeholder="No registrado" style="background:transparent; border:none; padding:4px 0;">
+          </div>
+        </div>
+
+        <div class="field" style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="check-correo" checked style="width: 18px; height: 18px; accent-color: #0d9488;">
+          <label for="check-correo" style="margin-bottom: 0; font-weight: 500; cursor: pointer;">Notificar por correo electrónico al trabajador automáticamente</label>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button type="button" class="btn-success-action btn-sec" style="flex: 1; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s;" onclick="volverPanel()">Cancelar</button>
+        <button type="submit" class="btn-submit" id="btn-submit" style="flex: 2; margin-top: 0;">Registrar y Generar Enlace</button>
+      </div>
+    </form>
+
+    <!-- Pantalla de éxito -->
+    <div class="success-card" id="pantalla-exito">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">¡Capacitación SST registrada correctamente!</h2>
+      <p class="success-text">
+        Se ha registrado la capacitación. El trabajador ahora debe acceder al siguiente enlace para responder las preguntas y registrar su firma digital.
+      </p>
+      
+      <div class="link-box" id="link-firma">Cargando enlace...</div>
+
+      <div class="btn-group-success">
+        <button class="btn-success-action btn-sec" onclick="copiarAlPortapapeles()">Copiar Enlace</button>
+        <a id="btn-whatsapp" href="#" target="_blank" class="btn-success-action btn-wa">Enviar por WhatsApp</a>
+        <button class="btn-success-action btn-pri" onclick="volverPanel()">Volver al Listado</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG__;
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+
+    document.getElementById('user-badge').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+
+    // Inicializar fecha
+    document.getElementById('input-fecha').valueAsDate = new Date();
+
+    // Poblar Regionales
+    const rSelect = document.getElementById('select-regional');
+    const oSelect = document.getElementById('select-operacion');
+    const tSelect = document.getElementById('select-trabajador');
+
+    CONFIG.regionalesFiltro.forEach(reg => {
+      const opt = document.createElement('option');
+      opt.value = reg; opt.innerText = reg;
+      rSelect.appendChild(opt);
+    });
+
+    rSelect.addEventListener('change', () => {
+      oSelect.innerHTML = '<option value="">Seleccione Operación...</option>';
+      tSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
+      oSelect.disabled = true;
+      tSelect.disabled = true;
+      limpiarDatosTrabajador();
+
+      const reg = rSelect.value;
+      if (!reg) return;
+
+      const ops = CONFIG.opsPorRegional[reg] || [];
+      ops.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.innerText = op;
+        oSelect.appendChild(opt);
+      });
+      oSelect.disabled = false;
+    });
+
+    oSelect.addEventListener('change', async () => {
+      tSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
+      tSelect.disabled = true;
+      limpiarDatosTrabajador();
+
+      const reg = rSelect.value;
+      const op = oSelect.value;
+      if (!reg || !op) return;
+
+      showLoading('Cargando trabajadores...');
+      try {
+        const r = await fetch(`/capacitacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+        const data = await r.json();
+        
+        data.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.identificacion;
+          opt.innerText = t.Trabajador;
+          opt.dataset.cargo = t.Cargo || '';
+          tSelect.appendChild(opt);
+        });
+        tSelect.disabled = false;
+      } catch (e) {
+        console.error(e);
+        alert('Error al cargar colaboradores');
+      } finally {
+        hideLoading();
+      }
+    });
+
+    tSelect.addEventListener('change', async () => {
+      limpiarDatosTrabajador();
+      const val = tSelect.value;
+      if (!val) return;
+
+      const opt = tSelect.options[tSelect.selectedIndex];
+      document.getElementById('input-cc').value = val;
+      document.getElementById('input-cargo').value = opt.dataset.cargo || '';
+
+      // Obtener datos de contacto
+      try {
+        const r = await fetch(`/capacitacionsst/api/contacto/${val}`);
+        const data = await r.json();
+        document.getElementById('input-email').value = data.Email || 'No registrado';
+        document.getElementById('input-celular').value = data.Celular || 'No registrado';
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
+    function limpiarDatosTrabajador() {
+      document.getElementById('input-cc').value = '';
+      document.getElementById('input-cargo').value = '';
+      document.getElementById('input-email').value = '';
+      document.getElementById('input-celular').value = '';
+    }
+
+    function volverPanel() {
+      window.location.href = `/capacitacionsst?usuario=${CONFIG.usuarioId}`;
+    }
+
+    let linkFirmaGenerado = '';
+
+    // Enviar Formulario
+    document.getElementById('form-capsst').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fecha = document.getElementById('input-fecha').value;
+      const identificacion = document.getElementById('input-cc').value;
+      const enviar_correo = document.getElementById('check-correo').checked;
+
+      if (!identificacion) {
+        alert('Debe seleccionar un trabajador válido.');
+        return;
+      }
+
+      showLoading('Creando registro de capacitación...');
+      try {
+        const r = await fetch('/capacitacionsst/api/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fecha,
+            identificacion,
+            usuario: CONFIG.usuarioId,
+            enviar_correo
+          })
+        });
+
+        const res = await r.json();
+        if (res.ok) {
+          linkFirmaGenerado = res.urlFirma;
+          document.getElementById('link-firma').innerText = linkFirmaGenerado;
+          
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${linkFirmaGenerado}`);
+          document.getElementById('btn-whatsapp').href = `https://wa.me/?text=${msgWaText}`;
+
+          document.getElementById('form-capsst').style.display = 'none';
+          document.getElementById('form-header').style.display = 'none';
+          document.getElementById('pantalla-exito').style.display = 'block';
+        } else {
+          alert(res.error || 'Error al registrar la capacitación');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Error al conectar con el servidor.');
+      } finally {
+        hideLoading();
+      }
+    });
+
+    function copiarAlPortapapeles() {
+      navigator.clipboard.writeText(linkFirmaGenerado).then(() => {
+        alert('Enlace copiado al portapapeles');
+      }).catch(err => {
+        console.error('Error al copiar enlace:', err);
+      });
+    }
+  </script>
+</body>
+</html>

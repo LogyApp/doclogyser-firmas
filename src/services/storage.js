@@ -149,6 +149,13 @@ async function subirPDFEvaluacionSST(identificacion, formattedDate, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirPDFCapacitacionSST(identificacion, formattedDate, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.CAPSST.${formattedDate}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 async function subirEvidenciaAsistencia(idAsistencia, filename, buffer, contentType) {
   const nombre = `asistencias/${idAsistencia}/evidencias/${filename}`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
@@ -189,6 +196,7 @@ module.exports = {
   subirPDFPruebaConsumo,
   subirPDFCompromisoSST,
   subirPDFEvaluacionSST,
+  subirPDFCapacitacionSST,
   subirEvidenciaAsistencia,
   subirDocMovilidadTrabajador,
   subirDocMovilidadExterno,

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluación de Capacitación SST — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f0f4f8; min-height: 100vh; color: #1e293b; }
+    .wrapper { max-width: 700px; margin: 0 auto; padding: 20px 16px 60px; }
+
+    .header-card {
+      background: #ffffff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      padding: 20px 24px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      border-top: 5px solid #0d9488;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-title h1 { font-size: 1.15rem; font-weight: 700; color: #0f172a; }
+    .header-title p { font-size: .8rem; color: #64748b; margin-top: 2px; }
+    .header-codigo { font-size: .7rem; text-align: right; border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 6px; color: #64748b; line-height: 1.3; }
+
+    .card {
+      background: #ffffff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      padding: 24px; margin-bottom: 20px;
+      border-left: 4px solid #0d9488;
+    }
+    .card-grey { border-left-color: #64748b; }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700; color: #0d9488;
+      letter-spacing: 1.2px; text-transform: uppercase;
+      padding-bottom: 8px; margin-bottom: 16px;
+      border-bottom: 2px solid #ccfbf1;
+    }
+
+    .datos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+    @media (max-width:480px) { .datos-grid { grid-template-columns: 1fr; } }
+    .dato-row { font-size: .88rem; color: #475569; padding: 4px 0; border-bottom: 1px dashed #f1f5f9; }
+    .dato-row span { font-weight: 600; color: #0f172a; }
+
+    /* Cuestionario */
+    .q-num { font-size: .78rem; font-weight: 700; color: #64748b; margin-bottom: 4px; text-transform: uppercase; }
+    .q-title { font-size: .95rem; font-weight: 600; color: #0f172a; margin-bottom: 12px; }
+    
+    .options-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .opt-label {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px;
+      background: #f8fafc; font-size: .9rem; color: #334155; cursor: pointer;
+      transition: all .15s; user-select: none;
+    }
+    .opt-label:hover { border-color: #94a3b8; background: #f1f5f9; }
+    .opt-label input[type="radio"] {
+      margin-top: 3px; accent-color: #0d9488; flex-shrink: 0;
+    }
+    .opt-label.selected {
+      background: #ccfbf1; border-color: #0d9488; color: #0f766e; font-weight: 500;
+    }
+
+    .err-msg { color: #ef4444; font-size: .76rem; margin-top: 4px; display: none; font-weight: 600; }
+    .err-msg.visible { display: block; }
+
+    /* Legal compromisos */
+    .legal-text { font-size: .82rem; color: #475569; line-height: 1.6; text-align: justify; margin-bottom: 12px; }
+    .legal-text p { margin-bottom: 8px; }
+
+    /* Canvas styling */
+    .canvas-container {
+      background: #ffffff; border: 2px dashed #cbd5e1; border-radius: 8px;
+      position: relative; overflow: hidden; margin: 12px 0; touch-action: none;
+    }
+    canvas { display: block; width: 100%; height: 160px; cursor: crosshair; }
+    .canvas-controls { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+    .btn-clear { background: #e2e8f0; color: #475569; padding: 6px 12px; font-size: .8rem; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; }
+    .btn-clear:hover { background: #cbd5e1; }
+
+    .btn-submit {
+      width: 100%; background: #0d9488; color: #fff; border: none;
+      padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2);
+      transition: background .2s;
+    }
+    .btn-submit:hover { background: #0f766e; }
+    .btn-submit:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; }
+
+    /* Success state */
+    .success-card {
+      display: none; background: #ffffff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 40px 24px; text-align: center;
+      border-top: 5px solid #10b981;
+    }
+    .success-icon { font-size: 3.5rem; color: #10b981; margin-bottom: 16px; }
+    .success-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+    .success-text { font-size: .95rem; color: #64748b; line-height: 1.6; }
+    .score-badge {
+      display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 1.1rem; font-weight: 700; margin: 15px 0;
+    }
+    .score-aprobado { background: #d1fae5; color: #065f46; }
+    .score-reprobado { background: #fee2e2; color: #991b1b; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.85); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px; border: 4px solid #ccfbf1; border-top-color: #0d9488;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Enviando evaluación...</div>
+  </div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card" id="responder-header">
+      <div class="header-title">
+        <h1>Evaluación de Capacitación SST</h1>
+        <p>Responda las preguntas y registre su firma al final</p>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height: 48px;" alt="LOG&SER">
+        <div class="header-codigo">F-SST-002<br>Versión 1</div>
+      </div>
+    </div>
+
+    <div id="cuestionario">
+      <!-- Datos del Colaborador -->
+      <div class="card card-grey">
+        <div class="section-title" style="color:#475569; border-bottom-color:#e2e8f0;">Datos Generales</div>
+        <div class="datos-grid" id="colaborador-datos"></div>
+      </div>
+
+      <!-- Preguntas dinámicas -->
+      <div id="contenedor-preguntas"></div>
+
+      <!-- Declaración Legal y Firma -->
+      <div class="card" id="card-firma">
+        <div class="section-title">Declaración y Firma</div>
+        <div class="legal-text">
+          <p>Declaro que he recibido capacitación en Seguridad y Salud en el Trabajo, comprendiendo la información relacionada con las políticas, normas, procedimientos, riesgos asociados a mi labor, medidas de prevención, reporte de incidentes y accidentes, uso adecuado de los elementos de protección personal y demás aspectos aplicables a mis funciones.</p>
+          <p>Así mismo, me comprometo a cumplir las normas de Seguridad y Salud en el Trabajo establecidas por la empresa, utilizar correctamente los elementos de protección personal suministrados y participar activamente en las actividades de prevención y promoción de la seguridad y salud en el trabajo.</p>
+          <p>En constancia, firmo el presente documento.</p>
+        </div>
+
+        <label style="font-weight:bold; margin-top: 15px;">Firma del Trabajador <span style="color:#ef4444">*</span></label>
+        <div class="canvas-container">
+          <canvas id="canvas-firma"></canvas>
+        </div>
+        <div class="canvas-controls">
+          <button type="button" class="btn-clear" id="btn-borrar-canvas">Borrar Firma</button>
+        </div>
+        <div class="err-msg" id="err-firma">Debe registrar su firma para enviar.</div>
+      </div>
+
+      <button type="button" class="btn-submit" id="btn-enviar">Enviar Evaluación</button>
+    </div>
+
+    <!-- Pantalla de éxito -->
+    <div class="success-card" id="pantalla-exito">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">¡Evaluación Completada!</h2>
+      <div id="puntaje-badge" class="score-badge">Puntaje: --</div>
+      <p class="success-text" id="mensaje-exito">
+        Muchas gracias. Sus respuestas y firma digital han sido procesadas con éxito y se ha generado la constancia legal en formato PDF. Ya puede cerrar esta pestaña.
+      </p>
+      <p style="margin-top: 20px;" id="enlace-pdf-container">
+        <a id="btn-abrir-pdf" href="#" target="_blank" class="btn-submit" style="display:inline-block; width:auto; text-decoration:none; padding:12px 30px;">📄 Abrir PDF de Evaluación</a>
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG_RESPONDER__;
+  </script>
+
+  <script>
+    // Inicializar Datos del Colaborador
+    const datosGrid = document.getElementById('colaborador-datos');
+    const fechaFmt = CONFIG.fecha ? CONFIG.fecha.slice(0,10).split('-').reverse().join('/') : '';
+    datosGrid.innerHTML = `
+      <div class="dato-row">Trabajador: <span>${CONFIG.nombre_trabajador}</span></div>
+      <div class="dato-row">Identificación: <span>${CONFIG.identificacion}</span></div>
+      <div class="dato-row">Evaluador: <span>${CONFIG.evaluadorNombre}</span></div>
+      <div class="dato-row">Fecha: <span>${fechaFmt}</span></div>
+      <div class="dato-row" style="grid-column: 1 / -1;">Tema: <span>${CONFIG.tema}</span></div>
+      <div class="dato-row" style="grid-column: 1 / -1;">Objetivo: <span>${CONFIG.objetivo}</span></div>
+    `;
+
+    // Renderizar Preguntas
+    const contenedor = document.getElementById('contenedor-preguntas');
+    CONFIG.preguntas.forEach((q) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.id = `card-q${q.pregunta}`;
+
+      let optionsHtml = '';
+      const letras = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+      q.opciones.forEach((optText, idx) => {
+        const letra = letras[idx] || '';
+        optionsHtml += `
+          <label class="opt-label" onclick="selectRadio(this, ${q.pregunta})">
+            <input type="radio" name="q${q.pregunta}" value="${optText.replace(/"/g, '&quot;')}">
+            <span>${letra ? letra + '. ' : ''}${optText}</span>
+          </label>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="q-num">Pregunta ${q.pregunta}</div>
+        <div class="q-title">${q.descripcion_pregunta}</div>
+        <div class="options-grid">
+          ${optionsHtml}
+        </div>
+        <div class="err-msg" id="err-q${q.pregunta}">Debe seleccionar una respuesta.</div>
+      `;
+
+      contenedor.appendChild(card);
+    });
+
+    function selectRadio(labelEl, qNum) {
+      const parent = labelEl.closest('.options-grid');
+      parent.querySelectorAll('.opt-label').forEach(lbl => lbl.classList.remove('selected'));
+      labelEl.classList.add('selected');
+      const radio = labelEl.querySelector('input[type="radio"]');
+      radio.checked = true;
+
+      // Quitar error
+      document.getElementById(`err-q${qNum}`).classList.remove('visible');
+    }
+
+    // Firma Pad Logic
+    const canvas = document.getElementById('canvas-firma');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let hasDrawn = false;
+
+    // Ajustar tamaño del canvas para pantallas retina/alta densidad
+    function resizeCanvas() {
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = canvas.offsetWidth * ratio;
+      canvas.height = canvas.offsetHeight * ratio;
+      ctx.scale(ratio, ratio);
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#1e293b';
+      // Si ya dibujó antes de rotar se borra, pero esto es estándar
+      hasDrawn = false;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Dibujar con Firma Precargada si existe
+    if (CONFIG.firmaBase64) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.offsetWidth, canvas.offsetHeight);
+        hasDrawn = true;
+      };
+      img.src = CONFIG.firmaBase64;
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function startDraw(e) {
+      isDrawing = true;
+      const pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      document.getElementById('err-firma').classList.remove('visible');
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+      const pos = getPos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      hasDrawn = true;
+    }
+
+    function endDraw() {
+      isDrawing = false;
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', endDraw);
+
+    canvas.addEventListener('touchstart', startDraw);
+    canvas.addEventListener('touchmove', draw);
+    window.addEventListener('touchend', endDraw);
+
+    document.getElementById('btn-borrar-canvas').addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasDrawn = false;
+    });
+
+    // Enviar Respuestas
+    document.getElementById('btn-enviar').addEventListener('click', async () => {
+      let isFormValid = true;
+
+      // Validar preguntas
+      const respuestas = {};
+      CONFIG.preguntas.forEach((q) => {
+        const checked = document.querySelector(`input[name="q${q.pregunta}"]:checked`);
+        if (!checked) {
+          document.getElementById(`err-q${q.pregunta}`).classList.add('visible');
+          isFormValid = false;
+        } else {
+          respuestas[q.pregunta] = checked.value;
+          document.getElementById(`err-q${q.pregunta}`).classList.remove('visible');
+        }
+      });
+
+      // Validar firma
+      if (!hasDrawn) {
+        document.getElementById('err-firma').classList.add('visible');
+        isFormValid = false;
+      }
+
+      if (!isFormValid) {
+        alert('Por favor responda todas las preguntas y firme la evaluación.');
+        return;
+      }
+
+      // Convertir firma a Base64
+      const firmaDataUrl = canvas.toDataURL('image/png');
+
+      document.getElementById('loading-text').innerText = 'Enviando respuestas y generando PDF...';
+      document.getElementById('loading').style.display = 'flex';
+
+      try {
+        const r = await fetch(`/capacitacionsst/api/responder/${CONFIG.id_capacitacion}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            respuestas,
+            firma: firmaDataUrl
+          })
+        });
+
+        const res = await r.json();
+        if (res.ok) {
+          // Mostrar pantalla de éxito
+          const puntajeBadge = document.getElementById('puntaje-badge');
+          puntajeBadge.innerText = `Puntaje obtenido: ${res.score} / ${CONFIG.preguntas.length} (${res.resultado})`;
+          
+          if (res.resultado === 'APROBADO') {
+            puntajeBadge.className = 'score-badge score-aprobado';
+          } else {
+            puntajeBadge.className = 'score-badge score-reprobado';
+          }
+
+          if (res.urlDoc) {
+            document.getElementById('btn-abrir-pdf').href = res.urlDoc;
+          } else {
+            document.getElementById('enlace-pdf-container').style.display = 'none';
+          }
+
+          document.getElementById('cuestionario').style.display = 'none';
+          document.getElementById('responder-header').style.display = 'none';
+          document.getElementById('pantalla-exito').style.display = 'block';
+          window.scrollTo(0, 0);
+        } else {
+          alert(res.error || 'Error al enviar evaluación');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Error al enviar. Intente de nuevo.');
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

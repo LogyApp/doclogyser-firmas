@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrar Plantilla Capacitación SST — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Header */
+    .header-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid #0d9488;
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .88rem; color: #64748b; margin-top: 4px; }
+    .badge-user {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #ccfbf1; border: 1px solid #99f6e4;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; color: #0f766e; font-weight: 600;
+    }
+
+    .btn {
+      padding: 10px 20px; font-size: .92rem; font-weight: bold;
+      border-radius: 8px; border: none; cursor: pointer; transition: all .2s;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-primary { background: #0d9488; color: #fff; }
+    .btn-primary:hover { background: #0f766e; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-small { padding: 6px 12px; font-size: .8rem; border-radius: 6px; }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid #0d9488;
+    }
+    .card-history { border-left-color: #3b82f6; }
+
+    .section-title {
+      font-size: .85rem; font-weight: 700;
+      color: #0d9488; letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #ccfbf1;
+    }
+    .card-history .section-title {
+      color: #2563eb; border-bottom-color: #dbeafe;
+    }
+
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    
+    input[type="text"], textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #cbd5e1; border-radius: 8px;
+      font-size: .95rem; color: #334155; background: #ffffff;
+      transition: all .2s;
+    }
+    input:focus, textarea:focus {
+      outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    }
+
+    /* Column Layout: Editor & History */
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 950px) {
+      .admin-layout { grid-template-columns: 1fr; }
+    }
+
+    /* Question Box Builder */
+    .question-builder-card {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .question-number-label {
+      font-size: .9rem;
+      font-weight: 700;
+      color: #475569;
+    }
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .option-row input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #0d9488;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .btn-delete-opt {
+      background: none; border: none; color: #ef4444; font-size: 1.1rem; cursor: pointer; padding: 4px;
+    }
+    .btn-delete-opt:hover { color: #dc2626; }
+
+    /* Versions List */
+    .version-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: .9rem;
+    }
+    .version-item:last-child { border-bottom: none; }
+    .version-meta {
+      flex-grow: 1;
+      padding-right: 12px;
+    }
+    .version-number {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .version-date {
+      font-size: .75rem;
+      color: #64748b;
+      margin-top: 3px;
+    }
+    .version-status {
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-left: 6px;
+    }
+    .status-active { background: #d1fae5; color: #065f46; }
+    .status-inactive { background: #f1f5f9; color: #64748b; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #ccfbf1; border-top-color: #0d9488;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .9rem; font-weight: 600;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div id="toast" class="toast">Mensaje...</div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card">
+      <div class="title-box">
+        <div class="page-title">⚙️ Administrar Plantilla Capacitación SST</div>
+        <div class="page-sub">Diseño de cuestionario, edición de tema y objetivo y control de versiones (F-SST-002)</div>
+        <div class="badge-user" id="user-badge-name">Cargando usuario...</div>
+      </div>
+      <button class="btn btn-secondary" onclick="volverPanel()">Volver al Listado</button>
+    </div>
+
+    <div class="admin-layout">
+      <!-- Editor de Plantilla -->
+      <div>
+        <div class="card">
+          <div class="section-title">Editor de Cuestionario</div>
+          
+          <div class="field">
+            <label for="input-tema">Tema de Capacitación <span style="color:#ef4444">*</span></label>
+            <textarea id="input-tema" rows="2" placeholder="Escriba el tema de la capacitación..."></textarea>
+          </div>
+
+          <div class="field">
+            <label for="input-objetivo">Objetivo General <span style="color:#ef4444">*</span></label>
+            <textarea id="input-objetivo" rows="3" placeholder="Escriba el objetivo de la capacitación..."></textarea>
+          </div>
+
+          <!-- Preguntas -->
+          <div style="margin-top: 24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <label style="font-size:.9rem; font-weight:bold; color:#0f172a;">Preguntas y Respuestas</label>
+              <button class="btn btn-secondary btn-small" onclick="agregarPregunta()">+ Agregar Pregunta</button>
+            </div>
+
+            <div id="contenedor-preguntas-builder">
+              <!-- Dinámico -->
+            </div>
+
+            <div style="text-align: right; margin-top: 20px;">
+              <button class="btn btn-primary" style="padding: 12px 30px;" onclick="guardarPlantilla()">💾 Guardar Nueva Versión</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Historial de Versiones -->
+      <div>
+        <div class="card card-history">
+          <div class="section-title">Historial de Versiones</div>
+          <div id="contenedor-versiones" style="max-height: 550px; overflow-y: auto;">
+            <!-- Dinámico -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    window.CONFIG = __CONFIG__;
+  </script>
+
+  <script>
+    const CONFIG = window.CONFIG;
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const toast = document.getElementById('toast');
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+    function showToast(msg, type = 'success') {
+      toast.innerText = msg;
+      toast.style.background = type === 'error' ? '#ef4444' : '#334155';
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    document.getElementById('user-badge-name').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+
+    function volverPanel() {
+      window.location.href = `/capacitacionsst?usuario=${CONFIG.usuarioId}`;
+    }
+
+    let preguntas = []; // Estado local de preguntas
+
+    // Cargar Plantilla Activa en el Editor
+    async function cargarPlantillaActiva(idPlantilla = null) {
+      showLoading('Cargando plantilla...');
+      try {
+        let url = '/capacitacionsst/api/plantilla';
+        if (idPlantilla) url += `?id_plantilla=${idPlantilla}`;
+
+        const r = await fetch(url);
+        const data = await r.json();
+
+        document.getElementById('input-tema').value = data.tema || '';
+        document.getElementById('input-objetivo').value = data.objetivo || '';
+
+        // Estructurar preguntas
+        const pMap = {};
+        (data.items || []).forEach(item => {
+          if (!pMap[item.pregunta]) {
+            pMap[item.pregunta] = {
+              pregunta: item.pregunta,
+              descripcion_pregunta: item.descripcion_pregunta,
+              opciones: []
+            };
+          }
+          pMap[item.pregunta].opciones.push({
+            opcion: item.opcion,
+            correcta: item.correcta === 'SI'
+          });
+        });
+
+        preguntas = Object.values(pMap).sort((a, b) => a.pregunta - b.pregunta);
+        renderPreguntasBuilder();
+      } catch (e) {
+        console.error(e);
+        showToast('Error al cargar plantilla', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Renderizar Preguntas en el Editor
+    function renderPreguntasBuilder() {
+      const container = document.getElementById('contenedor-preguntas-builder');
+      container.innerHTML = '';
+
+      if (!preguntas.length) {
+        container.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">No hay preguntas en la plantilla. Utilice el botón "+ Agregar Pregunta" para crear una.</div>';
+        return;
+      }
+
+      preguntas.forEach((q, qIdx) => {
+        q.pregunta = qIdx + 1; // Re-indexar orden
+
+        const card = document.createElement('div');
+        card.className = 'question-builder-card';
+
+        let optionsHtml = '';
+        q.opciones.forEach((opt, optIdx) => {
+          optionsHtml += `
+            <div class="option-row">
+              <input type="radio" name="correcta_q${q.pregunta}" ${opt.correcta ? 'checked' : ''} onclick="marcarCorrecta(${qIdx}, ${optIdx})" title="Marcar como opción correcta">
+              <input type="text" value="${opt.opcion.replace(/"/g, '&quot;')}" oninput="actualizarOpcionTexto(${qIdx}, ${optIdx}, this.value)" placeholder="Opción ${optIdx + 1}" required style="padding: 6px 10px; font-size: .88rem;">
+              <button type="button" class="btn-delete-opt" onclick="eliminarOpcion(${qIdx}, ${optIdx})" title="Eliminar opción">✕</button>
+            </div>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="question-header">
+            <span class="question-number-label">Pregunta ${q.pregunta}</span>
+            <button class="btn btn-danger btn-small" onclick="eliminarPregunta(${qIdx})" style="padding: 4px 10px;">✕ Eliminar</button>
+          </div>
+          <div class="field">
+            <input type="text" value="${q.descripcion_pregunta.replace(/"/g, '&quot;')}" oninput="actualizarPreguntaTexto(${qIdx}, this.value)" placeholder="Escriba el enunciado de la pregunta..." required>
+          </div>
+          <div style="margin-left: 15px; margin-top: 10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label style="font-size: .8rem; margin-bottom:0;">Opciones de Respuesta (seleccione la correcta en el radio button)</label>
+              <button class="btn btn-secondary btn-small" style="padding:2px 8px; font-size:.75rem;" onclick="agregarOpcion(${qIdx})">+ Opción</button>
+            </div>
+            <div class="options-container">
+              ${optionsHtml}
+            </div>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // Funciones del Editor
+    function agregarPregunta() {
+      preguntas.push({
+        pregunta: preguntas.length + 1,
+        descripcion_pregunta: '',
+        opciones: [
+          { opcion: '', correcta: true },
+          { opcion: '', correcta: false }
+        ]
+      });
+      renderPreguntasBuilder();
+    }
+
+    function eliminarPregunta(qIdx) {
+      preguntas.splice(qIdx, 1);
+      renderPreguntasBuilder();
+    }
+
+    function actualizarPreguntaTexto(qIdx, val) {
+      preguntas[qIdx].descripcion_pregunta = val;
+    }
+
+    function agregarOpcion(qIdx) {
+      preguntas[qIdx].opciones.push({ opcion: '', correcta: false });
+      renderPreguntasBuilder();
+    }
+
+    function eliminarOpcion(qIdx, optIdx) {
+      if (preguntas[qIdx].opciones.length <= 2) {
+        alert('Una pregunta debe tener al menos 2 opciones.');
+        return;
+      }
+      const removed = preguntas[qIdx].opciones.splice(optIdx, 1)[0];
+      // Si eliminamos la correcta, marcar la primera opción como correcta por defecto
+      if (removed.correcta) {
+        preguntas[qIdx].opciones[0].correcta = true;
+      }
+      renderPreguntasBuilder();
+    }
+
+    function actualizarOpcionTexto(qIdx, optIdx, val) {
+      preguntas[qIdx].opciones[optIdx].opcion = val;
+    }
+
+    function marcarCorrecta(qIdx, optIdx) {
+      preguntas[qIdx].opciones.forEach((opt, idx) => {
+        opt.correcta = (idx === optIdx);
+      });
+    }
+
+    // Cargar Historial de Versiones
+    async function cargarHistorial() {
+      try {
+        const r = await fetch('/capacitacionsst/api/plantilla/historial');
+        const data = await r.json();
+
+        const container = document.getElementById('contenedor-versiones');
+        container.innerHTML = '';
+
+        if (!data.length) {
+          container.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">No hay historial de versiones.</div>';
+          return;
+        }
+
+        data.forEach(v => {
+          const item = document.createElement('div');
+          item.className = 'version-item';
+
+          const fechaFmt = v.fecha_registro ? v.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '';
+          const isActivo = v.activo === 1;
+          const badgeClass = isActivo ? 'status-active' : 'status-inactive';
+          const badgeText = isActivo ? 'Activa' : 'Inactiva';
+
+          let buttonsHtml = '';
+          if (!isActivo) {
+            buttonsHtml += `<button class="btn btn-primary btn-small" onclick="activarVersion('${v.id_plantilla}')" style="margin-right: 6px; background:#2563eb;">Activar</button>`;
+          }
+          buttonsHtml += `<button class="btn btn-secondary btn-small" onclick="cargarPlantillaActiva('${v.id_plantilla}')">Cargar</button>`;
+
+          // Truncar tema
+          const temaTrunc = v.tema.length > 55 ? v.tema.slice(0, 52) + '...' : v.tema;
+
+          item.innerHTML = `
+            <div class="version-meta">
+              <div>
+                <span class="version-number">Versión ${v.version}</span>
+                <span class="version-status ${badgeClass}">${badgeText}</span>
+              </div>
+              <div style="font-size: .8rem; color: #555; margin-top: 2px;" title="${v.tema}">${temaTrunc}</div>
+              <div class="version-date">Creado por: ${v.usuario_creador} el ${fechaFmt}</div>
+            </div>
+            <div style="flex-shrink: 0; display:flex;">
+              ${buttonsHtml}
+            </div>
+          `;
+
+          container.appendChild(item);
+        });
+
+      } catch (e) {
+        console.error(e);
+        showToast('Error al cargar historial', 'error');
+      }
+    }
+
+    // Activar Versión del Historial
+    async function activarVersion(idPlantilla) {
+      showLoading('Activando plantilla...');
+      try {
+        const r = await fetch('/capacitacionsst/api/plantilla/activar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_plantilla: idPlantilla, usuario: CONFIG.usuarioId })
+        });
+        const res = await r.json();
+        if (res.ok) {
+          showToast('Cuestionario activado con éxito');
+          cargarPlantillaActiva(idPlantilla);
+          cargarHistorial();
+        } else {
+          showToast(res.error || 'Error al activar versión', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al activar versión', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Guardar Plantilla como Nueva Versión
+    async function guardarPlantilla() {
+      const tema = document.getElementById('input-tema').value.trim();
+      const objetivo = document.getElementById('input-objetivo').value.trim();
+
+      if (!tema || !objetivo) {
+        alert('Debe rellenar el Tema y Objetivo.');
+        return;
+      }
+
+      if (!preguntas.length) {
+        alert('Debe agregar al menos una pregunta.');
+        return;
+      }
+
+      // Validar que todas las preguntas tengan enunciado, opciones rellenadas y exactamente una correcta
+      let formValido = true;
+      for (const q of preguntas) {
+        if (!q.descripcion_pregunta.trim()) {
+          alert(`La pregunta ${q.pregunta} no tiene enunciado.`);
+          formValido = false;
+          break;
+        }
+
+        let tieneCorrecta = false;
+        for (const opt of q.opciones) {
+          if (!opt.opcion.trim()) {
+            alert(`Una de las opciones de la pregunta ${q.pregunta} está vacía.`);
+            formValido = false;
+            break;
+          }
+          if (opt.correcta) tieneCorrecta = true;
+        }
+
+        if (!formValido) break;
+
+        if (!tieneCorrecta) {
+          alert(`Debe seleccionar una respuesta correcta para la pregunta ${q.pregunta}.`);
+          formValido = false;
+          break;
+        }
+      }
+
+      if (!formValido) return;
+
+      // Estructurar payload
+      const payload = {
+        tema,
+        objetivo,
+        usuario: CONFIG.usuarioId,
+        preguntas: preguntas.map(q => ({
+          pregunta: q.pregunta,
+          descripcion_pregunta: q.descripcion_pregunta,
+          opciones: q.opciones.map(o => ({
+            opcion: o.opcion,
+            correcta: o.correcta ? 'SI' : null
+          }))
+        }))
+      };
+
+      showLoading('Guardando nueva versión...');
+      try {
+        const r = await fetch('/capacitacionsst/api/plantilla/guardar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const res = await r.json();
+        if (res.ok) {
+          showToast(`Nueva versión (V${res.version}) guardada y activada con éxito`);
+          cargarPlantillaActiva(res.id_plantilla);
+          cargarHistorial();
+        } else {
+          showToast(res.error || 'Error al guardar versión', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al guardar versión', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Inicialización
+    cargarPlantillaActiva();
+    cargarHistorial();
+  </script>
+</body>
+</html>
