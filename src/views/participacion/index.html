@@ -483,11 +483,16 @@
           ? `<a href="${item.url_doc}" target="_blank" class="btn btn-secondary btn-small">Ver PDF</a>`
           : `<button class="btn btn-secondary btn-small" disabled style="opacity: 0.5;">Ver PDF</button>`;
 
+        let cleanResponsableName = item.nombre_responsable || item.responsable || '';
+        if (cleanResponsableName.includes(' ** ')) {
+          cleanResponsableName = cleanResponsableName.split(' ** ')[1];
+        }
+
         tr.innerHTML = `
           <td><strong>${fechaFmt}</strong></td>
           <td>${item.tema}</td>
           <td>${item.lugar}</td>
-          <td>${item.nombre_responsable || item.responsable}</td>
+          <td>${cleanResponsableName}</td>
           <td>${duracionFmt} Hs</td>
           <td>${pdfBadge}</td>
           <td>
@@ -556,9 +561,13 @@
       
       if (esCreadorOSistema) {
         let btnsHtml = `<div class="section-title" style="margin-top: 25px;">Acciones de Control</div>`;
+        const btnText = data.url_doc ? 'Regenerar PDF (Solo Firmas Listas)' : 'Generar PDF (Solo Firmas Listas)';
+        btnsHtml += `
+          <button class="btn btn-success" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">${btnText}</button>
+        `;
+
         if (!data.url_doc) {
           btnsHtml += `
-            <button class="btn btn-success" onclick="generarPDF(false)" style="width: 100%; margin-bottom: 8px;">Generar PDF (Solo Firmas Listas)</button>
             <button class="btn btn-primary" onclick="notificarTodos()" style="width: 100%; margin-bottom: 8px;">Enviar Correo a Todos</button>
             <button class="btn btn-secondary" onclick="abrirFormulario(${data.id_asistencia})" style="width: 100%;">Editar Formato</button>
           `;

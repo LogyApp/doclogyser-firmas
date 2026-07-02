@@ -52,6 +52,271 @@ function formatFechaEspanol(dateVal) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+async function generarPDFAsistencia(id, force = false) {
+  // 1. Obtener datos de cabecera y responsable
+  const [[asistencia]] = await pool.execute(
+    `SELECT 
+      a.id_asistencia,
+      a.tema,
+      a.fecha,
+      a.hora_inicial,
+      a.hora_final,
+      a.lugar,
+      a.duracion,
+      a.objetivo,
+      a.responsable,
+      a.usuario,
+      v.Trabajador AS nombre_responsable,
+      v.Identificación AS identificacion_responsable,
+      v.Cargo AS cargo_responsable
+     FROM Dynamic_formato_asistencia a
+     LEFT JOIN \`Maestro_Vinculación\` v ON a.responsable = v.\`Id Vinculación\`
+     WHERE a.id_asistencia = ?`,
+    [id]
+  );
+
+  if (!asistencia) {
+    throw new Error('Asistencia no encontrada');
+  }
+
+  // 1.5 Verificar que tenga fotos de evidencia cargadas
+  const [evRows] = await pool.execute(
+    'SELECT 1 FROM Dynamic_formato_evidencias WHERE id_asistencia = ? LIMIT 1',
+    [id]
+  );
+  if (!evRows.length) {
+    throw new Error('Debe adjuntar al menos una foto de evidencia para poder generar el PDF.');
+  }
+
+  // 2. Obtener asistentes
+  const [items] = await pool.execute(
+    'SELECT nombre_trabajador, identificacion, cargo FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ?',
+    [id]
+  );
+
+  // 3. Resolver firmas del bucket de GCS
+  let todasFirmadas = true;
+  const asistentesConFirma = [];
+
+  for (const item of items) {
+    const firmaBase64 = await obtenerFirmaBase64Reciente(item.identificacion).catch(() => null);
+    if (!firmaBase64) {
+      todasFirmadas = false;
+    }
+    asistentesConFirma.push({
+      ...item,
+      firmaBase64,
+    });
+  }
+
+  // Si no están completas (no hay firma física en GCS para todos) y no es forzado, retornar error
+  if (!todasFirmadas && !force) {
+    throw new Error('Faltan firmas de asistentes en el sistema.');
+  }
+
+  // 4. Obtener firma del responsable
+  let firmaResponsableBase64 = null;
+  if (asistencia.identificacion_responsable) {
+    firmaResponsableBase64 = await obtenerFirmaBase64Reciente(asistencia.identificacion_responsable).catch(() => null);
+  }
+
+  // 5. Construir HTML para el PDF
+  let filasAsistentesHtml = '';
+  let num = 1;
+  for (const ast of asistentesConFirma) {
+    const imgFirma = ast.firmaBase64 
+      ? `<img src="${ast.firmaBase64}" style="height: 38px; display: block; margin: 0 auto;" />` 
+      : '<span style="color: #ccc; font-size: 8px;">Pendiente</span>';
+
+    let cleanNombre = ast.nombre_trabajador || '';
+    if (cleanNombre.includes(' ** ')) {
+      cleanNombre = cleanNombre.split(' ** ')[1];
+    }
+
+    filasAsistentesHtml += `
+      <tr>
+        <td style="border: 1px solid #111; padding: 6px; text-align: center;">${num++}</td>
+        <td style="border: 1px solid #111; padding: 6px; font-weight: bold;">${cleanNombre}</td>
+        <td style="border: 1px solid #111; padding: 6px;">${ast.identificacion}</td>
+        <td style="border: 1px solid #111; padding: 6px;">${ast.cargo}</td>
+        <td style="border: 1px solid #111; padding: 6px; text-align: center; vertical-align: middle;">${imgFirma}</td>
+      </tr>
+    `;
+  }
+
+  const imgFirmaResponsable = firmaResponsableBase64
+    ? `<img src="${firmaResponsableBase64}" style="height: 55px; display: block; margin: 0 auto;" />`
+    : '<div style="height: 50px; width: 200px; margin: 0 auto; border-bottom: 1px dashed #999;"></div>';
+
+  let cleanResponsable = asistencia.nombre_responsable || '—';
+  if (cleanResponsable.includes(' ** ')) {
+    cleanResponsable = cleanResponsable.split(' ** ')[1];
+  }
+
+  const htmlCompleto = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        * { box-sizing: border-box; }
+        @page { margin: 1.2cm 1.2cm 1.2cm 1.2cm; }
+        body { font-family: Arial, sans-serif; font-size: 9.5pt; color: #222; margin: 0; padding: 0; }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+        .header-table td { border: 1px solid #111; padding: 8px; vertical-align: middle; }
+        .logo-cell { width: 140px; text-align: center; }
+        .logo-cell img { height: 42px; max-width: 130px; }
+        .title-cell { text-align: center; font-size: 11pt; font-weight: bold; line-height: 1.4; }
+        .meta-cell { width: 140px; font-size: 8pt; line-height: 1.4; }
+        
+        .section-title {
+          background: #d9d9d9; font-size: 9.5pt; font-weight: bold; padding: 6px;
+          border: 1px solid #111; text-align: center; margin-top: 14px; margin-bottom: 0;
+          text-transform: uppercase;
+        }
+        
+        .info-table { width: 100%; border-collapse: collapse; margin-top: 0; }
+        .info-table td { border: 1px solid #111; padding: 6px; vertical-align: middle; }
+        .label { font-weight: bold; background: #f2f2f2; width: 15%; }
+        
+        .asistentes-table { width: 100%; border-collapse: collapse; margin-top: 0; }
+        .asistentes-table th { border: 1px solid #111; background: #e6e6e6; padding: 6px; font-weight: bold; text-align: left; font-size: 9pt; }
+        .asistentes-table td { border: 1px solid #111; padding: 5px; font-size: 8.5pt; }
+        
+        .firma-table { width: 60%; border-collapse: collapse; margin: 25px auto 0; }
+        .firma-table td { border: 1px solid #111; padding: 12px; vertical-align: top; text-align: center; background: #fff; }
+      </style>
+    </head>
+    <body>
+      <table class="header-table">
+        <tr>
+          <td class="logo-cell"><img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="LOG&SER"></td>
+          <td class="title-cell">REGISTRO DE PARTICIPANTES</td>
+          <td class="meta-cell">
+            <strong>Código:</strong> SST-F-003<br>
+            <strong>Versión:</strong> 02<br>
+            <strong>Fecha:</strong> 28/05/2026
+          </td>
+        </tr>
+      </table>
+
+      <div class="section-title">Información Básica</div>
+      <table class="info-table">
+        <tr>
+          <td class="label">Tema</td>
+          <td colspan="5" style="font-weight: bold; font-size: 10.5pt;">${asistencia.tema}</td>
+        </tr>
+        <tr>
+          <td class="label">Fecha</td>
+          <td style="width: 18%;">${formatFechaEspanol(asistencia.fecha)}</td>
+          <td class="label">Hora Inicial</td>
+          <td style="width: 18%;">${asistencia.hora_inicial.slice(0, 5)}</td>
+          <td class="label">Hora Final</td>
+          <td style="width: 20%;">${asistencia.hora_final.slice(0, 5)}</td>
+        </tr>
+        <tr>
+          <td class="label">Lugar</td>
+          <td colspan="3">${asistencia.lugar}</td>
+          <td class="label">Duración</td>
+          <td>${asistencia.duracion.slice(0, 5)} Hs</td>
+        </tr>
+        <tr>
+          <td class="label">Objetivo</td>
+          <td colspan="5" style="text-align: justify;">${asistencia.objetivo || '—'}</td>
+        </tr>
+      </table>
+
+      <div class="section-title">Asistentes Registrados</div>
+      <table class="asistentes-table">
+        <thead>
+          <tr>
+            <th style="width: 5%; text-align: center;">#</th>
+            <th style="width: 40%;">Nombres y apellidos</th>
+            <th style="width: 15%;">Cédula</th>
+            <th style="width: 20%;">Cargo</th>
+            <th style="width: 20%; text-align: center;">Firma</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filasAsistentesHtml}
+        </tbody>
+      </table>
+
+      <table class="firma-table">
+        <tr>
+          <td>
+            <p style="margin: 0 0 8px; font-weight: bold; font-size: 10pt; text-transform: uppercase;">RESPONSABLE DEL REGISTRO</p>
+            <p style="margin: 3px 0; font-size: 9pt;">Nombre: <strong>${cleanResponsable}</strong></p>
+            <p style="margin: 3px 0; font-size: 9pt;">Cargo: ${asistencia.cargo_responsable || '—'}</p>
+            <div style="margin-top: 14px;">
+              ${imgFirmaResponsable}
+            </div>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  // 6. Renderizar PDF con Puppeteer
+  const pdfBuffer = await generarPDFDesdeHTML(htmlCompleto);
+
+  // 7. Guardar en carpeta de cada asistente y registrar en Maestro_docTrabajador
+  const now = new Date();
+  const formattedDate = formatYYMMDDHHSS(now);
+
+  for (const ast of items) {
+    const urlDoc = await subirPDFAstAsistencia(ast.identificacion, formattedDate, pdfBuffer);
+
+    try {
+      const [vinRows] = await pool.execute(
+        `SELECT Regional, \`Operación\`, Identificación, Estado, \`Fecha de Ingreso\` 
+         FROM \`Maestro_Vinculación\` 
+         WHERE Identificación = ? 
+         ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+        [ast.identificacion]
+      );
+
+      const regional = vinRows.length ? vinRows[0].Regional : null;
+      const operacion = vinRows.length ? vinRows[0]['Operación'] : null;
+      const estado = vinRows.length ? vinRows[0].Estado : null;
+      const fechaIngreso = vinRows.length ? vinRows[0]['Fecha de Ingreso'] : null;
+
+      const docId = randomUUID();
+      await pool.execute(
+        `INSERT INTO Maestro_docTrabajador
+         (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
+          TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario)
+         VALUES (?, 'PEND', ?, ?, ?, ?, ?, 71, 'ACTASI', ?, NULL, NULL, NULL, NULL, ?)`,
+        [
+          docId,
+          regional,
+          operacion,
+          ast.identificacion,
+          estado,
+          fechaIngreso,
+          urlDoc,
+          asistencia.usuario
+        ]
+      );
+      console.log(`[participacion] [Maestro_docTrabajador] Registrado documento ACTASI para ${ast.identificacion}`);
+    } catch (err) {
+      console.error(`[participacion] [Maestro_docTrabajador] Error registrando documento para ${ast.identificacion}:`, err.message);
+    }
+  }
+
+  // 8. Guardar copia general en la carpeta central de asistencias
+  const urlGeneral = await subirPDFGeneralAsistencia(id, formattedDate, pdfBuffer);
+
+  // 9. Actualizar url_doc en la base de datos
+  await pool.execute(
+    'UPDATE Dynamic_formato_asistencia SET url_doc = ? WHERE id_asistencia = ?',
+    [urlGeneral, id]
+  );
+
+  return { urlGeneral, todasFirmadas };
+}
+
 async function computarAccesoParticipacion(usuarioId) {
   if (!usuarioId) return null;
 
@@ -673,283 +938,17 @@ router.post('/api/asistencia/:id/enviar-notificacion', async (req, res) => {
   }
 });
 
-// ═════ API: POST /api/asistencia/:id/generar-pdf ═════
 router.post('/api/asistencia/:id/generar-pdf', async (req, res) => {
   try {
     const { id } = req.params;
     const { force } = req.body;
 
-    // 1. Obtener datos de cabecera y responsable
-    const [[asistencia]] = await pool.execute(
-      `SELECT 
-        a.id_asistencia,
-        a.tema,
-        a.fecha,
-        a.hora_inicial,
-        a.hora_final,
-        a.lugar,
-        a.duracion,
-        a.objetivo,
-        a.responsable,
-        a.usuario,
-        v.Trabajador AS nombre_responsable,
-        v.Identificación AS identificacion_responsable,
-        v.Cargo AS cargo_responsable
-       FROM Dynamic_formato_asistencia a
-       LEFT JOIN \`Maestro_Vinculación\` v ON a.responsable = v.\`Id Vinculación\`
-       WHERE a.id_asistencia = ?`,
-      [id]
-    );
-
-    if (!asistencia) {
-      return res.status(404).json({ error: 'Asistencia no encontrada' });
-    }
-
-    // 1.5 Verificar que tenga fotos de evidencia cargadas
-    const [evRows] = await pool.execute(
-      'SELECT 1 FROM Dynamic_formato_evidencias WHERE id_asistencia = ? LIMIT 1',
-      [id]
-    );
-    if (!evRows.length) {
-      return res.status(400).json({
-        error: 'Debe adjuntar al menos una foto de evidencia para poder generar el PDF.',
-        firmasCompletas: false,
-      });
-    }
-
-    // 2. Obtener asistentes
-    const [items] = await pool.execute(
-      'SELECT nombre_trabajador, identificacion, cargo FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ?',
-      [id]
-    );
-
-    // 3. Resolver firmas del bucket de GCS (tanto si aceptaron como si usamos la prellenada)
-    let todasFirmadas = true;
-    const asistentesConFirma = [];
-
-    for (const item of items) {
-      const firmaBase64 = await obtenerFirmaBase64Reciente(item.identificacion).catch(() => null);
-      if (!firmaBase64) {
-        todasFirmadas = false;
-      }
-      asistentesConFirma.push({
-        ...item,
-        firmaBase64,
-      });
-    }
-
-    // Si no están completas (no hay firma física en GCS para todos) y no es forzado, retornar error
-    if (!todasFirmadas && !force) {
-      return res.status(400).json({
-        error: 'Faltan firmas de asistentes en el sistema.',
-        firmasCompletas: false,
-      });
-    }
-
-    // 4. Obtener firma del responsable
-    let firmaResponsableBase64 = null;
-    if (asistencia.identificacion_responsable) {
-      firmaResponsableBase64 = await obtenerFirmaBase64Reciente(asistencia.identificacion_responsable).catch(() => null);
-    }
-
-    // 5. Construir HTML para el PDF
-    let filasAsistentesHtml = '';
-    let num = 1;
-    for (const ast of asistentesConFirma) {
-      const imgFirma = ast.firmaBase64 
-        ? `<img src="${ast.firmaBase64}" style="height: 38px; display: block; margin: 0 auto;" />` 
-        : '<span style="color: #ccc; font-size: 8px;">Pendiente</span>';
-
-      let cleanNombre = ast.nombre_trabajador || '';
-      if (cleanNombre.includes(' ** ')) {
-        cleanNombre = cleanNombre.split(' ** ')[1];
-      }
-
-      filasAsistentesHtml += `
-        <tr>
-          <td style="border: 1px solid #111; padding: 6px; text-align: center;">${num++}</td>
-          <td style="border: 1px solid #111; padding: 6px; font-weight: bold;">${cleanNombre}</td>
-          <td style="border: 1px solid #111; padding: 6px;">${ast.identificacion}</td>
-          <td style="border: 1px solid #111; padding: 6px;">${ast.cargo}</td>
-          <td style="border: 1px solid #111; padding: 6px; text-align: center; vertical-align: middle;">${imgFirma}</td>
-        </tr>
-      `;
-    }
-
-    const imgFirmaResponsable = firmaResponsableBase64
-      ? `<img src="${firmaResponsableBase64}" style="height: 55px; display: block; margin: 0 auto;" />`
-      : '<div style="height: 50px; width: 200px; margin: 0 auto; border-bottom: 1px dashed #999;"></div>';
-
-    let cleanResponsable = asistencia.nombre_responsable || '—';
-    if (cleanResponsable.includes(' ** ')) {
-      cleanResponsable = cleanResponsable.split(' ** ')[1];
-    }
-
-    const htmlCompleto = `
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-        <meta charset="utf-8">
-        <style>
-          * { box-sizing: border-box; }
-          @page { margin: 1.2cm 1.2cm 1.2cm 1.2cm; }
-          body { font-family: Arial, sans-serif; font-size: 9.5pt; color: #222; margin: 0; padding: 0; }
-          .header-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-          .header-table td { border: 1px solid #111; padding: 8px; vertical-align: middle; }
-          .logo-cell { width: 140px; text-align: center; }
-          .logo-cell img { height: 42px; max-width: 130px; }
-          .title-cell { text-align: center; font-size: 11pt; font-weight: bold; line-height: 1.4; }
-          .meta-cell { width: 140px; font-size: 8pt; line-height: 1.4; }
-          
-          .section-title {
-            background: #d9d9d9; font-size: 9.5pt; font-weight: bold; padding: 6px;
-            border: 1px solid #111; text-align: center; margin-top: 14px; margin-bottom: 0;
-            text-transform: uppercase;
-          }
-          
-          .info-table { width: 100%; border-collapse: collapse; margin-top: 0; }
-          .info-table td { border: 1px solid #111; padding: 6px; vertical-align: middle; }
-          .label { font-weight: bold; background: #f2f2f2; width: 15%; }
-          
-          .asistentes-table { width: 100%; border-collapse: collapse; margin-top: 0; }
-          .asistentes-table th { border: 1px solid #111; background: #e6e6e6; padding: 6px; font-weight: bold; text-align: left; font-size: 9pt; }
-          .asistentes-table td { border: 1px solid #111; padding: 5px; font-size: 8.5pt; }
-          
-          .firma-table { width: 60%; border-collapse: collapse; margin: 25px auto 0; }
-          .firma-table td { border: 1px solid #111; padding: 12px; vertical-align: top; text-align: center; background: #fff; }
-        </style>
-      </head>
-      <body>
-        <table class="header-table">
-          <tr>
-            <td class="logo-cell"><img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="LOG&SER"></td>
-            <td class="title-cell">REGISTRO DE PARTICIPANTES</td>
-            <td class="meta-cell">
-              <strong>Código:</strong> SST-F-003<br>
-              <strong>Versión:</strong> 02<br>
-              <strong>Fecha:</strong> 28/05/2026
-            </td>
-          </tr>
-        </table>
-
-        <div class="section-title">Información Básica</div>
-        <table class="info-table">
-          <tr>
-            <td class="label">Tema</td>
-            <td colspan="5" style="font-weight: bold; font-size: 10.5pt;">${asistencia.tema}</td>
-          </tr>
-          <tr>
-            <td class="label">Fecha</td>
-            <td style="width: 18%;">${formatFechaEspanol(asistencia.fecha)}</td>
-            <td class="label">Hora Inicial</td>
-            <td style="width: 18%;">${asistencia.hora_inicial.slice(0, 5)}</td>
-            <td class="label">Hora Final</td>
-            <td style="width: 20%;">${asistencia.hora_final.slice(0, 5)}</td>
-          </tr>
-          <tr>
-            <td class="label">Lugar</td>
-            <td colspan="3">${asistencia.lugar}</td>
-            <td class="label">Duración</td>
-            <td>${asistencia.duracion.slice(0, 5)} Hs</td>
-          </tr>
-          <tr>
-            <td class="label">Objetivo</td>
-            <td colspan="5" style="text-align: justify;">${asistencia.objetivo || '—'}</td>
-          </tr>
-        </table>
-
-        <div class="section-title">Asistentes Registrados</div>
-        <table class="asistentes-table">
-          <thead>
-            <tr>
-              <th style="width: 5%; text-align: center;">#</th>
-              <th style="width: 40%;">Nombres y apellidos</th>
-              <th style="width: 15%;">Cédula</th>
-              <th style="width: 20%;">Cargo</th>
-              <th style="width: 20%; text-align: center;">Firma</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filasAsistentesHtml}
-          </tbody>
-        </table>
-
-        <table class="firma-table">
-          <tr>
-            <td>
-              <p style="margin: 0 0 8px; font-weight: bold; font-size: 10pt; text-transform: uppercase;">RESPONSABLE DEL REGISTRO</p>
-              <p style="margin: 3px 0; font-size: 9pt;">Nombre: <strong>${cleanResponsable}</strong></p>
-              <p style="margin: 3px 0; font-size: 9pt;">Cargo: ${asistencia.cargo_responsable || '—'}</p>
-              <div style="margin-top: 14px;">
-                ${imgFirmaResponsable}
-              </div>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-
-    // 6. Renderizar PDF con Puppeteer
-    const pdfBuffer = await generarPDFDesdeHTML(htmlCompleto);
-
-    // 7. Guardar en carpeta de cada asistente y registrar en Maestro_docTrabajador
-    const now = new Date();
-    const formattedDate = formatYYMMDDHHSS(now);
-
-    for (const ast of items) {
-      const urlDoc = await subirPDFAstAsistencia(ast.identificacion, formattedDate, pdfBuffer);
-
-      try {
-        const [vinRows] = await pool.execute(
-          `SELECT Regional, \`Operación\`, Identificación, Estado, \`Fecha de Ingreso\` 
-           FROM \`Maestro_Vinculación\` 
-           WHERE Identificación = ? 
-           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-          [ast.identificacion]
-        );
-
-        const regional = vinRows.length ? vinRows[0].Regional : null;
-        const operacion = vinRows.length ? vinRows[0]['Operación'] : null;
-        const estado = vinRows.length ? vinRows[0].Estado : null;
-        const fechaIngreso = vinRows.length ? vinRows[0]['Fecha de Ingreso'] : null;
-
-        const docId = randomUUID();
-        await pool.execute(
-          `INSERT INTO Maestro_docTrabajador
-           (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
-            TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario)
-           VALUES (?, 'PEND', ?, ?, ?, ?, ?, 71, 'ACTASI', ?, NULL, NULL, NULL, NULL, ?)`,
-          [
-            docId,
-            regional,
-            operacion,
-            ast.identificacion,
-            estado,
-            fechaIngreso,
-            urlDoc,
-            asistencia.usuario
-          ]
-        );
-        console.log(`[participacion] [Maestro_docTrabajador] Registrado documento ACTASI para ${ast.identificacion}`);
-      } catch (err) {
-        console.error(`[participacion] [Maestro_docTrabajador] Error registrando documento para ${ast.identificacion}:`, err.message);
-      }
-    }
-
-    // 8. Guardar copia general en la carpeta central de asistencias
-    const urlGeneral = await subirPDFGeneralAsistencia(id, formattedDate, pdfBuffer);
-
-    // 9. Actualizar url_doc en la base de datos
-    await pool.execute(
-      'UPDATE Dynamic_formato_asistencia SET url_doc = ? WHERE id_asistencia = ?',
-      [urlGeneral, id]
-    );
+    const result = await generarPDFAsistencia(id, !!force);
 
     res.json({
       ok: true,
-      url_doc: urlGeneral,
-      firmasCompletas: todasFirmadas,
+      url_doc: result.urlGeneral,
+      firmasCompletas: result.todasFirmadas,
     });
   } catch (err) {
     console.error('[participacion] POST /api/asistencia/:id/generar-pdf:', err);
@@ -1001,7 +1000,6 @@ router.get('/firmar', async (req, res) => {
   }
 });
 
-// ═════ API: POST /api/firmar-asistente ═════
 router.post('/api/firmar-asistente', async (req, res) => {
   try {
     const { id_item_asistencia, firmaBase64, aceptarExistente } = req.body;
@@ -1009,11 +1007,11 @@ router.post('/api/firmar-asistente', async (req, res) => {
       return res.status(400).json({ error: 'id_item_asistencia requerido' });
     }
 
-    const [[item]] = await pool.execute(
-      'SELECT identificacion FROM Dynamic_formato_itemsAsistencia WHERE id_item_asistencia = ? LIMIT 1',
+    const [[itemInfo]] = await pool.execute(
+      'SELECT id_asistencia, identificacion FROM Dynamic_formato_itemsAsistencia WHERE id_item_asistencia = ? LIMIT 1',
       [id_item_asistencia]
     );
-    if (!item) {
+    if (!itemInfo) {
       return res.status(404).json({ error: 'Registro no encontrado' });
     }
 
@@ -1023,7 +1021,7 @@ router.post('/api/firmar-asistente', async (req, res) => {
       // Dibujó una nueva firma, la subimos a GCS
       const buffer = Buffer.from(firmaBase64.replace(/^data:.*;base64,/, ''), 'base64');
       const { subirFirma } = require('../services/storage');
-      urlFirma = await subirFirma(item.identificacion, buffer);
+      urlFirma = await subirFirma(itemInfo.identificacion, buffer);
     }
 
     await pool.execute(
@@ -1031,7 +1029,27 @@ router.post('/api/firmar-asistente', async (req, res) => {
       [urlFirma, id_item_asistencia]
     );
 
-    res.json({ ok: true });
+    // Verificar si todos los asistentes de este formato han firmado (firma_asistente no es NULL)
+    const [[countPending]] = await pool.execute(
+      'SELECT COUNT(*) AS pending FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ? AND firma_asistente IS NULL',
+      [itemInfo.id_asistencia]
+    );
+
+    let pdfGenerado = false;
+    let urlDoc = null;
+
+    if (countPending.pending === 0) {
+      try {
+        const result = await generarPDFAsistencia(itemInfo.id_asistencia, false);
+        urlDoc = result.urlGeneral;
+        pdfGenerado = true;
+        console.log(`[participacion] PDF generado automáticamente al completar todas las firmas para asistencia ${itemInfo.id_asistencia}`);
+      } catch (pdfErr) {
+        console.warn(`[participacion] No se pudo generar PDF automáticamente al completar firmas para asistencia ${itemInfo.id_asistencia}:`, pdfErr.message);
+      }
+    }
+
+    res.json({ ok: true, pdfGenerado, urlDoc });
   } catch (err) {
     console.error('[participacion] POST /api/firmar-asistente:', err);
     res.status(500).json({ error: err.message });
