@@ -82,7 +82,9 @@ async function despacharSolicitud(idSolicitud, usuario) {
       const procesado = stock.Regional === sol.Regional ? 1 : 0;
 
       await conn.execute(
-        'INSERT INTO Kardex_Pendiente (IdKardexOriginal, Procesado, Procesando) VALUES (?, ?, 0)',
+        `INSERT INTO Kardex_Pendiente (IdKardexOriginal, Procesado, Procesando)
+         VALUES (?, ?, 0)
+         ON DUPLICATE KEY UPDATE Procesado = VALUES(Procesado)`,
         [idKardex, procesado]
       );
     }

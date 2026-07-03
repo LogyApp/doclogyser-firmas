@@ -166,6 +166,13 @@
     }
     .btn-secondary:hover { background: #eef1ff; border-color: #8e44ad; }
     
+    .btn-crear {
+      background: #10b981; color: #fff;
+    }
+    .btn-crear:hover {
+      background: #059669; box-shadow: 0 3px 10px rgba(16,185,129,.3);
+    }
+    
     .btn-small {
       padding: 5px 10px; font-size: .75rem;
     }
@@ -225,7 +232,7 @@
     
     <div class="card-titulo">
       <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logo LOG&SER">
-      <div>
+      <div style="flex: 1;">
         <div class="page-title">Gestión de Solicitudes</div>
         <div class="page-sub">Administra tus solicitudes de equipos y recursos</div>
         <div class="badge-row">
@@ -233,6 +240,7 @@
           <div class="badge badge-estado" id="badge-total">Total: 0</div>
         </div>
       </div>
+      <button class="btn btn-crear" onclick="mostrarVista('formulario')">➕ Nueva Solicitud</button>
     </div>
 
     <div class="card card-purple">
@@ -280,7 +288,6 @@
       
       <div class="btns-grupo">
         <button class="btn btn-primary" onclick="aplicarFiltros()">🔍 Buscar</button>
-        <button class="btn btn-secondary" onclick="mostrarVista('formulario')">➕ Nueva Solicitud</button>
       </div>
     </div>
 
@@ -1145,6 +1152,11 @@
         ${solicitudActual.Justificación ? `<div class="card card-green">
           <div class="section-title">Justificación</div>
           <p style="font-size: .88rem; line-height: 1.5;">${solicitudActual.Justificación}</p>
+        </div>` : ''}
+
+        ${solicitudActual.Observaciones ? `<div class="card card-teal">
+          <div class="section-title">Observaciones</div>
+          <p style="font-size: .88rem; line-height: 1.5;">${solicitudActual.Observaciones}</p>
         </div>` : ''}
 
         ${solicitudActual.items && solicitudActual.items.length > 0 ? `<div class="card card-blue">
