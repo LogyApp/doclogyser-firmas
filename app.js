@@ -24,6 +24,7 @@ const documentClassifierRoutes       = require('./src/routes/documentClassifier'
 const capacitacionsstRoutes          = require('./src/routes/capacitacionsst');
 const actualizardatosRoutes          = require('./src/routes/actualizardatos');
 const dotacionleyRoutes              = require('./src/routes/dotacionley');
+const seleccionRoutes               = require('./src/routes/seleccion');
 
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/formcapacitacionsst', capacitacionsstRoutes);
 app.use('/admin/capacitacionsst', capacitacionsstRoutes);
 app.use('/actualizardatos', actualizardatosRoutes);
 app.use('/dotacionley', dotacionleyRoutes);
+app.use('/seleccion', seleccionRoutes);
 
 
 

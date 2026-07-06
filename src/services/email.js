@@ -11,6 +11,25 @@ const transporter = nodemailer.createTransport({
   auth:   authConfig,
 });
 
+// Interceptor global para limpiar la identificación del trabajador (ej. "12345678 ** NOMBRE")
+// de los asuntos y cuerpos de los correos electrónicos antes de ser enviados.
+const originalSendMail = transporter.sendMail.bind(transporter);
+transporter.sendMail = function (mailOptions, callback) {
+  if (mailOptions) {
+    const cleanRegex = /\b\d{5,15}\s+\*\*\s+([^<\r\n]+)\b/g;
+    if (typeof mailOptions.subject === 'string') {
+      mailOptions.subject = mailOptions.subject.replace(cleanRegex, '$1');
+    }
+    if (typeof mailOptions.html === 'string') {
+      mailOptions.html = mailOptions.html.replace(cleanRegex, '$1');
+    }
+    if (typeof mailOptions.text === 'string') {
+      mailOptions.text = mailOptions.text.replace(cleanRegex, '$1');
+    }
+  }
+  return originalSendMail(mailOptions, callback);
+};
+
 const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
 
 const HEADER = `
@@ -1439,14 +1458,24 @@ function cambioFilaHtml(label, valAntes, valDespues) {
   `;
 }
 
+function cleanTrabajadorName(trabajador) {
+  if (!trabajador) return '';
+  if (typeof trabajador !== 'string') return trabajador;
+  if (trabajador.includes(' ** ')) {
+    return trabajador.split(' ** ')[1].trim();
+  }
+  return trabajador.trim();
+}
+
 async function notificarCambiosDotacion({ trabajador, identificacion, antes, despues }) {
-  const asunto = `Actualización de Datos de Dotación — ${trabajador}`;
+  const nombreLimpio = cleanTrabajadorName(trabajador);
+  const asunto = `Actualización de Datos de Dotación — ${nombreLimpio}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       ${HEADER}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h3 style="color:#1a1a2e;margin-top:0">Actualización de Datos de Dotación</h3>
-        <p>El trabajador <strong>${trabajador}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus tallas de dotación:</p>
+        <p>El trabajador <strong>${nombreLimpio}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus tallas de dotación:</p>
         <table style="width:100%;border-collapse:collapse;margin-top:14px">
           <thead>
             <tr style="background:#f2f2f2">
@@ -1476,13 +1505,14 @@ async function notificarCambiosDotacion({ trabajador, identificacion, antes, des
 }
 
 async function notificarCambiosPersonales({ trabajador, identificacion, antes, despues }) {
-  const asunto = `Actualización de Datos Personales — ${trabajador}`;
+  const nombreLimpio = cleanTrabajadorName(trabajador);
+  const asunto = `Actualización de Datos Personales — ${nombreLimpio}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       ${HEADER}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h3 style="color:#1a1a2e;margin-top:0">Actualización de Datos Personales</h3>
-        <p>El trabajador <strong>${trabajador}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus datos personales:</p>
+        <p>El trabajador <strong>${nombreLimpio}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus datos personales:</p>
         <table style="width:100%;border-collapse:collapse;margin-top:14px">
           <thead>
             <tr style="background:#f2f2f2">
@@ -1512,13 +1542,14 @@ async function notificarCambiosPersonales({ trabajador, identificacion, antes, d
 }
 
 async function notificarCambiosBancos({ trabajador, identificacion, antes, despues, urlDoc }) {
-  const asunto = `Actualización de Datos Bancarios — ${trabajador}`;
+  const nombreLimpio = cleanTrabajadorName(trabajador);
+  const asunto = `Actualización de Datos Bancarios — ${nombreLimpio}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       ${HEADER}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h3 style="color:#1a1a2e;margin-top:0">Actualización de Información Bancaria</h3>
-        <p>El trabajador <strong>${trabajador}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus datos de cuenta bancaria:</p>
+        <p>El trabajador <strong>${nombreLimpio}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus datos de cuenta bancaria:</p>
         <table style="width:100%;border-collapse:collapse;margin-top:14px">
           <thead>
             <tr style="background:#f2f2f2">
