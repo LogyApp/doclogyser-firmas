@@ -23,6 +23,7 @@ const movilidadyriesgoRoutes         = require('./src/routes/movilidadyriesgo');
 const documentClassifierRoutes       = require('./src/routes/documentClassifier');
 const capacitacionsstRoutes          = require('./src/routes/capacitacionsst');
 const actualizardatosRoutes          = require('./src/routes/actualizardatos');
+const dotacionleyRoutes              = require('./src/routes/dotacionley');
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use('/capacitacionsst', capacitacionsstRoutes);
 app.use('/formcapacitacionsst', capacitacionsstRoutes);
 app.use('/admin/capacitacionsst', capacitacionsstRoutes);
 app.use('/actualizardatos', actualizardatosRoutes);
+app.use('/dotacionley', dotacionleyRoutes);
 
 
 
