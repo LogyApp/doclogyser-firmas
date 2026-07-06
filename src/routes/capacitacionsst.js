@@ -536,6 +536,121 @@ router.post('/api/crear', async (req, res) => {
   }
 });
 
+// ═════ API: POST /api/crear-masivo (Crear capacitaciones en lote) ═════
+router.post('/api/crear-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { fecha, identificaciones, usuario, enviar_correo } = req.body;
+    if (!fecha || !identificaciones || !Array.isArray(identificaciones) || !identificaciones.length || !usuario) {
+      return res.status(400).json({ error: 'fecha, identificaciones (array) y usuario requeridos' });
+    }
+
+    // 1. Obtener la plantilla activa
+    const [pRows] = await conn.execute(
+      'SELECT * FROM Maestro_capacitacionsst_plantilla WHERE activo = 1 LIMIT 1'
+    );
+    if (!pRows.length) {
+      return res.status(400).json({ error: 'No hay ninguna plantilla de capacitación activa. Por favor cree una en el panel de administrador.' });
+    }
+    const p = pRows[0];
+
+    // 2. Obtener los ítems de la plantilla activa
+    const [pItems] = await conn.execute(
+      'SELECT * FROM Maestro_capacitacionsst_plantilla_items WHERE id_plantilla = ? ORDER BY pregunta, id_item',
+      [p.id_plantilla]
+    );
+    if (!pItems.length) {
+      return res.status(400).json({ error: 'La plantilla activa no contiene preguntas.' });
+    }
+
+    const [usuRows] = await conn.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const emailUsuario = usuRows.length ? usuRows[0].Email : null;
+
+    const protocol = req.secure ? 'https' : 'http';
+    const host = req.get('host');
+
+    await conn.beginTransaction();
+
+    const resultados = [];
+
+    for (const identificacion of identificaciones) {
+      const [segRows] = await conn.execute(
+        'SELECT Celular, Email FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1',
+        [identificacion]
+      );
+      const [vinRows] = await conn.execute(
+        'SELECT Trabajador FROM Maestro_Vinculación WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+        [identificacion]
+      );
+
+      const celular = segRows.length ? segRows[0].Celular : null;
+      const emailTrabajador = segRows.length ? segRows[0].Email : null;
+      const trabajadorNombre = vinRows.length ? vinRows[0].Trabajador : identificacion;
+
+      const id_capacitacion = uuidv4();
+      const tokenFirma = crypto.randomBytes(32).toString('hex');
+      const tokenExpira = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+
+      // Insert main row
+      await conn.execute(
+        `INSERT INTO Maestro_capacitacionsst 
+         (id_capacitacion, fecha, identificacion, usuario, tema, objetivo,
+          firma_trabajador, url_doc, token_firma, token_expira, puntaje, resultado)
+         VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, NULL, NULL)`,
+        [
+          id_capacitacion,
+          fecha,
+          identificacion,
+          usuario,
+          p.tema,
+          p.objetivo,
+          tokenFirma,
+          tokenExpira
+        ]
+      );
+
+      // Copy items
+      for (const item of pItems) {
+        await conn.execute(
+          `INSERT INTO Maestro_capacitacionsst_items (id_capacitacion, pregunta, descripcion_pregunta, opciones, Correcta, seleccionada)
+           VALUES (?, ?, ?, ?, ?, NULL)`,
+          [id_capacitacion, item.pregunta, item.descripcion_pregunta, item.opcion, item.correcta]
+        );
+      }
+
+      const urlFirma = `${protocol}://${host}/capacitacionsst/responder?item=${id_capacitacion}`;
+
+      resultados.push({
+        identificacion,
+        trabajador: trabajadorNombre,
+        celular,
+        email: emailTrabajador,
+        urlFirma
+      });
+
+      // Send email asynchronously after transaction commits
+      if (enviar_correo && emailTrabajador) {
+        notificarFirmaCapacitacionSST({
+          email: emailTrabajador,
+          nombreTrabajador: trabajadorNombre,
+          tema: p.tema,
+          urlFirma,
+          emailUsuario
+        }).catch(e => console.error('[capacitacionsst] Error enviando correo masivo:', e.message));
+      }
+    }
+
+    await conn.commit();
+    res.json({ ok: true, resultados });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[capacitacionsst] POST /api/crear-masivo:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
 // ═════ API: POST /api/responder/:id (Recibir respuestas y firma del trabajador) ═════
 router.post('/api/responder/:id', async (req, res) => {
   try {

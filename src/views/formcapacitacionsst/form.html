@@ -9,7 +9,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
     .wrapper { max-width: 750px; margin: 0 auto; padding: 24px 16px 60px; }
-
+ 
     /* Header */
     .header-card {
       background: #ffffff;
@@ -33,7 +33,7 @@
       border-radius: 20px; padding: 4px 12px;
       font-size: .78rem; color: #0f766e; margin-top: 8px; font-weight: 600;
     }
-
+ 
     .card {
       background: #ffffff;
       border-radius: 12px;
@@ -42,7 +42,7 @@
       margin-bottom: 20px;
       border-left: 4px solid #0d9488;
     }
-
+ 
     .section-title {
       font-size: .8rem; font-weight: 700;
       color: #0d9488; letter-spacing: 1px;
@@ -50,17 +50,17 @@
       padding-bottom: 10px; margin-bottom: 20px;
       border-bottom: 2px solid #ccfbf1;
     }
-
+ 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     @media (max-width: 580px) {
       .grid-2 { grid-template-columns: 1fr; }
     }
-
+ 
     .field { margin-bottom: 20px; }
     .field:last-child { margin-bottom: 0; }
     label { display: block; font-size: .85rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
     label .req { color: #ef4444; margin-left: 2px; }
-    
+     
     input[type="text"], input[type="date"], select, textarea {
       width: 100%; padding: 10px 14px;
       border: 1.5px solid #cbd5e1; border-radius: 8px;
@@ -70,8 +70,7 @@
     input:focus, select:focus, textarea:focus {
       outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
     }
-    input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; }
-
+ 
     .btn-submit {
       width: 100%; background: #0d9488; color: #ffffff; border: none;
       padding: 14px 20px; font-size: 1rem; font-weight: 700;
@@ -79,7 +78,7 @@
       box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2);
     }
     .btn-submit:hover { background: #0f766e; }
-
+ 
     /* Success card */
     .success-card {
       display: none; background: #ffffff; border-radius: 12px;
@@ -90,13 +89,7 @@
     .success-icon { font-size: 3rem; color: #10b981; margin-bottom: 16px; }
     .success-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
     .success-text { font-size: .95rem; color: #64748b; margin-bottom: 24px; }
-    
-    .link-box {
-      background: #f8fafc; border: 1.5px dashed #cbd5e1;
-      border-radius: 8px; padding: 14px; margin-bottom: 24px;
-      word-break: break-all; font-size: .9rem; color: #1e293b;
-    }
-    
+     
     .btn-group-success {
       display: flex; gap: 12px; justify-content: center;
       flex-wrap: wrap;
@@ -104,14 +97,16 @@
     .btn-success-action {
       padding: 10px 20px; font-size: .9rem; font-weight: bold;
       border-radius: 6px; text-decoration: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: none; transition: all 0.15s;
     }
-    .btn-wa { background: #25d366; color: #fff; }
+    .btn-wa { background: #25d366; color: #fff; text-decoration: none; }
     .btn-wa:hover { background: #20ba5a; }
     .btn-pri { background: #0d9488; color: #fff; }
     .btn-pri:hover { background: #0f766e; }
     .btn-sec { background: #e2e8f0; color: #475569; }
     .btn-sec:hover { background: #cbd5e1; }
-
+ 
     .loading-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(255,255,255,0.7); display: none;
@@ -124,15 +119,69 @@
       border-radius: 50%; animation: spin 1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Scrollable Checklist for Attendees ── */
+    .checklist-card {
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      margin-top: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .checklist-header {
+      padding: 12px;
+      background: #f8fafc;
+      border-bottom: 1.5px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .checklist-search {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: .85rem;
+    }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .checklist-item:last-child {
+      border-bottom: none;
+    }
+    .checklist-item:hover {
+      background: #f1f5f9;
+    }
+    .checklist-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #0d9488;
+      cursor: pointer;
+    }
+    .checklist-item label {
+      font-size: .88rem;
+      color: #334155;
+      cursor: pointer;
+      flex: 1;
+    }
   </style>
 </head>
 <body>
-
+ 
   <div class="loading-overlay" id="loading">
     <div class="spinner"></div>
     <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
   </div>
-
+ 
   <div class="wrapper">
     <!-- Header -->
     <div class="header-card" id="form-header">
@@ -145,12 +194,12 @@
       </div>
       <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height: 48px;" alt="LOG&SER">
     </div>
-
+ 
     <!-- Formulario principal -->
     <form id="form-capsst">
       <!-- Ubicación del Trabajador -->
       <div class="card">
-        <div class="section-title">Ubicación del Trabajador</div>
+        <div class="section-title">Ubicación de los Trabajadores</div>
         <div class="grid-2">
           <div class="field">
             <label for="select-regional">Regional <span class="req">*</span></label>
@@ -167,81 +216,75 @@
         </div>
       </div>
 
+      <!-- Selección de Colaboradores (Checklist) -->
+      <div class="card" id="card-colaboradores">
+        <div class="section-title">Seleccionar Colaboradores</div>
+        <div class="checklist-card" id="checklist-wrap" style="display: none;">
+          <div class="checklist-header">
+            <input type="text" class="checklist-search" id="checklist-search-input" placeholder="Buscar colaborador por Nombre o Cédula...">
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 2px;">
+              <input type="checkbox" id="chk-seleccionar-todos" style="width: 16px; height: 16px; cursor: pointer;">
+              <label for="chk-seleccionar-todos" style="font-size: .82rem; font-weight: bold; cursor: pointer; display: inline;">Seleccionar Todos</label>
+            </div>
+          </div>
+          <div id="form-checklist-body" style="max-height: 250px; overflow-y: auto;">
+            <!-- Cargado dinámicamente -->
+          </div>
+        </div>
+        <div id="checklist-empty" style="padding: 15px; text-align: center; color: #888;">
+          Selecciona una Regional y Operación para cargar los colaboradores.
+        </div>
+        <div style="margin-top: 18px;">
+          <label>Colaboradores seleccionados: <span id="form-trabajadores-count" style="font-weight: bold;">0</span></label>
+        </div>
+      </div>
+ 
       <!-- Detalles de la Capacitación -->
       <div class="card">
-        <div class="section-title">Datos del Colaborador y Capacitación</div>
+        <div class="section-title">Datos de la Capacitación</div>
         
-        <div class="field">
-          <label for="select-trabajador">Trabajador <span class="req">*</span></label>
-          <select id="select-trabajador" required disabled>
-            <option value="">Seleccione Trabajador...</option>
-          </select>
-        </div>
-
-        <div class="grid-2">
-          <div class="field">
-            <label for="input-cc">Identificación (C.C.)</label>
-            <input type="text" id="input-cc" readonly placeholder="Cédula del colaborador">
-          </div>
-          <div class="field">
-            <label for="input-cargo">Cargo</label>
-            <input type="text" id="input-cargo" readonly placeholder="Cargo del colaborador">
-          </div>
-        </div>
-
         <div class="field">
           <label for="input-fecha">Fecha de la Capacitación <span class="req">*</span></label>
           <input type="date" id="input-fecha" required style="width: 50%;">
         </div>
-
-        <!-- Correo / Celular prellenado -->
-        <div class="grid-2" style="background:#f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
-          <div class="field">
-            <label for="input-email">Correo (Para notificación)</label>
-            <input type="text" id="input-email" readonly placeholder="No registrado" style="background:transparent; border:none; padding:4px 0;">
-          </div>
-          <div class="field">
-            <label for="input-celular">Celular (WhatsApp)</label>
-            <input type="text" id="input-celular" readonly placeholder="No registrado" style="background:transparent; border:none; padding:4px 0;">
-          </div>
-        </div>
-
+ 
         <div class="field" style="display: flex; align-items: center; gap: 8px;">
           <input type="checkbox" id="check-correo" checked style="width: 18px; height: 18px; accent-color: #0d9488;">
           <label for="check-correo" style="margin-bottom: 0; font-weight: 500; cursor: pointer;">Notificar por correo electrónico al trabajador automáticamente</label>
         </div>
       </div>
-
+ 
       <div style="display: flex; gap: 12px; margin-top: 20px;">
         <button type="button" class="btn-success-action btn-sec" style="flex: 1; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s;" onclick="volverPanel()">Cancelar</button>
-        <button type="submit" class="btn-submit" id="btn-submit" style="flex: 2; margin-top: 0;">Registrar y Generar Enlace</button>
+        <button type="submit" class="btn-submit" id="btn-submit" style="flex: 2; margin-top: 0;">Registrar y Generar Enlaces</button>
       </div>
     </form>
-
+ 
     <!-- Pantalla de éxito -->
     <div class="success-card" id="pantalla-exito">
       <div class="success-icon">✓</div>
-      <h2 class="success-title">¡Capacitación SST registrada correctamente!</h2>
-      <p class="success-text">
-        Se ha registrado la capacitación. El trabajador ahora debe acceder al siguiente enlace para responder las preguntas y registrar su firma digital.
+      <h2 class="success-title">¡Capacitaciones programadas con éxito!</h2>
+      <p class="success-text" style="margin-bottom: 16px;">
+        Se registraron las capacitaciones. A continuación se detallan los enlaces personales para que cada trabajador pueda responder la evaluación y registrar su firma digital.
       </p>
       
-      <div class="link-box" id="link-firma">Cargando enlace...</div>
-
+      <div id="lista-enlaces-creados" style="margin-bottom: 24px; text-align: left; max-height: 400px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px;">
+        <!-- Se generará dinámicamente en JS -->
+      </div>
+ 
       <div class="btn-group-success">
-        <button class="btn-success-action btn-sec" onclick="copiarAlPortapapeles()">Copiar Enlace</button>
-        <a id="btn-whatsapp" href="#" target="_blank" class="btn-success-action btn-wa">Enviar por WhatsApp</a>
         <button class="btn-success-action btn-pri" onclick="volverPanel()">Volver al Listado</button>
       </div>
     </div>
-
+ 
   </div>
-
+ 
   <script>
     const CONFIG = __CONFIG__;
     const loading = document.getElementById('loading');
     const loadingText = document.getElementById('loading-text');
-
+    let formTrabajadores = []; // Lista de cédulas seleccionadas
+ 
     function showLoading(text = 'Cargando...') {
       loadingText.innerText = text;
       loading.style.display = 'flex';
@@ -249,33 +292,33 @@
     function hideLoading() {
       loading.style.display = 'none';
     }
-
+ 
     document.getElementById('user-badge').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
-
+ 
     // Inicializar fecha
     document.getElementById('input-fecha').valueAsDate = new Date();
-
+ 
     // Poblar Regionales
     const rSelect = document.getElementById('select-regional');
     const oSelect = document.getElementById('select-operacion');
-    const tSelect = document.getElementById('select-trabajador');
-
+ 
     CONFIG.regionalesFiltro.forEach(reg => {
       const opt = document.createElement('option');
       opt.value = reg; opt.innerText = reg;
       rSelect.appendChild(opt);
     });
-
+ 
     rSelect.addEventListener('change', () => {
       oSelect.innerHTML = '<option value="">Seleccione Operación...</option>';
-      tSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
       oSelect.disabled = true;
-      tSelect.disabled = true;
-      limpiarDatosTrabajador();
-
+      document.getElementById('checklist-wrap').style.display = 'none';
+      document.getElementById('checklist-empty').style.display = 'block';
+      formTrabajadores = [];
+      document.getElementById('form-trabajadores-count').innerText = '0';
+ 
       const reg = rSelect.value;
       if (!reg) return;
-
+ 
       const ops = CONFIG.opsPorRegional[reg] || [];
       ops.forEach(op => {
         const opt = document.createElement('option');
@@ -284,109 +327,184 @@
       });
       oSelect.disabled = false;
     });
+ 
+    oSelect.addEventListener('change', cargarTrabajadoresParaChecklist);
 
-    oSelect.addEventListener('change', async () => {
-      tSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
-      tSelect.disabled = true;
-      limpiarDatosTrabajador();
-
+    async function cargarTrabajadoresParaChecklist() {
       const reg = rSelect.value;
       const op = oSelect.value;
-      if (!reg || !op) return;
+      const wrap = document.getElementById('checklist-wrap');
+      const empty = document.getElementById('checklist-empty');
+      const body = document.getElementById('form-checklist-body');
+      const chkTodos = document.getElementById('chk-seleccionar-todos');
 
-      showLoading('Cargando trabajadores...');
+      if (!reg || !op) {
+        wrap.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      showLoading('Cargando colaboradores...');
       try {
+        chkTodos.checked = false;
+        formTrabajadores = [];
+        document.getElementById('form-trabajadores-count').innerText = '0';
+
         const r = await fetch(`/capacitacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
-        const data = await r.json();
-        
-        data.forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t.identificacion;
-          opt.innerText = t.Trabajador;
-          opt.dataset.cargo = t.Cargo || '';
-          tSelect.appendChild(opt);
+        const trabajadores = await r.json();
+
+        body.innerHTML = '';
+        if (!trabajadores.length) {
+          body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos en esta operación.</div>';
+          wrap.style.display = 'block';
+          empty.style.display = 'none';
+          return;
+        }
+
+        trabajadores.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'checklist-item';
+          const idCheckbox = `chk-t-${t.identificacion}`;
+
+          div.innerHTML = `
+            <input type="checkbox" id="${idCheckbox}" value="${t.identificacion}">
+            <label for="${idCheckbox}"><strong>${t.identificacion}</strong> ** ${t.Trabajador} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'})</span></label>
+          `;
+
+          const checkbox = div.querySelector('input[type="checkbox"]');
+          checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              if (!formTrabajadores.includes(t.identificacion)) {
+                formTrabajadores.push(t.identificacion);
+              }
+            } else {
+              formTrabajadores = formTrabajadores.filter(id => id !== t.identificacion);
+            }
+            document.getElementById('form-trabajadores-count').innerText = formTrabajadores.length;
+          });
+
+          div.addEventListener('click', (e) => {
+            if (e.target !== checkbox && e.target.tagName !== 'LABEL') {
+              checkbox.checked = !checkbox.checked;
+              checkbox.dispatchEvent(new Event('change'));
+            }
+          });
+
+          body.appendChild(div);
         });
-        tSelect.disabled = false;
+
+        wrap.style.display = 'block';
+        empty.style.display = 'none';
       } catch (e) {
         console.error(e);
         alert('Error al cargar colaboradores');
       } finally {
         hideLoading();
       }
-    });
-
-    tSelect.addEventListener('change', async () => {
-      limpiarDatosTrabajador();
-      const val = tSelect.value;
-      if (!val) return;
-
-      const opt = tSelect.options[tSelect.selectedIndex];
-      document.getElementById('input-cc').value = val;
-      document.getElementById('input-cargo').value = opt.dataset.cargo || '';
-
-      // Obtener datos de contacto
-      try {
-        const r = await fetch(`/capacitacionsst/api/contacto/${val}`);
-        const data = await r.json();
-        document.getElementById('input-email').value = data.Email || 'No registrado';
-        document.getElementById('input-celular').value = data.Celular || 'No registrado';
-      } catch (e) {
-        console.error(e);
-      }
-    });
-
-    function limpiarDatosTrabajador() {
-      document.getElementById('input-cc').value = '';
-      document.getElementById('input-cargo').value = '';
-      document.getElementById('input-email').value = '';
-      document.getElementById('input-celular').value = '';
     }
 
+    // Búsqueda en el checklist
+    document.getElementById('checklist-search-input').addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase();
+      const items = document.querySelectorAll('.checklist-item');
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        if (text.includes(val)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+
+    // Seleccionar Todos
+    document.getElementById('chk-seleccionar-todos').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+      checkboxes.forEach(cb => {
+        const itemDom = cb.closest('.checklist-item');
+        if (itemDom.style.display !== 'none') {
+          cb.checked = checked;
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+ 
     function volverPanel() {
       window.location.href = `/capacitacionsst?usuario=${CONFIG.usuarioId}`;
     }
-
-    let linkFirmaGenerado = '';
-
+ 
     // Enviar Formulario
     document.getElementById('form-capsst').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+       
       const fecha = document.getElementById('input-fecha').value;
-      const identificacion = document.getElementById('input-cc').value;
       const enviar_correo = document.getElementById('check-correo').checked;
-
-      if (!identificacion) {
-        alert('Debe seleccionar un trabajador válido.');
+ 
+      if (!formTrabajadores.length) {
+        alert('Debe seleccionar al menos un colaborador.');
         return;
       }
-
-      showLoading('Creando registro de capacitación...');
+ 
+      showLoading('Creando registros de capacitación...');
       try {
-        const r = await fetch('/capacitacionsst/api/crear', {
+        const r = await fetch('/capacitacionsst/api/crear-masivo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             fecha,
-            identificacion,
+            identificaciones: formTrabajadores,
             usuario: CONFIG.usuarioId,
             enviar_correo
           })
         });
-
+ 
         const res = await r.json();
-        if (res.ok) {
-          linkFirmaGenerado = res.urlFirma;
-          document.getElementById('link-firma').innerText = linkFirmaGenerado;
-          
-          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${linkFirmaGenerado}`);
-          document.getElementById('btn-whatsapp').href = `https://wa.me/?text=${msgWaText}`;
-
+        if (res.ok && res.resultados) {
+          const listBody = document.getElementById('lista-enlaces-creados');
+          listBody.innerHTML = '';
+ 
+          res.resultados.forEach(res => {
+            const div = document.createElement('div');
+            div.style = 'display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #e2e8f0; gap: 12px; flex-wrap: wrap;';
+ 
+            // Whatsapp message formatting
+            const textWa = `Hola ${res.trabajador}, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${res.urlFirma}`;
+            const cleanCel = res.celular ? res.celular.replace(/\D/g, '') : '';
+            let phoneParam = '';
+            if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+              phoneParam = '57' + cleanCel;
+            } else if (cleanCel) {
+              phoneParam = cleanCel;
+            }
+            const waLink = `https://wa.me/${phoneParam}?text=${encodeURIComponent(textWa)}`;
+ 
+            div.innerHTML = `
+              <div style="flex: 1; min-width: 200px;">
+                <div style="font-weight: 700; color: #1e293b; font-size: .92rem;">${res.trabajador}</div>
+                <div style="font-size: .8rem; color: #64748b;">C.C. ${res.identificacion} ${res.celular ? `| Cel: ${res.celular}` : ''}</div>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn-success-action btn-sec" style="font-size:.8rem; padding: 6px 12px;" onclick="copiarAlPortapapeles('${res.urlFirma}')">Copiar Enlace</button>
+                <a href="${waLink}" target="_blank" class="btn-success-action btn-wa" style="font-size:.8rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+                  💬 WhatsApp
+                </a>
+              </div>
+            `;
+ 
+            listBody.appendChild(div);
+          });
+ 
+          // Remove border-bottom of the last child
+          if (listBody.lastChild) {
+            listBody.lastChild.style.borderBottom = 'none';
+          }
+ 
           document.getElementById('form-capsst').style.display = 'none';
           document.getElementById('form-header').style.display = 'none';
           document.getElementById('pantalla-exito').style.display = 'block';
         } else {
-          alert(res.error || 'Error al registrar la capacitación');
+          alert(res.error || 'Error al registrar las capacitaciones');
         }
       } catch (e) {
         console.error(e);
@@ -395,9 +513,9 @@
         hideLoading();
       }
     });
-
-    function copiarAlPortapapeles() {
-      navigator.clipboard.writeText(linkFirmaGenerado).then(() => {
+ 
+    function copiarAlPortapapeles(url) {
+      navigator.clipboard.writeText(url).then(() => {
         alert('Enlace copiado al portapapeles');
       }).catch(err => {
         console.error('Error al copiar enlace:', err);
