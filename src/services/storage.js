@@ -177,6 +177,18 @@ async function subirDocMovilidadExterno(identificacion, filename, buffer, conten
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirCertificadoBancario(identificacion, formattedDate, buffer, originalName) {
+  const ext = path.extname(originalName) || '.pdf';
+  const nombre = `${identificacion}/${identificacion}.CB.${formattedDate}${ext}`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  let contentType = 'application/pdf';
+  if (ext.toLowerCase() === '.png') contentType = 'image/png';
+  else if (ext.toLowerCase() === '.jpg' || ext.toLowerCase() === '.jpeg') contentType = 'image/jpeg';
+  
+  await file.save(buffer, { contentType });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -200,4 +212,5 @@ module.exports = {
   subirEvidenciaAsistencia,
   subirDocMovilidadTrabajador,
   subirDocMovilidadExterno,
+  subirCertificadoBancario,
 };

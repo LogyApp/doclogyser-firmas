@@ -1426,6 +1426,130 @@ async function notificarMovilidadRegistrada({ emailUsuario, nombreCompleto, iden
   });
 }
 
+function cambioFilaHtml(label, valAntes, valDespues) {
+  const a = valAntes || '—';
+  const d = valDespues || '—';
+  if (a === d) return '';
+  return `
+    <tr>
+      <td style="border:1px solid #ddd;padding:8px"><strong>${label}</strong></td>
+      <td style="border:1px solid #ddd;padding:8px;color:#c0392b">${a}</td>
+      <td style="border:1px solid #ddd;padding:8px;color:#27ae60;font-weight:bold">${d}</td>
+    </tr>
+  `;
+}
+
+async function notificarCambiosDotacion({ trabajador, identificacion, antes, despues }) {
+  const asunto = `Actualización de Datos de Dotación — ${trabajador}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      ${HEADER}
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+        <h3 style="color:#1a1a2e;margin-top:0">Actualización de Datos de Dotación</h3>
+        <p>El trabajador <strong>${trabajador}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus tallas de dotación:</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:14px">
+          <thead>
+            <tr style="background:#f2f2f2">
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Campo</th>
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Antes</th>
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Ahora</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cambioFilaHtml('Camiseta', antes.Camiseta, despues.Camiseta)}
+            ${cambioFilaHtml('Número (Buzo)', antes.Numero, despues.Numero)}
+            ${cambioFilaHtml('Pantalón', antes.Pantalon, despues.Pantalon)}
+            ${cambioFilaHtml('Botas', antes.Botas, despues.Botas)}
+          </tbody>
+        </table>
+      </div>
+      ${FOOTER}
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: 'auxiliarcompras@logyser.com, logyserinventarios@gmail.com, admin@logyser.com',
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function notificarCambiosPersonales({ trabajador, identificacion, antes, despues }) {
+  const asunto = `Actualización de Datos Personales — ${trabajador}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      ${HEADER}
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+        <h3 style="color:#1a1a2e;margin-top:0">Actualización de Datos Personales</h3>
+        <p>El trabajador <strong>${trabajador}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus datos personales:</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:14px">
+          <thead>
+            <tr style="background:#f2f2f2">
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Campo</th>
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Antes</th>
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Ahora</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cambioFilaHtml('Celular', antes.Celular, despues.Celular)}
+            ${cambioFilaHtml('Email', antes.Email, despues.Email)}
+            ${cambioFilaHtml('Contacto de Emergencia', antes.nombreEmergencia, despues.nombreEmergencia)}
+            ${cambioFilaHtml('Teléfono de Emergencia', antes.telefonoEmergencia, despues.telefonoEmergencia)}
+          </tbody>
+        </table>
+      </div>
+      ${FOOTER}
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: 'gestor.nomina@logyser.com, admin@logyser.com',
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function notificarCambiosBancos({ trabajador, identificacion, antes, despues, urlDoc }) {
+  const asunto = `Actualización de Datos Bancarios — ${trabajador}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      ${HEADER}
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+        <h3 style="color:#1a1a2e;margin-top:0">Actualización de Información Bancaria</h3>
+        <p>El trabajador <strong>${trabajador}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus datos de cuenta bancaria:</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:14px">
+          <thead>
+            <tr style="background:#f2f2f2">
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Campo</th>
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Antes</th>
+              <th style="border:1px solid #ddd;padding:8px;text-align:left">Ahora</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cambioFilaHtml('Banco', antes.Banco, despues.Banco)}
+            ${cambioFilaHtml('N° Cuenta Bancaria', antes.nCuentaBancaria, despues.nCuentaBancaria)}
+          </tbody>
+        </table>
+        ${urlDoc ? `
+        <div style="margin-top:20px;text-align:center">
+          <a href="${urlDoc}" target="_blank" style="background:#10b981;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">Ver Certificación Bancaria</a>
+        </div>
+        ` : ''}
+      </div>
+      ${FOOTER}
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to: 'contratacionnacional@logyser.com, gestor.nomina@logyser.com, admin@logyser.com',
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
 module.exports = {
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
@@ -1452,4 +1576,7 @@ module.exports = {
   notificarFirmaCapacitacionSST,
   notificarCapacitacionSSTCompletada,
   notificarMovilidadRegistrada,
+  notificarCambiosDotacion,
+  notificarCambiosPersonales,
+  notificarCambiosBancos,
 };

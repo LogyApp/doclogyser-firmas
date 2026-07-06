@@ -22,6 +22,7 @@ const evaluacionsstRoutes            = require('./src/routes/evaluacionsst');
 const movilidadyriesgoRoutes         = require('./src/routes/movilidadyriesgo');
 const documentClassifierRoutes       = require('./src/routes/documentClassifier');
 const capacitacionsstRoutes          = require('./src/routes/capacitacionsst');
+const actualizardatosRoutes          = require('./src/routes/actualizardatos');
 
 const app = express();
 
@@ -57,6 +58,9 @@ app.use('/document-classifier', documentClassifierRoutes);
 app.use('/capacitacionsst', capacitacionsstRoutes);
 app.use('/formcapacitacionsst', capacitacionsstRoutes);
 app.use('/admin/capacitacionsst', capacitacionsstRoutes);
+app.use('/actualizardatos', actualizardatosRoutes);
+
+
 
 
 if (process.env.NODE_ENV !== 'production') {
