@@ -14,7 +14,7 @@ const storage = process.env.GCS_KEYFILE
   ? new Storage({ keyFilename: path.resolve(process.env.GCS_KEYFILE) })
   : new Storage();
 
-const BUCKET_ASPIRANTES = process.env.BUCKET_ASPIRANTES || 'talent-hub-aspirantes';
+const BUCKET_ASPIRANTES = process.env.BUCKET_ASPIRANTES || 'hojas_vida_logyser';
 const BUCKET_EMPLEADOS = process.env.BUCKET_PDFS || 'talenthub_central';
 
 function getBucketAspirantes() {
@@ -584,7 +584,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario) {
                     ${estaAprobado ? 
                       '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>' : 
                       (estaCargado ? 
-                        `<a href="https://storage.googleapis.com/${process.env.BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
+                        `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
                          <button type="button" onclick="confirmarEliminar('${doc.id}', '${doc.nombre}')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : 
                         `<input type="file" name="file_${doc.id}" accept=".pdf" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`
                       )
@@ -647,7 +647,7 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
         <span class="text-[11px] font-bold text-slate-700 uppercase">${doc.nombre}</span>
         ${data ? `
           <div class="flex gap-2">
-            <a href="https://storage.googleapis.com/${process.env.BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
+            <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
             ${!bloqueado ? `<button type="button" onclick="eliminar(${doc.id}, '${doc.nombre}')" class="text-[10px] text-red-400 font-bold italic">ELIMINAR</button>` : ''}
           </div>
         ` : '<span class="text-[10px] text-slate-300 italic">Pendiente</span>'}
@@ -722,7 +722,7 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
                   <span class="text-[11px] font-bold text-slate-600">${nombreDoc}</span>
                 </div>
                 <div class="flex gap-2 items-center">
-                  ${d ? `<a href="https://storage.googleapis.com/${process.env.BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
+                  ${d ? `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${d.path}" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline">VER</a>` : ''}
                   ${d && d.estado !== 'Aprobado' && !bloqueado ? 
                     `<button type="button" onclick="eliminar(${id}, '${nombreDoc}')" class="text-[10px] text-red-400 italic font-bold">BORRAR</button>` 
                     : (d?.estado === 'Aprobado' ? '<span class="text-[10px] font-black text-green-600 uppercase">✓ APROBADO</span>' : '')
