@@ -22,7 +22,7 @@ function fechaHoraBogota() {
 
 function toDateStr(val) {
   if (!val) return null;
-  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  if (val instanceof Date) return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
   return String(val).slice(0, 10);
 }
 
@@ -39,7 +39,7 @@ function limpiarNombre(trabajador) {
 
 function formatFechaCO(fecha) {
   if (!fecha) return '';
-  const str = fecha instanceof Date ? fecha.toISOString().slice(0, 10) : String(fecha).slice(0, 10);
+  const str = fecha instanceof Date ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}` : String(fecha).slice(0, 10);
   const d = new Date(str + 'T12:00:00');
   if (isNaN(d)) return '';
   return d.toLocaleDateString('es-CO', {

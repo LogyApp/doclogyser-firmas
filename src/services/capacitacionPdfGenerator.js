@@ -3,7 +3,7 @@ const { LOGO_BASE64 } = require('./assets');
 
 function formatFechaCO(fecha) {
   if (!fecha) return '';
-  const str = fecha instanceof Date ? fecha.toISOString().slice(0, 10) : String(fecha).slice(0, 10);
+  const str = fecha instanceof Date ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}` : String(fecha).slice(0, 10);
   const d = new Date(str + 'T12:00:00');
   if (isNaN(d)) return '';
   return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });

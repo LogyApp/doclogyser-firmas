@@ -12,7 +12,7 @@ function fechaHoraBogota() {
 
 function toDateStr(val) {
   if (!val) return null;
-  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  if (val instanceof Date) return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
   return String(val).slice(0, 10);
 }
 
