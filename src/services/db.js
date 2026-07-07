@@ -10,6 +10,12 @@ const pool = mysql.createPool({
   connectionLimit: parseInt(process.env.DB_POOL_LIMIT) || 25,
   queueLimit: 0,
   charset: 'utf8mb4',
+  timezone: '-05:00',
+});
+
+// Configurar el huso horario de la sesión en MySQL a Bogotá (-05:00) para NOW(), CURRENT_TIMESTAMP, etc.
+pool.on('connection', (connection) => {
+  connection.query("SET time_zone = '-05:00'");
 });
 
 module.exports = pool;
