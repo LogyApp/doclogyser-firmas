@@ -501,9 +501,9 @@
           <select class="input-field" id="txt-banco" required onchange="evaluarCambioBancario()">
             <option value="">Seleccione...</option>
             <option value="BBVA">BBVA</option>
-            <option value="BOGOTÁ">BOGOTÁ</option>
+            <option value="DAVIVIENDA">DAVIVIENDA</option>
             <option value="DAVIPLATA">DAVIPLATA</option>
-            <option value="DAVIVIENDA S.A.">DAVIVIENDA S.A.</option>
+            <option value="BOGOTÁ">BOGOTÁ</option>
           </select>
         </div>
         <div class="field">
@@ -598,7 +598,37 @@
       }
 
       // Bancos
-      document.getElementById('txt-banco').value = loadedData.banco;
+      const selectBanco = document.getElementById('txt-banco');
+      const bancoValor = (loadedData.banco || '').trim();
+      
+      // Limpiar opciones dinámicas previas dejando solo las estándares
+      const standardBanks = ['BBVA', 'DAVIVIENDA', 'DAVIPLATA', 'BOGOTÁ'];
+      for (let i = selectBanco.options.length - 1; i >= 0; i--) {
+        const val = selectBanco.options[i].value;
+        if (val && !standardBanks.includes(val)) {
+          selectBanco.remove(i);
+        }
+      }
+
+      if (bancoValor) {
+        let existe = false;
+        for (let i = 0; i < selectBanco.options.length; i++) {
+          if (selectBanco.options[i].value.toUpperCase() === bancoValor.toUpperCase()) {
+            selectBanco.selectedIndex = i;
+            existe = true;
+            break;
+          }
+        }
+        if (!existe) {
+          const opt = document.createElement('option');
+          opt.value = bancoValor;
+          opt.textContent = bancoValor;
+          selectBanco.appendChild(opt);
+          selectBanco.value = bancoValor;
+        }
+      } else {
+        selectBanco.value = '';
+      }
       document.getElementById('txt-cuenta').value = loadedData.nCuentaBancaria;
 
       // Resetear área de archivos
