@@ -1135,6 +1135,13 @@
     const btnEmail = document.createElement('button');
     btnEmail.type = 'button'; btnEmail.className = 'btn-email-send';
     btnEmail.innerHTML = '&#9993; Correo';
+
+    // Deshabilitar botón si faltan firmas en la sección "DOCUMENTOS PARA FIRMA" (CT, AR, EMOE, CRS)
+    const todosFirmaDocsFirmados = !urlFirmaCT && !urlFirmaEMOE && !urlFirmaCRS && !urlFirmaAR;
+    if (!todosFirmaDocsFirmados) {
+      btnEmail.disabled = true;
+      btnEmail.title = 'Habilitado solo cuando todos los documentos para firma estén firmados';
+    }
     btnEmail.onclick = async () => {
       const em = document.getElementById('notifEmail').value.trim();
       if (!em) { alert('Ingrese un correo electrónico.'); return; }
