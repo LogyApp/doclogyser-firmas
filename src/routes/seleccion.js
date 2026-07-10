@@ -27,7 +27,7 @@ function getBucketEmpleados() {
 }
 
 // ─── Document AI Invocation ──────────────────────────────────────────────────
-async function extractFieldsFromBuffer(fileBuffer, mimeType) {
+async function extractFieldsFromBuffer(fileBuffer, mimeType, pages = null) {
   const authOptions = { scopes: 'https://www.googleapis.com/auth/cloud-platform' };
   if (process.env.GCS_KEYFILE) {
     authOptions.keyFilename = path.resolve(process.env.GCS_KEYFILE);
@@ -48,6 +48,14 @@ async function extractFieldsFromBuffer(fileBuffer, mimeType) {
       mimeType: mimeType,
     },
   };
+
+  if (mimeType === 'application/pdf' && Array.isArray(pages) && pages.length > 0) {
+    requestBody.processOptions = {
+      individualPageSelector: {
+        pages: pages
+      }
+    };
+  }
 
   console.log(`[DocAI Selection] Invoking Document AI: ${url}`);
   let response;
@@ -554,10 +562,26 @@ router.post('/api/classify-doc', upload.single('file'), async (req, res) => {
     const bucket = getBucketAspirantes();
     await bucket.file(tempGcsPath).save(file.buffer, { contentType: mimeType });
 
+    // Omitir Document AI si no es Cédula (ID 11)
+    if (idDoc !== 11) {
+      const [configDocExpected] = await pool.execute('SELECT Documento FROM Config_Doc_Trabajador WHERE Id = ?', [idDoc]);
+      const expectedDocName = configDocExpected.length > 0 ? configDocExpected[0].Documento : '';
+
+      return res.json({
+        status: 'success_other',
+        tempGcsPath,
+        extractedDoc: expectedDocName,
+        extractedID: String(id_aspirante)
+      });
+    }
+
+    // Determinar las páginas a procesar para acelerar la respuesta en PDFs (Solo Cédula)
+    const targetPages = [1, 2];
+
     // Llamar a Document AI
     let docAiResult;
     try {
-      docAiResult = await extractFieldsFromBuffer(file.buffer, mimeType);
+      docAiResult = await extractFieldsFromBuffer(file.buffer, mimeType, targetPages);
     } catch (err) {
       console.error('[Classify API] Document AI extraction failed:', err);
       return res.json({
@@ -1522,6 +1546,25 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         document.getElementById(id).classList.add('hidden');
       }
 
+      let spinnerInterval = null;
+      function startDynamicSpinner(messages) {
+        if (spinnerInterval) clearInterval(spinnerInterval);
+        let index = 0;
+        showSpinner(messages[0]);
+        spinnerInterval = setInterval(() => {
+          index = (index + 1) % messages.length;
+          document.getElementById('spinnerText').innerText = messages[index];
+        }, 2500);
+      }
+
+      function stopDynamicSpinner() {
+        if (spinnerInterval) {
+          clearInterval(spinnerInterval);
+          spinnerInterval = null;
+        }
+        hideSpinner();
+      }
+
       function showSpinner(text) {
         document.getElementById('spinnerText').innerText = text || 'Procesando con Inteligencia Artificial...';
         document.getElementById('spinnerOverlay').classList.remove('hidden');
@@ -1587,7 +1630,19 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         
         currentFileState.id_config_doc = idConfigDoc;
         
-        showSpinner('Preparando y optimizando imagen...');
+        if (idConfigDoc === 11) {
+          const messages = [
+            'Preparando y optimizando imagen de la Cédula...',
+            'Subiendo archivo de forma segura al servidor...',
+            'Invocando Inteligencia Artificial (Document AI)...',
+            'Analizando y extrayendo datos (Nombres y Fechas)...',
+            'Validando información con el sistema...',
+            'Casi listo, finalizando análisis...'
+          ];
+          startDynamicSpinner(messages);
+        } else {
+          showSpinner('Cargando y guardando documento...');
+        }
 
         compressImageIfNeeded(file).then(optimizedFile => {
           const formData = new FormData();
@@ -1595,15 +1650,13 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           formData.append('id_aspirante', currentFileState.id_aspirante);
           formData.append('id_config_doc', idConfigDoc);
 
-          showSpinner('Analizando documento con Inteligencia Artificial...');
-
           fetch('/seleccion/api/classify-doc', {
             method: 'POST',
             body: formData
           })
         .then(res => res.json())
         .then(data => {
-          hideSpinner();
+          stopDynamicSpinner();
           if (data.error) {
             alert('Error: ' + data.error);
             inputEl.value = '';
@@ -1683,7 +1736,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           }
         })
         .catch(err => {
-          hideSpinner();
+          stopDynamicSpinner();
           console.error(err);
           alert('Error de conexión al subir archivo');
           inputEl.value = '';
