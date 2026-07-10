@@ -1,10 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
 const { Storage } = require('@google-cloud/storage');
+const { GoogleAuth } = require('google-auth-library');
 const pool = require('../services/db');
-
-const router = express.Router();
+const { notificarBloqueoAspirante } = require('../services/email');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -23,6 +24,244 @@ function getBucketAspirantes() {
 
 function getBucketEmpleados() {
   return storage.bucket(BUCKET_EMPLEADOS);
+}
+
+// ─── Document AI Invocation ──────────────────────────────────────────────────
+async function extractFieldsFromBuffer(fileBuffer, mimeType) {
+  const authOptions = { scopes: 'https://www.googleapis.com/auth/cloud-platform' };
+  if (process.env.GCS_KEYFILE) {
+    authOptions.keyFilename = path.resolve(process.env.GCS_KEYFILE);
+  }
+  const auth = new GoogleAuth(authOptions);
+  const client = await auth.getClient();
+  const credentials = await client.getAccessToken();
+
+  const projectId = process.env.DOCAI_PROJECT_ID;
+  const location = process.env.DOCAI_LOCATION || 'us';
+  const processorId = process.env.DOCAI_PROCESSOR_ID;
+  const url = `https://${location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`;
+
+  const base64Content = fileBuffer.toString('base64');
+  const requestBody = {
+    rawDocument: {
+      content: base64Content,
+      mimeType: mimeType,
+    },
+  };
+
+  console.log(`[DocAI Selection] Invoking Document AI: ${url}`);
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${credentials.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+  } catch (fetchErr) {
+    console.warn(`[DocAI Selection] Regional fetch failed, retrying with global endpoint... Error: ${fetchErr.message}`);
+    const fallbackUrl = `https://documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`;
+    response = await fetch(fallbackUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${credentials.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[DocAI Selection] API Error:', errorText);
+    throw new Error(`Document AI API error: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.document;
+}
+
+// ─── Normalization & Matching Helpers ─────────────────────────────────────────
+const normalizeText = (text) =>
+  (text ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\d+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const STOPWORDS = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'en', 'y', 'a', 'al', 'por', 'con', 'para']);
+
+function matchScore(candidate, extracted) {
+  const words = normalizeText(candidate).split(/\s+/).filter(w => w.length > 2 && !STOPWORDS.has(w));
+  if (words.length === 0) return 0;
+  const extractedNorm = normalizeText(extracted);
+  const matched = words.filter(w => extractedNorm.includes(w));
+  return matched.length / words.length;
+}
+
+let cachedCiudades = null;
+let cachedDocs = null;
+
+async function getCachedCiudades() {
+  if (cachedCiudades) return cachedCiudades;
+  console.log('[Cache] Loading Config_Ciudades into cache...');
+  const [rows] = await pool.execute('SELECT Ciudad, Departamento, Pais FROM Config_Ciudades');
+  cachedCiudades = rows;
+  return cachedCiudades;
+}
+
+async function getCachedDocs() {
+  if (cachedDocs) return cachedDocs;
+  console.log('[Cache] Loading Config_Doc_Trabajador into cache...');
+  const [rows] = await pool.execute('SELECT Id, Prefijo, Documento FROM Config_Doc_Trabajador');
+  cachedDocs = rows;
+  return cachedDocs;
+}
+
+async function getPrefijo(docTitle) {
+  const allRows = await getCachedDocs();
+  const exactMatch = allRows.find(r => r.Documento && r.Documento.trim().toLowerCase() === docTitle.trim().toLowerCase());
+  if (exactMatch) {
+    return { idConfig: exactMatch.Id, prefijo: exactMatch.Prefijo, documento: exactMatch.Documento };
+  }
+
+  const THRESHOLD = 0.6;
+  let best = null;
+  let bestScore = 0;
+
+  for (const row of allRows) {
+    const score = matchScore(row.Documento, docTitle);
+    if (score > bestScore) {
+      bestScore = score;
+      best = row;
+    }
+  }
+
+  if (best && bestScore >= THRESHOLD) {
+    return { idConfig: best.Id, prefijo: best.Prefijo, documento: best.Documento };
+  }
+  return null;
+}
+
+async function matchCity(lugar) {
+  if (!lugar) return null;
+  const lugarNorm = normalizeText(lugar);
+  const rows = await getCachedCiudades();
+  return rows.find(r => normalizeText(r.Ciudad) === lugarNorm) || null;
+}
+
+async function matchBirthPlace(lugar) {
+  if (!lugar) return null;
+  const match = lugar.match(/^([^(]+)\s*(?:\(([^)]+)\))?$/);
+  if (!match) return null;
+  const city = match[1].trim();
+  const dept = match[2] ? match[2].trim() : '';
+
+  const cityNorm = normalizeText(city);
+  const deptNorm = normalizeText(dept);
+
+  const rows = await getCachedCiudades();
+  
+  if (dept) {
+    const found = rows.find(r => normalizeText(r.Ciudad) === cityNorm && normalizeText(r.Departamento) === deptNorm);
+    if (found) return found;
+  }
+  return rows.find(r => normalizeText(r.Ciudad) === cityNorm) || null;
+}
+
+function getMimeType(extension) {
+  const mimeTypes = {
+    '.pdf': 'application/pdf',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.tiff': 'image/tiff',
+    '.bmp': 'image/bmp'
+  };
+  return mimeTypes[extension.toLowerCase()] || 'application/octet-stream';
+}
+
+function splitNames(fullName) {
+  if (!fullName) return { first: '', second: '' };
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: '', second: '' };
+  const first = parts[0];
+  const second = parts.slice(1).join(' ');
+  return { first, second };
+}
+
+function normalizarFecha(str) {
+  if (!str) return null;
+  if (str instanceof Date || Object.prototype.toString.call(str) === '[object Date]') {
+    if (isNaN(str.getTime())) return null;
+    // Formato local YYYY-MM-DD
+    const yyyy = str.getFullYear();
+    const mm = String(str.getMonth() + 1).padStart(2, '0');
+    const dd = String(str.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  if (typeof str !== 'string') {
+    str = String(str);
+  }
+  str = str.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+  // Limpiar horas (ej. 00:00:00) si vienen incluidas
+  const cleanStr = str.split(/\s+/)[0];
+  
+  const parts = cleanStr.split(/[-/]/);
+  if (parts.length === 3) {
+    const p0 = parts[0].padStart(2, '0');
+    let p1 = parts[1].toLowerCase();
+    let p2 = parts[2];
+    
+    // Map Spanish month abbreviations/names
+    const MESES = {
+      ene: '01', enero: '01',
+      feb: '02', febrero: '02',
+      mar: '03', marzo: '03',
+      abr: '04', abril: '04',
+      may: '05', mayo: '05',
+      jun: '06', junio: '06',
+      jul: '07', julio: '07',
+      ago: '08', agosto: '08',
+      sep: '09', septiembre: '09',
+      oct: '10', octubre: '10',
+      nov: '11', noviembre: '11',
+      dic: '12', diciembre: '12'
+    };
+    
+    if (MESES[p1]) {
+      p1 = MESES[p1];
+    } else {
+      p1 = p1.padStart(2, '0');
+    }
+    
+    if (p2.length === 4) {
+      // DD/MM/YYYY -> YYYY-MM-DD
+      return `${p2}-${p1}-${p0}`;
+    } else if (p0.length === 4) {
+      // YYYY/MM/DD -> YYYY-MM-DD
+      p2 = p2.padStart(2, '0');
+      return `${p0}-${p1}-${p2}`;
+    }
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    // Formato local YYYY-MM-DD
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return null;
 }
 
 // Helper to save file to GCS and update DB
@@ -56,12 +295,15 @@ async function guardarArchivo(id_aspirante, id_config_doc, file) {
   return nombreArchivo;
 }
 
+const router = express.Router();
+
 // ══════════════════════════════════════════════════════════════
 // Vistas (páginas HTML)
 // ══════════════════════════════════════════════════════════════
 
 // Portal del Aspirante
 router.get('/portal/:uuid', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   const { uuid } = req.params;
   const usuario = req.query.usuario || '';
   
@@ -78,7 +320,7 @@ router.get('/portal/:uuid', async (req, res) => {
 
   try {
     const [ [aspiranteRows], [cargados] ] = await Promise.all([
-      pool.execute('SELECT primer_nombre, pdf_public_url FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
+      pool.execute('SELECT primer_nombre, pdf_public_url, estado_proceso FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
       pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid])
     ]);
 
@@ -95,7 +337,7 @@ router.get('/portal/:uuid', async (req, res) => {
       mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path };
     });
 
-    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario));
+    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso));
   } catch (error) {
     console.error("Error en Portal Aspirante:", error);
     res.status(500).send("Error interno al cargar el portal");
@@ -104,6 +346,7 @@ router.get('/portal/:uuid', async (req, res) => {
 
 // Panel Administrativo del Aspirante
 router.get('/admin/:uuid', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   const { uuid } = req.params;
   const usuario = req.query.usuario || '';
 
@@ -292,6 +535,340 @@ router.post('/delete-doc-admin', async (req, res) => {
   }
 });
 
+// ─── API Endpoints para Procesamiento Interactivo (Document AI) ───────────────
+
+router.post('/api/classify-doc', upload.single('file'), async (req, res) => {
+  try {
+    const { id_aspirante, id_config_doc } = req.body;
+    const file = req.file;
+    if (!id_aspirante || !id_config_doc || !file) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos' });
+    }
+
+    const idDoc = Number(id_config_doc);
+    const extension = path.extname(file.originalname).toLowerCase();
+    const mimeType = getMimeType(extension);
+
+    // Guardar temporalmente en controldochv/
+    const tempGcsPath = `controldochv/${id_aspirante}_${idDoc}_${Date.now()}${extension}`;
+    const bucket = getBucketAspirantes();
+    await bucket.file(tempGcsPath).save(file.buffer, { contentType: mimeType });
+
+    // Llamar a Document AI
+    let docAiResult;
+    try {
+      docAiResult = await extractFieldsFromBuffer(file.buffer, mimeType);
+    } catch (err) {
+      console.error('[Classify API] Document AI extraction failed:', err);
+      return res.json({
+        status: 'error_processing',
+        message: 'No se pudo leer la información del documento mediante Inteligencia Artificial.',
+        tempGcsPath
+      });
+    }
+
+    const entities = docAiResult?.entities ?? [];
+    const findEntity = (type) =>
+      entities
+        .find((e) => normalizeText(e.type) === normalizeText(type))
+        ?.mentionText
+        ?.trim() ?? null;
+
+    let identificacion = findEntity('identificacion');
+    if (identificacion) {
+      identificacion = identificacion.replace(/[\.\s,]/g, '').trim();
+    }
+    const docTitle = findEntity('doc');
+
+    // Obtener información del aspirante registrado
+    const [aspRows] = await pool.execute('SELECT * FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [id_aspirante]);
+    if (aspRows.length === 0) {
+      return res.status(404).json({ error: 'Aspirante no encontrado' });
+    }
+    const asp = aspRows[0];
+
+    // LÓGICA DE CÉDULA DE CIUDADANÍA
+    if (idDoc === 11) {
+      if (!identificacion) {
+        return res.json({
+          status: 'success_cedula',
+          tempGcsPath,
+          warning: 'No se pudo leer la identificación del documento. Por favor verifíquela manualmente.',
+          data: {
+            extracted: {
+              identificacion: '',
+              nombres: findEntity('nombres'),
+              apellidos: findEntity('apellidos'),
+              sexo: findEntity('sexo'),
+              grupo_sanguineo: findEntity('grupo_sanguineo'),
+              fecha_nacimiento: normalizarFecha(findEntity('fecha_nacimiento')) || normalizarFecha(asp.fecha_nacimiento),
+              fecha_expedicion: normalizarFecha(findEntity('fecha_expedicion')) || normalizarFecha(asp.fecha_expedicion),
+              lugar_expedicion: findEntity('lugar_expedicion'),
+              lugar_nacimiento: findEntity('lugar_nacimiento')
+            },
+            registered: {
+              identificacion: asp.identificacion,
+              primer_nombre: asp.primer_nombre,
+              segundo_nombre: asp.segundo_nombre,
+              primer_apellido: asp.primer_apellido,
+              segundo_apellido: asp.segundo_apellido,
+              genero: asp.genero,
+              rh: asp.rh,
+              fecha_nacimiento: normalizarFecha(asp.fecha_nacimiento),
+              fecha_expedicion: normalizarFecha(asp.fecha_expedicion),
+              pais_nacimiento: asp.pais_nacimiento
+            }
+          }
+        });
+      }
+
+      if (identificacion !== String(asp.identificacion)) {
+        // Discrepancia de identificación crítica
+        return res.json({
+          status: 'mismatch_id',
+          tempGcsPath,
+          extractedID: identificacion,
+          registeredID: String(asp.identificacion)
+        });
+      }
+
+      // Si coincide el ID, preparar datos de comparación
+      console.log(`[Classify API] Cédula dates pre-fallback — Extracted nacimiento: "${findEntity('fecha_nacimiento')}", expedicion: "${findEntity('fecha_expedicion')}"`);
+      console.log(`[Classify API] Cédula dates pre-fallback — DB nacimiento: "${asp.fecha_nacimiento}", expedicion: "${asp.fecha_expedicion}"`);
+      
+      const rawNombres = findEntity('nombres');
+      const rawApellidos = findEntity('apellidos');
+      const rawSexo = findEntity('sexo');
+      const rawRH = findEntity('grupo_sanguineo');
+      const rawFNac = normalizarFecha(findEntity('fecha_nacimiento')) || normalizarFecha(asp.fecha_nacimiento);
+      const rawFExp = normalizarFecha(findEntity('fecha_expedicion')) || normalizarFecha(asp.fecha_expedicion);
+      
+      console.log(`[Classify API] Cédula dates post-fallback — rawFNac: "${rawFNac}", rawFExp: "${rawFExp}"`);
+      const rawLugarExp = findEntity('lugar_expedicion');
+      const rawLugarNac = findEntity('lugar_nacimiento');
+
+      // Buscar ciudades
+      const matchExp = await matchCity(rawLugarExp);
+      const matchNac = await matchBirthPlace(rawLugarNac);
+
+      const parsedNac = rawLugarNac ? rawLugarNac.match(/^([^(]+)\s*(?:\(([^)]+)\))?$/) : null;
+      const rawCiudadNac = parsedNac ? parsedNac[1].trim() : '';
+      const rawDeptoNac = parsedNac && parsedNac[2] ? parsedNac[2].trim() : '';
+
+      const respData = {
+        extracted: {
+          identificacion,
+          nombres: rawNombres,
+          apellidos: rawApellidos,
+          sexo: rawSexo,
+          grupo_sanguineo: rawRH,
+          fecha_nacimiento: rawFNac,
+          fecha_expedicion: rawFExp,
+          lugar_expedicion: rawLugarExp,
+          lugar_nacimiento: rawLugarNac,
+          ciudad_expedicion: matchExp ? matchExp.Ciudad : rawLugarExp,
+          departamento_expedicion: matchExp ? matchExp.Departamento : null,
+          ciudad_nacimiento: matchNac ? matchNac.Ciudad : rawCiudadNac,
+          departamento_nacimiento: matchNac ? matchNac.Departamento : rawDeptoNac
+        },
+        registered: {
+          identificacion: asp.identificacion,
+          primer_nombre: asp.primer_nombre,
+          segundo_nombre: asp.segundo_nombre,
+          primer_apellido: asp.primer_apellido,
+          segundo_apellido: asp.segundo_apellido,
+          genero: asp.genero,
+          rh: asp.rh,
+          fecha_nacimiento: normalizarFecha(asp.fecha_nacimiento),
+          fecha_expedicion: normalizarFecha(asp.fecha_expedicion),
+          ciudad_expedicion: asp.ciudad_expedicion,
+          departamento_expedicion: asp.departamento_expedicion,
+          ciudad_nacimiento: asp.ciudad_nacimiento,
+          departamento_nacimiento: asp.departamento_nacimiento,
+          pais_nacimiento: asp.pais_nacimiento
+        }
+      };
+
+      return res.json({
+        status: 'success_cedula',
+        tempGcsPath,
+        data: respData
+      });
+    }
+
+    // LÓGICA DE OTROS DOCUMENTOS
+    const [configDocExpected] = await pool.execute('SELECT Documento FROM Config_Doc_Trabajador WHERE Id = ?', [idDoc]);
+    const expectedDocName = configDocExpected.length > 0 ? configDocExpected[0].Documento : '';
+
+    // Solo validamos la identificación si la IA logra encontrar una
+    if (identificacion && identificacion !== String(asp.identificacion)) {
+      return res.json({
+        status: 'mismatch_doc_id',
+        tempGcsPath,
+        extractedID: identificacion,
+        registeredID: String(asp.identificacion),
+        extractedDoc: expectedDocName
+      });
+    }
+
+    // Si no hay discrepancia en la identificación o no se pudo extraer, se asume correcto
+    return res.json({
+      status: 'success_other',
+      tempGcsPath,
+      extractedDoc: expectedDocName,
+      extractedID: identificacion || String(asp.identificacion)
+    });
+
+  } catch (err) {
+    console.error('[Classify API] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/confirm-doc', async (req, res) => {
+  try {
+    const { id_aspirante, id_config_doc, temp_gcs_path, confirmed_data } = req.body;
+    if (!id_aspirante || !id_config_doc || !temp_gcs_path) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos' });
+    }
+
+    const idDoc = Number(id_config_doc);
+    const extension = path.extname(temp_gcs_path).toLowerCase();
+
+    // Obtener información del aspirante y el prefijo
+    const [
+      [aspRows], [configRows]
+    ] = await Promise.all([
+      pool.execute('SELECT identificacion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [id_aspirante]),
+      pool.execute('SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = ?', [idDoc])
+    ]);
+
+    if (aspRows.length === 0 || configRows.length === 0) {
+      return res.status(404).json({ error: 'Aspirante o tipo de documento no encontrado' });
+    }
+
+    const { identificacion } = aspRows[0];
+    const { Prefijo } = configRows[0];
+
+    const destPath = `${identificacion}/${identificacion}.${Prefijo}.${id_aspirante}${extension}`;
+
+    // Copiar archivo a la ruta definitiva y borrar el temporal
+    const bucket = getBucketAspirantes();
+    const tempFile = bucket.file(temp_gcs_path);
+    const destFile = bucket.file(destPath);
+
+    await tempFile.copy(destFile);
+    await tempFile.delete().catch(err => console.warn('No se pudo borrar temporal:', err));
+
+    // Si es Cédula y se enviaron datos confirmados, actualizar Dynamic_hv_aspirante
+    if (idDoc === 11 && confirmed_data) {
+      const data = typeof confirmed_data === 'string' ? JSON.parse(confirmed_data) : confirmed_data;
+      const names = splitNames(data.nombres);
+      const lastNames = splitNames(data.apellidos);
+
+      await pool.execute(
+        `UPDATE Dynamic_hv_aspirante 
+         SET 
+           primer_nombre = ?,
+           segundo_nombre = ?,
+           primer_apellido = ?,
+           segundo_apellido = ?,
+           genero = ?,
+           rh = ?,
+           fecha_nacimiento = ?,
+           fecha_expedicion = ?,
+           departamento_expedicion = ?,
+           ciudad_expedicion = ?,
+           pais_nacimiento = ?,
+           departamento_nacimiento = ?,
+           ciudad_nacimiento = ?
+         WHERE id_aspirante = ?`,
+        [
+          names.first || null,
+          names.second || null,
+          lastNames.first || null,
+          lastNames.second || null,
+          data.sexo || null,
+          data.grupo_sanguineo || null,
+          data.fecha_nacimiento || null,
+          data.fecha_expedicion || null,
+          data.departamento_expedicion || null,
+          data.ciudad_expedicion || null,
+          data.pais_nacimiento || 'Colombia',
+          data.departamento_nacimiento || null,
+          data.ciudad_nacimiento || null,
+          id_aspirante
+        ]
+      );
+    }
+
+    // Registrar en Dynamic_hv_documentos
+    await pool.execute(
+      `INSERT INTO Dynamic_hv_documentos (id_aspirante, id_config_doc, gcs_path, estado) 
+       VALUES (?, ?, ?, 'Pendiente') 
+       ON DUPLICATE KEY UPDATE gcs_path = VALUES(gcs_path), estado = VALUES(estado), fecha_actualizacion = CURRENT_TIMESTAMP`,
+      [id_aspirante, idDoc, destPath]
+    );
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error('[Confirm API] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/block-process', async (req, res) => {
+  try {
+    const { id_aspirante, usuario, temp_gcs_path, extractedID, registeredID, only_delete_temp } = req.body;
+    if (!id_aspirante) {
+      return res.status(400).json({ error: 'Falta id_aspirante' });
+    }
+
+    // Borrar archivo temporal si existe
+    if (temp_gcs_path) {
+      await getBucketAspirantes().file(temp_gcs_path).delete().catch(() => {});
+    }
+
+    if (only_delete_temp) {
+      return res.json({ ok: true });
+    }
+
+    // 1. Bloquear proceso
+    await pool.execute(
+      "UPDATE Dynamic_hv_aspirante SET estado_proceso = 'bloqueado' WHERE id_aspirante = ?",
+      [id_aspirante]
+    );
+
+    // 2. Obtener datos del aspirante
+    const [aspRows] = await pool.execute('SELECT primer_nombre, primer_apellido FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [id_aspirante]);
+    const nombreAspirante = aspRows.length > 0 ? `${aspRows[0].primer_nombre} ${aspRows[0].primer_apellido}` : 'Aspirante';
+
+    // 3. Obtener correo del usuario auditor
+    let emailUsuario = null;
+    if (usuario) {
+      const [userRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+      if (userRows.length > 0) {
+        emailUsuario = userRows[0].Email;
+      }
+    }
+
+    // 4. Enviar correo de bloqueo
+    await notificarBloqueoAspirante({
+      emailUsuario,
+      nombreAspirante,
+      registeredID: registeredID || '',
+      extractedID: extractedID || ''
+    }).catch(mailErr => console.error('[Block API] Error sending block email:', mailErr));
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error('[Block API] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Cargar Múltiples Archivos
 router.post('/upload-multiple', upload.any(), async (req, res) => {
   const { id_aspirante, origen } = req.body;
@@ -322,6 +899,16 @@ router.post('/upload-multiple', upload.any(), async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // APIs auxiliares
 // ══════════════════════════════════════════════════════════════
+
+router.get('/api/ciudades', async (req, res) => {
+  try {
+    const list = await getCachedCiudades();
+    res.json(list);
+  } catch (err) {
+    console.error("Error API Ciudades:", err);
+    res.status(500).json([]);
+  }
+});
 
 router.get('/api/regionales', async (req, res) => {
   try {
@@ -449,9 +1036,9 @@ router.post('/finalizar-contratacion', async (req, res) => {
 
     const valuesSegmentacion = [
         a.identificacion, null, nombreTrabajador, a.tipo_documento, codTipoDoc,
-        a.primer_nombre?.toUpperCase(), a.segundo_nombre?.toUpperCase(), a.primer_apellido?.toUpperCase(), a.segundo_apellido?.toUpperCase(), null,
+        a.primer_nombre?.toUpperCase(), a.segundo_nombre?.toUpperCase(), a.primer_apellido?.toUpperCase(), a.segundo_apellido?.toUpperCase(), a.genero || null,
         a.rh, 'Colombia', a.departamento_expedicion, a.ciudad_expedicion, a.fecha_expedicion,
-        null, null, null, a.fecha_nacimiento,
+        a.pais_nacimiento || null, a.departamento_nacimiento || null, a.ciudad_nacimiento || null, a.fecha_nacimiento,
         'Colombia', a.departamento, a.ciudad, a.direccion_barrio,
         a.telefono, a.correo_electronico, a.estado_civil, gradoEscolaridad, a.eps, null,
         null, a.afp, null, null, null,
@@ -515,15 +1102,52 @@ router.post('/finalizar-contratacion', async (req, res) => {
 // Plantillas HTML Inline (Ajustadas para prefijo /seleccion y query params)
 // ══════════════════════════════════════════════════════════════
 
-function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario) {
+function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso) {
+  if (estadoProceso === 'bloqueado') {
+    return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Proceso Bloqueado | Logyser</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Inter', sans-serif; }
+      </style>
+    </head>
+    <body class="bg-slate-50 flex items-center justify-center min-h-screen p-6">
+      <div class="max-w-md w-full bg-white shadow-2xl rounded-3xl p-8 border border-red-100 text-center">
+        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0-6V9m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <h2 class="text-2xl font-black text-slate-800 mb-4 uppercase italic">Proceso Bloqueado</h2>
+        <p class="text-slate-600 mb-8 text-sm leading-relaxed">
+          Tu proceso de selección ha sido bloqueado automáticamente por seguridad debido a que el número de identificación cargado en tu documento no coincide con el registrado inicialmente.
+        </p>
+        <div class="bg-red-50 text-red-800 p-4 rounded-2xl text-xs font-semibold mb-8 text-left leading-relaxed">
+          ⚠️ Por favor vuelve a comenzar a diligenciar tu hoja de vida ingresando a <strong><a href="https://curriculum.logyser.com" class="underline hover:text-red-900">curriculum.logyser.com</a></strong>.
+        </div>
+        <p class="text-xs text-slate-400 font-medium">
+          Si consideras que esto es un error, por favor ponte en contacto con tu coordinador de selección.
+        </p>
+      </div>
+    </body>
+    </html>
+    `;
+  }
+
   const scriptFeedback = `
     <script>
       const params = new URLSearchParams(window.location.search);
-      if (params.get('msg') === 'upload_success') alert('¡Documentos cargados con éxito!');
       if (params.get('msg') === 'deleted') alert('Documento eliminado correctamente.');
-      if (params.get('msg') === 'no_files') alert('Por favor, selecciona al menos un archivo.');
+      if (params.get('msg') === 'uploaded') alert('Documento guardado y cargado correctamente.');
     </script>
   `;
+
+  // Check if all documents are uploaded
+  const allUploaded = docs.every(doc => mapaDocs[doc.id]);
 
   return `
   <!DOCTYPE html>
@@ -533,7 +1157,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Aspirante | Logyser</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Inter', sans-serif; }
     </style>
@@ -554,50 +1178,207 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario) {
         </div>
       </div>
 
-      <div class="bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-100">
-        <form action="/seleccion/upload-multiple?usuario=${usuario}" method="POST" enctype="multipart/form-data" id="mainForm">
-          <input type="hidden" name="id_aspirante" value="${uuid}">
-          <input type="hidden" name="origen" value="portal">
-          
-          <div class="p-8 md:p-12">
-            <h2 class="text-3xl font-bold text-slate-800 mb-2 italic">¡Hola, ${nombre}!</h2>
-            <p class="text-slate-500 mb-10 text-sm font-medium">
-              Bienvenido al proceso de selección. Gestiona los documentos requeridos a continuación. 
-              <span class="text-red-500 block mt-1">Los documentos aprobados no podrán ser modificados.</span>
-            </p>
+      <div class="bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-100 p-8 md:p-12 mb-8">
+        <h2 class="text-3xl font-black text-slate-800 mb-2 italic">¡Hola, ${nombre}!</h2>
+        <p class="text-slate-500 mb-10 text-sm font-medium">
+          Bienvenido al proceso de selección. Sube y gestiona los documentos requeridos a continuación. 
+          <span class="text-red-500 block mt-1">Los documentos aprobados no podrán ser modificados. El sistema procesará cada documento con Inteligencia Artificial al subirlo.</span>
+        </p>
+
+        ${allUploaded ? `
+        <div class="bg-emerald-50 border border-emerald-100 rounded-3xl p-6 mb-8 text-center">
+          <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+          </div>
+          <h3 class="text-lg font-bold text-slate-800 mb-1">¡Documentos Completados!</h3>
+          <p class="text-xs text-slate-500">Has subido todos los documentos requeridos. El equipo de Selección y Contratación los revisará a la brevedad.</p>
+        </div>
+        ` : ''}
+        
+        <div class="space-y-3">
+          ${docs.map(doc => {
+            const data = mapaDocs[doc.id];
+            const estaAprobado = data && data.estado === 'Aprobado';
+            const estaCargado = data && !estaAprobado;
             
-            <div class="space-y-3">
-              ${docs.map(doc => {
-                const data = mapaDocs[doc.id];
-                const estaAprobado = data && data.estado === 'Aprobado';
-                const estaCargado = data && !estaAprobado;
-                
-                return `
-                <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaAprobado ? 'border-green-200 bg-green-50' : 'border-slate-100 bg-white'} rounded-2xl shadow-sm">
-                  <div class="flex items-center space-x-3 flex-1">
-                    <div class="${estaAprobado ? 'text-green-500' : (estaCargado ? 'text-blue-500' : 'text-slate-300')}">
-                      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                    </div>
-                    <span class="text-sm font-semibold text-slate-700">${doc.nombre}</span>
-                  </div>
-                  <div class="flex items-center gap-2 mt-2 md:mt-0">
-                    ${estaAprobado ? 
-                      '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>' : 
-                      (estaCargado ? 
-                        `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
-                         <button type="button" onclick="confirmarEliminar('${doc.id}', '${doc.nombre}')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : 
-                        `<input type="file" name="file_${doc.id}" accept=".pdf" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`
-                      )
-                    }
-                  </div>
-                </div>`;
-              }).join('')}
+            const tieneCedula = !!mapaDocs[11];
+            const esCedula = doc.id === 11;
+            const estaBloqueado = !esCedula && !tieneCedula;
+
+            return `
+            <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaAprobado ? 'border-green-200 bg-green-50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} ${estaBloqueado ? 'opacity-50 select-none' : ''} rounded-2xl shadow-sm">
+              <div class="flex items-center space-x-3 flex-1">
+                <div class="${estaAprobado ? 'text-green-500' : (estaCargado ? 'text-blue-500' : 'text-slate-300')}">
+                  ${estaBloqueado ? 
+                    '<svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>' : 
+                    '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+                  }
+                </div>
+                <span class="text-sm font-semibold text-slate-700">${doc.nombre}</span>
+              </div>
+              <div class="flex items-center gap-2 mt-2 md:mt-0">
+                ${estaBloqueado ? 
+                  '<span class="text-[10px] font-black text-slate-400 border border-slate-200 px-3 py-1 rounded-lg bg-white uppercase flex items-center gap-1">🔒 Cédula Requerida</span>' :
+                  (estaAprobado ? 
+                    '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>' : 
+                    (estaCargado ? 
+                      `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
+                       <button type="button" onclick="confirmarEliminar('${doc.id}', '${doc.nombre}')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : 
+                      `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${doc.id}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`
+                    )
+                  )
+                }
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Spinner Overlay -->
+    <div id="spinnerOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex flex-col items-center justify-center text-white p-4">
+      <div class="animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent mb-4"></div>
+      <p class="text-lg font-bold text-center" id="spinnerText">Procesando con Inteligencia Artificial...</p>
+    </div>
+
+    <!-- Mismatch ID Modal -->
+    <div id="mismatchIdModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-red-100">
+        <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-4">Discrepancia de Identificación</h3>
+        <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+          La cédula que subiste contiene el número <strong id="mismatchExtID" class="text-red-600"></strong>, pero tu perfil está registrado con el número <strong id="mismatchRegID" class="text-slate-800"></strong>. ¿Cuál de estos es tu identificación correcta?
+        </p>
+        <div class="space-y-3">
+          <button onclick="handleMismatchChoice('extracted')" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase hover:bg-red-700 transition-all text-left flex justify-between items-center">
+            <span>El número de la cédula es correcto (Mi registro inicial tiene un error)</span>
+            <span>➔</span>
+          </button>
+          <button onclick="handleMismatchChoice('registered')" class="w-full bg-slate-100 text-slate-700 font-bold py-3 px-4 rounded-xl text-xs uppercase hover:bg-slate-200 transition-all text-left flex justify-between items-center">
+            <span>El registro inicial es el correcto (Cargué el documento equivocado)</span>
+            <span>➔</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mismatch Doc Modal -->
+    <div id="mismatchDocModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-amber-100">
+        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-4">¿Es este el documento correcto?</h3>
+        <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+          Nuestro asistente virtual (en fase de aprendizaje) estima que el documento cargado es de tipo <strong id="mismatchExtDoc" class="text-amber-600"></strong>, pero lo estás subiendo en el campo de <strong id="mismatchExpDoc" class="text-slate-800"></strong>. Por favor, verifica si corresponde.
+        </p>
+        <a id="mismatchDocPreviewLink" href="#" target="_blank" class="block text-center text-xs font-black text-blue-600 hover:text-blue-800 border border-blue-100 bg-blue-50/30 rounded-xl py-2 mb-6 transition-all uppercase">
+          🔍 Ver Archivo Cargado
+        </a>
+        <div class="flex gap-3">
+          <button onclick="closeModal('mismatchDocModal')" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl text-xs uppercase hover:bg-slate-200 transition-all">
+            Subir otro archivo
+          </button>
+          <button onclick="confirmMismatchDocType()" class="flex-1 bg-amber-600 text-white font-bold py-3 rounded-xl text-xs uppercase hover:bg-amber-700 transition-all">
+            Sí, es correcto
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mismatch Doc ID Modal (Other documents) -->
+    <div id="mismatchDocIdModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-amber-100">
+        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-6">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-4">Identificación Diferente</h3>
+        <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+          El documento (<span id="mismatchDocIdName" class="font-bold text-slate-800"></span>) contiene la identificación <strong id="mismatchDocIdExt" class="text-amber-600"></strong>, la cual no coincide con tu perfil (<span id="mismatchDocIdReg" class="font-bold text-slate-800"></span>).
+        </p>
+        <a id="mismatchDocIdPreviewLink" href="#" target="_blank" class="block text-center text-xs font-black text-blue-600 hover:text-blue-800 border border-blue-100 bg-blue-50/30 rounded-xl py-2 mb-6 transition-all uppercase">
+          🔍 Ver Archivo Cargado
+        </a>
+        <div class="flex gap-3">
+          <button onclick="closeModal('mismatchDocIdModal')" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl text-xs uppercase hover:bg-slate-200 transition-all">
+            Cancelar
+          </button>
+          <button onclick="confirmOtherDocMismatch()" class="flex-1 bg-amber-600 text-white font-bold py-3 rounded-xl text-xs uppercase hover:bg-amber-700 transition-all">
+            Continuar de todas formas
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cedula Confirm Modal -->
+    <div id="cedulaConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl border border-slate-100 my-8">
+        <h3 class="text-2xl font-bold text-slate-800 mb-2 italic">Confirmar Datos Extraídos</h3>
+        <p class="text-xs text-slate-500 mb-6">
+          Por seguridad y precisión, la Inteligencia Artificial ha extraído los siguientes datos de tu Cédula. Confirma si son correctos para actualizar tu perfil:
+        </p>
+        
+        <form id="cedulaConfirmForm" onsubmit="submitCedulaConfirmation(event)">
+          <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 mb-6">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nombres</label>
+              <input type="text" id="confirm-nombres" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
             </div>
-            <div class="mt-12">
-              <button type="submit" id="btnSubmit" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-slate-900 transition-all uppercase tracking-wider">
-                Cargar Documentos Seleccionados
-              </button>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Apellidos</label>
+              <input type="text" id="confirm-apellidos" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
             </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Género</label>
+                <select id="confirm-sexo" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
+                  <option value="MASCULINO">MASCULINO</option>
+                  <option value="FEMENINO">FEMENINO</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">RH</label>
+                <input type="text" id="confirm-rh" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fecha de Nacimiento</label>
+                <input type="date" id="confirm-fecha-nacimiento" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fecha de Expedición</label>
+                <input type="date" id="confirm-fecha-expedicion" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Lugar de Expedición</label>
+              <div class="grid grid-cols-2 gap-2">
+                <select id="confirm-depto-expedicion" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500" onchange="actualizarCiudadesExp(this.value)">
+                  <option value="">Departamento</option>
+                </select>
+                <select id="confirm-ciudad-expedicion" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
+                  <option value="">Ciudad</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Lugar de Nacimiento</label>
+              <div id="lugar-nacimiento-container">
+                <!-- Se inyecta dinámicamente -->
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex gap-4">
+            <button type="button" onclick="closeModal('cedulaConfirmModal')" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-2xl text-xs uppercase hover:bg-slate-200 transition-all">
+              Cancelar
+            </button>
+            <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-2xl text-xs uppercase hover:bg-blue-700 transition-all shadow-md">
+              Confirmar y Guardar
+            </button>
           </div>
         </form>
       </div>
@@ -609,6 +1390,147 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario) {
     </form>
 
     <script>
+      let globalCiudades = [];
+      let candidatePaisNacimiento = 'Colombia';
+
+      // Cargar catálogo de ciudades desde memoria al iniciar el portal
+      fetch('/seleccion/api/ciudades')
+        .then(r => r.json())
+        .then(data => {
+          globalCiudades = data;
+        })
+        .catch(err => console.error('Error cargando ciudades:', err));
+
+      function initLugarExpedicionDropdowns(selectedDepto, selectedCiudad) {
+        const deptoSelect = document.getElementById('confirm-depto-expedicion');
+        const colCiudades = globalCiudades.filter(c => (c.Pais || '').trim().toLowerCase() === 'colombia');
+        const deptos = [...new Set(colCiudades.map(c => c.Departamento))].sort();
+        
+        deptoSelect.innerHTML = '<option value="">Seleccione Departamento</option>';
+        deptos.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d;
+          opt.textContent = d;
+          deptoSelect.appendChild(opt);
+        });
+        
+        if (selectedDepto) {
+          deptoSelect.value = selectedDepto;
+        }
+        
+        actualizarCiudadesExp(deptoSelect.value, selectedCiudad);
+      }
+
+      function actualizarCiudadesExp(depto, selectedCiudad) {
+        const ciudadSelect = document.getElementById('confirm-ciudad-expedicion');
+        ciudadSelect.innerHTML = '<option value="">Seleccione Ciudad</option>';
+        if (!depto) return;
+        
+        const colCiudades = globalCiudades.filter(c => (c.Pais || '').trim().toLowerCase() === 'colombia' && c.Departamento === depto);
+        const uniqueCiudades = [...new Set(colCiudades.map(c => c.Ciudad))].sort();
+        
+        uniqueCiudades.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          ciudadSelect.appendChild(opt);
+        });
+        
+        if (selectedCiudad) {
+          ciudadSelect.value = selectedCiudad;
+        }
+      }
+
+      function initLugarNacimientoDropdowns(selectedDepto, selectedCiudad, paisNacimiento) {
+        const container = document.getElementById('lugar-nacimiento-container');
+        const targetPais = (paisNacimiento || 'colombia').trim().toLowerCase();
+        candidatePaisNacimiento = targetPais;
+        
+        const paisCiudades = globalCiudades.filter(c => (c.Pais || '').trim().toLowerCase() === targetPais);
+        
+        if (paisCiudades.length > 0) {
+          container.innerHTML = '<div class="grid grid-cols-2 gap-2">' +
+            '<select id="confirm-depto-nacimiento" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500" onchange="actualizarCiudadesNac(this.value)">' +
+              '<option value="">Departamento</option>' +
+            '</select>' +
+            '<select id="confirm-ciudad-nacimiento" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500">' +
+              '<option value="">Ciudad</option>' +
+            '</select>' +
+          '</div>';
+          
+          const deptoSelect = document.getElementById('confirm-depto-nacimiento');
+          const deptos = [...new Set(paisCiudades.map(c => c.Departamento))].sort();
+          
+          deptoSelect.innerHTML = '<option value="">Seleccione Departamento</option>';
+          deptos.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            deptoSelect.appendChild(opt);
+          });
+          
+          if (selectedDepto) {
+            deptoSelect.value = selectedDepto;
+          }
+          
+          actualizarCiudadesNac(deptoSelect.value, selectedCiudad, targetPais);
+        } else {
+          container.innerHTML = '<input type="text" id="confirm-lugar-nacimiento" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500" placeholder="Escriba lugar de nacimiento">';
+          const txtInput = document.getElementById('confirm-lugar-nacimiento');
+          txtInput.value = selectedCiudad || '';
+        }
+      }
+
+      function actualizarCiudadesNac(depto, selectedCiudad, targetPais) {
+        const ciudadSelect = document.getElementById('confirm-ciudad-nacimiento');
+        if (!ciudadSelect) return;
+        ciudadSelect.innerHTML = '<option value="">Seleccione Ciudad</option>';
+        if (!depto) return;
+        
+        const pais = targetPais || candidatePaisNacimiento;
+        const filtered = globalCiudades.filter(c => (c.Pais || '').trim().toLowerCase() === pais && c.Departamento === depto);
+        const uniqueCiudades = [...new Set(filtered.map(c => c.Ciudad))].sort();
+        
+        uniqueCiudades.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          ciudadSelect.appendChild(opt);
+        });
+        
+        if (selectedCiudad) {
+          ciudadSelect.value = selectedCiudad;
+        }
+      }
+
+      let currentFileState = {
+        id_aspirante: '${uuid}',
+        usuario: '${usuario}',
+        id_config_doc: null,
+        temp_gcs_path: null,
+        extractedID: null,
+        registeredID: null,
+        extractedDoc: null,
+        extracted_data: null
+      };
+
+      function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+      }
+
+      function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+      }
+
+      function showSpinner(text) {
+        document.getElementById('spinnerText').innerText = text || 'Procesando con Inteligencia Artificial...';
+        document.getElementById('spinnerOverlay').classList.remove('hidden');
+      }
+
+      function hideSpinner() {
+        document.getElementById('spinnerOverlay').classList.add('hidden');
+      }
+
       function confirmarEliminar(id, nombre) {
         if(confirm('¿Estás seguro de eliminar el documento: ' + nombre + '?')) {
           document.getElementById('delete_id_config_doc').value = id;
@@ -616,22 +1538,257 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario) {
         }
       }
 
-      document.getElementById('mainForm').onsubmit = function() {
-        const inputs = document.querySelectorAll('input[type="file"]');
-        let alguno = false;
-        inputs.forEach(i => { if(i.files.length > 0) alguno = true; });
+      function uploadAndProcess(idConfigDoc, inputEl) {
+        if (!inputEl.files || inputEl.files.length === 0) return;
+        const file = inputEl.files[0];
+        
+        currentFileState.id_config_doc = idConfigDoc;
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('id_aspirante', currentFileState.id_aspirante);
+        formData.append('id_config_doc', idConfigDoc);
 
-        if(!alguno) { 
-          alert('Por favor, selecciona al menos un archivo para cargar.'); 
-          return false; 
+        showSpinner('Analizando documento con Inteligencia Artificial...');
+
+        fetch('/seleccion/api/classify-doc', {
+          method: 'POST',
+          body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+          hideSpinner();
+          if (data.error) {
+            alert('Error: ' + data.error);
+            inputEl.value = '';
+            return;
+          }
+
+          currentFileState.temp_gcs_path = data.tempGcsPath;
+
+          if (data.status === 'error_processing') {
+            alert(data.message);
+            confirmWithoutDocAI();
+            return;
+          }
+
+          if (data.status === 'mismatch_id') {
+            currentFileState.extractedID = data.extractedID;
+            currentFileState.registeredID = data.registeredID;
+            document.getElementById('mismatchExtID').innerText = data.extractedID;
+            document.getElementById('mismatchRegID').innerText = data.registeredID;
+            openModal('mismatchIdModal');
+            inputEl.value = '';
+            return;
+          }
+
+          if (data.status === 'mismatch_doc') {
+            document.getElementById('mismatchExtDoc').innerText = data.extractedDoc;
+            document.getElementById('mismatchExpDoc').innerText = data.expectedDoc;
+            document.getElementById('mismatchDocPreviewLink').href = 'https://storage.googleapis.com/hojas_vida_logyser/' + data.tempGcsPath;
+            openModal('mismatchDocModal');
+            inputEl.value = '';
+            return;
+          }
+
+          if (data.status === 'mismatch_doc_id') {
+            currentFileState.extractedID = data.extractedID;
+            currentFileState.registeredID = data.registeredID;
+            currentFileState.extractedDoc = data.extractedDoc;
+            document.getElementById('mismatchDocIdName').innerText = data.extractedDoc;
+            document.getElementById('mismatchDocIdExt').innerText = data.extractedID;
+            document.getElementById('mismatchDocIdReg').innerText = data.registeredID;
+            document.getElementById('mismatchDocIdPreviewLink').href = 'https://storage.googleapis.com/hojas_vida_logyser/' + data.tempGcsPath;
+            openModal('mismatchDocIdModal');
+            inputEl.value = '';
+            return;
+          }
+
+          if (data.status === 'success_cedula') {
+            const ext = data.data.extracted;
+            const reg = data.data.registered;
+            
+            document.getElementById('confirm-nombres').value = ext.nombres || [reg.primer_nombre, reg.segundo_nombre].filter(Boolean).join(' ');
+            document.getElementById('confirm-apellidos').value = ext.apellidos || [reg.primer_apellido, reg.segundo_apellido].filter(Boolean).join(' ');
+            document.getElementById('confirm-sexo').value = ext.sexo === 'FEMENINO' || reg.genero === 'FEMENINO' ? 'FEMENINO' : 'MASCULINO';
+            document.getElementById('confirm-rh').value = ext.grupo_sanguineo || reg.rh || '';
+            document.getElementById('confirm-fecha-nacimiento').value = ext.fecha_nacimiento || reg.fecha_nacimiento || '';
+            document.getElementById('confirm-fecha-expedicion').value = ext.fecha_expedicion || reg.fecha_expedicion || '';
+            
+            // Lugar de expedición
+            const deptoExp = ext.departamento_expedicion || reg.departamento_expedicion || '';
+            const ciudadExp = ext.ciudad_expedicion || reg.ciudad_expedicion || '';
+            initLugarExpedicionDropdowns(deptoExp, ciudadExp);
+
+            // Lugar de nacimiento
+            const deptoNac = ext.departamento_nacimiento || reg.departamento_nacimiento || '';
+            const ciudadNac = ext.ciudad_nacimiento || reg.ciudad_nacimiento || '';
+            const paisNac = reg.pais_nacimiento || 'Colombia';
+            initLugarNacimientoDropdowns(deptoNac, ciudadNac, paisNac);
+
+            currentFileState.extracted_data = ext;
+
+            openModal('cedulaConfirmModal');
+            return;
+          }
+
+          if (data.status === 'success_other') {
+            confirmDocumentDirectly();
+          }
+        })
+        .catch(err => {
+          hideSpinner();
+          console.error(err);
+          alert('Error de conexión al subir archivo');
+          inputEl.value = '';
+        });
+      }
+
+      function confirmWithoutDocAI() {
+        if (confirm('¿Deseas guardar este archivo de todas formas de manera manual?')) {
+          confirmDocumentDirectly();
+        }
+      }
+
+      function confirmDocumentDirectly() {
+        showSpinner('Guardando documento en el servidor...');
+        fetch('/seleccion/api/confirm-doc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_aspirante: currentFileState.id_aspirante,
+            id_config_doc: currentFileState.id_config_doc,
+            temp_gcs_path: currentFileState.temp_gcs_path
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          hideSpinner();
+          if (data.ok) {
+            window.location.href = '/seleccion/portal/' + currentFileState.id_aspirante + '?usuario=' + currentFileState.usuario + '&msg=uploaded';
+          } else {
+            alert('Error al confirmar: ' + data.error);
+          }
+        })
+        .catch(err => {
+          hideSpinner();
+          console.error(err);
+          alert('Error de red al confirmar');
+        });
+      }
+
+      function confirmOtherDocMismatch() {
+        closeModal('mismatchDocIdModal');
+        confirmDocumentDirectly();
+      }
+
+      function confirmMismatchDocType() {
+        closeModal('mismatchDocModal');
+        confirmDocumentDirectly();
+      }
+
+      function handleMismatchChoice(choice) {
+        closeModal('mismatchIdModal');
+        if (choice === 'extracted') {
+          showSpinner('Bloqueando proceso por discrepancia de identidad...');
+          fetch('/seleccion/api/block-process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id_aspirante: currentFileState.id_aspirante,
+              usuario: currentFileState.usuario,
+              temp_gcs_path: currentFileState.temp_gcs_path,
+              extractedID: currentFileState.extractedID,
+              registeredID: currentFileState.registeredID
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            hideSpinner();
+            window.location.href = '/seleccion/portal/' + currentFileState.id_aspirante + '?usuario=' + currentFileState.usuario + '&msg=blocked';
+          })
+          .catch(err => {
+            hideSpinner();
+            console.error(err);
+            window.location.href = '/seleccion/portal/' + currentFileState.id_aspirante + '?usuario=' + currentFileState.usuario + '&msg=blocked';
+          });
+        } else {
+          fetch('/seleccion/api/block-process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id_aspirante: currentFileState.id_aspirante,
+              temp_gcs_path: currentFileState.temp_gcs_path,
+              only_delete_temp: true
+            })
+          }).catch(console.error);
+          alert('Por favor, selecciona e ingresa una copia del documento correcto correspondiente a tu ID registrado.');
+        }
+      }
+
+      function submitCedulaConfirmation(event) {
+        event.preventDefault();
+        
+        const deptoExp = document.getElementById('confirm-depto-expedicion').value;
+        const ciudadExp = document.getElementById('confirm-ciudad-expedicion').value;
+        
+        let deptoNac = '';
+        let ciudadNac = '';
+        const selectDeptoNac = document.getElementById('confirm-depto-nacimiento');
+        const selectCiudadNac = document.getElementById('confirm-ciudad-nacimiento');
+        const inputLugarNac = document.getElementById('confirm-lugar-nacimiento');
+        
+        if (selectCiudadNac) {
+          deptoNac = selectDeptoNac.value;
+          ciudadNac = selectCiudadNac.value;
+        } else if (inputLugarNac) {
+          const rawLugarNac = inputLugarNac.value;
+          const parsedNac = rawLugarNac.match(/^([^(]+)\s*(?:\(([^)]+)\))?$/);
+          ciudadNac = parsedNac ? parsedNac[1].trim() : rawLugarNac;
+          deptoNac = parsedNac && parsedNac[2] ? parsedNac[2].trim() : '';
         }
 
-        const btn = document.getElementById('btnSubmit');
-        btn.innerText = 'ENVIANDO ARCHIVOS... POR FAVOR ESPERA';
-        btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
-        return true;
-      };
+        const confirmedData = {
+          nombres: document.getElementById('confirm-nombres').value,
+          apellidos: document.getElementById('confirm-apellidos').value,
+          sexo: document.getElementById('confirm-sexo').value,
+          grupo_sanguineo: document.getElementById('confirm-rh').value,
+          fecha_nacimiento: document.getElementById('confirm-fecha-nacimiento').value,
+          fecha_expedicion: document.getElementById('confirm-fecha-expedicion').value,
+          ciudad_expedicion: ciudadExp,
+          departamento_expedicion: deptoExp,
+          ciudad_nacimiento: ciudadNac,
+          departamento_nacimiento: deptoNac
+        };
+
+        closeModal('cedulaConfirmModal');
+        showSpinner('Guardando datos confirmados de Cédula...');
+
+        fetch('/seleccion/api/confirm-doc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_aspirante: currentFileState.id_aspirante,
+            id_config_doc: currentFileState.id_config_doc,
+            temp_gcs_path: currentFileState.temp_gcs_path,
+            confirmed_data: confirmedData
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          hideSpinner();
+          if (data.ok) {
+            window.location.href = '/seleccion/portal/' + currentFileState.id_aspirante + '?usuario=' + currentFileState.usuario + '&msg=uploaded';
+          } else {
+            alert('Error al confirmar cédula: ' + data.error);
+          }
+        })
+        .catch(err => {
+          hideSpinner();
+          console.error(err);
+          alert('Error de red al confirmar cédula');
+        });
+      }
     </script>
     ${scriptFeedback}
   </body>

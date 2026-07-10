@@ -1581,7 +1581,53 @@ async function notificarCambiosBancos({ trabajador, identificacion, antes, despu
   });
 }
 
+async function notificarBloqueoAspirante({ emailUsuario, nombreAspirante, registeredID, extractedID }) {
+  const asunto = `PROCESO BLOQUEADO — Aspirante con error de identificación`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      ${HEADER}
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+        <h3 style="color:#c0392b;margin-top:0">Proceso de Selección Bloqueado</h3>
+        <p>El aspirante cometió un error al digitar su número de identificación al registrarse en la plataforma y el proceso ha sido bloqueado automáticamente por seguridad.</p>
+        <p><strong>Detalles del Aspirante:</strong></p>
+        <table style="width:100%;border-collapse:collapse;margin-top:14px">
+          <tr style="background:#f9f9f9">
+            <td style="padding:8px;border:1px solid #ddd;font-weight:bold;width:40%">Nombre</td>
+            <td style="padding:8px;border:1px solid #ddd">${nombreAspirante}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Identificación Registrada</td>
+            <td style="padding:8px;border:1px solid #ddd">${registeredID}</td>
+          </tr>
+          <tr style="background:#f9f9f9">
+            <td style="padding:8px;border:1px solid #ddd;font-weight:bold">Cédula (Document AI)</td>
+            <td style="padding:8px;border:1px solid #ddd;color:#c0392b;font-weight:bold">${extractedID}</td>
+          </tr>
+        </table>
+        <p style="margin-top:20px;font-size:0.9rem;color:#555;line-height:1.6">
+          <strong>Acción requerida:</strong> Se sugirió al aspirante volver a comenzar a diligenciar su hoja de vida en <strong>curriculum.logyser.com</strong>.
+          Por favor, proceda a eliminar el registro errado de la base de datos.
+        </p>
+      </div>
+      ${FOOTER}
+    </div>
+  `;
+
+  const toEmails = ['seleccion@logyser.com', 'admin@logyser.com', 'contratacionnacional@logyser.com'];
+  if (emailUsuario) {
+    toEmails.push(emailUsuario);
+  }
+
+  await transporter.sendMail({
+    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER || EMAIL_FROM}>`,
+    to: toEmails.join(', '),
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
 module.exports = {
+  notificarBloqueoAspirante,
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
   notificarDocumentoGenerado,
