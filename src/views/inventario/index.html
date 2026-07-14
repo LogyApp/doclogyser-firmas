@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1e3c72;
+      --primary-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      --accent: #00c6ff;
+      --bg: #f4f7f6;
+      --card-bg: #ffffff;
+      --text: #2c3e50;
+      --text-muted: #7f8c8d;
+      --border: #e2e8f0;
+      --success: #2ecc71;
+      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+      --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .wrapper {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 24px 16px 64px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 28px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 4px solid var(--primary);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-container img {
+      height: 52px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .header-titles h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .header-titles p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #f8fafc;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .user-role {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: #e2e8f0;
+      padding: 2px 8px;
+      border-radius: 20px;
+      width: fit-content;
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    /* ── Dashboard Stats ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary-gradient);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: #edf2f7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      color: var(--primary);
+    }
+
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-info span.label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+
+    .stat-info span.value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 2px;
+    }
+
+    /* ── Filters Card ── */
+    .filters-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .filters-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filter-group label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .filter-group select, .filter-group input {
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      background-color: #f8fafc;
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .filter-group select:focus, .filter-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.15);
+    }
+
+    /* ── Main Layout (Sidebar + Grid) ── */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Operations Sidebar ── */
+    .sidebar-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .sidebar-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .op-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    /* Custom scrollbar */
+    .op-list::-webkit-scrollbar, .items-grid-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    .op-list::-webkit-scrollbar-track, .items-grid-container::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    .op-list::-webkit-scrollbar-thumb, .items-grid-container::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+    .op-list::-webkit-scrollbar-thumb:hover, .items-grid-container::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+
+    .op-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      transition: background 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .op-item:hover {
+      background: #eef2f6;
+      transform: translateX(2px);
+    }
+
+    .op-item.active {
+      background: #e0f2fe;
+      border-color: #bae6fd;
+      font-weight: 600;
+    }
+
+    .op-name {
+      font-size: 0.82rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
+    }
+
+    .op-badge {
+      font-size: 0.72rem;
+      background: var(--primary-gradient);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    /* ── Articles Grid ── */
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .results-count {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .item-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .item-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .card-img-wrap {
+      width: 100%;
+      height: 180px;
+      background: #f1f5f9;
+      position: relative;
+      cursor: zoom-in;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .card-img-wrap:hover img {
+      transform: scale(1.08);
+    }
+
+    .card-img-fallback {
+      font-size: 3rem;
+      color: #94a3b8;
+    }
+
+    .card-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 10px;
+    }
+
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .badge-category {
+      font-size: 0.68rem;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-classification {
+      font-size: 0.68rem;
+      background: #f0fdf4;
+      color: #166534;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+      min-height: 38px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.8rem;
+      border-top: 1px solid #f1f5f9;
+      border-bottom: 1px solid #f1f5f9;
+      padding: 8px 0;
+    }
+
+    .detail-label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .detail-value {
+      font-weight: 600;
+      color: var(--text);
+      text-align: right;
+    }
+
+    .card-stock-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+    }
+
+    .stock-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stock-box .num {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stock-box .lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .value-box {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .value-box .num {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--success);
+    }
+
+    .value-box .lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .card-obs {
+      font-size: 0.75rem;
+      color: #64748b;
+      background: #f8fafc;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border-left: 2px solid #cbd5e1;
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Empty State / Loader ── */
+    .empty-state {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 48px;
+      text-align: center;
+      grid-column: 1 / -1;
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .loader {
+      display: block;
+      width: 48px;
+      height: 48px;
+      border: 5px solid #e2e8f0;
+      border-bottom-color: var(--primary);
+      border-radius: 50%;
+      animation: rotation 1s linear infinite;
+      margin: 40px auto;
+      grid-column: 1 / -1;
+    }
+
+    @keyframes rotation {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* ── Image Modal ── */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      padding-top: 60px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      margin: auto;
+      display: block;
+      max-width: 90%;
+      max-height: 80vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      animation: zoom 0.25s ease-out;
+    }
+
+    @keyframes zoom {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: #f1f5f9;
+      font-size: 40px;
+      font-weight: bold;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: #94a3b8;
+    }
+
+    .modal-caption {
+      margin: auto;
+      display: block;
+      width: 80%;
+      max-width: 700px;
+      text-align: center;
+      color: #cbd5e1;
+      padding: 10px 0;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER LOGO">
+        <div class="header-titles">
+          <h1>Consulta de Inventario</h1>
+          <p>Consulta de stocks valorizados por regional y operación</p>
+        </div>
+      </div>
+      <div class="user-profile">
+        <div class="user-avatar" id="user-avatar-initials">US</div>
+        <div class="user-details">
+          <span class="user-name" id="profile-name">Cargando...</span>
+          <span class="user-role" id="profile-role">Consultor</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-info">
+          <span class="label">Artículos Distintos</span>
+          <span class="value" id="stat-articles">0</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-info">
+          <span class="label">Stock Físico Total</span>
+          <span class="value" id="stat-total-stock">0</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-info">
+          <span class="label">Valorización de Stock</span>
+          <span class="value" id="stat-value">$0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-card">
+      <div class="filters-title">🔍 Filtros de Consulta</div>
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label for="filter-regional">Regional</label>
+          <select id="filter-regional">
+            <option value="">Todas las regionales</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-operacion">Operación</label>
+          <select id="filter-operacion">
+            <option value="">Todas las operaciones</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-categoria">Categoría</label>
+          <select id="filter-categoria">
+            <option value="">Todas las categorías</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-clasificacion">Clasificación</label>
+          <select id="filter-clasificacion">
+            <option value="">Todas las clasificaciones</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-search">Buscador</label>
+          <input type="text" id="filter-search" placeholder="Buscar por artículo, referencia, talla...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+      <!-- Sidebar: Operations counts -->
+      <aside class="sidebar-card">
+        <div class="sidebar-title">Stock por Operación</div>
+        <div class="op-list" id="op-list-container">
+          <!-- Operaciones dynamic list -->
+          <div class="empty-state" style="padding: 10px; box-shadow: none;">
+            <p style="font-size: 0.8rem;">Cargando operaciones...</p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content: Articles grid -->
+      <main class="content-area">
+        <div class="content-header">
+          <div class="results-count" id="results-text">Mostrando 0 artículos</div>
+        </div>
+
+        <div id="loader" class="loader" style="display: none;"></div>
+
+        <div class="items-grid" id="items-grid-container">
+          <!-- Articles cards dynamic content -->
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Image Modal -->
+  <div id="image-modal" class="modal">
+    <span class="modal-close" id="modal-close">&times;</span>
+    <img class="modal-content" id="modal-img">
+    <div class="modal-caption" id="modal-caption"></div>
+  </div>
+
+  <!-- Config script injected from backend -->
+  <script>
+    const CONFIG = __CONFIG__;
+  </script>
+
+  <!-- Interactive script -->
+  <script>
+    // Elements
+    const profileName = document.getElementById('profile-name');
+    const profileRole = document.getElementById('profile-role');
+    const userAvatarInitials = document.getElementById('user-avatar-initials');
+    
+    const filterRegional = document.getElementById('filter-regional');
+    const filterOperacion = document.getElementById('filter-operacion');
+    const filterCategoria = document.getElementById('filter-categoria');
+    const filterClasificacion = document.getElementById('filter-clasificacion');
+    const filterSearch = document.getElementById('filter-search');
+    
+    const statArticles = document.getElementById('stat-articles');
+    const statTotalStock = document.getElementById('stat-total-stock');
+    const statValue = document.getElementById('stat-value');
+    
+    const opListContainer = document.getElementById('op-list-container');
+    const resultsText = document.getElementById('results-text');
+    const itemsGridContainer = document.getElementById('items-grid-container');
+    const loader = document.getElementById('loader');
+
+    const imageModal = document.getElementById('image-modal');
+    const modalImg = document.getElementById('modal-img');
+    const modalCaption = document.getElementById('modal-caption');
+    const modalClose = document.getElementById('modal-close');
+
+    let allInventoryData = [];
+    let activeSidebarOp = ''; // To filter by clicking sidebar operations
+
+    // Initialize UI from config
+    function init() {
+      // 1. User Profile
+      profileName.textContent = CONFIG.usuarioNombre;
+      profileRole.textContent = CONFIG.rol;
+      
+      const initials = CONFIG.usuarioNombre
+        .split(' ')
+        .map(n => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
+      userAvatarInitials.textContent = initials || 'US';
+
+      // 2. Populate Regional select
+      const optionAllR = document.createElement('option');
+      optionAllR.value = '';
+      optionAllR.textContent = CONFIG.sinFiltro ? 'Todas las regionales' : 'Seleccione Regional';
+      filterRegional.innerHTML = '';
+      filterRegional.appendChild(optionAllR);
+
+      CONFIG.regionalesFiltro.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        filterRegional.appendChild(opt);
+      });
+
+      // If user is restricted to a single regional, pre-select it
+      if (CONFIG.regionalesFiltro.length === 1) {
+        filterRegional.value = CONFIG.regionalesFiltro[0];
+        updateOperacionesDropdown();
+      }
+
+      // 3. Register Event Listeners
+      filterRegional.addEventListener('change', () => {
+        updateOperacionesDropdown();
+        activeSidebarOp = '';
+        fetchData();
+      });
+
+      filterOperacion.addEventListener('change', () => {
+        activeSidebarOp = '';
+        fetchData();
+      });
+
+      filterCategoria.addEventListener('change', () => {
+        applyFiltersAndRender();
+      });
+
+      filterClasificacion.addEventListener('change', () => {
+        applyFiltersAndRender();
+      });
+
+      filterSearch.addEventListener('input', () => {
+        applyFiltersAndRender();
+      });
+
+      modalClose.addEventListener('click', () => {
+        imageModal.style.display = 'none';
+      });
+
+      imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) {
+          imageModal.style.display = 'none';
+        }
+      });
+
+      // Close modal on Escape key
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          imageModal.style.display = 'none';
+        }
+      });
+
+      // Initial Fetch
+      fetchData();
+    }
+
+    // Update Operations Dropdown depending on selected Regional
+    function updateOperacionesDropdown() {
+      const selectedReg = filterRegional.value;
+      
+      // Reset dropdown
+      filterOperacion.innerHTML = '<option value="">Todas las operaciones</option>';
+      
+      let operations = [];
+      if (selectedReg) {
+        operations = CONFIG.opsPorRegional[selectedReg] || [];
+      } else {
+        // Collect all operations across all allowed regionals
+        const allOpsSet = new Set();
+        Object.values(CONFIG.opsPorRegional).forEach(ops => {
+          ops.forEach(op => allOpsSet.add(op));
+        });
+        operations = Array.from(allOpsSet).sort();
+      }
+
+      operations.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        filterOperacion.appendChild(opt);
+      });
+    }
+
+    // Populate Category and Classification Dropdowns
+    function populateCatAndClsDropdowns(data) {
+      const currentCat = filterCategoria.value;
+      const currentCls = filterClasificacion.value;
+
+      // Extract unique categories
+      const categories = Array.from(new Set(data.map(item => item.Categoria).filter(Boolean))).sort();
+      // Extract unique classifications
+      const classifications = Array.from(new Set(data.map(item => item.Clasificacion).filter(Boolean))).sort();
+
+      // Populate Category
+      filterCategoria.innerHTML = '<option value="">Todas las categorías</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        if (cat === currentCat) {
+          opt.selected = true;
+        }
+        filterCategoria.appendChild(opt);
+      });
+
+      // Populate Classification
+      filterClasificacion.innerHTML = '<option value="">Todas las clasificaciones</option>';
+      classifications.forEach(cls => {
+        const opt = document.createElement('option');
+        opt.value = cls;
+        opt.textContent = cls;
+        if (cls === currentCls) {
+          opt.selected = true;
+        }
+        filterClasificacion.appendChild(opt);
+      });
+    }
+
+    // Fetch data from server
+    async function fetchData() {
+      loader.style.display = 'block';
+      itemsGridContainer.innerHTML = '';
+      resultsText.textContent = 'Buscando artículos...';
+
+      try {
+        const reg = filterRegional.value;
+        const op = filterOperacion.value;
+        
+        let url = `/inventario/api/datos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        if (reg) url += `&regional=${encodeURIComponent(reg)}`;
+        if (op) url += `&operacion=${encodeURIComponent(op)}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Error al cargar datos de inventario');
+        }
+
+        allInventoryData = await response.json();
+        populateCatAndClsDropdowns(allInventoryData);
+        applyFiltersAndRender();
+      } catch (err) {
+        console.error(err);
+        itemsGridContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">❌</div>
+            <h3>Error de carga</h3>
+            <p>Ocurrió un error al obtener la información de inventario. Por favor, intenta de nuevo.</p>
+          </div>
+        `;
+        resultsText.textContent = 'Error al cargar';
+      } finally {
+        loader.style.display = 'none';
+      }
+    }
+
+    // Apply front-end search and sidebar filtering, then render
+    function applyFiltersAndRender() {
+      const searchText = filterSearch.value.toLowerCase().trim();
+      
+      // Filter list
+      let filtered = allInventoryData;
+
+      // Apply sidebar active operation filter if present
+      if (activeSidebarOp) {
+        filtered = filtered.filter(item => item.Operacion === activeSidebarOp);
+      }
+
+      // Apply category filter
+      const selectedCat = filterCategoria.value;
+      if (selectedCat) {
+        filtered = filtered.filter(item => item.Categoria === selectedCat);
+      }
+
+      // Apply classification filter
+      const selectedCls = filterClasificacion.value;
+      if (selectedCls) {
+        filtered = filtered.filter(item => item.Clasificacion === selectedCls);
+      }
+
+      // Apply text search
+      if (searchText) {
+        filtered = filtered.filter(item => {
+          const article = (item.Articulo || '').toLowerCase();
+          const ref = (item.Referencia || '').toLowerCase();
+          const talla = (item.Talla || '').toLowerCase();
+          const cat = (item.Categoria || '').toLowerCase();
+          const cls = (item.Clasificacion || '').toLowerCase();
+          
+          return article.includes(searchText) || 
+                 ref.includes(searchText) || 
+                 talla.includes(searchText) || 
+                 cat.includes(searchText) || 
+                 cls.includes(searchText);
+        });
+      }
+
+      renderStats(filtered);
+      renderSidebarBreakdown(filtered);
+      renderGrid(filtered);
+    }
+
+    // Format Currency
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(val || 0);
+    }
+
+    // Render stats cards
+    function renderStats(items) {
+      // 1. Articles count
+      const distinctArticles = new Set(items.map(item => item.IdArticulo)).size;
+      statArticles.textContent = distinctArticles;
+
+      // 2. Physical Stock
+      const totalStock = items.reduce((sum, item) => sum + Number(item.StockDisponible || 0), 0);
+      statTotalStock.textContent = totalStock;
+
+      // 3. Valorización
+      const totalValue = items.reduce((sum, item) => sum + Number(item.ValorStock || 0), 0);
+      statValue.textContent = formatCurrency(totalValue);
+    }
+
+    // Render Operations Sidebar
+    function renderSidebarBreakdown(items) {
+      // Group stock count by operation
+      const opGroups = {};
+      
+      items.forEach(item => {
+        const opName = item.Operacion;
+        const stock = Number(item.StockDisponible || 0);
+        if (!opGroups[opName]) {
+          opGroups[opName] = 0;
+        }
+        opGroups[opName] += stock;
+      });
+
+      // Sort operations alphabetically
+      const sortedOps = Object.keys(opGroups).sort();
+
+      opListContainer.innerHTML = '';
+
+      if (sortedOps.length === 0) {
+        opListContainer.innerHTML = `
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 12px 0;">
+            No hay stock en operaciones
+          </div>
+        `;
+        return;
+      }
+
+      // Add "Ver Todas" row if filtered by sidebar
+      if (activeSidebarOp) {
+        const allRow = document.createElement('div');
+        allRow.className = 'op-item';
+        allRow.innerHTML = `
+          <span class="op-name" style="font-weight: 600; color: var(--primary)">Mostrar todo</span>
+          <span class="op-badge" style="background: var(--text-muted)">-</span>
+        `;
+        allRow.addEventListener('click', () => {
+          activeSidebarOp = '';
+          applyFiltersAndRender();
+        });
+        opListContainer.appendChild(allRow);
+      }
+
+      sortedOps.forEach(op => {
+        const stockCount = opGroups[op];
+        const opRow = document.createElement('div');
+        opRow.className = `op-item ${activeSidebarOp === op ? 'active' : ''}`;
+        
+        opRow.innerHTML = `
+          <span class="op-name" title="${op}">${op}</span>
+          <span class="op-badge">${stockCount}</span>
+        `;
+
+        opRow.addEventListener('click', () => {
+          if (activeSidebarOp === op) {
+            activeSidebarOp = ''; // toggle off
+          } else {
+            activeSidebarOp = op;
+          }
+          applyFiltersAndRender();
+        });
+
+        opListContainer.appendChild(opRow);
+      });
+    }
+
+    // Render main articles grid
+    function renderGrid(items) {
+      itemsGridContainer.innerHTML = '';
+      resultsText.textContent = `Mostrando ${items.length} artículos`;
+
+      if (items.length === 0) {
+        itemsGridContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📂</div>
+            <h3>No se encontraron resultados</h3>
+            <p>Prueba ajustando los filtros o buscando con otros términos.</p>
+          </div>
+        `;
+        return;
+      }
+
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+
+        // Image Handling
+        let imgHtml = '';
+        if (item.Imagen && item.Imagen.trim() !== '') {
+          // Detect if it is already a full URL or needs domain prefix
+          let imgSrc = item.Imagen;
+          if (!imgSrc.startsWith('http://') && !imgSrc.startsWith('https://')) {
+            // Check context, we assume public path or fallback
+            imgSrc = `${imgSrc}`;
+          }
+          imgHtml = `<img src="${imgSrc}" alt="${item.Articulo}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                     <div class="card-img-fallback" style="display:none">👔</div>`;
+        } else {
+          imgHtml = `<div class="card-img-fallback">👔</div>`;
+        }
+
+        // Observaciones Handling
+        const obsHtml = item.Observaciones && item.Observaciones.trim() !== ''
+          ? `<div class="card-obs" title="${item.Observaciones}">Obs: ${item.Observaciones}</div>`
+          : '';
+
+        card.innerHTML = `
+          <div class="card-img-wrap" data-img-src="${item.Imagen || ''}" data-title="${item.Articulo}">
+            ${imgHtml}
+          </div>
+          <div class="card-body">
+            <div class="card-meta">
+              <span class="badge-category">${item.Categoria || 'General'}</span>
+              ${item.Clasificacion ? `<span class="badge-classification">${item.Clasificacion}</span>` : ''}
+            </div>
+            
+            <h3 class="card-title" title="${item.Articulo}">${item.Articulo}</h3>
+            
+            <div class="card-details">
+              <div>
+                <span class="detail-label">Talla:</span>
+                <div class="detail-value">${item.Talla || 'N/A'}</div>
+              </div>
+              <div>
+                <span class="detail-label">Referencia:</span>
+                <div class="detail-value" title="${item.Referencia || ''}">${item.Referencia || 'N/A'}</div>
+              </div>
+            </div>
+
+            <div class="card-stock-row">
+              <div class="stock-box">
+                <span class="num">${item.StockDisponible}</span>
+                <span class="lbl">Stock Disponible</span>
+              </div>
+              <div class="value-box">
+                <span class="num">${formatCurrency(item.ValorStock)}</span>
+                <span class="lbl">Valor Stock</span>
+              </div>
+            </div>
+
+            <div style="font-size: 0.72rem; color: var(--text-muted); display:flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding-top: 8px;">
+              <span>R: ${item.Regional}</span>
+              <span style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;" title="${item.Operacion}">Op: ${item.Operacion}</span>
+            </div>
+
+            ${obsHtml}
+          </div>
+        `;
+
+        // Register Zoom Image Click Event
+        const imgWrap = card.querySelector('.card-img-wrap');
+        imgWrap.addEventListener('click', () => {
+          const imgSrc = imgWrap.getAttribute('data-img-src');
+          const title = imgWrap.getAttribute('data-title');
+          if (imgSrc && imgSrc.trim() !== '') {
+            modalImg.src = imgSrc;
+            modalCaption.textContent = title;
+            imageModal.style.display = 'block';
+          }
+        });
+
+        itemsGridContainer.appendChild(card);
+      });
+    }
+
+    // Run on startup
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
