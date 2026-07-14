@@ -913,6 +913,218 @@
       cursor: not-allowed;
       box-shadow: none;
     }
+
+    /* ── Slide-out Kardex Drawer ── */
+    .kardex-drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(2px);
+      z-index: 1040;
+      display: none;
+    }
+
+    .kardex-drawer-overlay.open {
+      display: block;
+    }
+
+    .kardex-drawer {
+      position: fixed;
+      top: 0;
+      right: -460px;
+      width: 460px;
+      max-width: 100%;
+      height: 100%;
+      background-color: var(--card-bg);
+      box-shadow: -10px 0 30px rgba(15, 23, 42, 0.15);
+      z-index: 1050;
+      transition: right 0.3s ease-out;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border);
+    }
+
+    .kardex-drawer.open {
+      right: 0;
+    }
+
+    .kardex-drawer-header {
+      padding: 20px 24px;
+      background: var(--primary-gradient);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .kardex-drawer-header h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .kardex-drawer-close {
+      font-size: 1.6rem;
+      font-weight: bold;
+      cursor: pointer;
+      color: rgba(255, 255, 255, 0.8);
+      transition: color 0.2s;
+    }
+
+    .kardex-drawer-close:hover {
+      color: white;
+    }
+
+    .kardex-drawer-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .drawer-article-info {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    .drawer-article-img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      background-color: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .drawer-article-details h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    .drawer-article-details p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* Timeline style */
+    .timeline {
+      position: relative;
+      padding-left: 24px;
+      border-left: 2px solid var(--border);
+      margin-left: 12px;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -31px;
+      top: 5px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: var(--border);
+      border: 2px solid var(--card-bg);
+      z-index: 2;
+    }
+
+    .timeline-item.entrada::before { background-color: var(--success); }
+    .timeline-item.asignacion::before { background-color: #3b82f6; }
+    .timeline-item.desasignacion::before { background-color: #f97316; }
+    .timeline-item.transferencia::before { background-color: #a855f7; }
+    .timeline-item.baja::before { background-color: var(--accent); }
+    .timeline-item.ajuste::before { background-color: #64748b; }
+    .timeline-item.reposicion::before { background-color: #06b6d4; }
+    .timeline-item.reparacion::before { background-color: #84cc16; }
+
+    .timeline-date {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .timeline-content {
+      background-color: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.8rem;
+    }
+
+    .timeline-title {
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .timeline-badge {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .timeline-badge.entrada { background-color: #e8f5e9; color: #2e7d32; }
+    .timeline-badge.asignacion { background-color: #e0f2fe; color: #0369a1; }
+    .timeline-badge.desasignacion { background-color: #fff3e0; color: #e65100; }
+    .timeline-badge.transferencia { background-color: #ede7f6; color: #5e35b1; }
+    .timeline-badge.baja { background-color: #ffebee; color: #c62828; }
+    .timeline-badge.ajuste { background-color: #eceff1; color: #37474f; }
+    .timeline-badge.reposicion { background-color: #e0f7fa; color: #00838f; }
+    .timeline-badge.reparacion { background-color: #f1f8e9; color: #558b2f; }
+
+    .timeline-details {
+      color: var(--text-muted);
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .timeline-details strong {
+      color: var(--text);
+    }
+
+    .nav-btn {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      background-color: var(--card-bg);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background-color: #f8fafc;
+      color: var(--primary);
+      border-color: var(--primary);
+    }
   </style>
 </head>
 <body>
@@ -927,6 +1139,16 @@
           <p>Consulta de stocks valorizados por regional y operación</p>
         </div>
       </div>
+      <!-- Navigation Buttons -->
+      <div class="nav-links" style="display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; margin-right: 16px;">
+        <a href="" id="nav-btn-kardex" class="nav-btn">
+          <span>📊</span> Módulo Kardex
+        </a>
+        <a href="" id="nav-btn-solicitudes" class="nav-btn">
+          <span>📝</span> Módulo Solicitudes
+        </a>
+      </div>
+
       <div class="user-profile">
         <div class="user-avatar" id="user-avatar-initials">US</div>
         <div class="user-details">
@@ -1131,6 +1353,27 @@
     </div>
   </div>
 
+  <!-- Kardex Drawer -->
+  <div id="kardex-drawer-overlay" class="kardex-drawer-overlay"></div>
+  <div id="kardex-drawer" class="kardex-drawer">
+    <div class="kardex-drawer-header">
+      <h3>Historial del Artículo (Kardex)</h3>
+      <span class="kardex-drawer-close" id="kardex-drawer-close">&times;</span>
+    </div>
+    <div class="kardex-drawer-body">
+      <div class="drawer-article-info">
+        <img id="drawer-article-img" class="drawer-article-img" src="" alt="">
+        <div class="drawer-article-details">
+          <h4 id="drawer-article-name">Nombre del Artículo</h4>
+          <p id="drawer-article-ref">Ref: —</p>
+        </div>
+      </div>
+      <div id="drawer-timeline" class="timeline">
+        <!-- Timeline dynamic items -->
+      </div>
+    </div>
+  </div>
+
   <!-- Image Modal -->
   <div id="image-modal" class="modal">
     <span class="modal-close" id="modal-close">&times;</span>
@@ -1202,6 +1445,15 @@
     let userRecentSignature = null;
     let activeFirmaMode = 'existing';
 
+    // Kardex drawer elements
+    const kardexDrawer = document.getElementById('kardex-drawer');
+    const kardexDrawerOverlay = document.getElementById('kardex-drawer-overlay');
+    const kardexDrawerClose = document.getElementById('kardex-drawer-close');
+    const drawerArticleImg = document.getElementById('drawer-article-img');
+    const drawerArticleName = document.getElementById('drawer-article-name');
+    const drawerArticleRef = document.getElementById('drawer-article-ref');
+    const drawerTimeline = document.getElementById('drawer-timeline');
+
     let allInventoryData = [];
     let activeSidebarOp = ''; // To filter by clicking sidebar operations
 
@@ -1218,6 +1470,10 @@
         .join('')
         .toUpperCase();
       userAvatarInitials.textContent = initials || 'US';
+
+      // Navigation Buttons Hrefs
+      document.getElementById('nav-btn-kardex').href = `/kardex?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      document.getElementById('nav-btn-solicitudes').href = `/solicitudes?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
       // 2. Populate Regional select
       const optionAllR = document.createElement('option');
@@ -1278,6 +1534,7 @@
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           imageModal.style.display = 'none';
+          closeKardexDrawer();
         }
       });
 
@@ -1309,6 +1566,10 @@
           confModal.style.display = 'none';
         }
       });
+
+      // Kardex Drawer close listeners
+      kardexDrawerClose.addEventListener('click', closeKardexDrawer);
+      kardexDrawerOverlay.addEventListener('click', closeKardexDrawer);
 
       // 6. Signature Actions listeners
       btnDrawNewSig.addEventListener('click', () => {
@@ -1672,7 +1933,8 @@
 
         // Register Zoom Image Click Event
         const imgWrap = card.querySelector('.card-img-wrap');
-        imgWrap.addEventListener('click', () => {
+        imgWrap.addEventListener('click', (e) => {
+          e.stopPropagation(); // Evitar abrir el drawer de Kardex al hacer zoom en la imagen
           const imgSrc = imgWrap.getAttribute('data-img-src');
           const title = imgWrap.getAttribute('data-title');
           if (imgSrc && imgSrc.trim() !== '') {
@@ -1680,6 +1942,12 @@
             modalCaption.textContent = title;
             imageModal.style.display = 'block';
           }
+        });
+
+        // Click en la tarjeta abre el historial de movimientos (Kardex)
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', () => {
+          openKardexDrawer(item);
         });
 
         itemsGridContainer.appendChild(card);
@@ -2021,6 +2289,108 @@
       } catch (err) {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    // --- FUNCIONES DEL DRAWER DE KARDEX ---
+
+    function closeKardexDrawer() {
+      kardexDrawer.classList.remove('open');
+      kardexDrawerOverlay.classList.remove('open');
+    }
+
+    async function openKardexDrawer(item) {
+      drawerArticleName.textContent = item.Articulo || 'Artículo #' + item.IdArticulo;
+      drawerArticleRef.textContent = `Ref: ${item.Referencia || 'S/R'}`;
+      
+      if (item.Imagen && item.Imagen.trim() !== '') {
+        drawerArticleImg.src = item.Imagen;
+        drawerArticleImg.style.display = 'block';
+      } else {
+        drawerArticleImg.src = '';
+        drawerArticleImg.style.display = 'none';
+      }
+
+      drawerTimeline.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:20px 0;">Cargando movimientos...</div>';
+      
+      kardexDrawer.classList.add('open');
+      kardexDrawerOverlay.classList.add('open');
+
+      try {
+        const reg = filterRegional.value;
+        const op = filterOperacion.value;
+        
+        let url = `/kardex/api/articulo/${item.IdArticulo}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        if (reg) url += `&regional=${encodeURIComponent(reg)}`;
+        if (op) url += `&operacion=${encodeURIComponent(op)}`;
+
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error('Error al cargar movimientos');
+        }
+
+        const data = await res.json();
+        drawerTimeline.innerHTML = '';
+
+        if (data.length === 0) {
+          drawerTimeline.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:20px 0;">No se encontraron movimientos registrados.</div>';
+          return;
+        }
+
+        data.forEach(row => {
+          const div = document.createElement('div');
+          
+          const mType = row.TipoMovimiento || 'ENTRADA';
+          const mClass = mType.toLowerCase();
+          let displayType = mType;
+          if (mType === 'ASIGNACION') displayType = 'ASIGNACIÓN';
+          if (mType === 'DESASIGNACION') displayType = 'DESASIGNACIÓN';
+          if (mType === 'REPOSICION') displayType = 'REPOSICIÓN';
+          if (mType === 'REPARACION') displayType = 'REPARACIÓN';
+
+          div.className = `timeline-item ${mClass}`;
+          
+          const dateStr = new Date(row.FechaMovimiento).toLocaleDateString('es-CO', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          });
+
+          const qty = Number(row.Cantidad || 0);
+          const qtySign = qty > 0 ? `+${qty}` : qty;
+
+          let opText = row.Operacion;
+          if (row.OperacionDestino) {
+            opText = `${row.Operacion} ➔ ${row.OperacionDestino}`;
+          }
+
+          let actaText = '';
+          if (row.Acta) {
+            actaText = `<div style="margin-top: 6px;"><a href="https://storage.googleapis.com/talenthub_central/pdf_actas/${row.Acta}.pdf" target="_blank" class="acta-link" style="font-size:0.75rem; padding:2px 6px;">📄 Acta: ${row.Acta}</a></div>`;
+          }
+
+          div.innerHTML = `
+            <div class="timeline-date">${dateStr}</div>
+            <div class="timeline-content">
+              <div class="timeline-title">
+                <span style="font-weight:700;">Cant: ${qtySign}</span>
+                <span class="timeline-badge ${mClass}">${displayType}</span>
+              </div>
+              <div class="timeline-details">
+                <div><strong>Operación:</strong> ${opText}</div>
+                ${row.UsuarioAsignado ? `<div><strong>Asignado a:</strong> ${row.UsuarioAsignado}</div>` : ''}
+                ${row.Observaciones ? `<div style="margin-top:4px; font-style:italic; color:#475569;">"${row.Observaciones}"</div>` : ''}
+                ${actaText}
+                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px; text-align:right;">Por: ${row.UsuarioRegistro || '—'}</div>
+              </div>
+            </div>
+          `;
+          
+          drawerTimeline.appendChild(div);
+        });
+      } catch (err) {
+        console.error(err);
+        drawerTimeline.innerHTML = `<div style="font-size:0.8rem; color:#dc2626; text-align:center; padding:20px 0; font-weight:600;">❌ Error: ${err.message}</div>`;
       }
     }
 

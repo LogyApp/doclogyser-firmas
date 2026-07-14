@@ -11,6 +11,8 @@ const pool = mysql.createPool({
   queueLimit: 0,
   charset: 'utf8mb4',
   timezone: '-05:00',
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000, // 10 segundos
 });
 
 // Configurar el huso horario de la sesión en MySQL a Bogotá (-05:00) para NOW(), CURRENT_TIMESTAMP, etc.

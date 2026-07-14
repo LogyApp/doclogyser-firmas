@@ -26,6 +26,7 @@ const actualizardatosRoutes          = require('./src/routes/actualizardatos');
 const dotacionleyRoutes              = require('./src/routes/dotacionley');
 const seleccionRoutes               = require('./src/routes/seleccion');
 const inventarioRoutes               = require('./src/routes/inventario');
+const kardexRoutes                   = require('./src/routes/kardex');
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use('/actualizardatos', actualizardatosRoutes);
 app.use('/dotacionley', dotacionleyRoutes);
 app.use('/seleccion', seleccionRoutes);
 app.use('/inventario', inventarioRoutes);
+app.use('/kardex', kardexRoutes);
 
 
 
