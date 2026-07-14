@@ -189,6 +189,13 @@ async function subirCertificadoBancario(identificacion, formattedDate, buffer, o
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirPDFConfirmacionInventario(nombreArchivo, bufferPdf) {
+  const nombre = `confirma_inventario/${nombreArchivo}`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -213,4 +220,5 @@ module.exports = {
   subirDocMovilidadTrabajador,
   subirDocMovilidadExterno,
   subirCertificadoBancario,
+  subirPDFConfirmacionInventario,
 };

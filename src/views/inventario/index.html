@@ -647,6 +647,272 @@
       font-size: 1rem;
       font-weight: 500;
     }
+    /* ── Pestañas (Tabs) ── */
+    .tabs-container {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .tab-btn {
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      background-color: var(--card-bg);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .tab-btn:hover {
+      background-color: #f8fafc;
+      color: var(--primary);
+    }
+    
+    .tab-btn.active {
+      background: var(--primary-gradient);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 4px 6px rgba(30, 60, 114, 0.15);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+
+    /* ── Botones especiales ── */
+    .btn-confirmar-wrap {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .btn-confirmar {
+      background: var(--success);
+      color: white;
+      font-family: inherit;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-confirmar:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(46, 204, 113, 0.25);
+    }
+
+    .btn-confirmar:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Canvas de Firma ── */
+    .signature-area {
+      border: 1.5px dashed var(--border);
+      border-radius: 8px;
+      background-color: #f8fafc;
+      margin: 10px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .signature-canvas {
+      display: block;
+      width: 100%;
+      height: 150px;
+      cursor: crosshair;
+    }
+
+    .signature-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .signature-preview-box {
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background-color: #f8fafc;
+      padding: 10px;
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .signature-preview-img {
+      max-height: 80px;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    /* ── Historial de Confirmaciones Table ── */
+    .history-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .history-table-container {
+      overflow-x: auto;
+      margin-top: 14px;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .history-table th, .history-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-table th {
+      background-color: #f8fafc;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .history-table tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .pdf-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .pdf-link-btn:hover {
+      color: var(--accent);
+    }
+
+    /* ── Confirmation Modal ── */
+    .conf-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .conf-modal-content {
+      background-color: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-hover);
+      width: 100%;
+      max-width: 500px;
+      animation: zoom 0.2s ease-out;
+      border-top: 6px solid var(--success);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .conf-modal-header {
+      padding: 20px 24px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .conf-modal-header h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .conf-modal-close {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .conf-modal-close:hover {
+      color: var(--text);
+    }
+
+    .conf-modal-body {
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .conf-modal-footer {
+      padding: 16px 24px 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-modal-cancel {
+      background: #f1f5f9;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-modal-save {
+      background: var(--success);
+      color: white;
+      border: none;
+      font-weight: 600;
+      padding: 8px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-modal-save:hover {
+      box-shadow: 0 4px 10px rgba(46, 204, 113, 0.2);
+    }
+
+    .btn-modal-save:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
   </style>
 </head>
 <body>
@@ -670,91 +936,198 @@
       </div>
     </header>
 
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">📦</div>
-        <div class="stat-info">
-          <span class="label">Artículos Distintos</span>
-          <span class="value" id="stat-articles">0</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">📊</div>
-        <div class="stat-info">
-          <span class="label">Stock Físico Total</span>
-          <span class="value" id="stat-total-stock">0</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">💰</div>
-        <div class="stat-info">
-          <span class="label">Valorización de Stock</span>
-          <span class="value" id="stat-value">$0.00</span>
-        </div>
-      </div>
+    <!-- Tabs Container -->
+    <div class="tabs-container">
+      <button class="tab-btn active" id="tab-btn-consulta">Consulta de Inventario</button>
+      <button class="tab-btn" id="tab-btn-historial">Historial de Confirmaciones</button>
     </div>
 
-    <!-- Filters Section -->
-    <div class="filters-card">
-      <div class="filters-title">🔍 Filtros de Consulta</div>
-      <div class="filters-grid">
-        <div class="filter-group">
-          <label for="filter-regional">Regional</label>
-          <select id="filter-regional">
-            <option value="">Todas las regionales</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="filter-operacion">Operación</label>
-          <select id="filter-operacion">
-            <option value="">Todas las operaciones</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="filter-categoria">Categoría</label>
-          <select id="filter-categoria">
-            <option value="">Todas las categorías</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="filter-clasificacion">Clasificación</label>
-          <select id="filter-clasificacion">
-            <option value="">Todas las clasificaciones</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="filter-search">Buscador</label>
-          <input type="text" id="filter-search" placeholder="Buscar por artículo, referencia, talla...">
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Layout -->
-    <div class="main-layout">
-      <!-- Sidebar: Operations counts -->
-      <aside class="sidebar-card">
-        <div class="sidebar-title">Stock por Operación</div>
-        <div class="op-list" id="op-list-container">
-          <!-- Operaciones dynamic list -->
-          <div class="empty-state" style="padding: 10px; box-shadow: none;">
-            <p style="font-size: 0.8rem;">Cargando operaciones...</p>
+    <!-- Pestaña 1: Consulta de Inventario -->
+    <div class="tab-content active" id="tab-content-consulta">
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-info">
+            <span class="label">Artículos Distintos</span>
+            <span class="value" id="stat-articles">0</span>
           </div>
         </div>
-      </aside>
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-info">
+            <span class="label">Stock Físico Total</span>
+            <span class="value" id="stat-total-stock">0</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-info">
+            <span class="label">Valorización de Stock</span>
+            <span class="value" id="stat-value">$0.00</span>
+          </div>
+        </div>
+      </div>
 
-      <!-- Main Content: Articles grid -->
-      <main class="content-area">
-        <div class="content-header">
-          <div class="results-count" id="results-text">Mostrando 0 artículos</div>
+      <!-- Filters Section -->
+      <div class="filters-card">
+        <div class="filters-title">🔍 Filtros de Consulta</div>
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label for="filter-regional">Regional</label>
+            <select id="filter-regional">
+              <option value="">Todas las regionales</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-operacion">Operación</label>
+            <select id="filter-operacion">
+              <option value="">Todas las operaciones</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-categoria">Categoría</label>
+            <select id="filter-categoria">
+              <option value="">Todas las categorías</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-clasificacion">Clasificación</label>
+            <select id="filter-clasificacion">
+              <option value="">Todas las clasificaciones</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-search">Buscador</label>
+            <input type="text" id="filter-search" placeholder="Buscar por artículo, referencia, talla...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout -->
+      <div class="main-layout">
+        <!-- Sidebar: Operations counts -->
+        <aside class="sidebar-card">
+          <div class="sidebar-title">Stock por Operación</div>
+          <div class="op-list" id="op-list-container">
+            <!-- Operaciones dynamic list -->
+            <div class="empty-state" style="padding: 10px; box-shadow: none;">
+              <p style="font-size: 0.8rem;">Cargando operaciones...</p>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Main Content: Articles grid -->
+        <main class="content-area">
+          <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px;">
+            <div class="results-count" id="results-text">Mostrando 0 artículos</div>
+            <button class="btn-confirmar" id="btn-confirmar-inv" disabled>
+              <span>📋</span> Confirmar Inventario
+            </button>
+          </div>
+
+          <div id="loader" class="loader" style="display: none;"></div>
+
+          <div class="items-grid" id="items-grid-container">
+            <!-- Articles cards dynamic content -->
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- Pestaña 2: Historial de Confirmaciones -->
+    <div class="tab-content" id="tab-content-historial">
+      <div class="history-card">
+        <h2 style="font-size: 1.1rem; color: var(--primary); margin-bottom: 6px;">Historial de Confirmaciones Mensuales</h2>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px;">Registro de actas de confirmación cargadas al sistema (empezando en Julio de 2026).</p>
+        <div class="history-table-container">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Fecha Confirmación</th>
+                <th>Operación</th>
+                <th>Categoría</th>
+                <th>Período (Mes)</th>
+                <th>Responsable</th>
+                <th>Observaciones</th>
+                <th>Acta PDF</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando historial...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="conf-modal" class="conf-modal">
+    <div class="conf-modal-content">
+      <div class="conf-modal-header">
+        <h2>Confirmar Inventario Mensual</h2>
+        <span class="conf-modal-close" id="conf-modal-close">&times;</span>
+      </div>
+      <div class="conf-modal-body">
+        <div class="filter-group">
+          <label>Operación Seleccionada</label>
+          <input type="text" id="conf-operacion" readonly style="background-color:#e2e8f0; color:#555; border-color:#cbd5e1;">
+        </div>
+        
+        <div class="filter-group">
+          <label for="conf-categoria">Categoría a Confirmar</label>
+          <select id="conf-categoria">
+            <option value="">Seleccione categoría</option>
+          </select>
         </div>
 
-        <div id="loader" class="loader" style="display: none;"></div>
-
-        <div class="items-grid" id="items-grid-container">
-          <!-- Articles cards dynamic content -->
+        <div class="filter-group">
+          <label for="conf-mes">Mes de Confirmación</label>
+          <select id="conf-mes">
+            <!-- Dynamically populated from July 2026 onwards -->
+          </select>
         </div>
-      </main>
+
+        <div class="filter-group">
+          <label for="conf-observaciones">Observaciones / Aclaraciones (Opcional)</label>
+          <textarea id="conf-observaciones" placeholder="Escribe aquí observaciones si hay novedades o diferencias en el stock..."></textarea>
+        </div>
+
+        <div class="filter-group">
+          <label style="margin-bottom: 2px;">Firma Digital Responsable</label>
+          <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">Por favor, firme en el recuadro para validar el acta de confirmación.</p>
+          
+          <!-- Vista previa de firma existente -->
+          <div id="signature-preview-box" class="signature-preview-box" style="display: none;">
+            <p style="font-size: 0.75rem; font-weight: 600; color: var(--primary); margin-bottom: 6px;">Firma Reciente Detectada</p>
+            <img id="signature-preview-img" class="signature-preview-img" src="" alt="Firma Reciente">
+            <div style="margin-top: 8px;">
+              <button type="button" class="btn-modal-cancel" id="btn-draw-new-sig" style="padding: 4px 10px; font-size: 0.75rem;">Dibujar Nueva Firma</button>
+            </div>
+          </div>
+
+          <!-- Lienzo para dibujar nueva firma -->
+          <div id="panel-canvas-wrap" style="display: block;">
+            <div class="signature-area">
+              <canvas id="sig-canvas" class="signature-canvas"></canvas>
+            </div>
+            <div class="signature-actions">
+              <button type="button" class="btn-modal-cancel" id="btn-clear-canvas" style="padding: 4px 10px; font-size: 0.75rem;">Limpiar Lienzo</button>
+              <button type="button" class="btn-modal-cancel" id="btn-use-existing-sig" style="padding: 4px 10px; font-size: 0.75rem; display: none;">Usar Firma Existente</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="conf-modal-body" id="conf-error-msg" style="display: none; padding: 4px 24px; color: #dc2626; font-size: 0.8rem; font-weight: 600;"></div>
+      <div class="conf-modal-footer">
+        <button type="button" class="btn-modal-cancel" id="btn-conf-cancel">Cancelar</button>
+        <button type="button" class="btn-modal-save" id="btn-conf-save">
+          <span>💾</span> Guardar y Confirmar
+        </button>
+      </div>
     </div>
   </div>
 
@@ -796,6 +1169,38 @@
     const modalImg = document.getElementById('modal-img');
     const modalCaption = document.getElementById('modal-caption');
     const modalClose = document.getElementById('modal-close');
+
+    // Tabs elements
+    const tabBtnConsulta = document.getElementById('tab-btn-consulta');
+    const tabBtnHistorial = document.getElementById('tab-btn-historial');
+    const tabContentConsulta = document.getElementById('tab-content-consulta');
+    const tabContentHistorial = document.getElementById('tab-content-historial');
+
+    // Confirmation elements
+    const btnConfirmarInv = document.getElementById('btn-confirmar-inv');
+    const confModal = document.getElementById('conf-modal');
+    const confModalClose = document.getElementById('conf-modal-close');
+    const confOperacion = document.getElementById('conf-operacion');
+    const confCategoria = document.getElementById('conf-categoria');
+    const confMes = document.getElementById('conf-mes');
+    const confObservaciones = document.getElementById('conf-observaciones');
+    const signaturePreviewBox = document.getElementById('signature-preview-box');
+    const signaturePreviewImg = document.getElementById('signature-preview-img');
+    const btnDrawNewSig = document.getElementById('btn-draw-new-sig');
+    const panelCanvasWrap = document.getElementById('panel-canvas-wrap');
+    const btnClearCanvas = document.getElementById('btn-clear-canvas');
+    const btnUseExistingSig = document.getElementById('btn-use-existing-sig');
+    const btnConfCancel = document.getElementById('btn-conf-cancel');
+    const btnConfSave = document.getElementById('btn-conf-save');
+    const confErrorMsg = document.getElementById('conf-error-msg');
+    
+    // Canvas elements
+    const canvas = document.getElementById('sig-canvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let isCanvasDrawn = false;
+    let userRecentSignature = null;
+    let activeFirmaMode = 'existing';
 
     let allInventoryData = [];
     let activeSidebarOp = ''; // To filter by clicking sidebar operations
@@ -847,6 +1252,7 @@
       });
 
       filterCategoria.addEventListener('change', () => {
+        populateClassificationDropdown(allInventoryData);
         applyFiltersAndRender();
       });
 
@@ -874,6 +1280,61 @@
           imageModal.style.display = 'none';
         }
       });
+
+      // 4. Tab switching event listeners
+      tabBtnConsulta.addEventListener('click', () => {
+        tabBtnConsulta.classList.add('active');
+        tabBtnHistorial.classList.remove('active');
+        tabContentConsulta.classList.add('active');
+        tabContentHistorial.classList.remove('active');
+      });
+
+      tabBtnHistorial.addEventListener('click', () => {
+        tabBtnHistorial.classList.add('active');
+        tabBtnConsulta.classList.remove('active');
+        tabContentHistorial.classList.add('active');
+        tabContentConsulta.classList.remove('active');
+        fetchConfirmacionesHistorial();
+      });
+
+      // 5. Confirmation Modal listeners
+      btnConfirmarInv.addEventListener('click', () => {
+        openConfirmationModal();
+      });
+
+      confModalClose.addEventListener('click', () => { confModal.style.display = 'none'; });
+      btnConfCancel.addEventListener('click', () => { confModal.style.display = 'none'; });
+      confModal.addEventListener('click', (e) => {
+        if (e.target === confModal) {
+          confModal.style.display = 'none';
+        }
+      });
+
+      // 6. Signature Actions listeners
+      btnDrawNewSig.addEventListener('click', () => {
+        activeFirmaMode = 'new';
+        signaturePreviewBox.style.display = 'none';
+        panelCanvasWrap.style.display = 'block';
+        btnUseExistingSig.style.display = userRecentSignature && userRecentSignature.firmaUrl ? 'inline-flex' : 'none';
+        resizeCanvas();
+      });
+
+      btnUseExistingSig.addEventListener('click', () => {
+        activeFirmaMode = 'existing';
+        signaturePreviewBox.style.display = 'block';
+        panelCanvasWrap.style.display = 'none';
+      });
+
+      btnClearCanvas.addEventListener('click', () => {
+        clearCanvas();
+      });
+
+      btnConfSave.addEventListener('click', () => {
+        submitConfirmation();
+      });
+
+      // 7. Setup Canvas drawing events
+      setupCanvasDrawing();
 
       // Initial Fetch
       fetchData();
@@ -906,17 +1367,11 @@
       });
     }
 
-    // Populate Category and Classification Dropdowns
-    function populateCatAndClsDropdowns(data) {
+    // Populate Category Dropdown based on fetched inventory data
+    function populateCategoryDropdown(data) {
       const currentCat = filterCategoria.value;
-      const currentCls = filterClasificacion.value;
-
-      // Extract unique categories
       const categories = Array.from(new Set(data.map(item => item.Categoria).filter(Boolean))).sort();
-      // Extract unique classifications
-      const classifications = Array.from(new Set(data.map(item => item.Clasificacion).filter(Boolean))).sort();
 
-      // Populate Category
       filterCategoria.innerHTML = '<option value="">Todas las categorías</option>';
       categories.forEach(cat => {
         const opt = document.createElement('option');
@@ -927,8 +1382,21 @@
         }
         filterCategoria.appendChild(opt);
       });
+    }
 
-      // Populate Classification
+    // Populate Classification Dropdown based on fetched inventory data, filtered by selected category
+    function populateClassificationDropdown(data) {
+      const currentCat = filterCategoria.value;
+      const currentCls = filterClasificacion.value;
+
+      // Filtrar clasificaciones según la categoría elegida
+      let filteredData = data;
+      if (currentCat) {
+        filteredData = data.filter(item => item.Categoria === currentCat);
+      }
+
+      const classifications = Array.from(new Set(filteredData.map(item => item.Clasificacion).filter(Boolean))).sort();
+
       filterClasificacion.innerHTML = '<option value="">Todas las clasificaciones</option>';
       classifications.forEach(cls => {
         const opt = document.createElement('option');
@@ -961,7 +1429,8 @@
         }
 
         allInventoryData = await response.json();
-        populateCatAndClsDropdowns(allInventoryData);
+        populateCategoryDropdown(allInventoryData);
+        populateClassificationDropdown(allInventoryData);
         applyFiltersAndRender();
       } catch (err) {
         console.error(err);
@@ -1022,6 +1491,9 @@
       renderStats(filtered);
       renderSidebarBreakdown(filtered);
       renderGrid(filtered);
+
+      // Activar botón de confirmación si hay operación seleccionada
+      btnConfirmarInv.disabled = (filterOperacion.value === '');
     }
 
     // Format Currency
@@ -1212,6 +1684,344 @@
 
         itemsGridContainer.appendChild(card);
       });
+    }
+
+    // --- FUNCIONES DE CONFIRMACIÓN DE INVENTARIO ---
+
+    // Generar opciones de mes desde Julio de 2026 en adelante
+    function populateMonthsDropdown() {
+      confMes.innerHTML = '';
+      
+      const startYear = 2026;
+      const startMonth = 7; // Julio
+      
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth() + 1;
+      
+      let endYear = currentYear;
+      let endMonth = currentMonth + 1;
+      if (endMonth > 12) {
+        endMonth = 1;
+        endYear += 1;
+      }
+      
+      const monthNames = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+      ];
+      
+      let y = startYear;
+      let m = startMonth;
+      
+      while (y < endYear || (y === endYear && m <= endMonth)) {
+        const val = `${y}-${String(m).padStart(2, '0')}`;
+        const label = `${monthNames[m - 1]} ${y}`;
+        
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = label;
+        
+        const curVal = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        if (val === curVal) {
+          opt.selected = true;
+        }
+        
+        selectElementAppend(opt);
+        
+        m++;
+        if (m > 12) {
+          m = 1;
+          y++;
+        }
+      }
+    }
+
+    function selectElementAppend(opt) {
+      confMes.appendChild(opt);
+    }
+
+    // Abrir modal de confirmación
+    async function openConfirmationModal() {
+      const selectedOp = filterOperacion.value;
+      if (!selectedOp) return;
+
+      confOperacion.value = selectedOp;
+      confObservaciones.value = '';
+      confErrorMsg.style.display = 'none';
+
+      // Población de categorías relevantes
+      confCategoria.innerHTML = '<option value="">Seleccione categoría</option>';
+      const uniqueCats = Array.from(new Set(allInventoryData.map(item => item.Categoria).filter(Boolean))).sort();
+      uniqueCats.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        confCategoria.appendChild(opt);
+      });
+
+      if (filterCategoria.value && uniqueCats.includes(filterCategoria.value)) {
+        confCategoria.value = filterCategoria.value;
+      }
+
+      populateMonthsDropdown();
+
+      confModal.style.display = 'flex';
+      
+      isCanvasDrawn = false;
+      clearCanvas();
+      
+      try {
+        const res = await fetch(`/inventario/api/firma-reciente?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        
+        userRecentSignature = data;
+        
+        if (data.firmaUrl && data.firmaBase64) {
+          activeFirmaMode = 'existing';
+          signaturePreviewImg.src = data.firmaBase64;
+          signaturePreviewBox.style.display = 'block';
+          panelCanvasWrap.style.display = 'none';
+        } else {
+          activeFirmaMode = 'new';
+          signaturePreviewBox.style.display = 'none';
+          panelCanvasWrap.style.display = 'block';
+          setTimeout(resizeCanvas, 50); // Delay to allow layout display
+        }
+      } catch (err) {
+        console.error('Error fetching recent signature:', err);
+        activeFirmaMode = 'new';
+        signaturePreviewBox.style.display = 'none';
+        panelCanvasWrap.style.display = 'block';
+        setTimeout(resizeCanvas, 50);
+      }
+    }
+
+    // Dibujo en Canvas
+    function setupCanvasDrawing() {
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.target === canvas) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      
+      canvas.addEventListener('touchmove', (e) => {
+        if (e.target === canvas) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        isCanvasDrawn = true;
+        const pos = getMousePos(canvas, e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (!isDrawing) return;
+        const pos = getMousePos(canvas, e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#1e3c72';
+        ctx.stroke();
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDrawing = false;
+      });
+
+      canvas.addEventListener('touchstart', (e) => {
+        isDrawing = true;
+        isCanvasDrawn = true;
+        const pos = getTouchPos(canvas, e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+      });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (!isDrawing) return;
+        const pos = getTouchPos(canvas, e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#1e3c72';
+        ctx.stroke();
+      });
+
+      canvas.addEventListener('touchend', () => {
+        isDrawing = false;
+      });
+    }
+
+    function getMousePos(canvasDom, mouseEvent) {
+      const rect = canvasDom.getBoundingClientRect();
+      const scaleX = canvasDom.width / rect.width;
+      const scaleY = canvasDom.height / rect.height;
+      return {
+        x: (mouseEvent.clientX - rect.left) * scaleX,
+        y: (mouseEvent.clientY - rect.top) * scaleY
+      };
+    }
+
+    function getTouchPos(canvasDom, touchEvent) {
+      const rect = canvasDom.getBoundingClientRect();
+      const touch = touchEvent.touches[0];
+      const scaleX = canvasDom.width / rect.width;
+      const scaleY = canvasDom.height / rect.height;
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY
+      };
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Re-fill white
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      isCanvasDrawn = false;
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width || 450;
+      canvas.height = 150;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      isCanvasDrawn = false;
+    }
+
+    // Enviar confirmación
+    async function submitConfirmation() {
+      confErrorMsg.style.display = 'none';
+
+      const operacion = confOperacion.value;
+      const categoria = confCategoria.value;
+      const mes = confMes.value;
+      const observaciones = confObservaciones.value.trim();
+
+      if (!categoria) {
+        showConfError('Debes seleccionar una categoría.');
+        return;
+      }
+      if (!mes) {
+        showConfError('Debes seleccionar un mes.');
+        return;
+      }
+
+      let nuevaFirmaBase64 = '';
+      if (activeFirmaMode === 'new') {
+        if (!isCanvasDrawn) {
+          showConfError('Debes registrar tu firma digital para proceder.');
+          return;
+        }
+        nuevaFirmaBase64 = canvas.toDataURL('image/png');
+      } else {
+        if (!userRecentSignature || !userRecentSignature.firmaUrl) {
+          showConfError('No se encontró firma previa. Por favor, dibuja una firma.');
+          return;
+        }
+      }
+
+      btnConfSave.disabled = true;
+      btnConfSave.innerHTML = '<span>⏳</span> Procesando...';
+
+      try {
+        const res = await fetch('/inventario/api/confirmar', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            operacion,
+            categoria,
+            mes,
+            observaciones,
+            nuevaFirmaBase64
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Ocurrió un error al guardar la confirmación.');
+        }
+
+        alert('¡Confirmación de inventario registrada con éxito! Correo de notificación enviado.');
+        confModal.style.display = 'none';
+        
+        // Cargar historial y cambiar de pestaña
+        tabBtnHistorial.click();
+      } catch (err) {
+        console.error(err);
+        showConfError(err.message);
+      } finally {
+        btnConfSave.disabled = false;
+        btnConfSave.innerHTML = '<span>💾</span> Guardar y Confirmar';
+      }
+    }
+
+    function showConfError(msg) {
+      confErrorMsg.textContent = msg;
+      confErrorMsg.style.display = 'block';
+    }
+
+    // Cargar Historial de Confirmaciones
+    async function fetchConfirmacionesHistorial() {
+      const tbody = document.getElementById('history-table-body');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando historial...</td></tr>';
+
+      try {
+        const res = await fetch(`/inventario/api/confirmaciones?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) {
+          throw new Error('Error al cargar historial.');
+        }
+
+        const data = await res.json();
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No se encontraron registros de confirmación de inventario.</td></tr>';
+          return;
+        }
+
+        data.forEach(row => {
+          const tr = document.createElement('tr');
+          
+          const dateStr = new Date(row.fechaConfirmacion).toLocaleString('es-CO', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+
+          tr.innerHTML = `
+            <td>${dateStr}</td>
+            <td style="font-weight: 600; color: var(--primary);">${row.operacion}</td>
+            <td><span class="badge-category">${row.categoria}</span></td>
+            <td style="font-weight: 500;">${row.mes}</td>
+            <td>${row.usuarioNombre || row.usuario}</td>
+            <td style="font-style: italic; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.observaciones || ''}">${row.observaciones || '—'}</td>
+            <td>
+              <a href="${row.pdfUrl}" target="_blank" class="pdf-link-btn">
+                📄 PDF Acta
+              </a>
+            </td>
+          `;
+          
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
+      }
     }
 
     // Run on startup

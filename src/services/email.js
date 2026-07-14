@@ -1626,7 +1626,41 @@ async function notificarBloqueoAspirante({ emailUsuario, nombreAspirante, regist
   });
 }
 
+async function notificarConfirmacionInventario({ operacion, categoria, mes, usuarioNombre, emailUsuario, pdfUrl, destinatarios }) {
+  const asunto = `Confirmación de Inventario ${categoria} — ${operacion} — ${mes}`;
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      ${HEADER}
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+        <h2 style="color:#1a1a2e;margin-top:0;border-bottom:2px solid #edf2f7;padding-bottom:12px;">Confirmación de Inventario Exitosa</h2>
+        <p style="color:#555">Se ha registrado de forma oficial el acta de confirmación de inventario con los siguientes detalles:</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:.93rem">
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Operación / Sede</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${operacion}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Categoría</td><td style="padding:8px 12px;font-weight:bold">${categoria}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Período (Mes)</td><td style="padding:8px 12px">${mes}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Confirmado por</td><td style="padding:8px 12px">${usuarioNombre}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Área</td><td style="padding:8px 12px">Inventario</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Tipo Período</td><td style="padding:8px 12px">Mensual</td></tr>
+        </table>
+        <div style="margin-top:24px;text-align:center;">
+          <a href="${pdfUrl}" target="_blank" style="display:inline-block;padding:12px 24px;background-color:#1e3c72;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:6px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">Ver Acta Firmada (PDF)</a>
+        </div>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from:    `"LOG&SER Inventarios" <${EMAIL_FROM}>`,
+    to:      destinatarios.join(', '),
+    cc:      emailUsuario || undefined,
+    subject: asunto,
+    html:    cuerpo,
+  });
+}
+
 module.exports = {
+  notificarConfirmacionInventario,
   notificarBloqueoAspirante,
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
