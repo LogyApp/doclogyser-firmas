@@ -419,6 +419,10 @@ router.post('/api/confirmar', async (req, res) => {
       emailRecipients.push('sstadmon@logyser.com', 'sst.nacional@logyser.com');
     }
 
+    if (catUpper !== 'EPP') {
+      emailRecipients.push('subgerenciaoperaciones@logyser.com');
+    }
+
     // Disparar correo en segundo plano
     notificarConfirmacionInventario({
       operacion,
