@@ -1388,10 +1388,18 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
                 </select>
               </div>
             </div>
-            <div>
-              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Lugar de Nacimiento</label>
-              <div id="lugar-nacimiento-container">
-                <!-- Se inyecta dinámicamente -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">País de Nacimiento</label>
+                <select id="confirm-pais-nacimiento" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500" onchange="onPaisNacimientoChange(this.value)">
+                  <option value="Colombia">Colombia</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Lugar de Nacimiento</label>
+                <div id="lugar-nacimiento-container">
+                  <!-- Se inyecta dinámicamente -->
+                </div>
               </div>
             </div>
           </div>
@@ -1422,8 +1430,41 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         .then(r => r.json())
         .then(data => {
           globalCiudades = data;
+          populatePaisNacimientoDropdown();
         })
         .catch(err => console.error('Error cargando ciudades:', err));
+
+      function populatePaisNacimientoDropdown() {
+        const paisSelect = document.getElementById('confirm-pais-nacimiento');
+        if (!paisSelect) return;
+        
+        const paises = [...new Set(globalCiudades.map(c => c.Pais).filter(Boolean))].sort();
+        
+        if (!paises.some(p => p.toLowerCase() === 'colombia')) {
+          paises.unshift('Colombia');
+        } else {
+          const index = paises.findIndex(p => p.toLowerCase() === 'colombia');
+          if (index > -1) {
+            paises.splice(index, 1);
+            paises.unshift('Colombia');
+          }
+        }
+        
+        paisSelect.innerHTML = '';
+        paises.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p;
+          opt.textContent = p;
+          paisSelect.appendChild(opt);
+        });
+        
+        paisSelect.value = 'Colombia';
+      }
+
+      function onPaisNacimientoChange(pais) {
+        candidatePaisNacimiento = pais;
+        initLugarNacimientoDropdowns('', '', pais);
+      }
 
       function initLugarExpedicionDropdowns(selectedDepto, selectedCiudad) {
         const deptoSelect = document.getElementById('confirm-depto-expedicion');
@@ -1722,7 +1763,25 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
             // Lugar de nacimiento
             const deptoNac = ext.departamento_nacimiento || reg.departamento_nacimiento || '';
             const ciudadNac = ext.ciudad_nacimiento || reg.ciudad_nacimiento || '';
-            const paisNac = reg.pais_nacimiento || 'Colombia';
+            const paisNac = reg.pais_nacimiento || ext.pais_nacimiento || 'Colombia';
+            const selectPaisNac = document.getElementById('confirm-pais-nacimiento');
+            if (selectPaisNac) {
+              let hasOption = false;
+              for (let i = 0; i < selectPaisNac.options.length; i++) {
+                if (selectPaisNac.options[i].value.toLowerCase() === paisNac.toLowerCase()) {
+                  hasOption = true;
+                  selectPaisNac.value = selectPaisNac.options[i].value;
+                  break;
+                }
+              }
+              if (!hasOption) {
+                const opt = document.createElement('option');
+                opt.value = paisNac;
+                opt.textContent = paisNac;
+                selectPaisNac.appendChild(opt);
+                selectPaisNac.value = paisNac;
+              }
+            }
             initLugarNacimientoDropdowns(deptoNac, ciudadNac, paisNac);
 
             currentFileState.extracted_data = ext;
@@ -1858,7 +1917,8 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           ciudad_expedicion: ciudadExp,
           departamento_expedicion: deptoExp,
           ciudad_nacimiento: ciudadNac,
-          departamento_nacimiento: deptoNac
+          departamento_nacimiento: deptoNac,
+          pais_nacimiento: document.getElementById('confirm-pais-nacimiento').value
         };
 
         closeModal('cedulaConfirmModal');
