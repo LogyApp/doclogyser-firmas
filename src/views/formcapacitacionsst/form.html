@@ -469,7 +469,11 @@
             div.style = 'display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #e2e8f0; gap: 12px; flex-wrap: wrap;';
  
             // Whatsapp message formatting
-            const textWa = `Hola ${res.trabajador}, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${res.urlFirma}`;
+            let cleanTrabajador = res.trabajador || '';
+            if (cleanTrabajador.includes(' ** ')) {
+              cleanTrabajador = cleanTrabajador.split(' ** ')[1];
+            }
+            const textWa = `Hola ${cleanTrabajador}, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${res.urlFirma}`;
             const cleanCel = res.celular ? res.celular.replace(/\D/g, '') : '';
             let phoneParam = '';
             if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
@@ -481,7 +485,7 @@
  
             div.innerHTML = `
               <div style="flex: 1; min-width: 200px;">
-                <div style="font-weight: 700; color: #1e293b; font-size: .92rem;">${res.trabajador}</div>
+                <div style="font-weight: 700; color: #1e293b; font-size: .92rem;">${cleanTrabajador}</div>
                 <div style="font-size: .8rem; color: #64748b;">C.C. ${res.identificacion} ${res.celular ? `| Cel: ${res.celular}` : ''}</div>
               </div>
               <div style="display: flex; gap: 8px; align-items: center;">

@@ -29,7 +29,7 @@ function normalizarCategoria(categoria) {
 
 function rolesPermitidosPorCategoria(categoria) {
   const cat = normalizarCategoria(categoria);
-  if (cat === 'EPP') return ['AdmSst', 'LiderSst', 'Sistema', 'Cuentas'];
+  if (cat === 'EPP') return ['AdmSst', 'LiderSst', 'Sistema'];
   if (cat === 'DOTACION') return ['Inventario', 'Cuentas', 'Sistema'];
   if (cat === 'TECNOLOGIA') return ['Control', 'Cuentas', 'Sistema'];
   return ['Sistema', 'Cuentas'];
@@ -86,6 +86,14 @@ async function _enviarEmailEstado(idSolicitud, estadoAnterior, estadoNuevo, quie
       if (whoRow) quienCambioNombre = whoRow.Nombre || quienCambioId;
     }
 
+    let emailsAprobadores = aprobadoresRows.map(r => r.Email).filter(Boolean);
+    if (normalizarCategoria(sol.Categoria) === 'TECNOLOGIA') {
+      emailsAprobadores = emailsAprobadores.filter(email => {
+        const em = email.trim().toLowerCase();
+        return em !== 'gerenciaoperaciones@logyser.com' && em !== 'directorrh@logyser.com';
+      });
+    }
+
     await notificarSolicitudCambioEstado({
       idSolicitud,
       operacion: sol['Operación'],
@@ -97,7 +105,7 @@ async function _enviarEmailEstado(idSolicitud, estadoAnterior, estadoNuevo, quie
       fechaSolicitud: sol.FechaSolicitud,
       usuarioSolicitante: solicitanteRow?.Nombre || sol.Usuario,
       emailSolicitante: solicitanteRow?.Email || null,
-      emailsAprobadores: aprobadoresRows.map(r => r.Email).filter(Boolean),
+      emailsAprobadores,
       items,
       observaciones: sol.Observaciones,
       quienCambio: quienCambioNombre,
