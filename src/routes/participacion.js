@@ -79,15 +79,6 @@ async function generarPDFAsistencia(id, force = false) {
     throw new Error('Asistencia no encontrada');
   }
 
-  // 1.5 Verificar que tenga fotos de evidencia cargadas
-  const [evRows] = await pool.execute(
-    'SELECT 1 FROM Dynamic_formato_evidencias WHERE id_asistencia = ? LIMIT 1',
-    [id]
-  );
-  if (!evRows.length) {
-    throw new Error('Debe adjuntar al menos una foto de evidencia para poder generar el PDF.');
-  }
-
   // 2. Obtener asistentes
   const [items] = await pool.execute(
     'SELECT nombre_trabajador, identificacion, cargo FROM Dynamic_formato_itemsAsistencia WHERE id_asistencia = ?',

@@ -207,11 +207,19 @@
       <!-- Editor de Plantilla -->
       <div>
         <div class="card">
-          <div class="section-title">Editor de Cuestionario</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <div class="section-title" style="margin-bottom:0;" id="editor-title">Editor de Cuestionario</div>
+            <button class="btn btn-secondary btn-small" onclick="iniciarNuevoCuestionario()">+ Nuevo Cuestionario</button>
+          </div>
           
           <div class="field">
             <label for="input-tema">Tema de Capacitación <span style="color:#ef4444">*</span></label>
             <textarea id="input-tema" rows="2" placeholder="Escriba el tema de la capacitación..."></textarea>
+          </div>
+
+          <div class="field">
+            <label for="input-periodo">Período <span style="color:#ef4444">*</span></label>
+            <input type="text" id="input-periodo" placeholder="Ej. Semana del 01 al 08 de julio de 2026 o Mes de junio" style="width:100%; padding:10px 12px; border:1.5px solid #ddd; border-radius:6px; font-size:.93rem; color:#333; background:#fff;">
           </div>
 
           <div class="field">
@@ -231,7 +239,7 @@
             </div>
 
             <div style="text-align: right; margin-top: 20px;">
-              <button class="btn btn-primary" style="padding: 12px 30px;" onclick="guardarPlantilla()">💾 Guardar Nueva Versión</button>
+              <button class="btn btn-primary" style="padding: 12px 30px;" id="btn-guardar-cuestionario" onclick="guardarPlantilla()">💾 Guardar Nueva Versión</button>
             </div>
           </div>
 
@@ -241,7 +249,7 @@
       <!-- Historial de Versiones -->
       <div>
         <div class="card card-history">
-          <div class="section-title">Historial de Versiones</div>
+          <div class="section-title">Historial de Cuestionarios</div>
           <div id="contenedor-versiones" style="max-height: 550px; overflow-y: auto;">
             <!-- Dinámico -->
           </div>
@@ -282,6 +290,19 @@
     }
 
     let preguntas = []; // Estado local de preguntas
+    let currentPlantillaId = null; // ID del cuestionario actualmente cargado
+
+    // Iniciar editor vacío para nuevo cuestionario
+    function iniciarNuevoCuestionario() {
+      currentPlantillaId = null;
+      document.getElementById('editor-title').innerText = 'Editor de Cuestionario (Nuevo)';
+      document.getElementById('btn-guardar-cuestionario').innerHTML = '💾 Crear Cuestionario';
+      document.getElementById('input-tema').value = '';
+      document.getElementById('input-objetivo').value = '';
+      document.getElementById('input-periodo').value = '';
+      preguntas = [];
+      renderPreguntasBuilder();
+    }
 
     // Cargar Plantilla Activa en el Editor
     async function cargarPlantillaActiva(idPlantilla = null) {
@@ -293,8 +314,18 @@
         const r = await fetch(url);
         const data = await r.json();
 
+        currentPlantillaId = data.id_plantilla || null;
+        if (currentPlantillaId) {
+          document.getElementById('editor-title').innerText = `Editor de Cuestionario (Modificando Cuestionario ${data.version})`;
+          document.getElementById('btn-guardar-cuestionario').innerHTML = '💾 Guardar Cambios';
+        } else {
+          document.getElementById('editor-title').innerText = 'Editor de Cuestionario';
+          document.getElementById('btn-guardar-cuestionario').innerHTML = '💾 Guardar Nueva Versión';
+        }
+
         document.getElementById('input-tema').value = data.tema || '';
         document.getElementById('input-objetivo').value = data.objetivo || '';
+        document.getElementById('input-periodo').value = data.periodo || '';
 
         // Estructurar preguntas
         const pMap = {};
@@ -422,7 +453,7 @@
       });
     }
 
-    // Cargar Historial de Versiones
+    // Cargar Historial de Cuestionarios
     async function cargarHistorial() {
       try {
         const r = await fetch('/capacitacionsst/api/plantilla/historial');
@@ -432,7 +463,7 @@
         container.innerHTML = '';
 
         if (!data.length) {
-          container.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">No hay historial de versiones.</div>';
+          container.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">No hay cuestionarios registrados.</div>';
           return;
         }
 
@@ -441,15 +472,10 @@
           item.className = 'version-item';
 
           const fechaFmt = v.fecha_registro ? v.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '';
-          const isActivo = v.activo === 1;
-          const badgeClass = isActivo ? 'status-active' : 'status-inactive';
-          const badgeText = isActivo ? 'Activa' : 'Inactiva';
-
-          let buttonsHtml = '';
-          if (!isActivo) {
-            buttonsHtml += `<button class="btn btn-primary btn-small" onclick="activarVersion('${v.id_plantilla}')" style="margin-right: 6px; background:#2563eb;">Activar</button>`;
-          }
-          buttonsHtml += `<button class="btn btn-secondary btn-small" onclick="cargarPlantillaActiva('${v.id_plantilla}')">Cargar</button>`;
+          let buttonsHtml = `
+            <button class="btn btn-secondary btn-small" onclick="cargarPlantillaActiva('${v.id_plantilla}')">Cargar</button>
+            <button class="btn btn-rojo btn-small" onclick="eliminarCuestionario('${v.id_plantilla}', ${v.version})" style="background:#ef4444; color:#fff; border:none; padding:5px 8px; border-radius:4px; font-weight:600; cursor:pointer;">Eliminar</button>
+          `;
 
           // Truncar tema
           const temaTrunc = v.tema.length > 55 ? v.tema.slice(0, 52) + '...' : v.tema;
@@ -457,13 +483,13 @@
           item.innerHTML = `
             <div class="version-meta">
               <div>
-                <span class="version-number">Versión ${v.version}</span>
-                <span class="version-status ${badgeClass}">${badgeText}</span>
+                <span class="version-number">Cuestionario ${v.version}</span>
               </div>
               <div style="font-size: .8rem; color: #555; margin-top: 2px;" title="${v.tema}">${temaTrunc}</div>
-              <div class="version-date">Creado por: ${v.usuario_creador} el ${fechaFmt}</div>
+              ${v.periodo ? `<div style="font-size: .75rem; color: #475569; font-style: italic; margin-top: 2px;">Periodo: ${v.periodo}</div>` : ''}
+              <div class="version-date" style="margin-top: 2px;">Creado por: ${v.usuario_creador} el ${fechaFmt}</div>
             </div>
-            <div style="flex-shrink: 0; display:flex;">
+            <div style="flex-shrink: 0; display:flex; gap:5px; align-items:center;">
               ${buttonsHtml}
             </div>
           `;
@@ -477,26 +503,29 @@
       }
     }
 
-    // Activar Versión del Historial
-    async function activarVersion(idPlantilla) {
-      showLoading('Activando plantilla...');
+    // Eliminar Cuestionario del Historial
+    async function eliminarCuestionario(idPlantilla, version) {
+      if (!confirm(`¿Está seguro de que desea eliminar el Cuestionario ${version}? Esta acción no se puede deshacer.`)) {
+        return;
+      }
+      showLoading('Eliminando cuestionario...');
       try {
-        const r = await fetch('/capacitacionsst/api/plantilla/activar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_plantilla: idPlantilla, usuario: CONFIG.usuarioId })
+        const r = await fetch(`/capacitacionsst/api/plantilla/${idPlantilla}?usuario=${CONFIG.usuarioId}`, {
+          method: 'DELETE'
         });
         const res = await r.json();
         if (res.ok) {
-          showToast('Cuestionario activado con éxito');
-          cargarPlantillaActiva(idPlantilla);
+          showToast('Cuestionario eliminado con éxito');
+          if (currentPlantillaId === idPlantilla) {
+            iniciarNuevoCuestionario();
+          }
           cargarHistorial();
         } else {
-          showToast(res.error || 'Error al activar versión', 'error');
+          showToast(res.error || 'Error al eliminar cuestionario', 'error');
         }
       } catch (e) {
         console.error(e);
-        showToast('Error de red al activar versión', 'error');
+        showToast('Error de red al eliminar cuestionario', 'error');
       } finally {
         hideLoading();
       }
@@ -506,9 +535,10 @@
     async function guardarPlantilla() {
       const tema = document.getElementById('input-tema').value.trim();
       const objetivo = document.getElementById('input-objetivo').value.trim();
+      const periodo = document.getElementById('input-periodo').value.trim();
 
-      if (!tema || !objetivo) {
-        alert('Debe rellenar el Tema y Objetivo.');
+      if (!tema || !objetivo || !periodo) {
+        alert('Debe rellenar el Tema, Objetivo y Período.');
         return;
       }
 
@@ -551,7 +581,9 @@
       const payload = {
         tema,
         objetivo,
+        periodo,
         usuario: CONFIG.usuarioId,
+        id_plantilla: currentPlantillaId,
         preguntas: preguntas.map(q => ({
           pregunta: q.pregunta,
           descripcion_pregunta: q.descripcion_pregunta,
@@ -562,7 +594,8 @@
         }))
       };
 
-      showLoading('Guardando nueva versión...');
+      const msgSaving = currentPlantillaId ? 'Guardando cambios del cuestionario...' : 'Creando nuevo cuestionario...';
+      showLoading(msgSaving);
       try {
         const r = await fetch('/capacitacionsst/api/plantilla/guardar', {
           method: 'POST',
@@ -571,15 +604,20 @@
         });
         const res = await r.json();
         if (res.ok) {
-          showToast(`Nueva versión (V${res.version}) guardada y activada con éxito`);
-          cargarPlantillaActiva(res.id_plantilla);
+          if (currentPlantillaId) {
+            showToast('Cambios guardados con éxito');
+            cargarPlantillaActiva(currentPlantillaId);
+          } else {
+            showToast(`Cuestionario ${res.version} creado con éxito`);
+            cargarPlantillaActiva(res.id_plantilla);
+          }
           cargarHistorial();
         } else {
-          showToast(res.error || 'Error al guardar versión', 'error');
+          showToast(res.error || 'Error al guardar cuestionario', 'error');
         }
       } catch (e) {
         console.error(e);
-        showToast('Error de red al guardar versión', 'error');
+        showToast('Error de red al guardar cuestionario', 'error');
       } finally {
         hideLoading();
       }

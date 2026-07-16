@@ -452,21 +452,33 @@ router.get('/api/capacitacion/:id', async (req, res) => {
 // ═════ API: POST /api/crear (Crear capacitación para un trabajador) ═════
 router.post('/api/crear', async (req, res) => {
   try {
-    const { fecha, identificacion, usuario, enviar_correo } = req.body;
+    const { fecha, identificacion, usuario, enviar_correo, id_plantilla } = req.body;
     if (!fecha || !identificacion || !usuario) {
       return res.status(400).json({ error: 'fecha, identificacion y usuario requeridos' });
     }
 
-    // 1. Obtener la plantilla activa
-    const [pRows] = await pool.execute(
-      'SELECT * FROM Maestro_capacitacionsst_plantilla WHERE activo = 1 LIMIT 1'
-    );
-    if (!pRows.length) {
-      return res.status(400).json({ error: 'No hay ninguna plantilla de capacitación activa. Por favor cree una en el panel de administrador.' });
+    // 1. Obtener la plantilla activa o específica
+    let p;
+    if (id_plantilla) {
+      const [pRows] = await pool.execute(
+        'SELECT * FROM Maestro_capacitacionsst_plantilla WHERE id_plantilla = ? LIMIT 1',
+        [id_plantilla]
+      );
+      if (!pRows.length) {
+        return res.status(400).json({ error: 'La versión de plantilla seleccionada no existe.' });
+      }
+      p = pRows[0];
+    } else {
+      const [pRows] = await pool.execute(
+        'SELECT * FROM Maestro_capacitacionsst_plantilla WHERE activo = 1 LIMIT 1'
+      );
+      if (!pRows.length) {
+        return res.status(400).json({ error: 'No hay ninguna plantilla de capacitación activa. Por favor cree una en el panel de administrador.' });
+      }
+      p = pRows[0];
     }
-    const p = pRows[0];
 
-    // 2. Obtener los ítems de la plantilla activa
+    // 2. Obtener los ítems de la plantilla activa o específica
     const [pItems] = await pool.execute(
       'SELECT * FROM Maestro_capacitacionsst_plantilla_items WHERE id_plantilla = ? ORDER BY pregunta, id_item',
       [p.id_plantilla]
@@ -540,27 +552,39 @@ router.post('/api/crear', async (req, res) => {
 router.post('/api/crear-masivo', async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { fecha, identificaciones, usuario, enviar_correo } = req.body;
+    const { fecha, identificaciones, usuario, enviar_correo, id_plantilla } = req.body;
     if (!fecha || !identificaciones || !Array.isArray(identificaciones) || !identificaciones.length || !usuario) {
       return res.status(400).json({ error: 'fecha, identificaciones (array) y usuario requeridos' });
     }
 
-    // 1. Obtener la plantilla activa
-    const [pRows] = await conn.execute(
-      'SELECT * FROM Maestro_capacitacionsst_plantilla WHERE activo = 1 LIMIT 1'
-    );
-    if (!pRows.length) {
-      return res.status(400).json({ error: 'No hay ninguna plantilla de capacitación activa. Por favor cree una en el panel de administrador.' });
+    // 1. Obtener la plantilla activa o específica
+    let p;
+    if (id_plantilla) {
+      const [pRows] = await conn.execute(
+        'SELECT * FROM Maestro_capacitacionsst_plantilla WHERE id_plantilla = ? LIMIT 1',
+        [id_plantilla]
+      );
+      if (!pRows.length) {
+        return res.status(400).json({ error: 'La versión de plantilla seleccionada no existe.' });
+      }
+      p = pRows[0];
+    } else {
+      const [pRows] = await conn.execute(
+        'SELECT * FROM Maestro_capacitacionsst_plantilla WHERE activo = 1 LIMIT 1'
+      );
+      if (!pRows.length) {
+        return res.status(400).json({ error: 'No hay ninguna plantilla de capacitación activa. Por favor cree una en el panel de administrador.' });
+      }
+      p = pRows[0];
     }
-    const p = pRows[0];
 
-    // 2. Obtener los ítems de la plantilla activa
+    // 2. Obtener los ítems de la plantilla activa o específica
     const [pItems] = await conn.execute(
       'SELECT * FROM Maestro_capacitacionsst_plantilla_items WHERE id_plantilla = ? ORDER BY pregunta, id_item',
       [p.id_plantilla]
     );
     if (!pItems.length) {
-      return res.status(400).json({ error: 'La plantilla activa no contiene preguntas.' });
+      return res.status(400).json({ error: 'La plantilla seleccionada no contiene preguntas.' });
     }
 
     const [usuRows] = await conn.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
@@ -880,7 +904,7 @@ router.get('/api/plantilla', async (req, res) => {
 router.get('/api/plantilla/historial', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT id_plantilla, version, tema, activo, fecha_registro, usuario_creador FROM Maestro_capacitacionsst_plantilla ORDER BY version DESC'
+      'SELECT id_plantilla, version, tema, activo, fecha_registro, usuario_creador, periodo FROM Maestro_capacitacionsst_plantilla ORDER BY version DESC'
     );
     res.json(rows);
   } catch (err) {
@@ -914,10 +938,10 @@ router.post('/api/plantilla/activar', async (req, res) => {
   }
 });
 
-// POST /api/plantilla/guardar (Crear una nueva versión de plantilla con sus preguntas)
+// POST /api/plantilla/guardar (Crear o Modificar una versión/cuestionario de plantilla)
 router.post('/api/plantilla/guardar', async (req, res) => {
   try {
-    const { tema, objetivo, preguntas, usuario } = req.body;
+    const { tema, objetivo, preguntas, usuario, periodo, id_plantilla } = req.body;
     if (!tema || !objetivo || !preguntas || !usuario) {
       return res.status(400).json({ error: 'tema, objetivo, preguntas y usuario requeridos' });
     }
@@ -927,38 +951,120 @@ router.post('/api/plantilla/guardar', async (req, res) => {
       return res.status(403).json({ error: 'No autorizado para guardar cambios en la plantilla.' });
     }
 
-    // 1. Calcular el siguiente número de versión
-    const [[vRow]] = await pool.execute('SELECT MAX(version) AS max_v FROM Maestro_capacitacionsst_plantilla');
-    const nextVersion = (vRow ? vRow.max_v : 0) + 1;
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
 
-    const id_plantilla = uuidv4();
-
-    // 2. Desactivar todas y crear la nueva como activa (activo = 1)
-    await pool.execute('UPDATE Maestro_capacitacionsst_plantilla SET activo = 0');
-    await pool.execute(
-      `INSERT INTO Maestro_capacitacionsst_plantilla (id_plantilla, version, tema, objetivo, activo, usuario_creador)
-       VALUES (?, ?, ?, ?, 1, ?)`,
-      [id_plantilla, nextVersion, tema, objetivo, usuario]
-    );
-
-    // 3. Insertar las nuevas preguntas/opciones
-    // preguntas: [ { pregunta: 1, descripcion_pregunta: "...", opciones: [ { opcion: "...", correcta: "SI"/null }, ... ] }, ... ]
-    for (const q of preguntas) {
-      const qNum = q.pregunta;
-      const desc = q.descripcion_pregunta;
-
-      for (const opt of q.opciones) {
-        await pool.execute(
-          `INSERT INTO Maestro_capacitacionsst_plantilla_items (id_plantilla, pregunta, descripcion_pregunta, opcion, correcta)
-           VALUES (?, ?, ?, ?, ?)`,
-          [id_plantilla, qNum, desc, opt.opcion, opt.correcta || null]
+      if (id_plantilla) {
+        // 1. Modificar plantilla existente
+        await conn.execute(
+          `UPDATE Maestro_capacitacionsst_plantilla 
+           SET tema = ?, objetivo = ?, periodo = ? 
+           WHERE id_plantilla = ?`,
+          [tema, objetivo, periodo || null, id_plantilla]
         );
-      }
-    }
 
-    res.json({ ok: true, id_plantilla, version: nextVersion });
+        // 2. Eliminar preguntas antiguas
+        await conn.execute(
+          `DELETE FROM Maestro_capacitacionsst_plantilla_items WHERE id_plantilla = ?`,
+          [id_plantilla]
+        );
+
+        // 3. Insertar preguntas nuevas
+        for (const q of preguntas) {
+          const qNum = q.pregunta;
+          const desc = q.descripcion_pregunta;
+
+          for (const opt of q.opciones) {
+            await conn.execute(
+              `INSERT INTO Maestro_capacitacionsst_plantilla_items (id_plantilla, pregunta, descripcion_pregunta, opcion, correcta)
+               VALUES (?, ?, ?, ?, ?)`,
+              [id_plantilla, qNum, desc, opt.opcion, opt.correcta || null]
+            );
+          }
+        }
+
+        await conn.commit();
+        res.json({ ok: true, id_plantilla, modificado: true });
+      } else {
+        // Crear nueva plantilla
+        // 1. Calcular el siguiente número de versión
+        const [[vRow]] = await conn.execute('SELECT MAX(version) AS max_v FROM Maestro_capacitacionsst_plantilla');
+        const nextVersion = (vRow ? vRow.max_v : 0) + 1;
+
+        const new_id_plantilla = uuidv4();
+
+        // 2. Desactivar todas y crear la nueva como activa (activo = 1)
+        await conn.execute('UPDATE Maestro_capacitacionsst_plantilla SET activo = 0');
+        await conn.execute(
+          `INSERT INTO Maestro_capacitacionsst_plantilla (id_plantilla, version, tema, objetivo, activo, usuario_creador, periodo)
+           VALUES (?, ?, ?, ?, 1, ?, ?)`,
+          [new_id_plantilla, nextVersion, tema, objetivo, usuario, periodo || null]
+        );
+
+        // 3. Insertar las preguntas/opciones
+        for (const q of preguntas) {
+          const qNum = q.pregunta;
+          const desc = q.descripcion_pregunta;
+
+          for (const opt of q.opciones) {
+            await conn.execute(
+              `INSERT INTO Maestro_capacitacionsst_plantilla_items (id_plantilla, pregunta, descripcion_pregunta, opcion, correcta)
+               VALUES (?, ?, ?, ?, ?)`,
+              [new_id_plantilla, qNum, desc, opt.opcion, opt.correcta || null]
+            );
+          }
+        }
+
+        await conn.commit();
+        res.json({ ok: true, id_plantilla: new_id_plantilla, version: nextVersion });
+      }
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   } catch (err) {
     console.error('[capacitacionsst] POST /api/plantilla/guardar:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/plantilla/:id (Eliminar un cuestionario)
+router.delete('/api/plantilla/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoCAPSST(usuario);
+    if (!acceso || !['LiderSst', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado para eliminar cuestionarios.' });
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // 1. Eliminar ítems de la plantilla
+      await conn.execute('DELETE FROM Maestro_capacitacionsst_plantilla_items WHERE id_plantilla = ?', [id]);
+
+      // 2. Eliminar la plantilla principal
+      await conn.execute('DELETE FROM Maestro_capacitacionsst_plantilla WHERE id_plantilla = ?', [id]);
+
+      await conn.commit();
+      res.json({ ok: true });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    console.error('[capacitacionsst] DELETE /api/plantilla/:id:', err);
     res.status(500).json({ error: err.message });
   }
 });

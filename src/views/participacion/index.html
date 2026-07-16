@@ -82,6 +82,8 @@
     .btn-secondary:hover { background: #eef1ff; border-color: #8e44ad; }
     .btn-success { background: #27ae60; color: #fff; }
     .btn-success:hover { background: #1e8449; }
+    .btn-info { background: #2980b9; color: #fff; }
+    .btn-info:hover { background: #1f6391; }
     .btn-small { padding: 5px 10px; font-size: .75rem; border-radius: 4px; }
 
     /* ── Tables ── */
@@ -285,7 +287,6 @@
             <thead>
               <tr>
                 <th>Asistente</th>
-                <th>Identificación</th>
                 <th>Cargo / Operación</th>
                 <th>Firma</th>
                 <th>Acciones</th>
@@ -634,6 +635,7 @@
                 <button class="btn btn-secondary btn-small" onclick="abrirModalContacto('${item.identificacion}', '${item.nombre_trabajador}', '${item.celular || ''}', '${item.email || ''}')">Datos</button>
                 <button class="btn btn-success btn-small" disabled style="opacity: 0.5; pointer-events: none;">WhatsApp</button>
                 <button class="btn btn-primary btn-small" disabled style="opacity: 0.5; pointer-events: none;">Correo</button>
+                <button class="btn btn-info btn-small" disabled style="opacity: 0.5; pointer-events: none;">Copiar</button>
               </div>
             `;
           } else {
@@ -645,6 +647,7 @@
                 <button class="btn btn-secondary btn-small" onclick="abrirModalContacto('${item.identificacion}', '${item.nombre_trabajador}', '${item.celular || ''}', '${item.email || ''}')">Datos</button>
                 <a href="${waUrl}" target="_blank" class="btn btn-success btn-small" ${waDisabled}>WhatsApp</a>
                 <button class="btn btn-primary btn-small" onclick="notificarIndividual(${item.id_item_asistencia})">Correo</button>
+                <button class="btn btn-info btn-small" onclick="copiarAlPortapapeles('${urlFirmaLink}')">Copiar</button>
               </div>
             `;
           }
@@ -656,8 +659,10 @@
         }
 
         tr.innerHTML = `
-          <td><strong>${cleanNombreTrabajador}</strong></td>
-          <td>${item.identificacion}</td>
+          <td>
+            <strong>${cleanNombreTrabajador}</strong><br>
+            <span style="font-size: 11px; color:#64748b;">C.C. ${item.identificacion}</span>
+          </td>
           <td>${item.cargo}<br><span style="font-size: 11px; color:#64748b;">Op: ${item.operacion}</span></td>
           <td>${badgeFirma}</td>
           <td>${controlButtons}</td>
@@ -676,8 +681,9 @@
   // ════════ PDF GENERATION ════════
   async function generarPDF(force = false) {
     if (currentEvidenciasCount === 0) {
-      showToast('Debe adjuntar al menos una foto de evidencia para poder generar el PDF.', 'error');
-      return;
+      if (!confirm('¿Confirma que no desea poner foto de evidencia para esta actividad?')) {
+        return;
+      }
     }
     showLoading('Generando documento PDF...');
     try {
@@ -818,6 +824,22 @@
   }
   function cerrarLightbox() {
     document.getElementById('modal-lightbox').classList.remove('open');
+  }
+
+  function copiarAlPortapapeles(texto) {
+    navigator.clipboard.writeText(texto).then(() => {
+      showToast('Enlace de firma copiado al portapapeles.', 'success');
+    }).catch(err => {
+      console.error('Error al copiar:', err);
+      // Fallback
+      const input = document.createElement('input');
+      input.value = texto;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showToast('Enlace de firma copiado al portapapeles.', 'success');
+    });
   }
 </script>
 

@@ -210,7 +210,7 @@
               <tr>
                 <th>Fecha</th>
                 <th>Trabajador</th>
-                <th>Identificación</th>
+                <th>Tema</th>
                 <th>Puntaje</th>
                 <th>Resultado</th>
                 <th>Documento PDF</th>
@@ -364,21 +364,22 @@
             pdfLink = `<a href="${item.url_doc}" target="_blank" style="color: #10b981; font-weight: bold; text-decoration: none;">📄 PDF</a>`;
           }
 
-          let badgeFirma = '';
-          if (item.url_doc) {
-            badgeFirma = `<span class="status-badge badge-verde">✓ Verde</span>`; // Completado
-          } else if (item.token_firma) {
-            badgeFirma = `<span class="status-badge badge-amarillo">✓ Amarillo</span>`; // Pendiente de firma
+          let badgeResultado = '';
+          const resUpper = (item.resultado || 'PENDIENTE').trim().toUpperCase();
+          if (resUpper === 'APROBADO') {
+            badgeResultado = `<span class="status-badge badge-verde">APROBADO</span>`;
+          } else if (resUpper === 'PENDIENTE') {
+            badgeResultado = `<span class="status-badge badge-amarillo">PENDIENTE</span>`;
           } else {
-            badgeFirma = `<span class="status-badge badge-rojo">Rojo</span>`; // Vencido/Sin firmas
+            badgeResultado = `<span class="status-badge badge-rojo">${resUpper}</span>`;
           }
 
           row.innerHTML = `
             <td>${fechaFmt}</td>
             <td><strong>${item.nombre_trabajador}</strong></td>
-            <td>${item.identificacion}</td>
+            <td>${item.tema || '—'}</td>
             <td>${item.puntaje !== null ? item.puntaje : '—'}</td>
-            <td>${item.resultado || 'PENDIENTE'}</td>
+            <td>${badgeResultado}</td>
             <td onclick="event.stopPropagation()">${pdfLink}</td>
           `;
 

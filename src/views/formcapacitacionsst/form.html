@@ -244,6 +244,13 @@
         <div class="section-title">Datos de la Capacitación</div>
         
         <div class="field">
+          <label for="select-plantilla">Cuestionario (Versión / Tema / Periodo) <span class="req">*</span></label>
+          <select id="select-plantilla" required>
+            <option value="">Cargando cuestionarios...</option>
+          </select>
+        </div>
+
+        <div class="field">
           <label for="input-fecha">Fecha de la Capacitación <span class="req">*</span></label>
           <input type="date" id="input-fecha" required style="width: 50%;">
         </div>
@@ -307,6 +314,27 @@
       opt.value = reg; opt.innerText = reg;
       rSelect.appendChild(opt);
     });
+
+    // Poblar Cuestionarios/Plantillas
+    async function cargarCuestionarios() {
+      try {
+        const r = await fetch('/capacitacionsst/api/plantilla/historial');
+        const list = await r.json();
+        const pSelect = document.getElementById('select-plantilla');
+        pSelect.innerHTML = '<option value="">Seleccione Cuestionario...</option>';
+        list.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id_plantilla;
+          opt.innerText = `Versión ${p.version} — Periodo: ${p.periodo || 'N/A'} — Tema: ${p.tema}`;
+          pSelect.appendChild(opt);
+        });
+      } catch (e) {
+        console.error(e);
+        const pSelect = document.getElementById('select-plantilla');
+        pSelect.innerHTML = '<option value="">Error al cargar cuestionarios</option>';
+      }
+    }
+    cargarCuestionarios();
  
     rSelect.addEventListener('change', () => {
       oSelect.innerHTML = '<option value="">Seleccione Operación...</option>';
@@ -440,7 +468,12 @@
        
       const fecha = document.getElementById('input-fecha').value;
       const enviar_correo = document.getElementById('check-correo').checked;
+      const id_plantilla = document.getElementById('select-plantilla').value;
  
+      if (!id_plantilla) {
+        alert('Debe seleccionar un cuestionario.');
+        return;
+      }
       if (!formTrabajadores.length) {
         alert('Debe seleccionar al menos un colaborador.');
         return;
@@ -455,7 +488,8 @@
             fecha,
             identificaciones: formTrabajadores,
             usuario: CONFIG.usuarioId,
-            enviar_correo
+            enviar_correo,
+            id_plantilla
           })
         });
  
