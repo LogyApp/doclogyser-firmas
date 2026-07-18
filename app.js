@@ -27,6 +27,7 @@ const dotacionleyRoutes              = require('./src/routes/dotacionley');
 const seleccionRoutes               = require('./src/routes/seleccion');
 const inventarioRoutes               = require('./src/routes/inventario');
 const kardexRoutes                   = require('./src/routes/kardex');
+const cajaoperativaRoutes            = require('./src/routes/cajaoperativa');
 
 const app = express();
 
@@ -67,6 +68,8 @@ app.use('/dotacionley', dotacionleyRoutes);
 app.use('/seleccion', seleccionRoutes);
 app.use('/inventario', inventarioRoutes);
 app.use('/kardex', kardexRoutes);
+app.use('/cajaoperativa', cajaoperativaRoutes);
+app.use('/reembolso', cajaoperativaRoutes);
 
 
 

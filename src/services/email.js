@@ -204,7 +204,17 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
       ${FOOTER}
     </div>`;
 
-  const ccList = ['gestor.nomina@logyser.com', 'admin@logyser.com', emailUsuario];
+  const ccList = [
+    'gestor.nomina@logyser.com',
+    'admin@logyser.com',
+    'seleccion@logyser.com',
+    'contratacionnacional@logyser.com',
+    'sst.nacional@logyser.com',
+    'sstadmon@logyser.com',
+    'logyserinventarios@gmail.com',
+    'auxiliarcompras@logyser.com',
+    emailUsuario
+  ];
   if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
     ccList.push('gestioncalidad@logyser.com');
     ccList.push('directorrh@logyser.com');

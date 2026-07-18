@@ -1,0 +1,3464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caja Operativa - LOG&SER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Brand */
+      --primary-color: #000B59;
+      --primary-hover: #131C6E;
+      --primary-soft: #EEF0FA;
+      --accent-color: #F55400;
+      --accent-hover: #DA4700;
+      --accent-soft: #FFF0E6;
+      --accent: var(--accent-color);
+
+      /* Neutrals */
+      --bg-main: #F6F7FA;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F7F8FA;
+      --text-primary: #000B59;
+      --text-main: #1E2233;
+      --text-muted: #667085;
+      --text-faint: #98A2B3;
+      --card-border: #E6E8EF;
+      --card-border-hover: #D3D7E2;
+
+      /* Semantic Colors */
+      --green-bg: #E9F8EF;
+      --green-text: #0C7A43;
+      --green: #17B26A;
+      --yellow-bg: #FFF6E0;
+      --yellow-text: #966212;
+      --yellow: #F2A60D;
+      --red-bg: #FDECEC;
+      --red-text: #C4281B;
+      --red: #E5493A;
+      --info-bg: #E7F1FE;
+      --info-text: #1657A8;
+
+      /* Spacing Scale (8px Grid) */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+
+      /* Border Radius Presets */
+      --radius-sm: 8px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 999px;
+
+      /* Shadow Presets */
+      --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 1px rgba(16, 24, 40, 0.03);
+      --shadow-md: 0 4px 10px -2px rgba(16, 24, 40, 0.07), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+      --shadow-lg: 0 12px 24px -6px rgba(16, 24, 40, 0.10), 0 4px 8px -2px rgba(16, 24, 40, 0.04);
+      --shadow-dropdown: 0 20px 40px -10px rgba(11, 16, 51, 0.22), 0 6px 14px -6px rgba(11, 16, 51, 0.10);
+
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; }
+    html { -webkit-font-smoothing: antialiased; }
+    body {
+      background: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      line-height: 1.5;
+      font-size: 14px;
+      font-feature-settings: 'tnum' 1, 'cv11' 1;
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD1DC; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: #A9B1C2; }
+
+    /* Layout sidebar and content */
+    .sidebar {
+      width: 300px;
+      background: var(--primary-color);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Branding Header */
+    .sidebar-brand {
+      height: 112px;
+      padding: 20px 17px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    /* The source PNG has large transparent margins around the mark itself,
+       so it's cropped via background-position instead of scaled as an <img>
+       (scaling the full canvas leaves a lot of empty space around the logo). */
+    .logo-mark {
+      width: 266px;
+      height: 72px;
+      background-image: url("https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png");
+      background-repeat: no-repeat;
+      background-size: 524px 349px;
+      background-position: -122px -124px;
+    }
+    .logo {
+      height: 32px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* Menu Items */
+    .nav-list { list-style: none; padding: var(--space-lg) var(--space-md); display: flex; flex-direction: column; gap: 2px; }
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      color: rgba(255, 255, 255, 0.62);
+      font-weight: 500;
+      font-size: 0.87rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 150ms var(--ease), color 150ms var(--ease);
+    }
+    .nav-icon {
+      width: 17px;
+      height: 17px;
+      stroke-width: 2px;
+      color: rgba(255, 255, 255, 0.5);
+      transition: color 150ms var(--ease);
+      flex-shrink: 0;
+    }
+    .nav-item:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .nav-item:hover .nav-icon {
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .nav-item.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.10);
+      font-weight: 600;
+    }
+    .nav-item.active .nav-icon {
+      color: var(--accent-color);
+    }
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: -12px;
+      top: 20%;
+      height: 60%;
+      width: 3px;
+      background-color: var(--accent-color);
+      border-radius: var(--radius-full);
+    }
+
+    /* Sidebar background: kept minimal / flat for a cleaner corporate look */
+    .sidebar-pattern { display: none; }
+
+    /* Sidebar Logout */
+    .sidebar-logout {
+      margin-top: auto;
+      padding: var(--space-lg);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      width: 100%;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-sm);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 150ms var(--ease);
+    }
+    .logout-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Mobile Header & Responsive Drawer Overlay */
+    .mobile-header {
+      display: none;
+      background: var(--primary-color);
+      color: #ffffff;
+      padding: var(--space-sm) var(--space-md);
+      justify-content: space-between;
+      align-items: center;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 56px;
+      z-index: 99;
+      box-shadow: var(--shadow-md);
+    }
+    .burger-btn {
+      background: none;
+      border: none;
+      color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(11, 16, 51, 0.45);
+      z-index: 9;
+      backdrop-filter: blur(2px);
+      transition: opacity 200ms var(--ease);
+    }
+
+    /* Main Content Area */
+    .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; position: relative; min-width: 0; }
+    .header {
+      background: var(--bg-main);
+      padding: 18px var(--space-xl);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    /* Header title */
+    .header-capsule {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-icon {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .header-text {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    /* User Profile */
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #FFFFFF;
+      border: 1px solid var(--card-border);
+      padding: 5px 14px 5px 6px;
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-xs);
+    }
+    .avatar-circle {
+      width: 28px;
+      height: 28px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .user-badge {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .container { padding: var(--space-lg) var(--space-xl) var(--space-xl); flex: 1; max-width: 1440px; width: 100%; margin: 0 auto; }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--card-border);
+      padding: var(--space-xl);
+      box-shadow: var(--shadow-xs);
+      margin-bottom: var(--space-lg);
+    }
+    .section-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-md); letter-spacing: -0.01em; }
+
+    /* Page-level heading row (title + primary action) */
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-lg);
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+    .page-head-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+
+    /* Tables */
+    .table-container { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--card-border); }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    th {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--card-border);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--bg-subtle);
+      color: var(--text-main);
+      vertical-align: middle;
+      transition: background-color 120ms var(--ease);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg-subtle); }
+
+    /* Resizable & reorderable table columns */
+    th[draggable="true"] { cursor: grab; user-select: none; }
+    th.col-dragging { opacity: 0.4; }
+    th.col-drop-target { background: var(--primary-soft); }
+    .col-resize-handle {
+      position: absolute;
+      top: 0;
+      right: -4px;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 2;
+    }
+    .col-resize-handle:hover { background: var(--accent-color); opacity: 0.5; }
+    body.col-resizing { cursor: col-resize; }
+    body.col-resizing * { user-select: none !important; }
+
+    .col-sort-indicator {
+      display: inline-block;
+      margin-left: 5px;
+      font-size: 0.75em;
+      opacity: 0.35;
+      transition: opacity 120ms var(--ease), color 120ms var(--ease);
+    }
+    th.col-sortable:hover .col-sort-indicator { opacity: 0.7; }
+    th.col-sort-active { color: var(--primary-color); }
+    th.col-sort-active .col-sort-indicator { opacity: 1; color: var(--accent-color); }
+
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 4px 11px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .badge-success { background: var(--green-bg); color: var(--green-text); }
+    .badge-warning { background: var(--yellow-bg); color: var(--yellow-text); }
+    .badge-danger { background: var(--red-bg); color: var(--red-text); }
+    .badge-info { background: var(--info-bg); color: var(--info-text); }
+    .badge-neutral { background: var(--bg-subtle); color: var(--text-muted); }
+    .badge-neutral::before { display: none; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 150ms var(--ease), border-color 150ms var(--ease), box-shadow 150ms var(--ease), transform 100ms var(--ease);
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+      background: var(--primary-color);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-secondary {
+      background: #ffffff;
+      border-color: var(--card-border);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+      border-color: var(--card-border-hover);
+    }
+    .btn-danger {
+      background: var(--red-bg);
+      color: var(--red-text);
+    }
+    .btn-danger:hover {
+      background: var(--red);
+      color: #ffffff;
+    }
+    .btn-small { padding: 6px 12px; font-size: 0.78rem; border-radius: var(--radius-sm); }
+    .btn-icon {
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 120ms var(--ease);
+      color: var(--text-main);
+    }
+    .btn-icon:hover {
+      background: var(--bg-subtle);
+      border-color: var(--card-border-hover);
+      color: var(--primary-color);
+    }
+    .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+    /* Grid Layouts */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg); }
+
+    /* Form Fields */
+    .field { margin-bottom: var(--space-md); }
+    .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      font-family: inherit;
+      background: var(--bg-subtle);
+      color: var(--text-main);
+      transition: border-color 120ms var(--ease), box-shadow 120ms var(--ease), background 120ms var(--ease);
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+    .field input::placeholder, .field textarea::placeholder { color: var(--text-faint); }
+    .field input[readonly] { background: var(--bg-subtle); color: var(--text-muted); }
+
+    /* Modals */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(11, 16, 51, 0.5);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: var(--space-md);
+      overflow-y: auto;
+    }
+    .modal.open { display: flex; }
+    .modal-content {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 600px;
+      padding: var(--space-xl);
+      position: relative;
+      box-shadow: var(--shadow-dropdown);
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 1px solid var(--card-border);
+    }
+    .modal-header {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--space-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      letter-spacing: -0.01em;
+    }
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      font-size: 1.4rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-radius: var(--radius-sm);
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 120ms var(--ease), color 120ms var(--ease);
+    }
+    .modal-close:hover { color: var(--text-primary); background: var(--bg-subtle); }
+
+    /* Drawers (Sliding Panels) */
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 100%;
+      max-width: 850px;
+      height: 100%;
+      background: var(--bg-main);
+      box-shadow: var(--shadow-dropdown);
+      z-index: 999;
+      transition: right 280ms var(--ease);
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--card-border);
+    }
+    .drawer.open { right: 0; }
+    .drawer-header {
+      padding: var(--space-lg) var(--space-xl);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--primary-color);
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .drawer-body { padding: var(--space-xl); flex: 1; overflow-y: auto; }
+
+    /* Accordions */
+    .accordion-header {
+      background: #ffffff;
+      padding: 13px var(--space-lg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-sm);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 120ms var(--ease), border-color 120ms var(--ease);
+    }
+    .accordion-header:hover {
+      border-color: var(--card-border-hover);
+      background: var(--bg-subtle);
+    }
+    .accordion-header span { color: var(--text-faint); transition: transform 150ms var(--ease); font-size: 0.75rem; }
+    .accordion-body { padding: var(--space-sm) 0 0; display: none; margin-bottom: var(--space-md); }
+    .accordion-body.open { display: block; }
+
+    /* KPIs */
+    .kpi-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .kpi-card {
+      background: #ffffff;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--card-border);
+      padding: 16px var(--space-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: var(--shadow-xs);
+    }
+    .kpi-val { font-size: 1.35rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+    .kpi-lbl { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Toast and Loading */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: var(--text-primary); color: #fff;
+      padding: 12px 22px; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600;
+      display: none; z-index: 2000; box-shadow: var(--shadow-dropdown);
+    }
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(246, 247, 250, 0.85); display: none; align-items: center;
+      justify-content: center; flex-direction: column; gap: var(--space-md); z-index: 1999;
+      backdrop-filter: blur(3px);
+    }
+    .spinner {
+      width: 38px; height: 38px; border: 3px solid var(--card-border);
+      border-top: 3px solid var(--accent-color); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Choice group buttons */
+    .choice-group { display: flex; gap: var(--space-sm); margin-bottom: var(--space-md); }
+    .choice-btn {
+      flex: 1; padding: 9px 14px; border: 1px solid var(--card-border); border-radius: var(--radius-sm);
+      font-weight: 600; font-size: 0.85rem; cursor: pointer; text-align: center; transition: all 120ms var(--ease); background: #ffffff; color: var(--text-main);
+    }
+    .choice-btn:hover { background: var(--bg-subtle); border-color: var(--card-border-hover); }
+    .choice-btn.active { background: var(--primary-color); color: #ffffff; border-color: var(--primary-color); }
+
+    .canvas-clear {
+      border: none;
+      background: none;
+      color: var(--accent-color);
+      font-weight: 600;
+      font-size: 0.78rem;
+      cursor: pointer;
+      padding: 2px 4px;
+    }
+    .canvas-clear:hover { text-decoration: underline; }
+
+    .canvas-container {
+      border: 1.5px dashed var(--card-border); border-radius: var(--radius-md); background: var(--bg-subtle); overflow: hidden;
+    }
+    canvas { display: block; background: var(--bg-subtle); cursor: crosshair; }
+
+    .info-box { font-size: 0.85rem; line-height: 1.7; }
+
+    /* Empty state cells rendered from JS */
+    td[colspan] { color: var(--text-faint); padding: 40px 18px; font-size: 0.85rem; }
+
+    /* Media query tablet/mobile Drawer */
+    @media (max-width: 992px) {
+      .sidebar {
+        position: fixed;
+        left: -300px;
+        top: 0;
+        bottom: 0;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 280ms var(--ease);
+      }
+      .sidebar.open {
+        left: 0;
+      }
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(11, 16, 51, 0.45);
+        z-index: 998;
+        backdrop-filter: blur(2px);
+      }
+      .sidebar-overlay.open {
+        display: block;
+      }
+      .mobile-header {
+        display: flex;
+      }
+      body {
+        padding-top: 56px;
+      }
+      .header {
+        padding: var(--space-md) var(--space-lg);
+      }
+      .container {
+        padding: var(--space-md) var(--space-lg) var(--space-lg);
+      }
+      .kpi-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 576px) {
+      .kpi-container {
+        grid-template-columns: 1fr;
+      }
+      .grid-2 {
+        grid-template-columns: 1fr;
+        gap: var(--space-sm);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Loading -->
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: var(--primary-color);" id="loading-text">Cargando...</div>
+  </div>
+
+  <!-- Sidebar Overlay for Mobile -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- Mobile Header -->
+  <div class="mobile-header">
+    <button class="burger-btn" onclick="toggleSidebar()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+    <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" class="logo" style="height: 32px;" alt="LOG&SER">
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-mark" role="img" aria-label="LOG&SER - Apoyo Logístico y Operativo S.A.S."></div>
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item active" id="nav-responsables" onclick="switchTab('responsables')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Responsables</span>
+      </li>
+      <li class="nav-item" id="nav-reintegros" onclick="switchTab('reintegros')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+        <span>Reintegros</span>
+      </li>
+      <li class="nav-item" id="nav-flujo" onclick="switchTab('flujo')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Flujo de Caja</span>
+      </li>
+      <li class="nav-item" id="nav-reembolsos" onclick="switchTab('reembolsos')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Reembolsos Pendientes</span>
+      </li>
+      <li class="nav-item" id="nav-proveedores" onclick="switchTab('proveedores')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        <span>Proveedores</span>
+      </li>
+    </ul>
+
+    <!-- Double wave curve SVG footer texture -->
+    <div class="sidebar-pattern"></div>
+
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="header">
+      <div class="header-capsule">
+        <span class="header-text" id="main-title">Cajas Operativas</span>
+      </div>
+      <div class="user-profile">
+        <div class="avatar-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: white;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <div class="user-badge" id="user-badge">Cargando...</div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-left: 2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- ── TAB: RESPONSABLES ── -->
+      <div class="tab-panel" id="panel-responsables">
+        <div class="page-head">
+          <div class="page-head-title">Cajas Operativas y Responsables</div>
+          <button class="btn btn-primary" onclick="abrirModalResponsable()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Registrar Responsable
+          </button>
+        </div>
+        <div class="card">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Responsable (C.C.)</th>
+                  <th>Regional</th>
+                  <th>Operación Principal</th>
+                  <th>Cuenta Bancaria</th>
+                  <th class="text-right">Base Autorizada</th>
+                  <th class="text-right">Saldo Disponible</th>
+                  <th class="text-center">Uso (%)</th>
+                </tr>
+              </thead>
+              <tbody id="responsables-body">
+                <!-- Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: REINTEGROS ── -->
+      <div class="tab-panel" id="panel-reintegros" style="display:none;">
+        <div class="page-head">
+          <div class="page-head-title">Control de Reintegros de Caja</div>
+          <button class="btn btn-primary" onclick="abrirModalSolicitarReintegro()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Solicitar Reintegro
+          </button>
+        </div>
+
+        <div id="reintegros-agrupado-container">
+          <!-- Accordion grouped by Regional/Operacion -->
+        </div>
+      </div>
+
+      <!-- ── TAB: FLUJO DE CAJA ── -->
+      <div class="tab-panel" id="panel-flujo" style="display:none;">
+        <div class="page-head-title" style="margin-bottom:20px;">Consolidado Quincenal de Caja</div>
+
+        <!-- Filters -->
+        <div class="card" style="padding: 20px; margin-bottom: 24px; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
+          <div class="field" style="margin-bottom:0; flex:1; min-width:180px;">
+            <label for="filter-regional">Regional</label>
+            <select id="filter-regional" onchange="applyFiltrosFlujo()">
+              <option value="">Todas...</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0; flex:1; min-width:180px;">
+            <label for="filter-operacion">Operación</label>
+            <select id="filter-operacion" onchange="applyFiltrosFlujo()">
+              <option value="">Todas...</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0; flex:1; min-width:180px;">
+            <label for="filter-quincena">Quincena</label>
+            <input type="text" id="filter-quincena" placeholder="Ej. Q1 Enero" oninput="applyFiltrosFlujo()">
+          </div>
+          <button class="btn btn-secondary" onclick="limpiarFiltrosFlujo()">Limpiar</button>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Periodo</th>
+                  <th>Responsable</th>
+                  <th>Regional</th>
+                  <th>Operación</th>
+                  <th class="text-right">Saldo Inicial</th>
+                  <th class="text-right">Reintegros</th>
+                  <th class="text-right">Total Gastado</th>
+                  <th class="text-center">Val. Op. / Val. Cont.</th>
+                  <th class="text-right">Saldo Final</th>
+                </tr>
+              </thead>
+              <tbody id="flujo-body">
+                <!-- Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: REEMBOLSOS PENDIENTES ── -->
+      <div class="tab-panel" id="panel-reembolsos" style="display:none;">
+        <div class="page-head-title" style="margin-bottom:20px;">Reembolsos Solicitados por Colaboradores (Anticipados)</div>
+        <div class="card">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Colaborador (C.C.)</th>
+                  <th>Contacto</th>
+                  <th>Regional / Operación</th>
+                  <th>Descripción del Gasto</th>
+                  <th class="text-right">Valor</th>
+                  <th class="text-center">Soporte</th>
+                  <th style="width:12%; text-align:center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="reembolsos-body">
+                <!-- Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: PROVEEDORES ── -->
+      <div class="tab-panel" id="panel-proveedores" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <div class="page-head-title">Maestro de Proveedores</div>
+          <button class="btn btn-primary" onclick="abrirModalCrearProveedor()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Crear Proveedor</span>
+          </button>
+        </div>
+        <div class="card">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>NIT / Identificación</th>
+                  <th>Razón Social</th>
+                  <th>Registrado Por</th>
+                  <th>Fecha de Registro</th>
+                </tr>
+              </thead>
+              <tbody id="proveedores-body">
+                <!-- Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ DRAWER: DETALLE DE PERIODO Y GASTOS ════════ -->
+  <div class="drawer" id="drawer-periodo">
+    <div class="drawer-header">
+      <div>
+        <div style="font-size:1.25rem; font-weight:700;" id="drawer-title">Gastos del Periodo</div>
+        <div style="font-size:0.85rem; opacity:0.85; margin-top:2px;" id="drawer-subtitle">Responsable / Regional</div>
+      </div>
+      <button class="modal-close" style="color:#fff;" onclick="cerrarDrawerPeriodo()">×</button>
+    </div>
+    <div class="drawer-body">
+      <!-- KPIs -->
+      <div class="kpi-container">
+        <div class="kpi-card">
+          <div class="kpi-val" id="kpi-saldo-inicial">$0</div>
+          <div class="kpi-lbl">Saldo Inicial</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val" id="kpi-reintegros">$0</div>
+          <div class="kpi-lbl">Reintegros</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val" id="kpi-gastos" style="color:var(--red-text);">$0</div>
+          <div class="kpi-lbl">Gastos Reportados</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val" id="kpi-saldo-final" style="color:var(--green-text);">$0</div>
+          <div class="kpi-lbl">Saldo Disponible</div>
+        </div>
+      </div>
+
+      <!-- Interactive GCS bucket folder viewer -->
+      <div style="margin:16px 0; display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary btn-small" style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px; font-size:0.8rem;" onclick="abrirVisorSoportes()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          <span>Ver carpeta de soportes (Bucket)</span>
+        </button>
+      </div>
+
+      <!-- Validaciones sumatoria info -->
+      <div style="display:flex; justify-content:space-between; background:#ffffff; border:1px solid var(--card-border); padding:16px; border-radius:var(--radius-md); margin-bottom:20px; font-size:0.85rem; box-shadow: var(--shadow-sm);">
+        <div><strong>Validado por Responsable:</strong> <span id="text-sum-op" style="color:var(--green-text); font-weight:700;">$0</span></div>
+        <div><strong>Aprobado por Contabilidad:</strong> <span id="text-sum-cont" style="color:var(--green-text); font-weight:700;">$0</span></div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div style="font-weight:700; color:var(--primary-color);">Relación de Gastos</div>
+        <button class="btn btn-primary btn-small" onclick="abrirModalGasto()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Registrar Gasto (Adelantado)
+        </button>
+      </div>
+
+      <div class="card" style="padding:20px;">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Concepto / Proveedor</th>
+                <th>Descripción</th>
+                <th class="text-right">Valor</th>
+                <th class="text-center">Soporte</th>
+                <th style="text-align:center;">Validación Op.</th>
+                <th style="text-align:center;">Validación Cont.</th>
+              </tr>
+            </thead>
+            <tbody id="drawer-gastos-body">
+              <!-- Dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ MODALES ════════ -->
+
+  <!-- Modal: Crear/Editar Proveedor -->
+  <div class="modal" id="modal-crear-proveedor" style="z-index: 1100;">
+    <div class="modal-content" style="max-width:450px;">
+      <div class="modal-header">
+        <div id="modal-proveedor-titulo">Crear Nuevo Proveedor</div>
+        <button class="modal-close" onclick="cerrarModal('modal-crear-proveedor')">×</button>
+      </div>
+      <form id="form-crear-proveedor" onsubmit="guardarProveedor(event)">
+        <div class="field">
+          <label for="prov-nit">NIT / Identificación *</label>
+          <input type="text" id="prov-nit" required placeholder="Ej. 901234567-8" oninput="this.value = this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label for="prov-razonsocial">Razón Social *</label>
+          <input type="text" id="prov-razonsocial" required placeholder="Ej. Logyser SAS">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-crear-proveedor')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-proveedor-submit">Guardar Proveedor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Vincular Reembolso -->
+  <div class="modal" id="modal-vincular-reembolso">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">
+        <div>Vincular Reembolso Pendiente</div>
+        <button class="modal-close" onclick="cerrarModal('modal-vincular-reembolso')">×</button>
+      </div>
+      <form id="form-vincular-reembolso" onsubmit="guardarVinculacionReembolso(event)">
+        <input type="hidden" id="vincular-idgt">
+        <input type="hidden" id="vincular-tipo-gasto">
+        
+        <div style="background:var(--background-color); padding:12px; border-radius:var(--radius-sm); margin-bottom:16px; font-size:0.85rem; border:1px solid var(--card-border);">
+          <div style="margin-bottom:4px;"><strong>Colaborador:</strong> <span id="vincular-lbl-trabajador"></span></div>
+          <div style="margin-bottom:4px;"><strong>Identificación:</strong> <span id="vincular-lbl-identificacion"></span></div>
+          <div style="margin-bottom:4px;"><strong>Tipo de Gasto:</strong> <span id="vincular-lbl-tipo-gasto"></span></div>
+          <div style="margin-bottom:4px;"><strong>Valor:</strong> <span id="vincular-lbl-valor"></span></div>
+          <div><strong>Concepto:</strong> <span id="vincular-lbl-descripcion"></span></div>
+        </div>
+
+        <div class="field">
+          <label id="vincular-select-label" for="vincular-select-target">Seleccionar destino *</label>
+          <select id="vincular-select-target" required style="width:100%; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--card-border);">
+            <!-- Dinámico -->
+          </select>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal('modal-vincular-reembolso')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Vincular Reembolso</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
+
+  <!-- Modal: Visor de Soportes GCS -->
+  <div class="modal" id="modal-visor-soportes" style="z-index: 1050;">
+    <div class="modal-content" style="max-width: 950px; width: 90%; max-height: 85vh; padding: 24px;">
+      <div class="modal-header">
+        <div>Visor de Soportes del Periodo</div>
+        <button class="modal-close" onclick="cerrarModal('modal-visor-soportes')">×</button>
+      </div>
+      <div style="display: grid; grid-template-columns: 320px 1fr; gap: 20px; height: 500px; margin-top: 10px;">
+        <!-- Left: Files list -->
+        <div style="border-right: 1px solid var(--card-border); padding-right: 16px; display: flex; flex-direction: column; overflow-y: auto;">
+          <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Documentos en Carpeta</div>
+          <div id="visor-lista-archivos" style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px;">
+            <!-- Dynamic file list items -->
+          </div>
+        </div>
+        <!-- Right: Preview pane -->
+        <div style="display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--card-border); position: relative;">
+          <!-- Preview Actions toolbar -->
+          <div id="visor-preview-toolbar" style="display: none; justify-content: space-between; align-items: center; padding: 12px 16px; background: #ffffff; border-bottom: 1px solid var(--card-border);">
+            <div id="visor-preview-filename" style="font-size: 0.85rem; font-weight: 700; color: var(--primary-color); word-break: break-all; margin-right: 10px;">archivo.pdf</div>
+            <div style="display: flex; gap: 8px; flex-shrink: 0;">
+              <a id="visor-link-abrir" href="#" target="_blank" class="btn btn-secondary btn-small" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; font-size: 0.75rem; text-decoration: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                <span>Nueva pestaña</span>
+              </a>
+              <a id="visor-link-descargar" href="#" download class="btn btn-primary btn-small" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; font-size: 0.75rem; text-decoration: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"></polyline><line x1="12" y1="12" x2="12" y2="21"></line><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"></path></svg>
+                <span>Descargar</span>
+              </a>
+            </div>
+          </div>
+          <!-- Preview Container -->
+          <div id="visor-preview-container" style="flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto; height: 100%;">
+            <!-- Default placeholder -->
+            <div id="visor-preview-placeholder" style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px auto; color: var(--text-faint); display: block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+              <span>Seleccione un soporte de la lista para previsualizarlo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Crear Responsable -->
+  <div class="modal" id="modal-responsable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div id="modal-responsable-titulo">Registrar Responsable de Gasto</div>
+        <button class="modal-close" onclick="cerrarModal('modal-responsable')">×</button>
+      </div>
+      <form id="form-responsable" onsubmit="guardarResponsable(event)">
+        <div class="field">
+          <label for="resp-identificacion">Cédula del Responsable *</label>
+          <input type="text" id="resp-identificacion" required placeholder="Ej. 1095950145">
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="resp-regional">Regional Principal *</label>
+            <select id="resp-regional" required onchange="onRespRegionalChange()">
+              <option value="">Seleccione regional...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="resp-operacion">Operación Principal *</label>
+            <select id="resp-operacion" required>
+              <option value="">Seleccione operación...</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="resp-banco">Banco</label>
+            <input type="text" id="resp-banco" placeholder="Ej. Bancolombia">
+          </div>
+          <div class="field">
+            <label for="resp-cuenta">Número de Cuenta</label>
+            <input type="text" id="resp-cuenta" placeholder="Ej. Ahorros 123-45678-9">
+          </div>
+        </div>
+        <div class="field">
+          <label for="resp-base">Base Autorizada ($ COP) *</label>
+          <input type="number" id="resp-base" required min="1000" placeholder="Ej. 2000000">
+        </div>
+        <div class="field">
+          <label for="resp-observaciones">Observaciones</label>
+          <textarea id="resp-observaciones" rows="2" placeholder="Notas sobre el responsable..."></textarea>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+          <button type="button" id="btn-responsable-eliminar" class="btn" style="background:var(--red); color:white; display:none;" onclick="confirmarEliminarResponsable()">Eliminar Responsable</button>
+          <button type="submit" id="btn-responsable-submit" class="btn btn-primary" style="flex:1;">Crear Responsable</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Solicitar Reintegro -->
+  <div class="modal" id="modal-solicitar-reintegro">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>Solicitar Reintegro de Caja</div>
+        <button class="modal-close" onclick="cerrarModal('modal-solicitar-reintegro')">×</button>
+      </div>
+      <div style="background:#FFF3CD; border:1px solid #FFEBAA; border-left:4px solid #FFC107; padding:12px 16px; border-radius:var(--radius-md); font-size:0.82rem; color:#856404; margin-bottom:16px; display:flex; align-items:flex-start; gap:8px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span><strong>Importante:</strong> Solo se puede solicitar reintegro cuando el uso acumulado de la caja sea igual o superior al 60%.</span>
+      </div>
+      <form id="form-solicitar-reintegro" onsubmit="guardarSolicitudReintegro(event)">
+        <div class="field">
+          <label for="reint-fecha">Fecha de Solicitud</label>
+          <input type="text" id="reint-fecha" readonly>
+        </div>
+        <div class="field">
+          <label for="reint-responsable">Responsable de Caja *</label>
+          <select id="reint-responsable" required onchange="onReintResponsableChange()">
+            <option value="">Seleccione responsable...</option>
+          </select>
+        </div>
+        
+        <!-- Info card pre-loaded -->
+        <div id="reint-info-card" style="display:none; background:var(--primary-soft); border-left:3px solid var(--primary-color); padding:16px; border-radius:var(--radius-md); margin-bottom:16px; font-size:0.85rem;">
+          <div style="font-weight:700; color:var(--primary-color);" id="reint-info-nombre">Nombre Responsable</div>
+          <div id="reint-info-ubicacion" style="color:var(--text-muted);">Regional / Operación</div>
+          <div style="margin-top:8px; display:flex; justify-content:space-between;">
+            <div><strong>Saldo Actual:</strong> <span id="reint-info-saldo">$0</span></div>
+            <div><strong>Uso:</strong> <span id="reint-info-porcentaje" style="font-weight:700;">0%</span></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="reint-observaciones">Observaciones Solicitante *</label>
+          <textarea id="reint-observaciones" rows="3" required placeholder="Escriba la justificación del reintegro..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;" id="btn-submit-reintegro">Enviar Solicitud</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Aprobar Reintegro -->
+  <div class="modal" id="modal-aprobar-reintegro">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>Aprobar Reintegro de Caja</div>
+        <button class="modal-close" onclick="cerrarModal('modal-aprobar-reintegro')">×</button>
+      </div>
+      <form id="form-aprobar-reintegro" onsubmit="guardarAprobacionReintegro(event)">
+        <input type="hidden" id="aprob-idreintegro">
+        <div class="info-box" id="aprob-solicitud-resumen" style="margin-bottom:16px; background:var(--bg-subtle); border:1px solid var(--card-border); padding:16px; border-radius:var(--radius-md); color:var(--text-main);">
+          <!-- Solicitante details -->
+        </div>
+        <div class="field">
+          <label for="aprob-valor">Valor a Reintegrar ($ COP) *</label>
+          <input type="number" id="aprob-valor" required min="1">
+        </div>
+        <div class="field">
+          <label for="aprob-observaciones">Observaciones Aprobador</label>
+          <textarea id="aprob-observaciones" rows="2" placeholder="Notas sobre el desembolso..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">Aprobar Reintegro</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Registrar Gasto -->
+  <div class="modal" id="modal-registrar-gasto">
+    <div class="modal-content" style="max-width:650px;">
+      <div class="modal-header">
+        <div id="modal-gasto-titulo">Registrar Gasto (Adelantado)</div>
+        <button class="modal-close" onclick="cerrarModal('modal-registrar-gasto')">×</button>
+      </div>
+      <form id="form-gasto" onsubmit="guardarGasto(event)">
+        <input type="hidden" id="gasto-idreembolso"> <!-- Linked pending request -->
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="gasto-fecha">Fecha Movimiento *</label>
+            <input type="datetime-local" id="gasto-fecha" required>
+          </div>
+          <div class="field">
+            <label for="gasto-tipo-gasto">Tipo de Gasto *</label>
+            <div class="choice-group">
+              <div class="choice-btn active" id="btn-gasto-compra" onclick="setTipoGasto('Compra')">Compra</div>
+              <div class="choice-btn" id="btn-gasto-transporte" onclick="setTipoGasto('Transporte')">Transporte</div>
+              <div class="choice-btn" id="btn-gasto-otro" onclick="setTipoGasto('Otro')">Otro</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Transporte suboptions -->
+        <div id="gasto-section-transporte" style="display:none; background:var(--bg-subtle); border:1px solid var(--card-border); padding:16px; border-radius:var(--radius-md); margin-bottom:16px;">
+          <div class="field">
+            <label>Concepto de Transporte *</label>
+            <div class="choice-group">
+              <div class="choice-btn" id="btn-trans-extendido" onclick="setConceptoTransporte('Turno Extendido')">T. Extendido</div>
+              <div class="choice-btn" id="btn-trans-domicilio" onclick="setConceptoTransporte('Domicilio')">Domicilio</div>
+              <div class="choice-btn" id="btn-trans-traslado" onclick="setConceptoTransporte('Traslado')">Traslado</div>
+            </div>
+          </div>
+          <div class="field" id="gasto-field-placa" style="display:none;">
+            <label for="gasto-placa">Placa Vehículo *</label>
+            <input type="text" id="gasto-placa" maxlength="6" placeholder="ABC123" style="text-transform:uppercase;">
+          </div>
+          <div class="grid-2" id="gasto-row-traslado" style="display:none;">
+            <div class="field">
+              <label for="gasto-origen">Origen *</label>
+              <input type="text" id="gasto-origen" placeholder="Mosquera">
+            </div>
+            <div class="field">
+              <label for="gasto-destino">Destino *</label>
+              <input type="text" id="gasto-destino" placeholder="Funza">
+            </div>
+          </div>
+        </div>
+
+        <!-- Provider and worker dropdowns first -->
+        <div class="field" id="gasto-field-select-proveedor" style="display:none;">
+          <label for="gasto-select-proveedor">Proveedor *</label>
+          <select id="gasto-select-proveedor" onchange="onGastoSelectProveedorChange()">
+            <option value="">Seleccione proveedor...</option>
+            <option value="NUEVO" style="color:var(--accent); font-weight:bold;">✏️ Nuevo Proveedor...</option>
+          </select>
+        </div>
+
+        <div class="field" id="gasto-field-select-trabajador" style="display:none;">
+          <label for="gasto-select-trabajador">Nombre de Trabajador *</label>
+          <select id="gasto-select-trabajador" onchange="onGastoSelectTrabajadorChange()">
+            <option value="">Seleccione colaborador...</option>
+          </select>
+        </div>
+
+        <!-- Document and worker lookup below -->
+        <div class="grid-2">
+          <div class="field">
+            <label for="gasto-tipo-id">Tipo Identificación *</label>
+            <select id="gasto-tipo-id" required onchange="onGastoTipoIdChange()">
+              <option value="NIT">Nit</option>
+              <option value="CC">Cédula (CC)</option>
+            </select>
+          </div>
+          <div class="field" id="gasto-field-num-id">
+            <label for="gasto-num-id" id="gasto-label-num-id"># Nit *</label>
+            <input type="text" id="gasto-num-id" required>
+          </div>
+        </div>
+
+        <div class="field" id="gasto-field-tercero">
+          <label for="gasto-tercero">Nombre o Razón Social *</label>
+          <input type="text" id="gasto-tercero" required>
+        </div>
+
+        <div class="field" id="gasto-field-descripcion">
+          <label for="gasto-descripcion">Descripción del Gasto *</label>
+          <input type="text" id="gasto-descripcion">
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="gasto-valor">Valor del Gasto ($ COP) *</label>
+            <input type="number" id="gasto-valor" required min="1">
+          </div>
+          <div class="field">
+            <label for="gasto-soporte" id="gasto-label-soporte">Soporte (PDF/Imagen) *</label>
+            <input type="file" id="gasto-soporte" accept="image/*,application/pdf" onchange="onGastoFileSelected(event)">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="gasto-observaciones">Observaciones (Opcional)</label>
+          <textarea id="gasto-observaciones" rows="1"></textarea>
+        </div>
+
+        <!-- Worker signature pad (Adelantado Transporte only) -->
+        <div class="field" id="gasto-section-firma" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label style="margin-bottom:0;">Firma del Colaborador *</label>
+            <button type="button" class="canvas-clear" onclick="clearGastoCanvas()">Borrar firma</button>
+          </div>
+          <div class="canvas-container">
+            <canvas id="gasto-canvas-firma" height="110"></canvas>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">Guardar Gasto</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Toggle mobile sidebar
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('open');
+      document.getElementById('sidebar-overlay').classList.toggle('open');
+    }
+
+    // Config injected from server
+    const CONFIG = {
+      usuarioId: new URLSearchParams(window.location.search).get('usuario'),
+      rol: '',
+      usuarioNombre: '',
+      opsPorRegional: {},
+      regionales: [],
+      sinFiltro: false
+    };
+
+    const toast = document.getElementById('toast');
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+    function showToast(msg, type = 'success') {
+      toast.innerText = msg;
+      toast.style.background = type === 'error' ? 'var(--red)' : 'var(--accent)';
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    // Modal helpers
+    function abrirModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+    function cerrarModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    // ── Column resize & reorder (applies to any table with a <thead> row) ──
+    function initColumnControls(table) {
+      if (!table || table.dataset.colInit === '1') return;
+      table.dataset.colInit = '1';
+
+      const theadRow = table.querySelector('thead tr');
+      if (!theadRow) return;
+
+      const ths = Array.from(theadRow.children);
+      table._originalThs = ths;
+      table._colOrder = ths.map((_, i) => i);
+      table._sortState = { origIdx: null, dir: null };
+
+      // Measure each column's natural (content-based) width *before* switching
+      // to a fixed layout — once fixed, widths without explicit sizing collapse.
+      const naturalWidths = ths.map((th) => th.getBoundingClientRect().width);
+      table.style.tableLayout = 'fixed';
+
+      ths.forEach((th, i) => {
+        th.style.position = 'relative';
+        th.style.width = naturalWidths[i] + 'px';
+        th.setAttribute('draggable', 'true');
+        th.dataset.originalIndex = i;
+        th.classList.add('col-sortable');
+
+        const sortIndicator = document.createElement('span');
+        sortIndicator.className = 'col-sort-indicator';
+        sortIndicator.textContent = '↕';
+        th.appendChild(sortIndicator);
+
+        const handle = document.createElement('span');
+        handle.className = 'col-resize-handle';
+        handle.setAttribute('draggable', 'false');
+        th.appendChild(handle);
+        attachColumnResize(handle, th);
+        attachColumnDrag(th, table);
+        attachColumnSort(th, table);
+      });
+
+      const tbody = table.querySelector('tbody');
+      if (tbody) {
+        Array.from(tbody.children).forEach((tr) => {
+          if (!tr._originalCells) tr._originalCells = Array.from(tr.children);
+        });
+        applyColumnOrder(table);
+        applySortState(table);
+
+        // Reordering columns/rows below mutates tbody's own children, which would
+        // otherwise re-trigger this same observer and loop forever — pause it first.
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((m) => {
+            m.addedNodes.forEach((node) => {
+              if (node.nodeType === 1 && node.tagName === 'TR' && !node._originalCells) {
+                node._originalCells = Array.from(node.children);
+              }
+            });
+          });
+          observer.disconnect();
+          applyColumnOrder(table);
+          applySortState(table);
+          observer.observe(tbody, { childList: true });
+        });
+        observer.observe(tbody, { childList: true });
+      }
+    }
+
+    function applyColumnOrder(table) {
+      const theadRow = table.querySelector('thead tr');
+      if (theadRow && table._originalThs) {
+        table._colOrder.forEach((origIdx) => theadRow.appendChild(table._originalThs[origIdx]));
+      }
+      const tbody = table.querySelector('tbody');
+      if (tbody) {
+        Array.from(tbody.children).forEach((tr) => {
+          // Skip placeholder rows (e.g. empty-state messages using colspan)
+          // that don't have one cell per column.
+          if (tr._originalCells && tr._originalCells.length === table._colOrder.length) {
+            table._colOrder.forEach((origIdx) => tr.appendChild(tr._originalCells[origIdx]));
+          }
+        });
+      }
+    }
+
+    // ── Column sort (click a header to sort ascending/descending) ──
+    function attachColumnSort(th, table) {
+      th.addEventListener('click', (e) => {
+        if (e.target.closest('.col-resize-handle')) return;
+        if (table._justDragged) return;
+
+        const origIdx = Number(th.dataset.originalIndex);
+        if (table._sortState.origIdx === origIdx) {
+          table._sortState.dir = table._sortState.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          table._sortState.origIdx = origIdx;
+          table._sortState.dir = 'asc';
+        }
+        updateSortIndicators(table);
+        applySortState(table);
+      });
+    }
+
+    function updateSortIndicators(table) {
+      table._originalThs.forEach((th) => {
+        const indicator = th.querySelector('.col-sort-indicator');
+        if (!indicator) return;
+        const isActive = Number(th.dataset.originalIndex) === table._sortState.origIdx;
+        th.classList.toggle('col-sort-active', isActive);
+        indicator.textContent = isActive ? (table._sortState.dir === 'asc' ? '↑' : '↓') : '↕';
+      });
+    }
+
+    // Best-effort parser for the "es-CO" date strings used across this panel
+    // (e.g. "17/7/2026, 8:26:23 a. m."), so date columns sort chronologically.
+    function parseSpanishDateTime(text) {
+      const m = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?\s?m\.?|p\.?\s?m\.?)?)?/i);
+      if (!m) return null;
+      const [, d, mo, y, h, mi, s, ampm] = m;
+      let hour = h ? parseInt(h, 10) : 0;
+      if (ampm) {
+        const isPM = /^p/i.test(ampm);
+        if (isPM && hour < 12) hour += 12;
+        if (!isPM && hour === 12) hour = 0;
+      }
+      const date = new Date(Number(y), Number(mo) - 1, Number(d), hour, mi ? Number(mi) : 0, s ? Number(s) : 0);
+      return isNaN(date.getTime()) ? null : date.getTime();
+    }
+
+    // Handles both Colombian currency formatting ("$2.000.000", dot = thousands)
+    // and decimals ("77.5%", dot = decimal point).
+    function parseLocaleNumber(text) {
+      let t = text.replace(/[^0-9.,-]/g, '').trim();
+      if (!t) return NaN;
+      if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) {
+        t = t.replace(/\./g, '').replace(',', '.');
+      } else if (/^-?\d+,\d+$/.test(t)) {
+        t = t.replace(',', '.');
+      }
+      return parseFloat(t);
+    }
+
+    function compareSortValues(a, b) {
+      const da = parseSpanishDateTime(a);
+      const db = parseSpanishDateTime(b);
+      if (da != null && db != null) return da - db;
+
+      const na = parseLocaleNumber(a);
+      const nb = parseLocaleNumber(b);
+      if (!isNaN(na) && !isNaN(nb) && a.trim() !== '' && b.trim() !== '') return na - nb;
+
+      return a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
+    }
+
+    function applySortState(table) {
+      const { origIdx, dir } = table._sortState || {};
+      if (origIdx == null || !dir) return;
+
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return;
+
+      const rows = Array.from(tbody.children).filter(
+        (tr) => tr._originalCells && tr._originalCells.length === table._colOrder.length
+      );
+      if (rows.length < 2) return;
+
+      rows.sort((rowA, rowB) => {
+        const textA = (rowA._originalCells[origIdx].textContent || '').trim();
+        const textB = (rowB._originalCells[origIdx].textContent || '').trim();
+        const result = compareSortValues(textA, textB);
+        return dir === 'asc' ? result : -result;
+      });
+
+      rows.forEach((tr) => tbody.appendChild(tr));
+    }
+
+    function attachColumnResize(handle, th) {
+      let startX, startWidth;
+      handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startX = e.clientX;
+        startWidth = th.getBoundingClientRect().width;
+        document.body.classList.add('col-resizing');
+
+        function onMove(ev) {
+          const newW = Math.max(50, startWidth + (ev.clientX - startX));
+          th.style.width = newW + 'px';
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          document.body.classList.remove('col-resizing');
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    }
+
+    function attachColumnDrag(th, table) {
+      th.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        table._dragFromPos = Array.from(th.parentElement.children).indexOf(th);
+        table._justDragged = true;
+        th.classList.add('col-dragging');
+      });
+      th.addEventListener('dragend', () => {
+        th.classList.remove('col-dragging');
+        // Let a possible trailing click event (some browsers fire one after drop) pass through first.
+        setTimeout(() => { table._justDragged = false; }, 0);
+      });
+      th.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        th.classList.add('col-drop-target');
+      });
+      th.addEventListener('dragleave', () => th.classList.remove('col-drop-target'));
+      th.addEventListener('drop', (e) => {
+        e.preventDefault();
+        th.classList.remove('col-drop-target');
+        const toPos = Array.from(th.parentElement.children).indexOf(th);
+        const fromPos = table._dragFromPos;
+        if (fromPos == null || fromPos === toPos) return;
+        const order = table._colOrder;
+        const [moved] = order.splice(fromPos, 1);
+        order.splice(toPos, 0, moved);
+        applyColumnOrder(table);
+        applySortState(table);
+      });
+    }
+
+    // Tab switching
+    let currentTab = 'responsables';
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.style.display = 'none');
+
+      document.getElementById(`nav-${tab}`).classList.add('active');
+      document.getElementById(`panel-${tab}`).style.display = 'block';
+
+      // Update titles
+      const titles = {
+        responsables: 'Cajas Operativas',
+        reintegros: 'Gestión de Reintegros',
+        flujo: 'Consolidado de Flujo de Caja',
+        reembolsos: 'Reembolsos Pendientes',
+        proveedores: 'Maestro de Proveedores'
+      };
+      document.getElementById('main-title').innerText = titles[tab];
+
+      // Refresh data
+      if (tab === 'responsables') {
+        cargarResponsables();
+      } else if (tab === 'reintegros') {
+        cargarReintegros();
+      } else if (tab === 'flujo') {
+        cargarFlujosDeCaja();
+      } else if (tab === 'reembolsos') {
+        cargarReembolsosPendientes();
+      } else if (tab === 'proveedores') {
+        cargarProveedores();
+      }
+    }
+
+    // Initialize user permissions
+    async function init() {
+      if (!CONFIG.usuarioId) {
+        alert('Falta el parámetro usuario en la URL.');
+        return;
+      }
+      showLoading('Inicializando acceso...');
+      try {
+        const r = await fetch(`/cajaoperativa/api/acceso?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error al validar acceso del usuario.');
+        const data = await r.json();
+
+        CONFIG.rol = data.rol;
+        CONFIG.usuarioNombre = data.usuarioNombre;
+        CONFIG.opsPorRegional = data.opsPorRegional;
+        CONFIG.regionales = Object.keys(data.opsPorRegional);
+        CONFIG.sinFiltro = data.sinFiltro;
+
+        document.getElementById('user-badge').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+
+        // Hide "Responsables" tab if not Contabilidad or Sistema
+        if (!CONFIG.sinFiltro) {
+          document.getElementById('nav-responsables').style.display = 'none';
+          switchTab('reintegros');
+        } else {
+          switchTab('responsables');
+        }
+
+        // Populate regional selectors
+        poblarRegionalesDropdowns();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function poblarRegionalesDropdowns() {
+      // 1. Filter dropdowns
+      const filterReg = document.getElementById('filter-regional');
+      filterReg.innerHTML = '<option value="">Todas las Regionales...</option>';
+      CONFIG.regionales.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r; opt.innerText = r;
+        filterReg.appendChild(opt);
+      });
+
+      // 2. Modal responsible regional
+      const respReg = document.getElementById('resp-regional');
+      respReg.innerHTML = '<option value="">Seleccione regional...</option>';
+      CONFIG.regionales.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r; opt.innerText = r;
+        respReg.appendChild(opt);
+      });
+    }
+
+    // ── TAB 1: RESPONSABLES CODE ──
+
+    let responsablesList = [];
+    async function cargarResponsables() {
+      try {
+        const r = await fetch(`/cajaoperativa/api/responsables?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error cargando responsables');
+        responsablesList = await r.json();
+
+        const tbody = document.getElementById('responsables-body');
+        tbody.innerHTML = '';
+
+        if (!responsablesList.length) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No hay responsables asignados.</td></tr>';
+          initColumnControls(tbody.closest('table'));
+          return;
+        }
+
+        responsablesList.forEach(item => {
+          // Color semáforo de uso
+          let badgeClass = 'badge-success';
+          if (item.porcentaje_uso > 70) {
+            badgeClass = 'badge-danger';
+          } else if (item.porcentaje_uso >= 60) {
+            badgeClass = 'badge-warning';
+          }
+
+          const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          tr.onclick = () => abrirModalEditarResponsable(item.idresponsable);
+          tr.innerHTML = `
+            <td><strong>${item.usuario}</strong><br><span style="font-size:11px; color:var(--text-muted);">C.C. ${item.identificacion}</span></td>
+            <td>${item.regional}</td>
+            <td>${item.operacionprincipal}</td>
+            <td>${item.banco ? `<strong>${item.banco}</strong><br><span style="font-size:11px; color:var(--text-muted);">${item.numerocuenta}</span>` : '—'}</td>
+            <td class="text-right"><strong>$${Number(item.base_autorizada).toLocaleString('es-CO')}</strong></td>
+            <td class="text-right"><strong style="color:var(--primary-color);">$${Number(item.saldo).toLocaleString('es-CO')}</strong></td>
+            <td class="text-center"><span class="badge ${badgeClass}">${item.porcentaje_uso.toFixed(1)}%</span></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        initColumnControls(tbody.closest('table'));
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function abrirModalResponsable() {
+      if (!['Contabilidad', 'Sistema'].includes(CONFIG.rol)) {
+        showToast('Solo usuarios de Contabilidad o Sistema pueden registrar responsables.', 'warning');
+        return;
+      }
+      editingResponsableId = null;
+      document.getElementById('modal-responsable-titulo').innerText = 'Registrar Responsable de Gasto';
+      document.getElementById('btn-responsable-submit').innerText = 'Crear Responsable';
+      document.getElementById('btn-responsable-eliminar').style.display = 'none';
+      document.getElementById('form-responsable').reset();
+      document.getElementById('resp-operacion').innerHTML = '<option value="">Seleccione operación...</option>';
+      abrirModal('modal-responsable');
+    }
+
+    function abrirModalEditarResponsable(idresponsable) {
+      if (!['Contabilidad', 'Sistema'].includes(CONFIG.rol)) {
+        showToast('Solo usuarios de Contabilidad o Sistema pueden administrar responsables.', 'warning');
+        return;
+      }
+
+      const item = responsablesList.find(x => x.idresponsable === idresponsable);
+      if (!item) return;
+
+      editingResponsableId = idresponsable;
+      document.getElementById('modal-responsable-titulo').innerText = 'Editar Responsable de Gasto';
+      document.getElementById('btn-responsable-submit').innerText = 'Actualizar Responsable';
+      document.getElementById('btn-responsable-eliminar').style.display = 'block';
+
+      document.getElementById('resp-identificacion').value = item.identificacion;
+      document.getElementById('resp-regional').value = item.regional;
+      onRespRegionalChange();
+      document.getElementById('resp-operacion').value = item.operacionprincipal;
+      document.getElementById('resp-banco').value = item.banco || '';
+      document.getElementById('resp-cuenta').value = item.numerocuenta || '';
+      document.getElementById('resp-base').value = Math.round(item.base_autorizada);
+      document.getElementById('resp-observaciones').value = item.observaciones || '';
+
+      abrirModal('modal-responsable');
+    }
+
+    function onRespRegionalChange() {
+      const reg = document.getElementById('resp-regional').value;
+      const opSel = document.getElementById('resp-operacion');
+      opSel.innerHTML = '<option value="">Seleccione operación...</option>';
+      if (!reg) return;
+
+      const ops = CONFIG.opsPorRegional[reg] || [];
+      ops.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.innerText = op;
+        opSel.appendChild(opt);
+      });
+    }
+
+    async function guardarResponsable(e) {
+      e.preventDefault();
+      const payload = {
+        usuario: CONFIG.usuarioId,
+        identificacion: document.getElementById('resp-identificacion').value.trim(),
+        regional: document.getElementById('resp-regional').value,
+        operacionprincipal: document.getElementById('resp-operacion').value,
+        banco: document.getElementById('resp-banco').value.trim(),
+        numerocuenta: document.getElementById('resp-cuenta').value.trim(),
+        base_autorizada: document.getElementById('resp-base').value,
+        observaciones: document.getElementById('resp-observaciones').value.trim()
+      };
+
+      const isEdit = !!editingResponsableId;
+      const endpoint = isEdit ? `/cajaoperativa/api/responsables/${editingResponsableId}` : '/cajaoperativa/api/responsables/crear';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      showLoading(isEdit ? 'Actualizando responsable...' : 'Creando responsable...');
+      try {
+        const r = await fetch(endpoint, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al guardar responsable');
+        }
+        showToast(isEdit ? 'Responsable actualizado exitosamente' : 'Responsable registrado exitosamente');
+        cerrarModal('modal-responsable');
+        cargarResponsables();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function eliminarResponsable(id) {
+      if (!confirm('¿Está seguro de que desea eliminar a este responsable? Se desvinculará de la caja operativa.')) return;
+      showLoading('Eliminando...');
+      try {
+        const r = await fetch(`/cajaoperativa/api/responsables/${id}?usuario=${CONFIG.usuarioId}`, {
+          method: 'DELETE'
+        });
+        if (!r.ok) throw new Error('Error al eliminar');
+        showToast('Responsable de egresos eliminado exitosamente.');
+        cargarResponsables();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function confirmarEliminarResponsable() {
+      if (!editingResponsableId) return;
+      eliminarResponsable(editingResponsableId);
+      cerrarModal('modal-responsable');
+    }
+
+    // ── TAB 2: REINTEGROS CODE ──
+
+    let reintegrosList = [];
+    async function cargarReintegros() {
+      try {
+        const r = await fetch(`/cajaoperativa/api/reintegros?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error cargando reintegros');
+        reintegrosList = await r.json();
+
+        // Group by Regional, then by Operacion
+        const groups = {};
+        reintegrosList.forEach(item => {
+          if (!groups[item.regional]) groups[item.regional] = {};
+          if (!groups[item.regional][item.operacion]) groups[item.regional][item.operacion] = [];
+          groups[item.regional][item.operacion].push(item);
+        });
+
+        const container = document.getElementById('reintegros-agrupado-container');
+        container.innerHTML = '';
+
+        if (!reintegrosList.length) {
+          container.innerHTML = '<div class="card" style="text-align:center; color:var(--text-faint);">No hay solicitudes de reintegro registradas.</div>';
+          return;
+        }
+
+        Object.keys(groups).forEach(reg => {
+          // Regional header
+          const regCard = document.createElement('div');
+          regCard.className = 'card';
+          regCard.style.padding = '16px';
+          regCard.style.marginBottom = '12px';
+          regCard.innerHTML = `<div class="section-title" style="margin-bottom:8px; border-bottom:1px solid var(--card-border); padding-bottom:10px;">Regional: ${reg}</div>`;
+
+          const opsGroup = groups[reg];
+          Object.keys(opsGroup).forEach(op => {
+            const items = opsGroup[op];
+            const accHeader = document.createElement('div');
+            accHeader.className = 'accordion-header';
+            accHeader.innerHTML = `
+              <div style="display:flex; align-items:center; gap:10px;">Operación: ${op} <span class="badge badge-neutral">${items.length} solicitudes</span></div>
+              <span class="accordion-toggle-icon">▼</span>
+            `;
+
+            const accBody = document.createElement('div');
+            accBody.className = 'accordion-body';
+
+            const tableWrap = document.createElement('div');
+            tableWrap.className = 'table-container';
+
+            let tableHtml = `
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha Solicitud</th>
+                    <th>Responsable</th>
+                    <th>Valor Solicitado</th>
+                    <th>Estado</th>
+                    <th>Fecha Reintegro</th>
+                    <th>Observaciones</th>
+                    <th style="width:10%;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+
+            items.forEach(item => {
+              const fSol = item.fecha_solicitud ? new Date(item.fecha_solicitud).toLocaleString('es-CO') : '';
+              const fRei = item.fecha_reintegro ? new Date(item.fecha_reintegro).toLocaleString('es-CO') : '—';
+              
+              let statusBadge = '';
+              if (item.estado === 'APROBADO') {
+                statusBadge = '<span class="badge badge-success">APROBADO</span>';
+              } else if (item.estado === 'PENDIENTE') {
+                statusBadge = '<span class="badge badge-warning">PENDIENTE</span>';
+              } else {
+                statusBadge = `<span class="badge badge-danger">${item.estado}</span>`;
+              }
+
+              let actBtn = '—';
+              if (item.estado === 'PENDIENTE' && CONFIG.sinFiltro) {
+                actBtn = `<button class="btn btn-primary btn-small" onclick="abrirModalAprobarReintegro('${item.idreintegro}')">Aprobar</button>`;
+              }
+
+              tableHtml += `
+                <tr>
+                  <td>${fSol}</td>
+                  <td><strong>${item.usuariosolicita}</strong><br><span style="font-size:10px;">C.C. ${item.resp_identificacion}</span></td>
+                  <td><strong>$${Number(item.valor).toLocaleString('es-CO')}</strong></td>
+                  <td>${statusBadge}</td>
+                  <td>${fRei}</td>
+                  <td>
+                    <span style="font-size:11px;"><strong>Sol:</strong> ${item.observaciones_solicitante || '—'}</span><br>
+                    <span style="font-size:11px;"><strong>Aprob:</strong> ${item.observaciones_aprobador || '—'}</span>
+                  </td>
+                  <td>${actBtn}</td>
+                </tr>
+              `;
+            });
+
+            tableHtml += `</tbody></table>`;
+            tableWrap.innerHTML = tableHtml;
+            accBody.appendChild(tableWrap);
+
+            accHeader.addEventListener('click', () => {
+              accBody.classList.toggle('open');
+              const isOpen = accBody.classList.contains('open');
+              accHeader.querySelector('.accordion-toggle-icon').innerText = isOpen ? '▲' : '▼';
+              // Columns can only be measured once the panel is visible
+              if (isOpen) initColumnControls(tableWrap.querySelector('table'));
+            });
+
+            regCard.appendChild(accHeader);
+            regCard.appendChild(accBody);
+          });
+
+          container.appendChild(regCard);
+        });
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function abrirModalSolicitarReintegro() {
+      document.getElementById('form-solicitar-reintegro').reset();
+      document.getElementById('reint-fecha').value = new Date().toLocaleString('es-CO');
+      document.getElementById('reint-info-card').style.display = 'none';
+
+      // Load responsibles list dynamically in the dropdown
+      const sel = document.getElementById('reint-responsable');
+      sel.innerHTML = '<option value="">Seleccione responsable...</option>';
+
+      try {
+        // We load from a dedicated endpoint or search local responsibles list
+        // Since Contabilidad has the list of all responsibles, they can choose.
+        // For restricted roles (Auxiliar, etc.), we only show the ones matching their operations.
+        let list = responsablesList;
+        if (!list || !list.length) {
+          // Fetch responsibles list just in case
+          const r = await fetch(`/cajaoperativa/api/responsables?usuario=${CONFIG.usuarioId}`);
+          list = await r.json();
+        }
+
+        // Filter responsibles list by operations if not contabilidad
+        let filtered = list;
+        if (!CONFIG.sinFiltro) {
+          filtered = list.filter(r => CONFIG.opsPorRegional[r.regional] && CONFIG.opsPorRegional[r.regional].includes(r.operacionprincipal));
+        }
+
+        filtered.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.idresponsable;
+          opt.innerText = `${r.usuario} (${r.operacionprincipal})`;
+          sel.appendChild(opt);
+        });
+
+        // Pre-fill if only 1 responsible exists
+        if (filtered.length === 1) {
+          sel.value = filtered[0].idresponsable;
+          onReintResponsableChange();
+        }
+
+        abrirModal('modal-solicitar-reintegro');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    let selectedResponsableObject = null;
+    async function onReintResponsableChange() {
+      const id = document.getElementById('reint-responsable').value;
+      const infoCard = document.getElementById('reint-info-card');
+      const btn = document.getElementById('btn-submit-reintegro');
+      if (!id) {
+        infoCard.style.display = 'none';
+        return;
+      }
+
+      showLoading('Consultando estado de saldo...');
+      try {
+        // Query the specific responsible details
+        // We can find it in the local list
+        let list = responsablesList;
+        if (!list || !list.length) {
+          const r = await fetch(`/cajaoperativa/api/responsables?usuario=${CONFIG.usuarioId}`);
+          list = await r.json();
+        }
+        const resp = list.find(r => r.idresponsable === id);
+        if (!resp) throw new Error('Responsable no encontrado');
+        selectedResponsableObject = resp;
+
+        document.getElementById('reint-info-nombre').innerText = resp.usuario;
+        document.getElementById('reint-info-ubicacion').innerText = `${resp.regional} — ${resp.operacionprincipal}`;
+        document.getElementById('reint-info-saldo').innerText = `$${Number(resp.saldo).toLocaleString('es-CO')}`;
+        document.getElementById('reint-info-porcentaje').innerText = `${resp.porcentaje_uso.toFixed(1)}%`;
+        
+        // Coloring usage
+        const badgeSpan = document.getElementById('reint-info-porcentaje');
+        if (resp.porcentaje_uso >= 70) {
+          badgeSpan.style.color = 'var(--red)';
+        } else if (resp.porcentaje_uso >= 60) {
+          badgeSpan.style.color = 'var(--yellow)';
+        } else {
+          badgeSpan.style.color = 'var(--green)';
+        }
+
+        infoCard.style.display = 'block';
+
+        // Block solicitar button if usage is < 60%
+        if (resp.porcentaje_uso < 60) {
+          btn.disabled = true;
+          btn.style.opacity = 0.5;
+          btn.style.cursor = 'not-allowed';
+          btn.title = 'El porcentaje de uso debe ser superior al 60% para solicitar reintegro.';
+        } else {
+          btn.disabled = false;
+          btn.style.opacity = 1;
+          btn.style.cursor = 'pointer';
+          btn.title = '';
+        }
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function guardarSolicitudReintegro(e) {
+      e.preventDefault();
+      const id = document.getElementById('reint-responsable').value;
+      const obs = document.getElementById('reint-observaciones').value.trim();
+
+      if (selectedResponsableObject && selectedResponsableObject.porcentaje_uso < 60) {
+        alert('No se puede solicitar. El uso debe ser superior o igual al 60%.');
+        return;
+      }
+
+      showLoading('Enviando solicitud...');
+      try {
+        const r = await fetch('/cajaoperativa/api/reintegros/solicitar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            idresponsable: id,
+            observaciones_solicitante: obs
+          })
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al enviar solicitud');
+        }
+        showToast('Solicitud de reintegro enviada con éxito');
+        cerrarModal('modal-solicitar-reintegro');
+        cargarReintegros();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function abrirModalAprobarReintegro(idreintegro) {
+      const reintegro = reintegrosList.find(r => r.idreintegro === idreintegro);
+      if (!reintegro) return;
+
+      document.getElementById('form-aprobar-reintegro').reset();
+      document.getElementById('aprob-idreintegro').value = idreintegro;
+      document.getElementById('aprob-valor').value = Math.round(reintegro.valor);
+
+      const fSol = new Date(reintegro.fecha_solicitud).toLocaleString('es-CO');
+      document.getElementById('aprob-solicitud-resumen').innerHTML = `
+        <strong>Solicitud:</strong> Reintegro para caja de ${reintegro.usuariosolicita}<br>
+        <strong>Ubicación:</strong> ${reintegro.regional} — ${reintegro.operacion}<br>
+        <strong>Base Autorizada:</strong> $${Number(reintegro.base_autorizada).toLocaleString('es-CO')}<br>
+        <strong>Fecha:</strong> ${fSol}<br>
+        <strong>Obs. Solicitante:</strong> ${reintegro.observaciones_solicitante || '—'}
+      `;
+
+      abrirModal('modal-aprobar-reintegro');
+    }
+
+    async function guardarAprobacionReintegro(e) {
+      e.preventDefault();
+      const id = document.getElementById('aprob-idreintegro').value;
+      const valor = document.getElementById('aprob-valor').value;
+      const obs = document.getElementById('aprob-observaciones').value.trim();
+
+      showLoading('Aprobando reintegro...');
+      try {
+        const r = await fetch(`/cajaoperativa/api/reintegros/${id}/aprobar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            valor,
+            observaciones_aprobador: obs
+          })
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al aprobar reintegro');
+        }
+        showToast('Reintegro aprobado y acreditado al período');
+        cerrarModal('modal-aprobar-reintegro');
+        cargarReintegros();
+        cargarResponsables(); // Refresh balances
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ── TAB 3: FLUJO DE CAJA / PERIODOS CODE ──
+
+    let flujosList = [];
+    async function cargarFlujosDeCaja() {
+      try {
+        const r = await fetch(`/cajaoperativa/api/periodos?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error al cargar flujos de caja');
+        flujosList = await r.json();
+
+        applyFiltrosFlujo();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function applyFiltrosFlujo() {
+      const reg = document.getElementById('filter-regional').value.toLowerCase();
+      const op = document.getElementById('filter-operacion').value.toLowerCase();
+      const qui = document.getElementById('filter-quincena').value.toLowerCase();
+
+      const tbody = document.getElementById('flujo-body');
+      tbody.innerHTML = '';
+
+      const filtered = flujosList.filter(item => {
+        const matchReg = !reg || (item.regional || '').toLowerCase() === reg;
+        const matchOp = !op || (item.operacionprincipal || '').toLowerCase() === op;
+        const matchQui = !qui || (item.quincena || '').toLowerCase().includes(qui) || String(item.año).includes(qui);
+        return matchReg && matchOp && matchQui;
+      });
+
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No se encontraron períodos con los filtros actuales.</td></tr>';
+        initColumnControls(tbody.closest('table'));
+        return;
+      }
+
+      filtered.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => abrirDrawerPeriodo(item.idperiodo);
+        tr.innerHTML = `
+          <td><strong>${item.quincena}</strong><br><span style="font-size:11px; color:var(--text-muted);">Año ${item.año}</span></td>
+          <td><strong>${item.usuario}</strong><br><span style="font-size:10px; color:var(--text-muted);">C.C. ${item.resp_identificacion}</span></td>
+          <td>${item.regional}</td>
+          <td>${item.operacionprincipal}</td>
+          <td class="text-right">$${Number(item.saldo_inicial).toLocaleString('es-CO')}</td>
+          <td class="text-right">$${Number(item.reintegros).toLocaleString('es-CO')}</td>
+          <td class="text-right"><strong style="color:var(--red-text);">$${Number(item.total_gastos).toLocaleString('es-CO')}</strong></td>
+          <td class="text-center">
+            <div style="font-size:11px; display:inline-flex; flex-direction:column; gap:2px; text-align:left;">
+              <span><strong>Op:</strong> $${Number(item.total_confirmado_operacion).toLocaleString('es-CO')}</span>
+              <span><strong>Cont:</strong> $${Number(item.total_confirmado_contable).toLocaleString('es-CO')}</span>
+            </div>
+          </td>
+          <td class="text-right"><strong style="color:var(--green-text);">$${Number(item.saldo_final).toLocaleString('es-CO')}</strong></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      initColumnControls(tbody.closest('table'));
+    }
+
+    function limpiarFiltrosFlujo() {
+      document.getElementById('filter-regional').value = '';
+      document.getElementById('filter-operacion').value = '';
+      document.getElementById('filter-quincena').value = '';
+      applyFiltrosFlujo();
+    }
+
+    // ── DRAWER: GASTOS DETALLE ──
+
+    let activePeriodId = null;
+    let activePeriodData = null;
+    let gastosPeriodoList = [];
+
+    async function abrirDrawerPeriodo(idperiodo) {
+      activePeriodId = idperiodo;
+      const period = flujosList.find(p => p.idperiodo === idperiodo);
+      if (!period) return;
+      activePeriodData = period;
+
+      document.getElementById('drawer-title').innerText = `Gastos de ${period.quincena} — ${period.año}`;
+      document.getElementById('drawer-subtitle').innerText = `Responsable: ${period.usuario} (${period.operacionprincipal})`;
+
+      document.getElementById('kpi-saldo-inicial').innerText = `$${Number(period.saldo_inicial).toLocaleString('es-CO')}`;
+      document.getElementById('kpi-reintegros').innerText = `$${Number(period.reintegros).toLocaleString('es-CO')}`;
+
+      // Open drawer instantly for maximum responsiveness!
+      document.getElementById('drawer-periodo').classList.add('open');
+
+      // Fetch expenses asynchronously in background
+      cargarGastosDrawer();
+    }
+
+    function cerrarDrawerPeriodo() {
+      document.getElementById('drawer-periodo').classList.remove('open');
+      cargarFlujosDeCaja(); // Refresh totals in background
+    }
+
+    async function cargarGastosDrawer() {
+      if (!activePeriodId) return;
+      
+      const tbody = document.getElementById('drawer-gastos-body');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 20px;">Cargando transacciones...</td></tr>';
+      
+      try {
+        const r = await fetch(`/cajaoperativa/api/periodos/${activePeriodId}/gastos?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error al cargar gastos del periodo');
+        gastosPeriodoList = await r.json();
+
+        // Calculate totals
+        let totalG = 0;
+        let totalOp = 0;
+        let totalCont = 0;
+        let hasPendingContable = false;
+
+        tbody.innerHTML = '';
+
+        if (!gastosPeriodoList.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">No hay gastos registrados en esta quincena.</td></tr>';
+        } else {
+          gastosPeriodoList.forEach(g => {
+            const val = Number(g.valor);
+            totalG += val;
+            if (g.valida_operacion === 'Confirmado') totalOp += val;
+            if (g.valida_contable === 'Confirmado') totalCont += val;
+            if (g.valida_contable === 'PENDIENTE') hasPendingContable = true;
+
+            const fMov = g.fechamovimiento ? new Date(g.fechamovimiento).toLocaleDateString('es-CO') : '';
+            
+            let fileLink = '—';
+            if (g.url_soporte) {
+              fileLink = `<a href="${g.url_soporte}" target="_blank" style="color:var(--accent); font-weight:700; text-decoration:none;">📄 Ver</a>`;
+            }
+
+            // Determine edit permission
+            const editPerm = getGastoEditPermission(g, CONFIG.rol);
+
+            // Operations Validation column buttons
+            let opBadgeClass = g.valida_operacion === 'Confirmado' ? 'badge-success' : (g.valida_operacion === 'No aplica' ? 'badge-neutral' : 'badge-warning');
+            let opHtml = `
+              <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                <span class="badge ${opBadgeClass}">${g.valida_operacion}</span>
+                <div style="display:flex; gap:4px;">
+                  <button class="btn-icon" onclick="validarGasto('${g.idgasto}', 'operacion', 'Confirmado')" title="Confirmar">✓</button>
+                  <button class="btn-icon" onclick="validarGasto('${g.idgasto}', 'operacion', 'No aplica')" title="No aplica" style="color:var(--red);">✗</button>
+                </div>
+              </div>
+            `;
+
+            // Contabilidad Validation column buttons
+            let contBadgeClass = g.valida_contable === 'Confirmado' ? 'badge-success' : (g.valida_contable === 'No aplica' ? 'badge-neutral' : 'badge-warning');
+            const esContabilidadOSistema = ['Contabilidad', 'Sistema'].includes(CONFIG.rol);
+            let contHtml = '';
+            
+            if (esContabilidadOSistema) {
+              contHtml = `
+                <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                  <span class="badge ${contBadgeClass}">${g.valida_contable}</span>
+                  <div style="display:flex; gap:4px;">
+                    <button class="btn-icon" onclick="validarGasto('${g.idgasto}', 'contable', 'Confirmado')" title="Confirmar">✓</button>
+                    <button class="btn-icon" onclick="validarGasto('${g.idgasto}', 'contable', 'No aplica')" title="No aplica" style="color:var(--red);">✗</button>
+                  </div>
+                </div>
+              `;
+            } else {
+              contHtml = `
+                <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                  <span class="badge ${contBadgeClass}">${g.valida_contable}</span>
+                  <span style="font-size:10px; color:var(--text-muted); opacity:0.75;">(Solo lectura)</span>
+                </div>
+              `;
+            }
+
+            const tr = document.createElement('tr');
+            if (editPerm.canEdit) {
+              tr.style.cursor = 'pointer';
+              tr.onclick = (event) => {
+                // Ignore click if user is clicking button, link, or validation element
+                if (event.target.closest('button') || event.target.closest('a') || event.target.closest('.badge')) return;
+                abrirModalEditarGasto(g.idgasto);
+              };
+            }
+            tr.innerHTML = `
+              <td>${fMov}</td>
+              <td>
+                <strong>${g.tercero}</strong><br>
+                <span style="font-size:10px; color:var(--text-muted);">${g.tipo_identificacion}: ${g.numero_identificacion}</span>
+              </td>
+              <td>
+                <strong>${g.tipo_gasto}</strong>: ${g.descripcion}<br>
+                <span style="font-size:11px; color:var(--text-muted); font-style:italic;">${g.observaciones || ''}</span>
+              </td>
+              <td class="text-right"><strong>$${val.toLocaleString('es-CO')}</strong></td>
+              <td class="text-center">${fileLink}</td>
+              <td>${opHtml}</td>
+              <td>${contHtml}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+
+        initColumnControls(tbody.closest('table'));
+
+        // Update KPIs
+        document.getElementById('kpi-gastos').innerText = `$${totalG.toLocaleString('es-CO')}`;
+        
+        let totalRestar = hasPendingContable ? totalOp : totalCont;
+        const saldoFinal = Number(activePeriodData.saldo_inicial) + Number(activePeriodData.reintegros) - totalRestar;
+        document.getElementById('kpi-saldo-final').innerText = `$${saldoFinal.toLocaleString('es-CO')}`;
+
+        document.getElementById('text-sum-op').innerText = `$${totalOp.toLocaleString('es-CO')}`;
+        document.getElementById('text-sum-cont').innerText = `$${totalCont.toLocaleString('es-CO')}`;
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function validarGasto(idgasto, area, estado) {
+      showLoading('Guardando validación...');
+      try {
+        const endpoint = `/cajaoperativa/api/gastos/${idgasto}/validar-${area}`;
+        const r = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            estado
+          })
+        });
+        if (!r.ok) throw new Error('Error al validar');
+        showToast('Validación registrada');
+        await cargarGastosDrawer();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ── PROVEEDORES MANAGEMENT ──
+
+    let proveedoresList = [];
+    async function cargarProveedoresDropdown() {
+      try {
+        const r = await fetch(`/cajaoperativa/api/proveedores?usuario=${CONFIG.usuarioId}`);
+        proveedoresList = await r.json();
+
+        const sel = document.getElementById('gasto-select-proveedor');
+        sel.innerHTML = `
+          <option value="">Seleccione proveedor...</option>
+          <option value="NUEVO" style="color:var(--accent-color); font-weight:bold; font-style:italic;">✏️ Nuevo Proveedor...</option>
+        `;
+
+        proveedoresList.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.nit;
+          opt.innerText = `${p.razon_social} (${p.nit})`;
+          sel.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Error al cargar proveedores dropdown:', err);
+      }
+    }
+
+    function onGastoSelectProveedorChange() {
+      const val = document.getElementById('gasto-select-proveedor').value;
+      const iNum = document.getElementById('gasto-num-id');
+      const iTercero = document.getElementById('gasto-tercero');
+
+      if (val === 'NUEVO') {
+        // Reset select value to empty so it doesn't stay on NUEVO
+        document.getElementById('gasto-select-proveedor').value = '';
+        iNum.value = '';
+        iTercero.value = '';
+        abrirModalCrearProveedor();
+      } else if (val) {
+        const p = proveedoresList.find(prov => prov.nit === val);
+        if (p) {
+          iNum.value = p.nit;
+          iTercero.value = p.razon_social;
+        }
+      } else {
+        iNum.value = '';
+        iTercero.value = '';
+      }
+    }
+
+    let proveedoresGlobalList = [];
+    let editingProveedorOriginalNit = null;
+    let editingResponsableId = null;
+
+    async function cargarProveedores() {
+      try {
+        const r = await fetch(`/cajaoperativa/api/proveedores?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error al cargar proveedores');
+        proveedoresGlobalList = await r.json();
+
+        const tbody = document.getElementById('proveedores-body');
+        tbody.innerHTML = '';
+
+        if (!proveedoresGlobalList.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-faint);">No hay proveedores registrados.</td></tr>';
+          return;
+        }
+
+        proveedoresGlobalList.forEach(p => {
+          const fReg = p.fecha_registro ? new Date(p.fecha_registro).toLocaleString('es-CO') : '';
+          const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          tr.onclick = () => abrirModalEditarProveedor(p.nit);
+          tr.innerHTML = `
+            <td><strong>${p.nit}</strong></td>
+            <td>${p.razon_social}</td>
+            <td>${p.usuario}</td>
+            <td>${fReg}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function getGastoEditPermission(g, userRole) {
+      const isSistema = userRole === 'Sistema';
+      const isContabilidad = userRole === 'Contabilidad';
+      const isContabilidadOrSistema = isContabilidad || isSistema;
+
+      if (g.valida_contable === 'Confirmado') {
+        if (isSistema) {
+          return { canEdit: true, editableFields: 'ALL' };
+        } else {
+          return { canEdit: false, editableFields: 'NONE' };
+        }
+      }
+
+      if (g.valida_operacion === 'Confirmado') {
+        if (isContabilidadOrSistema) {
+          return { canEdit: true, editableFields: 'ALL' };
+        } else {
+          return { canEdit: true, editableFields: 'SUPPORT_ONLY' };
+        }
+      }
+
+      return { canEdit: true, editableFields: 'ALL' };
+    }
+
+    function abrirModalCrearProveedor() {
+      editingProveedorOriginalNit = null;
+      document.getElementById('modal-proveedor-titulo').innerText = 'Crear Nuevo Proveedor';
+      document.getElementById('btn-proveedor-submit').innerText = 'Guardar Proveedor';
+      document.getElementById('form-crear-proveedor').reset();
+      abrirModal('modal-crear-proveedor');
+    }
+
+    function abrirModalEditarProveedor(nit) {
+      const p = proveedoresGlobalList.find(x => x.nit === nit);
+      if (!p) return;
+
+      editingProveedorOriginalNit = nit;
+      document.getElementById('modal-proveedor-titulo').innerText = 'Editar Proveedor';
+      document.getElementById('btn-proveedor-submit').innerText = 'Actualizar Proveedor';
+      document.getElementById('prov-nit').value = p.nit;
+      document.getElementById('prov-razonsocial').value = p.razon_social;
+      abrirModal('modal-crear-proveedor');
+    }
+
+    async function abrirVisorSoportes() {
+      if (!activePeriodId) return;
+      
+      // Reset preview container and toolbar
+      document.getElementById('visor-preview-toolbar').style.display = 'none';
+      document.getElementById('visor-preview-container').innerHTML = `
+        <div id="visor-preview-placeholder" style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px auto; color: var(--text-faint); display: block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          <span>Seleccione un soporte de la lista para previsualizarlo</span>
+        </div>
+      `;
+
+      const listDiv = document.getElementById('visor-lista-archivos');
+      listDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.85rem;">Cargando archivos...</div>';
+      
+      abrirModal('modal-visor-soportes');
+
+      try {
+        const r = await fetch(`/cajaoperativa/api/periodos/${activePeriodId}/soportes?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error al listar soportes');
+        const files = await r.json();
+
+        if (!files.length) {
+          listDiv.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.85rem;">No se encontraron soportes cargados en este período.</div>';
+          return;
+        }
+
+        listDiv.innerHTML = '';
+        files.forEach(f => {
+          const item = document.createElement('div');
+          item.style.cssText = 'padding:12px; border:1px solid var(--card-border); border-radius:var(--radius-md); background:#ffffff; cursor:pointer; transition:all 0.2s ease; display:flex; align-items:center; gap:10px;';
+          
+          const isPdf = f.name.toLowerCase().endsWith('.pdf');
+          const icon = isPdf
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#DC3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#17A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+
+          const sizeKb = (f.size / 1024).toFixed(1);
+          
+          let displayTitle = f.name;
+          if (displayTitle.length > 32) {
+            displayTitle = displayTitle.substring(0, 16) + '...' + displayTitle.substring(displayTitle.length - 12);
+          }
+
+          item.innerHTML = `
+            <div style="flex-shrink:0;">${icon}</div>
+            <div style="flex-grow:1; min-width:0;">
+              <div style="font-size:0.8rem; font-weight:700; color:var(--primary-color); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${f.name}">${displayTitle}</div>
+              <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${sizeKb} KB</div>
+            </div>
+          `;
+
+          item.addEventListener('mouseenter', () => {
+            item.style.borderColor = 'var(--primary-color)';
+            item.style.background = 'var(--primary-soft)';
+          });
+          item.addEventListener('mouseleave', () => {
+            if (item.getAttribute('data-active') !== 'true') {
+              item.style.borderColor = 'var(--card-border)';
+              item.style.background = '#ffffff';
+            }
+          });
+
+          item.addEventListener('click', () => {
+            listDiv.querySelectorAll('[data-active="true"]').forEach(el => {
+              el.setAttribute('data-active', 'false');
+              el.style.borderColor = 'var(--card-border)';
+              el.style.background = '#ffffff';
+            });
+
+            item.setAttribute('data-active', 'true');
+            item.style.borderColor = 'var(--primary-color)';
+            item.style.background = 'var(--primary-soft)';
+
+            verSoporteEnVisor(f.url, f.name);
+          });
+
+          listDiv.appendChild(item);
+        });
+
+      } catch (err) {
+        showToast(err.message, 'error');
+        listDiv.innerHTML = `<div style="text-align:center; padding:20px; color:var(--red-text); font-size:0.85rem;">Error: ${err.message}</div>`;
+      }
+    }
+
+    function verSoporteEnVisor(url, name) {
+      const toolbar = document.getElementById('visor-preview-toolbar');
+      const filenameLabel = document.getElementById('visor-preview-filename');
+      const linkAbrir = document.getElementById('visor-link-abrir');
+      const linkDescargar = document.getElementById('visor-link-descargar');
+      const container = document.getElementById('visor-preview-container');
+
+      toolbar.style.display = 'flex';
+      filenameLabel.innerText = name;
+      filenameLabel.title = name;
+      linkAbrir.href = url;
+      linkDescargar.href = url;
+
+      container.innerHTML = '';
+      
+      const isPdf = name.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style.cssText = 'width:100%; height:100%; border:none; border-radius:var(--radius-md); background:#ffffff;';
+        container.appendChild(iframe);
+      } else {
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.cssText = 'max-width:100%; max-height:100%; display:block; border-radius:var(--radius-md); object-fit:contain; background:#ffffff; box-shadow:var(--shadow-sm);';
+        container.appendChild(img);
+      }
+    }
+
+    async function guardarProveedor(e) {
+      e.preventDefault();
+      const nit = document.getElementById('prov-nit').value.trim();
+      const razon = document.getElementById('prov-razonsocial').value.trim();
+
+      if (!nit || !razon) {
+        alert('Por favor, complete todos los campos obligatorios.');
+        return;
+      }
+
+      const isEdit = !!editingProveedorOriginalNit;
+      const endpoint = isEdit ? `/cajaoperativa/api/proveedores/${editingProveedorOriginalNit}` : '/cajaoperativa/api/proveedores/crear';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      showLoading(isEdit ? 'Actualizando proveedor...' : 'Guardando proveedor...');
+      try {
+        const r = await fetch(endpoint, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            nit,
+            razon_social: razon
+          })
+        });
+
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al guardar proveedor');
+        }
+
+        showToast(isEdit ? 'Proveedor actualizado con éxito' : 'Proveedor registrado con éxito');
+        cerrarModal('modal-crear-proveedor');
+
+        // Refresh dropdown
+        await cargarProveedoresDropdown();
+
+        // If we opened this while the Gasto form is open, auto-select it (only on creation)
+        const selectProv = document.getElementById('gasto-select-proveedor');
+        if (selectProv && !isEdit) {
+          selectProv.value = nit;
+          document.getElementById('gasto-num-id').value = nit;
+          document.getElementById('gasto-tercero').value = razon;
+        }
+
+        // If currently in Proveedores tab, refresh list
+        if (currentTab === 'proveedores') {
+          cargarProveedores();
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ── REGISTRAR GASTO MODAL ──
+
+    let activeGastoTipo = 'Compra'; // Compra, Transporte, Otro
+    let activeGastoConceptoTrans = ''; // Turno Extendido, Domicilio, Traslado
+    let selectedSoporteBase64 = null;
+    let editingGastoId = null;
+
+    function setTipoGasto(tipo) {
+      activeGastoTipo = tipo;
+      document.querySelectorAll('#form-gasto .choice-btn').forEach(btn => {
+        if (btn.id.startsWith('btn-gasto-')) btn.classList.remove('active');
+      });
+      document.getElementById(`btn-gasto-${tipo.toLowerCase()}`).classList.add('active');
+
+      const transSec = document.getElementById('gasto-section-transporte');
+      const descSec = document.getElementById('gasto-field-descripcion');
+      const signatureSec = document.getElementById('gasto-section-firma');
+      
+      const selectTab = document.getElementById('gasto-field-select-trabajador');
+      const selectTipoId = document.getElementById('gasto-tipo-id');
+      const fieldNumId = document.getElementById('gasto-field-num-id');
+      const labelNumId = document.getElementById('gasto-label-num-id');
+      const fieldTercero = document.getElementById('gasto-field-tercero');
+
+      // Support label obligatoriedad - always optional as requested
+      const labelSoporte = document.getElementById('gasto-label-soporte');
+      labelSoporte.innerText = 'Soporte (PDF/Imagen)';
+
+      if (tipo === 'Transporte') {
+        transSec.style.display = 'block';
+        descSec.style.display = 'none';
+        signatureSec.style.display = 'block';
+        
+        selectTipoId.value = 'CC';
+        selectTipoId.disabled = true;
+        
+        fieldNumId.style.display = 'none';
+        selectTab.style.display = 'block';
+        
+        fieldTercero.style.display = 'block';
+        fieldTercero.querySelector('input').readOnly = true;
+
+        initGastoCanvas();
+        onGastoTipoIdChange();
+      } else if (tipo === 'Compra') {
+        transSec.style.display = 'none';
+        descSec.style.display = 'block';
+        signatureSec.style.display = 'none';
+        
+        selectTipoId.value = 'NIT';
+        selectTipoId.disabled = true;
+        
+        fieldNumId.style.display = 'block';
+        selectTab.style.display = 'none';
+        
+        fieldTercero.style.display = 'block';
+        fieldTercero.querySelector('input').readOnly = true;
+        
+        onGastoTipoIdChange();
+      } else {
+        // Otro
+        transSec.style.display = 'none';
+        descSec.style.display = 'block';
+        signatureSec.style.display = 'none';
+        
+        selectTipoId.disabled = false;
+        selectTipoId.value = 'CC';
+        
+        fieldNumId.style.display = 'block';
+        selectTab.style.display = 'none';
+        
+        fieldTercero.style.display = 'block';
+        fieldTercero.querySelector('input').readOnly = false;
+        
+        onGastoTipoIdChange();
+      }
+    }
+
+    function setConceptoTransporte(concept) {
+      activeGastoConceptoTrans = concept;
+      document.querySelectorAll('#gasto-section-transporte .choice-btn').forEach(btn => {
+        if (btn.id.startsWith('btn-trans-')) btn.classList.remove('active');
+      });
+      document.getElementById(`btn-trans-${concept === 'Turno Extendido' ? 'extendido' : concept.toLowerCase()}`).classList.add('active');
+
+      const placaField = document.getElementById('gasto-field-placa');
+      const trasladoRow = document.getElementById('gasto-row-traslado');
+
+      const iPlaca = document.getElementById('gasto-placa');
+      const iOrigen = document.getElementById('gasto-origen');
+      const iDestino = document.getElementById('gasto-destino');
+
+      if (concept === 'Domicilio') {
+        placaField.style.display = 'block';
+        trasladoRow.style.display = 'none';
+        iPlaca.required = true;
+        iOrigen.required = false;
+        iDestino.required = false;
+      } else if (concept === 'Traslado') {
+        placaField.style.display = 'none';
+        trasladoRow.style.display = 'flex';
+        iPlaca.required = false;
+        iOrigen.required = true;
+        iDestino.required = true;
+      } else {
+        placaField.style.display = 'none';
+        trasladoRow.style.display = 'none';
+        iPlaca.required = false;
+        iOrigen.required = false;
+        iDestino.required = false;
+      }
+    }
+
+    function onGastoTipoIdChange() {
+      const val = document.getElementById('gasto-tipo-id').value;
+      const numField = document.getElementById('gasto-field-num-id');
+      const selectField = document.getElementById('gasto-field-select-trabajador');
+      const selectProvField = document.getElementById('gasto-field-select-proveedor');
+      const label = document.getElementById('gasto-label-num-id');
+      
+      const iNum = document.getElementById('gasto-num-id');
+      const sTrabajador = document.getElementById('gasto-select-trabajador');
+      const iTercero = document.getElementById('gasto-tercero');
+
+      if (val === 'NIT') {
+        label.innerText = '# Nit *';
+        numField.style.display = 'block';
+        selectField.style.display = 'none';
+        selectProvField.style.display = 'block';
+        iNum.required = true;
+        sTrabajador.required = false;
+        iNum.readOnly = true;
+        iTercero.readOnly = true;
+      } else {
+        label.innerText = '# Cédula (CC) *';
+        selectProvField.style.display = 'none';
+        iNum.readOnly = false;
+        iTercero.readOnly = false;
+        if (activeGastoTipo === 'Transporte') {
+          numField.style.display = 'none';
+          selectField.style.display = 'block';
+          iNum.required = false;
+          sTrabajador.required = true;
+          iTercero.readOnly = true;
+        } else {
+          numField.style.display = 'block';
+          selectField.style.display = 'none';
+          iNum.required = true;
+          sTrabajador.required = false;
+        }
+      }
+    }
+
+    async function abrirModalGasto() {
+      if (!activePeriodId) return;
+
+      editingGastoId = null;
+      document.getElementById('form-gasto').reset();
+      document.getElementById('gasto-idreembolso').value = '';
+      selectedSoporteBase64 = null;
+
+      // Re-enable all fields and choice buttons
+      const fieldsToEnable = [
+        document.getElementById('gasto-fecha'),
+        document.getElementById('gasto-tipo-id'),
+        document.getElementById('gasto-num-id'),
+        document.getElementById('gasto-tercero'),
+        document.getElementById('gasto-select-proveedor'),
+        document.getElementById('gasto-select-trabajador'),
+        document.getElementById('gasto-descripcion'),
+        document.getElementById('gasto-valor'),
+        document.getElementById('gasto-observaciones'),
+        document.getElementById('gasto-placa'),
+        document.getElementById('gasto-origen'),
+        document.getElementById('gasto-destino'),
+        document.getElementById('gasto-soporte')
+      ];
+      fieldsToEnable.forEach(el => {
+        if (el) el.disabled = false;
+      });
+
+      document.querySelectorAll('#form-gasto .choice-btn').forEach(btn => {
+        btn.style.pointerEvents = 'auto';
+        btn.style.opacity = '1';
+      });
+
+      // Prefill datetime
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+      document.getElementById('gasto-fecha').value = localISOTime;
+
+      document.getElementById('modal-gasto-titulo').innerText = 'Registrar Gasto (Adelantado)';
+
+      // Load workers list for this regional/operation
+      const sTrabajador = document.getElementById('gasto-select-trabajador');
+      sTrabajador.innerHTML = '<option value="">Seleccione colaborador...</option>';
+
+      showLoading('Cargando colaboradores y proveedores...');
+      try {
+        const r = await fetch(`/capacitacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(activePeriodData.regional)}&operacion=${encodeURIComponent(activePeriodData.operacionprincipal)}`);
+        const workers = await r.json();
+        
+        workers.forEach(w => {
+          const opt = document.createElement('option');
+          opt.value = w.identificacion;
+          opt.innerText = w.nombre_trabajador || w.Trabajador;
+          sTrabajador.appendChild(opt);
+        });
+
+        // Load providers list
+        await cargarProveedoresDropdown();
+
+      } catch (e) {
+        console.error(e);
+      } finally {
+        hideLoading();
+      }
+
+      setTipoGasto('Compra');
+      abrirModal('modal-registrar-gasto');
+    }
+
+    async function abrirModalEditarGasto(idgasto) {
+      const g = gastosPeriodoList.find(x => x.idgasto === idgasto);
+      if (!g) return;
+
+      editingGastoId = idgasto;
+      document.getElementById('form-gasto').reset();
+      document.getElementById('gasto-idreembolso').value = '';
+      selectedSoporteBase64 = null;
+
+      document.getElementById('modal-gasto-titulo').innerText = 'Editar Gasto';
+
+      const sTrabajador = document.getElementById('gasto-select-trabajador');
+      sTrabajador.innerHTML = '<option value="">Seleccione colaborador...</option>';
+
+      showLoading('Cargando colaboradores y proveedores...');
+      try {
+        const r = await fetch(`/capacitacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(activePeriodData.regional)}&operacion=${encodeURIComponent(activePeriodData.operacionprincipal)}`);
+        const workers = await r.json();
+        
+        workers.forEach(w => {
+          const opt = document.createElement('option');
+          opt.value = w.identificacion;
+          opt.innerText = w.nombre_trabajador || w.Trabajador;
+          sTrabajador.appendChild(opt);
+        });
+
+        await cargarProveedoresDropdown();
+      } catch (e) {
+        console.error(e);
+      } finally {
+        hideLoading();
+      }
+
+      if (g.fechamovimiento) {
+        const d = new Date(g.fechamovimiento);
+        const offset = d.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(d.getTime() - offset)).toISOString().slice(0, 16);
+        document.getElementById('gasto-fecha').value = localISOTime;
+      }
+
+      setTipoGasto(g.tipo_gasto);
+
+      if (g.tipo_identificacion === 'NIT') {
+        document.getElementById('gasto-select-proveedor').value = g.numero_identificacion || '';
+      } else if (g.tipo_identificacion === 'CC' && g.tipo_gasto === 'Transporte') {
+        document.getElementById('gasto-select-trabajador').value = g.numero_identificacion || '';
+      }
+
+      document.getElementById('gasto-tipo-id').value = g.tipo_identificacion;
+      document.getElementById('gasto-num-id').value = g.numero_identificacion;
+      document.getElementById('gasto-tercero').value = g.tercero || '';
+      document.getElementById('gasto-descripcion').value = g.descripcion || '';
+      document.getElementById('gasto-valor').value = Math.round(g.valor);
+      document.getElementById('gasto-observaciones').value = g.observaciones || '';
+
+      if (g.tipo_gasto === 'Transporte') {
+        document.getElementById('gasto-placa').value = g.placa || '';
+        document.getElementById('gasto-origen').value = g.origen || '';
+        document.getElementById('gasto-destino').value = g.destino || '';
+
+        let concept = 'Turno Extendido';
+        if (g.descripcion.includes('Domicilio')) concept = 'Domicilio';
+        else if (g.descripcion.includes('Traslado')) concept = 'Traslado';
+        setConceptoTransporte(concept);
+      }
+
+      const editPerm = getGastoEditPermission(g, CONFIG.rol);
+      const fieldsToLock = [
+        document.getElementById('gasto-fecha'),
+        document.getElementById('gasto-tipo-id'),
+        document.getElementById('gasto-num-id'),
+        document.getElementById('gasto-tercero'),
+        document.getElementById('gasto-select-proveedor'),
+        document.getElementById('gasto-select-trabajador'),
+        document.getElementById('gasto-descripcion'),
+        document.getElementById('gasto-valor'),
+        document.getElementById('gasto-observaciones'),
+        document.getElementById('gasto-placa'),
+        document.getElementById('gasto-origen'),
+        document.getElementById('gasto-destino')
+      ];
+
+      const choiceButtons = document.querySelectorAll('#form-gasto .choice-btn');
+
+      if (editPerm.editableFields === 'SUPPORT_ONLY') {
+        fieldsToLock.forEach(el => {
+          if (el) el.disabled = true;
+        });
+        choiceButtons.forEach(btn => {
+          btn.style.pointerEvents = 'none';
+          btn.style.opacity = '0.6';
+        });
+        showToast('Algunos campos están bloqueados por validación de operación.', 'warning');
+      } else {
+        fieldsToLock.forEach(el => {
+          if (el) el.disabled = false;
+        });
+        choiceButtons.forEach(btn => {
+          btn.style.pointerEvents = 'auto';
+          btn.style.opacity = '1';
+        });
+
+        onGastoTipoIdChange();
+        setTipoGasto(g.tipo_gasto);
+      }
+
+      document.getElementById('gasto-soporte').disabled = false;
+      abrirModal('modal-registrar-gasto');
+    }
+
+    function onGastoSelectTrabajadorChange() {
+      const cc = document.getElementById('gasto-select-trabajador').value;
+      const s = document.getElementById('gasto-select-trabajador');
+      const text = s.options[s.selectedIndex].text;
+      
+      const iNum = document.getElementById('gasto-num-id');
+      const iTercero = document.getElementById('gasto-tercero');
+
+      if (cc) {
+        iNum.value = cc;
+        iTercero.value = text;
+      } else {
+        iNum.value = '';
+        iTercero.value = '';
+      }
+    }
+
+    // Canvas drawing for admin panel gasto
+    let gCanvas, gCtx, gDrawing = false;
+    function initGastoCanvas() {
+      gCanvas = document.getElementById('gasto-canvas-firma');
+      gCtx = gCanvas.getContext('2d');
+      gCanvas.width = gCanvas.parentNode.getBoundingClientRect().width;
+      
+      gCtx.lineWidth = 2.5;
+      gCtx.lineCap = 'round';
+      gCtx.strokeStyle = '#0f172a';
+
+      gCanvas.addEventListener('mousedown', (e) => {
+        gDrawing = true;
+        const pos = getGastoMousePos(e);
+        gCtx.beginPath();
+        gCtx.moveTo(pos.x, pos.y);
+      });
+      gCanvas.addEventListener('mousemove', (e) => {
+        if (!gDrawing) return;
+        const pos = getGastoMousePos(e);
+        gCtx.lineTo(pos.x, pos.y);
+        gCtx.stroke();
+      });
+      gCanvas.addEventListener('mouseup', () => gDrawing = false);
+      gCanvas.addEventListener('mouseleave', () => gDrawing = false);
+
+      gCanvas.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousedown', {
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
+        gCanvas.dispatchEvent(mouseEvent);
+      }, { passive: true });
+
+      gCanvas.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousemove', {
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
+        gCanvas.dispatchEvent(mouseEvent);
+      }, { passive: true });
+
+      gCanvas.addEventListener('touchend', () => {
+        const mouseEvent = new MouseEvent('mouseup', {});
+        gCanvas.dispatchEvent(mouseEvent);
+      }, { passive: true });
+    }
+
+    function getGastoMousePos(e) {
+      const rect = gCanvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+
+    function clearGastoCanvas() {
+      if (!gCanvas) return;
+      gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
+    }
+
+    function onGastoFileSelected(e) {
+      const file = e.target.files[0];
+      if (!file) {
+        selectedSoporteBase64 = null;
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        selectedSoporteBase64 = evt.target.result; // Base64 URL
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Force uppercase and limit plaque in modal
+    document.getElementById('gasto-placa').addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
+
+    async function guardarGasto(e) {
+      e.preventDefault();
+      if (!activePeriodId) return;
+
+      const tipoId = document.getElementById('gasto-tipo-id').value;
+      const numId = (tipoId === 'CC' && activeGastoTipo === 'Transporte') 
+        ? document.getElementById('gasto-select-trabajador').value 
+        : document.getElementById('gasto-num-id').value.trim();
+
+      const tercero = document.getElementById('gasto-tercero').value.trim();
+      const valor = document.getElementById('gasto-valor').value;
+      const descLibre = document.getElementById('gasto-descripcion').value.trim();
+      
+      const plaque = document.getElementById('gasto-placa').value.trim();
+      const origin = document.getElementById('gasto-origen').value.trim();
+      const dest = document.getElementById('gasto-destino').value.trim();
+
+      if (!numId || !tercero || !valor) {
+        alert('Ingrese la identificación, el tercero y el valor.');
+        return;
+      }
+
+      // Support is now optional for all types of expenses as requested
+
+      // Check signature if Transporte
+      let firmaB64 = '';
+      if (activeGastoTipo === 'Transporte') {
+        const blank = document.createElement('canvas');
+        blank.width = gCanvas.width;
+        blank.height = gCanvas.height;
+        if (gCanvas.toDataURL() === blank.toDataURL()) {
+          alert('El colaborador debe firmar el gasto de transporte.');
+          return;
+        }
+        firmaB64 = gCanvas.toDataURL();
+      }
+
+      let descGasto = '';
+      if (activeGastoTipo === 'Transporte') {
+        if (activeGastoConceptoTrans === 'Turno Extendido') {
+          descGasto = 'Transporte Turno Extendido';
+        } else if (activeGastoConceptoTrans === 'Domicilio') {
+          descGasto = `Transporte Domicilio ${plaque}`;
+        } else if (activeGastoConceptoTrans === 'Traslado') {
+          descGasto = `Transporte Traslado Origen: ${origin} - Destino: ${dest}`;
+        }
+      } else {
+        descGasto = descLibre;
+      }
+
+      const payload = {
+        usuario: CONFIG.usuarioId,
+        idperiodo: activePeriodId,
+        regional: activePeriodData.regional,
+        operacion: activePeriodData.operacionprincipal,
+        fechamovimiento: document.getElementById('gasto-fecha').value,
+        tipo_gasto: activeGastoTipo,
+        tipo_identificacion: tipoId,
+        numero_identificacion: numId,
+        tercero,
+        descripcion: descGasto,
+        valor,
+        observaciones: document.getElementById('gasto-observaciones').value.trim(),
+        url_soporte: selectedSoporteBase64, // Send support document in Base64 if uploaded
+        tipo_transporte: activeGastoTipo === 'Transporte' ? activeGastoConceptoTrans : null,
+        placa: activeGastoTipo === 'Transporte' && activeGastoConceptoTrans === 'Domicilio' ? plaque : null,
+        origen: activeGastoTipo === 'Transporte' && activeGastoConceptoTrans === 'Traslado' ? origin : null,
+        destino: activeGastoTipo === 'Transporte' && activeGastoConceptoTrans === 'Traslado' ? dest : null,
+        idreembolso_pendiente: document.getElementById('gasto-idreembolso').value || null,
+        firma_trabajador: firmaB64
+      };
+
+      const isEdit = !!editingGastoId;
+      const endpoint = isEdit ? `/cajaoperativa/api/gastos/${editingGastoId}` : '/cajaoperativa/api/gastos/registrar';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      showLoading(isEdit ? 'Actualizando transacción...' : 'Registrando transacción...');
+      try {
+        const r = await fetch(endpoint, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al guardar gasto');
+        }
+        showToast(isEdit ? 'Gasto actualizado con éxito' : 'Gasto registrado con éxito');
+        cerrarModal('modal-registrar-gasto');
+        
+        // Refresh Drawer
+        await cargarGastosDrawer();
+        
+        // Refresh Reembolsos tab if we were linking a pending refund
+        if (payload.idreembolso_pendiente) {
+          cargarReembolsosPendientes();
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ── TAB 4: REEMBOLSOS PENDIENTES CODE ──
+
+    let reembolsosPendientesList = [];
+    async function cargarReembolsosPendientes() {
+      try {
+        const r = await fetch(`/cajaoperativa/api/reembolsos/pendientes?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error al cargar reembolsos pendientes');
+        reembolsosPendientesList = await r.json();
+
+        const tbody = document.getElementById('reembolsos-body');
+        tbody.innerHTML = '';
+
+        if (!reembolsosPendientesList.length) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No hay reembolsos pendientes solicitados.</td></tr>';
+          initColumnControls(tbody.closest('table'));
+          return;
+        }
+
+        reembolsosPendientesList.forEach(item => {
+          const fReg = item.fecha_registro ? new Date(item.fecha_registro).toLocaleString('es-CO') : '';
+          
+          let signatureLink = '—';
+          if (item.firma) {
+            signatureLink = `<a href="#" onclick="verFirmaModal('${item.idgasto_trabajador}')" style="color:var(--accent); font-weight:700; text-decoration:none;">📝 Firma</a>`;
+          }
+
+          // Check if we are inside a quincena/period view or if we can link it
+          const actionBtn = `<button class="btn btn-primary btn-small" onclick="abrirModalVincularReembolso('${item.idgasto_trabajador}')">Vincular a Caja</button>`;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${fReg}</td>
+              <td><strong>${item.trabajador}</strong><br><span style="font-size:10px; color:var(--text-muted);">C.C. ${item.identificacion}</span></td>
+              <td>
+                <span style="font-size:11px;"><strong>Tel:</strong> ${item.telefono || '—'}</span><br>
+                <span style="font-size:11px; color:var(--text-muted);"><strong>Email:</strong> ${item.email || '—'}</span>
+              </td>
+              <td>${item.regional} — ${item.operacion}</td>
+              <td>
+                <strong>${item.tipo_transporte ? `Transporte (${item.tipo_transporte})` : 'Otro'}</strong>: ${item.descripcion_gasto}<br>
+                <span style="font-size:11px; color:var(--text-muted); font-style:italic;">${item.observaciones || ''}</span>
+              </td>
+              <td class="text-right"><strong>$${Number(item.valor).toLocaleString('es-CO')}</strong></td>
+              <td class="text-center">${signatureLink}</td>
+              <td class="text-center">${actionBtn}</td>
+            `;
+          tbody.appendChild(tr);
+        });
+
+        initColumnControls(tbody.closest('table'));
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // Ver Firma Modal
+    function verFirmaModal(idgt) {
+      const item = reembolsosPendientesList.find(r => r.idgasto_trabajador === idgt);
+      if (!item || !item.firma) return;
+
+      const w = window.open();
+      w.document.title = `Firma - ${item.trabajador}`;
+      w.document.body.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100vh;"><img src="${item.firma}" style="border:1px solid #ddd; max-width:80%; max-height:80%;"></div>`;
+    }
+
+    // Opens modal to link worker request to a period (if Transporte) or a Gasto (if other)
+    async function abrirModalVincularReembolso(idgt) {
+      const item = reembolsosPendientesList.find(r => r.idgasto_trabajador === idgt);
+      if (!item) return;
+
+      document.getElementById('form-vincular-reembolso').reset();
+      document.getElementById('vincular-idgt').value = item.idgasto_trabajador;
+      
+      const tipoG = item.tipo_gasto || (item.tipo_transporte ? 'Transporte' : 'Otro');
+      document.getElementById('vincular-tipo-gasto').value = tipoG;
+
+      document.getElementById('vincular-lbl-trabajador').innerText = item.trabajador_nombre || item.trabajador || '—';
+      document.getElementById('vincular-lbl-identificacion').innerText = item.identificacion;
+      document.getElementById('vincular-lbl-tipo-gasto').innerText = tipoG;
+      document.getElementById('vincular-lbl-valor').innerText = `$${Number(item.valor).toLocaleString('es-CO')}`;
+      document.getElementById('vincular-lbl-descripcion').innerText = item.descripcion_gasto || '';
+
+      const selectTarget = document.getElementById('vincular-select-target');
+      selectTarget.innerHTML = '<option value="">Cargando opciones...</option>';
+
+      const isTransporte = (tipoG === 'Transporte' || !!item.tipo_transporte);
+
+      if (isTransporte) {
+        document.getElementById('vincular-select-label').innerText = 'Seleccionar Quincena / Periodo de Caja *';
+        try {
+          const r = await fetch(`/cajaoperativa/api/reembolsos/periodos-vincular?regional=${encodeURIComponent(item.regional)}&operacion=${encodeURIComponent(item.operacion)}`);
+          const periods = await r.json();
+          selectTarget.innerHTML = '<option value="">Seleccione quincena...</option>';
+          if (!periods.length) {
+            selectTarget.innerHTML = '<option value="">No hay periodos creados para esta regional/operación.</option>';
+          } else {
+            periods.forEach(p => {
+              const opt = document.createElement('option');
+              opt.value = p.idperiodo;
+              opt.innerText = `${p.quincena} - ${p.año} (Base: $${Number(p.base_autorizada).toLocaleString('es-CO')})`;
+              selectTarget.appendChild(opt);
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          selectTarget.innerHTML = '<option value="">Error al cargar periodos</option>';
+        }
+      } else {
+        document.getElementById('vincular-select-label').innerText = 'Seleccionar Gasto Existente para Asociar *';
+        try {
+          const r = await fetch(`/cajaoperativa/api/reembolsos/gastos-vincular?regional=${encodeURIComponent(item.regional)}&operacion=${encodeURIComponent(item.operacion)}`);
+          const gastos = await r.json();
+          selectTarget.innerHTML = '<option value="">Seleccione gasto...</option>';
+          if (!gastos.length) {
+            selectTarget.innerHTML = '<option value="">No hay gastos registrados en esta regional/operación.</option>';
+          } else {
+            gastos.forEach(g => {
+              const opt = document.createElement('option');
+              opt.value = g.idgasto;
+              opt.innerText = `${g.tipo_gasto} - ${g.tercero} - $${Number(g.valor).toLocaleString('es-CO')} (${g.descripcion})`;
+              selectTarget.appendChild(opt);
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          selectTarget.innerHTML = '<option value="">Error al cargar gastos</option>';
+        }
+      }
+
+      abrirModal('modal-vincular-reembolso');
+    }
+
+    async function guardarVinculacionReembolso(e) {
+      e.preventDefault();
+      const idgt = document.getElementById('vincular-idgt').value;
+      const tipoGasto = document.getElementById('vincular-tipo-gasto').value;
+      const targetId = document.getElementById('vincular-select-target').value;
+
+      if (!targetId) {
+        alert('Por favor seleccione una opción de la lista.');
+        return;
+      }
+
+      showLoading('Vinculando reembolso...');
+      try {
+        const r = await fetch('/cajaoperativa/api/reembolsos/vincular', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idgasto_trabajador: idgt,
+            tipo_gasto: tipoGasto,
+            targetId,
+            usuario: CONFIG.usuarioId
+          })
+        });
+
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al vincular reembolso');
+        }
+
+        showToast('Reembolso vinculado con éxito');
+        cerrarModal('modal-vincular-reembolso');
+        cargarReembolsosPendientes();
+
+        // Refresh Drawer if open
+        if (activePeriodId) {
+          cargarGastosDrawer();
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Run initialization
+    init();
+  </script>
+</body>
+</html>

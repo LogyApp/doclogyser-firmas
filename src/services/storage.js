@@ -196,6 +196,44 @@ async function subirPDFConfirmacionInventario(nombreArchivo, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirSoporteGasto(idperiodo, quincena, año, tipoGasto, tipoIdentificacion, numeroIdentificacion, base64Data) {
+  const matches = base64Data.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+  if (!matches) {
+    throw new Error('Formato de base64 inválido.');
+  }
+
+  const contentType = matches[1];
+  const base64Content = matches[2];
+  const buffer = Buffer.from(base64Content, 'base64');
+
+  let ext = '.bin';
+  if (contentType === 'application/pdf') ext = '.pdf';
+  else if (contentType === 'image/png') ext = '.png';
+  else if (contentType === 'image/jpeg' || contentType === 'image/jpg') ext = '.jpg';
+  else if (contentType === 'image/webp') ext = '.webp';
+
+  const now = new Date();
+  const YYYY = now.getFullYear();
+  const MM = String(now.getMonth() + 1).padStart(2, '0');
+  const DD = String(now.getDate()).padStart(2, '0');
+  const HH = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const SS = String(now.getSeconds()).padStart(2, '0');
+  const timestamp = `${YYYY}${MM}${DD}${HH}${mm}${SS}`;
+
+  const cleanQuincena = quincena.replace(/[^a-zA-Z0-9]/g, '_');
+  const cleanTipoGasto = tipoGasto.replace(/[^a-zA-Z0-9]/g, '_');
+
+  const nombreArchivo = `${cleanQuincena}-${año}-${cleanTipoGasto}-${tipoIdentificacion}-${numeroIdentificacion}-${timestamp}${ext}`;
+  const pathInBucket = `Caja_Operativa/${idperiodo}/${nombreArchivo}`;
+  const bucketName = 'logyser-cloud';
+
+  const file = storage.bucket(bucketName).file(pathInBucket);
+  await file.save(buffer, { contentType });
+
+  return `https://storage.googleapis.com/${bucketName}/${pathInBucket}`;
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -221,4 +259,6 @@ module.exports = {
   subirDocMovilidadExterno,
   subirCertificadoBancario,
   subirPDFConfirmacionInventario,
+  subirSoporteGasto,
+  storage,
 };
