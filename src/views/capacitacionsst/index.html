@@ -467,22 +467,32 @@
         let optsHtml = '';
 
         if (!data.url_doc && esCreadorOSistema) {
-          const urlFirmaLink = `${window.location.origin}/capacitacionsst/responder?item=${data.id_capacitacion}`;
-          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${urlFirmaLink}`);
-          const waUrl = `https://wa.me/?text=${msgWaText}`;
-
-          optsHtml += `
-            <div class="section-title" style="margin-top: 15px; font-size: .75rem;">Acciones de Control</div>
-            <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
-            <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
-          `;
-
-          // Cargar datos de contacto para edición
+          // Cargar datos de contacto primero para poder construir el enlace de WhatsApp
           document.getElementById('opciones-contacto').style.display = 'block';
           const rContact = await fetch(`/capacitacionsst/api/contacto/${data.identificacion}`);
           const contact = await rContact.json();
           document.getElementById('contacto-email').value = contact.Email || '';
           document.getElementById('contacto-celular').value = contact.Celular || '';
+
+          const urlFirmaLink = `${window.location.origin}/capacitacionsst/responder?item=${data.id_capacitacion}`;
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${urlFirmaLink}`);
+          
+          // Formatear celular
+          const cleanCel = contact.Celular ? contact.Celular.replace(/\D/g, '') : '';
+          let phoneParam = '';
+          if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+            phoneParam = '57' + cleanCel;
+          } else if (cleanCel) {
+            phoneParam = cleanCel;
+          }
+          const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
+
+          optsHtml += `
+            <div class="section-title" style="margin-top: 15px; font-size: .75rem;">Acciones de Control</div>
+            <a href="${waUrl}" target="_blank" id="btn-whatsapp-detalle" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
+            <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
+            <button class="btn btn-success" onclick="regenerarTokenEnlace()" style="width: 100%;">🔄 Regenerar Enlace</button>
+          `;
         } else {
           document.getElementById('opciones-contacto').style.display = 'none';
         }
@@ -528,6 +538,30 @@
       }
     }
 
+    async function regenerarTokenEnlace() {
+      showLoading('Regenerando enlace...');
+      try {
+        const r = await fetch('/capacitacionsst/api/reenviar-firma', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_capacitacion: selectedCapacitacionId, canal: 'none' })
+        });
+        const res = await r.json();
+        if (res.ok) {
+          showToast('Enlace regenerado correctamente (válido por 48 horas)');
+          cargarDetalle();
+          cargarCapacitaciones();
+        } else {
+          showToast(res.error || 'Error al regenerar enlace', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al regenerar enlace', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
     async function actualizarContacto() {
       const email = document.getElementById('contacto-email').value;
       const celular = document.getElementById('contacto-celular').value;
@@ -546,6 +580,21 @@
         const res = await r.json();
         if (res.ok) {
           showToast('Datos de contacto actualizados');
+          // Actualizar dinámicamente el botón de WhatsApp con el nuevo celular
+          const urlFirmaLink = `${window.location.origin}/capacitacionsst/responder?item=${det.id_capacitacion}`;
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${urlFirmaLink}`);
+          const cleanCel = celular ? celular.replace(/\D/g, '') : '';
+          let phoneParam = '';
+          if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+            phoneParam = '57' + cleanCel;
+          } else if (cleanCel) {
+            phoneParam = cleanCel;
+          }
+          const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
+          const btnWa = document.getElementById('btn-whatsapp-detalle');
+          if (btnWa) {
+            btnWa.href = waUrl;
+          }
         } else {
           showToast(res.error || 'Error al actualizar contacto', 'error');
         }
