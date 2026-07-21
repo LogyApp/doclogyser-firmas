@@ -856,7 +856,9 @@
           </div>
           <div class="field" style="margin-bottom:0; flex:1; min-width:180px;">
             <label for="filter-quincena">Quincena</label>
-            <input type="text" id="filter-quincena" placeholder="Ej. Q1 Enero" oninput="applyFiltrosFlujo()">
+            <select id="filter-quincena" onchange="applyFiltrosFlujo()">
+              <option value="">Todas...</option>
+            </select>
           </div>
           <button class="btn btn-secondary" onclick="limpiarFiltrosFlujo()">Limpiar</button>
         </div>
@@ -870,11 +872,10 @@
                   <th>Responsable</th>
                   <th>Regional</th>
                   <th>Operación</th>
-                  <th class="text-right">Saldo Inicial</th>
                   <th class="text-right">Reintegros</th>
-                  <th class="text-right">Total Gastado</th>
-                  <th class="text-center">Val. Op. / Val. Cont.</th>
+                  <th class="text-right">Gastos Reportados</th>
                   <th class="text-right">Saldo Final</th>
+                  <th class="text-right">Validado Operación</th>
                 </tr>
               </thead>
               <tbody id="flujo-body">
@@ -981,8 +982,8 @@
 
       <!-- Validaciones sumatoria info -->
       <div style="display:flex; justify-content:space-between; background:#ffffff; border:1px solid var(--card-border); padding:16px; border-radius:var(--radius-md); margin-bottom:20px; font-size:0.85rem; box-shadow: var(--shadow-sm);">
-        <div><strong>Validado por Responsable:</strong> <span id="text-sum-op" style="color:var(--green-text); font-weight:700;">$0</span></div>
-        <div><strong>Aprobado por Contabilidad:</strong> <span id="text-sum-cont" style="color:var(--green-text); font-weight:700;">$0</span></div>
+        <div><strong>Validado por Responsable:</strong> <span id="text-sum-op" style="color:#d97706; font-weight:700;">$0</span></div>
+        <div><strong>Aprobado por Contabilidad:</strong> <span id="text-sum-cont" style="color:#0284c7; font-weight:700;">$0</span></div>
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
@@ -1291,9 +1292,18 @@
           </div>
         </div>
 
+        <!-- Operación dropdown -->
+        <div class="field" id="gasto-field-select-operacion" style="margin-bottom:16px;">
+          <label for="gasto-select-operacion">Operación del Gasto *</label>
+          <select id="gasto-select-operacion" required onchange="onGastoSelectOperacionChange()">
+            <option value="">Seleccione operación...</option>
+          </select>
+        </div>
+
         <!-- Provider and worker dropdowns first -->
         <div class="field" id="gasto-field-select-proveedor" style="display:none;">
           <label for="gasto-select-proveedor">Proveedor *</label>
+          <input type="text" id="gasto-search-proveedor" placeholder="🔍 Buscar proveedor por NIT o Razón Social..." style="margin-bottom:6px; padding:8px 12px; font-size:13px; width:100%; border:1.5px solid var(--card-border); border-radius:var(--radius-sm);" oninput="filtrarProveedoresDropdown()">
           <select id="gasto-select-proveedor" onchange="onGastoSelectProveedorChange()">
             <option value="">Seleccione proveedor...</option>
             <option value="NUEVO" style="color:var(--accent); font-weight:bold;">✏️ Nuevo Proveedor...</option>
@@ -1348,14 +1358,42 @@
           <textarea id="gasto-observaciones" rows="1"></textarea>
         </div>
 
-        <!-- Worker signature pad (Adelantado Transporte only) -->
-        <div class="field" id="gasto-section-firma" style="display:none;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <label style="margin-bottom:0;">Firma del Colaborador *</label>
-            <button type="button" class="canvas-clear" onclick="clearGastoCanvas()">Borrar firma</button>
+
+
+        <!-- Section: Related Workers (Colaboradores Relacionados) -->
+        <div id="gasto-section-colaboradores" style="display:none; margin-top:24px; border-top:1px solid var(--card-border); padding-top:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="font-weight:700; color:var(--primary-color); font-size:0.95rem;">Firmas y Colaboradores Relacionados</div>
+            <button type="button" id="btn-gasto-add-colaborador" class="btn btn-secondary btn-small" style="width:auto; padding:4px 10px; font-size:11px;" onclick="mostrarSubformColaborador()">+ Agregar Colaborador</button>
           </div>
-          <div class="canvas-container">
-            <canvas id="gasto-canvas-firma" height="110"></canvas>
+
+          <!-- Subform: Add Collaborator -->
+          <div id="gasto-subform-colaborador" style="display:none; background:var(--bg-subtle); border:1px solid var(--card-border); padding:12px; border-radius:var(--radius-md); margin-bottom:12px;">
+            <div class="field">
+              <label for="colab-select">Buscar Colaborador *</label>
+              <select id="colab-select" style="width:100%; padding: 8px;">
+                <option value="">Seleccione colaborador...</option>
+              </select>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="colab-valor">Valor *</label>
+                <input type="number" id="colab-valor" min="1" placeholder="Ej. 15000">
+              </div>
+              <div class="field">
+                <label for="colab-observaciones">Observaciones (Opcional)</label>
+                <input type="text" id="colab-observaciones" placeholder="Ej. Peajes del turno">
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+              <button type="button" class="btn btn-secondary btn-small" style="width:auto;" onclick="ocultarSubformColaborador()">Cancelar</button>
+              <button type="button" class="btn btn-primary btn-small" style="width:auto;" onclick="agregarColaboradorAGasto()">Guardar Colaborador</button>
+            </div>
+          </div>
+
+          <!-- List of related workers -->
+          <div id="gasto-colaboradores-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;">
+            <!-- Dynamic items -->
           </div>
         </div>
 
@@ -1699,6 +1737,7 @@
 
         // Populate regional selectors
         poblarRegionalesDropdowns();
+        cargarQuincenasDropdown();
       } catch (err) {
         alert(err.message);
       } finally {
@@ -1724,6 +1763,25 @@
         opt.value = r; opt.innerText = r;
         respReg.appendChild(opt);
       });
+    }
+
+    async function cargarQuincenasDropdown() {
+      try {
+        const r = await fetch(`/cajaoperativa/api/quincenas-maestro?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error al cargar quincenas');
+        const quincenas = await r.json();
+
+        const selectQui = document.getElementById('filter-quincena');
+        selectQui.innerHTML = '<option value="">Todas las Quincenas...</option>';
+        quincenas.forEach(q => {
+          const opt = document.createElement('option');
+          opt.value = q;
+          opt.innerText = q;
+          selectQui.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Error cargando dropdown de quincenas:', err);
+      }
     }
 
     // ── TAB 1: RESPONSABLES CODE ──
@@ -2236,8 +2294,9 @@
       });
 
       if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No se encontraron períodos con los filtros actuales.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No se encontraron períodos con los filtros actuales.</td></tr>';
         initColumnControls(tbody.closest('table'));
+        applyDefaultFlujoColumnWidths(tbody.closest('table'));
         return;
       }
 
@@ -2250,21 +2309,27 @@
           <td><strong>${item.usuario}</strong><br><span style="font-size:10px; color:var(--text-muted);">C.C. ${item.resp_identificacion}</span></td>
           <td>${item.regional}</td>
           <td>${item.operacionprincipal}</td>
-          <td class="text-right">$${Number(item.saldo_inicial).toLocaleString('es-CO')}</td>
           <td class="text-right">$${Number(item.reintegros).toLocaleString('es-CO')}</td>
-          <td class="text-right"><strong style="color:var(--red-text);">$${Number(item.total_gastos).toLocaleString('es-CO')}</strong></td>
-          <td class="text-center">
-            <div style="font-size:11px; display:inline-flex; flex-direction:column; gap:2px; text-align:left;">
-              <span><strong>Op:</strong> $${Number(item.total_confirmado_operacion).toLocaleString('es-CO')}</span>
-              <span><strong>Cont:</strong> $${Number(item.total_confirmado_contable).toLocaleString('es-CO')}</span>
-            </div>
-          </td>
+          <td class="text-right" style="color:var(--text-muted); font-weight:bold;">$${Number(item.total_gastos).toLocaleString('es-CO')}</td>
           <td class="text-right"><strong style="color:var(--green-text);">$${Number(item.saldo_final).toLocaleString('es-CO')}</strong></td>
+          <td class="text-right" style="color:#d97706; font-weight:bold;">$${Number(item.total_confirmado_operacion).toLocaleString('es-CO')}</td>
         `;
         tbody.appendChild(tr);
       });
 
       initColumnControls(tbody.closest('table'));
+      applyDefaultFlujoColumnWidths(tbody.closest('table'));
+    }
+
+    // The "Periodo" (Quincena) column renders narrower than "Responsable" under
+    // auto table layout even though it needs more room — pin sensible starting
+    // widths once (the user can still resize either column by hand afterwards).
+    function applyDefaultFlujoColumnWidths(table) {
+      if (!table || table.dataset.flujoWidthsSet === '1') return;
+      table.dataset.flujoWidthsSet = '1';
+      const ths = table.querySelectorAll('thead th');
+      if (ths[0]) ths[0].style.width = '145px';
+      if (ths[1]) ths[1].style.width = '120px';
     }
 
     function limpiarFiltrosFlujo() {
@@ -2344,7 +2409,7 @@
             const editPerm = getGastoEditPermission(g, CONFIG.rol);
 
             // Operations Validation column buttons
-            let opBadgeClass = g.valida_operacion === 'Confirmado' ? 'badge-success' : (g.valida_operacion === 'No aplica' ? 'badge-neutral' : 'badge-warning');
+            let opBadgeClass = g.valida_operacion === 'Confirmado' ? 'badge-warning' : 'badge-neutral';
             let opHtml = `
               <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
                 <span class="badge ${opBadgeClass}">${g.valida_operacion}</span>
@@ -2356,7 +2421,7 @@
             `;
 
             // Contabilidad Validation column buttons
-            let contBadgeClass = g.valida_contable === 'Confirmado' ? 'badge-success' : (g.valida_contable === 'No aplica' ? 'badge-neutral' : 'badge-warning');
+            let contBadgeClass = g.valida_contable === 'Confirmado' ? 'badge-info' : 'badge-neutral';
             const esContabilidadOSistema = ['Contabilidad', 'Sistema'].includes(CONFIG.rol);
             let contHtml = '';
             
@@ -2468,6 +2533,26 @@
         });
       } catch (err) {
         console.error('Error al cargar proveedores dropdown:', err);
+      }
+    }
+
+    function filtrarProveedoresDropdown() {
+      const query = document.getElementById('gasto-search-proveedor').value.toLowerCase().trim();
+      const select = document.getElementById('gasto-select-proveedor');
+      
+      for (let i = 0; i < select.options.length; i++) {
+        const opt = select.options[i];
+        if (opt.value === "" || opt.value === "NUEVO") {
+          opt.style.display = "block";
+          continue;
+        }
+        const text = opt.text.toLowerCase();
+        const value = opt.value.toLowerCase();
+        if (text.includes(query) || value.includes(query)) {
+          opt.style.display = "block";
+        } else {
+          opt.style.display = "none";
+        }
       }
     }
 
@@ -2761,7 +2846,6 @@
 
       const transSec = document.getElementById('gasto-section-transporte');
       const descSec = document.getElementById('gasto-field-descripcion');
-      const signatureSec = document.getElementById('gasto-section-firma');
       
       const selectTab = document.getElementById('gasto-field-select-trabajador');
       const selectTipoId = document.getElementById('gasto-tipo-id');
@@ -2776,7 +2860,6 @@
       if (tipo === 'Transporte') {
         transSec.style.display = 'block';
         descSec.style.display = 'none';
-        signatureSec.style.display = 'block';
         
         selectTipoId.value = 'CC';
         selectTipoId.disabled = true;
@@ -2787,12 +2870,10 @@
         fieldTercero.style.display = 'block';
         fieldTercero.querySelector('input').readOnly = true;
 
-        initGastoCanvas();
         onGastoTipoIdChange();
       } else if (tipo === 'Compra') {
         transSec.style.display = 'none';
         descSec.style.display = 'block';
-        signatureSec.style.display = 'none';
         
         selectTipoId.value = 'NIT';
         selectTipoId.disabled = true;
@@ -2808,7 +2889,6 @@
         // Otro
         transSec.style.display = 'none';
         descSec.style.display = 'block';
-        signatureSec.style.display = 'none';
         
         selectTipoId.disabled = false;
         selectTipoId.value = 'CC';
@@ -2898,11 +2978,70 @@
       }
     }
 
+    function poblarOperacionesDeGastoModal(regional, selectedOp) {
+      const selectOp = document.getElementById('gasto-select-operacion');
+      selectOp.innerHTML = '<option value="">Seleccione operación...</option>';
+
+      let ops = CONFIG.opsPorRegional[regional] || [];
+      if (CONFIG.sinFiltro && (!ops || !ops.length)) {
+        ops = Object.values(CONFIG.opsPorRegional).flat();
+      }
+
+      const uniqueOps = [...new Set(ops)];
+      uniqueOps.forEach(op => {
+        const option = document.createElement('option');
+        option.value = op;
+        option.innerText = op;
+        selectOp.appendChild(option);
+      });
+
+      if (selectedOp && uniqueOps.includes(selectedOp)) {
+        selectOp.value = selectedOp;
+      } else if (uniqueOps.length > 0) {
+        selectOp.value = uniqueOps[0];
+      }
+    }
+
+    async function onGastoSelectOperacionChange() {
+      const selectedOp = document.getElementById('gasto-select-operacion').value;
+      const sTrabajador = document.getElementById('gasto-select-trabajador');
+      if (!selectedOp || !activePeriodData) {
+        sTrabajador.innerHTML = '<option value="">Seleccione colaborador...</option>';
+        return;
+      }
+
+      sTrabajador.innerHTML = '<option value="">Cargando colaboradores...</option>';
+
+      try {
+        const r = await fetch(`/capacitacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(activePeriodData.regional)}&operacion=${encodeURIComponent(selectedOp)}`);
+        const workers = await r.json();
+        
+        sTrabajador.innerHTML = '<option value="">Seleccione colaborador...</option>';
+        workers.forEach(w => {
+          const opt = document.createElement('option');
+          opt.value = w.identificacion;
+          opt.innerText = w.nombre_trabajador || w.Trabajador;
+          sTrabajador.appendChild(opt);
+        });
+
+        // Also update the subform select if open
+        const colabSel = document.getElementById('colab-select');
+        if (colabSel) {
+          colabSel.innerHTML = sTrabajador.innerHTML;
+        }
+      } catch (e) {
+        console.error('Error al cargar trabajadores por operación:', e);
+        sTrabajador.innerHTML = '<option value="">Error al cargar colaboradores</option>';
+      }
+    }
+
     async function abrirModalGasto() {
       if (!activePeriodId) return;
 
       editingGastoId = null;
       document.getElementById('form-gasto').reset();
+      document.getElementById('gasto-search-proveedor').value = '';
+      filtrarProveedoresDropdown();
       document.getElementById('gasto-idreembolso').value = '';
       selectedSoporteBase64 = null;
 
@@ -2938,26 +3077,13 @@
       document.getElementById('gasto-fecha').value = localISOTime;
 
       document.getElementById('modal-gasto-titulo').innerText = 'Registrar Gasto (Adelantado)';
-
-      // Load workers list for this regional/operation
-      const sTrabajador = document.getElementById('gasto-select-trabajador');
-      sTrabajador.innerHTML = '<option value="">Seleccione colaborador...</option>';
+      document.getElementById('gasto-section-colaboradores').style.display = 'none';
 
       showLoading('Cargando colaboradores y proveedores...');
       try {
-        const r = await fetch(`/capacitacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(activePeriodData.regional)}&operacion=${encodeURIComponent(activePeriodData.operacionprincipal)}`);
-        const workers = await r.json();
-        
-        workers.forEach(w => {
-          const opt = document.createElement('option');
-          opt.value = w.identificacion;
-          opt.innerText = w.nombre_trabajador || w.Trabajador;
-          sTrabajador.appendChild(opt);
-        });
-
-        // Load providers list
+        poblarOperacionesDeGastoModal(activePeriodData.regional, activePeriodData.operacionprincipal);
+        await onGastoSelectOperacionChange();
         await cargarProveedoresDropdown();
-
       } catch (e) {
         console.error(e);
       } finally {
@@ -2974,26 +3100,17 @@
 
       editingGastoId = idgasto;
       document.getElementById('form-gasto').reset();
+      document.getElementById('gasto-search-proveedor').value = '';
+      filtrarProveedoresDropdown();
       document.getElementById('gasto-idreembolso').value = '';
       selectedSoporteBase64 = null;
 
       document.getElementById('modal-gasto-titulo').innerText = 'Editar Gasto';
 
-      const sTrabajador = document.getElementById('gasto-select-trabajador');
-      sTrabajador.innerHTML = '<option value="">Seleccione colaborador...</option>';
-
       showLoading('Cargando colaboradores y proveedores...');
       try {
-        const r = await fetch(`/capacitacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(activePeriodData.regional)}&operacion=${encodeURIComponent(activePeriodData.operacionprincipal)}`);
-        const workers = await r.json();
-        
-        workers.forEach(w => {
-          const opt = document.createElement('option');
-          opt.value = w.identificacion;
-          opt.innerText = w.nombre_trabajador || w.Trabajador;
-          sTrabajador.appendChild(opt);
-        });
-
+        poblarOperacionesDeGastoModal(activePeriodData.regional, g.operacion || activePeriodData.operacionprincipal);
+        await onGastoSelectOperacionChange();
         await cargarProveedoresDropdown();
       } catch (e) {
         console.error(e);
@@ -3075,7 +3192,241 @@
       }
 
       document.getElementById('gasto-soporte').disabled = false;
+      document.getElementById('gasto-section-colaboradores').style.display = 'block';
+      document.getElementById('btn-gasto-add-colaborador').style.display = g.tipo_gasto === 'Transporte' ? 'none' : 'block';
+      ocultarSubformColaborador();
+      cargarColaboradoresDeGasto(idgasto);
+
       abrirModal('modal-registrar-gasto');
+    }
+
+    let colaboradoresGastoList = [];
+    async function cargarColaboradoresDeGasto(idgasto) {
+      const container = document.getElementById('gasto-colaboradores-list');
+      container.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">Cargando colaboradores...</div>';
+      
+      try {
+        const r = await fetch(`/cajaoperativa/api/gastos/${idgasto}/colaboradores?usuario=${CONFIG.usuarioId}`);
+        if (!r.ok) throw new Error('Error al cargar colaboradores');
+        colaboradoresGastoList = await r.json();
+        
+        container.innerHTML = '';
+        if (!colaboradoresGastoList.length) {
+          container.innerHTML = '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:12px; border:1px dashed var(--card-border); border-radius:8px;">No hay colaboradores relacionados a este gasto.</div>';
+          return;
+        }
+
+        colaboradoresGastoList.forEach(c => {
+          const itemDiv = document.createElement('div');
+          itemDiv.style.cssText = 'border:1px solid var(--card-border); border-radius:8px; padding:12px; background:#fff; display:flex; flex-direction:column; gap:8px; box-shadow:var(--shadow-sm);';
+          
+          const isSigned = !!c.firma;
+          const statusBadge = isSigned 
+            ? '<span class="badge badge-success" style="font-size:10px; font-weight:bold; background:#ccfbf1; color:#0d9488; border:1px solid #99f6e4;">✓ Firmado</span>'
+            : '<span class="badge badge-warning" style="font-size:10px; font-weight:bold; background:#fef3c7; color:#d97706; border:1px solid #fde68a;">⏳ Pendiente Firma</span>';
+
+          itemDiv.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleColaboradorActions('${c.idgasto_trabajador}')">
+              <div>
+                <strong style="font-size:0.9rem; color:var(--primary-color);">${c.trabajador_nombre}</strong>
+                <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">C.C. ${c.identificacion} | Valor: $${Number(c.valor).toLocaleString('es-CO')}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                ${statusBadge}
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </div>
+            </div>
+            
+            <!-- Actions panel (collapsed by default) -->
+            <div id="colab-actions-${c.idgasto_trabajador}" style="display:none; border-top:1px solid var(--card-border); padding-top:12px; margin-top:8px;">
+              <!-- Contact details editing fields -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
+                <div class="field" style="margin-bottom:0;">
+                  <label style="font-size:10px; font-weight:600; color:var(--text-muted); margin-bottom:2px;">Celular / Teléfono</label>
+                  <input type="text" id="contact-tel-${c.idgasto_trabajador}" value="${c.telefono || ''}" placeholder="Ej. 3001234567" style="font-size:11px; padding:6px; height:auto; width:100%; border:1px solid var(--card-border); border-radius:4px;">
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <label style="font-size:10px; font-weight:600; color:var(--text-muted); margin-bottom:2px;">Correo Electrónico</label>
+                  <input type="email" id="contact-email-${c.idgasto_trabajador}" value="${c.email || ''}" placeholder="Ej. correo@empresa.com" style="font-size:11px; padding:6px; height:auto; width:100%; border:1px solid var(--card-border); border-radius:4px;">
+                </div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                  <button type="button" class="btn btn-secondary btn-small" style="width:auto; padding:4px 8px; font-size:10px; display:inline-flex; align-items:center; gap:4px;" onclick="copiarEnlaceFirma('${c.idgasto_trabajador}')">🔗 Copiar Enlace</button>
+                  <button type="button" class="btn btn-secondary btn-small" style="width:auto; padding:4px 8px; font-size:10px; display:inline-flex; align-items:center; gap:4px; background:#25d366; color:white; border-color:#25d366;" onclick="compartirWhatsapp('${c.idgasto_trabajador}')">💬 WhatsApp</button>
+                  <button type="button" class="btn btn-secondary btn-small" style="width:auto; padding:4px 8px; font-size:10px; display:inline-flex; align-items:center; gap:4px; background:#0284c7; color:white; border-color:#0284c7;" onclick="compartirCorreo('${c.idgasto_trabajador}')">✉️ Correo</button>
+                  ${c.tipo_gasto !== 'Transporte' ? `
+                    <button type="button" class="btn btn-small" style="width:auto; padding:4px 8px; font-size:10px; display:inline-flex; align-items:center; gap:4px; background:var(--red); color:white; border:none;" onclick="eliminarColaboradorDeGasto('${c.idgasto_trabajador}')">🗑️ Eliminar</button>
+                  ` : ''}
+                </div>
+                <button type="button" class="btn btn-primary btn-small" style="width:auto; padding:4px 10px; font-size:10px;" onclick="guardarContactoColaborador('${c.identificacion}', '${c.idgasto_trabajador}')">💾 Guardar Contacto</button>
+              </div>
+            </div>
+          `;
+          container.appendChild(itemDiv);
+        });
+      } catch (err) {
+        container.innerHTML = `<div style="font-size:12px; color:var(--red);">${err.message}</div>`;
+      }
+    }
+
+    function toggleColaboradorActions(idgt) {
+      const el = document.getElementById(`colab-actions-${idgt}`);
+      if (el) {
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+
+    function getEnlaceFirma(idgt) {
+      return `${window.location.origin}/reembolso?idgt=${idgt}`;
+    }
+
+    function copiarEnlaceFirma(idgt) {
+      const url = getEnlaceFirma(idgt);
+      navigator.clipboard.writeText(url).then(() => {
+        showToast('Enlace copiado al portapapeles');
+      }).catch(err => {
+        console.error('Error al copiar:', err);
+      });
+    }
+
+    async function guardarContactoColaborador(identificacion, idgt) {
+      const telInput = document.getElementById(`contact-tel-${idgt}`);
+      const emailInput = document.getElementById(`contact-email-${idgt}`);
+      const telefono = telInput ? telInput.value.trim() : '';
+      const email = emailInput ? emailInput.value.trim() : '';
+
+      showLoading('Guardando datos de contacto...');
+      try {
+        const r = await fetch(`/cajaoperativa/api/reembolsos/contacto-colaborador/${identificacion}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telefono,
+            email,
+            usuario: CONFIG.usuarioId
+          })
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al guardar');
+        }
+        showToast('Datos de contacto actualizados');
+        
+        // Update local array values
+        const c = colaboradoresGastoList.find(x => x.idgasto_trabajador === idgt);
+        if (c) {
+          c.telefono = telefono;
+          c.email = email;
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function compartirWhatsapp(idgt) {
+      const c = colaboradoresGastoList.find(x => x.idgasto_trabajador === idgt);
+      if (!c) return;
+      const url = getEnlaceFirma(idgt);
+      const text = `Hola ${c.trabajador_nombre}, por favor firma el soporte para el egreso de $${Number(c.valor).toLocaleString('es-CO')} en el siguiente enlace: ${url}`;
+      
+      const telInput = document.getElementById(`contact-tel-${idgt}`);
+      const tel = telInput ? telInput.value.trim() : (c.telefono || '');
+      
+      window.open(`https://api.whatsapp.com/send?phone=${tel ? tel.replace(/[^0-9]/g, '') : ''}&text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    function compartirCorreo(idgt) {
+      const c = colaboradoresGastoList.find(x => x.idgasto_trabajador === idgt);
+      if (!c) return;
+      const url = getEnlaceFirma(idgt);
+      const subject = 'Firma de Documento de Soporte de Gasto';
+      const body = `Hola ${c.trabajador_nombre},\n\nPor favor, ingresa al siguiente enlace para firmar digitalmente el soporte por valor de $${Number(c.valor).toLocaleString('es-CO')}:\n\n${url}\n\nMuchas gracias.`;
+      
+      const emailInput = document.getElementById(`contact-email-${idgt}`);
+      const email = emailInput ? emailInput.value.trim() : (c.email || '');
+      
+      window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    }
+
+    async function eliminarColaboradorDeGasto(idgt) {
+      if (!confirm('¿Está seguro de que desea remover este colaborador del gasto?')) return;
+      showLoading('Removiendo colaborador...');
+      try {
+        const r = await fetch(`/cajaoperativa/api/gastos/${editingGastoId}/colaboradores/${idgt}?usuario=${CONFIG.usuarioId}`, {
+          method: 'DELETE'
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al eliminar');
+        }
+        showToast('Colaborador removido');
+        cargarColaboradoresDeGasto(editingGastoId);
+        
+        // Refresh Drawer if open to update totals
+        if (activePeriodId) {
+          cargarGastosDrawer();
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function mostrarSubformColaborador() {
+      const select = document.getElementById('colab-select');
+      select.innerHTML = document.getElementById('gasto-select-trabajador').innerHTML;
+      document.getElementById('gasto-subform-colaborador').style.display = 'block';
+      document.getElementById('colab-valor').value = '';
+      document.getElementById('colab-observaciones').value = '';
+    }
+
+    function ocultarSubformColaborador() {
+      document.getElementById('gasto-subform-colaborador').style.display = 'none';
+    }
+
+    async function agregarColaboradorAGasto() {
+      const identificacion = document.getElementById('colab-select').value;
+      const valor = document.getElementById('colab-valor').value;
+      const observaciones = document.getElementById('colab-observaciones').value.trim();
+
+      if (!identificacion || !valor) {
+        alert('Seleccione un colaborador y especifique el valor.');
+        return;
+      }
+
+      showLoading('Agregando colaborador...');
+      try {
+        const r = await fetch(`/cajaoperativa/api/gastos/${editingGastoId}/colaboradores`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            identificacion,
+            valor,
+            observaciones
+          })
+        });
+        if (!r.ok) {
+          const err = await r.json();
+          throw new Error(err.error || 'Error al agregar');
+        }
+        showToast('Colaborador agregado');
+        ocultarSubformColaborador();
+        cargarColaboradoresDeGasto(editingGastoId);
+
+        // Refresh Drawer if open to update totals
+        if (activePeriodId) {
+          cargarGastosDrawer();
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
     }
 
     function onGastoSelectTrabajadorChange() {
@@ -3095,68 +3446,7 @@
       }
     }
 
-    // Canvas drawing for admin panel gasto
-    let gCanvas, gCtx, gDrawing = false;
-    function initGastoCanvas() {
-      gCanvas = document.getElementById('gasto-canvas-firma');
-      gCtx = gCanvas.getContext('2d');
-      gCanvas.width = gCanvas.parentNode.getBoundingClientRect().width;
-      
-      gCtx.lineWidth = 2.5;
-      gCtx.lineCap = 'round';
-      gCtx.strokeStyle = '#0f172a';
 
-      gCanvas.addEventListener('mousedown', (e) => {
-        gDrawing = true;
-        const pos = getGastoMousePos(e);
-        gCtx.beginPath();
-        gCtx.moveTo(pos.x, pos.y);
-      });
-      gCanvas.addEventListener('mousemove', (e) => {
-        if (!gDrawing) return;
-        const pos = getGastoMousePos(e);
-        gCtx.lineTo(pos.x, pos.y);
-        gCtx.stroke();
-      });
-      gCanvas.addEventListener('mouseup', () => gDrawing = false);
-      gCanvas.addEventListener('mouseleave', () => gDrawing = false);
-
-      gCanvas.addEventListener('touchstart', (e) => {
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousedown', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        gCanvas.dispatchEvent(mouseEvent);
-      }, { passive: true });
-
-      gCanvas.addEventListener('touchmove', (e) => {
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousemove', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        gCanvas.dispatchEvent(mouseEvent);
-      }, { passive: true });
-
-      gCanvas.addEventListener('touchend', () => {
-        const mouseEvent = new MouseEvent('mouseup', {});
-        gCanvas.dispatchEvent(mouseEvent);
-      }, { passive: true });
-    }
-
-    function getGastoMousePos(e) {
-      const rect = gCanvas.getBoundingClientRect();
-      return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      };
-    }
-
-    function clearGastoCanvas() {
-      if (!gCanvas) return;
-      gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
-    }
 
     function onGastoFileSelected(e) {
       const file = e.target.files[0];
@@ -3200,18 +3490,7 @@
 
       // Support is now optional for all types of expenses as requested
 
-      // Check signature if Transporte
-      let firmaB64 = '';
-      if (activeGastoTipo === 'Transporte') {
-        const blank = document.createElement('canvas');
-        blank.width = gCanvas.width;
-        blank.height = gCanvas.height;
-        if (gCanvas.toDataURL() === blank.toDataURL()) {
-          alert('El colaborador debe firmar el gasto de transporte.');
-          return;
-        }
-        firmaB64 = gCanvas.toDataURL();
-      }
+      const selectedOp = document.getElementById('gasto-select-operacion').value || activePeriodData.operacionprincipal;
 
       let descGasto = '';
       if (activeGastoTipo === 'Transporte') {
@@ -3230,7 +3509,7 @@
         usuario: CONFIG.usuarioId,
         idperiodo: activePeriodId,
         regional: activePeriodData.regional,
-        operacion: activePeriodData.operacionprincipal,
+        operacion: selectedOp,
         fechamovimiento: document.getElementById('gasto-fecha').value,
         tipo_gasto: activeGastoTipo,
         tipo_identificacion: tipoId,
@@ -3245,7 +3524,7 @@
         origen: activeGastoTipo === 'Transporte' && activeGastoConceptoTrans === 'Traslado' ? origin : null,
         destino: activeGastoTipo === 'Transporte' && activeGastoConceptoTrans === 'Traslado' ? dest : null,
         idreembolso_pendiente: document.getElementById('gasto-idreembolso').value || null,
-        firma_trabajador: firmaB64
+        firma_trabajador: null
       };
 
       const isEdit = !!editingGastoId;

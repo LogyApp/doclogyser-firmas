@@ -134,8 +134,8 @@ async function verificarYGenerarPeriodos() {
         const idperiodo = uuidv4();
         await conn.execute(
           `INSERT INTO Dynamic_gastos_periodo 
-           (idperiodo, quincena, año, saldo_inicial, saldo_final, reintegros, idresponsable, observaciones, usuario)
-           VALUES (?, ?, ?, ?, ?, 0.00, ?, 'Generación automática', 'Sistema')`,
+           (idperiodo, quincena, año, saldo_inicial, saldo_final, idresponsable, observaciones, usuario)
+           VALUES (?, ?, ?, ?, ?, ?, 'Generación automática', 'Sistema')`,
           [idperiodo, Quincena, Año, saldoInicial, saldoInicial, resp.idresponsable]
         );
         console.log(`[CajaOperativa] Auto-generated period for responsible ${resp.idresponsable} (${Quincena} - ${Año})`);
@@ -180,44 +180,92 @@ async function obtenerNombresResponsables(identificaciones) {
   }
 }
 
-// Recalculates and updates saldo_final of a period based on saldo_inicial, reintegros, and expenses
-async function recargarSaldosPeriodo(idperiodo) {
+// Recalculates and updates saldo_inicial and saldo_final for ALL periods of a responsible chronologically
+async function recalcularTodosLosSaldosResponsable(idresponsable, conn = pool) {
   try {
-    const [pRows] = await pool.execute(
-      'SELECT saldo_inicial, reintegros FROM Dynamic_gastos_periodo WHERE idperiodo = ? LIMIT 1',
+    // 1. Get base authorized
+    const [respRows] = await conn.execute(
+      'SELECT base_autorizada FROM Maestro_responsablegastos WHERE idresponsable = ? LIMIT 1',
+      [idresponsable]
+    );
+    if (!respRows.length) return;
+    const baseAutorizada = Number(respRows[0].base_autorizada);
+
+    // 2. Get all periods of this responsible, sorted chronologically using Maestro_Fechas
+    const [periods] = await conn.execute(
+      `SELECT p.idperiodo, p.quincena, p.año,
+              (SELECT MIN(Fecha) FROM Maestro_Fechas WHERE Quincena = p.quincena AND Año = p.año) AS min_fecha
+       FROM Dynamic_gastos_periodo p
+       WHERE p.idresponsable = ?
+       ORDER BY min_fecha ASC, p.fecha_registro ASC`,
+      [idresponsable]
+    );
+
+    let currentSaldoInicial = baseAutorizada;
+
+    for (const p of periods) {
+      const idperiodo = p.idperiodo;
+
+      // 3. Compute dynamic reintegros for this period
+      const [reintRows] = await conn.execute(
+        `SELECT COALESCE(SUM(r.valor), 0) AS total_reintegros
+         FROM Dynamic_gastos_reintegro r
+         JOIN Dynamic_gastos_periodo gp ON gp.idresponsable = r.idresponsable
+         JOIN Maestro_Fechas mf ON mf.Fecha = DATE(r.fecha_reintegro)
+         WHERE gp.idperiodo = ?
+           AND r.estado = 'APROBADO'
+           AND mf.Quincena = gp.quincena
+           AND mf.Año = gp.año`,
+        [idperiodo]
+      );
+      const reintegros = reintRows.length ? Number(reintRows[0].total_reintegros) : 0;
+
+      // 4. Compute dynamic expenses for this period
+      const [gRows] = await conn.execute(
+        'SELECT valor, valida_operacion, valida_contable FROM Dynamic_gastos WHERE idperiodo = ?',
+        [idperiodo]
+      );
+
+      const hasPendingContable = gRows.some(g => g.valida_contable === 'PENDIENTE');
+      let totalGastos = 0;
+      if (hasPendingContable) {
+        // Prioritize valida_operacion (Validado por Responsable)
+        totalGastos = gRows
+          .filter(g => g.valida_operacion === 'Confirmado')
+          .reduce((sum, g) => sum + Number(g.valor), 0);
+      } else {
+        // Prioritize valida_contable (Aprobado por Contabilidad)
+        totalGastos = gRows
+          .filter(g => g.valida_contable === 'Confirmado')
+          .reduce((sum, g) => sum + Number(g.valor), 0);
+      }
+
+      const saldoFinal = currentSaldoInicial + reintegros - totalGastos;
+
+      // 5. Update period in database
+      await conn.execute(
+        'UPDATE Dynamic_gastos_periodo SET saldo_inicial = ?, saldo_final = ? WHERE idperiodo = ?',
+        [currentSaldoInicial, saldoFinal, idperiodo]
+      );
+
+      // Carry over to next period
+      currentSaldoInicial = saldoFinal;
+    }
+  } catch (err) {
+    console.error('[CajaOperativa] Error recalculating all periods for responsible:', err);
+  }
+}
+
+async function recargarSaldosPeriodo(idperiodo, conn = pool) {
+  try {
+    const [pRows] = await conn.execute(
+      'SELECT idresponsable FROM Dynamic_gastos_periodo WHERE idperiodo = ? LIMIT 1',
       [idperiodo]
     );
     if (!pRows.length) return;
-    const { saldo_inicial, reintegros } = pRows[0];
-
-    const [gRows] = await pool.execute(
-      'SELECT valor, valida_operacion, valida_contable FROM Dynamic_gastos WHERE idperiodo = ?',
-      [idperiodo]
-    );
-
-    const hasPendingContable = gRows.some(g => g.valida_contable === 'PENDIENTE');
-    
-    let totalGastos = 0;
-    if (hasPendingContable) {
-      // Prioritize valida_operacion (Validado por Responsable)
-      totalGastos = gRows
-        .filter(g => g.valida_operacion === 'Confirmado')
-        .reduce((sum, g) => sum + Number(g.valor), 0);
-    } else {
-      // Prioritize valida_contable (Aprobado por Contabilidad)
-      totalGastos = gRows
-        .filter(g => g.valida_contable === 'Confirmado')
-        .reduce((sum, g) => sum + Number(g.valor), 0);
-    }
-
-    const saldoFinal = Number(saldo_inicial) + Number(reintegros) - totalGastos;
-
-    await pool.execute(
-      'UPDATE Dynamic_gastos_periodo SET saldo_final = ? WHERE idperiodo = ?',
-      [saldoFinal, idperiodo]
-    );
+    await recalcularTodosLosSaldosResponsable(pRows[0].idresponsable, conn);
   } catch (err) {
-    console.error('[CajaOperativa] Error recalculating period balance:', err);
+    console.error('[CajaOperativa] Error wrapping balance recalculation:', err);
   }
 }
 
@@ -248,6 +296,22 @@ router.get('/api/acceso', async (req, res) => {
     await verificarYGenerarPeriodos();
 
     res.json(acceso);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/api/quincenas-maestro', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const acceso = await computarAccesoCajaOperativa(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.execute(
+      'SELECT Quincena, MIN(Fecha) as MinFecha FROM Maestro_Fechas GROUP BY Quincena ORDER BY MinFecha DESC'
+    );
+    const quincenas = rows.map(r => r.Quincena).filter(Boolean);
+    res.json(quincenas);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -539,12 +603,7 @@ router.post('/api/reintegros/:id/aprobar', async (req, res) => {
         [approvedVal, observaciones_aprobador || null, acceso.usuarioNombre, id]
       );
 
-      // 2. Add approved value to the period's reintegros column
-      await conn.execute(
-        'UPDATE Dynamic_gastos_periodo SET reintegros = reintegros + ? WHERE idperiodo = ?',
-        [approvedVal, idperiodo]
-      );
-
+      // Recalculation will be handled by recargarSaldosPeriodo right after committing
       await conn.commit();
     } catch (err) {
       await conn.rollback();
@@ -574,7 +633,14 @@ router.get('/api/periodos', async (req, res) => {
       SELECT p.*, resp.identificacion AS resp_identificacion, resp.regional, resp.operacionprincipal,
              (SELECT COALESCE(SUM(valor), 0) FROM Dynamic_gastos WHERE idperiodo = p.idperiodo) AS total_gastos,
              (SELECT COALESCE(SUM(valor), 0) FROM Dynamic_gastos WHERE idperiodo = p.idperiodo AND valida_operacion = 'Confirmado') AS total_confirmado_operacion,
-             (SELECT COALESCE(SUM(valor), 0) FROM Dynamic_gastos WHERE idperiodo = p.idperiodo AND valida_contable = 'Confirmado') AS total_confirmado_contable
+             (SELECT COALESCE(SUM(valor), 0) FROM Dynamic_gastos WHERE idperiodo = p.idperiodo AND valida_contable = 'Confirmado') AS total_confirmado_contable,
+             (SELECT COALESCE(SUM(r.valor), 0)
+              FROM Dynamic_gastos_reintegro r
+              JOIN Maestro_Fechas mf ON mf.Fecha = DATE(r.fecha_reintegro)
+              WHERE r.idresponsable = p.idresponsable
+                AND r.estado = 'APROBADO'
+                AND mf.Quincena = p.quincena
+                AND mf.Año = p.año) AS reintegros
       FROM Dynamic_gastos_periodo p
       JOIN Maestro_responsablegastos resp ON p.idresponsable = resp.idresponsable
     `;
@@ -824,15 +890,17 @@ router.post('/api/gastos/registrar', async (req, res) => {
       // 2. Handle linked worker relationships (only automatically for Transporte)
       if (tipo_gasto === 'Transporte') {
         const idgt = uuidv4();
+        const tieneFirma = !!firma_trabajador;
+        const estadoFinal = tieneFirma ? 'VINCULADO' : 'PENDIENTE';
         await conn.execute(
           `INSERT INTO Dynamic_gasto_trabajador
            (idgasto_trabajador, idgasto, tipo_gasto, regional, operacion, identificacion,
             descripcion_gasto, valor, firma, observaciones, usuario, estado)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'VINCULADO')`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             idgt, idgasto, tipo_gasto, regional, operacion, numero_identificacion,
-            descripcion || '', valor, firma_trabajador || 'FIRMADO EN PANEL',
-            observaciones || null, acceso.usuarioNombre
+            descripcion || '', valor, firma_trabajador || null,
+            observaciones || null, acceso.usuarioNombre, estadoFinal
           ]
         );
       }
@@ -859,6 +927,109 @@ router.post('/api/gastos/registrar', async (req, res) => {
     await recargarSaldosPeriodo(idperiodo);
 
     res.json({ ok: true, idgasto });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/api/gastos/:idgasto/colaboradores', async (req, res) => {
+  try {
+    const { idgasto } = req.params;
+    const { usuario } = req.query;
+    const acceso = await computarAccesoCajaOperativa(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.execute(
+      `SELECT t.*,
+              COALESCE(
+                (SELECT 
+                   CASE 
+                     WHEN Trabajador LIKE '% ** %' THEN SUBSTRING_INDEX(Trabajador, ' ** ', -1) 
+                     ELSE Trabajador 
+                   END 
+                 FROM Maestro_Vinculación 
+                 WHERE Identificación = t.identificacion 
+                 ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1),
+                'Colaborador no encontrado'
+              ) AS trabajador_nombre,
+              seg.Celular AS telefono, seg.Email AS email
+       FROM Dynamic_gasto_trabajador t
+       LEFT JOIN Maestro_Segmentación seg ON seg.Identificación = t.identificacion
+       WHERE t.idgasto = ?
+       ORDER BY t.fecha_registro ASC`,
+      [idgasto]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/gastos/:idgasto/colaboradores', async (req, res) => {
+  try {
+    const { idgasto } = req.params;
+    const { usuario, identificacion, valor, observaciones } = req.body;
+
+    const acceso = await computarAccesoCajaOperativa(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!identificacion || !valor) {
+      return res.status(400).json({ error: 'Identificación y valor son obligatorios.' });
+    }
+
+    const [gRows] = await pool.execute(
+      'SELECT regional, operacion, tipo_gasto, descripcion FROM Dynamic_gastos WHERE idgasto = ? LIMIT 1',
+      [idgasto]
+    );
+    if (!gRows.length) {
+      return res.status(404).json({ error: 'Gasto padre no encontrado' });
+    }
+    const { regional, operacion, tipo_gasto, descripcion } = gRows[0];
+
+    const idgt = uuidv4();
+    await pool.execute(
+      `INSERT INTO Dynamic_gasto_trabajador
+       (idgasto_trabajador, idgasto, tipo_gasto, regional, operacion, identificacion,
+        descripcion_gasto, valor, observaciones, estado, firma)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE', NULL)`,
+      [
+        idgt, idgasto, tipo_gasto, regional, operacion, identificacion.trim(),
+        descripcion || '', valor, observaciones || null
+      ]
+    );
+
+    res.json({ ok: true, idgasto_trabajador: idgt });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/api/gastos/:idgasto/colaboradores/:idgasto_trabajador', async (req, res) => {
+  try {
+    const { idgasto, idgasto_trabajador } = req.params;
+    const { usuario } = req.query;
+
+    const acceso = await computarAccesoCajaOperativa(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.execute(
+      'SELECT idgasto_trabajador, tipo_gasto FROM Dynamic_gasto_trabajador WHERE idgasto_trabajador = ? AND idgasto = ? LIMIT 1',
+      [idgasto_trabajador, idgasto]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Relación no encontrada' });
+    }
+
+    if (rows[0].tipo_gasto === 'Transporte') {
+      return res.status(400).json({ error: 'No se puede eliminar el colaborador automático de un gasto de transporte.' });
+    }
+
+    await pool.execute(
+      'DELETE FROM Dynamic_gasto_trabajador WHERE idgasto_trabajador = ?',
+      [idgasto_trabajador]
+    );
+
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1060,6 +1231,99 @@ router.post('/api/gastos/:idgasto/validar-contable', async (req, res) => {
 });
 
 // ── 5. REEMBOLSOS (PUBLIC & PENDING) ENDPOINTS ──
+
+router.get('/api/reembolsos/gasto-trabajador/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.execute(
+      `SELECT t.*,
+              COALESCE(
+                (SELECT 
+                   CASE 
+                     WHEN Trabajador LIKE '% ** %' THEN SUBSTRING_INDEX(Trabajador, ' ** ', -1) 
+                     ELSE Trabajador 
+                   END 
+                 FROM Maestro_Vinculación 
+                 WHERE Identificación = t.identificacion 
+                 ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1),
+                'Colaborador no encontrado'
+              ) AS trabajador_nombre,
+              seg.Celular AS telefono, seg.Email AS email
+       FROM Dynamic_gasto_trabajador t
+       LEFT JOIN Maestro_Segmentación seg ON seg.Identificación = t.identificacion
+       WHERE t.idgasto_trabajador = ? LIMIT 1`,
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Registro no encontrado' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/api/reembolsos/firmar-gasto-trabajador/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firma } = req.body;
+    if (!firma) {
+      return res.status(400).json({ error: 'La firma es obligatoria.' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT idgasto FROM Dynamic_gasto_trabajador WHERE idgasto_trabajador = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Registro no encontrado' });
+    }
+
+    const idgasto = rows[0].idgasto;
+    const estado = idgasto ? 'VINCULADO' : 'PENDIENTE';
+
+    await pool.execute(
+      'UPDATE Dynamic_gasto_trabajador SET firma = ?, estado = ? WHERE idgasto_trabajador = ?',
+      [firma, estado, id]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/api/reembolsos/contacto-colaborador/:identificacion', async (req, res) => {
+  try {
+    const { identificacion } = req.params;
+    const { telefono, email, usuario } = req.body;
+
+    const acceso = await computarAccesoCajaOperativa(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    // Verify if record exists in Maestro_Segmentación
+    const [rows] = await pool.execute(
+      'SELECT Identificación FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1',
+      [identificacion]
+    );
+
+    if (rows.length) {
+      await pool.execute(
+        'UPDATE Maestro_Segmentación SET Celular = ?, Email = ? WHERE Identificación = ?',
+        [telefono || '', email || '', identificacion]
+      );
+    } else {
+      await pool.execute(
+        'INSERT INTO Maestro_Segmentación (Identificación, Celular, Email) VALUES (?, ?, ?)',
+        [identificacion, telefono || '', email || '']
+      );
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.get('/api/reembolsos/pendientes', async (req, res) => {
   try {
