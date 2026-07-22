@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integridad de Identificación — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: #111827;
+      --bg-input: #1f2937;
+      --border-color: #2e3b4e;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-teal: #0d9488;
+      --accent-teal-hover: #0f766e;
+      --accent-red: #ef4444;
+      --accent-red-hover: #dc2626;
+      --accent-yellow: #eab308;
+      --font-main: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 700px;
+      width: 100%;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+
+    .title-box h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #0d9488, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .title-box p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .badge-user {
+      background: rgba(13, 148, 136, 0.1);
+      border: 1px solid var(--accent-teal);
+      color: var(--accent-teal);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* Card */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      margin-bottom: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent-teal);
+      margin-bottom: 20px;
+    }
+
+    /* Inputs */
+    .field {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent-teal);
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      font-family: var(--font-main);
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent-teal);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-teal-hover);
+    }
+
+    .btn-danger {
+      background: var(--accent-red);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: var(--accent-red-hover);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-input);
+    }
+
+    /* Result Panel */
+    .result-panel {
+      display: none;
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 25px;
+    }
+
+    .info-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .info-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .info-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .info-value.mono {
+      font-family: var(--font-mono);
+      color: var(--accent-teal);
+    }
+
+    .actions-grid {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .actions-grid .btn {
+      flex: 1;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      max-width: 500px;
+      width: 100%;
+      padding: 30px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+      animation: slideUp 0.3s ease forwards;
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .modal-title.danger {
+      color: var(--accent-red);
+    }
+
+    .modal-title.warning {
+      color: var(--accent-yellow);
+    }
+
+    .modal-body {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .modal-body strong {
+      color: var(--text-main);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(9, 13, 22, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(13, 148, 136, 0.2);
+      border-top-color: var(--accent-teal);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-text {
+      font-weight: 600;
+      color: var(--accent-teal);
+    }
+
+    /* Alert / Notification Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #1e293b;
+      border-left: 4px solid var(--accent-teal);
+      border-radius: 8px;
+      padding: 16px 24px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+      z-index: 3000;
+      display: none;
+      max-width: 350px;
+      animation: slideIn 0.3s ease forwards;
+    }
+
+    .toast.error {
+      border-left-color: var(--accent-red);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading -->
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Procesando...</div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">Notificación...</div>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="title-box">
+        <h1>Integridad de Identificación</h1>
+        <p>Modificación y eliminación segura de trabajadores en base de datos y GCS</p>
+      </div>
+      <div class="badge-user" id="user-badge">Cargando...</div>
+    </div>
+
+    <!-- Buscador -->
+    <div class="card">
+      <div class="section-title">Buscar Trabajador</div>
+      <div class="field">
+        <label for="search-id">Cédula / Identificación a buscar</label>
+        <div class="input-group">
+          <input type="text" id="search-id" placeholder="Ingresa la identificación..." autocomplete="off">
+          <button class="btn btn-primary" id="btn-buscar">🔎 Buscar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="card result-panel" id="result-panel">
+      <div class="section-title">Información del Trabajador</div>
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="info-label">Nombre Completo</div>
+          <div class="info-value" id="trabajador-nombre">—</div>
+        </div>
+        <div class="info-box">
+          <div class="info-label">Identificación Actual</div>
+          <div class="info-value mono" id="trabajador-id">—</div>
+        </div>
+        <div class="info-box" style="grid-column: span 2;">
+          <div class="info-label">Operación Asignada</div>
+          <div class="info-value" id="trabajador-operacion">—</div>
+        </div>
+      </div>
+
+      <div class="actions-grid">
+        <button class="btn btn-secondary" id="btn-trigger-modificar">📝 Modificar Cédula</button>
+        <button class="btn btn-danger" id="btn-trigger-eliminar">⚠️ Eliminar Trabajador</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MODIFICAR -->
+  <div class="modal-overlay" id="modal-modificar">
+    <div class="modal">
+      <div class="modal-title warning">📝 Modificar Identificación</div>
+      <div class="modal-body">
+        <p>Vas a cambiar la identificación de <strong><span class="lbl-worker-nombre"></span></strong>.</p>
+        <p style="margin-top: 10px; margin-bottom: 15px;">Este cambio se propagará automáticamente en **25 tablas de la base de datos** y renombrará las carpetas y archivos relacionados en **Google Cloud Storage (GCS)**.</p>
+        
+        <div class="field">
+          <label for="new-id-input">Nueva Identificación (Correcta)</label>
+          <input type="text" id="new-id-input" placeholder="Nueva cédula..." autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-modificar')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-confirm-modificar">Aplicar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ELIMINAR -->
+  <div class="modal-overlay" id="modal-eliminar">
+    <div class="modal">
+      <div class="modal-title danger">⚠️ ALERTA: ELIMINACIÓN PERMANENTE</div>
+      <div class="modal-body">
+        <p>Estás a punto de eliminar a <strong><span class="lbl-worker-nombre"></span></strong> (C.C. <span class="lbl-worker-id"></span>).</p>
+        <p style="margin-top: 10px; color: #fca5a5; font-weight: 500;">Esta acción es IRREVERSIBLE. Se borrarán todos los registros asociados en 26 tablas del sistema y se eliminarán permanentemente las carpetas en GCS.</p>
+        
+        <p style="margin-top: 15px; margin-bottom: 10px;">Para confirmar la eliminación, escribe la palabra <strong>ELIMINAR</strong> en el siguiente campo:</p>
+        <input type="text" id="delete-confirm-text" placeholder="Escribe ELIMINAR aquí..." autocomplete="off" style="border-color: var(--accent-red);">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-eliminar')">Cancelar</button>
+        <button class="btn btn-danger" id="btn-confirm-eliminar">Confirmar Eliminación</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuración inyectada desde el backend
+    window.CONFIG = __CONFIG__;
+  </script>
+
+  <script>
+    const CONFIG = window.CONFIG;
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const toast = document.getElementById('toast');
+    const resultPanel = document.getElementById('result-panel');
+
+    // Inicializar badge de usuario
+    if (CONFIG && CONFIG.usuarioNombre) {
+      document.getElementById('user-badge').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+    }
+
+    function showLoading(text = 'Procesando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+
+    function showToast(msg, type = 'success') {
+      toast.innerText = msg;
+      toast.className = 'toast';
+      if (type === 'error') {
+        toast.classList.add('error');
+      }
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 5000);
+    }
+
+    function openModal(id) {
+      document.getElementById(id).style.display = 'flex';
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+      // Limpiar inputs de modal
+      if (id === 'modal-modificar') {
+        document.getElementById('new-id-input').value = '';
+      } else if (id === 'modal-eliminar') {
+        document.getElementById('delete-confirm-text').value = '';
+      }
+    }
+
+    // Buscar Trabajador
+    let trabajadorActual = null;
+
+    document.getElementById('btn-buscar').addEventListener('click', buscarTrabajador);
+    document.getElementById('search-id').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') buscarTrabajador();
+    });
+
+    async function buscarTrabajador() {
+      const id = document.getElementById('search-id').value.trim();
+      if (!id) {
+        showToast('Por favor ingresa una identificación a buscar', 'error');
+        return;
+      }
+
+      showLoading('Buscando trabajador...');
+      resultPanel.style.display = 'none';
+      trabajadorActual = null;
+
+      try {
+        const r = await fetch(`/integridad-id/api/buscar/${id}?usuario=${CONFIG.usuarioId}`);
+        const res = await r.json();
+
+        if (r.ok && res.ok) {
+          trabajadorActual = res.trabajador;
+          
+          document.getElementById('trabajador-nombre').innerText = trabajadorActual.nombre;
+          document.getElementById('trabajador-id').innerText = trabajadorActual.identificacion;
+          document.getElementById('trabajador-operacion').innerText = trabajadorActual.operacion || '—';
+
+          // Actualizar etiquetas de modales
+          document.querySelectorAll('.lbl-worker-nombre').forEach(el => el.innerText = trabajadorActual.nombre);
+          document.querySelectorAll('.lbl-worker-id').forEach(el => el.innerText = trabajadorActual.identificacion);
+
+          resultPanel.style.display = 'block';
+        } else {
+          showToast(res.error || 'Error al buscar trabajador', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al buscar trabajador', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Modal Modificar Trigger
+    document.getElementById('btn-trigger-modificar').addEventListener('click', () => {
+      if (!trabajadorActual) return;
+      openModal('modal-modificar');
+    });
+
+    // Confirmar Modificar
+    document.getElementById('btn-confirm-modificar').addEventListener('click', async () => {
+      const newId = document.getElementById('new-id-input').value.trim();
+      if (!newId) {
+        showToast('Ingresa la nueva identificación', 'error');
+        return;
+      }
+
+      if (!/^\d+$/.test(newId)) {
+        showToast('La identificación debe contener solo números', 'error');
+        return;
+      }
+
+      if (newId === trabajadorActual.identificacion) {
+        showToast('La nueva identificación debe ser diferente a la actual', 'error');
+        return;
+      }
+
+      closeModal('modal-modificar');
+      showLoading('Modificando identificación y renombrando recursos en GCS (puede tardar un momento)...');
+
+      try {
+        const r = await fetch('/integridad-id/api/modificar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            oldIdentificacion: trabajadorActual.identificacion,
+            newIdentificacion: newId,
+            usuario: CONFIG.usuarioId
+          })
+        });
+        const res = await r.json();
+
+        if (r.ok && res.ok) {
+          showToast('Identificación modificada y recursos actualizados con éxito en todo el sistema.');
+          resultPanel.style.display = 'none';
+          document.getElementById('search-id').value = newId;
+          buscarTrabajador(); // Buscar automáticamente el nuevo ID
+        } else {
+          showToast(res.error || 'Error al modificar identificación', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al aplicar cambios', 'error');
+      } finally {
+        hideLoading();
+      }
+    });
+
+    // Modal Eliminar Trigger
+    document.getElementById('btn-trigger-eliminar').addEventListener('click', () => {
+      if (!trabajadorActual) return;
+      openModal('modal-eliminar');
+    });
+
+    // Confirmar Eliminar
+    document.getElementById('btn-confirm-eliminar').addEventListener('click', async () => {
+      const confirmText = document.getElementById('delete-confirm-text').value.trim();
+      if (confirmText !== 'ELIMINAR') {
+        showToast('Debes escribir la palabra ELIMINAR para proceder', 'error');
+        return;
+      }
+
+      closeModal('modal-eliminar');
+      showLoading('Eliminando trabajador de base de datos y GCS...');
+
+      try {
+        const r = await fetch('/integridad-id/api/eliminar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identificacion: trabajadorActual.identificacion,
+            usuario: CONFIG.usuarioId
+          })
+        });
+        const res = await r.json();
+
+        if (r.ok && res.ok) {
+          showToast('Trabajador eliminado permanentemente de todas las tablas y del almacenamiento GCS.');
+          resultPanel.style.display = 'none';
+          document.getElementById('search-id').value = '';
+          trabajadorActual = null;
+        } else {
+          showToast(res.error || 'Error al eliminar trabajador', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al eliminar trabajador', 'error');
+      } finally {
+        hideLoading();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -28,6 +28,7 @@ const seleccionRoutes               = require('./src/routes/seleccion');
 const inventarioRoutes               = require('./src/routes/inventario');
 const kardexRoutes                   = require('./src/routes/kardex');
 const cajaoperativaRoutes            = require('./src/routes/cajaoperativa');
+const integridadRoutes               = require('./src/routes/integridad');
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use('/inventario', inventarioRoutes);
 app.use('/kardex', kardexRoutes);
 app.use('/cajaoperativa', cajaoperativaRoutes);
 app.use('/reembolso', cajaoperativaRoutes);
+app.use('/integridad-id', integridadRoutes);
 
 
 
