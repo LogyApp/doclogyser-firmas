@@ -185,6 +185,15 @@
           </select>
         </div>
         <div class="field">
+          <label for="filtro-resultado">Resultado</label>
+          <select id="filtro-resultado">
+            <option value="">Todos</option>
+            <option value="APROBADO">Aprobados</option>
+            <option value="NO APROBADO">No Aprobados</option>
+            <option value="PENDIENTE">Pendientes</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="filtro-desde">Fecha Desde</label>
           <input type="date" id="filtro-desde">
         </div>
@@ -345,17 +354,27 @@
         const r = await fetch(`/capacitacionsst/api/capacitaciones${query}`);
         const data = await r.json();
 
-        document.getElementById('total-badge-count').innerText = `Total: ${data.length} registros`;
+        // Filtrar por resultado en cliente
+        const resVal = document.getElementById('filtro-resultado').value;
+        let filteredData = data;
+        if (resVal) {
+          filteredData = data.filter(item => {
+            const itemRes = (item.resultado || 'PENDIENTE').trim().toUpperCase();
+            return itemRes === resVal;
+          });
+        }
+
+        document.getElementById('total-badge-count').innerText = `Total: ${filteredData.length} registros`;
 
         const tbody = document.getElementById('capacitaciones-body');
         tbody.innerHTML = '';
 
-        if (!data.length) {
+        if (!filteredData.length) {
           tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 24px;">No se encontraron registros</td></tr>';
           return;
         }
 
-        data.forEach(item => {
+        filteredData.forEach(item => {
           const row = document.createElement('tr');
           row.dataset.id = item.id_capacitacion;
           
@@ -420,6 +439,7 @@
       document.getElementById('filtro-trabajador').value = '';
       document.getElementById('filtro-desde').value = '';
       document.getElementById('filtro-hasta').value = '';
+      document.getElementById('filtro-resultado').value = '';
       rFilter.value = '';
       oFilter.value = '';
       rFilter.dispatchEvent(new Event('change'));
