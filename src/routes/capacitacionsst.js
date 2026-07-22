@@ -422,9 +422,18 @@ router.get('/api/capacitacion/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const [cRows] = await pool.execute(
-      `SELECT c.*, usu.Nombre AS nombre_evaluador
+      `SELECT c.*, usu.Nombre AS nombre_evaluador, vin.Trabajador AS nombre_trabajador
        FROM Maestro_capacitacionsst c
        LEFT JOIN Maestro_Usuarios usu ON c.usuario = usu.ID
+       LEFT JOIN (
+         SELECT t1.Identificación, t1.Trabajador
+         FROM Maestro_Vinculación t1
+         INNER JOIN (
+           SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
+           FROM Maestro_Vinculación
+           GROUP BY Identificación
+         ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
+       ) vin ON c.identificacion = vin.Identificación
        WHERE c.id_capacitacion = ?`,
       [id]
     );

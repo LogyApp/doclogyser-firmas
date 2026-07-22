@@ -334,6 +334,47 @@ router.get('/api/trabajadores-por-operacion', async (req, res) => {
   }
 });
 
+// ═════ API: GET /api/contacto/:identificacion ═════
+router.get('/api/contacto/:identificacion', async (req, res) => {
+  try {
+    const { identificacion } = req.params;
+    const [rows] = await pool.execute(
+      'SELECT Email, Celular FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1',
+      [identificacion]
+    );
+    if (rows.length) {
+      res.json(rows[0]);
+    } else {
+      res.json({ Email: null, Celular: null });
+    }
+  } catch (err) {
+    console.error('[compromisosst] GET /api/contacto:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/actualizar-contacto ═════
+router.post('/api/actualizar-contacto', async (req, res) => {
+  try {
+    const { identificacion, email, celular } = req.body;
+    if (!identificacion) {
+      return res.status(400).json({ error: 'identificacion requerida' });
+    }
+
+    await pool.execute(
+      `INSERT INTO Maestro_Segmentación (Identificación, Email, Celular)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE Email = VALUES(Email), Celular = VALUES(Celular)`,
+      [identificacion, email || null, celular || null]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[compromisosst] POST /api/actualizar-contacto:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: GET /api/compromisos ═════
 router.get('/api/compromisos', async (req, res) => {
   try {
@@ -393,9 +434,11 @@ router.get('/api/compromisos', async (req, res) => {
         a.firma_lidersst,
         a.url_doc,
         a.usuario,
-        a.fecha_registro
+        a.fecha_registro,
+        seg.Celular AS celular_trabajador
        FROM Dynamic_compromisosst a
        LEFT JOIN \`Maestro_Vinculación\` v ON a.identificaciontrabajador = v.Identificación AND v.Estado = 'Activo'
+       LEFT JOIN \`Maestro_Segmentación\` seg ON a.identificaciontrabajador = seg.Identificación
        ${where}
        ORDER BY a.fecha_registro DESC
        LIMIT 500`,
@@ -416,9 +459,10 @@ router.get('/api/compromiso/:id', async (req, res) => {
     const { usuario } = req.query;
 
     const [[c]] = await pool.execute(
-      `SELECT a.*, u.Nombre AS nombre_creador
+      `SELECT a.*, u.Nombre AS nombre_creador, seg.Celular AS celular_trabajador
        FROM Dynamic_compromisosst a
        LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
+       LEFT JOIN Maestro_Segmentación seg ON a.identificaciontrabajador = seg.Identificación
        WHERE a.idcsst = ?`,
       [id]
     );

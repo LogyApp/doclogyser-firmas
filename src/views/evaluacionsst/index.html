@@ -87,7 +87,7 @@
     /* List view vs Detail view layout */
     .view-container { display: flex; gap: 20px; flex-direction: column; }
     .view-container.detail-active {
-      display: grid; grid-template-columns: 1.7fr 1fr;
+      display: grid; grid-template-columns: 1.2fr 1fr;
     }
     @media (max-width: 900px) {
       .view-container.detail-active { grid-template-columns: 1fr; }
@@ -113,8 +113,9 @@
       background: #ffffff; border-radius: 12px; border-left: 4px solid #10b981;
       padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
       position: sticky; top: 20px; display: none;
+      align-self: start;
     }
-    .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+    .detail-info-box p { margin-bottom: 7px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; }
     .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
 
     .loading-overlay {
@@ -181,6 +182,15 @@
           </select>
         </div>
         <div class="field">
+          <label for="filtro-resultado">Resultado</label>
+          <select id="filtro-resultado">
+            <option value="">Todos</option>
+            <option value="APROBADO">Aprobados</option>
+            <option value="NO APROBADO">No Aprobados</option>
+            <option value="PENDIENTE">Pendientes</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="filtro-desde">Fecha Desde</label>
           <input type="date" id="filtro-desde">
         </div>
@@ -207,10 +217,10 @@
               <tr>
                 <th>Fecha</th>
                 <th>Trabajador</th>
-                <th>Identificación</th>
                 <th>Tipo</th>
                 <th>Puntaje</th>
                 <th>Resultado</th>
+                <th>Notificar</th>
                 <th>Documento PDF</th>
               </tr>
             </thead>
@@ -223,9 +233,11 @@
         </div>
       </div>
 
-      <!-- Detalle Lateral -->
       <div class="detail-card" id="detalle-card">
-        <div class="section-title">Detalle de la Evaluación</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+          <h3 style="color: #0f172a; font-size: 1.1rem; margin: 0;">Detalle del Registro</h3>
+          <button class="btn btn-secondary btn-small" onclick="cerrarDetalle()" style="padding: 4px 8px;">Cerrar</button>
+        </div>
         <div class="detail-info-box" id="detalle-info">
           <!-- Dinámico -->
         </div>
@@ -246,8 +258,6 @@
         <div id="opciones-control" style="margin-top: 20px;">
           <!-- Dinámico -->
         </div>
-        
-        <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;" onclick="cerrarDetalle()">Volver al Listado</button>
       </div>
 
     </div>
@@ -316,6 +326,7 @@
       filtroReg.dispatchEvent(new Event('change'));
       document.getElementById('filtro-desde').value = '';
       document.getElementById('filtro-hasta').value = '';
+      document.getElementById('filtro-resultado').value = '';
       cargarListado();
     });
 
@@ -342,39 +353,60 @@
 
         const res = await fetch(`/evaluacionsst/api/evaluaciones?${params.toString()}`);
         evaluacionesList = await res.json();
+ 
+        // Filtrado por resultado en cliente
+        const resVal = document.getElementById('filtro-resultado').value;
+        let filteredData = evaluacionesList;
+        if (resVal) {
+          filteredData = evaluacionesList.filter(item => {
+            const itemRes = item.url_doc 
+              ? (item.resultado === 'APROBADO' ? 'APROBADO' : 'NO APROBADO')
+              : 'PENDIENTE';
+            return itemRes === resVal;
+          });
+        }
 
-        document.getElementById('total-badge-count').textContent = `Total: ${evaluacionesList.length} registros`;
-
+        document.getElementById('total-badge-count').textContent = `Total: ${filteredData.length} registros`;
+ 
         const tbody = document.getElementById('evaluaciones-body');
         tbody.innerHTML = '';
-
-        if (!evaluacionesList.length) {
+ 
+        if (!filteredData.length) {
           tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #888; padding: 30px;">No se encontraron evaluaciones registradas.</td></tr>`;
           return;
         }
-
-        evaluacionesList.forEach(item => {
+ 
+        filteredData.forEach(item => {
           const fila = document.createElement('tr');
           fila.addEventListener('click', () => abrirDetalle(item.id_evaluacion));
-
+ 
           const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
           const resultBadge = item.url_doc 
             ? (item.resultado === 'APROBADO' 
                 ? '<span class="status-badge badge-firma-aceptada">✓ Aprobado</span>'
                 : '<span class="status-badge badge-firma-prefilled">✗ No Aprobado</span>')
             : '<span class="status-badge badge-firma-sin">⏱ Pendiente</span>';
-
+ 
+          let waLinkHtml = '—';
+          if (!item.url_doc) {
+            const urlFirmaLink = `${window.location.origin}/evaluacionsst/responder?item=${item.id_evaluacion}`;
+            const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaLink}`);
+            let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+            if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+            waLinkHtml = `<a href="https://wa.me/${cel}?text=${msgWaText}" target="_blank" onclick="event.stopPropagation();" class="btn btn-primary btn-small" style="background:#25d366; border: none; color:#fff; font-weight: bold; text-decoration: none; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;"><span style="font-size:0.9rem;">💬</span> WhatsApp</a>`;
+          }
+ 
           const docLink = item.url_doc 
             ? `<a href="${item.url_doc}" target="_blank" onclick="event.stopPropagation();" style="color:#0d9488; font-weight:bold; text-decoration:none;">📄 Abrir PDF</a>` 
             : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
-
+ 
           fila.innerHTML = `
             <td><strong>${fechaFmt}</strong></td>
-            <td>${item.nombre_trabajador || 'Cargando...'}</td>
-            <td>${item.identificacion}</td>
+            <td><strong>${item.nombre_trabajador || 'Cargando...'}</strong><br><small style="color:#64748b;">C.C. ${item.identificacion}</small></td>
             <td>${item.tipo}</td>
             <td><strong>${item.puntaje !== null ? item.puntaje + ' / 13' : '—'}</strong></td>
             <td>${resultBadge}</td>
+            <td onclick="event.stopPropagation()">${waLinkHtml}</td>
             <td>${docLink}</td>
           `;
           tbody.appendChild(fila);
@@ -402,7 +434,11 @@
       // Llenar datos de contacto
       document.getElementById('contacto-email').value = item.email_trabajador || '';
       document.getElementById('contacto-celular').value = item.celular_trabajador || '';
-      document.getElementById('opciones-contacto').style.display = 'block';
+      if (item.url_doc) {
+        document.getElementById('opciones-contacto').style.display = 'none';
+      } else {
+        document.getElementById('opciones-contacto').style.display = 'block';
+      }
 
       // Dibujar detalle informativo
       const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
@@ -412,10 +448,8 @@
 
       document.getElementById('detalle-info').innerHTML = `
         <p><strong>Fecha Eval:</strong> ${fechaFmt}</p>
-        <p><strong>Trabajador:</strong> ${item.nombre_trabajador || '—'}</p>
-        <p><strong>Cédula:</strong> ${item.identificacion}</p>
+        <p><strong>Trabajador:</strong> ${item.nombre_trabajador || '—'} (C.C. ${item.identificacion})</p>
         <p><strong>Cargo:</strong> ${item.Cargo || '—'}</p>
-        <p><strong>Regional:</strong> ${item.Regional || '—'}</p>
         <p><strong>Operación:</strong> ${item.operacion || '—'}</p>
         <p><strong>Tipo Eval:</strong> ${item.tipo}</p>
         <p><strong>Evaluador:</strong> ${item.nombre_evaluador || item.usuario}</p>

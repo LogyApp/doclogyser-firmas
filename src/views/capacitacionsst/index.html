@@ -115,7 +115,7 @@
       position: sticky; top: 20px; display: none;
       align-self: start;
     }
-    .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+    .detail-info-box p { margin-bottom: 7px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; }
     .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
 
     .loading-overlay {
@@ -238,7 +238,10 @@
 
       <!-- Detalle Lateral -->
       <div class="detail-card" id="detalle-card">
-        <div class="section-title">Detalle de la Capacitación</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+          <h3 style="color: #0f172a; font-size: 1.1rem; margin: 0;">Detalle de la Capacitación</h3>
+          <button class="btn btn-secondary btn-small" onclick="cerrarDetalle()" style="padding: 4px 8px;">Cerrar</button>
+        </div>
         <div class="detail-info-box" id="detalle-info">
           <!-- Dinámico -->
         </div>
@@ -259,8 +262,6 @@
         <div id="opciones-control" style="margin-top: 20px;">
           <!-- Dinámico -->
         </div>
-        
-        <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;" onclick="cerrarDetalle()">Volver al Listado</button>
       </div>
 
     </div>
@@ -484,8 +485,7 @@
 
         const infoBox = document.getElementById('detalle-info');
         infoBox.innerHTML = `
-          <p><strong>Identificación:</strong> ${data.identificacion}</p>
-          <p><strong>Tema:</strong> ${data.tema}</p>
+          <p><strong>Trabajador:</strong> ${data.nombre_trabajador || '—'} (C.C. ${data.identificacion})</p>
           <p><strong>Fecha Registro:</strong> ${fechaFmt}</p>
           <p><strong>Evaluador:</strong> ${data.nombre_evaluador || data.usuario}</p>
           <p><strong>Puntaje:</strong> ${data.puntaje !== null ? data.puntaje : '—'}</p>

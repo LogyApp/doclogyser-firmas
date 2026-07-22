@@ -87,7 +87,7 @@
 
     .view-container { display: flex; gap: 20px; flex-direction: column; }
     .view-container.detail-active {
-      display: grid; grid-template-columns: 1.7fr 1fr;
+      display: grid; grid-template-columns: 1.2fr 1fr;
     }
     @media (max-width: 900px) {
       .view-container.detail-active { grid-template-columns: 1fr; }
@@ -112,8 +112,9 @@
       background: #ffffff; border-radius: 12px; border-left: 4px solid #10b981;
       padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
       position: sticky; top: 20px; display: none;
+      align-self: start;
     }
-    .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+    .detail-info-box p { margin-bottom: 7px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; }
     .detail-info-box p strong { color: #475569; min-width: 130px; display: inline-block; }
 
     .loading-overlay {
@@ -211,6 +212,15 @@
           </select>
         </div>
         <div class="field">
+          <label for="filtro-estado">Estado de Firmas</label>
+          <select id="filtro-estado">
+            <option value="">Todos</option>
+            <option value="ROJO">Rojo (Sin Firma)</option>
+            <option value="AMARILLO">Amarillo (Solo Firma Trabajador)</option>
+            <option value="VERDE">Verde (Completado)</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="filtro-desde">Fecha Desde</label>
           <input type="date" id="filtro-desde">
         </div>
@@ -254,9 +264,9 @@
               <tr>
                 <th>Fecha de Registro</th>
                 <th>Trabajador</th>
-                <th>Identificación</th>
                 <th>Analista SST</th>
                 <th>Estado Firmas</th>
+                <th>Notificar</th>
                 <th>Documento PDF</th>
               </tr>
             </thead>
@@ -278,6 +288,19 @@
         
         <div class="detail-info-box" id="detalle-info">
           <!-- Dinámico -->
+        </div>
+
+        <div id="opciones-contacto" style="margin-top: 20px; display: none;">
+          <div class="section-title" style="margin-bottom: 12px; font-size: .75rem;">Actualizar Datos de Contacto</div>
+          <div class="field">
+            <label for="contacto-email">Correo Electrónico</label>
+            <input type="email" id="contacto-email" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="field">
+            <label for="contacto-celular">Celular (WhatsApp)</label>
+            <input type="text" id="contacto-celular" placeholder="3XXXXXXXXX">
+          </div>
+          <button class="btn btn-secondary" onclick="actualizarContacto()" style="width: 100%; margin-top: 5px;">Actualizar Contacto</button>
         </div>
 
         <div id="opciones-documento" style="margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
@@ -363,22 +386,50 @@
         const r = await fetch(`/compromisosst/api/compromisos${query}`);
         const data = await r.json();
 
-        document.getElementById('total-badge-count').innerText = `Total: ${data.length} registros`;
+        // Filtrado por estado de firmas en cliente
+        const estVal = document.getElementById('filtro-estado').value;
+        let filteredData = data;
+        if (estVal) {
+          filteredData = data.filter(item => {
+            const tF = !!item.firma_trabajador;
+            const aF = !!item.firma_analista;
+            let itemEst = 'ROJO';
+            if (tF && aF) itemEst = 'VERDE';
+            else if (tF) itemEst = 'AMARILLO';
+            return itemEst === estVal;
+          });
+        }
+
+        document.getElementById('total-badge-count').innerText = `Total: ${filteredData.length} registros`;
 
         const tbody = document.getElementById('lista-compromisos-body');
         tbody.innerHTML = '';
 
-        if (!data.length) {
+        if (!filteredData.length) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888; padding: 24px;">No se encontraron registros</td></tr>';
           return;
         }
 
-        data.forEach(item => {
+        filteredData.forEach(item => {
           const row = document.createElement('tr');
           row.dataset.id = item.idcsst;
           
           const fechaFmt = item.fecha_registro ? item.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '';
           
+          let waLinkHtml = '—';
+          if (!item.firma_trabajador) {
+            const urlFirmaLink = `${window.location.origin}/compromisosst/firmar-trabajador?item=${item.idcsst}&token=${item.token_trabajador}`;
+            const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Normas SST: ${urlFirmaLink}`);
+            const cleanCel = item.celular_trabajador ? item.celular_trabajador.replace(/\D/g, '') : '';
+            let phoneParam = '';
+            if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+              phoneParam = '57' + cleanCel;
+            } else if (cleanCel) {
+              phoneParam = cleanCel;
+            }
+            waLinkHtml = `<a href="https://wa.me/${phoneParam}?text=${msgWaText}" target="_blank" class="btn btn-primary btn-small" style="background:#25d366; border: none; color:#fff; font-weight: bold; text-decoration: none; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;"><span style="font-size:0.9rem;">💬</span> WhatsApp</a>`;
+          }
+
           let pdfLink = '—';
           if (item.url_doc) {
             pdfLink = `<a href="${item.url_doc}" target="_blank" style="color: #10b981; font-weight: bold; text-decoration: none;">📄 PDF</a>`;
@@ -398,10 +449,10 @@
 
           row.innerHTML = `
             <td>${fechaFmt}</td>
-            <td><strong>${item.nombre_trabajador}</strong></td>
-            <td>${item.identificaciontrabajador}</td>
+            <td><strong>${item.identificaciontrabajador} ** ${item.nombre_trabajador}</strong></td>
             <td>${item.nombre_analista || '—'}</td>
             <td>${badgeFirma}</td>
+            <td onclick="event.stopPropagation()">${waLinkHtml}</td>
             <td onclick="event.stopPropagation()">${pdfLink}</td>
           `;
 
@@ -420,16 +471,18 @@
       }
     }
 
-    document.getElementById('btn-filtrar').addEventListener('click', cargarCompromisos);
     document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
       document.getElementById('filtro-trabajador').value = '';
       document.getElementById('filtro-desde').value = '';
       document.getElementById('filtro-hasta').value = '';
+      document.getElementById('filtro-estado').value = '';
       rFilter.value = '';
       oFilter.value = '';
       rFilter.dispatchEvent(new Event('change'));
       cargarCompromisos();
     });
+
+    document.getElementById('btn-filtrar').addEventListener('click', cargarCompromisos);
 
     cargarCompromisos();
 
@@ -472,8 +525,7 @@
 
         const infoBox = document.getElementById('detalle-info');
         infoBox.innerHTML = `
-          <p><strong>Trabajador:</strong> ${data.nombre_trabajador}</p>
-          <p><strong>Identificación:</strong> ${data.identificaciontrabajador}</p>
+          <p><strong>Trabajador:</strong> ${data.identificaciontrabajador} ** ${data.nombre_trabajador}</p>
           <p><strong>Cargo:</strong> ${data.cargo_trabajador}</p>
           <p><strong>Analista SST:</strong> ${data.nombre_analista} (C.C. ${data.identificacionanalista})</p>
           <p><strong>Fecha Registro:</strong> ${fechaFmt}</p>
@@ -484,21 +536,45 @@
 
         const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
         const esAutorizadoEliminar = ['AdmSst', 'LiderSst', 'Sistema'].includes(CONFIG.rol);
+
+        // Actualizar datos de contacto dinámicamente
+        if (data.estado === 'ROJO' && esCreadorOSistema) {
+          document.getElementById('opciones-contacto').style.display = 'block';
+          try {
+            const rContact = await fetch(`/compromisosst/api/contacto/${data.identificaciontrabajador}`);
+            const contact = await rContact.json();
+            document.getElementById('contacto-email').value = contact.Email || '';
+            document.getElementById('contacto-celular').value = contact.Celular || '';
+          } catch (err) {
+            console.error("Error cargando contacto:", err);
+          }
+        } else {
+          document.getElementById('opciones-contacto').style.display = 'none';
+        }
+
         const optsBox = document.getElementById('opciones-documento');
         optsBox.innerHTML = '';
-
+ 
         let optsHtml = '';
-
+ 
         const esPlanBAnalista = ['AdmSst', 'LiderSst'].includes(CONFIG.rol);
 
         if (data.estado === 'ROJO' && esCreadorOSistema) {
           const urlFirmaLink = `${window.location.origin}/compromisosst/firmar-trabajador?item=${data.idcsst}&token=${data.token_trabajador}`;
           const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Normas SST: ${urlFirmaLink}`);
-          const waUrl = `https://wa.me/?text=${msgWaText}`;
+          
+          const cleanCel = data.celular_trabajador ? data.celular_trabajador.replace(/\D/g, '') : '';
+          let phoneParam = '';
+          if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+            phoneParam = '57' + cleanCel;
+          } else if (cleanCel) {
+            phoneParam = cleanCel;
+          }
+          const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
 
           optsHtml += `
             <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
-            <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
+            <a href="${waUrl}" id="btn-whatsapp-detalle" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
             <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
           `;
         } else if (data.estado === 'AMARILLO' && (esCreadorOSistema || esPlanBAnalista)) {
@@ -753,6 +829,50 @@
       document.getElementById('modal-prefilled-section').style.display = 'none';
       document.getElementById('modal-canvas-section').style.display = 'block';
     });
+
+    async function actualizarContacto() {
+      const email = document.getElementById('contacto-email').value;
+      const celular = document.getElementById('contacto-celular').value;
+      
+      showLoading('Actualizando contacto...');
+      try {
+        const rDet = await fetch(`/compromisosst/api/compromiso/${selectedCompromisoId}?usuario=${CONFIG.usuarioId}`);
+        const det = await rDet.json();
+
+        const r = await fetch('/compromisosst/api/actualizar-contacto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identificacion: det.identificaciontrabajador, email, celular })
+        });
+        const res = await r.json();
+        if (res.ok) {
+          showToast('Datos de contacto actualizados');
+          // Actualizar link de WhatsApp en tiempo real
+          const urlFirmaLink = `${window.location.origin}/compromisosst/firmar-trabajador?item=${det.idcsst}&token=${det.token_trabajador}`;
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Normas SST: ${urlFirmaLink}`);
+          const cleanCel = celular ? celular.replace(/\D/g, '') : '';
+          let phoneParam = '';
+          if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+            phoneParam = '57' + cleanCel;
+          } else if (cleanCel) {
+            phoneParam = cleanCel;
+          }
+          const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
+          const btnWa = document.getElementById('btn-whatsapp-detalle');
+          if (btnWa) {
+            btnWa.href = waUrl;
+          }
+          cargarCompromisos();
+        } else {
+          showToast(res.error || 'Error al actualizar contacto', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al actualizar contacto', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
   </script>
 </body>
 </html>

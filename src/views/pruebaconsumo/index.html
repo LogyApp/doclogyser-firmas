@@ -89,7 +89,7 @@
     /* List view vs Detail view layout */
     .view-container { display: flex; gap: 20px; flex-direction: column; }
     .view-container.detail-active {
-      display: grid; grid-template-columns: 1.7fr 1fr;
+      display: grid; grid-template-columns: 1.2fr 1fr;
     }
     @media (max-width: 900px) {
       .view-container.detail-active { grid-template-columns: 1fr; }
@@ -115,8 +115,9 @@
       background: #ffffff; border-radius: 12px; border-left: 4px solid #10b981;
       padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
       position: sticky; top: 20px; display: none;
+      align-self: start;
     }
-    .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
+    .detail-info-box p { margin-bottom: 7px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; }
     .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
 
     .loading-overlay {
@@ -217,6 +218,14 @@
           </select>
         </div>
         <div class="field">
+          <label for="filtro-estado">Estado de Firma</label>
+          <select id="filtro-estado">
+            <option value="">Todos</option>
+            <option value="ACEPTADA">Firmado (Aceptado)</option>
+            <option value="PENDIENTE">Sin firmar (Pendiente)</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="filtro-desde">Fecha Desde</label>
           <input type="date" id="filtro-desde">
         </div>
@@ -243,9 +252,9 @@
               <tr>
                 <th>Fecha</th>
                 <th>Trabajador</th>
-                <th>Identificación</th>
                 <th>Cliente</th>
                 <th>Ciudad</th>
+                <th>Notificar</th>
                 <th>Documento PDF</th>
               </tr>
             </thead>
@@ -267,6 +276,19 @@
         
         <div class="detail-info-box" id="detalle-info">
           <!-- Dinámico -->
+        </div>
+
+        <div id="opciones-contacto" style="margin-top: 20px; display: none;">
+          <div class="section-title" style="margin-bottom: 12px; font-size: .75rem;">Actualizar Datos de Contacto</div>
+          <div class="field">
+            <label for="contacto-email">Correo Electrónico</label>
+            <input type="email" id="contacto-email" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="field">
+            <label for="contacto-celular">Celular (WhatsApp)</label>
+            <input type="text" id="contacto-celular" placeholder="3XXXXXXXXX">
+          </div>
+          <button class="btn btn-secondary" onclick="actualizarContacto()" style="width: 100%; margin-top: 5px;">Actualizar Contacto</button>
         </div>
 
         <div id="opciones-documento" style="margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
@@ -331,22 +353,47 @@
         const data = await r.json();
         listadoCargado = data;
 
-        document.getElementById('total-badge-count').innerText = `Total: ${data.length} registros`;
+        // Filtrado por estado de firma en cliente
+        const estVal = document.getElementById('filtro-estado').value;
+        let filteredData = data;
+        if (estVal) {
+          filteredData = data.filter(item => {
+            const hasFirma = !!item.url_doc;
+            const itemEst = hasFirma ? 'ACEPTADA' : 'PENDIENTE';
+            return itemEst === estVal;
+          });
+        }
+
+        document.getElementById('total-badge-count').innerText = `Total: ${filteredData.length} registros`;
 
         const tbody = document.getElementById('lista-pruebas-body');
         tbody.innerHTML = '';
 
-        if (!data.length) {
+        if (!filteredData.length) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888; padding: 24px;">No se encontraron registros</td></tr>';
           return;
         }
 
-        data.forEach(item => {
+        filteredData.forEach(item => {
           const row = document.createElement('tr');
           row.dataset.id = item.idprueba;
           
           const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
           
+          let waLinkHtml = '—';
+          if (!item.url_doc) {
+            const urlFirmaLink = `${window.location.origin}/pruebaconsumo/firmar?item=${item.idprueba}&token=${item.token_firma}`;
+            const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu consentimiento de Prueba de Consumo SST: ${urlFirmaLink}`);
+            const cleanCel = item.celular_trabajador ? item.celular_trabajador.replace(/\D/g, '') : '';
+            let phoneParam = '';
+            if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+              phoneParam = '57' + cleanCel;
+            } else if (cleanCel) {
+              phoneParam = cleanCel;
+            }
+            waLinkHtml = `<a href="https://wa.me/${phoneParam}?text=${msgWaText}" target="_blank" class="btn btn-primary btn-small" style="background:#25d366; border: none; color:#fff; font-weight: bold; text-decoration: none; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;"><span style="font-size:0.9rem;">💬</span> WhatsApp</a>`;
+          }
+
           let pdfLink = '—';
           if (item.url_doc) {
             pdfLink = `<a href="${item.url_doc}" target="_blank" style="color: #10b981; font-weight: bold; text-decoration: none;">📄 PDF</a>`;
@@ -354,10 +401,10 @@
 
           row.innerHTML = `
             <td>${fechaFmt}</td>
-            <td><strong>${item.nombre_trabajador}</strong></td>
-            <td>${item.identificacion}</td>
+            <td><strong>${item.nombre_trabajador}</strong><br><small style="color: #64748b;">C.C. ${item.identificacion}</small></td>
             <td>${item.cliente}</td>
             <td>${item.ciudad}</td>
+            <td onclick="event.stopPropagation()">${waLinkHtml}</td>
             <td onclick="event.stopPropagation()">${pdfLink}</td>
           `;
 
@@ -383,6 +430,7 @@
       document.getElementById('filtro-hasta').value = '';
       document.getElementById('filtro-regional').value = '';
       document.getElementById('filtro-operacion').value = '';
+      document.getElementById('filtro-estado').value = '';
       document.getElementById('filtro-regional').dispatchEvent(new Event('change'));
       cargarPruebas();
     });
@@ -474,20 +522,35 @@
 
         const infoBox = document.getElementById('detalle-info');
         infoBox.innerHTML = `
-          <p><strong>Trabajador:</strong> ${data.nombre_trabajador}</p>
-          <p><strong>Identificación:</strong> ${data.identificacion}</p>
+          <p><strong>Trabajador:</strong> ${data.nombre_trabajador} (C.C. ${data.identificacion})</p>
           <p><strong>Cargo:</strong> ${data.cargo}</p>
           <p><strong>Cliente:</strong> ${data.cliente}</p>
           <p><strong>Ciudad:</strong> ${data.ciudad}</p>
           <p><strong>Fecha:</strong> ${fechaFmt}</p>
           <p><strong>Estado Firma:</strong> ${badgeFirma}</p>
-          <p><strong>Creador por:</strong> ${creadorNombre}</p>
+          <p><strong>Creado por:</strong> ${creadorNombre}</p>
           ${data.observaciones ? `<p><strong>Observaciones:</strong> ${data.observaciones}</p>` : ''}
           ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
         `;
 
         const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
         const esAutorizadoEliminar = ['AdmSst', 'LiderSst', 'Sistema'].includes(CONFIG.rol);
+
+        // Actualizar datos de contacto dinámicamente
+        if (data.estado_firma !== 'ACEPTADA' && esCreadorOSistema) {
+          document.getElementById('opciones-contacto').style.display = 'block';
+          try {
+            const rContact = await fetch(`/pruebaconsumo/api/contacto/${data.identificacion}`);
+            const contact = await rContact.json();
+            document.getElementById('contacto-email').value = contact.Email || '';
+            document.getElementById('contacto-celular').value = contact.Celular || '';
+          } catch (err) {
+            console.error("Error cargando contacto:", err);
+          }
+        } else {
+          document.getElementById('opciones-contacto').style.display = 'none';
+        }
+
         const optsBox = document.getElementById('opciones-documento');
         optsBox.innerHTML = '';
  
@@ -498,13 +561,20 @@
             // Documento sin generar: acciones habilitadas
             const urlFirmaLink = `${window.location.origin}/pruebaconsumo/firmar?item=${data.idprueba}`;
             const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Consentimiento Informado de Prueba de Toxicología: ${urlFirmaLink}`);
-            const waUrl = `https://wa.me/?text=${msgWaText}`;
+            const cleanCel = data.celular_trabajador ? data.celular_trabajador.replace(/\D/g, '') : '';
+            let phoneParam = '';
+            if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+              phoneParam = '57' + cleanCel;
+            } else if (cleanCel) {
+              phoneParam = cleanCel;
+            }
+            const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
  
             optsHtml += `
               <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
               <button class="btn btn-secondary" id="btn-editar-registro" style="width: 100%; margin-bottom: 8px;">Editar Registro</button>
               <button class="btn btn-danger" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">Forzar Generación de PDF</button>
-              <a href="${waUrl}" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
+              <a href="${waUrl}" id="btn-whatsapp-detalle" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
               <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
             `;
           } else {
@@ -660,6 +730,49 @@
       } catch (e) {
         console.error(e);
         showToast('Error de red al enviar correo', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+    async function actualizarContacto() {
+      const email = document.getElementById('contacto-email').value;
+      const celular = document.getElementById('contacto-celular').value;
+      
+      showLoading('Actualizando contacto...');
+      try {
+        const rDet = await fetch(`/pruebaconsumo/api/prueba/${selectedPruebaId}`);
+        const det = await rDet.json();
+
+        const r = await fetch('/pruebaconsumo/api/actualizar-contacto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identificacion: det.identificacion, email, celular })
+        });
+        const res = await r.json();
+        if (res.ok) {
+          showToast('Datos de contacto actualizados');
+          // Actualizar link de WhatsApp en tiempo real
+          const urlFirmaLink = `${window.location.origin}/pruebaconsumo/firmar?item=${det.idprueba}&token=${det.token_firma}`;
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Consentimiento Informado de Prueba de Toxicología: ${urlFirmaLink}`);
+          const cleanCel = celular ? celular.replace(/\D/g, '') : '';
+          let phoneParam = '';
+          if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+            phoneParam = '57' + cleanCel;
+          } else if (cleanCel) {
+            phoneParam = cleanCel;
+          }
+          const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
+          const btnWa = document.getElementById('btn-whatsapp-detalle');
+          if (btnWa) {
+            btnWa.href = waUrl;
+          }
+          cargarPruebas();
+        } else {
+          showToast(res.error || 'Error al actualizar contacto', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al actualizar contacto', 'error');
       } finally {
         hideLoading();
       }
