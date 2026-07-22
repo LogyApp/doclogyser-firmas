@@ -113,6 +113,7 @@
       background: #ffffff; border-radius: 12px; border-left: 4px solid #10b981;
       padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
       position: sticky; top: 20px; display: none;
+      align-self: start;
     }
     .detail-info-box p { margin-bottom: 12px; font-size: .92rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 8px; }
     .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
@@ -213,12 +214,13 @@
                 <th>Tema</th>
                 <th>Puntaje</th>
                 <th>Resultado</th>
+                <th>Notificar</th>
                 <th>Documento PDF</th>
               </tr>
             </thead>
             <tbody id="capacitaciones-body">
               <tr>
-                <td colspan="6" style="text-align: center; color: #888; padding: 30px;">Cargando registros...</td>
+                <td colspan="7" style="text-align: center; color: #888; padding: 30px;">Cargando registros...</td>
               </tr>
             </tbody>
           </table>
@@ -349,7 +351,7 @@
         tbody.innerHTML = '';
 
         if (!data.length) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888; padding: 24px;">No se encontraron registros</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 24px;">No se encontraron registros</td></tr>';
           return;
         }
 
@@ -359,6 +361,20 @@
           
           const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
           
+          let waLinkHtml = '—';
+          if (!item.url_doc) {
+            const urlFirmaLink = `${window.location.origin}/capacitacionsst/responder?item=${item.id_capacitacion}`;
+            const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST: ${urlFirmaLink}`);
+            const cleanCel = item.celular_trabajador ? item.celular_trabajador.replace(/\D/g, '') : '';
+            let phoneParam = '';
+            if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+              phoneParam = '57' + cleanCel;
+            } else if (cleanCel) {
+              phoneParam = cleanCel;
+            }
+            waLinkHtml = `<a href="https://wa.me/${phoneParam}?text=${msgWaText}" target="_blank" class="btn btn-primary btn-small" style="background:#25d366; border: none; color:#fff; font-weight: bold; text-decoration: none; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;"><span style="font-size:0.9rem;">💬</span> WhatsApp</a>`;
+          }
+
           let pdfLink = '—';
           if (item.url_doc) {
             pdfLink = `<a href="${item.url_doc}" target="_blank" style="color: #10b981; font-weight: bold; text-decoration: none;">📄 PDF</a>`;
@@ -380,6 +396,7 @@
             <td>${item.tema || '—'}</td>
             <td>${item.puntaje !== null ? item.puntaje : '—'}</td>
             <td>${badgeResultado}</td>
+            <td onclick="event.stopPropagation()">${waLinkHtml}</td>
             <td onclick="event.stopPropagation()">${pdfLink}</td>
           `;
 
