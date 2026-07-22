@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Módulo Biométrico - LOG&SER</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for GPS Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <style>
+    :root {
+      /* Brand (Replicating Cajaoperativa Theme) */
+      --primary-color: #000B59;
+      --primary-hover: #131C6E;
+      --primary-soft: #EEF0FA;
+      --accent-color: #F55400;
+      --accent-hover: #DA4700;
+      --accent-soft: #FFF0E6;
+      --accent: var(--accent-color);
+
+      /* Neutrals */
+      --bg-main: #F6F7FA;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F7F8FA;
+      --text-primary: #000B59;
+      --text-main: #1E2233;
+      --text-muted: #667085;
+      --text-faint: #98A2B3;
+      --card-border: #E6E8EF;
+      --card-border-hover: #D3D7E2;
+
+      /* Semantic Colors (Matching Cajaoperativa) */
+      --green-bg: #E9F8EF;
+      --green-text: #0C7A43;
+      --green: #17B26A;
+      --yellow-bg: #FFF6E0;
+      --yellow-text: #966212;
+      --yellow: #F2A60D;
+      --red-bg: #FDECEC;
+      --red-text: #C4281B;
+      --red: #E5493A;
+      --info-bg: #E7F1FE;
+      --info-text: #1657A8;
+
+      /* Spacing Scale (8px Grid) */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+
+      /* Border Radius Presets */
+      --radius-sm: 8px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 999px;
+
+      /* Shadow Presets */
+      --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 1px rgba(16, 24, 40, 0.03);
+      --shadow-md: 0 4px 10px -2px rgba(16, 24, 40, 0.07), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+      --shadow-lg: 0 12px 24px -6px rgba(16, 24, 40, 0.10), 0 4px 8px -2px rgba(16, 24, 40, 0.04);
+      --shadow-dropdown: 0 20px 40px -10px rgba(11, 16, 51, 0.22), 0 6px 14px -6px rgba(11, 16, 51, 0.10);
+
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, sans-serif;
+    }
+
+    body {
+      background: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      line-height: 1.5;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD1DC; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: #A9B1C2; }
+
+    /* LAYOUT: SIDEBAR */
+    .sidebar {
+      width: 300px;
+      background: var(--primary-color);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+
+    .sidebar-brand {
+      height: 112px;
+      padding: 20px 17px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .logo-mark {
+      width: 266px;
+      height: 72px;
+      background-image: url("https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png");
+      background-repeat: no-repeat;
+      background-size: 524px 349px;
+      background-position: -122px -124px;
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: var(--space-lg) var(--space-md);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex-grow: 1;
+    }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      color: rgba(255, 255, 255, 0.62);
+      font-weight: 500;
+      font-size: 0.87rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 150ms var(--ease), color 150ms var(--ease);
+    }
+
+    .nav-icon {
+      font-size: 1.1rem;
+      transition: color 150ms var(--ease);
+      flex-shrink: 0;
+      display: inline-block;
+      width: 18px;
+      text-align: center;
+    }
+
+    .nav-item:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-item.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.10);
+      font-weight: 600;
+    }
+
+    .nav-item.active .nav-icon {
+      color: var(--accent-color);
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: -12px;
+      top: 20%;
+      height: 60%;
+      width: 3px;
+      background-color: var(--accent-color);
+      border-radius: var(--radius-full);
+    }
+
+    /* MAIN CONTENT */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      position: relative;
+      min-width: 0;
+    }
+
+    /* HEADER */
+    .header {
+      background: #FFFFFF;
+      padding: 18px var(--space-xl);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border-bottom: 1px solid var(--card-border);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .header-capsule {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-icon {
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .header-text {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #FFFFFF;
+      border: 1px solid var(--card-border);
+      padding: 5px 14px 5px 6px;
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .avatar-circle {
+      width: 28px;
+      height: 28px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .user-badge {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    /* PAGE CONTAINER */
+    .container {
+      padding: var(--space-lg) var(--space-xl) var(--space-xl);
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* FILTERS PANEL */
+    .filters-bar {
+      background-color: var(--bg-card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      margin-bottom: var(--space-lg);
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      align-items: flex-end;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-grow: 1;
+      min-width: 180px;
+    }
+
+    .filter-group label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-input {
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      padding: 9px 12px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+      width: 100%;
+      height: 38px;
+      transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+    }
+
+    .filter-input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0, 11, 89, 0.08);
+      background-color: #ffffff;
+    }
+
+    /* CLASSIFICATION PILL BUTTONS */
+    .pills-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .pill-btn {
+      background-color: #ffffff;
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      height: 38px;
+      transition: all 150ms var(--ease);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pill-btn:hover {
+      border-color: var(--card-border-hover);
+      background-color: var(--bg-subtle);
+    }
+
+    .pill-btn.active {
+      background-color: var(--primary-color);
+      color: #ffffff;
+      border-color: var(--primary-color);
+      font-weight: 600;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .pill-btn:disabled, .pill-btn.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* STATS GRID */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+
+    .stat-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background-color: var(--primary-color);
+    }
+
+    .stat-card.emerald::after { background-color: var(--green); }
+    .stat-card.amber::after { background-color: var(--yellow); }
+    .stat-card.rose::after { background-color: var(--red); }
+
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-val {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.1;
+    }
+
+    .stat-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* TABS CONTENT */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.25s var(--ease);
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* PANELS & TABLES */
+    .panel {
+      background-color: var(--bg-card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .panel-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--bg-subtle);
+      padding: 12px 24px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--card-border);
+    }
+
+    td {
+      padding: 14px 24px;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--card-border);
+      color: var(--text-main);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: rgba(0, 11, 89, 0.015);
+    }
+
+    /* BADGES */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .badge-cyan { background-color: var(--info-bg); color: var(--info-text); }
+    .badge-emerald { background-color: var(--green-bg); color: var(--green-text); }
+    .badge-amber { background-color: var(--yellow-bg); color: var(--yellow-text); }
+    .badge-rose { background-color: var(--red-bg); color: var(--red-text); }
+
+    /* LAYOUT FOR ROUTES TAB */
+    .routes-layout {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: var(--space-md);
+      height: 600px;
+      margin-bottom: var(--space-lg);
+    }
+
+    .routes-list-panel {
+      background-color: var(--bg-card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .routes-list-scroll {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: var(--space-sm) var(--space-md);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .route-item {
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      cursor: pointer;
+      transition: all 150ms var(--ease);
+    }
+
+    .route-item:hover {
+      border-color: var(--card-border-hover);
+      background-color: #ffffff;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .route-item.selected {
+      border-color: var(--primary-color);
+      background-color: var(--primary-soft);
+    }
+
+    .route-item-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .route-item-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+
+    .map-container-panel {
+      background-color: var(--bg-card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .map-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--card-border);
+      background-color: var(--bg-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .map-metrics {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+    }
+
+    .map-metrics span {
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .map-metrics span strong {
+      color: var(--text-primary);
+    }
+
+    #map {
+      flex-grow: 1;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* MODAL FOR GPS VIEW */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 11, 89, 0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(3px);
+      padding: 2rem;
+    }
+
+    .modal-content {
+      background-color: var(--bg-card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 700px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+
+    .modal-close {
+      cursor: pointer;
+      font-size: 1.5rem;
+      color: var(--text-muted);
+      border: none;
+      background: none;
+      outline: none;
+    }
+
+    .modal-close:hover {
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      padding: var(--space-md);
+      display: flex;
+      flex-direction: column;
+    }
+
+    #modal-map {
+      width: 100%;
+      height: 350px;
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--card-border);
+    }
+
+    /* LOADING OVERLAYS */
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.7);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(1px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 150ms var(--ease);
+    }
+
+    .loading-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--card-border);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* EMPTY STATES */
+    .empty-state {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .empty-icon {
+      font-size: 2.5rem;
+      opacity: 0.4;
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 1024px) {
+      .routes-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .routes-list-panel {
+        height: 250px;
+      }
+      #map {
+        height: 400px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        border-right: none;
+      }
+      .sidebar-brand {
+        height: 90px;
+      }
+      .logo-mark {
+        transform: scale(0.8);
+      }
+      .header {
+        padding: 12px var(--space-md);
+      }
+      .container {
+        padding: var(--space-md);
+      }
+      .filters-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- APP CONTAINER -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-mark"></div>
+    </div>
+    
+    <ul class="nav-list">
+      <li class="nav-item active" onclick="switchTab('tab-asistencia', this)">
+        <span class="nav-icon">📅</span>
+        <span>Asistencia</span>
+      </li>
+      <li class="nav-item" onclick="switchTab('tab-rutas', this)">
+        <span class="nav-icon">📍</span>
+        <span>Rutas GPS</span>
+      </li>
+      <li class="nav-item" onclick="switchTab('tab-sin-salida', this)">
+        <span class="nav-icon">⚠️</span>
+        <span>Turnos sin Salida</span>
+      </li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-capsule">
+        <span class="header-icon" id="view-header-icon">📅</span>
+        <span class="header-text" id="view-header-title">Registro de Asistencia</span>
+      </div>
+      <div class="user-profile">
+        <div class="avatar-circle" id="profile-avatar">U</div>
+        <div class="user-badge" id="profile-name">Cargando...</div>
+      </div>
+    </header>
+
+    <!-- CONTENT AREA -->
+    <div class="container">
+      
+      <!-- REAL-TIME FILTERS BAR -->
+      <section class="filters-bar" id="global-filters">
+        <div class="filter-group" id="filter-group-start">
+          <label for="filter-start-date">Fecha Inicio</label>
+          <input type="date" id="filter-start-date" class="filter-input">
+        </div>
+        <div class="filter-group" id="filter-group-end">
+          <label for="filter-end-date">Fecha Fin</label>
+          <input type="date" id="filter-end-date" class="filter-input">
+        </div>
+        <div class="filter-group" id="filter-group-single" style="display: none;">
+          <label for="filter-single-date">Fecha Consulta</label>
+          <input type="date" id="filter-single-date" class="filter-input">
+        </div>
+        
+        <!-- Trabajador Search Input -->
+        <div class="filter-group" style="flex-grow: 1.5; min-width: 220px;">
+          <label for="filter-worker-search">Trabajador (Nombre o Cédula)</label>
+          <input type="text" id="filter-worker-search" class="filter-input" placeholder="Buscar por nombre o cédula...">
+        </div>
+
+        <!-- Classification Buttons -->
+        <div class="filter-group" style="flex-grow: 3; min-width: 320px;" id="classification-wrapper">
+          <label>Clasificación</label>
+          <div class="pills-container" id="classification-buttons">
+            <button class="pill-btn active" data-value="">Todas</button>
+            <button class="pill-btn" data-value="sst">SST</button>
+            <button class="pill-btn" data-value="coordinadores">Coordinadores</button>
+            <button class="pill-btn" data-value="auxiliares_administrativos">Aux. Admin</button>
+            <button class="pill-btn" data-value="auxiliares_logisticos">Aux. Logísticos</button>
+            <button class="pill-btn" data-value="aprendices">Aprendices</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 1: ASISTENCIA -->
+      <div id="tab-asistencia" class="tab-content active" style="position: relative;">
+        <div class="loading-overlay" id="loading-asistencia">
+          <div class="spinner"></div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Total Marcaciones</span>
+            <span class="stat-val" id="stat-total-marcaciones">0</span>
+            <span class="stat-desc">Ingresos y salidas detectados</span>
+          </div>
+          <div class="stat-card emerald">
+            <span class="stat-label">Score Promedio</span>
+            <span class="stat-val" id="stat-score-promedio">0.0000</span>
+            <span class="stat-desc">Confianza de comparación facial</span>
+          </div>
+          <div class="stat-card amber">
+            <span class="stat-label">Omitidas / Manuales</span>
+            <span class="stat-val" id="stat-manual-marcaciones">0</span>
+            <span class="stat-desc">Ingresos forzados por contingencia</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Historial de Marcaciones Registradas</span>
+          </div>
+          <div class="table-wrapper">
+            <table id="table-marcaciones">
+              <thead>
+                <tr>
+                  <th>Trabajador</th>
+                  <th>Cargo / Operación</th>
+                  <th>Clasificación</th>
+                  <th>Tipo</th>
+                  <th>Fecha y Hora</th>
+                  <th>Score Facial</th>
+                  <th>Verificación</th>
+                  <th>GPS / Ubicación</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-marcaciones">
+                <!-- Loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: RUTAS GPS -->
+      <div id="tab-rutas" class="tab-content" style="position: relative;">
+        <div class="loading-overlay" id="loading-rutas">
+          <div class="spinner"></div>
+        </div>
+
+        <div class="routes-layout">
+          
+          <!-- Trips scrollbar list -->
+          <div class="routes-list-panel">
+            <div class="panel-header">
+              <span class="panel-title">Lista de Viajes</span>
+            </div>
+            <div class="routes-list-scroll" id="routes-list">
+              <!-- Loaded via JS -->
+            </div>
+          </div>
+
+          <!-- Maps viewer container -->
+          <div class="map-container-panel">
+            <div class="map-header">
+              <span class="panel-title" id="map-active-worker">Selecciona un recorrido</span>
+              <div class="map-metrics" id="map-metrics" style="display: none; align-items: center; gap: 16px;">
+                <span>Viajado: <strong id="metric-dist">0.0 km</strong></span>
+                <span>Pico: <strong id="metric-vel">0 km/h</strong></span>
+                <span>Desvío: <strong id="metric-desvio">0.0 km</strong></span>
+                <!-- Map Switcher Select -->
+                <select id="map-style-select" class="filter-input" style="height: 30px; width: 155px; padding: 2px 8px; font-size: 0.75rem; border-radius: var(--radius-sm); margin-left: auto;">
+                  <option value="googleRoad">Google Maps (Calles)</option>
+                  <option value="googleHybrid">Google Maps (Satélite)</option>
+                  <option value="voyager">Mapa Corporativo</option>
+                </select>
+              </div>
+            </div>
+            <div id="map"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB 3: SIN SALIDA -->
+      <div id="tab-sin-salida" class="tab-content" style="position: relative;">
+        <div class="loading-overlay" id="loading-sin-salida">
+          <div class="spinner"></div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card rose">
+            <span class="stat-label">Turnos sin Salida</span>
+            <span class="stat-val" id="stat-sin-salida-count">0</span>
+            <span class="stat-desc">Faltan por registrar checkout</span>
+          </div>
+          <div class="stat-card emerald">
+            <span class="stat-label">Ingresos Registrados</span>
+            <span class="stat-val" id="stat-ingresos-dia">0</span>
+            <span class="stat-desc">Total entradas en la fecha</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Turnos Activos sin Cierre Registrado</span>
+          </div>
+          <div class="table-wrapper">
+            <table id="table-sin-salida">
+              <thead>
+                <tr>
+                  <th>Trabajador</th>
+                  <th>Cargo</th>
+                  <th>Operación / Regional</th>
+                  <th>Clasificación</th>
+                  <th>Hora Entrada</th>
+                  <th>Tiempo Transcurrido</th>
+                  <th>GPS Entrada</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-sin-salida">
+                <!-- Loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- GPS POPUP MODAL -->
+  <div class="modal" id="gps-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-worker-title">Ubicación de Marcación</span>
+        <button class="modal-close" onclick="closeGPSModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-map"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS for Maps -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <script>
+    // INJECTED CONFIGURATION
+    const CONFIG = __CONFIG__;
+    
+    // CURRENT STATE
+    let activeTab = 'tab-asistencia';
+    let selectedClassification = ''; // Empty string means "Todas"
+    
+    // LEAFLET MAPS
+    let mainMap = null;
+    let mainMapLayerGroup = null;
+    let modalMap = null;
+    let modalMarker = null;
+
+    // DEBOUNCE FUNCTION FOR SEARCH INPUT
+    let debounceTimer;
+    function debounce(func, delay = 300) {
+      return (...args) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => func.apply(this, args), delay);
+      };
+    }
+
+    // ON PAGE LOAD
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Setup Profile UI
+      document.getElementById('profile-name').textContent = CONFIG.usuarioNombre;
+      const initials = CONFIG.usuarioNombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      document.getElementById('profile-avatar').textContent = initials || 'U';
+
+      // Default Date Filters (last 7 days)
+      const today = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(today.getDate() - 7);
+
+      document.getElementById('filter-start-date').value = formatDateISO(sevenDaysAgo);
+      document.getElementById('filter-end-date').value = formatDateISO(today);
+      document.getElementById('filter-single-date').value = formatDateISO(today);
+
+      // Handle Role constraints for classification buttons
+      if (CONFIG.isSstOnly) {
+        selectedClassification = 'sst';
+        // Disable other classification buttons
+        document.querySelectorAll('.pill-btn').forEach(btn => {
+          if (btn.getAttribute('data-value') !== 'sst') {
+            btn.disabled = true;
+            btn.classList.add('disabled');
+            btn.classList.remove('active');
+          } else {
+            btn.classList.add('active');
+          }
+        });
+      }
+
+      // WIRE UP REAL-TIME EVENT LISTENERS
+      document.getElementById('filter-start-date').addEventListener('change', () => fetchData());
+      document.getElementById('filter-end-date').addEventListener('change', () => fetchData());
+      document.getElementById('filter-single-date').addEventListener('change', () => fetchData());
+      document.getElementById('filter-worker-search').addEventListener('input', debounce(() => fetchData(), 300));
+      
+      // Wire up pills triggers
+      document.querySelectorAll('.pill-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          if (CONFIG.isSstOnly) return; // Prevent change if sst only role
+          
+          document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          selectedClassification = btn.getAttribute('data-value');
+          fetchData();
+        });
+      });
+
+      // Load Initial Tab Data
+      await fetchData();
+    });
+
+    // Format Date to YYYY-MM-DD
+    function formatDateISO(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // TAB SWITCHING LOGIC
+    function switchTab(tabId, el) {
+      activeTab = tabId;
+      
+      // Update sidebar nav state
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      el.classList.add('active');
+
+      // Update View Title and Header Desc
+      const titleEl = document.getElementById('view-header-title');
+      const iconEl = document.getElementById('view-header-icon');
+      const filterSingleGroup = document.getElementById('filter-single-date');
+      const filterStartGroup = document.getElementById('filter-group-start');
+      const filterEndGroup = document.getElementById('filter-group-end');
+
+      // Reset filters layout based on tab
+      if (tabId === 'tab-sin-salida') {
+        filterSingleGroup.parentNode.style.display = 'flex';
+        filterStartGroup.style.display = 'none';
+        filterEndGroup.style.display = 'none';
+      } else {
+        filterSingleGroup.parentNode.style.display = 'none';
+        filterStartGroup.style.display = 'flex';
+        filterEndGroup.style.display = 'flex';
+      }
+
+      // Update title text
+      if (tabId === 'tab-asistencia') {
+        titleEl.textContent = 'Registro de Asistencia';
+        iconEl.textContent = '📅';
+      } else if (tabId === 'tab-rutas') {
+        titleEl.textContent = 'Recorridos GPS';
+        iconEl.textContent = '📍';
+        // Initialize Map
+        setTimeout(initMainMap, 100);
+      } else if (tabId === 'tab-sin-salida') {
+        titleEl.textContent = 'Turnos sin Salida';
+        iconEl.textContent = '⚠️';
+      }
+
+      // Toggle tab views
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+
+      fetchData();
+    }
+
+    // LEAFLET MAP INITIALIZATION (With Google Maps Integration)
+    function initMainMap() {
+      if (mainMap !== null) {
+        mainMap.invalidateSize();
+        return;
+      }
+
+      // Create map targeting Colombia coordinates (Bogota center)
+      mainMap = L.map('map').setView([4.5709, -74.2973], 6);
+
+      // Define Map Style layers
+      window.tileLayers = {
+        googleRoad: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          maxZoom: 20,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+          attribution: '&copy; Google Maps'
+        }),
+        googleHybrid: L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+          maxZoom: 20,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+          attribution: '&copy; Google Maps'
+        }),
+        voyager: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; OpenStreetMap &copy; CARTO'
+        })
+      };
+
+      // Set Google Roadmap as default
+      window.tileLayers.googleRoad.addTo(mainMap);
+      window.currentTileLayer = 'googleRoad';
+
+      mainMapLayerGroup = L.layerGroup().addTo(mainMap);
+
+      // Wire up map style selector
+      const styleSelect = document.getElementById('map-style-select');
+      if (styleSelect) {
+        styleSelect.addEventListener('change', (e) => {
+          const selected = e.target.value;
+          if (window.tileLayers[selected]) {
+            mainMap.removeLayer(window.tileLayers[window.currentTileLayer]);
+            window.tileLayers[selected].addTo(mainMap);
+            window.currentTileLayer = selected;
+          }
+        });
+      }
+    }
+
+    // FETCH GENERAL DATA CONTROLLER
+    async function fetchData() {
+      if (activeTab === 'tab-asistencia') {
+        await loadAsistenciaData();
+      } else if (activeTab === 'tab-rutas') {
+        await loadRoutesData();
+      } else if (activeTab === 'tab-sin-salida') {
+        await loadSinSalidaData();
+      }
+    }
+
+    // API: Load Attendance (Marcaciones)
+    async function loadAsistenciaData() {
+      const loadOverlay = document.getElementById('loading-asistencia');
+      loadOverlay.classList.add('active');
+
+      const startDate = document.getElementById('filter-start-date').value;
+      const endDate = document.getElementById('filter-end-date').value;
+      const selectWorker = document.getElementById('filter-worker-search').value;
+
+      try {
+        let url = `/biometrico/api/marcaciones?usuario=${CONFIG.usuarioId}&startDate=${startDate}&endDate=${endDate}`;
+        if (selectedClassification) url += `&clasificacion=${selectedClassification}`;
+        if (selectWorker) url += `&search=${encodeURIComponent(selectWorker)}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.ok) {
+          renderMarcaciones(data.marcaciones);
+          computeMarcacionesStats(data.marcaciones);
+        }
+      } catch (err) {
+        console.error('Error al cargar marcaciones:', err);
+      } finally {
+        loadOverlay.classList.remove('active');
+      }
+    }
+
+    // Render Attendance Table
+    function renderMarcaciones(list) {
+      const tbody = document.getElementById('tbody-marcaciones');
+      tbody.innerHTML = '';
+
+      if (list.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <span class="empty-icon">📅</span>
+                <p>No se encontraron marcaciones con los filtros activos.</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      list.forEach(m => {
+        const tr = document.createElement('tr');
+        
+        // Trabajador Info
+        const tdWorker = document.createElement('td');
+        tdWorker.innerHTML = `<strong>${m.trabajador.split('**')[1]?.trim() || m.trabajador}</strong><br><small style="color: var(--text-muted);">${m.identificacion}</small>`;
+        
+        // Cargo Info
+        const tdCargo = document.createElement('td');
+        tdCargo.innerHTML = `<span>${m.cargo || 'No registrado'}</span><br><small style="color: var(--text-faint); font-weight: 500;">${m.operacion || 'Operación general'}</small>`;
+
+        // Clasificación Badge
+        const tdClas = document.createElement('td');
+        tdClas.innerHTML = `<span class="badge ${getClasClass(m.clasificacion)}">${m.clasificacion.replace('_', ' ')}</span>`;
+
+        // Tipo Badge
+        const tdTipo = document.createElement('td');
+        const isEntrada = m.tipo === 'ENTRADA';
+        tdTipo.innerHTML = `<span class="badge ${isEntrada ? 'badge-emerald' : 'badge-amber'}">${m.tipo}</span>`;
+
+        // Fecha y Hora
+        const tdFecha = document.createElement('td');
+        const formattedDate = new Date(m.fecha_hora).toLocaleString('es-CO', { timeZone: 'America/Bogota' });
+        tdFecha.textContent = formattedDate;
+
+        // Score
+        const tdScore = document.createElement('td');
+        if (m.score) {
+          const scoreVal = parseFloat(m.score);
+          const isGoodScore = scoreVal >= 0.70;
+          tdScore.innerHTML = `<strong style="color: ${isGoodScore ? 'var(--green-text)' : 'var(--yellow-text)'};">${scoreVal.toFixed(4)}</strong>`;
+        } else {
+          tdScore.innerHTML = `<span style="color: var(--text-faint);">N/A</span>`;
+        }
+
+        // Método
+        const tdMetodo = document.createElement('td');
+        if (m.es_manual) {
+          tdMetodo.innerHTML = `<span class="badge badge-rose" title="${m.motivo || 'Sin especificar'}">MANUAL</span>`;
+        } else {
+          tdMetodo.innerHTML = `<span class="badge badge-cyan">FACIAL</span>`;
+        }
+
+        // GPS Link
+        const tdGps = document.createElement('td');
+        if (m.latitud && m.longitud) {
+          tdGps.innerHTML = `<button class="pill-btn" style="height: 30px; font-size: 0.75rem; padding: 0 10px;" onclick="openGPSModal(${m.latitud}, ${m.longitud}, '${m.trabajador.split('**')[1]?.trim() || m.identificacion}', '${m.tipo}')">📍 Ver Mapa</button>`;
+        } else {
+          tdGps.innerHTML = `<span style="color: var(--text-faint);">Sin GPS</span>`;
+        }
+
+        tr.append(tdWorker, tdCargo, tdClas, tdTipo, tdFecha, tdScore, tdMetodo, tdGps);
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Helper: Badge Style mapping
+    function getClasClass(clas) {
+      if (clas === 'sst') return 'badge-cyan';
+      if (clas === 'coordinadores') return 'badge-emerald';
+      if (clas === 'auxiliares_administrativos') return 'badge-amber';
+      return 'badge-rose';
+    }
+
+    // Stats calculations for Attendance
+    function computeMarcacionesStats(list) {
+      document.getElementById('stat-total-marcaciones').textContent = list.length;
+
+      let scoreSum = 0;
+      let scoreCount = 0;
+      let manualCount = 0;
+
+      list.forEach(m => {
+        if (m.score) {
+          scoreSum += parseFloat(m.score);
+          scoreCount++;
+        }
+        if (m.es_manual) {
+          manualCount++;
+        }
+      });
+
+      const avgScore = scoreCount > 0 ? (scoreSum / scoreCount) : 0;
+      document.getElementById('stat-score-promedio').textContent = avgScore.toFixed(4);
+      document.getElementById('stat-manual-marcaciones').textContent = manualCount;
+    }
+
+    // API: Load Route Movements
+    async function loadRoutesData() {
+      const loadOverlay = document.getElementById('loading-rutas');
+      loadOverlay.classList.add('active');
+
+      const startDate = document.getElementById('filter-start-date').value;
+      const endDate = document.getElementById('filter-end-date').value;
+      const selectWorker = document.getElementById('filter-worker-search').value;
+
+      try {
+        let url = `/biometrico/api/movimientos?usuario=${CONFIG.usuarioId}&startDate=${startDate}&endDate=${endDate}`;
+        if (selectedClassification) url += `&clasificacion=${selectedClassification}`;
+        if (selectWorker) url += `&search=${encodeURIComponent(selectWorker)}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.ok) {
+          renderRoutesList(data.movimientos);
+        }
+      } catch (err) {
+        console.error('Error al cargar movimientos:', err);
+      } finally {
+        loadOverlay.classList.remove('active');
+      }
+    }
+
+    // Render Routes sidebar items
+    function renderRoutesList(list) {
+      const container = document.getElementById('routes-list');
+      container.innerHTML = '';
+
+      if (mainMapLayerGroup) mainMapLayerGroup.clearLayers();
+      document.getElementById('map-active-worker').textContent = 'Selecciona un recorrido';
+      document.getElementById('map-metrics').style.display = 'none';
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding: 2rem 1rem;">
+            <span class="empty-icon">📍</span>
+            <p>No se encontraron viajes con los filtros activos.</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(mov => {
+        const item = document.createElement('div');
+        item.className = 'route-item';
+        item.onclick = () => selectRoute(mov, item);
+
+        const formattedDate = new Date(mov.fecha_inicio).toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+        const name = mov.trabajador.split('**')[1]?.trim() || mov.trabajador;
+
+        item.innerHTML = `
+          <div class="route-item-title">${name}</div>
+          <div style="font-size: 0.72rem; color: var(--primary-color); font-weight: 700; text-transform: uppercase;">ID: ${mov.identificacion} | ${mov.clasificacion.toUpperCase()}</div>
+          <div class="route-item-meta">
+            <span>📅 ${formattedDate}</span>
+            <span class="badge ${mov.estado === 'ACTIVO' ? 'badge-emerald' : 'badge-cyan'}" style="font-size:0.65rem; padding:1px 5px;">${mov.estado}</span>
+          </div>
+        `;
+
+        container.appendChild(item);
+      });
+    }
+
+    // Click handler for Route Item
+    async function selectRoute(mov, element) {
+      // Highlight element
+      document.querySelectorAll('.route-item').forEach(i => i.classList.remove('selected'));
+      element.classList.add('selected');
+
+      // Set Map Header
+      const name = mov.trabajador.split('**')[1]?.trim() || mov.trabajador;
+      document.getElementById('map-active-worker').textContent = `Recorrido: ${name}`;
+      
+      // Update metrics
+      document.getElementById('metric-dist').textContent = `${mov.distancia_real_km || mov.ruta_dist_km || 0} km`;
+      document.getElementById('metric-vel').textContent = `${mov.velocidad_max_kmh || 0} km/h`;
+      document.getElementById('metric-desvio').textContent = `${mov.desvio_max_km || 0.0} km`;
+      document.getElementById('map-metrics').style.display = 'flex';
+
+      // Clear previous layers
+      if (mainMapLayerGroup) mainMapLayerGroup.clearLayers();
+
+      // Fetch detailed waypoints
+      const loadOverlay = document.getElementById('loading-rutas');
+      loadOverlay.classList.add('active');
+
+      try {
+        const response = await fetch(`/biometrico/api/movimientos/${mov.id}/waypoints?usuario=${CONFIG.usuarioId}`);
+        const data = await response.json();
+
+        if (data.ok && data.waypoints.length > 0) {
+          plotWaypoints(data.waypoints);
+        } else {
+          // If no waypoints, plot start and end if available
+          if (mov.lat_inicio && mov.lng_inicio) {
+            const startLatLng = [parseFloat(mov.lat_inicio), parseFloat(mov.lng_inicio)];
+            L.marker(startLatLng, {
+              icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#17B26A; width:12px; height:12px; border-radius:50%; border:2px solid white;'></div>",
+                iconSize: [12, 12]
+              })
+            }).addTo(mainMapLayerGroup).bindPopup('Punto de Inicio');
+            
+            mainMap.setView(startLatLng, 14);
+          }
+          alert('Este recorrido no tiene waypoints detallados registrados.');
+        }
+      } catch (err) {
+        console.error('Error cargando waypoints:', err);
+      } finally {
+        loadOverlay.classList.remove('active');
+      }
+    }
+
+    // Draw waypoints polyline & markers on Leaflet map
+    function plotWaypoints(waypoints) {
+      const latlngs = waypoints.map(wp => [parseFloat(wp.lat), parseFloat(wp.lng)]);
+      
+      // Draw path line (Primary Deep Blue)
+      const polyline = L.polyline(latlngs, {
+        color: '#000B59',
+        weight: 4,
+        opacity: 0.85
+      }).addTo(mainMapLayerGroup);
+
+      // Start Marker (Green)
+      const startWp = waypoints[0];
+      L.marker([parseFloat(startWp.lat), parseFloat(startWp.lng)], {
+        icon: L.divIcon({
+          className: 'custom-div-icon',
+          html: "<div style='background-color:#17B26A; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow: 0 0 10px rgba(23, 178, 106, 0.5);'></div>",
+          iconSize: [14, 14]
+        })
+      }).addTo(mainMapLayerGroup).bindPopup(`<strong>Inicio Recorrido</strong><br>Hora: ${new Date(startWp.fecha_hora).toLocaleTimeString('es-CO')}`);
+
+      // End Marker (Red)
+      const endWp = waypoints[waypoints.length - 1];
+      L.marker([parseFloat(endWp.lat), parseFloat(endWp.lng)], {
+        icon: L.divIcon({
+          className: 'custom-div-icon',
+          html: "<div style='background-color:#E5493A; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow: 0 0 10px rgba(229, 73, 58, 0.5);'></div>",
+          iconSize: [14, 14]
+        })
+      }).addTo(mainMapLayerGroup).bindPopup(`<strong>Fin Recorrido</strong><br>Hora: ${new Date(endWp.fecha_hora).toLocaleTimeString('es-CO')}`);
+
+      // Add intermediate flags for speed alerts (> 60 km/h) or stops
+      waypoints.forEach((wp, index) => {
+        if (index > 0 && index < waypoints.length - 1) {
+          const speed = parseFloat(wp.velocidad_kmh);
+          if (speed > 60) {
+            L.marker([parseFloat(wp.lat), parseFloat(wp.lng)], {
+              icon: L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#F2A60D; width:10px; height:10px; border-radius:50%; border:1px solid white;'></div>",
+                iconSize: [10, 10]
+              })
+            }).addTo(mainMapLayerGroup).bindPopup(`<strong>Alerta de Velocidad</strong><br>Velocidad: ${speed.toFixed(1)} km/h<br>Hora: ${new Date(wp.fecha_hora).toLocaleTimeString('es-CO')}`);
+          }
+        }
+      });
+
+      // Fit map bounds to show whole trip
+      mainMap.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+    }
+
+    // API: Load Workers missing check-out (Sin Salida)
+    async function loadSinSalidaData() {
+      const loadOverlay = document.getElementById('loading-sin-salida');
+      loadOverlay.classList.add('active');
+
+      const date = document.getElementById('filter-single-date').value;
+      const selectWorker = document.getElementById('filter-worker-search').value;
+
+      try {
+        let url = `/biometrico/api/sin-salida?usuario=${CONFIG.usuarioId}&date=${date}`;
+        if (selectedClassification) url += `&clasificacion=${selectedClassification}`;
+        if (selectWorker) url += `&search=${encodeURIComponent(selectWorker)}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.ok) {
+          renderSinSalida(data.trabajadores);
+          document.getElementById('stat-sin-salida-count').textContent = data.trabajadores.length;
+
+          // Compute today's total entries for comparison
+          await fetchTodayTotalEntries(date);
+        }
+      } catch (err) {
+        console.error('Error al cargar turnos sin salida:', err);
+      } finally {
+        loadOverlay.classList.remove('active');
+      }
+    }
+
+    async function fetchTodayTotalEntries(date) {
+      try {
+        let url = `/biometrico/api/marcaciones?usuario=${CONFIG.usuarioId}&startDate=${date}&endDate=${date}`;
+        if (selectedClassification) url += `&clasificacion=${selectedClassification}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.ok) {
+          const entries = data.marcaciones.filter(m => m.tipo === 'ENTRADA');
+          document.getElementById('stat-ingresos-dia').textContent = entries.length;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Render Turnos Sin Salida
+    function renderSinSalida(list) {
+      const tbody = document.getElementById('tbody-sin-salida');
+      tbody.innerHTML = '';
+
+      if (list.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <span class="empty-icon">⚠️</span>
+                <p>Todos los ingresos de esta fecha cuentan con salida registrada.</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      list.forEach(w => {
+        const tr = document.createElement('tr');
+
+        // Trabajador
+        const tdWorker = document.createElement('td');
+        tdWorker.innerHTML = `<strong>${w.trabajador.split('**')[1]?.trim() || w.trabajador}</strong><br><small style="color: var(--text-muted);">${w.identificacion}</small>`;
+
+        // Cargo
+        const tdCargo = document.createElement('td');
+        tdCargo.textContent = w.cargo || 'No registrado';
+
+        // Operacion/Reg
+        const tdOper = document.createElement('td');
+        tdOper.innerHTML = `<span>${w.operacion || 'Operación general'}</span><br><small style="color: var(--text-faint); font-weight: 500;">${w.regional || 'N/A'}</small>`;
+
+        // Clasificación
+        const tdClas = document.createElement('td');
+        tdClas.innerHTML = `<span class="badge ${getClasClass(w.clasificacion)}">${w.clasificacion.replace('_', ' ')}</span>`;
+
+        // Hora Entrada
+        const tdHora = document.createElement('td');
+        const formattedDate = new Date(w.fecha_entrada).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' });
+        tdHora.textContent = formattedDate;
+
+        // Duración
+        const tdDur = document.createElement('td');
+        const minutesDiff = Math.floor((new Date() - new Date(w.fecha_entrada)) / (1000 * 60));
+        const hours = Math.floor(minutesDiff / 60);
+        const mins = minutesDiff % 60;
+        
+        // Highlight > 12h shifts in red
+        const isAnomaly = hours >= 12;
+        tdDur.innerHTML = `<span style="font-weight: 700; color: ${isAnomaly ? 'var(--red)' : 'var(--text-main)'};">${hours}h ${mins}m</span> ${isAnomaly ? '<span class="badge badge-rose" style="font-size:0.65rem; padding:1px 5px; margin-left:5px;">EXCESIVO</span>' : ''}`;
+
+        // GPS
+        const tdGps = document.createElement('td');
+        if (w.latitud && w.longitud) {
+          tdGps.innerHTML = `<button class="pill-btn" style="height: 30px; font-size: 0.75rem; padding: 0 10px;" onclick="openGPSModal(${w.latitud}, ${w.longitud}, '${w.trabajador.split('**')[1]?.trim() || w.identificacion}', 'ENTRADA')">📍 Ver GPS</button>`;
+        } else {
+          tdGps.innerHTML = `<span style="color: var(--text-faint);">Sin ubicación</span>`;
+        }
+
+        tr.append(tdWorker, tdCargo, tdOper, tdClas, tdHora, tdDur, tdGps);
+        tbody.appendChild(tr);
+      });
+    }
+
+    // MODAL GPS DIALOG CONTROLLERS (Using Google Maps)
+    function openGPSModal(lat, lng, workerName, markType) {
+      const modal = document.getElementById('gps-modal');
+      modal.style.display = 'flex';
+
+      document.getElementById('modal-worker-title').textContent = `${workerName} - Marcación de ${markType}`;
+
+      // Wait for modal rendering before drawing Leaflet map
+      setTimeout(() => {
+        if (modalMap === null) {
+          modalMap = L.map('modal-map').setView([lat, lng], 16);
+          
+          // Default Google Roadmap Layer for modal
+          L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps'
+          }).addTo(modalMap);
+
+          modalMarker = L.marker([lat, lng]).addTo(modalMap);
+        } else {
+          modalMap.setView([lat, lng], 16);
+          modalMarker.setLatLng([lat, lng]);
+          modalMap.invalidateSize();
+        }
+      }, 200);
+    }
+
+    // Close Modal
+    function closeGPSModal() {
+      document.getElementById('gps-modal').style.display = 'none';
+    }
+
+    // Close clicking outside modal content
+    window.onclick = function(event) {
+      const modal = document.getElementById('gps-modal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>
