@@ -375,6 +375,70 @@ router.post('/api/actualizar-contacto', async (req, res) => {
   }
 });
 
+// ═════ API: GET /api/conteos-filtros ═════
+router.get('/api/conteos-filtros', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoCSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const conds = [];
+    const params = [];
+
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) {
+        return res.json({ regionales: {}, operaciones: {} });
+      }
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      conds.push(`(v.Operación IN (${ph}) OR a.usuario = ?)`);
+      params.push(...acceso.operacionesFiltro, usuario);
+    }
+
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+
+    // Conteos por Regional
+    const [regRows] = await pool.execute(
+      `SELECT v.Regional, COUNT(*) AS total
+       FROM Dynamic_compromisosst a
+       JOIN \`Maestro_Vinculación\` v ON a.identificaciontrabajador = v.Identificación AND v.Estado = 'Activo'
+       ${where}
+       GROUP BY v.Regional`,
+      params
+    );
+
+    // Conteos por Operación
+    const [opRows] = await pool.execute(
+      `SELECT v.Operación, COUNT(*) AS total
+       FROM Dynamic_compromisosst a
+       JOIN \`Maestro_Vinculación\` v ON a.identificaciontrabajador = v.Identificación AND v.Estado = 'Activo'
+       ${where}
+       GROUP BY v.Operación`,
+      params
+    );
+
+    const regionales = {};
+    regRows.forEach(r => {
+      if (r.Regional) regionales[r.Regional] = r.total;
+    });
+
+    const operaciones = {};
+    opRows.forEach(o => {
+      if (o.Operación) operaciones[o.Operación] = o.total;
+    });
+
+    res.json({ regionales, operaciones });
+  } catch (err) {
+    console.error('[compromisosst] GET /api/conteos-filtros:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: GET /api/compromisos ═════
 router.get('/api/compromisos', async (req, res) => {
   try {
@@ -1047,6 +1111,46 @@ router.post('/api/firmar-lider-directo', async (req, res) => {
     res.json({ ok: true, urlDoc });
   } catch (err) {
     console.error('[compromisosst] POST /api/firmar-lider-directo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/compromiso/:id/regenerar-token ═════
+router.post('/api/compromiso/:id/regenerar-token', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+
+    const acceso = await computarAccesoCSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM Dynamic_compromisosst WHERE idcsst = ?',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Compromiso no encontrado' });
+    }
+
+    const c = rows[0];
+    if (c.firma_trabajador) {
+      return res.status(400).json({ error: 'El compromiso ya ha sido firmado por el trabajador.' });
+    }
+
+    // Generar nuevo token y extender expira a 48h
+    const token = crypto.randomBytes(32).toString('hex');
+    const expira = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    await pool.execute(
+      'UPDATE Dynamic_compromisosst SET token_trabajador = ?, token_trabajador_expira = ? WHERE idcsst = ?',
+      [token, expira, id]
+    );
+
+    res.json({ ok: true, token, token_trabajador_expira: expira });
+  } catch (err) {
+    console.error('[compromisosst] POST /api/compromiso/:id/regenerar-token:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -92,6 +92,7 @@
     .view-container > * { min-width: 0; }
     @media (max-width: 900px) {
       .view-container.detail-active { grid-template-columns: 1fr; }
+      .detail-card { position: static; top: auto; }
     }
 
     .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
@@ -612,31 +613,11 @@
       filtroDebounceTimer = setTimeout(filtrarAutomatico, 400);
     }
 
-    // Poblar Filtros
+    // Poblar Filtros (se inicializan con conteos en cargarCompromisos)
     const rFilter = document.getElementById('filtro-regional');
     const oFilter = document.getElementById('filtro-operacion');
 
-    CONFIG.regionalesFiltro.forEach(reg => {
-      const opt = document.createElement('option');
-      opt.value = reg; opt.innerText = reg;
-      rFilter.appendChild(opt);
-    });
-    CONFIG.operacionesFiltro.forEach(op => {
-      const opt = document.createElement('option');
-      opt.value = op; opt.innerText = op;
-      oFilter.appendChild(opt);
-    });
-    rFilter.addEventListener('change', () => {
-      oFilter.innerHTML = '<option value="">Todas</option>';
-      const reg = rFilter.value;
-      const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
-      ops.forEach(op => {
-        const opt = document.createElement('option');
-        opt.value = op; opt.innerText = op;
-        oFilter.appendChild(opt);
-      });
-      filtrarAutomatico();
-    });
+    rFilter.addEventListener('change', filtrarAutomatico);
     oFilter.addEventListener('change', filtrarAutomatico);
     document.getElementById('filtro-trabajador').addEventListener('input', filtrarConDebounce);
     document.getElementById('filtro-desde').addEventListener('change', filtrarAutomatico);
@@ -659,8 +640,40 @@
         if (reg) query += `&regional=${encodeURIComponent(reg)}`;
         if (op) query += `&operacion=${encodeURIComponent(op)}`;
 
-        const r = await fetch(`/compromisosst/api/compromisos${query}`);
-        const data = await r.json();
+        const [r, rConteos] = await Promise.all([
+          fetch(`/compromisosst/api/compromisos${query}`),
+          fetch(`/compromisosst/api/conteos-filtros?usuario=${CONFIG.usuarioId}`)
+        ]);
+        
+        const [data, counts] = await Promise.all([
+          r.json(),
+          rConteos.json()
+        ]);
+
+        // Actualizar opciones de Regionales con conteos
+        const currentRegVal = rFilter.value;
+        rFilter.innerHTML = '<option value="">Todas</option>';
+        CONFIG.regionalesFiltro.forEach(itemReg => {
+          const count = counts.regionales[itemReg] || 0;
+          const opt = document.createElement('option');
+          opt.value = itemReg;
+          opt.innerText = `${itemReg} (${count})`;
+          if (itemReg === currentRegVal) opt.selected = true;
+          rFilter.appendChild(opt);
+        });
+
+        // Actualizar opciones de Operaciones con conteos
+        const currentOpVal = oFilter.value;
+        oFilter.innerHTML = '<option value="">Todas</option>';
+        const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
+        ops.forEach(itemOp => {
+          const count = counts.operaciones[itemOp] || 0;
+          const opt = document.createElement('option');
+          opt.value = itemOp;
+          opt.innerText = `${itemOp} (${count})`;
+          if (itemOp === currentOpVal) opt.selected = true;
+          oFilter.appendChild(opt);
+        });
 
         // Filtrado por estado de firmas en cliente
         const estVal = document.getElementById('filtro-estado').value;
@@ -696,12 +709,6 @@
       document.getElementById('filtro-estado').value = '';
       rFilter.value = '';
       oFilter.value = '';
-      oFilter.innerHTML = '<option value="">Todas</option>';
-      CONFIG.operacionesFiltro.forEach(op => {
-        const opt = document.createElement('option');
-        opt.value = op; opt.innerText = op;
-        oFilter.appendChild(opt);
-      });
       cargarCompromisos();
       actualizarBadgeFiltros();
     });
@@ -718,6 +725,13 @@
       layoutContainer.classList.add('detail-active');
       vistaDetalle.style.display = 'block';
       cargarDetalle();
+
+      // En móvil, el detalle queda debajo del listado: desplazamos la vista automáticamente.
+      if (window.matchMedia('(max-width: 900px)').matches) {
+        requestAnimationFrame(() => {
+          vistaDetalle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
     }
 
     document.getElementById('btn-cerrar-detalle').addEventListener('click', () => {
@@ -746,6 +760,19 @@
           badgeFirma = `<span class="status-badge badge-rojo">Pendiente Firma (Rojo)</span>`;
         }
 
+        let expiraHtml = '';
+        if (data.estado === 'ROJO') {
+          const expDate = data.token_trabajador_expira ? new Date(data.token_trabajador_expira) : null;
+          if (expDate) {
+            const isExpired = expDate < new Date();
+            const color = isExpired ? '#ef4444' : '#10b981';
+            const text = isExpired ? 'Vencido' : `Vence el ${expDate.toLocaleString()}`;
+            expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: ${color}; font-weight: bold;">${text}</span></p>`;
+          } else {
+            expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: #ef4444; font-weight: bold;">No generado o expirado</span></p>`;
+          }
+        }
+
         const infoBox = document.getElementById('detalle-info');
         infoBox.innerHTML = `
           <p><strong>Trabajador:</strong> ${data.identificaciontrabajador} ** ${data.nombre_trabajador}</p>
@@ -753,6 +780,7 @@
           <p><strong>Analista SST:</strong> ${data.nombre_analista} (C.C. ${data.identificacionanalista})</p>
           <p><strong>Fecha Registro:</strong> ${fechaFmt}</p>
           <p><strong>Estado Firmas:</strong> ${badgeFirma}</p>
+          ${expiraHtml}
           ${data.observaciones ? `<p><strong>Observaciones:</strong> ${data.observaciones}</p>` : ''}
           ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
         `;
@@ -798,7 +826,8 @@
           optsHtml += `
             <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
             <a href="${waUrl}" id="btn-whatsapp-detalle" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
-            <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
+            <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
+            <button class="btn btn-secondary" onclick="regenerarEnlace()" style="width: 100%; background: #8e44ad; color: #fff;">🔄 Generar Nuevo Enlace</button>
           `;
         } else if (data.estado === 'AMARILLO' && (esCreadorOSistema || esPlanBAnalista)) {
           optsHtml += `
@@ -829,6 +858,13 @@
           });
         }
 
+        // En móvil aseguramos que el panel visible con contenido quede en viewport.
+        if (window.matchMedia('(max-width: 900px)').matches) {
+          requestAnimationFrame(() => {
+            vistaDetalle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        }
+
       } catch (e) {
         console.error(e);
         showToast('Error al cargar detalle', 'error');
@@ -854,6 +890,29 @@
       } catch (e) {
         console.error(e);
         showToast('Error de red al enviar correo', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function regenerarEnlace() {
+      if (!confirm('¿Está seguro de que desea generar un nuevo enlace de firma? El enlace anterior dejará de funcionar y se renovará el plazo por 48 horas.')) return;
+      
+      showLoading('Generando nuevo enlace...');
+      try {
+        const r = await fetch(`/compromisosst/api/compromiso/${selectedCompromisoId}/regenerar-token?usuario=${CONFIG.usuarioId}`, {
+          method: 'POST'
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          showToast('Nuevo enlace generado con éxito');
+          cargarDetalle();
+        } else {
+          showToast(resp.error || 'Error al generar nuevo enlace', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al generar nuevo enlace', 'error');
       } finally {
         hideLoading();
       }
