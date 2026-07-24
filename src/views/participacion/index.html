@@ -149,6 +149,37 @@
     .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #8e44ad; border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Filtros plegables */
+    .filtros-toggle {
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
+    }
+    .filtros-toggle-left { display: flex; align-items: center; gap: 8px; }
+    .filtros-badge {
+      display: none; align-items: center; justify-content: center;
+      background: #8e44ad; color: #fff; border-radius: 999px;
+      font-size: .68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
+    }
+    .filtros-chevron { display: inline-block; transition: transform .2s ease; color: #8e44ad; font-size: .85rem; }
+    #filtros-body { overflow: hidden; }
+
+    /* Columnas ordenables y redimensionables (solo tabla principal de listado) */
+    #tabla-asistencias { table-layout: fixed; }
+    #tabla-asistencias th, #tabla-asistencias td { overflow: hidden; word-break: break-word; }
+    .th-sortable { position: relative; }
+    .th-label { cursor: pointer; display: block; padding-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .th-label:hover { color: #8e44ad; }
+    .sort-arrow { font-size: .7rem; color: #8e44ad; margin-left: 2px; }
+    .th-resize {
+      position: absolute; top: 0; right: -4px; width: 10px; height: 100%;
+      cursor: col-resize; touch-action: none; z-index: 2;
+    }
+    .th-resize::after {
+      content: ''; position: absolute; top: 15%; bottom: 15%; left: 4px; width: 2px;
+      background: #ddd; border-radius: 2px;
+    }
+    .th-resize:hover::after, .th-resize.resizing::after { background: #8e44ad; }
+
     /* ── Responsive ── */
     @media (max-width: 768px) {
       .card-titulo { flex-direction: column; text-align: center; }
@@ -156,6 +187,9 @@
       .grid-2, .grid-4 { grid-template-columns: 1fr; }
       .detail-grid { grid-template-columns: 1fr; }
       th, td { padding: 10px; }
+      #filtros-body .grid-4 { grid-template-columns: 1fr; }
+      #btn-limpiar-filtros { width: 100%; }
+      .btn { font-size: .85rem; }
     }
   </style>
 </head>
@@ -185,8 +219,15 @@
 
     <!-- Filtros -->
     <div class="card card-purple">
-      <div class="section-title">Filtros de Búsqueda</div>
-      <div class="grid-4">
+      <div class="section-title filtros-toggle" id="filtros-toggle">
+        <span class="filtros-toggle-left">
+          Filtros de Búsqueda
+          <span class="filtros-badge" id="filtros-badge">0</span>
+        </span>
+        <span class="filtros-chevron" id="filtros-chevron">▸</span>
+      </div>
+      <div id="filtros-body">
+      <div class="grid-4" style="margin-top: 16px;">
         <div class="field">
           <label class="lbl">Tema de la Jornada</label>
           <input type="text" id="filtro-tema" placeholder="Buscar tema...">
@@ -213,7 +254,7 @@
       </div>
       <div class="btn-group" style="justify-content: flex-end;">
         <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
-        <button class="btn btn-primary" id="btn-filtrar">Aplicar Filtros</button>
+      </div>
       </div>
     </div>
 
@@ -222,16 +263,7 @@
       <div class="section-title">Registros de Asistencia</div>
       <div class="table-container">
         <table id="tabla-asistencias">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Tema</th>
-              <th>Lugar</th>
-              <th>Responsable</th>
-              <th>Duración</th>
-              <th>Documento PDF</th>
-              <th>Acciones</th>
-            </tr>
+          <thead id="thead-asistencias">
           </thead>
           <tbody id="lista-asistencias-body">
             <tr>
@@ -347,6 +379,190 @@
   let selectedAsistenciaId = null;
   let currentEvidenciasCount = 0;
 
+  // ---- Columnas ordenables y redimensionables ----
+  const COL_WIDTH_KEY = 'participacion_col_widths';
+  const MIN_COL_WIDTH = 70;
+  const DEFAULT_COL_WIDTH = { fecha: 100, tema: 170, lugar: 130, responsable: 150, duracion: 90, pdf: 110, acciones: 190 };
+  let columns = [
+    { key: 'fecha', label: 'Fecha' },
+    { key: 'tema', label: 'Tema' },
+    { key: 'lugar', label: 'Lugar' },
+    { key: 'responsable', label: 'Responsable' },
+    { key: 'duracion', label: 'Duración' },
+    { key: 'pdf', label: 'Documento PDF' },
+    { key: 'acciones', label: 'Acciones' },
+  ].map(c => ({ ...c, width: DEFAULT_COL_WIDTH[c.key] }));
+  let sortState = { key: null, dir: 'asc' };
+
+  function loadColumnWidths() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COL_WIDTH_KEY) || 'null');
+      if (saved && typeof saved === 'object') {
+        columns.forEach(c => {
+          if (typeof saved[c.key] === 'number' && saved[c.key] >= MIN_COL_WIDTH) c.width = saved[c.key];
+        });
+      }
+    } catch (e) {}
+  }
+  function saveColumnWidths() {
+    try {
+      const obj = {};
+      columns.forEach(c => { obj[c.key] = c.width; });
+      localStorage.setItem(COL_WIDTH_KEY, JSON.stringify(obj));
+    } catch (e) {}
+  }
+  // #tabla-asistencias usa table-layout:fixed con ancho 100%: cuando la suma de
+  // los anchos especificados es menor al ancho disponible, el navegador estira
+  // TODAS las columnas proporcionalmente para llenar el contenedor (no solo la
+  // que se está redimensionando). Por eso, al terminar un resize, releemos el
+  // ancho REAL renderizado de todas las columnas (no solo la arrastrada) antes
+  // de persistir: así el estado guardado siempre coincide con lo que el
+  // navegador realmente pinta, y una recarga reproduce el mismo ancho exacto.
+  function syncColumnWidthsFromDOM() {
+    const thead = document.getElementById('thead-asistencias');
+    if (!thead) return;
+    columns.forEach(c => {
+      const th = thead.querySelector(`th[data-key="${c.key}"]`);
+      if (th) c.width = Math.round(th.getBoundingClientRect().width);
+    });
+  }
+
+  let resizingKey = null;
+  let resizeStartX = 0;
+  let resizeStartWidth = 0;
+
+  function attachHeaderResize(handleEl, key) {
+    handleEl.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resizingKey = key;
+      resizeStartX = e.clientX;
+      resizeStartWidth = columns.find(c => c.key === key).width;
+      handleEl.classList.add('resizing');
+      try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    handleEl.addEventListener('pointermove', (e) => {
+      if (resizingKey !== key) return;
+      const requested = Math.max(MIN_COL_WIDTH, resizeStartWidth + (e.clientX - resizeStartX));
+      const th = document.querySelector(`#thead-asistencias th[data-key="${key}"]`);
+      if (!th) return;
+      th.style.width = requested + 'px';
+      columns.find(c => c.key === key).width = Math.round(th.getBoundingClientRect().width);
+    });
+    const finishResize = () => {
+      if (resizingKey !== key) return;
+      resizingKey = null;
+      handleEl.classList.remove('resizing');
+      syncColumnWidthsFromDOM();
+      saveColumnWidths();
+    };
+    handleEl.addEventListener('pointerup', finishResize);
+    handleEl.addEventListener('pointercancel', finishResize);
+  }
+
+  function renderHeaderAsistencias() {
+    const thead = document.getElementById('thead-asistencias');
+    thead.innerHTML = `<tr>${columns.map(c => {
+      let arrow = '';
+      if (sortState.key === c.key) arrow = `<span class="sort-arrow">${sortState.dir === 'asc' ? '▲' : '▼'}</span>`;
+      return `<th data-key="${c.key}" class="th-sortable" style="width:${c.width}px;"><span class="th-label">${c.label}${arrow}</span><span class="th-resize" title="Arrastra para achicar o alargar la columna"></span></th>`;
+    }).join('')}</tr>`;
+
+    columns.forEach(c => {
+      const th = thead.querySelector(`th[data-key="${c.key}"]`);
+      th.querySelector('.th-label').addEventListener('click', () => {
+        if (sortState.key === c.key) {
+          sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortState.key = c.key;
+          sortState.dir = 'asc';
+        }
+        renderHeaderAsistencias();
+        renderFilasAsistencias();
+      });
+      attachHeaderResize(th.querySelector('.th-resize'), c.key);
+    });
+  }
+
+  function getSortValueAsistencia(item, key) {
+    switch (key) {
+      case 'fecha': return item.fecha || '';
+      case 'tema': return (item.tema || '').toLowerCase();
+      case 'lugar': return (item.lugar || '').toLowerCase();
+      case 'responsable': {
+        let n = item.nombre_responsable || item.responsable || '';
+        if (n.includes(' ** ')) n = n.split(' ** ')[1];
+        return n.toLowerCase();
+      }
+      case 'duracion': return item.duracion || '';
+      case 'pdf': return item.url_doc ? 1 : 0;
+      case 'acciones': return item.url_doc ? 1 : 0;
+      default: return '';
+    }
+  }
+
+  function buildRowCellsAsistencia(item) {
+    const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+    const duracionFmt = item.duracion ? item.duracion.slice(0, 5) : '—';
+
+    const pdfBadge = item.url_doc
+      ? `<span class="status-badge status-generado">Generado</span>`
+      : `<span class="status-badge status-pendiente">Pendiente</span>`;
+
+    const btnPdf = item.url_doc
+      ? `<a href="${item.url_doc}" target="_blank" class="btn btn-secondary btn-small">Ver PDF</a>`
+      : `<button class="btn btn-secondary btn-small" disabled style="opacity: 0.5;">Ver PDF</button>`;
+
+    let cleanResponsableName = item.nombre_responsable || item.responsable || '';
+    if (cleanResponsableName.includes(' ** ')) {
+      cleanResponsableName = cleanResponsableName.split(' ** ')[1];
+    }
+
+    return {
+      fecha: `<strong>${fechaFmt}</strong>`,
+      tema: item.tema,
+      lugar: item.lugar,
+      responsable: cleanResponsableName,
+      duracion: `${duracionFmt} Hs`,
+      pdf: pdfBadge,
+      acciones: `
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-primary btn-small" onclick="abrirDetalle(${item.id_asistencia})">Ver Detalle</button>
+          ${btnPdf}
+        </div>
+      `,
+    };
+  }
+
+  function renderFilasAsistencias() {
+    const tbody = document.getElementById('lista-asistencias-body');
+    tbody.innerHTML = '';
+
+    let data = creadas.slice();
+    if (sortState.key) {
+      data.sort((a, b) => {
+        const va = getSortValueAsistencia(a, sortState.key);
+        const vb = getSortValueAsistencia(b, sortState.key);
+        let cmp;
+        if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+        else cmp = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+        return sortState.dir === 'asc' ? cmp : -cmp;
+      });
+    }
+
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="${columns.length}" style="text-align: center; color: #888;">No se encontraron registros.</td></tr>`;
+      return;
+    }
+
+    data.forEach(item => {
+      const cells = buildRowCellsAsistencia(item);
+      const tr = document.createElement('tr');
+      tr.innerHTML = columns.map(c => `<td>${cells[c.key]}</td>`).join('');
+      tbody.appendChild(tr);
+    });
+  }
+
   // DOM Elements
   const vistaListado = document.getElementById('vista-listado');
   const vistaDetalle = document.getElementById('vista-detalle');
@@ -359,9 +575,12 @@
     
     // Configurar selectores de Regional y Operación en Filtros
     poblarFiltrosDropdowns();
-    
+    loadColumnWidths();
+    renderHeaderAsistencias();
+
     // Cargar Listado inicial
     cargarListado();
+    actualizarBadgeFiltros();
 
     // Event Listeners
     document.getElementById('btn-nueva-asistencia').addEventListener('click', () => {
@@ -372,7 +591,49 @@
       vistaListado.classList.add('active');
       cargarListado();
     });
-    document.getElementById('btn-filtrar').addEventListener('click', () => cargarListado());
+
+    // ---- Filtros plegables ----
+    const filtrosToggle = document.getElementById('filtros-toggle');
+    const filtrosBody = document.getElementById('filtros-body');
+    const filtrosChevron = document.getElementById('filtros-chevron');
+    let filtrosAbiertos = false;
+
+    function setFiltrosState(open) {
+      filtrosAbiertos = open;
+      filtrosBody.style.display = open ? 'block' : 'none';
+      filtrosChevron.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+    filtrosToggle.addEventListener('click', () => setFiltrosState(!filtrosAbiertos));
+    setFiltrosState(false);
+
+    function actualizarBadgeFiltros() {
+      const badge = document.getElementById('filtros-badge');
+      let count = 0;
+      if (document.getElementById('filtro-tema').value) count++;
+      if (document.getElementById('filtro-regional').value) count++;
+      if (document.getElementById('filtro-operacion').value) count++;
+      if (document.getElementById('filtro-desde').value) count++;
+      if (document.getElementById('filtro-hasta').value) count++;
+      badge.innerText = count;
+      badge.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+
+    let filtroDebounceTimer = null;
+    function filtrarAutomatico() {
+      cargarListado();
+      actualizarBadgeFiltros();
+    }
+    function filtrarConDebounce() {
+      clearTimeout(filtroDebounceTimer);
+      filtroDebounceTimer = setTimeout(filtrarAutomatico, 400);
+    }
+
+    document.getElementById('filtro-tema').addEventListener('input', filtrarConDebounce);
+    document.getElementById('filtro-regional').addEventListener('change', filtrarAutomatico);
+    document.getElementById('filtro-operacion').addEventListener('change', filtrarAutomatico);
+    document.getElementById('filtro-desde').addEventListener('change', filtrarAutomatico);
+    document.getElementById('filtro-hasta').addEventListener('change', filtrarAutomatico);
+
     document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
       document.getElementById('filtro-tema').value = '';
       document.getElementById('filtro-regional').value = '';
@@ -380,6 +641,7 @@
       document.getElementById('filtro-desde').value = '';
       document.getElementById('filtro-hasta').value = '';
       cargarListado();
+      actualizarBadgeFiltros();
     });
 
     // Form Submits
@@ -461,50 +723,7 @@
       creadas = data;
 
       document.getElementById('total-badge-count').innerText = `Total: ${creadas.length} registros`;
-
-      const tbody = document.getElementById('lista-asistencias-body');
-      tbody.innerHTML = '';
-
-      if (!creadas.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888;">No se encontraron registros.</td></tr>';
-        return;
-      }
-
-      creadas.forEach(item => {
-        const tr = document.createElement('tr');
-        
-        const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
-        const duracionFmt = item.duracion ? item.duracion.slice(0, 5) : '—';
-        
-        const pdfBadge = item.url_doc 
-          ? `<span class="status-badge status-generado">Generado</span>` 
-          : `<span class="status-badge status-pendiente">Pendiente</span>`;
-
-        const btnPdf = item.url_doc
-          ? `<a href="${item.url_doc}" target="_blank" class="btn btn-secondary btn-small">Ver PDF</a>`
-          : `<button class="btn btn-secondary btn-small" disabled style="opacity: 0.5;">Ver PDF</button>`;
-
-        let cleanResponsableName = item.nombre_responsable || item.responsable || '';
-        if (cleanResponsableName.includes(' ** ')) {
-          cleanResponsableName = cleanResponsableName.split(' ** ')[1];
-        }
-
-        tr.innerHTML = `
-          <td><strong>${fechaFmt}</strong></td>
-          <td>${item.tema}</td>
-          <td>${item.lugar}</td>
-          <td>${cleanResponsableName}</td>
-          <td>${duracionFmt} Hs</td>
-          <td>${pdfBadge}</td>
-          <td>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn btn-primary btn-small" onclick="abrirDetalle(${item.id_asistencia})">Ver Detalle</button>
-              ${btnPdf}
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+      renderFilasAsistencias();
     } catch (err) {
       console.error(err);
       showToast('Error al cargar listado', 'error');

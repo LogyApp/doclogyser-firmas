@@ -60,7 +60,7 @@
     label { display: block; font-size: .85rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
     label .req { color: #ef4444; margin-left: 2px; }
     
-    input[type="text"], input[type="date"], select, textarea {
+    input[type="text"], input[type="email"], input[type="date"], select, textarea {
       width: 100%; padding: 10px 14px;
       border: 1.5px solid #cbd5e1; border-radius: 8px;
       font-size: .95rem; color: #334155; background: #ffffff;
@@ -126,6 +126,90 @@
       border-radius: 50%; animation: spin 1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Estilos para el Combobox de Trabajador */
+    .combobox-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .combobox-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: .95rem;
+      color: #334155;
+      background: #ffffff;
+      cursor: text;
+      position: relative;
+      transition: all .2s;
+    }
+    .combobox-input:focus {
+      outline: none;
+      border-color: #8e44ad;
+      box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.15);
+    }
+    .combobox-input:disabled {
+      background: #f8fafc !important;
+      color: #64748b !important;
+      cursor: not-allowed !important;
+      border-color: #e2e8f0 !important;
+    }
+    .combobox-wrapper::after {
+      content: '▼';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.75rem;
+      color: #64748b;
+      pointer-events: none;
+    }
+    .combobox-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      background: #ffffff;
+      border: 1.5px solid #8e44ad;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      z-index: 50;
+      margin-top: 4px;
+      padding: 4px;
+      box-sizing: border-box;
+      display: none;
+      flex-direction: column;
+    }
+    .combobox-options {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .combobox-option {
+      padding: 8px 12px;
+      font-size: 0.92rem;
+      color: #334155;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .combobox-option:hover {
+      background: #f3e8ff;
+      color: #6b21a8;
+    }
+    .combobox-option.selected {
+      background: #8e44ad;
+      color: #ffffff;
+    }
+    .combobox-no-results {
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      color: #64748b;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -171,7 +255,16 @@
         
         <div class="field">
           <label for="select-trabajador">Trabajador <span class="req">*</span></label>
-          <select id="select-trabajador" required disabled>
+          <div class="combobox-wrapper">
+            <input type="text" id="combobox-input" class="combobox-input" placeholder="Seleccione Trabajador..." autocomplete="off" disabled>
+            <div class="combobox-dropdown" id="combobox-dropdown" style="display: none;">
+              <div class="combobox-options" id="combobox-options">
+                <!-- Se cargarán dinámicamente -->
+              </div>
+            </div>
+          </div>
+          <!-- Select oculto para validación y compatibilidad -->
+          <select id="select-trabajador" required disabled style="display: none;">
             <option value="">Seleccione Trabajador...</option>
           </select>
         </div>
@@ -184,6 +277,17 @@
           <div class="field">
             <label for="input-cargo">Cargo</label>
             <input type="text" id="input-cargo" readonly placeholder="Cargo del trabajador">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="input-email">Correo Electrónico (Para notificación)</label>
+            <input type="email" id="input-email" placeholder="Correo del trabajador (opcional)">
+          </div>
+          <div class="field">
+            <label for="input-celular">Celular (WhatsApp)</label>
+            <input type="text" id="input-celular" placeholder="Número de celular (opcional)">
           </div>
         </div>
 
@@ -244,6 +348,138 @@
     const opSelect = document.getElementById('select-operacion');
     const trabSelect = document.getElementById('select-trabajador');
 
+    // Combobox Elements & Logic
+    const comboboxInput = document.getElementById('combobox-input');
+    const comboboxDropdown = document.getElementById('combobox-dropdown');
+    const comboboxOptions = document.getElementById('combobox-options');
+
+    let trabajadoresCargados = [];
+    let selectedWorkerCc = '';
+
+    comboboxInput.addEventListener('click', function(e) {
+      if (this.disabled) return;
+      e.stopPropagation();
+      this.select(); // Selecciona el texto para facilitar la escritura
+      openCombobox();
+      filterComboboxOptions(this.value);
+    });
+
+    comboboxInput.addEventListener('input', function() {
+      if (this.disabled) return;
+      openCombobox();
+      filterComboboxOptions(this.value);
+    });
+
+    comboboxInput.addEventListener('blur', function() {
+      // Pequeño retardo para permitir registrar el evento click del listado
+      setTimeout(() => {
+        const valText = comboboxInput.value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        // Buscar coincidencia exacta
+        const match = trabajadoresCargados.find(w => {
+          const name = (w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador)
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+          return name === valText;
+        });
+
+        if (match) {
+          selectWorker(match);
+        } else {
+          // Si no hay coincidencia exacta, volver al último seleccionado o limpiar
+          if (selectedWorkerCc) {
+            const currentSelected = trabajadoresCargados.find(w => w.identificacion === selectedWorkerCc);
+            if (currentSelected) {
+              const name = currentSelected.Trabajador.includes(' ** ') ? currentSelected.Trabajador.split(' ** ')[1] : currentSelected.Trabajador;
+              comboboxInput.value = name;
+              closeCombobox();
+              return;
+            }
+          }
+          clearWorkerSelection();
+        }
+        closeCombobox();
+      }, 200);
+    });
+
+    function openCombobox() {
+      comboboxDropdown.style.display = 'flex';
+    }
+
+    function closeCombobox() {
+      comboboxDropdown.style.display = 'none';
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.combobox-wrapper')) {
+        closeCombobox();
+      }
+    });
+
+    function filterComboboxOptions(query) {
+      const q = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const filtered = trabajadoresCargados.filter(w => {
+        const name = (w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador)
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+        const cc = String(w.identificacion || '').toLowerCase();
+        return name.includes(q) || cc.includes(q);
+      });
+      renderComboboxOptions(filtered);
+    }
+
+    function renderComboboxOptions(workers) {
+      comboboxOptions.innerHTML = '';
+      if (workers.length === 0) {
+        const noRes = document.createElement('div');
+        noRes.className = 'combobox-no-results';
+        noRes.textContent = 'No se encontraron trabajadores';
+        comboboxOptions.appendChild(noRes);
+        return;
+      }
+      workers.forEach(w => {
+        const nombreLimpio = w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador;
+        const optDiv = document.createElement('div');
+        optDiv.className = 'combobox-option';
+        if (selectedWorkerCc === w.identificacion) {
+          optDiv.classList.add('selected');
+        }
+        optDiv.textContent = nombreLimpio;
+        optDiv.addEventListener('click', function(e) {
+          e.stopPropagation();
+          selectWorker(w);
+          closeCombobox();
+        });
+        comboboxOptions.appendChild(optDiv);
+      });
+    }
+
+    function selectWorker(w) {
+      selectedWorkerCc = w.identificacion;
+      const nombreLimpio = w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador;
+      comboboxInput.value = nombreLimpio;
+
+      trabSelect.innerHTML = '';
+      const opt = document.createElement('option');
+      opt.value = w.identificacion;
+      opt.textContent = nombreLimpio;
+      opt.dataset.nombre = nombreLimpio;
+      opt.dataset.cargo = w.Cargo;
+      opt.selected = true;
+      trabSelect.appendChild(opt);
+
+      trabSelect.dispatchEvent(new Event('change'));
+    }
+
+    function clearWorkerSelection() {
+      selectedWorkerCc = '';
+      comboboxInput.value = '';
+      comboboxInput.placeholder = 'Seleccione Trabajador...';
+      trabSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
+      trabSelect.dispatchEvent(new Event('change'));
+    }
+
     CONFIG.regionalesFiltro.forEach(reg => {
       const opt = document.createElement('option');
       opt.value = reg;
@@ -255,8 +491,10 @@
       const reg = this.value;
       opSelect.innerHTML = '<option value="">Seleccione Operación...</option>';
       opSelect.disabled = true;
-      trabSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
-      trabSelect.disabled = true;
+      
+      clearWorkerSelection();
+      comboboxInput.disabled = true;
+
       document.getElementById('input-cc').value = '';
       document.getElementById('input-cargo').value = '';
 
@@ -275,8 +513,10 @@
     opSelect.addEventListener('change', async function() {
       const op = this.value;
       const reg = regSelect.value;
-      trabSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
-      trabSelect.disabled = true;
+      
+      clearWorkerSelection();
+      comboboxInput.disabled = true;
+
       document.getElementById('input-cc').value = '';
       document.getElementById('input-cargo').value = '';
 
@@ -284,17 +524,15 @@
         showLoading('Buscando trabajadores...');
         try {
           const r = await fetch(`/compromisosst/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
-          const workers = await r.json();
-          workers.forEach(w => {
-            const opt = document.createElement('option');
-            opt.value = w.identificacion;
-            const nombreLimpio = w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador;
-            opt.textContent = nombreLimpio;
-            opt.dataset.nombre = nombreLimpio;
-            opt.dataset.cargo = w.Cargo;
-            trabSelect.appendChild(opt);
-          });
-          trabSelect.disabled = false;
+          trabajadoresCargados = await r.json();
+          
+          if (trabajadoresCargados.length > 0) {
+            comboboxInput.disabled = false;
+            comboboxInput.placeholder = 'Seleccione Trabajador...';
+            renderComboboxOptions(trabajadoresCargados);
+          } else {
+            comboboxInput.placeholder = 'No hay trabajadores activos';
+          }
         } catch (e) {
           console.error(e);
           alert('Error al buscar trabajadores');
@@ -304,14 +542,28 @@
       }
     });
 
-    trabSelect.addEventListener('change', function() {
+    trabSelect.addEventListener('change', async function() {
       const opt = this.options[this.selectedIndex];
       if (opt && opt.value) {
         document.getElementById('input-cc').value = opt.value;
         document.getElementById('input-cargo').value = opt.dataset.cargo || '';
+        
+        // Cargar datos de contacto del trabajador
+        try {
+          const res = await fetch(`/compromisosst/api/contacto/${opt.value}`);
+          if (res.ok) {
+            const c = await res.json();
+            document.getElementById('input-email').value = c.Email || '';
+            document.getElementById('input-celular').value = c.Celular || '';
+          }
+        } catch (e) {
+          console.error('[compromisosst] Error al obtener datos de contacto:', e);
+        }
       } else {
         document.getElementById('input-cc').value = '';
         document.getElementById('input-cargo').value = '';
+        document.getElementById('input-email').value = '';
+        document.getElementById('input-celular').value = '';
       }
     });
 
@@ -326,6 +578,22 @@
       if (!opt || !opt.value) {
         alert('Debe seleccionar un trabajador');
         return;
+      }
+
+      const emailVal = document.getElementById('input-email').value.trim();
+      const celularVal = document.getElementById('input-celular').value.trim();
+
+      // Guardar/Actualizar datos de contacto en segundo plano
+      if (emailVal || celularVal) {
+        fetch('/compromisosst/api/actualizar-contacto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identificacion: opt.value,
+            email: emailVal,
+            celular: celularVal
+          })
+        }).catch(err => console.error('[compromisosst] Error actualizando contacto:', err));
       }
 
       const payload = {
@@ -353,7 +621,12 @@
           document.getElementById('btn-firmar-ahora').href = resp.urlFirmaTrab;
 
           const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Cumplimiento de Normas SST: ${resp.urlFirmaTrab}`);
-          document.getElementById('btn-whatsapp').href = `https://wa.me/?text=${msgWaText}`;
+          let celNum = celularVal.replace(/\D/g, '');
+          if (celNum.length === 10 && celNum.startsWith('3')) {
+            celNum = '57' + celNum;
+          }
+          const waUrl = celNum ? `https://api.whatsapp.com/send?phone=${celNum}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
+          document.getElementById('btn-whatsapp').href = waUrl;
           
           document.getElementById('btn-copiar').addEventListener('click', function() {
             navigator.clipboard.writeText(resp.urlFirmaTrab);

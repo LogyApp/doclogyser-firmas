@@ -89,15 +89,16 @@
     .view-container.detail-active {
       display: grid; grid-template-columns: 1.2fr 1fr;
     }
+    .view-container > * { min-width: 0; }
     @media (max-width: 900px) {
       .view-container.detail-active { grid-template-columns: 1fr; }
     }
 
     /* Table */
     .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .92rem; }
-    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
-    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    table { table-layout: fixed; border-collapse: collapse; text-align: left; font-size: .92rem; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; overflow: hidden; }
+    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; overflow: hidden; word-break: break-word; }
     tr:hover td { background: #f8fafc; cursor: pointer; }
 
     .status-badge {
@@ -136,6 +137,49 @@
       padding: 12px 24px; border-radius: 8px; font-size: .9rem; font-weight: 600;
       box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; display: none;
     }
+
+    /* Filtros plegables */
+    .filtros-toggle {
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
+    }
+    .filtros-toggle-left { display: flex; align-items: center; gap: 8px; }
+    .filtros-badge {
+      display: none; align-items: center; justify-content: center;
+      background: #14b8a6; color: #fff; border-radius: 999px;
+      font-size: .68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
+    }
+    .filtros-chevron { display: inline-block; transition: transform .2s ease; color: #0d9488; font-size: .85rem; }
+    #filtros-body { overflow: hidden; }
+
+    /* Columnas ordenables y redimensionables */
+    .th-sortable { position: relative; }
+    .th-label { cursor: pointer; display: block; padding-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .th-label:hover { color: #0d9488; }
+    .sort-arrow { font-size: .7rem; color: #0d9488; margin-left: 2px; }
+    .th-resize {
+      position: absolute; top: 0; right: -4px; width: 10px; height: 100%;
+      cursor: col-resize; touch-action: none; z-index: 2;
+    }
+    .th-resize::after {
+      content: ''; position: absolute; top: 15%; bottom: 15%; left: 4px; width: 2px;
+      background: #cbd5e1; border-radius: 2px;
+    }
+    .th-resize:hover::after, .th-resize.resizing::after { background: #0d9488; }
+
+    @media (max-width: 640px) {
+      .wrapper { padding: 14px 8px 50px; }
+      .header-card { flex-direction: column; align-items: stretch; text-align: center; padding: 18px; }
+      .badge-row { justify-content: center; }
+      #btn-nueva-evaluacion { width: 100%; margin-top: 8px; }
+      .card, .detail-card { padding: 16px; }
+      .grid-5 { grid-template-columns: 1fr; gap: 12px; }
+      th, td { padding: 10px 8px; font-size: .8rem; }
+      .section-title { font-size: .75rem; }
+      #btn-limpiar-filtros { width: 100%; }
+      .table-container { -webkit-overflow-scrolling: touch; }
+      .btn { font-size: .85rem; padding: 10px 14px; }
+    }
   </style>
 </head>
 <body>
@@ -163,8 +207,15 @@
 
     <!-- Filtros -->
     <div class="card">
-      <div class="section-title">Filtros de Búsqueda</div>
-      <div class="grid-5">
+      <div class="section-title filtros-toggle" id="filtros-toggle">
+        <span class="filtros-toggle-left">
+          Filtros de Búsqueda
+          <span class="filtros-badge" id="filtros-badge">0</span>
+        </span>
+        <span class="filtros-chevron" id="filtros-chevron">▸</span>
+      </div>
+      <div id="filtros-body">
+      <div class="grid-5" style="margin-top: 16px;">
         <div class="field">
           <label for="filtro-trabajador">Trabajador</label>
           <input type="text" id="filtro-trabajador" placeholder="Nombre o C.C...">
@@ -201,7 +252,7 @@
       </div>
       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 15px;">
         <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
-        <button class="btn btn-primary" id="btn-filtrar">Aplicar Filtros</button>
+      </div>
       </div>
     </div>
 
@@ -213,16 +264,7 @@
         <div class="section-title">Evaluaciones Registradas</div>
         <div class="table-container">
           <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Trabajador</th>
-                <th>Tipo</th>
-                <th>Puntaje</th>
-                <th>Resultado</th>
-                <th>Notificar</th>
-                <th>Documento PDF</th>
-              </tr>
+            <thead id="thead-evaluaciones">
             </thead>
             <tbody id="evaluaciones-body">
               <tr>
@@ -269,6 +311,178 @@
     let selectedEvaluacionId = null;
     let selectedTrabajadorId = null;
     let evaluacionesList = [];
+    let datosFiltrados = [];
+
+    // ---- Columnas ordenables y redimensionables ----
+    const COL_WIDTH_KEY = 'evaluacionsst_col_widths';
+    const MIN_COL_WIDTH = 70;
+    const DEFAULT_COL_WIDTH = { fecha: 110, trabajador: 220, tipo: 120, puntaje: 100, resultado: 150, notificar: 150, pdf: 150 };
+    let columns = [
+      { key: 'fecha', label: 'Fecha' },
+      { key: 'trabajador', label: 'Trabajador' },
+      { key: 'tipo', label: 'Tipo' },
+      { key: 'puntaje', label: 'Puntaje' },
+      { key: 'resultado', label: 'Resultado' },
+      { key: 'notificar', label: 'Notificar' },
+      { key: 'pdf', label: 'Documento PDF' },
+    ].map(c => ({ ...c, width: DEFAULT_COL_WIDTH[c.key] }));
+    let sortState = { key: null, dir: 'asc' };
+
+    function loadColumnWidths() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(COL_WIDTH_KEY) || 'null');
+        if (saved && typeof saved === 'object') {
+          columns.forEach(c => {
+            if (typeof saved[c.key] === 'number' && saved[c.key] >= MIN_COL_WIDTH) c.width = saved[c.key];
+          });
+        }
+      } catch (e) {}
+    }
+    function saveColumnWidths() {
+      try {
+        const obj = {};
+        columns.forEach(c => { obj[c.key] = c.width; });
+        localStorage.setItem(COL_WIDTH_KEY, JSON.stringify(obj));
+      } catch (e) {}
+    }
+
+    let resizingKey = null;
+    let resizeStartX = 0;
+    let resizeStartWidth = 0;
+
+    function attachHeaderResize(handleEl, key) {
+      handleEl.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizingKey = key;
+        resizeStartX = e.clientX;
+        resizeStartWidth = columns.find(c => c.key === key).width;
+        handleEl.classList.add('resizing');
+        try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+      handleEl.addEventListener('pointermove', (e) => {
+        if (resizingKey !== key) return;
+        const requested = Math.max(MIN_COL_WIDTH, resizeStartWidth + (e.clientX - resizeStartX));
+        const th = document.querySelector(`#thead-evaluaciones th[data-key="${key}"]`);
+        if (!th) return;
+        th.style.width = requested + 'px';
+        // El navegador no permite achicar una columna más allá del ancho mínimo de su texto,
+        // así que se sincroniza el estado con el ancho realmente renderizado.
+        columns.find(c => c.key === key).width = Math.round(th.getBoundingClientRect().width);
+      });
+      const finishResize = () => {
+        if (resizingKey !== key) return;
+        resizingKey = null;
+        handleEl.classList.remove('resizing');
+        saveColumnWidths();
+      };
+      handleEl.addEventListener('pointerup', finishResize);
+      handleEl.addEventListener('pointercancel', finishResize);
+    }
+
+    function renderHeader() {
+      const thead = document.getElementById('thead-evaluaciones');
+      thead.innerHTML = `<tr>${columns.map(c => {
+        let arrow = '';
+        if (sortState.key === c.key) arrow = `<span class="sort-arrow">${sortState.dir === 'asc' ? '▲' : '▼'}</span>`;
+        return `<th data-key="${c.key}" class="th-sortable" style="width:${c.width}px;"><span class="th-label">${c.label}${arrow}</span><span class="th-resize" title="Arrastra para achicar o alargar la columna"></span></th>`;
+      }).join('')}</tr>`;
+
+      columns.forEach(c => {
+        const th = thead.querySelector(`th[data-key="${c.key}"]`);
+        th.querySelector('.th-label').addEventListener('click', () => {
+          if (sortState.key === c.key) {
+            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState.key = c.key;
+            sortState.dir = 'asc';
+          }
+          renderHeader();
+          renderRows();
+        });
+        attachHeaderResize(th.querySelector('.th-resize'), c.key);
+      });
+    }
+
+    function getSortValue(item, key) {
+      switch (key) {
+        case 'fecha': return item.fecha || '';
+        case 'trabajador': return (item.nombre_trabajador || '').toLowerCase();
+        case 'tipo': return (item.tipo || '').toLowerCase();
+        case 'puntaje': return item.puntaje === null || item.puntaje === undefined ? -1 : item.puntaje;
+        case 'resultado': {
+          const itemRes = item.url_doc ? (item.resultado === 'APROBADO' ? 'APROBADO' : 'NO APROBADO') : 'PENDIENTE';
+          if (itemRes === 'APROBADO') return 2;
+          if (itemRes === 'PENDIENTE') return 0;
+          return 1;
+        }
+        case 'notificar': return item.url_doc ? 0 : 1;
+        case 'pdf': return item.url_doc ? 1 : 0;
+        default: return '';
+      }
+    }
+
+    function buildRowCells(item) {
+      const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+      const resultBadge = item.url_doc
+        ? (item.resultado === 'APROBADO'
+            ? '<span class="status-badge badge-firma-aceptada">✓ Aprobado</span>'
+            : '<span class="status-badge badge-firma-prefilled">✗ No Aprobado</span>')
+        : '<span class="status-badge badge-firma-sin">⏱ Pendiente</span>';
+
+      let waLinkHtml = '—';
+      if (!item.url_doc) {
+        const urlFirmaLink = `${window.location.origin}/evaluacionsst/responder?item=${item.id_evaluacion}`;
+        const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaLink}`);
+        let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+        if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+        waLinkHtml = `<a href="https://wa.me/${cel}?text=${msgWaText}" target="_blank" onclick="event.stopPropagation();" class="btn btn-primary btn-small" style="background:#25d366; border: none; color:#fff; font-weight: bold; text-decoration: none; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;"><span style="font-size:0.9rem;">💬</span> WhatsApp</a>`;
+      }
+
+      const docLink = item.url_doc
+        ? `<a href="${item.url_doc}" target="_blank" onclick="event.stopPropagation();" style="color:#0d9488; font-weight:bold; text-decoration:none;">📄 Abrir PDF</a>`
+        : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+
+      return {
+        fecha: `<strong>${fechaFmt}</strong>`,
+        trabajador: `<strong>${item.nombre_trabajador || 'Cargando...'}</strong><br><small style="color:#64748b;">C.C. ${item.identificacion}</small>`,
+        tipo: item.tipo,
+        puntaje: `<strong>${item.puntaje !== null ? item.puntaje + ' / 13' : '—'}</strong>`,
+        resultado: resultBadge,
+        notificar: waLinkHtml,
+        pdf: docLink,
+      };
+    }
+
+    function renderRows() {
+      const tbody = document.getElementById('evaluaciones-body');
+      tbody.innerHTML = '';
+
+      let data = datosFiltrados.slice();
+      if (sortState.key) {
+        data.sort((a, b) => {
+          const va = getSortValue(a, sortState.key);
+          const vb = getSortValue(b, sortState.key);
+          let cmp;
+          if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+          else cmp = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+          return sortState.dir === 'asc' ? cmp : -cmp;
+        });
+      }
+
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="${columns.length}" style="text-align: center; color: #888; padding: 30px;">No se encontraron evaluaciones registradas.</td></tr>`;
+        return;
+      }
+
+      data.forEach(item => {
+        const cells = buildRowCells(item);
+        const fila = document.createElement('tr');
+        fila.innerHTML = columns.map(c => `<td>${cells[c.key]}</td>`).join('');
+        fila.addEventListener('click', () => abrirDetalle(item.id_evaluacion));
+        tbody.appendChild(fila);
+      });
+    }
 
     // Inicialización del dashboard
     document.getElementById('user-badge-name').textContent = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
@@ -289,6 +503,9 @@
       opt.textContent = r;
       filtroReg.appendChild(opt);
     });
+
+    loadColumnWidths();
+    renderHeader();
 
     // Manejar cambio de Regional para filtrar operaciones
     filtroReg.addEventListener('change', () => {
@@ -314,12 +531,54 @@
           });
         });
       }
+      filtrarAutomatico();
     });
     // Trigger inicial
     filtroReg.dispatchEvent(new Event('change'));
 
-    // Botones de filtro
-    document.getElementById('btn-filtrar').addEventListener('click', cargarListado);
+    // ---- Filtros plegables ----
+    const filtrosToggle = document.getElementById('filtros-toggle');
+    const filtrosBody = document.getElementById('filtros-body');
+    const filtrosChevron = document.getElementById('filtros-chevron');
+    let filtrosAbiertos = false;
+
+    function setFiltrosState(open) {
+      filtrosAbiertos = open;
+      filtrosBody.style.display = open ? 'block' : 'none';
+      filtrosChevron.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+    filtrosToggle.addEventListener('click', () => setFiltrosState(!filtrosAbiertos));
+    setFiltrosState(false);
+
+    function actualizarBadgeFiltros() {
+      const badge = document.getElementById('filtros-badge');
+      let count = 0;
+      if (document.getElementById('filtro-trabajador').value) count++;
+      if (document.getElementById('filtro-desde').value) count++;
+      if (document.getElementById('filtro-hasta').value) count++;
+      if (document.getElementById('filtro-resultado').value) count++;
+      if (filtroReg.value) count++;
+      if (filtroOp.value) count++;
+      badge.innerText = count;
+      badge.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+
+    let filtroDebounceTimer = null;
+    function filtrarAutomatico() {
+      cargarListado();
+      actualizarBadgeFiltros();
+    }
+    function filtrarConDebounce() {
+      clearTimeout(filtroDebounceTimer);
+      filtroDebounceTimer = setTimeout(filtrarAutomatico, 400);
+    }
+
+    document.getElementById('filtro-trabajador').addEventListener('input', filtrarConDebounce);
+    document.getElementById('filtro-desde').addEventListener('change', filtrarAutomatico);
+    document.getElementById('filtro-hasta').addEventListener('change', filtrarAutomatico);
+    document.getElementById('filtro-resultado').addEventListener('change', filtrarAutomatico);
+    filtroOp.addEventListener('change', filtrarAutomatico);
+
     document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
       document.getElementById('filtro-trabajador').value = '';
       filtroReg.value = '';
@@ -328,10 +587,12 @@
       document.getElementById('filtro-hasta').value = '';
       document.getElementById('filtro-resultado').value = '';
       cargarListado();
+      actualizarBadgeFiltros();
     });
 
     // Cargar Listado Inicial
     cargarListado();
+    actualizarBadgeFiltros();
 
     async function cargarListado() {
       showLoading('Cargando evaluaciones...');
@@ -367,50 +628,8 @@
         }
 
         document.getElementById('total-badge-count').textContent = `Total: ${filteredData.length} registros`;
- 
-        const tbody = document.getElementById('evaluaciones-body');
-        tbody.innerHTML = '';
- 
-        if (!filteredData.length) {
-          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #888; padding: 30px;">No se encontraron evaluaciones registradas.</td></tr>`;
-          return;
-        }
- 
-        filteredData.forEach(item => {
-          const fila = document.createElement('tr');
-          fila.addEventListener('click', () => abrirDetalle(item.id_evaluacion));
- 
-          const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '';
-          const resultBadge = item.url_doc 
-            ? (item.resultado === 'APROBADO' 
-                ? '<span class="status-badge badge-firma-aceptada">✓ Aprobado</span>'
-                : '<span class="status-badge badge-firma-prefilled">✗ No Aprobado</span>')
-            : '<span class="status-badge badge-firma-sin">⏱ Pendiente</span>';
- 
-          let waLinkHtml = '—';
-          if (!item.url_doc) {
-            const urlFirmaLink = `${window.location.origin}/evaluacionsst/responder?item=${item.id_evaluacion}`;
-            const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaLink}`);
-            let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
-            if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
-            waLinkHtml = `<a href="https://wa.me/${cel}?text=${msgWaText}" target="_blank" onclick="event.stopPropagation();" class="btn btn-primary btn-small" style="background:#25d366; border: none; color:#fff; font-weight: bold; text-decoration: none; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;"><span style="font-size:0.9rem;">💬</span> WhatsApp</a>`;
-          }
- 
-          const docLink = item.url_doc 
-            ? `<a href="${item.url_doc}" target="_blank" onclick="event.stopPropagation();" style="color:#0d9488; font-weight:bold; text-decoration:none;">📄 Abrir PDF</a>` 
-            : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
- 
-          fila.innerHTML = `
-            <td><strong>${fechaFmt}</strong></td>
-            <td><strong>${item.nombre_trabajador || 'Cargando...'}</strong><br><small style="color:#64748b;">C.C. ${item.identificacion}</small></td>
-            <td>${item.tipo}</td>
-            <td><strong>${item.puntaje !== null ? item.puntaje + ' / 13' : '—'}</strong></td>
-            <td>${resultBadge}</td>
-            <td onclick="event.stopPropagation()">${waLinkHtml}</td>
-            <td>${docLink}</td>
-          `;
-          tbody.appendChild(fila);
-        });
+        datosFiltrados = filteredData;
+        renderRows();
       } catch (err) {
         console.error(err);
         showToast('Error al cargar listado', 'error');
