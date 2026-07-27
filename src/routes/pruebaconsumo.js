@@ -795,6 +795,49 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
   }
 });
 
+// ═════ API: POST /api/prueba/:id/regenerar-token ═════
+router.post('/api/prueba/:id/regenerar-token', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+
+    const acceso = await computarAccesoCPC(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM Dynamic_pruebaconsumo WHERE idprueba = ?',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Consentimiento no encontrado' });
+    }
+
+    const c = rows[0];
+    if (c.url_doc) {
+      return res.status(400).json({ error: 'El consentimiento ya está generado y firmado.' });
+    }
+
+    // Force generate new token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expira = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    await pool.execute(
+      'UPDATE Dynamic_pruebaconsumo SET token_firma = ?, token_expira = ? WHERE idprueba = ?',
+      [token, expira, id]
+    );
+
+    const protocol = req.secure ? 'https' : 'http';
+    const host = req.get('host');
+    const urlFirma = `${protocol}://${host}/pruebaconsumo/firmar?item=${id}`;
+
+    res.json({ ok: true, urlFirma, token, token_expira: expira });
+  } catch (err) {
+    console.error('[pruebaconsumo] POST /api/prueba/:id/regenerar-token:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: POST /api/prueba/:id/enviar-enlace (WHATSAPP/EMAIL) ═════
 router.post('/api/prueba/:id/enviar-enlace', async (req, res) => {
   try {

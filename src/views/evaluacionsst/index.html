@@ -695,6 +695,19 @@
         ? `<strong style="color: ${item.resultado === 'APROBADO' ? '#10b981' : '#ef4444'}">${item.resultado} (${item.puntaje} / 13)</strong>`
         : '<span style="color: #f59e0b; font-weight: bold;">Pendiente de Firma</span>';
 
+      let expiraHtml = '';
+      if (!item.url_doc) {
+        const expDate = item.token_expira ? new Date(item.token_expira) : null;
+        if (expDate) {
+          const isExpired = expDate < new Date();
+          const color = isExpired ? '#ef4444' : '#10b981';
+          const text = isExpired ? 'Vencido' : `Vence el ${expDate.toLocaleString()}`;
+          expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: ${color}; font-weight: bold;">${text}</span></p>`;
+        } else {
+          expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: #ef4444; font-weight: bold;">No generado o expirado</span></p>`;
+        }
+      }
+
       document.getElementById('detalle-info').innerHTML = `
         <p><strong>Fecha Eval:</strong> ${fechaFmt}</p>
         <p><strong>Trabajador:</strong> ${item.nombre_trabajador || '—'} (C.C. ${item.identificacion})</p>
@@ -703,6 +716,7 @@
         <p><strong>Tipo Eval:</strong> ${item.tipo}</p>
         <p><strong>Evaluador:</strong> ${item.nombre_evaluador || item.usuario}</p>
         <p><strong>Resultado:</strong> ${resultTxt}</p>
+        ${expiraHtml}
         ${item.url_doc ? `<p style="margin-top: 15px;"><a href="${item.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
       `;
 
@@ -726,7 +740,8 @@
         optsHtml += `
           <div class="section-title" style="margin-top: 25px; margin-bottom: 12px; font-size: .75rem;">Acciones de Control</div>
           <button class="btn btn-primary" onclick="notificarCorreo()" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
-          <a href="${waUrl}" target="_blank" class="btn btn-success" style="width: 100%;">Enviar WhatsApp</a>
+          <a href="${waUrl}" target="_blank" class="btn btn-success" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
+          <button class="btn btn-secondary" onclick="regenerarEnlace()" style="width: 100%; background: #8e44ad; color: #fff;">🔄 Generar Nuevo Enlace</button>
         `;
       }
 
@@ -740,6 +755,32 @@
       }
 
       optsBox.innerHTML = optsHtml;
+    }
+
+    async function regenerarEnlace() {
+      if (!confirm('¿Está seguro de que desea generar un nuevo enlace de firma? El enlace anterior dejará de funcionar y se renovará el plazo por 48 horas.')) return;
+      
+      showLoading('Generando nuevo enlace...');
+      try {
+        const r = await fetch('/evaluacionsst/api/reenviar-firma', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_evaluacion: selectedEvaluacionId })
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          showToast('Nuevo enlace generado con éxito');
+          await cargarListado();
+          abrirDetalle(selectedEvaluacionId);
+        } else {
+          showToast(resp.error || 'Error al generar nuevo enlace', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al generar nuevo enlace', 'error');
+      } finally {
+        hideLoading();
+      }
     }
 
     function cerrarDetalle() {

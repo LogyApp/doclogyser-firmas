@@ -748,6 +748,19 @@
           badgeFirma = `<span class="status-badge badge-rojo">Vencido / Sin Firma (Rojo)</span>`;
         }
 
+        let expiraHtml = '';
+        if (!data.url_doc) {
+          const expDate = data.token_expira ? new Date(data.token_expira) : null;
+          if (expDate) {
+            const isExpired = expDate < new Date();
+            const color = isExpired ? '#ef4444' : '#10b981';
+            const text = isExpired ? 'Vencido' : `Vence el ${expDate.toLocaleString()}`;
+            expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: ${color}; font-weight: bold;">${text}</span></p>`;
+          } else {
+            expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: #ef4444; font-weight: bold;">No generado o expirado</span></p>`;
+          }
+        }
+
         const infoBox = document.getElementById('detalle-info');
         infoBox.innerHTML = `
           <p><strong>Trabajador:</strong> ${data.nombre_trabajador || '—'} (C.C. ${data.identificacion})</p>
@@ -756,6 +769,7 @@
           <p><strong>Puntaje:</strong> ${data.puntaje !== null ? data.puntaje : '—'}</p>
           <p><strong>Resultado:</strong> ${data.resultado || 'PENDIENTE'}</p>
           <p><strong>Estado:</strong> ${badgeFirma}</p>
+          ${expiraHtml}
           ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
         `;
 

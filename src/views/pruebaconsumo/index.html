@@ -777,6 +777,19 @@
           badgeFirma = `<span class="status-badge badge-firma-sin">Sin Firma</span>`;
         }
 
+        let expiraHtml = '';
+        if (!data.url_doc) {
+          const expDate = data.token_expira ? new Date(data.token_expira) : null;
+          if (expDate) {
+            const isExpired = expDate < new Date();
+            const color = isExpired ? '#ef4444' : '#10b981';
+            const text = isExpired ? 'Vencido' : `Vence el ${expDate.toLocaleString()}`;
+            expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: ${color}; font-weight: bold;">${text}</span></p>`;
+          } else {
+            expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: #ef4444; font-weight: bold;">No generado o expirado</span></p>`;
+          }
+        }
+
         const infoBox = document.getElementById('detalle-info');
         infoBox.innerHTML = `
           <p><strong>Trabajador:</strong> ${data.nombre_trabajador} (C.C. ${data.identificacion})</p>
@@ -786,6 +799,7 @@
           <p><strong>Fecha:</strong> ${fechaFmt}</p>
           <p><strong>Estado Firma:</strong> ${badgeFirma}</p>
           <p><strong>Creado por:</strong> ${creadorNombre}</p>
+          ${expiraHtml}
           ${data.observaciones ? `<p><strong>Observaciones:</strong> ${data.observaciones}</p>` : ''}
           ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
         `;
@@ -832,7 +846,8 @@
               <button class="btn btn-secondary" id="btn-editar-registro" style="width: 100%; margin-bottom: 8px;">Editar Registro</button>
               <button class="btn btn-danger" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">Forzar Generación de PDF</button>
               <a href="${waUrl}" id="btn-whatsapp-detalle" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
-              <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%;">Enviar Correo</button>
+              <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
+              <button class="btn btn-secondary" onclick="regenerarTokenEnlace()" style="width: 100%; background: #8e44ad; color: #fff;">🔄 Generar Nuevo Enlace</button>
             `;
           } else {
             // Documento ya generado: acciones deshabilitadas o quitadas
@@ -864,6 +879,30 @@
       } catch (e) {
         console.error(e);
         showToast('Error al cargar detalle', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function regenerarTokenEnlace() {
+      if (!confirm('¿Está seguro de que desea generar un nuevo enlace de firma? El enlace anterior dejará de funcionar y se renovará el plazo por 48 horas.')) return;
+      
+      showLoading('Generando nuevo enlace...');
+      try {
+        const r = await fetch(`/pruebaconsumo/api/prueba/${selectedPruebaId}/regenerar-token?usuario=${CONFIG.usuarioId}`, {
+          method: 'POST'
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          showToast('Nuevo enlace generado con éxito');
+          await cargarPruebas();
+          abrirDetalle(selectedPruebaId);
+        } else {
+          showToast(resp.error || 'Error al generar nuevo enlace', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al generar nuevo enlace', 'error');
       } finally {
         hideLoading();
       }
