@@ -90,9 +90,6 @@
       display: grid; grid-template-columns: 1.7fr 1fr;
     }
     .view-container > * { min-width: 0; }
-    @media (max-width: 900px) {
-      .view-container.detail-active { grid-template-columns: 1fr; }
-    }
 
     /* Table */
     .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
@@ -115,6 +112,22 @@
       padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
       position: sticky; top: 20px; display: none;
       align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+    }
+
+    /* En móvil el detalle se abre como ventana emergente de pantalla completa */
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+      .detail-card {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 1400;
+        border-radius: 0;
+        max-height: 100vh;
+        margin: 0;
+        align-self: stretch;
+      }
     }
     .detail-info-box p { margin-bottom: 7px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; }
     .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
@@ -283,7 +296,7 @@
       <div class="detail-card" id="detalle-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
           <h3 style="color: #0f172a; font-size: 1.1rem; margin: 0;">Detalle de la Capacitación</h3>
-          <button class="btn btn-secondary btn-small" onclick="cerrarDetalle()" style="padding: 4px 8px;">Cerrar</button>
+          <button class="btn btn-secondary btn-small" onclick="cerrarDetalleClick()" style="padding: 4px 8px;">Cerrar</button>
         </div>
         <div class="detail-info-box" id="detalle-info">
           <!-- Dinámico -->
@@ -540,32 +553,12 @@
     loadColumnWidths();
     renderHeader();
 
-    // Poblar filtros
+    // Poblar filtros (se inicializan con conteos en cargarCapacitaciones)
     const rFilter = document.getElementById('filtro-regional');
     const oFilter = document.getElementById('filtro-operacion');
 
-    CONFIG.regionalesFiltro.forEach(reg => {
-      const opt = document.createElement('option');
-      opt.value = reg; opt.innerText = reg;
-      rFilter.appendChild(opt);
-    });
-    CONFIG.operacionesFiltro.forEach(op => {
-      const opt = document.createElement('option');
-      opt.value = op; opt.innerText = op;
-      oFilter.appendChild(opt);
-    });
-
-    rFilter.addEventListener('change', () => {
-      oFilter.innerHTML = '<option value="">Todas</option>';
-      const reg = rFilter.value;
-      const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
-      ops.forEach(op => {
-        const opt = document.createElement('option');
-        opt.value = op; opt.innerText = op;
-        oFilter.appendChild(opt);
-      });
-      filtrarAutomatico();
-    });
+    rFilter.addEventListener('change', filtrarAutomatico);
+    oFilter.addEventListener('change', filtrarAutomatico);
 
     // Cargar Listado
     async function cargarCapacitaciones() {
@@ -576,6 +569,7 @@
         const hasta = document.getElementById('filtro-hasta').value;
         const reg = rFilter.value;
         const op = oFilter.value;
+        const resVal = document.getElementById('filtro-resultado').value;
 
         let query = `?usuario=${CONFIG.usuarioId}`;
         if (tr) query += `&trabajador=${encodeURIComponent(tr)}`;
@@ -584,14 +578,45 @@
         if (reg) query += `&regional=${encodeURIComponent(reg)}`;
         if (op) query += `&operacion=${encodeURIComponent(op)}`;
 
-        const r = await fetch(`/capacitacionsst/api/capacitaciones${query}`);
-        const data = await r.json();
+        const [r, rConteos] = await Promise.all([
+          fetch(`/capacitacionsst/api/capacitaciones${query}`),
+          fetch(`/capacitacionsst/api/conteos-filtros${query}&resultado=${encodeURIComponent(resVal)}`)
+        ]);
+        
+        const [capData, counts] = await Promise.all([
+          r.json(),
+          rConteos.json()
+        ]);
+        
+        // Actualizar opciones de Regionales con conteos
+        const currentRegVal = rFilter.value;
+        rFilter.innerHTML = '<option value="">Todas</option>';
+        CONFIG.regionalesFiltro.forEach(itemReg => {
+          const count = counts.regionales[itemReg] || 0;
+          const opt = document.createElement('option');
+          opt.value = itemReg;
+          opt.innerText = `${itemReg} (${count})`;
+          if (itemReg === currentRegVal) opt.selected = true;
+          rFilter.appendChild(opt);
+        });
+
+        // Actualizar opciones de Operaciones con conteos
+        const currentOpVal = oFilter.value;
+        oFilter.innerHTML = '<option value="">Todas</option>';
+        const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
+        ops.forEach(itemOp => {
+          const count = counts.operaciones[itemOp] || 0;
+          const opt = document.createElement('option');
+          opt.value = itemOp;
+          opt.innerText = `${itemOp} (${count})`;
+          if (itemOp === currentOpVal) opt.selected = true;
+          oFilter.appendChild(opt);
+        });
 
         // Filtrar por resultado en cliente
-        const resVal = document.getElementById('filtro-resultado').value;
-        let filteredData = data;
+        let filteredData = capData;
         if (resVal) {
-          filteredData = data.filter(item => {
+          filteredData = capData.filter(item => {
             const itemRes = (item.resultado || 'PENDIENTE').trim().toUpperCase();
             return itemRes === resVal;
           });
@@ -650,7 +675,6 @@
     document.getElementById('filtro-desde').addEventListener('change', filtrarAutomatico);
     document.getElementById('filtro-hasta').addEventListener('change', filtrarAutomatico);
     document.getElementById('filtro-resultado').addEventListener('change', filtrarAutomatico);
-    oFilter.addEventListener('change', filtrarAutomatico);
 
     document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
       document.getElementById('filtro-trabajador').value = '';
@@ -659,7 +683,6 @@
       document.getElementById('filtro-resultado').value = '';
       rFilter.value = '';
       oFilter.value = '';
-      rFilter.dispatchEvent(new Event('change'));
       cargarCapacitaciones();
       actualizarBadgeFiltros();
     });
@@ -670,19 +693,43 @@
     // Detalle Lateral
     const layoutContainer = document.getElementById('layout-container');
     const vistaDetalle = document.getElementById('detalle-card');
+    const esMovil = () => window.matchMedia('(max-width: 900px)').matches;
 
     function abrirDetalle(id) {
       selectedCapacitacionId = id;
       layoutContainer.classList.add('detail-active');
       vistaDetalle.style.display = 'block';
       cargarDetalle();
+
+      // En móvil el detalle se abre como ventana completa: bloqueamos el scroll de fondo
+      // y registramos una entrada de historial para que el botón/gesto "atrás" lo cierre
+      // en vez de salir de la página (sin tocar los filtros ya aplicados en el listado).
+      if (esMovil()) {
+        document.body.style.overflow = 'hidden';
+        history.pushState({ capacitacionDetalle: true }, '');
+      }
     }
 
     function cerrarDetalle() {
       selectedCapacitacionId = null;
       layoutContainer.classList.remove('detail-active');
       vistaDetalle.style.display = 'none';
+      document.body.style.overflow = '';
     }
+
+    function cerrarDetalleClick() {
+      const teniaHistorialPropio = esMovil() && history.state && history.state.capacitacionDetalle;
+      cerrarDetalle();
+      if (teniaHistorialPropio) {
+        history.back();
+      }
+    }
+
+    window.addEventListener('popstate', () => {
+      if (selectedCapacitacionId !== null) {
+        cerrarDetalle();
+      }
+    });
 
     async function cargarDetalle() {
       showLoading('Cargando detalle...');

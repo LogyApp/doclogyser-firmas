@@ -90,10 +90,6 @@
       display: grid; grid-template-columns: 1.2fr 1fr;
     }
     .view-container > * { min-width: 0; }
-    @media (max-width: 900px) {
-      .view-container.detail-active { grid-template-columns: 1fr; }
-      .detail-card { position: static; top: auto; }
-    }
 
     .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
     table { table-layout: fixed; border-collapse: collapse; text-align: left; font-size: .92rem; }
@@ -115,9 +111,25 @@
       padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
       position: sticky; top: 20px; display: none;
       align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
     }
     .detail-info-box p { margin-bottom: 7px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; }
     .detail-info-box p strong { color: #475569; min-width: 130px; display: inline-block; }
+
+    /* En móvil el detalle se abre como ventana emergente de pantalla completa */
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+      .detail-card {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 1400;
+        border-radius: 0;
+        max-height: 100vh;
+        margin: 0;
+        align-self: stretch;
+      }
+    }
 
     .loading-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -632,6 +644,7 @@
         const hasta = document.getElementById('filtro-hasta').value;
         const reg = rFilter.value;
         const op = oFilter.value;
+        const estVal = document.getElementById('filtro-estado').value;
 
         let query = `?usuario=${CONFIG.usuarioId}`;
         if (tr) query += `&trabajador=${encodeURIComponent(tr)}`;
@@ -642,7 +655,7 @@
 
         const [r, rConteos] = await Promise.all([
           fetch(`/compromisosst/api/compromisos${query}`),
-          fetch(`/compromisosst/api/conteos-filtros?usuario=${CONFIG.usuarioId}`)
+          fetch(`/compromisosst/api/conteos-filtros${query}&estado=${encodeURIComponent(estVal)}`)
         ]);
         
         const [data, counts] = await Promise.all([
@@ -675,8 +688,7 @@
           oFilter.appendChild(opt);
         });
 
-        // Filtrado por estado de firmas en cliente
-        const estVal = document.getElementById('filtro-estado').value;
+        // Filtrado por estado de firmas en cliente (usando estVal ya declarado arriba)
         let filteredData = data;
         if (estVal) {
           filteredData = data.filter(item => {
@@ -720,24 +732,42 @@
     const layoutContainer = document.getElementById('layout-container');
     const vistaDetalle = document.getElementById('vista-detalle');
 
+    const esMovil = () => window.matchMedia('(max-width: 900px)').matches;
+
     function abrirDetalle(id) {
       selectedCompromisoId = id;
       layoutContainer.classList.add('detail-active');
       vistaDetalle.style.display = 'block';
       cargarDetalle();
 
-      // En móvil, el detalle queda debajo del listado: desplazamos la vista automáticamente.
-      if (window.matchMedia('(max-width: 900px)').matches) {
-        requestAnimationFrame(() => {
-          vistaDetalle.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
+      // En móvil el detalle se abre como ventana completa: bloqueamos el scroll de fondo
+      // y registramos una entrada de historial para que el botón/gesto "atrás" lo cierre
+      // en vez de salir de la página (sin tocar los filtros ya aplicados en el listado).
+      if (esMovil()) {
+        document.body.style.overflow = 'hidden';
+        history.pushState({ compromisoDetalle: true }, '');
       }
     }
 
-    document.getElementById('btn-cerrar-detalle').addEventListener('click', () => {
+    function cerrarDetalleUI() {
       selectedCompromisoId = null;
       layoutContainer.classList.remove('detail-active');
       vistaDetalle.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('btn-cerrar-detalle').addEventListener('click', () => {
+      const teniaHistorialPropio = esMovil() && history.state && history.state.compromisoDetalle;
+      cerrarDetalleUI();
+      if (teniaHistorialPropio) {
+        history.back();
+      }
+    });
+
+    window.addEventListener('popstate', () => {
+      if (selectedCompromisoId !== null) {
+        cerrarDetalleUI();
+      }
     });
 
     let tieneFirmaGcsDetalle = null;
@@ -855,13 +885,6 @@
         if (document.getElementById('btn-firmar-lider-dashboard')) {
           document.getElementById('btn-firmar-lider-dashboard').addEventListener('click', () => {
             abrirModalFirmaLider();
-          });
-        }
-
-        // En móvil aseguramos que el panel visible con contenido quede en viewport.
-        if (window.matchMedia('(max-width: 900px)').matches) {
-          requestAnimationFrame(() => {
-            vistaDetalle.scrollIntoView({ behavior: 'smooth', block: 'start' });
           });
         }
 
@@ -1094,9 +1117,7 @@
         const data = await res.json();
         if (data.ok) {
           showToast('Compromiso eliminado con éxito');
-          selectedCompromisoId = null;
-          layoutContainer.classList.remove('detail-active');
-          vistaDetalle.style.display = 'none';
+          cerrarDetalleUI();
           cargarCompromisos();
         } else {
           throw new Error(data.error || 'Error al eliminar');

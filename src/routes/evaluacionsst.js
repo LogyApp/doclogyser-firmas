@@ -310,6 +310,125 @@ router.post('/api/actualizar-contacto', async (req, res) => {
   }
 });
 
+// ═════ API: GET /api/conteos-filtros ═════
+router.get('/api/conteos-filtros', async (req, res) => {
+  try {
+    const { usuario, trabajador, fechaDesde, fechaHasta, regional, operacion, resultado } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoEVSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const baseConds = [];
+    const baseParams = [];
+
+    if (!acceso.sinFiltro) {
+      if (acceso.operacionesFiltro.length > 0) {
+        baseConds.push(`vin.Operación IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+        acceso.operacionesFiltro.forEach(op => baseParams.push(op));
+      } else {
+        baseConds.push('1 = 0');
+      }
+    }
+
+    const sharedConds = [];
+    const sharedParams = [];
+
+    if (trabajador) {
+      sharedConds.push('(ev.identificacion LIKE ? OR vin.Trabajador LIKE ?)');
+      sharedParams.push(`%${trabajador.toUpperCase()}%`, `%${trabajador.toUpperCase()}%`);
+    }
+    if (fechaDesde) {
+      sharedConds.push('ev.fecha >= ?');
+      sharedParams.push(fechaDesde);
+    }
+    if (fechaHasta) {
+      sharedConds.push('ev.fecha <= ?');
+      sharedParams.push(fechaHasta);
+    }
+    if (resultado) {
+      if (resultado === 'PENDIENTE') {
+        sharedConds.push('ev.url_doc IS NULL');
+      } else if (resultado === 'APROBADO') {
+        sharedConds.push('ev.url_doc IS NOT NULL AND ev.resultado = "APROBADO"');
+      } else if (resultado === 'NO APROBADO') {
+        sharedConds.push('ev.url_doc IS NOT NULL AND (ev.resultado IS NULL OR ev.resultado != "APROBADO")');
+      }
+    }
+
+    // 1. Regionales (Excluye regional)
+    const regConds = [...baseConds, ...sharedConds];
+    const regParams = [...baseParams, ...sharedParams];
+    if (operacion) {
+      regConds.push('vin.Operación = ?');
+      regParams.push(operacion);
+    }
+    const regWhere = regConds.length ? 'WHERE ' + regConds.join(' AND ') : '';
+
+    const [regRows] = await pool.execute(
+      `SELECT vin.Regional, COUNT(*) AS total
+       FROM Maestro_evaluacionsst ev
+       LEFT JOIN (
+         SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
+         FROM Maestro_Vinculación t1
+         INNER JOIN (
+           SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
+           FROM Maestro_Vinculación
+           GROUP BY Identificación
+         ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
+       ) vin ON ev.identificacion = vin.Identificación
+       ${regWhere}
+       GROUP BY vin.Regional`,
+      regParams
+    );
+
+    // 2. Operaciones (Excluye operacion)
+    const opConds = [...baseConds, ...sharedConds];
+    const opParams = [...baseParams, ...sharedParams];
+    if (regional) {
+      opConds.push('vin.Regional = ?');
+      opParams.push(regional);
+    }
+    const opWhere = opConds.length ? 'WHERE ' + opConds.join(' AND ') : '';
+
+    const [opRows] = await pool.execute(
+      `SELECT vin.Operación AS operacion, COUNT(*) AS total
+       FROM Maestro_evaluacionsst ev
+       LEFT JOIN (
+         SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
+         FROM Maestro_Vinculación t1
+         INNER JOIN (
+           SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
+           FROM Maestro_Vinculación
+           GROUP BY Identificación
+         ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
+       ) vin ON ev.identificacion = vin.Identificación
+       ${opWhere}
+       GROUP BY vin.Operación`,
+      opParams
+    );
+
+    const regionales = {};
+    regRows.forEach(r => {
+      if (r.Regional) regionales[r.Regional] = r.total;
+    });
+
+    const operaciones = {};
+    opRows.forEach(o => {
+      if (o.operacion) operaciones[o.operacion] = o.total;
+    });
+
+    res.json({ regionales, operaciones });
+  } catch (err) {
+    console.error('[evaluacionsst] GET /api/conteos-filtros:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: GET /api/evaluaciones ═════
 router.get('/api/evaluaciones', async (req, res) => {
   try {

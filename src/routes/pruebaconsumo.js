@@ -323,6 +323,107 @@ router.post('/api/actualizar-contacto', async (req, res) => {
   }
 });
 
+// ═════ API: GET /api/conteos-filtros ═════
+router.get('/api/conteos-filtros', async (req, res) => {
+  try {
+    const { usuario, trabajador, fechaDesde, fechaHasta, regional, operacion, estado } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoCPC(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const baseConds = [];
+    const baseParams = [];
+
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) {
+        return res.json({ regionales: {}, operaciones: {} });
+      }
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      baseConds.push(`(v.Operación IN (${ph}) OR a.usuario = ?)`);
+      baseParams.push(...acceso.operacionesFiltro, usuario);
+    }
+
+    const sharedConds = [];
+    const sharedParams = [];
+
+    if (trabajador) {
+      sharedConds.push('a.nombre_trabajador LIKE ?');
+      sharedParams.push(`%${trabajador.toUpperCase()}%`);
+    }
+    if (fechaDesde) {
+      sharedConds.push('a.fecha >= ?');
+      sharedParams.push(fechaDesde);
+    }
+    if (fechaHasta) {
+      sharedConds.push('a.fecha <= ?');
+      sharedParams.push(fechaHasta);
+    }
+    if (estado) {
+      if (estado === 'ACEPTADA') {
+        sharedConds.push('a.url_doc IS NOT NULL');
+      } else if (estado === 'PENDIENTE') {
+        sharedConds.push('a.url_doc IS NULL');
+      }
+    }
+
+    // 1. Regionales (Excluye regional)
+    const regConds = [...baseConds, ...sharedConds];
+    const regParams = [...baseParams, ...sharedParams];
+    if (operacion) {
+      regConds.push('v.Operación = ?');
+      regParams.push(operacion);
+    }
+    const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
+
+    const [regRows] = await pool.execute(
+      `SELECT v.Regional, COUNT(*) AS total
+       FROM Dynamic_pruebaconsumo a
+       LEFT JOIN \`Maestro_Vinculación\` v ON a.identificacion = v.Identificación AND v.Estado = 'Activo'
+       ${regWhere}
+       GROUP BY v.Regional`,
+      regParams
+    );
+
+    // 2. Operaciones (Excluye operacion)
+    const opConds = [...baseConds, ...sharedConds];
+    const opParams = [...baseParams, ...sharedParams];
+    if (regional) {
+      opConds.push('v.Regional = ?');
+      opParams.push(regional);
+    }
+    const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
+
+    const [opRows] = await pool.execute(
+      `SELECT v.Operación AS operacion, COUNT(*) AS total
+       FROM Dynamic_pruebaconsumo a
+       LEFT JOIN \`Maestro_Vinculación\` v ON a.identificacion = v.Identificación AND v.Estado = 'Activo'
+       ${opWhere}
+       GROUP BY v.Operación`,
+      opParams
+    );
+
+    const regionales = {};
+    regRows.forEach(r => {
+      if (r.Regional) regionales[r.Regional] = r.total;
+    });
+
+    const operaciones = {};
+    opRows.forEach(o => {
+      if (o.operacion) operaciones[o.operacion] = o.total;
+    });
+
+    res.json({ regionales, operaciones });
+  } catch (err) {
+    console.error('[pruebaconsumo] GET /api/conteos-filtros:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: GET /api/pruebas ═════
 router.get('/api/pruebas', async (req, res) => {
   try {

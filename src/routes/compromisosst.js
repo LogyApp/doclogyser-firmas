@@ -378,7 +378,7 @@ router.post('/api/actualizar-contacto', async (req, res) => {
 // ═════ API: GET /api/conteos-filtros ═════
 router.get('/api/conteos-filtros', async (req, res) => {
   try {
-    const { usuario } = req.query;
+    const { usuario, trabajador, fechaDesde, fechaHasta, regional, operacion, estado } = req.query;
     if (!usuario) {
       return res.status(400).json({ error: 'usuario requerido' });
     }
@@ -388,38 +388,79 @@ router.get('/api/conteos-filtros', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    const conds = [];
-    const params = [];
+    // Filtros de control de acceso (base)
+    const baseConds = [];
+    const baseParams = [];
 
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro.length) {
         return res.json({ regionales: {}, operaciones: {} });
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      conds.push(`(v.Operación IN (${ph}) OR a.usuario = ?)`);
-      params.push(...acceso.operacionesFiltro, usuario);
+      baseConds.push(`(v.Operación IN (${ph}) OR a.usuario = ?)`);
+      baseParams.push(...acceso.operacionesFiltro, usuario);
     }
 
-    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+    // Filtros dinámicos compartidos (trabajador, fechas, estado de firmas)
+    const sharedConds = [];
+    const sharedParams = [];
 
-    // Conteos por Regional
+    if (trabajador) {
+      sharedConds.push('a.nombre_trabajador LIKE ?');
+      sharedParams.push(`%${trabajador.toUpperCase()}%`);
+    }
+    if (fechaDesde) {
+      sharedConds.push('a.fecha_registro >= ?');
+      sharedParams.push(fechaDesde);
+    }
+    if (fechaHasta) {
+      sharedConds.push('a.fecha_registro <= ?');
+      sharedParams.push(fechaHasta);
+    }
+    if (estado) {
+      if (estado === 'VERDE') {
+        sharedConds.push('a.firma_lidersst IS NOT NULL');
+      } else if (estado === 'AMARILLO') {
+        sharedConds.push('a.firma_trabajador IS NOT NULL AND a.firma_lidersst IS NULL');
+      } else if (estado === 'ROJO') {
+        sharedConds.push('a.firma_trabajador IS NULL');
+      }
+    }
+
+    // 1. Query para Regionales (Aplica filtros compartidos y Operación, pero excluye Regional)
+    const regConds = [...baseConds, ...sharedConds];
+    const regParams = [...baseParams, ...sharedParams];
+    if (operacion) {
+      regConds.push('v.Operación = ?');
+      regParams.push(operacion);
+    }
+    const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
+
     const [regRows] = await pool.execute(
       `SELECT v.Regional, COUNT(*) AS total
        FROM Dynamic_compromisosst a
        JOIN \`Maestro_Vinculación\` v ON a.identificaciontrabajador = v.Identificación AND v.Estado = 'Activo'
-       ${where}
+       ${regWhere}
        GROUP BY v.Regional`,
-      params
+      regParams
     );
 
-    // Conteos por Operación
+    // 2. Query para Operaciones (Aplica filtros compartidos y Regional, pero excluye Operación)
+    const opConds = [...baseConds, ...sharedConds];
+    const opParams = [...baseParams, ...sharedParams];
+    if (regional) {
+      opConds.push('v.Regional = ?');
+      opParams.push(regional);
+    }
+    const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
+
     const [opRows] = await pool.execute(
       `SELECT v.Operación, COUNT(*) AS total
        FROM Dynamic_compromisosst a
        JOIN \`Maestro_Vinculación\` v ON a.identificaciontrabajador = v.Identificación AND v.Estado = 'Activo'
-       ${where}
+       ${opWhere}
        GROUP BY v.Operación`,
-      params
+      opParams
     );
 
     const regionales = {};

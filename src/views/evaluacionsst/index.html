@@ -90,9 +90,6 @@
       display: grid; grid-template-columns: 1.2fr 1fr;
     }
     .view-container > * { min-width: 0; }
-    @media (max-width: 900px) {
-      .view-container.detail-active { grid-template-columns: 1fr; }
-    }
 
     /* Table */
     .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
@@ -115,6 +112,22 @@
       padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
       position: sticky; top: 20px; display: none;
       align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+    }
+
+    /* En móvil el detalle se abre como ventana emergente de pantalla completa */
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+      .detail-card {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 1400;
+        border-radius: 0;
+        max-height: 100vh;
+        margin: 0;
+        align-self: stretch;
+      }
     }
     .detail-info-box p { margin-bottom: 7px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; }
     .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
@@ -278,7 +291,7 @@
       <div class="detail-card" id="detalle-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
           <h3 style="color: #0f172a; font-size: 1.1rem; margin: 0;">Detalle del Registro</h3>
-          <button class="btn btn-secondary btn-small" onclick="cerrarDetalle()" style="padding: 4px 8px;">Cerrar</button>
+          <button class="btn btn-secondary btn-small" onclick="cerrarDetalleClick()" style="padding: 4px 8px;">Cerrar</button>
         </div>
         <div class="detail-info-box" id="detalle-info">
           <!-- Dinámico -->
@@ -311,6 +324,7 @@
     let selectedEvaluacionId = null;
     let selectedTrabajadorId = null;
     let evaluacionesList = [];
+    const esMovil = () => window.matchMedia('(max-width: 900px)').matches;
     let datosFiltrados = [];
 
     // ---- Columnas ordenables y redimensionables ----
@@ -496,45 +510,11 @@
     const filtroReg = document.getElementById('filtro-regional');
     const filtroOp = document.getElementById('filtro-operacion');
 
-    // Llenar Regionales
-    CONFIG.regionalesFiltro.forEach(r => {
-      const opt = document.createElement('option');
-      opt.value = r;
-      opt.textContent = r;
-      filtroReg.appendChild(opt);
-    });
-
     loadColumnWidths();
     renderHeader();
 
-    // Manejar cambio de Regional para filtrar operaciones
-    filtroReg.addEventListener('change', () => {
-      const reg = filtroReg.value;
-      filtroOp.innerHTML = '<option value="">Todas</option>';
-      if (reg && CONFIG.opsPorRegional[reg]) {
-        CONFIG.opsPorRegional[reg].forEach(op => {
-          const opt = document.createElement('option');
-          opt.value = op;
-          opt.textContent = op;
-          filtroOp.appendChild(opt);
-        });
-      } else if (!reg) {
-        // Mostrar todas las permitidas
-        CONFIG.regionalesFiltro.forEach(r => {
-          CONFIG.opsPorRegional[r].forEach(op => {
-            if (![...filtroOp.options].some(o => o.value === op)) {
-              const opt = document.createElement('option');
-              opt.value = op;
-              opt.textContent = op;
-              filtroOp.appendChild(opt);
-            }
-          });
-        });
-      }
-      filtrarAutomatico();
-    });
-    // Trigger inicial
-    filtroReg.dispatchEvent(new Event('change'));
+    filtroReg.addEventListener('change', filtrarAutomatico);
+    filtroOp.addEventListener('change', filtrarAutomatico);
 
     // ---- Filtros plegables ----
     const filtrosToggle = document.getElementById('filtros-toggle');
@@ -577,12 +557,11 @@
     document.getElementById('filtro-desde').addEventListener('change', filtrarAutomatico);
     document.getElementById('filtro-hasta').addEventListener('change', filtrarAutomatico);
     document.getElementById('filtro-resultado').addEventListener('change', filtrarAutomatico);
-    filtroOp.addEventListener('change', filtrarAutomatico);
 
     document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
       document.getElementById('filtro-trabajador').value = '';
       filtroReg.value = '';
-      filtroReg.dispatchEvent(new Event('change'));
+      filtroOp.value = '';
       document.getElementById('filtro-desde').value = '';
       document.getElementById('filtro-hasta').value = '';
       document.getElementById('filtro-resultado').value = '';
@@ -602,6 +581,7 @@
         const op = filtroOp.value;
         const fd = document.getElementById('filtro-desde').value;
         const fh = document.getElementById('filtro-hasta').value;
+        const resVal = document.getElementById('filtro-resultado').value;
 
         const params = new URLSearchParams({
           usuario: CONFIG.usuarioId,
@@ -612,11 +592,53 @@
           fechaHasta: fh
         });
 
-        const res = await fetch(`/evaluacionsst/api/evaluaciones?${params.toString()}`);
-        evaluacionesList = await res.json();
- 
-        // Filtrado por resultado en cliente
-        const resVal = document.getElementById('filtro-resultado').value;
+        const [r, rConteos] = await Promise.all([
+          fetch(`/evaluacionsst/api/evaluaciones?${params.toString()}`),
+          fetch(`/evaluacionsst/api/conteos-filtros?${params.toString()}&resultado=${encodeURIComponent(resVal)}`)
+        ]);
+        
+        const [evalsData, counts] = await Promise.all([
+          r.json(),
+          rConteos.json()
+        ]);
+        
+        evaluacionesList = evalsData;
+
+        // Actualizar opciones de Regionales con conteos
+        const currentRegVal = filtroReg.value;
+        filtroReg.innerHTML = '<option value="">Todas</option>';
+        CONFIG.regionalesFiltro.forEach(itemReg => {
+          const count = counts.regionales[itemReg] || 0;
+          const opt = document.createElement('option');
+          opt.value = itemReg;
+          opt.innerText = `${itemReg} (${count})`;
+          if (itemReg === currentRegVal) opt.selected = true;
+          filtroReg.appendChild(opt);
+        });
+
+        // Actualizar opciones de Operaciones con conteos
+        const currentOpVal = filtroOp.value;
+        filtroOp.innerHTML = '<option value="">Todas</option>';
+        const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : [];
+        if (!reg) {
+          CONFIG.regionalesFiltro.forEach(r => {
+            if (CONFIG.opsPorRegional[r]) {
+              CONFIG.opsPorRegional[r].forEach(opName => {
+                if (!ops.includes(opName)) ops.push(opName);
+              });
+            }
+          });
+        }
+        ops.forEach(itemOp => {
+          const count = counts.operaciones[itemOp] || 0;
+          const opt = document.createElement('option');
+          opt.value = itemOp;
+          opt.innerText = `${itemOp} (${count})`;
+          if (itemOp === currentOpVal) opt.selected = true;
+          filtroOp.appendChild(opt);
+        });
+
+        // Filtrado por resultado en cliente (usando resVal ya declarado arriba)
         let filteredData = evaluacionesList;
         if (resVal) {
           filteredData = evaluacionesList.filter(item => {
@@ -649,6 +671,14 @@
       // Layout split
       document.getElementById('layout-container').classList.add('detail-active');
       document.getElementById('detalle-card').style.display = 'block';
+
+      // En móvil el detalle se abre como ventana completa: bloqueamos el scroll de fondo
+      // y registramos una entrada de historial para que el botón/gesto "atrás" lo cierre
+      // en vez de salir de la página (sin tocar los filtros ya aplicados en el listado).
+      if (esMovil()) {
+        document.body.style.overflow = 'hidden';
+        history.pushState({ evaluacionDetalle: true }, '');
+      }
 
       // Llenar datos de contacto
       document.getElementById('contacto-email').value = item.email_trabajador || '';
@@ -715,9 +745,24 @@
     function cerrarDetalle() {
       document.getElementById('layout-container').classList.remove('detail-active');
       document.getElementById('detalle-card').style.display = 'none';
+      document.body.style.overflow = '';
       selectedEvaluacionId = null;
       selectedTrabajadorId = null;
     }
+
+    function cerrarDetalleClick() {
+      const teniaHistorialPropio = esMovil() && history.state && history.state.evaluacionDetalle;
+      cerrarDetalle();
+      if (teniaHistorialPropio) {
+        history.back();
+      }
+    }
+
+    window.addEventListener('popstate', () => {
+      if (selectedEvaluacionId !== null) {
+        cerrarDetalle();
+      }
+    });
 
     // Actualizar contacto en BD
     async function actualizarContacto() {

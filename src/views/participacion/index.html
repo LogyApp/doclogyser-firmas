@@ -573,8 +573,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('user-badge-name').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
     
-    // Configurar selectores de Regional y Operación en Filtros
-    poblarFiltrosDropdowns();
     loadColumnWidths();
     renderHeaderAsistencias();
 
@@ -670,37 +668,6 @@
     loading.classList.remove('active');
   }
 
-  function poblarFiltrosDropdowns() {
-    const rFilter = document.getElementById('filtro-regional');
-    const oFilter = document.getElementById('filtro-operacion');
-
-    // Poblamos Regionales en Filtros
-    CONFIG.regionalesFiltro.forEach(reg => {
-      const optF = document.createElement('option');
-      optF.value = reg; optF.innerText = reg;
-      rFilter.appendChild(optF);
-    });
-
-    // Cambio de regional en Filtros
-    rFilter.addEventListener('change', () => {
-      oFilter.innerHTML = '<option value="">Todas</option>';
-      const reg = rFilter.value;
-      const ops = reg ? (CONFIG.opsPorRegional[reg] || []) : CONFIG.operacionesFiltro;
-      ops.forEach(op => {
-        const opt = document.createElement('option');
-        opt.value = op; opt.innerText = op;
-        oFilter.appendChild(opt);
-      });
-    });
-
-    // Poblar operaciones iniciales en Filtros
-    CONFIG.operacionesFiltro.forEach(op => {
-      const opt = document.createElement('option');
-      opt.value = op; opt.innerText = op;
-      oFilter.appendChild(opt);
-    });
-  }
-
   // ════════ LISTADO ════════
   async function cargarListado() {
     showLoading('Cargando registros...');
@@ -718,9 +685,44 @@
       if (desde) query += `&fechaDesde=${desde}`;
       if (hasta) query += `&fechaHasta=${hasta}`;
 
-      const res = await fetch(`/participacion/api/asistencias${query}`);
-      const data = await res.json();
-      creadas = data;
+      const [r, rConteos] = await Promise.all([
+        fetch(`/participacion/api/asistencias${query}`),
+        fetch(`/participacion/api/conteos-filtros${query}`)
+      ]);
+      
+      const [listData, counts] = await Promise.all([
+        r.json(),
+        rConteos.json()
+      ]);
+      
+      creadas = listData;
+
+      // Actualizar opciones de Regionales con conteos
+      const rFilter = document.getElementById('filtro-regional');
+      const currentRegVal = rFilter.value;
+      rFilter.innerHTML = '<option value="">Todas</option>';
+      CONFIG.regionalesFiltro.forEach(itemReg => {
+        const count = counts.regionales[itemReg] || 0;
+        const opt = document.createElement('option');
+        opt.value = itemReg;
+        opt.innerText = `${itemReg} (${count})`;
+        if (itemReg === currentRegVal) opt.selected = true;
+        rFilter.appendChild(opt);
+      });
+
+      // Actualizar opciones de Operaciones con conteos
+      const oFilter = document.getElementById('filtro-operacion');
+      const currentOpVal = oFilter.value;
+      oFilter.innerHTML = '<option value="">Todas</option>';
+      const ops = regional ? (CONFIG.opsPorRegional[regional] || []) : CONFIG.operacionesFiltro;
+      ops.forEach(itemOp => {
+        const count = counts.operaciones[itemOp] || 0;
+        const opt = document.createElement('option');
+        opt.value = itemOp;
+        opt.innerText = `${itemOp} (${count})`;
+        if (itemOp === currentOpVal) opt.selected = true;
+        oFilter.appendChild(opt);
+      });
 
       document.getElementById('total-badge-count').innerText = `Total: ${creadas.length} registros`;
       renderFilasAsistencias();
