@@ -841,12 +841,12 @@
             }
             const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
  
-            optsHtml += `
               <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
               <button class="btn btn-secondary" id="btn-editar-registro" style="width: 100%; margin-bottom: 8px;">Editar Registro</button>
               <button class="btn btn-danger" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">Forzar Generación de PDF</button>
               <a href="${waUrl}" id="btn-whatsapp-detalle" target="_blank" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">Enviar WhatsApp</a>
               <button class="btn btn-secondary" onclick="notificarCorreo()" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
+              <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${urlFirmaLink}')" style="width: 100%; margin-bottom: 8px; background: #2980b9; color: #fff;">📋 Copiar Enlace</button>
               <button class="btn btn-secondary" onclick="regenerarTokenEnlace()" style="width: 100%; background: #8e44ad; color: #fff;">🔄 Generar Nuevo Enlace</button>
             `;
           } else {
@@ -908,6 +908,21 @@
       }
     }
  
+    function copiarAlPortapapeles(texto) {
+      navigator.clipboard.writeText(texto).then(() => {
+        showToast('Enlace copiado al portapapeles');
+      }).catch(err => {
+        console.error('Error al copiar al portapapeles:', err);
+        const el = document.createElement('textarea');
+        el.value = texto;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showToast('Enlace copiado al portapapeles');
+      });
+    }
+
     let datosEdicionActual = null;
     function abrirModalEditar(data) {
       datosEdicionActual = data;
