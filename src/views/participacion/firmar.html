@@ -134,13 +134,24 @@
   const ctx = canvas.getContext('2d');
   let drawing = false;
 
+  // Algunos campos maestros guardan el dato como "Identificación ** Nombre completo";
+  // aquí nos quedamos solo con el nombre.
+  function limpiarNombreConId(nombreCompuesto) {
+    if (!nombreCompuesto) return nombreCompuesto;
+    if (nombreCompuesto.includes(' ** ')) {
+      const parts = nombreCompuesto.split(' ** ');
+      return parts[parts.length - 1].trim();
+    }
+    return nombreCompuesto;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     // Cargar información
     infoTema.innerText = CONFIG.tema;
     infoFecha.innerText = CONFIG.fecha ? CONFIG.fecha.slice(0, 10).split('-').reverse().join('/') : '';
     infoLugar.innerText = CONFIG.lugar;
-    infoResponsable.innerText = CONFIG.nombre_responsable || '—';
-    infoAsistente.innerText = `${CONFIG.identificacion} - ${CONFIG.nombre_trabajador}`;
+    infoResponsable.innerText = limpiarNombreConId(CONFIG.nombre_responsable) || '—';
+    infoAsistente.innerText = `${CONFIG.identificacion} - ${limpiarNombreConId(CONFIG.nombre_trabajador)}`;
     infoCargo.innerText = CONFIG.cargo;
 
     // Verificar firma prefirmada

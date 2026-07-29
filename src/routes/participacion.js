@@ -6,6 +6,7 @@ const { randomUUID } = require('crypto');
 const { enviarEmailAsistencia } = require('../services/email');
 const { obtenerFirmaBase64Reciente, subirPDFAstAsistencia, subirPDFGeneralAsistencia, subirEvidenciaAsistencia } = require('../services/storage');
 const { generarPDFDesdeHTML } = require('../services/renderer');
+const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 
 const router = express.Router();
 const HTML_INDEX_PATH = path.join(__dirname, '../views/participacion/index.html');
@@ -53,9 +54,9 @@ function formatFechaEspanol(dateVal) {
 }
 
 async function generarPDFAsistencia(id, force = false) {
-  // 1. Obtener datos de cabecera y responsable
+  // 1. Obtener datos de cabecera y responsable (el responsable es siempre el usuario creador)
   const [[asistencia]] = await pool.execute(
-    `SELECT 
+    `SELECT
       a.id_asistencia,
       a.tema,
       a.fecha,
@@ -64,13 +65,11 @@ async function generarPDFAsistencia(id, force = false) {
       a.lugar,
       a.duracion,
       a.objetivo,
-      a.responsable,
       a.usuario,
-      v.Trabajador AS nombre_responsable,
-      v.Identificación AS identificacion_responsable,
-      v.Cargo AS cargo_responsable
+      COALESCE(NULLIF(u.Colaborador, ''), u.Nombre) AS nombre_responsable,
+      u.Cargo AS cargo_responsable
      FROM Dynamic_formato_asistencia a
-     LEFT JOIN \`Maestro_Vinculación\` v ON a.responsable = v.\`Id Vinculación\`
+     LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
      WHERE a.id_asistencia = ?`,
     [id]
   );
@@ -105,10 +104,11 @@ async function generarPDFAsistencia(id, force = false) {
     throw new Error('Faltan firmas de asistentes en el sistema.');
   }
 
-  // 4. Obtener firma del responsable
+  // 4. Obtener firma del responsable (resuelta vía Maestro_Usuarios -> Colaborador -> Maestro_Vinculación)
   let firmaResponsableBase64 = null;
-  if (asistencia.identificacion_responsable) {
-    firmaResponsableBase64 = await obtenerFirmaBase64Reciente(asistencia.identificacion_responsable).catch(() => null);
+  const rutaFirmaResponsable = await resolverRutaFirmaResponsable(asistencia.usuario).catch(() => null);
+  if (rutaFirmaResponsable && rutaFirmaResponsable.urlFirma) {
+    firmaResponsableBase64 = rutaFirmaResponsable.urlFirma;
   }
 
   // 5. Construir HTML para el PDF
@@ -329,7 +329,6 @@ async function computarAccesoParticipacion(usuarioId) {
     sinFiltro: ROLES_SIN_FILTRO.includes(rol),
     operacionesFiltro: [],
     opsPorRegional: {},
-    prefillResponsable: null,
   };
 
   let opRows = [];
@@ -366,27 +365,6 @@ async function computarAccesoParticipacion(usuarioId) {
 
   acceso.opsPorRegional = agruparOperacionesPorRegional(opRows);
   acceso.operacionesFiltro = opRows.map((row) => row['OPERACIÓN'] || row['Operación']).filter(Boolean);
-
-  // Lógica de prellenado del responsable basada en el usuario actual
-  const [uColRows] = await pool.execute(
-    'SELECT Colaborador FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
-    [usuarioId]
-  );
-  if (uColRows.length && uColRows[0].Colaborador) {
-    const [vRows] = await pool.execute(
-      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador 
-       FROM \`Maestro_Vinculación\` 
-       WHERE Trabajador = ? 
-       ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
-      [uColRows[0].Colaborador]
-    );
-    if (vRows.length) {
-      acceso.prefillResponsable = {
-        id_vinculacion: vRows[0].id_vinculacion,
-        nombre: vRows[0].Trabajador,
-      };
-    }
-  }
 
   return acceso;
 }
@@ -445,28 +423,6 @@ router.get('/api/usuario', async (req, res) => {
   } catch (err) {
     console.error('[participacion] GET /api/usuario:', err);
     res.status(500).json({ error: err.message });
-  }
-});
-
-// ═════ API: GET /api/responsables-buscar (SOLO IDENTIFICACIÓN) ═════
-router.get('/api/responsables-buscar', async (req, res) => {
-  try {
-    const { q } = req.query;
-    if (!q || q.length < 2) return res.json([]);
-    const qUpper = q.toUpperCase();
-
-    const [rows] = await pool.execute(
-      `SELECT \`Id Vinculación\` AS id_vinculacion, Trabajador, Identificación, Cargo, Operación, Regional 
-       FROM \`Maestro_Vinculación\` 
-       WHERE Estado = 'Activo' AND (Identificación LIKE ? OR Trabajador LIKE ?) 
-       LIMIT 30`,
-      [`%${qUpper}%`, `%${qUpper}%`]
-    );
-
-    res.json(rows);
-  } catch (err) {
-    console.error('[participacion] GET /api/responsables-buscar:', err);
-    res.status(500).json([]);
   }
 });
 
@@ -536,7 +492,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
         return res.json({ regionales: {}, operaciones: {} });
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      baseConds.push(`(v.Operación IN (${ph}) OR a.usuario = ?)`);
+      baseConds.push(`(u.\`Operación\` IN (${ph}) OR a.usuario = ?)`);
       baseParams.push(...acceso.operacionesFiltro, usuario);
     }
 
@@ -556,21 +512,21 @@ router.get('/api/conteos-filtros', async (req, res) => {
       sharedParams.push(fechaHasta);
     }
 
-    // 1. Regionales (Excluye regional)
+    // 1. Regionales (Excluye regional) — Regional/Operación del responsable = usuario creador
     const regConds = [...baseConds, ...sharedConds];
     const regParams = [...baseParams, ...sharedParams];
     if (operacion) {
-      regConds.push('v.Operación = ?');
+      regConds.push('u.`Operación` = ?');
       regParams.push(operacion);
     }
     const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
 
     const [regRows] = await pool.execute(
-      `SELECT v.Regional, COUNT(*) AS total
+      `SELECT u.Regional, COUNT(*) AS total
        FROM Dynamic_formato_asistencia a
-       LEFT JOIN \`Maestro_Vinculación\` v ON a.responsable = v.\`Id Vinculación\`
+       LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        ${regWhere}
-       GROUP BY v.Regional`,
+       GROUP BY u.Regional`,
       regParams
     );
 
@@ -578,17 +534,17 @@ router.get('/api/conteos-filtros', async (req, res) => {
     const opConds = [...baseConds, ...sharedConds];
     const opParams = [...baseParams, ...sharedParams];
     if (regional) {
-      opConds.push('v.Regional = ?');
+      opConds.push('u.Regional = ?');
       opParams.push(regional);
     }
     const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
 
     const [opRows] = await pool.execute(
-      `SELECT v.Operación AS operacion, COUNT(*) AS total
+      `SELECT u.\`Operación\` AS operacion, COUNT(*) AS total
        FROM Dynamic_formato_asistencia a
-       LEFT JOIN \`Maestro_Vinculación\` v ON a.responsable = v.\`Id Vinculación\`
+       LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        ${opWhere}
-       GROUP BY v.Operación`,
+       GROUP BY u.\`Operación\``,
       opParams
     );
 
@@ -632,20 +588,20 @@ router.get('/api/asistencias', async (req, res) => {
         return res.json([]);
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      conds.push(`(v.Operación IN (${ph}) OR a.usuario = ?)`);
+      conds.push(`(u.\`Operación\` IN (${ph}) OR a.usuario = ?)`);
       params.push(...acceso.operacionesFiltro, usuario);
     }
 
     // Filtros de busqueda
     if (tema) { conds.push('a.tema LIKE ?'); params.push(`%${tema}%`); }
-    if (regional) { conds.push('v.Regional = ?'); params.push(regional); }
-    if (operacion) { conds.push('v.Operación = ?'); params.push(operacion); }
+    if (regional) { conds.push('u.Regional = ?'); params.push(regional); }
+    if (operacion) { conds.push('u.`Operación` = ?'); params.push(operacion); }
     if (fechaDesde) { conds.push('a.fecha >= ?'); params.push(fechaDesde); }
     if (fechaHasta) { conds.push('a.fecha <= ?'); params.push(fechaHasta); }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const [rows] = await pool.execute(
-      `SELECT 
+      `SELECT
         a.id_asistencia,
         a.tema,
         a.fecha,
@@ -654,15 +610,14 @@ router.get('/api/asistencias', async (req, res) => {
         a.duracion,
         a.lugar,
         a.objetivo,
-        a.responsable,
         a.url_doc,
         a.usuario,
         a.fecha_creacion,
-        v.Trabajador AS nombre_responsable,
-        v.Regional AS regional_responsable,
-        v.Operación AS operacion_responsable
+        COALESCE(NULLIF(u.Colaborador, ''), u.Nombre) AS nombre_responsable,
+        u.Regional AS regional_responsable,
+        u.\`Operación\` AS operacion_responsable
        FROM Dynamic_formato_asistencia a
-       LEFT JOIN \`Maestro_Vinculación\` v ON a.responsable = v.\`Id Vinculación\`
+       LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        ${where}
        ORDER BY a.fecha DESC, a.fecha_creacion DESC
        LIMIT 500`,
@@ -682,16 +637,14 @@ router.get('/api/asistencia/:id', async (req, res) => {
     const { id } = req.params;
 
     const [[asistencia]] = await pool.execute(
-      `SELECT 
-        a.*, 
-        v.Trabajador AS nombre_responsable,
-        v.Identificación AS identificacion_responsable,
-        v.Cargo AS cargo_responsable,
-        v.Regional AS regional_responsable,
-        v.Operación AS operacion_responsable,
+      `SELECT
+        a.*,
+        COALESCE(NULLIF(u.Colaborador, ''), u.Nombre) AS nombre_responsable,
+        u.Cargo AS cargo_responsable,
+        u.Regional AS regional_responsable,
+        u.\`Operación\` AS operacion_responsable,
         u.Nombre AS nombre_creador
        FROM Dynamic_formato_asistencia a
-       LEFT JOIN \`Maestro_Vinculación\` v ON a.responsable = v.\`Id Vinculación\`
        LEFT JOIN \`Maestro_Usuarios\` u ON a.usuario = u.ID
        WHERE a.id_asistencia = ?`,
       [id]
@@ -746,9 +699,9 @@ router.get('/api/asistencia/:id', async (req, res) => {
 router.post('/api/asistencias', async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, asistentes, evidencias } = req.body;
+    const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, usuario, asistentes, evidencias } = req.body;
 
-    if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !responsable || !usuario) {
+    if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !usuario) {
       return res.status(400).json({ error: 'Faltan campos requeridos en la información básica.' });
     }
 
@@ -758,12 +711,12 @@ router.post('/api/asistencias', async (req, res) => {
 
     await conn.beginTransaction();
 
-    // 1. Insertar Cabecera
+    // 1. Insertar Cabecera (el responsable es siempre el usuario que registra el formato)
     const [result] = await conn.execute(
       `INSERT INTO Dynamic_formato_asistencia
        (tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tema, fecha, hora_inicial, hora_final, lugar, objetivo || '', responsable, usuario]
+      [tema, fecha, hora_inicial, hora_final, lugar, objetivo || '', usuario, usuario]
     );
     const idAsistencia = result.insertId;
 
@@ -782,7 +735,7 @@ router.post('/api/asistencias', async (req, res) => {
           `INSERT INTO Dynamic_formato_itemsAsistencia
            (id_asistencia, id_vinculacion, nombre_trabajador, identificacion, cargo, operacion, regional)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [idAsistencia, idVinculacion, v.Trabajador, v.Identificación, v.Cargo, v.Operación, v.Regional]
+          [idAsistencia, idVinculacion, v.Trabajador, v.Identificación, v.Cargo || '', v.Operación, v.Regional]
         );
       }
     }
@@ -817,9 +770,9 @@ router.put('/api/asistencia/:id', async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, responsable, usuario, asistentes, evidencias } = req.body;
+    const { tema, fecha, hora_inicial, hora_final, lugar, objetivo, usuario, asistentes, evidencias } = req.body;
 
-    if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !responsable || !usuario) {
+    if (!tema || !fecha || !hora_inicial || !hora_final || !lugar || !usuario) {
       return res.status(400).json({ error: 'Faltan campos requeridos en la información básica.' });
     }
 
@@ -829,12 +782,12 @@ router.put('/api/asistencia/:id', async (req, res) => {
 
     await conn.beginTransaction();
 
-    // 1. Actualizar Cabecera
+    // 1. Actualizar Cabecera (el responsable es siempre el usuario que registra el formato)
     await conn.execute(
       `UPDATE Dynamic_formato_asistencia
        SET tema = ?, fecha = ?, hora_inicial = ?, hora_final = ?, lugar = ?, objetivo = ?, responsable = ?, usuario = ?, url_doc = NULL
        WHERE id_asistencia = ?`,
-      [tema, fecha, hora_inicial, hora_final, lugar, objetivo || '', responsable, usuario, id]
+      [tema, fecha, hora_inicial, hora_final, lugar, objetivo || '', usuario, usuario, id]
     );
 
     // 2. Guardar estado de firmas aceptadas antes de borrar para re-aplicarlas si el asistente aún está en la lista
@@ -870,7 +823,7 @@ router.put('/api/asistencia/:id', async (req, res) => {
           `INSERT INTO Dynamic_formato_itemsAsistencia
            (id_asistencia, id_vinculacion, nombre_trabajador, identificacion, cargo, operacion, regional, firma_asistente)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [id, idVinculacion, v.Trabajador, v.Identificación, v.Cargo, v.Operación, v.Regional, firmaPreviaAceptada]
+          [id, idVinculacion, v.Trabajador, v.Identificación, v.Cargo || '', v.Operación, v.Regional, firmaPreviaAceptada]
         );
       }
     }
@@ -920,8 +873,18 @@ router.delete('/api/asistencia/:id', async (req, res) => {
     }
 
     const acceso = await computarAccesoParticipacion(usuario);
-    if (!acceso || acceso.rol !== 'Sistema') {
-      return res.status(403).json({ error: 'Solo el rol de Sistema puede eliminar registros.' });
+    const ALLOWED_ROLES = ['Sistema', 'AdmSst', 'LiderSst'];
+    if (!acceso || !ALLOWED_ROLES.includes(acceso.rol)) {
+      return res.status(403).json({ error: 'Usuario no autorizado para eliminar registros.' });
+    }
+
+    // Check if pdf is already generated
+    const [asistRows] = await conn.execute(
+      'SELECT url_doc FROM Dynamic_formato_asistencia WHERE id_asistencia = ? LIMIT 1',
+      [id]
+    );
+    if (asistRows.length && asistRows[0].url_doc) {
+      return res.status(400).json({ error: 'No se puede eliminar un registro con documento PDF generado.' });
     }
 
     await conn.beginTransaction();
@@ -1048,13 +1011,13 @@ router.get('/firmar', async (req, res) => {
     if (!item) return res.status(400).send('<h2>Parámetro item requerido</h2>');
 
     const [[ast]] = await pool.execute(
-      `SELECT 
-        i.*, 
-        a.tema, a.fecha, a.lugar, 
-        v.Trabajador AS nombre_responsable
+      `SELECT
+        i.*,
+        a.tema, a.fecha, a.lugar,
+        COALESCE(NULLIF(u.Colaborador, ''), u.Nombre) AS nombre_responsable
        FROM Dynamic_formato_itemsAsistencia i
        INNER JOIN Dynamic_formato_asistencia a ON i.id_asistencia = a.id_asistencia
-       LEFT JOIN \`Maestro_Vinculación\` v ON a.responsable = v.\`Id Vinculación\`
+       LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        WHERE i.id_item_asistencia = ? LIMIT 1`,
       [item]
     );

@@ -780,9 +780,12 @@
       optsBox.innerHTML = '';
       
       const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
-      
+      const esAutorizadoEliminar = ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+
+      let btnsHtml = '';
+
       if (esCreadorOSistema) {
-        let btnsHtml = `<div class="section-title" style="margin-top: 25px;">Acciones de Control</div>`;
+        btnsHtml += `<div class="section-title" style="margin-top: 25px;">Acciones de Control</div>`;
         const btnText = data.url_doc ? 'Regenerar PDF (Solo Firmas Listas)' : 'Generar PDF (Solo Firmas Listas)';
         btnsHtml += `
           <button class="btn btn-success" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">${btnText}</button>
@@ -799,13 +802,18 @@
             <button class="btn btn-secondary" disabled style="width: 100%; opacity: 0.5; pointer-events: none;">Editar Formato</button>
           `;
         }
-        if (CONFIG.rol === 'Sistema') {
-          btnsHtml += `
-            <button class="btn" onclick="eliminarAsistencia(${data.id_asistencia})" style="width: 100%; margin-top: 8px; background: #c0392b; color: #fff;">✕ Eliminar Registro</button>
-          `;
-        }
-        optsBox.innerHTML = btnsHtml;
       }
+
+      if (esAutorizadoEliminar && !data.url_doc) {
+        if (!btnsHtml) {
+          btnsHtml += `<div class="section-title" style="margin-top: 25px;">Acciones de Control</div>`;
+        }
+        btnsHtml += `
+          <button class="btn" onclick="eliminarAsistencia(${data.id_asistencia})" style="width: 100%; margin-top: 8px; background: #c0392b; color: #fff;">✕ Eliminar Registro</button>
+        `;
+      }
+
+      optsBox.innerHTML = btnsHtml;
 
       // Render de fotos de evidencia
       currentEvidenciasCount = (data.evidencias || []).length;
@@ -930,7 +938,7 @@
   }
 
   async function eliminarAsistencia(id) {
-    if (!confirm('¿Está seguro de que desea eliminar permanentemente este registro de asistencia?')) return;
+    if (!confirm('¿Está seguro de que desea eliminar permanentemente este registro de asistencia? Esta acción no se puede deshacer.')) return;
     
     showLoading('Eliminando registro...');
     try {

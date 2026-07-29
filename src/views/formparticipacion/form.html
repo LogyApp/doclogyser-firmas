@@ -65,21 +65,6 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 
-    /* ── Autocomplete ── */
-    .ac-list {
-      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-      background: #fff; border: 1.5px solid #8e44ad;
-      border-radius: 6px; max-height: 220px; overflow-y: auto;
-      z-index: 999; display: none;
-      box-shadow: 0 6px 20px rgba(142,68,173,.15);
-    }
-    .ac-list.open { display: block; }
-    .ac-item {
-      padding: 10px 14px; cursor: pointer; font-size: .88rem; color: #333;
-      border-bottom: 1px solid #f5f5f5;
-    }
-    .ac-item:hover { background: #eef1ff; color: #1a1a2e; font-weight: 600; }
-
     /* ── Scrollable Checklist for Attendees ── */
     .checklist-card {
       border: 1.5px solid #ddd;
@@ -217,17 +202,9 @@
         </div>
       </div>
 
-      <div class="grid-2">
-        <div class="field">
-          <label class="lbl">Lugar de Capacitación <span class="req">*</span></label>
-          <input type="text" id="form-lugar" required placeholder="Ej. Oficina Principal - Sala A">
-        </div>
-        <div class="field" style="position: relative;">
-          <label class="lbl">Responsable del Registro (Cédula) <span class="req">*</span></label>
-          <input type="text" id="form-responsable-input" placeholder="Buscar únicamente por Identificación..." autocomplete="off">
-          <input type="hidden" id="form-responsable-id">
-          <div id="ac-responsable" class="ac-list"></div>
-        </div>
+      <div class="field">
+        <label class="lbl">Lugar de Capacitación <span class="req">*</span></label>
+        <input type="text" id="form-lugar" required placeholder="Ej. Oficina Principal - Sala A">
       </div>
 
       <div class="field">
@@ -323,24 +300,13 @@
     document.getElementById('form-asistencia').addEventListener('submit', guardarAsistencia);
     document.getElementById('input-evidencia').addEventListener('change', manejarArchivosEvidencia);
 
-    // Autocomplete Responsable (BÚSQUEDA EXCLUSIVAMENTE POR IDENTIFICACIÓN)
-    setupAutocomplete(
-      document.getElementById('form-responsable-input'),
-      document.getElementById('ac-responsable'),
-      '/participacion/api/responsables-buscar',
-      (item) => {
-        document.getElementById('form-responsable-input').value = `${item.Identificación} ** ${item.Trabajador}`;
-        document.getElementById('form-responsable-id').value = item.id_vinculacion;
-      }
-    );
-
     // Búsqueda en el checklist de asistentes
     document.getElementById('checklist-search-input').addEventListener('input', (e) => {
-      const val = e.target.value.toLowerCase();
+      const val = e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const items = document.querySelectorAll('.checklist-item');
       items.forEach(item => {
-        const text = item.innerText.toLowerCase();
-        if (text.includes(val)) {
+        const searchStr = item.getAttribute('data-search') || '';
+        if (searchStr.includes(val)) {
           item.style.display = 'flex';
         } else {
           item.style.display = 'none';
@@ -371,12 +337,6 @@
     } else {
       document.getElementById('form-titulo').innerText = 'Crear Formato de Participación';
       document.getElementById('form-fecha').value = new Date().toISOString().slice(0, 10);
-      
-      // Pre-llenar el responsable automáticamente
-      if (CONFIG.prefillResponsable) {
-        document.getElementById('form-responsable-input').value = CONFIG.prefillResponsable.nombre;
-        document.getElementById('form-responsable-id').value = CONFIG.prefillResponsable.id_vinculacion;
-      }
       document.getElementById('form-asistentes-count').innerText = '0';
     }
   });
@@ -462,12 +422,22 @@
 
         const div = document.createElement('div');
         div.className = 'checklist-item';
-        
+
         const idCheckbox = `chk-t-${t.id_vinculacion}`;
-        
+
+        // Maestro_Vinculación guarda "Identificación ** Nombre completo"; solo mostramos el nombre.
+        let nombreLimpio = t.Trabajador || '';
+        if (nombreLimpio.includes(' ** ')) {
+          const parts = nombreLimpio.split(' ** ');
+          nombreLimpio = parts[parts.length - 1];
+        }
+        nombreLimpio = nombreLimpio.trim();
+
+        div.setAttribute('data-search', `${t.identificacion} ${nombreLimpio}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+
         div.innerHTML = `
           <input type="checkbox" id="${idCheckbox}" ${isChecked ? 'checked' : ''}>
-          <label for="${idCheckbox}"><strong>${t.identificacion}</strong> ** ${t.Trabajador}</label>
+          <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'})</span></label>
         `;
 
         const checkbox = div.querySelector('input[type="checkbox"]');
@@ -476,7 +446,7 @@
             if (!formAsistentes.some(x => x.id_vinculacion === t.id_vinculacion)) {
               formAsistentes.push({
                 id_vinculacion: t.id_vinculacion,
-                Trabajador: t.Trabajador,
+                Trabajador: nombreLimpio,
                 Identificación: t.identificacion,
                 Cargo: t.Cargo,
                 Operación: t.Operación,
@@ -508,60 +478,6 @@
     }
   }
 
-  // ════════ LÓGICA DE AUTOCOMPLETE ════════
-  function setupAutocomplete(input, listDiv, url, onSelect) {
-    input.addEventListener('input', debounce(async () => {
-      const val = input.value.trim();
-      if (!val || val.length < 2) {
-        listDiv.innerHTML = '';
-        listDiv.classList.remove('open');
-        return;
-      }
-
-      try {
-        const res = await fetch(`${url}?q=${encodeURIComponent(val)}`);
-        const items = await res.json();
-
-        listDiv.innerHTML = '';
-        if (!items.length) {
-          listDiv.classList.remove('open');
-          return;
-        }
-
-        items.forEach(item => {
-          const div = document.createElement('div');
-          div.className = 'ac-item';
-          div.innerText = `${item.Identificación} ** ${item.Trabajador}`;
-
-          div.addEventListener('click', () => {
-            onSelect(item);
-            listDiv.innerHTML = '';
-            listDiv.classList.remove('open');
-          });
-          listDiv.appendChild(div);
-        });
-        listDiv.classList.add('open');
-      } catch (err) {
-        console.error(err);
-      }
-    }, 300));
-
-    document.addEventListener('click', (e) => {
-      if (e.target !== input && e.target !== listDiv) {
-        listDiv.innerHTML = '';
-        listDiv.classList.remove('open');
-      }
-    });
-  }
-
-  function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-  }
-
   // ════════ CARGAR PARA EDITAR ════════
   async function cargarAsistenciaParaEditar(id) {
     showLoading('Cargando datos del formato...');
@@ -575,8 +491,6 @@
       document.getElementById('form-hora-final').value = data.hora_final.slice(0, 5);
       document.getElementById('form-lugar').value = data.lugar;
       document.getElementById('form-objetivo').value = data.objetivo;
-      document.getElementById('form-responsable-input').value = data.nombre_responsable || '';
-      document.getElementById('form-responsable-id').value = data.responsable;
 
       formAsistentes = data.items.map(i => ({
         id_vinculacion: i.id_vinculacion,
@@ -602,12 +516,6 @@
   async function guardarAsistencia(e) {
     e.preventDefault();
 
-    const responsable = document.getElementById('form-responsable-id').value;
-    if (!responsable) {
-      showToast('Por favor selecciona un responsable válido utilizando su identificación.', 'error');
-      return;
-    }
-
     if (!formAsistentes.length) {
       showToast('Por favor selecciona al menos un asistente.', 'error');
       return;
@@ -620,7 +528,6 @@
       hora_final: document.getElementById('form-hora-final').value,
       lugar: document.getElementById('form-lugar').value,
       objetivo: document.getElementById('form-objetivo').value,
-      responsable,
       usuario: CONFIG.usuarioId,
       asistentes: formAsistentes.map(x => x.id_vinculacion),
       evidencias: evidenciasList
