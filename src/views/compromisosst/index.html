@@ -815,7 +815,7 @@
           ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
         `;
 
-        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol));
         const esAutorizadoEliminar = ['AdmSst', 'LiderSst', 'Sistema'].includes(CONFIG.rol);
 
         // Actualizar datos de contacto dinámicamente
@@ -1109,7 +1109,7 @@
     });
 
     async function eliminarCompromiso(idcsst) {
-      if (!confirm('¿Está seguro de que desea eliminar permanentemente este compromiso?')) return;
+      if (!confirm('¿Está seguro de que desea eliminar permanentemente este compromiso? Esta acción no se puede deshacer.')) return;
       showLoading('Eliminando registro...');
       try {
         const res = await fetch(`/compromisosst/api/compromiso/${idcsst}?usuario=${CONFIG.usuarioId}`, {

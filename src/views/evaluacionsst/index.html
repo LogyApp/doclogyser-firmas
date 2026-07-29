@@ -680,10 +680,12 @@
         history.pushState({ evaluacionDetalle: true }, '');
       }
 
+      const esCreadorOSistema = (item.usuario === CONFIG.usuarioId || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol));
+
       // Llenar datos de contacto
       document.getElementById('contacto-email').value = item.email_trabajador || '';
       document.getElementById('contacto-celular').value = item.celular_trabajador || '';
-      if (item.url_doc) {
+      if (item.url_doc || !esCreadorOSistema) {
         document.getElementById('opciones-contacto').style.display = 'none';
       } else {
         document.getElementById('opciones-contacto').style.display = 'block';
@@ -727,7 +729,7 @@
 
       let optsHtml = '';
 
-      if (!item.url_doc) {
+      if (!item.url_doc && esCreadorOSistema) {
         // Enlace de firma del trabajador
         const urlFirmaLink = `${window.location.origin}/evaluacionsst/responder?item=${item.id_evaluacion}`;
         const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaLink}`);
@@ -862,7 +864,7 @@
     }
 
     async function eliminarEvaluacion(id) {
-      if (!confirm('¿Está seguro de que desea eliminar permanentemente esta evaluación?')) return;
+      if (!confirm('¿Está seguro de que desea eliminar permanentemente esta evaluación? Esta acción no se puede deshacer.')) return;
       showLoading('Eliminando registro...');
       try {
         const res = await fetch(`/evaluacionsst/api/evaluacion/${id}?usuario=${CONFIG.usuarioId}`, {

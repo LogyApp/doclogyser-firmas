@@ -804,7 +804,7 @@
           ${data.url_doc ? `<p style="margin-top: 15px;"><a href="${data.url_doc}" target="_blank" class="btn btn-success" style="width: 100%;">Abrir PDF Generado</a></p>` : ''}
         `;
 
-        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol));
         const esAutorizadoEliminar = ['AdmSst', 'LiderSst', 'Sistema'].includes(CONFIG.rol);
 
         // Actualizar datos de contacto dinámicamente
@@ -841,6 +841,7 @@
             }
             const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
  
+            optsHtml += `
               <div class="section-title" style="margin-top: 15px;">Acciones de Control</div>
               <button class="btn btn-secondary" id="btn-editar-registro" style="width: 100%; margin-bottom: 8px;">Editar Registro</button>
               <button class="btn btn-danger" onclick="generarPDF(true)" style="width: 100%; margin-bottom: 8px;">Forzar Generación de PDF</button>
@@ -1001,7 +1002,7 @@
     }
 
     async function eliminarPrueba(id) {
-      if (!confirm('¿Está seguro de que desea eliminar permanentemente este registro de prueba de consumo?')) return;
+      if (!confirm('¿Está seguro de que desea eliminar permanentemente este registro de prueba de consumo? Esta acción no se puede deshacer.')) return;
       showLoading('Eliminando registro...');
       try {
         const res = await fetch(`/pruebaconsumo/api/prueba/${id}?usuario=${CONFIG.usuarioId}`, {

@@ -127,88 +127,58 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Estilos para el Combobox de Trabajador */
-    .combobox-wrapper {
-      position: relative;
-      width: 100%;
-    }
-    .combobox-input {
-      width: 100%;
-      padding: 10px 14px;
+    /* ── Scrollable Checklist for Attendees ── */
+    .checklist-card {
       border: 1.5px solid #cbd5e1;
       border-radius: 8px;
-      font-size: .95rem;
-      color: #334155;
       background: #ffffff;
-      cursor: text;
-      position: relative;
-      transition: all .2s;
+      margin-top: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .combobox-input:focus {
-      outline: none;
-      border-color: #8e44ad;
-      box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.15);
-    }
-    .combobox-input:disabled {
-      background: #f8fafc !important;
-      color: #64748b !important;
-      cursor: not-allowed !important;
-      border-color: #e2e8f0 !important;
-    }
-    .combobox-wrapper::after {
-      content: '▼';
-      position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 0.75rem;
-      color: #64748b;
-      pointer-events: none;
-    }
-    .combobox-dropdown {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      width: 100%;
-      background: #ffffff;
-      border: 1.5px solid #8e44ad;
-      border-radius: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-      z-index: 50;
-      margin-top: 4px;
-      padding: 4px;
-      box-sizing: border-box;
-      display: none;
-      flex-direction: column;
-    }
-    .combobox-options {
-      max-height: 200px;
-      overflow-y: auto;
+    .checklist-header {
+      padding: 12px;
+      background: #f8fafc;
+      border-bottom: 1.5px solid #e2e8f0;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
-    .combobox-option {
+    .checklist-search {
+      width: 100%;
       padding: 8px 12px;
-      font-size: 0.92rem;
-      color: #334155;
-      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: .85rem;
+    }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
       cursor: pointer;
-      transition: background 0.1s;
+      transition: background 0.15s;
     }
-    .combobox-option:hover {
-      background: #f3e8ff;
-      color: #6b21a8;
+    .checklist-item:last-child {
+      border-bottom: none;
     }
-    .combobox-option.selected {
-      background: #8e44ad;
-      color: #ffffff;
+    .checklist-item:hover {
+      background: #f1f5f9;
     }
-    .combobox-no-results {
-      padding: 8px 12px;
-      font-size: 0.9rem;
-      color: #64748b;
-      text-align: center;
+    .checklist-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #8e44ad;
+      cursor: pointer;
+    }
+    .checklist-item label {
+      font-size: .88rem;
+      color: #334155;
+      cursor: pointer;
+      flex: 1;
     }
   </style>
 </head>
@@ -250,46 +220,32 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="section-title">Detalles del Trabajador y Compromiso</div>
-        
-        <div class="field">
-          <label for="select-trabajador">Trabajador <span class="req">*</span></label>
-          <div class="combobox-wrapper">
-            <input type="text" id="combobox-input" class="combobox-input" placeholder="Seleccione Trabajador..." autocomplete="off" disabled>
-            <div class="combobox-dropdown" id="combobox-dropdown" style="display: none;">
-              <div class="combobox-options" id="combobox-options">
-                <!-- Se cargarán dinámicamente -->
-              </div>
+      <!-- 2. Selección de Colaboradores (Checklist) -->
+      <div class="card" id="card-colaboradores">
+        <div class="section-title">Seleccionar Colaboradores</div>
+        <div class="checklist-card" id="checklist-wrap" style="display: none;">
+          <div class="checklist-header">
+            <input type="text" class="checklist-search" id="checklist-search-input" placeholder="Buscar colaborador por Nombre o Cédula...">
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 2px;">
+              <input type="checkbox" id="chk-seleccionar-todos" style="width: 16px; height: 16px; cursor: pointer;">
+              <label for="chk-seleccionar-todos" style="font-size: .82rem; font-weight: bold; cursor: pointer; display: inline;">Seleccionar Todos</label>
             </div>
           </div>
-          <!-- Select oculto para validación y compatibilidad -->
-          <select id="select-trabajador" required disabled style="display: none;">
-            <option value="">Seleccione Trabajador...</option>
-          </select>
+          <div id="form-checklist-body" style="max-height: 250px; overflow-y: auto;">
+            <!-- Cargado dinámicamente -->
+          </div>
         </div>
+        <div id="checklist-empty" style="padding: 15px; text-align: center; color: #888;">
+          Selecciona una Regional y Operación para cargar los colaboradores.
+        </div>
+        <div style="margin-top: 18px;">
+          <label>Colaboradores seleccionados: <span id="form-trabajadores-count" style="font-weight: bold;">0</span></label>
+        </div>
+      </div>
 
-        <div class="grid-2">
-          <div class="field">
-            <label for="input-cc">Identificación (C.C.)</label>
-            <input type="text" id="input-cc" readonly placeholder="Cédula del trabajador">
-          </div>
-          <div class="field">
-            <label for="input-cargo">Cargo</label>
-            <input type="text" id="input-cargo" readonly placeholder="Cargo del trabajador">
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="field">
-            <label for="input-email">Correo Electrónico (Para notificación)</label>
-            <input type="email" id="input-email" placeholder="Correo del trabajador (opcional)">
-          </div>
-          <div class="field">
-            <label for="input-celular">Celular (WhatsApp)</label>
-            <input type="text" id="input-celular" placeholder="Número de celular (opcional)">
-          </div>
-        </div>
+      <!-- 3. Detalles del Compromiso -->
+      <div class="card">
+        <div class="section-title">Detalles del Compromiso</div>
 
         <div class="field">
           <label for="input-obs">Observaciones <span class="opt">(Opcional)</span></label>
@@ -298,28 +254,30 @@
 
         <div class="field" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
           <input type="checkbox" id="chk-enviar-correo" style="width: auto; cursor: pointer; height: 18px; width: 18px;" checked>
-          <label for="chk-enviar-correo" style="display: inline; margin-bottom: 0; cursor: pointer; font-size: 0.92rem; color: #475569;">Enviar enlace de firma por correo electrónico al trabajador</label>
+          <label for="chk-enviar-correo" style="display: inline; margin-bottom: 0; cursor: pointer; font-size: 0.92rem; color: #475569;">Enviar enlace de firma por correo electrónico al trabajador automáticamente</label>
         </div>
       </div>
 
       <div style="display: flex; gap: 12px; margin-top: 20px;">
         <button type="button" id="btn-cancelar-form" class="btn-submit" style="flex: 1; width: auto; background: #cbd5e1; color: #334155; box-shadow: none;">Cancelar</button>
-        <button type="submit" class="btn-submit" id="btn-registrar" style="flex: 3; width: auto;">Registrar Compromiso y Generar Enlace</button>
+        <button type="submit" class="btn-submit" id="btn-registrar" style="flex: 3; width: auto;">Registrar Compromisos y Generar Enlaces</button>
       </div>
     </form>
 
+    <!-- Éxito y enlaces generados -->
     <div class="success-card" id="success-panel">
       <div class="success-icon">✓</div>
-      <div class="success-title">Compromiso SST Registrado con Éxito</div>
-      <div class="success-text">
-        Se ha registrado el documento de compromiso. Puede hacer que el trabajador firme ahora mismo de manera presencial o enviarle el enlace por WhatsApp:
+      <div class="success-title">Compromisos SST Registrados con Éxito</div>
+      <div class="success-text" style="margin-bottom: 16px;">
+        Se registraron los compromisos. A continuación se detallan los enlaces personales para que cada trabajador pueda firmar digitalmente.
       </div>
-      <div class="link-box" id="link-firma">...</div>
+      
+      <div id="lista-enlaces-creados" style="margin-bottom: 24px; text-align: left; max-height: 400px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px;">
+        <!-- Se generará dinámicamente -->
+      </div>
+
       <div class="btn-group-success">
-        <a id="btn-firmar-ahora" href="#" target="_blank" class="btn-success-action btn-pri" style="background: #10b981;">Firmar Ahora</a>
-        <a id="btn-whatsapp" href="#" target="_blank" class="btn-success-action btn-wa">Enviar por WhatsApp</a>
-        <button id="btn-copiar" class="btn-success-action btn-sec">Copiar Enlace</button>
-        <a id="btn-volver" href="#" class="btn-success-action btn-pri">Ir al Listado</a>
+        <a id="btn-volver" href="#" class="btn-success-action btn-pri">Volver al Listado</a>
       </div>
     </div>
   </div>
@@ -346,139 +304,7 @@
 
     const regSelect = document.getElementById('select-regional');
     const opSelect = document.getElementById('select-operacion');
-    const trabSelect = document.getElementById('select-trabajador');
-
-    // Combobox Elements & Logic
-    const comboboxInput = document.getElementById('combobox-input');
-    const comboboxDropdown = document.getElementById('combobox-dropdown');
-    const comboboxOptions = document.getElementById('combobox-options');
-
-    let trabajadoresCargados = [];
-    let selectedWorkerCc = '';
-
-    comboboxInput.addEventListener('click', function(e) {
-      if (this.disabled) return;
-      e.stopPropagation();
-      this.select(); // Selecciona el texto para facilitar la escritura
-      openCombobox();
-      filterComboboxOptions(this.value);
-    });
-
-    comboboxInput.addEventListener('input', function() {
-      if (this.disabled) return;
-      openCombobox();
-      filterComboboxOptions(this.value);
-    });
-
-    comboboxInput.addEventListener('blur', function() {
-      // Pequeño retardo para permitir registrar el evento click del listado
-      setTimeout(() => {
-        const valText = comboboxInput.value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        // Buscar coincidencia exacta
-        const match = trabajadoresCargados.find(w => {
-          const name = (w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador)
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-          return name === valText;
-        });
-
-        if (match) {
-          selectWorker(match);
-        } else {
-          // Si no hay coincidencia exacta, volver al último seleccionado o limpiar
-          if (selectedWorkerCc) {
-            const currentSelected = trabajadoresCargados.find(w => w.identificacion === selectedWorkerCc);
-            if (currentSelected) {
-              const name = currentSelected.Trabajador.includes(' ** ') ? currentSelected.Trabajador.split(' ** ')[1] : currentSelected.Trabajador;
-              comboboxInput.value = name;
-              closeCombobox();
-              return;
-            }
-          }
-          clearWorkerSelection();
-        }
-        closeCombobox();
-      }, 200);
-    });
-
-    function openCombobox() {
-      comboboxDropdown.style.display = 'flex';
-    }
-
-    function closeCombobox() {
-      comboboxDropdown.style.display = 'none';
-    }
-
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.combobox-wrapper')) {
-        closeCombobox();
-      }
-    });
-
-    function filterComboboxOptions(query) {
-      const q = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const filtered = trabajadoresCargados.filter(w => {
-        const name = (w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador)
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-        const cc = String(w.identificacion || '').toLowerCase();
-        return name.includes(q) || cc.includes(q);
-      });
-      renderComboboxOptions(filtered);
-    }
-
-    function renderComboboxOptions(workers) {
-      comboboxOptions.innerHTML = '';
-      if (workers.length === 0) {
-        const noRes = document.createElement('div');
-        noRes.className = 'combobox-no-results';
-        noRes.textContent = 'No se encontraron trabajadores';
-        comboboxOptions.appendChild(noRes);
-        return;
-      }
-      workers.forEach(w => {
-        const nombreLimpio = w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador;
-        const optDiv = document.createElement('div');
-        optDiv.className = 'combobox-option';
-        if (selectedWorkerCc === w.identificacion) {
-          optDiv.classList.add('selected');
-        }
-        optDiv.textContent = nombreLimpio;
-        optDiv.addEventListener('click', function(e) {
-          e.stopPropagation();
-          selectWorker(w);
-          closeCombobox();
-        });
-        comboboxOptions.appendChild(optDiv);
-      });
-    }
-
-    function selectWorker(w) {
-      selectedWorkerCc = w.identificacion;
-      const nombreLimpio = w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador;
-      comboboxInput.value = nombreLimpio;
-
-      trabSelect.innerHTML = '';
-      const opt = document.createElement('option');
-      opt.value = w.identificacion;
-      opt.textContent = nombreLimpio;
-      opt.dataset.nombre = nombreLimpio;
-      opt.dataset.cargo = w.Cargo;
-      opt.selected = true;
-      trabSelect.appendChild(opt);
-
-      trabSelect.dispatchEvent(new Event('change'));
-    }
-
-    function clearWorkerSelection() {
-      selectedWorkerCc = '';
-      comboboxInput.value = '';
-      comboboxInput.placeholder = 'Seleccione Trabajador...';
-      trabSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
-      trabSelect.dispatchEvent(new Event('change'));
-    }
+    let formTrabajadores = []; // Lista de cédulas seleccionadas
 
     CONFIG.regionalesFiltro.forEach(reg => {
       const opt = document.createElement('option');
@@ -492,11 +318,7 @@
       opSelect.innerHTML = '<option value="">Seleccione Operación...</option>';
       opSelect.disabled = true;
       
-      clearWorkerSelection();
-      comboboxInput.disabled = true;
-
-      document.getElementById('input-cc').value = '';
-      document.getElementById('input-cargo').value = '';
+      limpiarChecklist();
 
       if (reg) {
         const ops = CONFIG.opsPorRegional[reg] || [];
@@ -510,132 +332,239 @@
       }
     });
 
-    opSelect.addEventListener('change', async function() {
-      const op = this.value;
+    opSelect.addEventListener('change', cargarTrabajadoresParaChecklist);
+
+    function limpiarChecklist() {
+      formTrabajadores = [];
+      document.getElementById('form-trabajadores-count').innerText = '0';
+      document.getElementById('checklist-wrap').style.display = 'none';
+      document.getElementById('checklist-empty').style.display = 'block';
+      document.getElementById('form-checklist-body').innerHTML = '';
+      document.getElementById('chk-seleccionar-todos').checked = false;
+      document.getElementById('checklist-search-input').value = '';
+    }
+
+    async function cargarTrabajadoresParaChecklist() {
       const reg = regSelect.value;
-      
-      clearWorkerSelection();
-      comboboxInput.disabled = true;
+      const op = opSelect.value;
+      const wrap = document.getElementById('checklist-wrap');
+      const empty = document.getElementById('checklist-empty');
+      const body = document.getElementById('form-checklist-body');
+      const chkTodos = document.getElementById('chk-seleccionar-todos');
 
-      document.getElementById('input-cc').value = '';
-      document.getElementById('input-cargo').value = '';
+      limpiarChecklist();
 
-      if (op && reg) {
-        showLoading('Buscando trabajadores...');
-        try {
-          const r = await fetch(`/compromisosst/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
-          trabajadoresCargados = await r.json();
-          
-          if (trabajadoresCargados.length > 0) {
-            comboboxInput.disabled = false;
-            comboboxInput.placeholder = 'Seleccione Trabajador...';
-            renderComboboxOptions(trabajadoresCargados);
-          } else {
-            comboboxInput.placeholder = 'No hay trabajadores activos';
-          }
-        } catch (e) {
-          console.error(e);
-          alert('Error al buscar trabajadores');
-        } finally {
-          hideLoading();
+      if (!reg || !op) return;
+
+      showLoading('Buscando trabajadores...');
+      try {
+        const r = await fetch(`/compromisosst/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+        const trabajadores = await r.json();
+
+        if (!trabajadores.length) {
+          body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos en esta operación.</div>';
+          wrap.style.display = 'block';
+          empty.style.display = 'none';
+          return;
         }
+
+        trabajadores.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'checklist-item';
+          const idCheckbox = `chk-t-${t.identificacion}`;
+
+          let nombreLimpio = t.Trabajador || '';
+          if (nombreLimpio.includes(' ** ')) {
+            const parts = nombreLimpio.split(' ** ');
+            nombreLimpio = parts[parts.length - 1];
+          }
+          nombreLimpio = nombreLimpio.trim();
+
+          // Store search text in a data attribute to search by identification and name
+          div.setAttribute('data-search', `${t.identificacion} ${nombreLimpio}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
+          div.innerHTML = `
+            <input type="checkbox" id="${idCheckbox}" value="${t.identificacion}">
+            <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'})</span></label>
+          `;
+
+          const checkbox = div.querySelector('input[type="checkbox"]');
+          checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              if (!formTrabajadores.includes(t.identificacion)) {
+                formTrabajadores.push(t.identificacion);
+              }
+            } else {
+              formTrabajadores = formTrabajadores.filter(id => id !== t.identificacion);
+            }
+            document.getElementById('form-trabajadores-count').innerText = formTrabajadores.length;
+          });
+
+          div.addEventListener('click', (e) => {
+            if (e.target !== checkbox && e.target.tagName !== 'LABEL') {
+              checkbox.checked = !checkbox.checked;
+              checkbox.dispatchEvent(new Event('change'));
+            }
+          });
+
+          body.appendChild(div);
+        });
+
+        wrap.style.display = 'block';
+        empty.style.display = 'none';
+      } catch (e) {
+        console.error(e);
+        alert('Error al buscar trabajadores');
+      } finally {
+        hideLoading();
       }
+    }
+
+    // Búsqueda en el checklist
+    document.getElementById('checklist-search-input').addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const items = document.querySelectorAll('.checklist-item');
+      items.forEach(item => {
+        const searchStr = item.getAttribute('data-search') || '';
+        if (searchStr.includes(val)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
     });
 
-    trabSelect.addEventListener('change', async function() {
-      const opt = this.options[this.selectedIndex];
-      if (opt && opt.value) {
-        document.getElementById('input-cc').value = opt.value;
-        document.getElementById('input-cargo').value = opt.dataset.cargo || '';
-        
-        // Cargar datos de contacto del trabajador
-        try {
-          const res = await fetch(`/compromisosst/api/contacto/${opt.value}`);
-          if (res.ok) {
-            const c = await res.json();
-            document.getElementById('input-email').value = c.Email || '';
-            document.getElementById('input-celular').value = c.Celular || '';
-          }
-        } catch (e) {
-          console.error('[compromisosst] Error al obtener datos de contacto:', e);
+    // Seleccionar Todos
+    document.getElementById('chk-seleccionar-todos').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+      checkboxes.forEach(cb => {
+        const itemDom = cb.closest('.checklist-item');
+        if (itemDom.style.display !== 'none') {
+          cb.checked = checked;
+          cb.dispatchEvent(new Event('change'));
         }
-      } else {
-        document.getElementById('input-cc').value = '';
-        document.getElementById('input-cargo').value = '';
-        document.getElementById('input-email').value = '';
-        document.getElementById('input-celular').value = '';
-      }
+      });
     });
 
     document.getElementById('btn-cancelar-form').addEventListener('click', () => {
       window.location.href = `/compromisosst?usuario=${CONFIG.usuarioId}`;
     });
 
+    // Copiar enlace helper
+    window.copiarAlPortapapeles = function(text) {
+      navigator.clipboard.writeText(text);
+      alert('Enlace copiado al portapapeles');
+    };
+
     document.getElementById('form-csst').addEventListener('submit', async function(e) {
       e.preventDefault();
       
-      const opt = trabSelect.options[trabSelect.selectedIndex];
-      if (!opt || !opt.value) {
-        alert('Debe seleccionar un trabajador');
+      const observaciones = document.getElementById('input-obs').value;
+      const enviar_correo = document.getElementById('chk-enviar-correo').checked;
+
+      if (!formTrabajadores.length) {
+        alert('Debe seleccionar al menos un colaborador');
         return;
       }
 
-      const emailVal = document.getElementById('input-email').value.trim();
-      const celularVal = document.getElementById('input-celular').value.trim();
-
-      // Guardar/Actualizar datos de contacto en segundo plano
-      if (emailVal || celularVal) {
-        fetch('/compromisosst/api/actualizar-contacto', {
+      showLoading('Registrando compromisos...');
+      try {
+        const r = await fetch('/compromisosst/api/crear-masivo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            identificacion: opt.value,
-            email: emailVal,
-            celular: celularVal
+            identificaciones: formTrabajadores,
+            observaciones,
+            usuario: CONFIG.usuarioId,
+            enviar_correo
           })
-        }).catch(err => console.error('[compromisosst] Error actualizando contacto:', err));
-      }
-
-      const payload = {
-        identificaciontrabajador: opt.value,
-        nombre_trabajador: opt.dataset.nombre,
-        cargo_trabajador: opt.dataset.cargo,
-        observaciones: document.getElementById('input-obs').value,
-        usuario: CONFIG.usuarioId,
-        enviar_correo: document.getElementById('chk-enviar-correo').checked
-      };
-
-      showLoading('Registrando compromiso...');
-      try {
-        const r = await fetch('/compromisosst/api/crear', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
         });
         const resp = await r.json();
-        if (r.ok && resp.ok) {
-          document.getElementById('form-csst').style.display = 'none';
-          document.getElementById('form-header').style.display = 'none';
-          
-          document.getElementById('link-firma').innerText = resp.urlFirmaTrab;
-          document.getElementById('btn-firmar-ahora').href = resp.urlFirmaTrab;
+        if (r.ok && resp.resultados) {
+          const listBody = document.getElementById('lista-enlaces-creados');
+          listBody.innerHTML = '';
 
-          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Cumplimiento de Normas SST: ${resp.urlFirmaTrab}`);
-          let celNum = celularVal.replace(/\D/g, '');
-          if (celNum.length === 10 && celNum.startsWith('3')) {
-            celNum = '57' + celNum;
-          }
-          const waUrl = celNum ? `https://api.whatsapp.com/send?phone=${celNum}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
-          document.getElementById('btn-whatsapp').href = waUrl;
-          
-          document.getElementById('btn-copiar').addEventListener('click', function() {
-            navigator.clipboard.writeText(resp.urlFirmaTrab);
-            alert('Enlace copiado al portapapeles');
+          resp.resultados.forEach(res => {
+            const div = document.createElement('div');
+            div.style = 'display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #e2e8f0; gap: 12px; flex-wrap: wrap;';
+
+            // Whatsapp message formatting
+            const textWa = `Hola ${res.trabajador}, por favor ingresa al siguiente enlace para firmar tu Compromiso de Cumplimiento de Normas SST: ${res.urlFirma}`;
+            const cleanCel = res.celular ? res.celular.replace(/\D/g, '') : '';
+            let phoneParam = '';
+            if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+              phoneParam = '57' + cleanCel;
+            } else if (cleanCel) {
+              phoneParam = cleanCel;
+            }
+            const waLink = `https://wa.me/${phoneParam}?text=${encodeURIComponent(textWa)}`;
+
+            div.innerHTML = `
+              <div style="flex: 1; min-width: 250px;">
+                <div style="font-weight: 700; color: #1e293b; font-size: .92rem;">${res.trabajador}</div>
+                <div style="font-size: .8rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span>C.C. ${res.identificacion}</span>
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    Cel: <input type="text" class="input-edit-cel" value="${res.celular || ''}" placeholder="Celular" style="width: 100px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .78rem;">
+                  </span>
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    Email: <input type="email" class="input-edit-email" value="${res.email || ''}" placeholder="Correo" style="width: 140px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .78rem;">
+                  </span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn-success-action btn-sec" style="font-size:.8rem; padding: 6px 12px;" onclick="copiarAlPortapapeles('${res.urlFirma}')">Copiar Enlace</button>
+                <a href="${waLink}" target="_blank" class="btn-success-action btn-wa" style="font-size:.8rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+                  💬 WhatsApp
+                </a>
+              </div>
+            `;
+
+            const celInput = div.querySelector('.input-edit-cel');
+            const emailInput = div.querySelector('.input-edit-email');
+            const waButton = div.querySelector('.btn-wa');
+
+            const handleContactUpdate = () => {
+              const newCel = celInput.value.trim();
+              const newEmail = emailInput.value.trim();
+
+              fetch('/compromisosst/api/actualizar-contacto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  identificacion: res.identificacion,
+                  celular: newCel,
+                  email: newEmail
+                })
+              }).catch(e => console.error('Error updating contact:', e));
+
+              const cleanCel = newCel.replace(/\D/g, '');
+              let phoneParam = '';
+              if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+                phoneParam = '57' + cleanCel;
+              } else if (cleanCel) {
+                phoneParam = cleanCel;
+              }
+              waButton.href = `https://wa.me/${phoneParam}?text=${encodeURIComponent(textWa)}`;
+            };
+
+            celInput.addEventListener('change', handleContactUpdate);
+            emailInput.addEventListener('change', handleContactUpdate);
+
+            listBody.appendChild(div);
           });
 
+          // Remove border-bottom of the last child
+          if (listBody.lastChild) {
+            listBody.lastChild.style.borderBottom = 'none';
+          }
+
+          document.getElementById('form-csst').style.display = 'none';
+          document.getElementById('form-header').style.display = 'none';
           document.getElementById('success-panel').style.display = 'block';
         } else {
-          alert(resp.error || 'Error al registrar compromiso');
+          alert(resp.error || 'Error al registrar compromisos');
         }
       } catch (e) {
         console.error(e);
@@ -644,6 +573,9 @@
         hideLoading();
       }
     });
+  </script>
+</body>
+</html>
   </script>
 </body>
 </html>

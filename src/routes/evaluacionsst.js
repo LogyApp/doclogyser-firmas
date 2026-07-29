@@ -557,7 +557,7 @@ router.post('/api/crear', async (req, res) => {
     const urlFirma = `${protocol}://${host}/evaluacionsst/responder?item=${id_evaluacion}`;
 
     if (enviar_correo && emailTrabajador) {
-      await notificarFirmaEvaluacionSST({
+      notificarFirmaEvaluacionSST({
         email: emailTrabajador,
         nombreTrabajador: trabajadorNombre,
         tipo,
@@ -570,6 +570,109 @@ router.post('/api/crear', async (req, res) => {
   } catch (err) {
     console.error('[evaluacionsst] POST /api/crear:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/crear-masivo ═════
+router.post('/api/crear-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const {
+      fecha,
+      identificaciones,
+      tipo,
+      usuario,
+      enviar_correo
+    } = req.body;
+
+    if (!fecha || !identificaciones || !identificaciones.length || !tipo || !usuario) {
+      return res.status(400).json({ error: 'Todos los campos obligatorios deben ser diligenciados' });
+    }
+
+    const protocol = req.secure ? 'https' : 'http';
+    const host = req.get('host');
+    const resultados = [];
+
+    await conn.beginTransaction();
+
+    for (const identificacion of identificaciones) {
+      // Get worker name
+      const [vinRows] = await conn.execute(
+        `SELECT Trabajador 
+         FROM \`Maestro_Vinculación\` 
+         WHERE Identificación = ? 
+         ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+        [identificacion]
+      );
+      if (!vinRows.length) continue;
+
+      const trabajadorNombre = vinRows[0].Trabajador;
+
+      // Limpieza de nombre
+      let cleanNombreTrabajador = trabajadorNombre || '';
+      if (cleanNombreTrabajador.includes(' ** ')) {
+        cleanNombreTrabajador = cleanNombreTrabajador.split(' ** ')[1] || cleanNombreTrabajador;
+      }
+      cleanNombreTrabajador = cleanNombreTrabajador.trim();
+
+      const id_evaluacion = uuidv4();
+      const tokenFirma = crypto.randomBytes(32).toString('hex');
+      const tokenExpira = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+
+      await conn.execute(
+        `INSERT INTO Maestro_evaluacionsst 
+         (id_evaluacion, fecha, identificacion, tipo, usuario,
+          p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13,
+          puntaje, resultado, firma_trabajador, url_doc, token_firma, token_expira)
+         VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)`,
+        [
+          id_evaluacion,
+          fecha,
+          identificacion,
+          tipo,
+          usuario,
+          tokenFirma,
+          tokenExpira
+        ]
+      );
+
+      // Obtener email y celular para notificación
+      const [segRows] = await conn.execute('SELECT Email, Celular FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1', [identificacion]);
+      const [usuRows] = await conn.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+
+      const emailTrabajador = segRows.length ? segRows[0].Email : null;
+      const celular = segRows.length ? segRows[0].Celular : null;
+      const emailUsuario = usuRows.length ? usuRows[0].Email : null;
+
+      const urlFirma = `${protocol}://${host}/evaluacionsst/responder?item=${id_evaluacion}`;
+
+      resultados.push({
+        identificacion,
+        trabajador: cleanNombreTrabajador,
+        celular,
+        email: emailTrabajador,
+        urlFirma
+      });
+
+      if (enviar_correo && emailTrabajador) {
+        notificarFirmaEvaluacionSST({
+          email: emailTrabajador,
+          nombreTrabajador: cleanNombreTrabajador,
+          tipo,
+          urlFirma,
+          emailUsuario
+        }).catch(e => console.error('[evaluacionsst] Error enviando correo masivo al trabajador:', e.message));
+      }
+    }
+
+    await conn.commit();
+    res.json({ ok: true, resultados });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[evaluacionsst] POST /api/crear-masivo:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 

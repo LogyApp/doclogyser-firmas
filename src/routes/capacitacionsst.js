@@ -660,7 +660,7 @@ router.post('/api/crear', async (req, res) => {
     const urlFirma = `${protocol}://${host}/capacitacionsst/responder?item=${id_capacitacion}`;
 
     if (enviar_correo && emailTrabajador) {
-      await notificarFirmaCapacitacionSST({
+      notificarFirmaCapacitacionSST({
         email: emailTrabajador,
         nombreTrabajador: trabajadorNombre,
         tema: p.tema,

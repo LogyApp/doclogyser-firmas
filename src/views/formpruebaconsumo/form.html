@@ -127,7 +127,59 @@
       border: 4px solid #f3e8ff; border-top-color: #8e44ad;
       border-radius: 50%; animation: spin 1s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Scrollable Checklist for Attendees ── */
+    .checklist-card {
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+      margin-top: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .checklist-header {
+      padding: 12px;
+      background: #f8fafc;
+      border-bottom: 1.5px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .checklist-search {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: .85rem;
+    }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .checklist-item:last-child {
+      border-bottom: none;
+    }
+    .checklist-item:hover {
+      background: #f1f5f9;
+    }
+    .checklist-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #8e44ad;
+      cursor: pointer;
+    }
+    .checklist-item label {
+      font-size: .88rem;
+      color: #334155;
+      cursor: pointer;
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -171,27 +223,32 @@
         </div>
       </div>
 
-      <!-- 2. Información del trabajador y la prueba -->
+      <!-- 2. Selección de Colaboradores (Checklist) -->
+      <div class="card" id="card-colaboradores">
+        <div class="section-title">Seleccionar Colaboradores</div>
+        <div class="checklist-card" id="checklist-wrap" style="display: none;">
+          <div class="checklist-header">
+            <input type="text" class="checklist-search" id="checklist-search-input" placeholder="Buscar colaborador por Nombre o Cédula...">
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 2px;">
+              <input type="checkbox" id="chk-seleccionar-todos" style="width: 16px; height: 16px; cursor: pointer;">
+              <label for="chk-seleccionar-todos" style="font-size: .82rem; font-weight: bold; cursor: pointer; display: inline;">Seleccionar Todos</label>
+            </div>
+          </div>
+          <div id="form-checklist-body" style="max-height: 250px; overflow-y: auto;">
+            <!-- Cargado dinámicamente -->
+          </div>
+        </div>
+        <div id="checklist-empty" style="padding: 15px; text-align: center; color: #888;">
+          Selecciona una Regional y Operación para cargar los colaboradores.
+        </div>
+        <div style="margin-top: 18px;">
+          <label>Colaboradores seleccionados: <span id="form-trabajadores-count" style="font-weight: bold;">0</span></label>
+        </div>
+      </div>
+
+      <!-- 3. Detalles del Consentimiento -->
       <div class="card">
         <div class="section-title">Detalles del Consentimiento</div>
-        
-        <div class="field">
-          <label for="select-trabajador">Trabajador <span class="req">*</span></label>
-          <select id="select-trabajador" required disabled>
-            <option value="">Seleccione Trabajador...</option>
-          </select>
-        </div>
-
-        <div class="grid-2">
-          <div class="field">
-            <label for="input-cc">Identificación (C.C.)</label>
-            <input type="text" id="input-cc" readonly placeholder="Cédula del trabajador">
-          </div>
-          <div class="field">
-            <label for="input-cargo">Cargo</label>
-            <input type="text" id="input-cargo" readonly placeholder="Cargo del trabajador">
-          </div>
-        </div>
 
         <div class="grid-2">
           <div class="field">
@@ -204,7 +261,7 @@
           </div>
         </div>
 
-        <div class="field">
+        <div class="field" id="field-cliente">
           <label for="select-cliente">Cliente Asociado <span class="req">*</span></label>
           <select id="select-cliente" required>
             <option value="">Seleccione Cliente...</option>
@@ -218,30 +275,30 @@
 
         <div class="field" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
           <input type="checkbox" id="chk-enviar-correo" style="width: auto; cursor: pointer; height: 18px; width: 18px;" checked>
-          <label for="chk-enviar-correo" style="display: inline; margin-bottom: 0; cursor: pointer; font-size: 0.92rem; color: #475569;">Enviar enlace de firma por correo electrónico al trabajador</label>
+          <label for="chk-enviar-correo" style="display: inline; margin-bottom: 0; cursor: pointer; font-size: 0.92rem; color: #475569;">Enviar enlace de firma por correo electrónico al trabajador automáticamente</label>
         </div>
       </div>
 
       <div style="display: flex; gap: 12px; margin-top: 20px;">
         <button type="button" id="btn-cancelar-form" class="btn-submit" style="flex: 1; width: auto; background: #cbd5e1; color: #334155; box-shadow: none;">Cancelar</button>
-        <button type="submit" class="btn-submit" id="btn-registrar" style="flex: 3; width: auto;">Registrar Consentimiento y Generar Enlace</button>
+        <button type="submit" class="btn-submit" id="btn-registrar" style="flex: 3; width: auto;">Registrar Consentimientos y Generar Enlaces</button>
       </div>
     </form>
 
-    <!-- Éxito y enlace generado -->
+    <!-- Éxito y enlaces generados -->
     <div class="success-card" id="success-panel">
       <div class="success-icon">✓</div>
-      <div class="success-title">Consentimiento Registrado con Éxito</div>
-      <div class="success-text">
-        Se ha registrado la solicitud y enviado el enlace al correo del colaborador.
-        También puedes copiar el enlace y enviárselo directamente por WhatsApp:
+      <div class="success-title">Consentimientos Registrados con Éxito</div>
+      <div class="success-text" style="margin-bottom: 16px;">
+        Se registraron los consentimientos. A continuación se detallan los enlaces personales para que cada trabajador pueda firmar digitalmente.
       </div>
-      <div class="link-box" id="link-firma">...</div>
+      
+      <div id="lista-enlaces-creados" style="margin-bottom: 24px; text-align: left; max-height: 400px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px;">
+        <!-- Se generará dinámicamente -->
+      </div>
+
       <div class="btn-group-success">
-        <a id="btn-firmar-ahora" href="#" target="_blank" class="btn-success-action btn-pri" style="background: #10b981;">Firmar Ahora</a>
-        <a id="btn-whatsapp" href="#" target="_blank" class="btn-success-action btn-wa">Enviar por WhatsApp</a>
-        <button id="btn-copiar" class="btn-success-action btn-sec">Copiar Enlace</button>
-        <a id="btn-volver" href="#" class="btn-success-action btn-pri">Ir al Listado</a>
+        <a id="btn-volver" href="#" class="btn-success-action btn-pri">Volver al Listado</a>
       </div>
     </div>
   </div>
@@ -273,8 +330,8 @@
     // Llenar Regionales
     const regSelect = document.getElementById('select-regional');
     const opSelect = document.getElementById('select-operacion');
-    const trabSelect = document.getElementById('select-trabajador');
     const clienteSelect = document.getElementById('select-cliente');
+    let formTrabajadores = []; // Lista de cédulas seleccionadas
 
     CONFIG.regionalesFiltro.forEach(reg => {
       const opt = document.createElement('option');
@@ -287,10 +344,8 @@
       const reg = this.value;
       opSelect.innerHTML = '<option value="">Seleccione Operación...</option>';
       opSelect.disabled = true;
-      trabSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
-      trabSelect.disabled = true;
-      document.getElementById('input-cc').value = '';
-      document.getElementById('input-cargo').value = '';
+      
+      limpiarChecklist();
 
       if (reg) {
         const ops = CONFIG.opsPorRegional[reg] || [];
@@ -304,47 +359,153 @@
       }
     });
 
-    opSelect.addEventListener('change', async function() {
-      const op = this.value;
-      const reg = regSelect.value;
-      trabSelect.innerHTML = '<option value="">Seleccione Trabajador...</option>';
-      trabSelect.disabled = true;
-      document.getElementById('input-cc').value = '';
-      document.getElementById('input-cargo').value = '';
+    opSelect.addEventListener('change', cargarTrabajadoresParaChecklist);
 
-      if (op && reg) {
-        showLoading('Buscando trabajadores...');
-        try {
-          const r = await fetch(`/pruebaconsumo/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
-          const workers = await r.json();
-          workers.forEach(w => {
-            const opt = document.createElement('option');
-            opt.value = w.identificacion;
-            const nombreLimpio = w.Trabajador.includes(' ** ') ? w.Trabajador.split(' ** ')[1] : w.Trabajador;
-            opt.textContent = nombreLimpio;
-            opt.dataset.nombre = nombreLimpio;
-            opt.dataset.cargo = w.Cargo;
-            trabSelect.appendChild(opt);
-          });
-          trabSelect.disabled = false;
-        } catch (e) {
-          console.error(e);
-          alert('Error al buscar trabajadores');
-        } finally {
-          hideLoading();
+    opSelect.addEventListener('change', function() {
+       const op = this.value;
+       const fieldCliente = document.getElementById('field-cliente');
+       
+       const isAdmin = op.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === 'administracion';
+       
+       if (isAdmin) {
+         fieldCliente.style.display = 'none';
+         
+         // Asegurar que LOGYSER exista
+         let exists = false;
+         for (let i = 0; i < clienteSelect.options.length; i++) {
+           if (clienteSelect.options[i].value === 'LOGYSER') {
+             exists = true;
+             break;
+           }
+         }
+         if (!exists) {
+           const opt = document.createElement('option');
+           opt.value = 'LOGYSER';
+           opt.textContent = 'LOGYSER';
+           clienteSelect.appendChild(opt);
+         }
+         clienteSelect.value = 'LOGYSER';
+         clienteSelect.removeAttribute('required');
+       } else {
+         fieldCliente.style.display = 'block';
+         clienteSelect.setAttribute('required', '');
+         if (clienteSelect.value === 'LOGYSER') {
+           clienteSelect.value = '';
+         }
+       }
+     });
+
+    function limpiarChecklist() {
+      formTrabajadores = [];
+      document.getElementById('form-trabajadores-count').innerText = '0';
+      document.getElementById('checklist-wrap').style.display = 'none';
+      document.getElementById('checklist-empty').style.display = 'block';
+      document.getElementById('form-checklist-body').innerHTML = '';
+      document.getElementById('chk-seleccionar-todos').checked = false;
+      document.getElementById('checklist-search-input').value = '';
+    }
+
+    async function cargarTrabajadoresParaChecklist() {
+      const reg = regSelect.value;
+      const op = opSelect.value;
+      const wrap = document.getElementById('checklist-wrap');
+      const empty = document.getElementById('checklist-empty');
+      const body = document.getElementById('form-checklist-body');
+      const chkTodos = document.getElementById('chk-seleccionar-todos');
+
+      limpiarChecklist();
+
+      if (!reg || !op) return;
+
+      showLoading('Buscando trabajadores...');
+      try {
+        const r = await fetch(`/pruebaconsumo/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+        const trabajadores = await r.json();
+
+        if (!trabajadores.length) {
+          body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos en esta operación.</div>';
+          wrap.style.display = 'block';
+          empty.style.display = 'none';
+          return;
         }
+
+        trabajadores.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'checklist-item';
+          const idCheckbox = `chk-t-${t.identificacion}`;
+
+          let nombreLimpio = t.Trabajador || '';
+          if (nombreLimpio.includes(' ** ')) {
+            const parts = nombreLimpio.split(' ** ');
+            nombreLimpio = parts[parts.length - 1];
+          }
+          nombreLimpio = nombreLimpio.trim();
+
+          // Store search text in a data attribute to search by identification and name
+          div.setAttribute('data-search', `${t.identificacion} ${nombreLimpio}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
+          div.innerHTML = `
+            <input type="checkbox" id="${idCheckbox}" value="${t.identificacion}">
+            <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'})</span></label>
+          `;
+
+          const checkbox = div.querySelector('input[type="checkbox"]');
+          checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              if (!formTrabajadores.includes(t.identificacion)) {
+                formTrabajadores.push(t.identificacion);
+              }
+            } else {
+              formTrabajadores = formTrabajadores.filter(id => id !== t.identificacion);
+            }
+            document.getElementById('form-trabajadores-count').innerText = formTrabajadores.length;
+          });
+
+          div.addEventListener('click', (e) => {
+            if (e.target !== checkbox && e.target.tagName !== 'LABEL') {
+              checkbox.checked = !checkbox.checked;
+              checkbox.dispatchEvent(new Event('change'));
+            }
+          });
+
+          body.appendChild(div);
+        });
+
+        wrap.style.display = 'block';
+        empty.style.display = 'none';
+      } catch (e) {
+        console.error(e);
+        alert('Error al buscar trabajadores');
+      } finally {
+        hideLoading();
       }
+    }
+
+    // Búsqueda en el checklist
+    document.getElementById('checklist-search-input').addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const items = document.querySelectorAll('.checklist-item');
+      items.forEach(item => {
+        const searchStr = item.getAttribute('data-search') || '';
+        if (searchStr.includes(val)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
     });
 
-    trabSelect.addEventListener('change', function() {
-      const opt = this.options[this.selectedIndex];
-      if (opt && opt.value) {
-        document.getElementById('input-cc').value = opt.value;
-        document.getElementById('input-cargo').value = opt.dataset.cargo || '';
-      } else {
-        document.getElementById('input-cc').value = '';
-        document.getElementById('input-cargo').value = '';
-      }
+    // Seleccionar Todos
+    document.getElementById('chk-seleccionar-todos').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+      checkboxes.forEach(cb => {
+        const itemDom = cb.closest('.checklist-item');
+        if (itemDom.style.display !== 'none') {
+          cb.checked = checked;
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
     });
 
     // Cargar clientes
@@ -369,59 +530,127 @@
       window.location.href = `/pruebaconsumo?usuario=${CONFIG.usuarioId}`;
     });
 
+    // Copiar enlace helper
+    window.copiarAlPortapapeles = function(text) {
+      navigator.clipboard.writeText(text);
+      alert('Enlace copiado al portapapeles');
+    };
+
     document.getElementById('form-cpc').addEventListener('submit', async function(e) {
       e.preventDefault();
       
-      const opt = trabSelect.options[trabSelect.selectedIndex];
-      if (!opt || !opt.value) {
-        alert('Debe seleccionar un trabajador');
+      const fecha = document.getElementById('input-fecha').value;
+      const enviar_correo = document.getElementById('chk-enviar-correo').checked;
+      const ciudad = document.getElementById('input-ciudad').value;
+      const opVal = opSelect.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const cliente = opVal === 'administracion' ? 'LOGYSER' : clienteSelect.value;
+      const observaciones = document.getElementById('input-obs').value;
+
+      if (!formTrabajadores.length) {
+        alert('Debe seleccionar al menos un colaborador');
         return;
       }
 
-      const payload = {
-        fecha: document.getElementById('input-fecha').value,
-        identificacion: opt.value,
-        nombre_trabajador: opt.dataset.nombre,
-        cargo: opt.dataset.cargo,
-        ciudad: document.getElementById('input-ciudad').value,
-        cliente: clienteSelect.value,
-        observaciones: document.getElementById('input-obs').value,
-        usuario: CONFIG.usuarioId,
-        enviar_correo: document.getElementById('chk-enviar-correo').checked
-      };
-
-      showLoading('Registrando consentimiento...');
+      showLoading('Registrando consentimientos...');
       try {
-        const r = await fetch('/pruebaconsumo/api/crear', {
+        const r = await fetch('/pruebaconsumo/api/crear-masivo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            fecha,
+            identificaciones: formTrabajadores,
+            ciudad,
+            cliente,
+            observaciones,
+            usuario: CONFIG.usuarioId,
+            enviar_correo
+          })
         });
         const resp = await r.json();
-        if (r.ok && resp.ok) {
-          // Ocultar formulario, mostrar éxito
-          document.getElementById('form-cpc').style.display = 'none';
-          document.getElementById('form-header').style.display = 'none';
-          
-          document.getElementById('link-firma').innerText = resp.urlFirma;
-          
-          // Configurar botón Firmar Ahora
-          document.getElementById('btn-firmar-ahora').href = resp.urlFirma;
+        if (r.ok && resp.resultados) {
+          const listBody = document.getElementById('lista-enlaces-creados');
+          listBody.innerHTML = '';
 
-          // Configurar WhatsApp
-          const celNum = ''; // El celular se puede rellenar o se asocia en WhatsApp si hay datos
-          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Consentimiento Informado de Prueba de Toxicología: ${resp.urlFirma}`);
-          document.getElementById('btn-whatsapp').href = `https://wa.me/?text=${msgWaText}`;
-          
-          // Botón copiar
-          document.getElementById('btn-copiar').addEventListener('click', function() {
-            navigator.clipboard.writeText(resp.urlFirma);
-            alert('Enlace copiado al portapapeles');
+          resp.resultados.forEach(res => {
+            const div = document.createElement('div');
+            div.style = 'display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #e2e8f0; gap: 12px; flex-wrap: wrap;';
+
+            // Whatsapp message formatting
+            const textWa = `Hola ${res.trabajador}, por favor ingresa al siguiente enlace para firmar tu Consentimiento Informado de Prueba de Toxicología: ${res.urlFirma}`;
+            const cleanCel = res.celular ? res.celular.replace(/\D/g, '') : '';
+            let phoneParam = '';
+            if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+              phoneParam = '57' + cleanCel;
+            } else if (cleanCel) {
+              phoneParam = cleanCel;
+            }
+            const waLink = `https://wa.me/${phoneParam}?text=${encodeURIComponent(textWa)}`;
+
+            div.innerHTML = `
+              <div style="flex: 1; min-width: 250px;">
+                <div style="font-weight: 700; color: #1e293b; font-size: .92rem;">${res.trabajador}</div>
+                <div style="font-size: .8rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span>C.C. ${res.identificacion}</span>
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    Cel: <input type="text" class="input-edit-cel" value="${res.celular || ''}" placeholder="Celular" style="width: 100px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .78rem;">
+                  </span>
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    Email: <input type="email" class="input-edit-email" value="${res.email || ''}" placeholder="Correo" style="width: 140px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .78rem;">
+                  </span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn-success-action btn-sec" style="font-size:.8rem; padding: 6px 12px;" onclick="copiarAlPortapapeles('${res.urlFirma}')">Copiar Enlace</button>
+                <a href="${waLink}" target="_blank" class="btn-success-action btn-wa" style="font-size:.8rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+                  💬 WhatsApp
+                </a>
+              </div>
+            `;
+
+            const celInput = div.querySelector('.input-edit-cel');
+            const emailInput = div.querySelector('.input-edit-email');
+            const waButton = div.querySelector('.btn-wa');
+
+            const handleContactUpdate = () => {
+              const newCel = celInput.value.trim();
+              const newEmail = emailInput.value.trim();
+
+              fetch('/pruebaconsumo/api/actualizar-contacto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  identificacion: res.identificacion,
+                  celular: newCel,
+                  email: newEmail
+                })
+              }).catch(e => console.error('Error updating contact:', e));
+
+              const cleanCel = newCel.replace(/\D/g, '');
+              let phoneParam = '';
+              if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+                phoneParam = '57' + cleanCel;
+              } else if (cleanCel) {
+                phoneParam = cleanCel;
+              }
+              waButton.href = `https://wa.me/${phoneParam}?text=${encodeURIComponent(textWa)}`;
+            };
+
+            celInput.addEventListener('change', handleContactUpdate);
+            emailInput.addEventListener('change', handleContactUpdate);
+
+            listBody.appendChild(div);
           });
 
+          // Remove border-bottom of the last child
+          if (listBody.lastChild) {
+            listBody.lastChild.style.borderBottom = 'none';
+          }
+
+          document.getElementById('form-cpc').style.display = 'none';
+          document.getElementById('form-header').style.display = 'none';
           document.getElementById('success-panel').style.display = 'block';
         } else {
-          alert(resp.error || 'Error al registrar consentimiento');
+          alert(resp.error || 'Error al registrar consentimientos');
         }
       } catch (e) {
         console.error(e);

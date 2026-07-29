@@ -1265,7 +1265,7 @@ async function notificarFirmaEvaluacionSST({ email, nombreTrabajador, tipo, urlF
   `;
 
   await transporter.sendMail({
-    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER}>`,
+    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER || EMAIL_FROM}>`,
     to: email,
     subject: asunto,
     html: cuerpo,
@@ -1313,7 +1313,7 @@ async function notificarEvaluacionSSTCompletada({ email, nombreTrabajador, tipo,
   const ccList = ['admin@logyser.com', 'sst.nacional@logyser.com', 'sstadmon@logyser.com'];
 
   await transporter.sendMail({
-    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER}>`,
+    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER || EMAIL_FROM}>`,
     to: email,
     cc: ccList.join(', '),
     subject: asunto,
@@ -1356,7 +1356,7 @@ async function notificarFirmaCapacitacionSST({ email, nombreTrabajador, tema, ur
   `;
 
   await transporter.sendMail({
-    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER}>`,
+    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER || EMAIL_FROM}>`,
     to: email,
     subject: asunto,
     html: cuerpo,
@@ -1404,7 +1404,7 @@ async function notificarCapacitacionSSTCompletada({ email, nombreTrabajador, tem
   const ccList = ['admin@logyser.com', 'sst.nacional@logyser.com', 'sstadmon@logyser.com'];
 
   await transporter.sendMail({
-    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER}>`,
+    from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_USER || EMAIL_FROM}>`,
     to: email,
     cc: ccList.join(', '),
     subject: asunto,

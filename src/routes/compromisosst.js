@@ -730,7 +730,7 @@ router.post('/api/crear', async (req, res) => {
       const emailUsuario = usuRows.length ? usuRows[0].Email : null;
 
       if (emailTrabajador) {
-        await enviarCorreoFirmaTrabajadorSST({
+        enviarCorreoFirmaTrabajadorSST({
           email: emailTrabajador,
           nombreTrabajador: cleanNombreTrabajador,
           urlFirma: urlFirmaTrab,
@@ -743,6 +743,164 @@ router.post('/api/crear', async (req, res) => {
   } catch (err) {
     console.error('[compromisosst] POST /api/crear:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/crear-masivo ═════
+router.post('/api/crear-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const {
+      identificaciones,
+      observaciones,
+      usuario,
+      enviar_correo
+    } = req.body;
+
+    if (!identificaciones || !identificaciones.length || !usuario) {
+      return res.status(400).json({ error: 'Todos los campos obligatorios deben ser diligenciados' });
+    }
+
+    // Resolving Analyst metadata
+    const [userRows] = await conn.execute('SELECT Colaborador, Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    let analystCC = '0000000000';
+    let analystName = usuario;
+    let analystCargo = 'SST ADMINISTRADOR/SISTEMA';
+
+    if (userRows.length) {
+      const u = userRows[0];
+      const colaborador = u.Colaborador || '';
+      let parsedCC = '';
+      if (colaborador.includes(' ** ')) {
+        parsedCC = colaborador.split(' ** ')[0].trim();
+      }
+
+      let vinRows = [];
+      if (parsedCC) {
+        const [rows] = await conn.execute(
+          `SELECT Identificación, Trabajador, Cargo 
+           FROM \`Maestro_Vinculación\` 
+           WHERE Identificación = ? 
+           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+          [parsedCC]
+        );
+        vinRows = rows;
+      }
+
+      if (!vinRows.length && colaborador) {
+        const [rows] = await conn.execute(
+          `SELECT Identificación, Trabajador, Cargo 
+           FROM \`Maestro_Vinculación\` 
+           WHERE Trabajador = ? 
+           ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+          [colaborador]
+        );
+        vinRows = rows;
+      }
+
+      if (vinRows.length) {
+        analystCC = vinRows[0].Identificación;
+        analystName = vinRows[0].Trabajador;
+        if (analystName.includes(' ** ')) {
+          analystName = analystName.split(' ** ')[1];
+        }
+        analystCargo = vinRows[0].Cargo;
+      } else {
+        analystName = u.Nombre || usuario;
+      }
+    }
+
+    const protocol = req.secure ? 'https' : 'http';
+    const host = req.get('host');
+    const resultados = [];
+
+    await conn.beginTransaction();
+
+    for (const identificacion of identificaciones) {
+      // Get worker name and cargo
+      const [vinRows] = await conn.execute(
+        `SELECT Trabajador, Cargo 
+         FROM \`Maestro_Vinculación\` 
+         WHERE Identificación = ? 
+         ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+        [identificacion]
+      );
+      if (!vinRows.length) continue;
+
+      const trabajadorNombre = vinRows[0].Trabajador;
+      const cargo = vinRows[0].Cargo;
+
+      // Limpieza de nombre del trabajador
+      let cleanNombreTrabajador = trabajadorNombre || '';
+      if (cleanNombreTrabajador.includes(' ** ')) {
+        cleanNombreTrabajador = cleanNombreTrabajador.split(' ** ')[1] || cleanNombreTrabajador;
+      }
+      cleanNombreTrabajador = cleanNombreTrabajador.trim();
+
+      const idcsst = uuidv4();
+      const tokenTrab = crypto.randomBytes(32).toString('hex');
+      const tokenTrabExp = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+
+      await conn.execute(
+        `INSERT INTO Dynamic_compromisosst 
+         (idcsst, identificaciontrabajador, nombre_trabajador, cargo_trabajador,
+          identificacionanalista, nombre_analista, cargo_analista,
+          firma_trabajador, url_firma_trabajador,
+          firma_analista, url_firma_analista,
+          firma_lidersst, url_firma_lidersst,
+          url_doc, observaciones, token_trabajador, token_trabajador_expira, usuario)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?)`,
+        [
+          idcsst,
+          identificacion,
+          cleanNombreTrabajador,
+          cargo || '',
+          analystCC,
+          analystName,
+          analystCargo,
+          observaciones || '',
+          tokenTrab,
+          tokenTrabExp,
+          usuario
+        ]
+      );
+
+      // Obtener email y celular para notificación
+      const [segRows] = await conn.execute('SELECT Email, Celular FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1', [identificacion]);
+      const [usuRows] = await conn.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+
+      const emailTrabajador = segRows.length ? segRows[0].Email : null;
+      const celular = segRows.length ? segRows[0].Celular : null;
+      const emailUsuario = usuRows.length ? usuRows[0].Email : null;
+
+      const urlFirmaTrab = `${protocol}://${host}/compromisosst/firmar-trabajador?item=${idcsst}&token=${tokenTrab}`;
+
+      resultados.push({
+        identificacion,
+        trabajador: cleanNombreTrabajador,
+        celular,
+        email: emailTrabajador,
+        urlFirma: urlFirmaTrab
+      });
+
+      if (enviar_correo && emailTrabajador) {
+        enviarCorreoFirmaTrabajadorSST({
+          email: emailTrabajador,
+          nombreTrabajador: cleanNombreTrabajador,
+          urlFirma: urlFirmaTrab,
+          emailUsuario
+        }).catch(e => console.error('[compromisosst] Error enviando correo masivo al trabajador:', e.message));
+      }
+    }
+
+    await conn.commit();
+    res.json({ ok: true, resultados });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[compromisosst] POST /api/crear-masivo:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 

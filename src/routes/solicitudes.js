@@ -312,6 +312,91 @@ router.get('/api/solicitudes', async (req, res) => {
   }
 });
 
+// ═════ API: GET /api/conteos-filtros ═════
+router.get('/api/conteos-filtros', async (req, res) => {
+  try {
+    const { usuario, estado, regional, operacion, categoria, fechaDesde, fechaHasta } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoSolicitud(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    // Filtros de control de acceso (base)
+    const baseConds = [];
+    const baseParams = [];
+
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) {
+        return res.json({ regionales: {}, operaciones: {} });
+      }
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      baseConds.push(`\`Operación\` IN (${ph})`);
+      baseParams.push(...acceso.operacionesFiltro);
+    }
+
+    // Filtros dinámicos compartidos (estado, categoría, fechas)
+    const sharedConds = [];
+    const sharedParams = [];
+
+    if (estado) { sharedConds.push('Estado = ?'); sharedParams.push(estado); }
+    if (categoria) { sharedConds.push('Categoria = ?'); sharedParams.push(categoria); }
+    if (fechaDesde) { sharedConds.push('FechaSolicitud >= ?'); sharedParams.push(fechaDesde); }
+    if (fechaHasta) {
+      const hasta = fechaHasta.includes(':') ? fechaHasta : `${fechaHasta} 23:59:59`;
+      sharedConds.push('FechaSolicitud <= ?');
+      sharedParams.push(hasta);
+    }
+
+    // 1. Query para Regionales (aplica filtros compartidos y Operación, pero excluye Regional)
+    const regConds = [...baseConds, ...sharedConds];
+    const regParams = [...baseParams, ...sharedParams];
+    if (operacion) {
+      regConds.push('`Operación` = ?');
+      regParams.push(operacion);
+    }
+    const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
+
+    const [regRows] = await pool.execute(
+      `SELECT Regional, COUNT(*) AS total FROM Dynamic_Solicitudes ${regWhere} GROUP BY Regional`,
+      regParams
+    );
+
+    // 2. Query para Operaciones (aplica filtros compartidos y Regional, pero excluye Operación)
+    const opConds = [...baseConds, ...sharedConds];
+    const opParams = [...baseParams, ...sharedParams];
+    if (regional) {
+      opConds.push('Regional = ?');
+      opParams.push(regional);
+    }
+    const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
+
+    const [opRows] = await pool.execute(
+      `SELECT \`Operación\`, COUNT(*) AS total FROM Dynamic_Solicitudes ${opWhere} GROUP BY \`Operación\``,
+      opParams
+    );
+
+    const regionales = {};
+    regRows.forEach(r => {
+      if (r.Regional) regionales[r.Regional] = r.total;
+    });
+
+    const operaciones = {};
+    opRows.forEach(o => {
+      const key = o['Operación'];
+      if (key) operaciones[key] = o.total;
+    });
+
+    res.json({ regionales, operaciones });
+  } catch (err) {
+    console.error('[solicitudes] GET /api/conteos-filtros:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: POST /api/solicitudes ═════
 router.post('/api/solicitudes', async (req, res) => {
   const conn = await pool.getConnection();

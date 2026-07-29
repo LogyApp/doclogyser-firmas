@@ -777,7 +777,7 @@
         const controlBox = document.getElementById('opciones-control');
         controlBox.innerHTML = '';
         
-        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol));
         const esAutorizadoEliminar = ['AdmSst', 'LiderSst', 'Sistema'].includes(CONFIG.rol);
 
         let optsHtml = '';

@@ -129,8 +129,18 @@
     table { width: 100%; border-collapse: collapse; font-size: .88rem; table-layout: fixed; }
     th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e8e8e8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     th { background: #f9fafb; font-weight: 600; color: #666; position: relative; }
-    th::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 3px; background: transparent; cursor: col-resize; }
-    th:hover::after { background: #8e44ad; }
+    .th-resize {
+      position: absolute; top: 0; right: -4px; width: 10px; height: 100%;
+      cursor: col-resize; touch-action: none; z-index: 2;
+    }
+    .th-resize::after {
+      content: ''; position: absolute; top: 15%; bottom: 15%; left: 4px; width: 2px;
+      background: #ddd; border-radius: 2px;
+    }
+    .th-resize:hover::after, .th-resize.resizing::after { background: #8e44ad; }
+    .th-label { cursor: pointer; }
+    .th-label:hover { color: #8e44ad; }
+    .sort-arrow { font-size: .7rem; color: #8e44ad; margin-left: 2px; }
     #tabla-solicitudes tbody tr:hover td { background: #eef4ff; }
     tr.clickable:hover { cursor: pointer; }
     
@@ -211,8 +221,24 @@
     .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #ddd; border-top-color: #8e44ad; border-radius: 50%; animation: spin .6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Filtros plegables ── */
+    .filtros-toggle {
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
+    }
+    .filtros-toggle-left { display: flex; align-items: center; gap: 8px; }
+    .filtros-badge {
+      display: none; align-items: center; justify-content: center;
+      background: #8e44ad; color: #fff; border-radius: 999px;
+      font-size: .68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
+    }
+    .filtros-chevron { display: inline-block; transition: transform .2s ease; color: #8e44ad; font-size: .85rem; }
+    #filtros-body { overflow: hidden; }
+    .grid-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+
     /* ── Responsive ── */
     @media (max-width: 600px) {
+      .grid-filtros { grid-template-columns: 1fr; }
       .card-titulo { flex-direction: column; text-align: center; }
       .card-titulo img { height: 40px; }
       .page-title { font-size: 1rem; }
@@ -244,8 +270,15 @@
     </div>
 
     <div class="card card-purple">
-      <div class="section-title">Filtros</div>
-      <div class="two-col">
+      <div class="section-title filtros-toggle" id="filtros-toggle">
+        <span class="filtros-toggle-left">
+          Filtros
+          <span class="filtros-badge" id="filtros-badge">0</span>
+        </span>
+        <span class="filtros-chevron" id="filtros-chevron">▸</span>
+      </div>
+      <div id="filtros-body">
+      <div class="grid-filtros" style="margin-top: 16px;">
         <div class="field">
           <label class="lbl">Estado</label>
           <select id="filtro-estado">
@@ -285,9 +318,10 @@
           <input type="date" id="filtro-desde">
         </div>
       </div>
-      
-      <div class="btns-grupo">
-        <button class="btn btn-primary" onclick="aplicarFiltros()">🔍 Buscar</button>
+
+      <div class="btns-grupo" style="justify-content: flex-end;">
+        <button class="btn btn-secondary" id="btn-limpiar-filtros">Limpiar</button>
+      </div>
       </div>
     </div>
 
@@ -299,17 +333,16 @@
       <table id="tabla-solicitudes">
         <thead>
           <tr>
-            <th style="width: 180px;">Usuario</th>
-            <th>Fecha</th>
-            <th>Operación</th>
-            <th>Regional</th>
-            <th>Categoría</th>
-            <th>Estado</th>
-            <th style="width: 60px; text-align: center;">Acciones</th>
+            <th style="width: 180px;"><span class="th-label" data-key="usuario">Usuario</span></th>
+            <th><span class="th-label" data-key="fecha">Fecha</span></th>
+            <th><span class="th-label" data-key="operacion">Operación</span></th>
+            <th><span class="th-label" data-key="regional">Regional</span></th>
+            <th><span class="th-label" data-key="categoria">Categoría</span></th>
+            <th><span class="th-label" data-key="estado">Estado</span></th>
           </tr>
         </thead>
         <tbody>
-          <tr><td colspan="7" style="text-align: center; padding: 40px; color: #bbb;">Cargando solicitudes...</td></tr>
+          <tr><td colspan="6" style="text-align: center; padding: 40px; color: #bbb;">Cargando solicitudes...</td></tr>
         </tbody>
       </table>
     </div>
@@ -642,6 +675,7 @@
 
       prepararFormularioAcceso();
       habilitarRedimensionColumnas();
+      habilitarOrdenSolicitudes();
 
       // Obtener artículos
       const resArt = await fetch(`${API_BASE}/articulos`);
@@ -661,16 +695,38 @@
     }
   }
 
-  // ═════ CARGAR SOLICITUDES ═════
+  // ═════ CARGAR SOLICITUDES (lee los filtros actuales y refresca conteos) ═════
   async function cargarSolicitudes() {
     const loading = document.getElementById('loading-listado');
     loading.style.display = 'block';
 
     try {
-      const res = await fetch(`${API_BASE}/solicitudes?usuario=${encodeURIComponent(usuarioId)}`);
+      const estado = document.getElementById('filtro-estado').value;
+      const regional = document.getElementById('filtro-regional').value;
+      const operacion = document.getElementById('filtro-operacion').value;
+      const categoria = document.getElementById('filtro-categoria').value;
+      const desde = document.getElementById('filtro-desde').value;
+
+      const q = new URLSearchParams();
+      if (estado) q.append('estado', estado);
+      if (regional) q.append('regional', regional);
+      if (operacion) q.append('operacion', operacion);
+      if (categoria) q.append('categoria', categoria);
+      if (desde) q.append('fechaDesde', desde);
+      q.append('usuario', usuarioId);
+
+      const [res, resConteos] = await Promise.all([
+        fetch(`${API_BASE}/solicitudes?${q.toString()}`),
+        fetch(`${API_BASE}/conteos-filtros?${q.toString()}`)
+      ]);
       if (!res.ok) throw new Error('Error cargando solicitudes');
 
       solicitudes = await res.json();
+      const counts = resConteos.ok ? await resConteos.json() : { regionales: {}, operaciones: {} };
+
+      actualizarSelectsFiltroConConteos(counts, regional, operacion);
+      actualizarBadgeFiltros();
+
       document.getElementById('badge-total').innerHTML = `📊 Total: ${solicitudes.length}`;
       renderizarTabla();
     } catch (err) {
@@ -681,58 +737,156 @@
     }
   }
 
+  // Repuebla los selects de Regional y Operación con el conteo de solicitudes de cada opción,
+  // preservando la selección actual (igual que en el módulo de compromisosst).
+  function actualizarSelectsFiltroConConteos(counts, currentRegional, currentOperacion) {
+    const rSel = document.getElementById('filtro-regional');
+    const oSel = document.getElementById('filtro-operacion');
+    const regionales = regionalesPermitidas();
+
+    rSel.innerHTML = '<option value="">Todas</option>';
+    regionales.forEach((reg) => {
+      const count = (counts.regionales && counts.regionales[reg]) || 0;
+      const opt = document.createElement('option');
+      opt.value = reg;
+      opt.textContent = `${reg} (${count})`;
+      if (reg === currentRegional) opt.selected = true;
+      rSel.appendChild(opt);
+    });
+
+    const operaciones = currentRegional
+      ? operacionesPermitidasPorRegional(currentRegional)
+      : [...new Set(Object.values(config.opsPorRegional).flat())].sort(ordenarTexto);
+
+    oSel.innerHTML = '<option value="">Todas</option>';
+    operaciones.forEach((op) => {
+      const count = (counts.operaciones && counts.operaciones[op]) || 0;
+      const opt = document.createElement('option');
+      opt.value = op;
+      opt.textContent = `${op} (${count})`;
+      if (op === currentOperacion) opt.selected = true;
+      oSel.appendChild(opt);
+    });
+  }
+
+  // ═════ FILTROS PLEGABLES ═════
+  const filtrosToggle = document.getElementById('filtros-toggle');
+  const filtrosBody = document.getElementById('filtros-body');
+  const filtrosChevron = document.getElementById('filtros-chevron');
+  let filtrosAbiertos = false;
+
+  function setFiltrosState(open) {
+    filtrosAbiertos = open;
+    filtrosBody.style.display = open ? 'block' : 'none';
+    filtrosChevron.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+  }
+  filtrosToggle.addEventListener('click', () => setFiltrosState(!filtrosAbiertos));
+  setFiltrosState(false);
+
+  function actualizarBadgeFiltros() {
+    const badge = document.getElementById('filtros-badge');
+    let count = 0;
+    if (document.getElementById('filtro-estado').value) count++;
+    if (document.getElementById('filtro-regional').value) count++;
+    if (document.getElementById('filtro-operacion').value) count++;
+    if (document.getElementById('filtro-categoria').value) count++;
+    if (document.getElementById('filtro-desde').value) count++;
+    badge.innerText = count;
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
+
+  document.getElementById('filtro-estado').addEventListener('change', cargarSolicitudes);
+  document.getElementById('filtro-regional').addEventListener('change', cargarSolicitudes);
+  document.getElementById('filtro-operacion').addEventListener('change', cargarSolicitudes);
+  document.getElementById('filtro-categoria').addEventListener('change', cargarSolicitudes);
+  document.getElementById('filtro-desde').addEventListener('change', cargarSolicitudes);
+
+  document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+    document.getElementById('filtro-estado').value = '';
+    document.getElementById('filtro-regional').value = '';
+    document.getElementById('filtro-categoria').value = '';
+    document.getElementById('filtro-desde').value = '';
+    cargarSolicitudes();
+  });
+
+  // ═════ ORDENAMIENTO DE LA TABLA ═════
+  const sortStateSolicitudes = { key: null, dir: 'asc' };
+
+  function getSortValueSolicitud(sol, key) {
+    switch (key) {
+      case 'usuario': return (sol.Usuario || '').toLowerCase();
+      case 'fecha': return sol.FechaSolicitud || '';
+      case 'operacion': return (sol['Operación'] || '').toLowerCase();
+      case 'regional': return (sol.Regional || '').toLowerCase();
+      case 'categoria': return (sol.Categoria || '').toLowerCase();
+      case 'estado': return (sol.Estado || '').toLowerCase();
+      default: return '';
+    }
+  }
+
+  function actualizarFlechasOrdenSolicitudes() {
+    document.querySelectorAll('#tabla-solicitudes thead .th-label').forEach((label) => {
+      const arrow = label.querySelector('.sort-arrow');
+      if (arrow) arrow.remove();
+      if (sortStateSolicitudes.key === label.dataset.key) {
+        const span = document.createElement('span');
+        span.className = 'sort-arrow';
+        span.textContent = sortStateSolicitudes.dir === 'asc' ? ' ▲' : ' ▼';
+        label.appendChild(span);
+      }
+    });
+  }
+
+  function habilitarOrdenSolicitudes() {
+    document.querySelectorAll('#tabla-solicitudes thead .th-label').forEach((label) => {
+      label.addEventListener('click', () => {
+        const key = label.dataset.key;
+        if (sortStateSolicitudes.key === key) {
+          sortStateSolicitudes.dir = sortStateSolicitudes.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortStateSolicitudes.key = key;
+          sortStateSolicitudes.dir = 'asc';
+        }
+        actualizarFlechasOrdenSolicitudes();
+        renderizarTabla();
+      });
+    });
+  }
+
   // ═════ RENDERIZAR TABLA ═════
   function renderizarTabla() {
     const tbody = document.querySelector('#tabla-solicitudes tbody');
-    
-    if (solicitudes.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #bbb;">No hay solicitudes</td></tr>';
+
+    let data = solicitudes.slice();
+    if (sortStateSolicitudes.key) {
+      data.sort((a, b) => {
+        const va = getSortValueSolicitud(a, sortStateSolicitudes.key);
+        const vb = getSortValueSolicitud(b, sortStateSolicitudes.key);
+        const cmp = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+        return sortStateSolicitudes.dir === 'asc' ? cmp : -cmp;
+      });
+    }
+
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #bbb;">No hay solicitudes</td></tr>';
       return;
     }
 
-    tbody.innerHTML = solicitudes.map(sol => `
-      <tr class="clickable" onclick="verDetalle('${sol.IdSolicitud}')">
+    // Las solicitudes en BORRADOR abren directo el formulario de edición (igual que el
+    // lápiz que existía en la columna Acciones); el resto abre el detalle de solo lectura.
+    tbody.innerHTML = data.map(sol => `
+      <tr class="clickable" onclick="${sol.Estado === 'BORRADOR' ? `editarSolicitud('${sol.IdSolicitud}')` : `verDetalle('${sol.IdSolicitud}')`}">
         <td>${sol.Usuario || '—'}</td>
         <td>${formatearFecha(sol.FechaSolicitud)}</td>
         <td>${sol['Operación'] || '—'}</td>
         <td>${sol.Regional || '—'}</td>
         <td>${sol.Categoria || '—'}</td>
         <td><span class="estado-badge estado-${sol.Estado}">${sol.Estado}</span></td>
-        <td style="text-align: center;">
-          ${sol.Estado === 'BORRADOR' ? `<button class="btn btn-small btn-secondary" onclick="event.stopPropagation(); editarSolicitud('${sol.IdSolicitud}')">✎</button>` : `<span style="color:#999;">—</span>`}
-        </td>
       </tr>
     `).join('');
   }
 
-  // ═════ APLICAR FILTROS ═════
-  async function aplicarFiltros() {
-    const estado = document.getElementById('filtro-estado').value;
-    const regional = document.getElementById('filtro-regional').value;
-    const operacion = document.getElementById('filtro-operacion').value;
-    const categoria = document.getElementById('filtro-categoria').value;
-    const desde = document.getElementById('filtro-desde').value;
-
-    try {
-      const q = new URLSearchParams();
-      if (estado) q.append('estado', estado);
-      if (regional) q.append('regional', regional);
-      if (operacion) q.append('operacion', operacion);
-      if (categoria) q.append('categoria', categoria);
-      if (desde) q.append('fechaDesde', desde);
-      q.append('usuario', usuarioId);
-
-      const res = await fetch(`${API_BASE}/solicitudes?${q.toString()}`);
-      if (!res.ok) throw new Error('Error en filtros');
-
-      solicitudes = await res.json();
-      document.getElementById('badge-total').innerHTML = `📊 Total: ${solicitudes.length}`;
-      renderizarTabla();
-      mostrarToast(`${solicitudes.length} solicitudes encontradas`, 'info');
-    } catch (err) {
-      mostrarToast('Error aplicando filtros', 'error');
-    }
-  }
+  const MIN_COL_WIDTH_SOLICITUDES = 70;
 
   function habilitarRedimensionTabla(table) {
     if (!table || table.dataset.resizable === '1') return;
@@ -741,26 +895,36 @@
     headers.forEach((th, idx) => {
       if (idx === headers.length - 1) return;
 
-      th.addEventListener('mousedown', (event) => {
-        const rect = th.getBoundingClientRect();
-        if ((rect.right - event.clientX) > 10) return;
+      const handle = document.createElement('span');
+      handle.className = 'th-resize';
+      handle.title = 'Arrastra para achicar o alargar la columna';
+      th.appendChild(handle);
 
-        event.preventDefault();
-        const startX = event.clientX;
-        const startWidth = th.offsetWidth;
+      let resizing = false;
+      let startX = 0;
+      let startWidth = 0;
 
-        const onMouseMove = (moveEvent) => {
-          th.style.width = `${Math.max(60, startWidth + moveEvent.clientX - startX)}px`;
-        };
-
-        const onMouseUp = () => {
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+      handle.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizing = true;
+        startX = e.clientX;
+        startWidth = th.getBoundingClientRect().width;
+        handle.classList.add('resizing');
+        try { handle.setPointerCapture(e.pointerId); } catch (err) {}
       });
+      handle.addEventListener('pointermove', (e) => {
+        if (!resizing) return;
+        const requested = Math.max(MIN_COL_WIDTH_SOLICITUDES, startWidth + (e.clientX - startX));
+        th.style.width = requested + 'px';
+      });
+      const finishResize = () => {
+        if (!resizing) return;
+        resizing = false;
+        handle.classList.remove('resizing');
+      };
+      handle.addEventListener('pointerup', finishResize);
+      handle.addEventListener('pointercancel', finishResize);
     });
 
     table.dataset.resizable = '1';
@@ -827,10 +991,6 @@
 
   document.getElementById('fn-regional').addEventListener('change', (event) => {
     poblarSelectOperacion(event.target.value);
-  });
-
-  document.getElementById('filtro-regional').addEventListener('change', (event) => {
-    poblarFiltroOperacion(event.target.value);
   });
 
   // ═════ MODAL ARTÍCULOS ═════

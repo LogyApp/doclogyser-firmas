@@ -126,87 +126,58 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Estilos para el Combobox de Trabajador */
-    .combobox-wrapper {
-      position: relative;
-      width: 100%;
-    }
-    .combobox-input {
-      width: 100%;
-      padding: 10px 14px;
+    /* ── Scrollable Checklist for Attendees ── */
+    .checklist-card {
       border: 1.5px solid #cbd5e1;
       border-radius: 8px;
-      font-size: .95rem;
-      color: #334155;
       background: #ffffff;
-      cursor: text;
-      position: relative;
-      transition: all .2s;
+      margin-top: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .combobox-input:focus {
-      outline: none;
-      border-color: #14b8a6;
-      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
-    }
-    .combobox-input:disabled {
-      background: #f8fafc !important;
-      color: #64748b !important;
-      cursor: not-allowed !important;
-      border-color: #e2e8f0 !important;
-    }
-    .combobox-wrapper::after {
-      content: '▼';
-      position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 0.75rem;
-      color: #64748b;
-      pointer-events: none;
-    }
-    .combobox-dropdown {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      width: 100%;
-      background: #ffffff;
-      border: 1.5px solid #14b8a6;
-      border-radius: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-      z-index: 50;
-      margin-top: 4px;
-      padding: 4px;
-      box-sizing: border-box;
-      display: none;
-      flex-direction: column;
-    }
-    .combobox-options {
-      max-height: 200px;
-      overflow-y: auto;
+    .checklist-header {
+      padding: 12px;
+      background: #f8fafc;
+      border-bottom: 1.5px solid #e2e8f0;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
-    .combobox-option {
+    .checklist-search {
+      width: 100%;
       padding: 8px 12px;
-      font-size: 0.92rem;
-      color: #334155;
-      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: .85rem;
+    }
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
       cursor: pointer;
-      transition: background 0.1s;
+      transition: background 0.15s;
     }
-    .combobox-option:hover {
-      background: #ccfbf1;
-      color: #0f766e;
+    .checklist-item:last-child {
+      border-bottom: none;
     }
-    .combobox-option.selected {
-      background: #14b8a6;
-      color: #ffffff;
+    .checklist-item:hover {
+      background: #f1f5f9;
     }
-    .combobox-no-results {
-      padding: 8px 12px;
-      font-size: 0.9rem;
-      color: #64748b;
-      text-align: center;
+    .checklist-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #14b8a6;
+      cursor: pointer;
+    }
+    .checklist-item label {
+      font-size: .88rem;
+      color: #334155;
+      cursor: pointer;
+      flex: 1;
     }
   </style>
 </head>
@@ -251,36 +222,32 @@
         </div>
       </div>
 
-      <!-- Detalles de la Evaluación -->
-      <div class="card">
-        <div class="section-title">Datos del Colaborador y Evaluación</div>
-        
-        <div class="field">
-          <label for="select-trabajador">Trabajador <span class="req">*</span></label>
-          <div class="combobox-wrapper">
-            <input type="text" id="combobox-input" class="combobox-input" placeholder="Seleccione Trabajador..." autocomplete="off" disabled>
-            <div class="combobox-dropdown" id="combobox-dropdown" style="display: none;">
-              <div class="combobox-options" id="combobox-options">
-                <!-- Se cargarán dinámicamente -->
-              </div>
+      <!-- 2. Selección de Colaboradores (Checklist) -->
+      <div class="card" id="card-colaboradores">
+        <div class="section-title">Seleccionar Colaboradores</div>
+        <div class="checklist-card" id="checklist-wrap" style="display: none;">
+          <div class="checklist-header">
+            <input type="text" class="checklist-search" id="checklist-search-input" placeholder="Buscar colaborador por Nombre o Cédula...">
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 2px;">
+              <input type="checkbox" id="chk-seleccionar-todos" style="width: 16px; height: 16px; cursor: pointer;">
+              <label for="chk-seleccionar-todos" style="font-size: .82rem; font-weight: bold; cursor: pointer; display: inline;">Seleccionar Todos</label>
             </div>
           </div>
-          <!-- Select oculto para validación y compatibilidad -->
-          <select id="select-trabajador" required disabled style="display: none;">
-            <option value="">Seleccione Trabajador...</option>
-          </select>
+          <div id="form-checklist-body" style="max-height: 250px; overflow-y: auto;">
+            <!-- Cargado dinámicamente -->
+          </div>
         </div>
+        <div id="checklist-empty" style="padding: 15px; text-align: center; color: #888;">
+          Selecciona una Regional y Operación para cargar los colaboradores.
+        </div>
+        <div style="margin-top: 18px;">
+          <label>Colaboradores seleccionados: <span id="form-trabajadores-count" style="font-weight: bold;">0</span></label>
+        </div>
+      </div>
 
-        <div class="grid-2">
-          <div class="field">
-            <label for="input-cc">Identificación (C.C.)</label>
-            <input type="text" id="input-cc" readonly placeholder="Cédula del colaborador">
-          </div>
-          <div class="field">
-            <label for="input-cargo">Cargo</label>
-            <input type="text" id="input-cargo" readonly placeholder="Cargo del colaborador">
-          </div>
-        </div>
+      <!-- 3. Detalles de la Evaluación -->
+      <div class="card">
+        <div class="section-title">Detalles de la Evaluación</div>
 
         <div class="grid-2">
           <div class="field">
@@ -296,18 +263,7 @@
           </div>
         </div>
 
-        <div class="grid-2">
-          <div class="field">
-            <label for="input-email">Correo Electrónico (Para notificación)</label>
-            <input type="email" id="input-email" placeholder="Correo del trabajador (opcional)">
-          </div>
-          <div class="field">
-            <label for="input-celular">Celular (WhatsApp)</label>
-            <input type="text" id="input-celular" placeholder="Número de celular (opcional)">
-          </div>
-        </div>
-
-        <div class="field" style="display: flex; align-items: center; gap: 8px;">
+        <div class="field" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
           <input type="checkbox" id="check-correo" checked style="width: 18px; height: 18px; accent-color: #14b8a6;">
           <label for="check-correo" style="margin-bottom: 0; font-weight: 500; cursor: pointer;">Notificar por correo electrónico al trabajador automáticamente</label>
         </div>
@@ -315,23 +271,23 @@
 
       <div style="display: flex; gap: 12px; margin-top: 20px;">
         <button type="button" class="btn-success-action btn-sec" style="flex: 1; padding: 14px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s;" onclick="volverPanel()">Cancelar</button>
-        <button type="submit" class="btn-submit" id="btn-submit" style="flex: 2; margin-top: 0;">Registrar y Generar Enlace</button>
+        <button type="submit" class="btn-submit" id="btn-submit" style="flex: 2; margin-top: 0;">Registrar y Generar Enlaces</button>
       </div>
     </form>
 
     <!-- Pantalla de éxito -->
     <div class="success-card" id="pantalla-exito">
       <div class="success-icon">✓</div>
-      <h2 class="success-title">¡Evaluación registrada correctamente!</h2>
-      <p class="success-text">
-        Se ha registrado la evaluación SST. El trabajador ahora debe acceder al siguiente enlace para responder las 13 preguntas y registrar su firma digital.
+      <h2 class="success-title">¡Evaluaciones registradas correctamente!</h2>
+      <p class="success-text" style="margin-bottom: 16px;">
+        Se registraron las evaluaciones. A continuación se detallan los enlaces personales para que cada trabajador pueda firmar digitalmente.
       </p>
       
-      <div class="link-box" id="link-firma">Cargando enlace...</div>
+      <div id="lista-enlaces-creados" style="margin-bottom: 24px; text-align: left; max-height: 400px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 8px;">
+        <!-- Se generará dinámicamente -->
+      </div>
 
       <div class="btn-group-success">
-        <button class="btn-success-action btn-sec" onclick="copiarAlPortapapeles()">Copiar Enlace</button>
-        <a id="btn-whatsapp" href="#" target="_blank" class="btn-success-action btn-wa">Enviar por WhatsApp</a>
         <button class="btn-success-action btn-pri" onclick="volverPanel()">Volver al Listado</button>
       </div>
     </div>
@@ -350,141 +306,7 @@
     // References
     const selectReg = document.getElementById('select-regional');
     const selectOp = document.getElementById('select-operacion');
-    const selectTrab = document.getElementById('select-trabajador');
-    const inputCc = document.getElementById('input-cc');
-    const inputCargo = document.getElementById('input-cargo');
-    const inputEmail = document.getElementById('input-email');
-    const inputCelular = document.getElementById('input-celular');
-
-    // Combobox Elements & Logic
-    const comboboxInput = document.getElementById('combobox-input');
-    const comboboxDropdown = document.getElementById('combobox-dropdown');
-    const comboboxOptions = document.getElementById('combobox-options');
-
-    let trabajadoresActivos = [];
-    let urlFirmaGenerada = '';
-    let selectedWorkerCc = '';
-
-    comboboxInput.addEventListener('click', function(e) {
-      if (this.disabled) return;
-      e.stopPropagation();
-      this.select(); // Selecciona el texto para facilitar la escritura
-      openCombobox();
-      filterComboboxOptions(this.value);
-    });
-
-    comboboxInput.addEventListener('input', function() {
-      if (this.disabled) return;
-      openCombobox();
-      filterComboboxOptions(this.value);
-    });
-
-    comboboxInput.addEventListener('blur', function() {
-      // Pequeño retardo para permitir registrar el evento click del listado
-      setTimeout(() => {
-        const valText = comboboxInput.value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        // Buscar coincidencia exacta
-        const matchIndex = trabajadoresActivos.findIndex(w => {
-          const name = w.Trabajador
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-          return name === valText;
-        });
-
-        if (matchIndex !== -1) {
-          selectWorker(trabajadoresActivos[matchIndex], matchIndex);
-        } else {
-          // Si no hay coincidencia exacta, volver al último seleccionado o limpiar
-          if (selectedWorkerCc) {
-            const currentIdx = trabajadoresActivos.findIndex(w => w.identificacion === selectedWorkerCc);
-            if (currentIdx !== -1) {
-              const currentSelected = trabajadoresActivos[currentIdx];
-              comboboxInput.value = currentSelected.Trabajador;
-              closeCombobox();
-              return;
-            }
-          }
-          clearWorkerSelection();
-        }
-        closeCombobox();
-      }, 200);
-    });
-
-    function openCombobox() {
-      comboboxDropdown.style.display = 'flex';
-    }
-
-    function closeCombobox() {
-      comboboxDropdown.style.display = 'none';
-    }
-
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.combobox-wrapper')) {
-        closeCombobox();
-      }
-    });
-
-    function filterComboboxOptions(query) {
-      const q = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const filtered = trabajadoresActivos.map((w, idx) => ({ worker: w, index: idx })).filter(item => {
-        const name = item.worker.Trabajador
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-        const cc = String(item.worker.identificacion || '').toLowerCase();
-        return name.includes(q) || cc.includes(q);
-      });
-      renderComboboxOptions(filtered);
-    }
-
-    function renderComboboxOptions(items) {
-      comboboxOptions.innerHTML = '';
-      if (items.length === 0) {
-        const noRes = document.createElement('div');
-        noRes.className = 'combobox-no-results';
-        noRes.textContent = 'No se encontraron trabajadores';
-        comboboxOptions.appendChild(noRes);
-        return;
-      }
-      items.forEach(item => {
-        const w = item.worker;
-        const optDiv = document.createElement('div');
-        optDiv.className = 'combobox-option';
-        if (selectedWorkerCc === w.identificacion) {
-          optDiv.classList.add('selected');
-        }
-        optDiv.textContent = w.Trabajador;
-        optDiv.addEventListener('click', function(e) {
-          e.stopPropagation();
-          selectWorker(w, item.index);
-          closeCombobox();
-        });
-        comboboxOptions.appendChild(optDiv);
-      });
-    }
-
-    function selectWorker(w, idx) {
-      selectedWorkerCc = w.identificacion;
-      comboboxInput.value = w.Trabajador;
-
-      selectTrab.innerHTML = '';
-      const opt = document.createElement('option');
-      opt.value = idx;
-      opt.textContent = w.Trabajador;
-      opt.selected = true;
-      selectTrab.appendChild(opt);
-
-      selectTrab.dispatchEvent(new Event('change'));
-    }
-
-    function clearWorkerSelection() {
-      selectedWorkerCc = '';
-      comboboxInput.value = '';
-      comboboxInput.placeholder = 'Seleccione Trabajador...';
-      selectTrab.innerHTML = '<option value="">Seleccione Trabajador...</option>';
-      selectTrab.dispatchEvent(new Event('change'));
-    }
+    let formTrabajadores = []; // Lista de cédulas seleccionadas
 
     // Load Regionales
     CONFIG.regionalesFiltro.forEach(r => {
@@ -500,9 +322,7 @@
       selectOp.innerHTML = '<option value="">Seleccione Operación...</option>';
       selectOp.disabled = !reg;
       
-      clearWorkerSelection();
-      comboboxInput.disabled = true;
-      limpiarCamposTrabajador();
+      limpiarChecklist();
 
       if (reg && CONFIG.opsPorRegional[reg]) {
         CONFIG.opsPorRegional[reg].forEach(op => {
@@ -515,97 +335,148 @@
     });
 
     // Handle Operacion Change
-    selectOp.addEventListener('change', async () => {
+    selectOp.addEventListener('change', cargarTrabajadoresParaChecklist);
+
+    function limpiarChecklist() {
+      formTrabajadores = [];
+      document.getElementById('form-trabajadores-count').innerText = '0';
+      document.getElementById('checklist-wrap').style.display = 'none';
+      document.getElementById('checklist-empty').style.display = 'block';
+      document.getElementById('form-checklist-body').innerHTML = '';
+      document.getElementById('chk-seleccionar-todos').checked = false;
+      document.getElementById('checklist-search-input').value = '';
+    }
+
+    async function cargarTrabajadoresParaChecklist() {
       const reg = selectReg.value;
       const op = selectOp.value;
-      
-      clearWorkerSelection();
-      comboboxInput.disabled = true;
-      limpiarCamposTrabajador();
+      const wrap = document.getElementById('checklist-wrap');
+      const empty = document.getElementById('checklist-empty');
+      const body = document.getElementById('form-checklist-body');
+      const chkTodos = document.getElementById('chk-seleccionar-todos');
+
+      limpiarChecklist();
 
       if (!reg || !op) return;
 
+      showLoading('Buscando colaboradores...');
       try {
         const res = await fetch(`/evaluacionsst/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
-        trabajadoresActivos = await res.json();
-        
-        if (trabajadoresActivos.length > 0) {
-          comboboxInput.disabled = false;
-          comboboxInput.placeholder = 'Seleccione Trabajador...';
-          renderComboboxOptions(trabajadoresActivos.map((w, idx) => ({ worker: w, index: idx })));
-        } else {
-          comboboxInput.placeholder = 'No hay trabajadores activos';
+        const trabajadores = await res.json();
+
+        if (!trabajadores.length) {
+          body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos en esta operación.</div>';
+          wrap.style.display = 'block';
+          empty.style.display = 'none';
+          return;
         }
+
+        trabajadores.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'checklist-item';
+          const idCheckbox = `chk-t-${t.identificacion}`;
+
+          let nombreLimpio = t.Trabajador || '';
+          if (nombreLimpio.includes(' ** ')) {
+            const parts = nombreLimpio.split(' ** ');
+            nombreLimpio = parts[parts.length - 1];
+          }
+          nombreLimpio = nombreLimpio.trim();
+
+          // Store search text in a data attribute to search by identification and name
+          div.setAttribute('data-search', `${t.identificacion} ${nombreLimpio}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
+          div.innerHTML = `
+            <input type="checkbox" id="${idCheckbox}" value="${t.identificacion}">
+            <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'})</span></label>
+          `;
+
+          const checkbox = div.querySelector('input[type="checkbox"]');
+          checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              if (!formTrabajadores.includes(t.identificacion)) {
+                formTrabajadores.push(t.identificacion);
+              }
+            } else {
+              formTrabajadores = formTrabajadores.filter(id => id !== t.identificacion);
+            }
+            document.getElementById('form-trabajadores-count').innerText = formTrabajadores.length;
+          });
+
+          div.addEventListener('click', (e) => {
+            if (e.target !== checkbox && e.target.tagName !== 'LABEL') {
+              checkbox.checked = !checkbox.checked;
+              checkbox.dispatchEvent(new Event('change'));
+            }
+          });
+
+          body.appendChild(div);
+        });
+
+        wrap.style.display = 'block';
+        empty.style.display = 'none';
       } catch (err) {
         console.error(err);
         alert('Error al buscar trabajadores');
+      } finally {
+        hideLoading();
       }
-    });
-
-    // Handle Trabajador Change
-    selectTrab.addEventListener('change', async () => {
-      const idx = selectTrab.value;
-      limpiarCamposTrabajador();
-      if (idx === '') return;
-
-      const t = trabajadoresActivos[idx];
-      inputCc.value = t.identificacion;
-      inputCargo.value = t.Cargo;
-
-      // Fetch segmentacion contact info
-      try {
-        const res = await fetch(`/evaluacionsst/api/contacto/${t.identificacion}`);
-        const c = await res.json();
-        inputEmail.value = c.Email || '';
-        inputCelular.value = c.Celular || '';
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
-    function limpiarCamposTrabajador() {
-      inputCc.value = '';
-      inputCargo.value = '';
-      inputEmail.value = '';
-      inputCelular.value = '';
     }
+
+    // Búsqueda en el checklist
+    document.getElementById('checklist-search-input').addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const items = document.querySelectorAll('.checklist-item');
+      items.forEach(item => {
+        const searchStr = item.getAttribute('data-search') || '';
+        if (searchStr.includes(val)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+
+    // Seleccionar Todos
+    document.getElementById('chk-seleccionar-todos').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+      checkboxes.forEach(cb => {
+        const itemDom = cb.closest('.checklist-item');
+        if (itemDom.style.display !== 'none') {
+          cb.checked = checked;
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    // Copiar enlace helper
+    window.copiarAlPortapapeles = function(text) {
+      navigator.clipboard.writeText(text);
+      alert('Enlace copiado al portapapeles');
+    };
 
     // Submit Form
     document.getElementById('form-evsst').addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const idx = selectTrab.value;
-      if (idx === '') return;
-      
-      const t = trabajadoresActivos[idx];
       const dateVal = document.getElementById('input-fecha').value;
       const tipoVal = document.getElementById('select-tipo').value;
       const sendMail = document.getElementById('check-correo').checked;
 
-      // Guardar/Actualizar datos de contacto en segundo plano
-      const emailVal = inputEmail.value.trim();
-      const celularVal = inputCelular.value.trim();
-      if (emailVal || celularVal) {
-        fetch('/evaluacionsst/api/actualizar-contacto', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            identificacion: t.identificacion,
-            email: emailVal,
-            celular: celularVal
-          })
-        }).catch(err => console.error('[evaluacionsst] Error actualizando contacto:', err));
+      if (!formTrabajadores.length) {
+        alert('Debe seleccionar al menos un colaborador');
+        return;
       }
 
-      showLoading('Registrando evaluación...');
-
+      showLoading('Registrando evaluaciones...');
       try {
-        const res = await fetch('/evaluacionsst/api/crear', {
+        const res = await fetch('/evaluacionsst/api/crear-masivo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             fecha: dateVal,
-            identificacion: t.identificacion,
+            identificaciones: formTrabajadores,
             tipo: tipoVal,
             usuario: CONFIG.usuarioId,
             enviar_correo: sendMail
@@ -613,26 +484,90 @@
         });
 
         const data = await res.json();
-        if (data.ok) {
-          urlFirmaGenerada = data.urlFirma;
+        if (data.ok && data.resultados) {
+          const listBody = document.getElementById('lista-enlaces-creados');
+          listBody.innerHTML = '';
 
-          // Configure success card
-          document.getElementById('link-firma').textContent = urlFirmaGenerada;
-          
-          // Configure WhatsApp link
-          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaGenerada}`);
-          let celNum = celularVal.replace(/\D/g, '');
-          if (celNum.length === 10 && celNum.startsWith('3')) celNum = '57' + celNum;
-          
-          const waUrl = celNum ? `https://api.whatsapp.com/send?phone=${celNum}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
-          document.getElementById('btn-whatsapp').href = waUrl;
+          data.resultados.forEach(res => {
+            const div = document.createElement('div');
+            div.style = 'display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #e2e8f0; gap: 12px; flex-wrap: wrap;';
 
-          // Switch view
+            // Whatsapp message formatting
+            const textWa = `Hola ${res.trabajador}, por favor ingresa al siguiente enlace para responder tu Evaluación de Inducción/Capacitación SST: ${res.urlFirma}`;
+            const cleanCel = res.celular ? res.celular.replace(/\D/g, '') : '';
+            let phoneParam = '';
+            if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+              phoneParam = '57' + cleanCel;
+            } else if (cleanCel) {
+              phoneParam = cleanCel;
+            }
+            const waLink = `https://wa.me/${phoneParam}?text=${encodeURIComponent(textWa)}`;
+
+            div.innerHTML = `
+              <div style="flex: 1; min-width: 250px;">
+                <div style="font-weight: 700; color: #1e293b; font-size: .92rem;">${res.trabajador}</div>
+                <div style="font-size: .8rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span>C.C. ${res.identificacion}</span>
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    Cel: <input type="text" class="input-edit-cel" value="${res.celular || ''}" placeholder="Celular" style="width: 100px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .78rem;">
+                  </span>
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    Email: <input type="email" class="input-edit-email" value="${res.email || ''}" placeholder="Correo" style="width: 140px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .78rem;">
+                  </span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn-success-action btn-sec" style="font-size:.8rem; padding: 6px 12px;" onclick="copiarAlPortapapeles('${res.urlFirma}')">Copiar Enlace</button>
+                <a href="${waLink}" target="_blank" class="btn-success-action btn-wa" style="font-size:.8rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+                  💬 WhatsApp
+                </a>
+              </div>
+            `;
+
+            const celInput = div.querySelector('.input-edit-cel');
+            const emailInput = div.querySelector('.input-edit-email');
+            const waButton = div.querySelector('.btn-wa');
+
+            const handleContactUpdate = () => {
+              const newCel = celInput.value.trim();
+              const newEmail = emailInput.value.trim();
+
+              fetch('/evaluacionsst/api/actualizar-contacto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  identificacion: res.identificacion,
+                  celular: newCel,
+                  email: newEmail
+                })
+              }).catch(e => console.error('Error updating contact:', e));
+
+              const cleanCel = newCel.replace(/\D/g, '');
+              let phoneParam = '';
+              if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+                phoneParam = '57' + cleanCel;
+              } else if (cleanCel) {
+                phoneParam = cleanCel;
+              }
+              waButton.href = `https://wa.me/${phoneParam}?text=${encodeURIComponent(textWa)}`;
+            };
+
+            celInput.addEventListener('change', handleContactUpdate);
+            emailInput.addEventListener('change', handleContactUpdate);
+
+            listBody.appendChild(div);
+          });
+
+          // Remove border-bottom of the last child
+          if (listBody.lastChild) {
+            listBody.lastChild.style.borderBottom = 'none';
+          }
+
           document.getElementById('form-evsst').style.display = 'none';
           document.getElementById('form-header').style.display = 'none';
           document.getElementById('pantalla-exito').style.display = 'block';
         } else {
-          alert('Error: ' + (data.error || 'No se pudo crear la evaluación'));
+          alert('Error: ' + (data.error || 'No se pudo crear las evaluaciones'));
         }
       } catch (err) {
         console.error(err);
@@ -641,13 +576,6 @@
         hideLoading();
       }
     });
-
-    // Actions
-    function copiarAlPortapapeles() {
-      navigator.clipboard.writeText(urlFirmaGenerada).then(() => {
-        alert('Enlace copiado al portapapeles');
-      });
-    }
 
     function volverPanel() {
       window.location.href = `/evaluacionsst?usuario=${CONFIG.usuarioId}`;
