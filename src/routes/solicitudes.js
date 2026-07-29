@@ -658,17 +658,24 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
 router.delete('/api/solicitud/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const { usuario } = req.query;
 
-    // Verificar estado
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const acceso = await computarAccesoSolicitud(usuario);
+    if (!acceso || acceso.rol !== 'Sistema') {
+      return res.status(403).json({ error: 'Solo el rol de Sistema puede eliminar solicitudes.' });
+    }
+
+    // Verificar existencia
     const [[sol]] = await pool.execute(
       'SELECT Estado FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
       [id]
     );
 
     if (!sol) return res.status(404).json({ error: 'Solicitud no encontrada' });
-    if (sol.Estado !== 'BORRADOR') {
-      return res.status(400).json({ error: 'Solo se pueden eliminar solicitudes en estado BORRADOR' });
-    }
 
     // Eliminar items y solicitud
     await pool.execute('DELETE FROM Dynamic_Solicitudes_Items WHERE IdSolicitud = ?', [id]);

@@ -1342,10 +1342,48 @@
         ${htmlAccionesEstado}
       `;
 
-      document.getElementById('detalle-contenido').innerHTML = html;
+      if (config.rol === 'Sistema') {
+        const htmlEliminar = `
+          <div class="card card-red" style="margin-top: 15px; border-top: 4px solid #c0392b;">
+            <div class="section-title" style="color: #c0392b;">Acciones Administrativas</div>
+            <p style="font-size:.85rem; color:#4b5563; margin-bottom:10px;">
+              Como administrador de Sistema, puede eliminar de forma permanente esta solicitud y todos sus ítems. Esta acción no se puede deshacer.
+            </p>
+            <div class="btns-grupo">
+              <button type="button" class="btn" onclick="eliminarSolicitud('${solicitudActual.IdSolicitud}')" style="background: #c0392b; color: white;">✕ Eliminar Registro</button>
+            </div>
+          </div>
+        `;
+        document.getElementById('detalle-contenido').innerHTML = html + htmlEliminar;
+      } else {
+        document.getElementById('detalle-contenido').innerHTML = html;
+      }
+
       document.getElementById('detalle-subtitulo').innerHTML = `${solicitudActual['Operación']} • ${solicitudActual.Regional}`;
       document.querySelectorAll('#detalle-contenido table').forEach(habilitarRedimensionTabla);
       mostrarVista('detalle');
+    } catch (err) {
+      mostrarToast(err.message, 'error');
+    }
+  }
+
+  async function eliminarSolicitud(id) {
+    const confirmar = window.confirm(
+      '¿Está seguro de que desea eliminar permanentemente esta solicitud? Esta acción no se puede deshacer.'
+    );
+    if (!confirmar) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/solicitud/${id}?usuario=${usuarioId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo eliminar la solicitud');
+
+      mostrarToast('Solicitud eliminada con éxito', 'success');
+      solicitudActual = null;
+      mostrarVista('listado');
+      await cargarSolicitudes();
     } catch (err) {
       mostrarToast(err.message, 'error');
     }

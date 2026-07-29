@@ -884,8 +884,9 @@ router.post('/api/responder/:id', async (req, res) => {
     if (!vinRows.length) return res.status(404).json({ error: 'Vinculación del trabajador no encontrada.' });
     const vin = vinRows[0];
 
-    const [uRows] = await pool.execute('SELECT Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [ev.usuario]);
+    const [uRows] = await pool.execute('SELECT Nombre, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [ev.usuario]);
     const evaluadorNombre = uRows.length ? uRows[0].Nombre : ev.usuario;
+    const emailUsuario = uRows.length ? uRows[0].Email : null;
 
     // 6. Generar PDF y subirlo a GCS
     const pdfBuffer = await renderPDF(tempEv, vin, evaluadorNombre, updatedItems);
@@ -913,7 +914,8 @@ router.post('/api/responder/:id', async (req, res) => {
         puntaje: score,
         totalPreguntas,
         resultado,
-        urlDoc
+        urlDoc,
+        emailUsuario
       }).catch(e => console.error('[capacitacionsst] Error enviando correo de completado:', e.message));
     }
 

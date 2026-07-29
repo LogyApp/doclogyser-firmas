@@ -1099,13 +1099,7 @@ router.post('/api/firmar-analista', async (req, res) => {
       }).catch(e => console.error('[compromisosst] Error enviando correo de completado al Analista SST:', e.message));
     }
 
-    // 7. Notificar al Líder SST (sst.nacional@logyser.com) indicando que el trabajador y analista firmaron y el PDF fue generado
-    await enviarCorreoFirmaLiderSST({
-      emailLider: 'sst.nacional@logyser.com',
-      nombreTrabajador: c.nombre_trabajador,
-      nombreAnalista: finalName,
-      urlDoc
-    }).catch(e => console.error('[compromisosst] Error enviando correo a Líder SST:', e.message));
+
 
     res.json({ ok: true, urlDoc });
   } catch (err) {

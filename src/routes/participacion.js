@@ -66,7 +66,7 @@ async function generarPDFAsistencia(id, force = false) {
       a.duracion,
       a.objetivo,
       a.usuario,
-      COALESCE(NULLIF(u.Colaborador, ''), u.Nombre) AS nombre_responsable,
+      u.Nombre AS nombre_responsable,
       u.Cargo AS cargo_responsable
      FROM Dynamic_formato_asistencia a
      LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
@@ -613,7 +613,7 @@ router.get('/api/asistencias', async (req, res) => {
         a.url_doc,
         a.usuario,
         a.fecha_creacion,
-        COALESCE(NULLIF(u.Colaborador, ''), u.Nombre) AS nombre_responsable,
+        u.Nombre AS nombre_responsable,
         u.Regional AS regional_responsable,
         u.\`Operación\` AS operacion_responsable
        FROM Dynamic_formato_asistencia a
@@ -639,7 +639,7 @@ router.get('/api/asistencia/:id', async (req, res) => {
     const [[asistencia]] = await pool.execute(
       `SELECT
         a.*,
-        COALESCE(NULLIF(u.Colaborador, ''), u.Nombre) AS nombre_responsable,
+        u.Nombre AS nombre_responsable,
         u.Cargo AS cargo_responsable,
         u.Regional AS regional_responsable,
         u.\`Operación\` AS operacion_responsable,
@@ -1014,7 +1014,7 @@ router.get('/firmar', async (req, res) => {
       `SELECT
         i.*,
         a.tema, a.fecha, a.lugar,
-        COALESCE(NULLIF(u.Colaborador, ''), u.Nombre) AS nombre_responsable
+        u.Nombre AS nombre_responsable
        FROM Dynamic_formato_itemsAsistencia i
        INNER JOIN Dynamic_formato_asistencia a ON i.id_asistencia = a.id_asistencia
        LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID

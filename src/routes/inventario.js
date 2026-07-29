@@ -416,7 +416,7 @@ router.post('/api/confirmar', async (req, res) => {
     } else if (catUpper === 'DOTACION' || catUpper === 'DOTACIÓN') {
       emailRecipients.push('controlcuentas@logyser.com', 'auxiliarcompras@logyser.com', 'logyserinventarios@gmail.com');
     } else if (catUpper === 'EPP') {
-      emailRecipients.push('sstadmon@logyser.com', 'sst.nacional@logyser.com');
+      emailRecipients.push('sstadmon@logyser.com');
     }
 
     if (catUpper !== 'EPP') {
