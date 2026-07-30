@@ -509,7 +509,9 @@ router.get('/api/capacitaciones', async (req, res) => {
     const whereClause = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
 
     const query = `
-      SELECT c.*, vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
+      SELECT c.id_capacitacion, c.fecha, c.identificacion, c.usuario, c.tema, c.objetivo, c.url_doc, 
+             c.token_firma, c.token_expira, c.puntaje, c.resultado, c.fecha_registro,
+             vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
              seg.Email AS email_trabajador, seg.Celular AS celular_trabajador,
              usu.Nombre AS nombre_evaluador
       FROM Maestro_capacitacionsst c

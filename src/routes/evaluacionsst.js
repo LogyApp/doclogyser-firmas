@@ -480,7 +480,9 @@ router.get('/api/evaluaciones', async (req, res) => {
     const whereClause = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
 
     const query = `
-      SELECT ev.*, vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
+      SELECT ev.id_evaluacion, ev.fecha, ev.identificacion, ev.usuario, ev.tipo, ev.url_doc, 
+             ev.token_firma, ev.token_expira, ev.puntaje, ev.resultado, ev.fecha_registro,
+             vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
              seg.Email AS email_trabajador, seg.Celular AS celular_trabajador,
              usu.Nombre AS nombre_evaluador
       FROM Maestro_evaluacionsst ev
