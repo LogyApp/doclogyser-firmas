@@ -497,6 +497,32 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
 
+    .sig-delete-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--danger);
+      color: #fff;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      z-index: 12;
+      user-select: none;
+      transition: var(--transition);
+    }
+
+    .sig-delete-btn:hover {
+      background: #b91c1c;
+      transform: scale(1.1);
+    }
+
     /* Action Buttons */
     .btn-submit {
       width: 100%;
@@ -707,6 +733,7 @@
               <span style="font-weight: 500;" id="page-indicator">Página: 0 / 0</span>
               <button type="button" class="btn-nav" id="btn-next" disabled>Siguiente &gt;</button>
             </div>
+            <button type="button" class="btn-nav" id="btn-add-sig" style="background: var(--accent); color: #fff; border-color: var(--accent); display: none;">+ Agregar Firma</button>
             <div style="font-size: 0.85rem; color: var(--text-muted);">
               Arrastre y ajuste el recuadro naranja sobre la firma.
             </div>
@@ -715,11 +742,7 @@
           <div class="pdf-container-wrapper">
             <div class="pdf-relative-container" id="pdf-container" style="display: none;">
               <canvas id="pdf-canvas"></canvas>
-              <!-- Draggable resizable signature box -->
-              <div class="sig-box" id="sig-box">
-                <span class="sig-box-text">Firma del Trabajador</span>
-                <div class="sig-resize-handle" id="sig-resize-handle"></div>
-              </div>
+              <!-- Draggable resizable signature boxes will be rendered dynamically here -->
             </div>
             <div id="no-pdf-message" style="color: #fff; text-align: center; margin-top: 100px;">
               Cargue un documento PDF para previsualizar y marcar la firma.
@@ -744,6 +767,9 @@
     let ctx = canvas.getContext('2d');
     let originalFile = null;
     let scale = 1.0;
+    let signatureBoxes = []; // Array of { id, page, x, y, w, h }
+    let activeBoxEl = null;
+    let activeBoxId = null;
 
     // Dom elements
     const userBadge = document.getElementById('user-badge-name');
@@ -758,11 +784,10 @@
     const btnSubmit = document.getElementById('btn-submit');
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
+    const btnAddSig = document.getElementById('btn-add-sig');
     const pageIndicator = document.getElementById('page-indicator');
     const pdfContainer = document.getElementById('pdf-container');
     const noPdfMessage = document.getElementById('no-pdf-message');
-    const sigBox = document.getElementById('sig-box');
-    const sigResizeHandle = document.getElementById('sig-resize-handle');
     const loadingOverlay = document.getElementById('loading-overlay');
     const loadingText = document.getElementById('loading-text');
 
@@ -805,6 +830,26 @@
           opt.innerText = c;
           selectClasificacion.appendChild(opt);
         });
+
+        // Preselection based on user Rol
+        const rol = (CONFIG.usuarioRol || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // strip accents
+        if (rol === 'juridica') {
+          const matchedClass = classifications.find(c => c.toLowerCase().includes('8. retiro'));
+          if (matchedClass) {
+            selectClasificacion.value = matchedClass;
+            selectClasificacion.dispatchEvent(new Event('change'));
+            selectDocumento.value = "55";
+            selectDocumento.dispatchEvent(new Event('change'));
+          }
+        } else if (rol === 'contratacion') {
+          const matchedClass = classifications.find(c => c.toLowerCase().includes('4. documentos de ingreso'));
+          if (matchedClass) {
+            selectClasificacion.value = matchedClass;
+            selectClasificacion.dispatchEvent(new Event('change'));
+            selectDocumento.value = "18";
+            selectDocumento.dispatchEvent(new Event('change'));
+          }
+        }
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -958,8 +1003,20 @@
         pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         currentPageNum = 1;
         
+        signatureBoxes = [
+          {
+            id: 'box-default',
+            page: 1,
+            x: 0,
+            y: 0,
+            w: 160,
+            h: 70
+          }
+        ];
+
         noPdfMessage.style.display = 'none';
         pdfContainer.style.display = 'block';
+        btnAddSig.style.display = 'inline-block';
 
         await renderPage(currentPageNum);
       } catch (err) {
@@ -991,9 +1048,22 @@
         btnPrev.disabled = pageNum <= 1;
         btnNext.disabled = pageNum >= pdfDoc.numPages;
 
-        // Position signature box centrally
-        sigBox.style.left = `${(viewport.width - sigBox.offsetWidth) / 2}px`;
-        sigBox.style.top = `${viewport.height - sigBox.offsetHeight - 50}px`;
+        // Clear all DOM sig-boxes
+        document.querySelectorAll('.sig-box').forEach(el => el.remove());
+
+        // Get or create boxes for the current page
+        const currentPageBoxes = signatureBoxes.filter(b => b.page === pageNum);
+
+        // Render current page boxes
+        currentPageBoxes.forEach(box => {
+          if (box.x === 0 && box.y === 0) {
+            box.x = (viewport.width - box.w) / 2;
+            box.y = viewport.height - box.h - 50;
+          }
+          createBoxElement(box);
+        });
+
+        updateDeleteButtons();
 
       } catch (err) {
         showToast('Error al renderizar página: ' + err.message, 'error');
@@ -1016,80 +1086,156 @@
       }
     });
 
-    // Interactive Dragging and Resizing for SigBox
+    // Interactive Dragging, Resizing and Deletion for Multiple Signature Boxes
     let isDragging = false;
     let isResizing = false;
     let startX, startY, startLeft, startTop, startWidth, startHeight;
 
-    sigBox.addEventListener('mousedown', (e) => {
-      if (e.target === sigResizeHandle) return; // let resize handler handle it
-      isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      startLeft = sigBox.offsetLeft;
-      startTop = sigBox.offsetTop;
-      
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    });
+    function createBoxElement(box) {
+      const boxEl = document.createElement('div');
+      boxEl.className = 'sig-box';
+      boxEl.id = box.id;
+      boxEl.style.left = `${box.x}px`;
+      boxEl.style.top = `${box.y}px`;
+      boxEl.style.width = `${box.w}px`;
+      boxEl.style.height = `${box.h}px`;
 
-    sigResizeHandle.addEventListener('mousedown', (e) => {
-      e.stopPropagation(); // prevent drag
-      isResizing = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      startWidth = sigBox.offsetWidth;
-      startHeight = sigBox.offsetHeight;
-      
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    });
+      boxEl.innerHTML = `
+        <span class="sig-box-text">Firma del Trabajador</span>
+        <span class="sig-delete-btn">&times;</span>
+        <div class="sig-resize-handle"></div>
+      `;
+
+      pdfContainer.appendChild(boxEl);
+      makeBoxInteractive(boxEl, box.id);
+    }
+
+    function updateDeleteButtons() {
+      const showDelete = signatureBoxes.length > 1;
+      document.querySelectorAll('.sig-box').forEach(boxEl => {
+        const boxId = boxEl.id;
+        const deleteBtn = boxEl.querySelector('.sig-delete-btn');
+        if (deleteBtn) {
+          deleteBtn.style.display = showDelete ? 'flex' : 'none';
+        }
+      });
+    }
+
+    function makeBoxInteractive(boxEl, boxId) {
+      const resizeHandle = boxEl.querySelector('.sig-resize-handle');
+      const deleteBtn = boxEl.querySelector('.sig-delete-btn');
+
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          signatureBoxes = signatureBoxes.filter(b => b.id !== boxId);
+          boxEl.remove();
+          updateDeleteButtons();
+        });
+      }
+
+      boxEl.addEventListener('mousedown', (e) => {
+        if (e.target === resizeHandle || e.target === deleteBtn) return;
+        isDragging = true;
+        activeBoxEl = boxEl;
+        activeBoxId = boxId;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = boxEl.offsetLeft;
+        startTop = boxEl.offsetTop;
+        
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      resizeHandle.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isResizing = true;
+        activeBoxEl = boxEl;
+        activeBoxId = boxId;
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = boxEl.offsetWidth;
+        startHeight = boxEl.offsetHeight;
+        
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
 
     function onMouseMove(e) {
+      if (!activeBoxEl) return;
       if (isDragging) {
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
         let newLeft = startLeft + dx;
         let newTop = startTop + dy;
 
-        // Boundary constraint checks
-        const maxLeft = pdfContainer.clientWidth - sigBox.offsetWidth;
-        const maxTop = pdfContainer.clientHeight - sigBox.offsetHeight;
+        const maxLeft = pdfContainer.clientWidth - activeBoxEl.offsetWidth;
+        const maxTop = pdfContainer.clientHeight - activeBoxEl.offsetHeight;
 
         newLeft = Math.max(0, Math.min(newLeft, maxLeft));
         newTop = Math.max(0, Math.min(newTop, maxTop));
 
-        sigBox.style.left = `${newLeft}px`;
-        sigBox.style.top = `${newTop}px`;
+        activeBoxEl.style.left = `${newLeft}px`;
+        activeBoxEl.style.top = `${newTop}px`;
+
+        const box = signatureBoxes.find(b => b.id === activeBoxId);
+        if (box) {
+          box.x = newLeft;
+          box.y = newTop;
+        }
       } else if (isResizing) {
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
         let newWidth = startWidth + dx;
         let newHeight = startHeight + dy;
 
-        // Min/Max constraints
         newWidth = Math.max(80, Math.min(newWidth, 300));
         newHeight = Math.max(40, Math.min(newHeight, 150));
 
-        // Boundary constraint check
-        if (sigBox.offsetLeft + newWidth > pdfContainer.clientWidth) {
-          newWidth = pdfContainer.clientWidth - sigBox.offsetLeft;
+        if (activeBoxEl.offsetLeft + newWidth > pdfContainer.clientWidth) {
+          newWidth = pdfContainer.clientWidth - activeBoxEl.offsetLeft;
         }
-        if (sigBox.offsetTop + newHeight > pdfContainer.clientHeight) {
-          newHeight = pdfContainer.clientHeight - sigBox.offsetTop;
+        if (activeBoxEl.offsetTop + newHeight > pdfContainer.clientHeight) {
+          newHeight = pdfContainer.clientHeight - activeBoxEl.offsetTop;
         }
 
-        sigBox.style.width = `${newWidth}px`;
-        sigBox.style.height = `${newHeight}px`;
+        activeBoxEl.style.width = `${newWidth}px`;
+        activeBoxEl.style.height = `${newHeight}px`;
+
+        const box = signatureBoxes.find(b => b.id === activeBoxId);
+        if (box) {
+          box.w = newWidth;
+          box.h = newHeight;
+        }
       }
     }
 
     function onMouseUp() {
       isDragging = false;
       isResizing = false;
+      activeBoxEl = null;
+      activeBoxId = null;
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     }
+
+    // Add Signature Box Click Listener
+    btnAddSig.addEventListener('click', () => {
+      if (!pdfDoc) return;
+      const newBox = {
+        id: 'box-' + Date.now(),
+        page: currentPageNum,
+        x: (canvas.width - 160) / 2,
+        y: canvas.height - 70 - 50,
+        w: 160,
+        h: 70
+      };
+      signatureBoxes.push(newBox);
+      createBoxElement(newBox);
+      updateDeleteButtons();
+    });
 
     // Form Validity Check
     function checkFormValidity() {
@@ -1121,14 +1267,21 @@
         return;
       }
 
-      // Calculate relative coordinates of the signature box relative to viewport
+      // Calculate relative coordinates of the signature boxes relative to viewport
       const containerW = pdfContainer.clientWidth;
       const containerH = pdfContainer.clientHeight;
 
-      const relX = sigBox.offsetLeft / containerW;
-      const relY = sigBox.offsetTop / containerH;
-      const relW = sigBox.offsetWidth / containerW;
-      const relH = sigBox.offsetHeight / containerH;
+      const boxesRelative = signatureBoxes.map(box => {
+        return {
+          page: box.page,
+          x: box.x / containerW,
+          y: box.y / containerH,
+          w: box.w / containerW,
+          h: box.h / containerH
+        };
+      });
+
+      const primaryBox = boxesRelative[0] || { x: 0, y: 0, w: 0, h: 0, page: 1 };
 
       showLoading('Actualizando datos y enviando correo al trabajador...');
 
@@ -1147,11 +1300,12 @@
         formData.append('estadoTrabajador', selectedTrabajadorDetails.vinculacion?.Estado || 'Activo');
         formData.append('idConfigDoc', idConfigDoc);
         formData.append('prefijo', prefijo);
-        formData.append('firmaX', relX);
-        formData.append('firmaY', relY);
-        formData.append('firmaW', relW);
-        formData.append('firmaH', relH);
-        formData.append('firmaPage', currentPageNum);
+        formData.append('firmaX', primaryBox.x);
+        formData.append('firmaY', primaryBox.y);
+        formData.append('firmaW', primaryBox.w);
+        formData.append('firmaH', primaryBox.h);
+        formData.append('firmaPage', primaryBox.page);
+        formData.append('firmasCoordenadas', JSON.stringify(boxesRelative));
 
         const res = await fetch('/logysign/api/enviar', {
           method: 'POST',
@@ -1182,6 +1336,9 @@
         pageIndicator.innerText = 'Página: 0 / 0';
         btnPrev.disabled = true;
         btnNext.disabled = true;
+        btnAddSig.style.display = 'none';
+        signatureBoxes = [];
+        document.querySelectorAll('.sig-box').forEach(el => el.remove());
 
       } catch (err) {
         showToast(err.message, 'error');

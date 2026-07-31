@@ -10,6 +10,21 @@ const { transporter } = require('../services/email');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Preventively check and add firmas_coordenadas column if not exists
+(async () => {
+  try {
+    await pool.execute(`
+      ALTER TABLE Dynamic_Logysign 
+      ADD COLUMN firmas_coordenadas TEXT NULL
+    `);
+    console.log('[logysign] Column firmas_coordenadas verified/added successfully.');
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.error('[logysign] Error checking column firmas_coordenadas:', e);
+    }
+  }
+})();
+
 // Helper to resolve CC emails list
 async function obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc) {
   const ccList = [];
@@ -20,26 +35,30 @@ async function obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc) {
     ccList.push(uRows[0].Email);
   }
 
-  // 2. AuxiliarR and CoordinadorR by Regional
-  let foundRegionalCc = false;
-  if (regional) {
-    const [regRows] = await pool.execute(
-      'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR")',
-      [regional]
-    );
-    if (regRows.length) {
-      regRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
-      foundRegionalCc = true;
-    }
-  }
+  const omitirRolesLocales = (idConfigDoc === 18 || Number(idConfigDoc) === 18);
 
-  // 3. Fallback: Auxiliar and Coordinador by Operación
-  if (!foundRegionalCc && operacion) {
-    const [opRows] = await pool.execute(
-      'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador")',
-      [operacion]
-    );
-    opRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+  if (!omitirRolesLocales) {
+    // 2. AuxiliarR and CoordinadorR by Regional
+    let foundRegionalCc = false;
+    if (regional) {
+      const [regRows] = await pool.execute(
+        'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR")',
+        [regional]
+      );
+      if (regRows.length) {
+        regRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+        foundRegionalCc = true;
+      }
+    }
+
+    // 3. Fallback: Auxiliar and Coordinador by Operación
+    if (!foundRegionalCc && operacion) {
+      const [opRows] = await pool.execute(
+        'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador")',
+        [operacion]
+      );
+      opRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+    }
   }
 
   // 4. Fixed copies
@@ -61,7 +80,7 @@ router.get('/', async (req, res) => {
     }
 
     const [uRows] = await pool.execute(
-      'SELECT ID, Nombre FROM Maestro_Usuarios WHERE ID = ?',
+      'SELECT ID, Nombre, Rol FROM Maestro_Usuarios WHERE ID = ?',
       [usuario]
     );
     if (!uRows.length) {
@@ -73,7 +92,8 @@ router.get('/', async (req, res) => {
 
     const config = JSON.stringify({
       usuarioId: uRows[0].ID,
-      usuarioNombre: uRows[0].Nombre
+      usuarioNombre: uRows[0].Nombre,
+      usuarioRol: uRows[0].Rol || ''
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -116,6 +136,12 @@ router.get('/sign/:token', async (req, res) => {
       nombreDocumento: logysign.nombre_documento || logysign.prefijo,
       originalPdfUrl: `/logysign/api/pdf/${logysign.id}`,
       idConfigDoc: logysign.id_config_doc,
+      firmasCoordenadas: logysign.firmas_coordenadas,
+      firmaX: logysign.firma_x,
+      firmaY: logysign.firma_y,
+      firmaW: logysign.firma_w,
+      firmaH: logysign.firma_h,
+      firmaPage: logysign.firma_page
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -269,7 +295,8 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       firmaY,
       firmaW,
       firmaH,
-      firmaPage
+      firmaPage,
+      firmasCoordenadas
     } = req.body;
 
     if (!req.file) {
@@ -307,8 +334,8 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
        (id, token, token_expira, identificacion, nombre_trabajador, email_trabajador, 
         regional, operacion, cargo, fecha_ingreso, id_config_doc, prefijo, 
         original_pdf_url, firma_x, firma_y, firma_w, firma_h, firma_page, 
-        usuario_creador, estado)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE')`,
+        usuario_creador, estado, firmas_coordenadas)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE', ?)`,
       [
         uuid,
         token,
@@ -328,7 +355,8 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         firmaW,
         firmaH,
         firmaPage,
-        usuarioId
+        usuarioId,
+        firmasCoordenadas || null
       ]
     );
 
@@ -460,28 +488,49 @@ router.post('/api/firmar', async (req, res) => {
     const { PDFDocument } = require('pdf-lib');
     const pdfDoc = await PDFDocument.load(originalPdfBuffer);
     const signatureImage = await pdfDoc.embedPng(signatureBuffer);
-
     const pages = pdfDoc.getPages();
-    const pageIdx = logysign.firma_page - 1;
-    if (pageIdx < 0 || pageIdx >= pages.length) {
-      return res.status(400).json({ error: `La página del cuadro de firma (${logysign.firma_page}) es inválida.` });
+
+    let boxes = [];
+    if (logysign.firmas_coordenadas) {
+      try {
+        boxes = JSON.parse(logysign.firmas_coordenadas);
+      } catch (err) {
+        console.warn('[logysign] Error parsing firmas_coordenadas:', err.message);
+      }
     }
 
-    const targetPage = pages[pageIdx];
-    const { width: pageWidth, height: pageHeight } = targetPage.getSize();
+    if (!Array.isArray(boxes) || boxes.length === 0) {
+      // Legacy single box fallback
+      boxes = [{
+        page: logysign.firma_page,
+        x: logysign.firma_x,
+        y: logysign.firma_y,
+        w: logysign.firma_w,
+        h: logysign.firma_h
+      }];
+    }
 
-    // Transform relative coordinate system (top-left) to PDF points (bottom-left)
-    const pdfX = logysign.firma_x * pageWidth;
-    const pdfY = (1 - logysign.firma_y - logysign.firma_h) * pageHeight;
-    const pdfW = logysign.firma_w * pageWidth;
-    const pdfH = logysign.firma_h * pageHeight;
+    // Embed each box
+    for (const box of boxes) {
+      const pageIdx = Math.min(box.page, pages.length) - 1;
+      if (pageIdx >= 0 && pageIdx < pages.length) {
+        const targetPage = pages[pageIdx];
+        const { width: pageWidth, height: pageHeight } = targetPage.getSize();
 
-    targetPage.drawImage(signatureImage, {
-      x: pdfX,
-      y: pdfY,
-      width: pdfW,
-      height: pdfH,
-    });
+        // Transform relative coordinate system (top-left) to PDF points (bottom-left)
+        const pdfX = box.x * pageWidth;
+        const pdfY = (1 - box.y - box.h) * pageHeight;
+        const pdfW = box.w * pageWidth;
+        const pdfH = box.h * pageHeight;
+
+        targetPage.drawImage(signatureImage, {
+          x: pdfX,
+          y: pdfY,
+          width: pdfW,
+          height: pdfH,
+        });
+      }
+    }
 
     const signedPdfBytes = await pdfDoc.save();
 

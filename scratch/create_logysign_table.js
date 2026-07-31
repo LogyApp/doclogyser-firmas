@@ -26,7 +26,8 @@ async function run() {
         firma_page INT NOT NULL,
         usuario_creador VARCHAR(50) NOT NULL,
         estado VARCHAR(20) DEFAULT 'PENDIENTE',
-        fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        firmas_coordenadas TEXT NULL
       )
     `);
     console.log('Table Dynamic_Logysign created successfully!');
