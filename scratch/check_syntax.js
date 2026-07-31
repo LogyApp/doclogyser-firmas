@@ -12,6 +12,7 @@ const filesToCheck = [
   'src/routes/participacion.js',
   'src/routes/compromisosst.js',
   'src/routes/solicitudes.js',
+  'src/routes/logysign.js',
   'src/services/email.js'
 ];
 

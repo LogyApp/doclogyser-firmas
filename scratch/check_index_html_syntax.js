@@ -9,7 +9,9 @@ const files = [
   'src/views/evaluacionsst/index.html',
   'src/views/capacitacionsst/index.html',
   'src/views/pruebaconsumo/index.html',
-  'src/views/solicitudes/index.html'
+  'src/views/solicitudes/index.html',
+  'src/views/logysign/form.html',
+  'src/views/logysign/sign.html'
 ];
 
 let failed = false;

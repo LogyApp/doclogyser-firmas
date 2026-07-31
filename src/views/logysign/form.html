@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logysign — LOG&SER Gestión Documental</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+  </script>
+
+  <style>
+    :root {
+      --primary: #000b59;
+      --primary-dark: #00073a;
+      --primary-light: #1c2a7a;
+      --accent: #F55400;
+      --accent-dark: #d64700;
+      --accent-soft: rgba(245, 84, 0, 0.1);
+      --success: #16a34a;
+      --success-soft: rgba(22, 163, 74, 0.08);
+      --danger: #dc2626;
+      --bg: #f4f5f9;
+      --card-bg: #ffffff;
+      --text: #101425;
+      --text-muted: #6b7280;
+      --border: #e7e8ef;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+      --shadow-md: 0 8px 20px -6px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+      --shadow-lg: 0 20px 40px -12px rgba(0, 11, 89, 0.22);
+      --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header styling */
+    header {
+      background: var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 10px 24px;
+      color: #fff;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      flex-shrink: 0;
+    }
+
+    .brand-lockup img.brand-logo-app {
+      display: block;
+      object-fit: contain;
+      height: 30px;
+    }
+
+    /* Logyser sin Nit.png ships on a 1536x1024 canvas with the actual mark
+       occupying only a small region (x:369-1130, y:372-567). Crop it via
+       scaled absolute positioning instead of trusting object-fit on the
+       raw file, which would render the mark tiny inside a huge blank area. */
+    .brand-logo-company-crop {
+      width: 133px;
+      height: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -64px;
+      top: -65px;
+      width: 268px;
+      height: 178px;
+      max-width: none;
+    }
+
+    .brand-divider {
+      width: 80%;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .header-logo {
+      text-align: center;
+    }
+
+    .header-logo h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.1rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .header-logo h1 .accent {
+      color: var(--accent);
+    }
+
+    .header-logo p {
+      font-size: 0.98rem;
+      color: rgba(255, 255, 255, 0.68);
+      margin-top: 3px;
+    }
+
+    .user-badge {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 9px 18px 9px 14px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
+    .user-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* Main Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 968px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      header {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 22px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-title .icon-chip {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: rgba(0, 11, 89, 0.06);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    input[type="text"], input[type="email"], select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.92rem;
+      color: var(--text);
+      background-color: #fff;
+      transition: var(--transition);
+    }
+
+    input[type="text"]:focus, input[type="email"]:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    /* Autocomplete list styling */
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: var(--shadow-lg);
+      margin-top: 6px;
+      display: none;
+      list-style: none;
+    }
+
+    .autocomplete-list li {
+      padding: 11px 16px;
+      cursor: pointer;
+      font-size: 0.92rem;
+      transition: var(--transition);
+      border-bottom: 1px solid var(--bg);
+    }
+
+    .autocomplete-list li:last-child {
+      border-bottom: none;
+    }
+
+    .autocomplete-list li:hover {
+      background-color: var(--bg);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Info display panel */
+    .info-panel {
+      background: var(--bg);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .info-value {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-top: 3px;
+    }
+
+    /* Drag & Drop upload area */
+    .upload-zone {
+      border: 2px dashed #c7cad9;
+      background-color: #fafbfd;
+      padding: 28px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: 22px;
+    }
+
+    .upload-zone:hover {
+      background-color: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .upload-zone svg {
+      width: 42px;
+      height: 42px;
+      color: var(--primary);
+      opacity: 0.55;
+      margin-bottom: 10px;
+    }
+
+    .upload-zone p {
+      font-size: 0.92rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .upload-zone span {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+    }
+
+    .file-indicator {
+      display: none;
+      background: var(--success-soft);
+      border: 1.5px solid var(--success);
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      align-items: center;
+      gap: 12px;
+      font-size: 0.92rem;
+      color: var(--success);
+      font-weight: 600;
+      margin-bottom: 22px;
+    }
+
+    /* PDF Viewport & Workspace */
+    .pdf-workspace {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .pdf-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      background: var(--bg);
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pdf-page-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-nav {
+      background: #fff;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--primary);
+      transition: var(--transition);
+    }
+
+    .btn-nav:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--primary);
+    }
+
+    .btn-nav:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .pdf-container-wrapper {
+      flex: 1;
+      background: #171b30;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: auto;
+      max-height: 700px;
+      min-height: 400px;
+      position: relative;
+    }
+
+    .pdf-relative-container {
+      position: relative;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+      background-color: #fff;
+      max-width: 100%;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      height: auto !important;
+    }
+
+    @media (max-width: 768px) {
+      .pdf-container-wrapper {
+        padding: 8px !important;
+        min-height: 300px !important;
+      }
+    }
+
+    /* Draggable signature box */
+    .sig-box {
+      position: absolute;
+      border: 2px dashed var(--accent);
+      background: rgba(245, 84, 0, 0.16);
+      cursor: move;
+      width: 160px;
+      height: 70px;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+      z-index: 10;
+      border-radius: 4px;
+    }
+
+    .sig-box-text {
+      color: var(--primary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      pointer-events: none;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 3px 8px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+    }
+
+    .sig-resize-handle {
+      position: absolute;
+      width: 13px;
+      height: 13px;
+      background: var(--primary);
+      border: 2px solid #fff;
+      right: -7px;
+      bottom: -7px;
+      cursor: se-resize;
+      border-radius: 50%;
+      z-index: 11;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* Action Buttons */
+    .btn-submit {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      padding: 15px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 16px -4px rgba(245, 84, 0, 0.35);
+      transition: var(--transition);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--accent-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px -4px rgba(245, 84, 0, 0.45);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Toast messaging */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1f2430;
+      color: #fff;
+      padding: 15px 22px;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+      display: none;
+      z-index: 1000;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .toast-success { background: var(--success); }
+    .toast-error { background: var(--danger); }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(16, 20, 37, 0.55);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1100;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .loading-overlay h3 {
+      color: #fff !important;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .spinner {
+      width: 46px;
+      height: 46px;
+      border: 4px solid rgba(255,255,255,0.25);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <h3 id="loading-text">Cargando PDF...</h3>
+  </div>
+
+  <div class="toast" id="toast">Toast Message</div>
+
+  <div class="container">
+    <header>
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+      <div class="header-logo">
+        <h1>Logy<span class="accent">Sign</span></h1>
+        <p>Módulo de Preparación y Firma Digital de Documentos PDF</p>
+      </div>
+      <div class="user-badge" id="user-badge-name">
+        Cargando usuario...
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left side: Configuration details -->
+      <div class="card">
+        <h2 class="card-title">
+          <span class="icon-chip">
+            <svg style="width:18px;height:18px" viewBox="0 0 24 24"><path fill="currentColor" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4M12,18c-2.76,0-5-2.24-5-5H9a3,3 0 0,0 3,3a3,3 0 0,0 3,-3h2c0,2.76-2.24,5-5,5z"/></svg>
+          </span>
+          Destinatario e Información
+        </h2>
+
+        <!-- Trabajador autocomplete search -->
+        <div class="form-group">
+          <label for="trabajador-search">Trabajador</label>
+          <input type="text" id="trabajador-search" autocomplete="off" placeholder="Busque trabajador por nombre...">
+          <ul class="autocomplete-list" id="autocomplete-list"></ul>
+        </div>
+
+        <!-- Informational readonly fields -->
+        <div class="info-panel" style="display: none;" id="vinculacion-panel">
+          <div class="info-item">
+            <span class="info-label">Regional</span>
+            <span class="info-value" id="val-regional">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Operación</span>
+            <span class="info-value" id="val-operacion">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Cargo</span>
+            <span class="info-value" id="val-cargo">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Fecha Ingreso</span>
+            <span class="info-value" id="val-fecha-ingreso">-</span>
+          </div>
+        </div>
+
+        <!-- Editable segmentación fields -->
+        <div class="form-group" style="display: none;" id="grp-celular">
+          <label for="input-celular">Celular del Trabajador</label>
+          <input type="text" id="input-celular" placeholder="Número de celular">
+        </div>
+        <div class="form-group" style="display: none;" id="grp-email">
+          <label for="input-email">Email del Trabajador (Notificación)</label>
+          <input type="email" id="input-email" placeholder="Correo electrónico">
+        </div>
+
+        <!-- Config_Doc_Trabajador select lists -->
+        <div class="form-group">
+          <label for="select-clasificacion">Clasificación de Documento</label>
+          <select id="select-clasificacion">
+            <option value="">-- Seleccione Clasificación --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="select-documento">Tipo de Documento</label>
+          <select id="select-documento" disabled>
+            <option value="">-- Seleccione Tipo de Documento --</option>
+          </select>
+        </div>
+
+        <!-- Drag & Drop Upload PDF area -->
+        <div class="upload-zone" id="upload-zone">
+          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,8H18A2,2 0 0,0 20,20V8L14,2M13,13V18H11V13H8L12,9L16,13H13M13,9V3.5L18.5,9H13Z"/></svg>
+          <p>Arrastre su archivo PDF aquí</p>
+          <span>o haga clic para examinar</span>
+          <input type="file" id="file-input" accept="application/pdf" style="display: none;">
+        </div>
+
+        <!-- File selected indicator -->
+        <div class="file-indicator" id="file-indicator">
+          <svg style="width:20px;height:20px" viewBox="0 0 24 24"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+          <span id="file-name-text">archivo.pdf</span>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="button" class="btn-submit" id="btn-submit" disabled>
+          Enviar al Trabajador
+        </button>
+      </div>
+
+      <!-- Right side: PDF preview and signature rectangle mapping -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <h2 class="card-title">
+          <span class="icon-chip">
+            <svg style="width:18px;height:18px" viewBox="0 0 24 24"><path fill="currentColor" d="M21,17H3V5H21M21,3H3A2,2 0 0,0 1,5V17A2,2 0 0,0 3,19H8V21H16V19H21A2,2 0 0,0 23,17V5A2,2 0 0,0 21,3Z"/></svg>
+          </span>
+          Ubicación de la Firma
+        </h2>
+
+        <div class="pdf-workspace">
+          <div class="pdf-controls">
+            <div class="pdf-page-nav">
+              <button type="button" class="btn-nav" id="btn-prev" disabled>&lt; Anterior</button>
+              <span style="font-weight: 500;" id="page-indicator">Página: 0 / 0</span>
+              <button type="button" class="btn-nav" id="btn-next" disabled>Siguiente &gt;</button>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+              Arrastre y ajuste el recuadro naranja sobre la firma.
+            </div>
+          </div>
+
+          <div class="pdf-container-wrapper">
+            <div class="pdf-relative-container" id="pdf-container" style="display: none;">
+              <canvas id="pdf-canvas"></canvas>
+              <!-- Draggable resizable signature box -->
+              <div class="sig-box" id="sig-box">
+                <span class="sig-box-text">Firma del Trabajador</span>
+                <div class="sig-resize-handle" id="sig-resize-handle"></div>
+              </div>
+            </div>
+            <div id="no-pdf-message" style="color: #fff; text-align: center; margin-top: 100px;">
+              Cargue un documento PDF para previsualizar y marcar la firma.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load config from backend
+    const CONFIG = __CONFIG__;
+
+    // Globals
+    let selectedTrabajador = null;
+    let selectedTrabajadorDetails = null;
+    let configDocs = [];
+    let pdfDoc = null;
+    let currentPageNum = 1;
+    let canvas = document.getElementById('pdf-canvas');
+    let ctx = canvas.getContext('2d');
+    let originalFile = null;
+    let scale = 1.0;
+
+    // Dom elements
+    const userBadge = document.getElementById('user-badge-name');
+    const workerSearchInput = document.getElementById('trabajador-search');
+    const autocompleteList = document.getElementById('autocomplete-list');
+    const selectClasificacion = document.getElementById('select-clasificacion');
+    const selectDocumento = document.getElementById('select-documento');
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const fileIndicator = document.getElementById('file-indicator');
+    const fileNameText = document.getElementById('file-name-text');
+    const btnSubmit = document.getElementById('btn-submit');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const pageIndicator = document.getElementById('page-indicator');
+    const pdfContainer = document.getElementById('pdf-container');
+    const noPdfMessage = document.getElementById('no-pdf-message');
+    const sigBox = document.getElementById('sig-box');
+    const sigResizeHandle = document.getElementById('sig-resize-handle');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
+
+    // Init page info
+    userBadge.innerText = CONFIG.usuarioNombre;
+
+    // Show toast message
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.className = `toast toast-${type}`;
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 4000);
+    }
+
+    // Toggle loading overlay
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loadingOverlay.style.display = 'flex';
+    }
+
+    function hideLoading() {
+      loadingOverlay.style.display = 'none';
+    }
+
+    // Load classifications and documents configurations
+    async function loadConfigDocs() {
+      try {
+        const res = await fetch('/logysign/api/config-docs');
+        if (!res.ok) throw new Error('No se pudo cargar la configuración de documentos');
+        configDocs = await res.json();
+        
+        // Group by classification
+        const classifications = [...new Set(configDocs.map(c => c.Clasificacion).filter(Boolean))];
+        classifications.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.innerText = c;
+          selectClasificacion.appendChild(opt);
+        });
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    loadConfigDocs();
+
+    // Classification change event
+    selectClasificacion.addEventListener('change', () => {
+      const val = selectClasificacion.value;
+      selectDocumento.innerHTML = '<option value="">-- Seleccione Tipo de Documento --</option>';
+      if (!val) {
+        selectDocumento.disabled = true;
+        checkFormValidity();
+        return;
+      }
+
+      const docs = configDocs.filter(c => c.Clasificacion === val);
+      docs.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.Id;
+        opt.innerText = d.Documento;
+        opt.dataset.prefijo = d.Prefijo;
+        selectDocumento.appendChild(opt);
+      });
+      selectDocumento.disabled = false;
+      checkFormValidity();
+    });
+
+    selectDocumento.addEventListener('change', checkFormValidity);
+
+    // Trabajador Search Autocomplete
+    let searchTimeout;
+    workerSearchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      const val = workerSearchInput.value.trim();
+      if (val.length < 2) {
+        autocompleteList.style.display = 'none';
+        return;
+      }
+
+      searchTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`/logysign/api/search-trabajadores?q=${encodeURIComponent(val)}`);
+          if (!res.ok) throw new Error('Error al buscar trabajadores');
+          const data = await res.json();
+          
+          autocompleteList.innerHTML = '';
+          if (data.length === 0) {
+            autocompleteList.style.display = 'none';
+            return;
+          }
+
+          data.forEach(item => {
+            const li = document.createElement('li');
+            li.innerText = item.Trabajador;
+            li.addEventListener('click', () => selectTrabajadorItem(item.Trabajador));
+            autocompleteList.appendChild(li);
+          });
+          autocompleteList.style.display = 'block';
+        } catch (err) {
+          console.error(err);
+        }
+      }, 300);
+    });
+
+    // Close autocomplete on click outside
+    document.addEventListener('click', (e) => {
+      if (e.target !== workerSearchInput && e.target !== autocompleteList) {
+        autocompleteList.style.display = 'none';
+      }
+    });
+
+    // Select worker from list
+    async function selectTrabajadorItem(name) {
+      workerSearchInput.value = name;
+      autocompleteList.style.display = 'none';
+      selectedTrabajador = name;
+      showLoading('Cargando información del trabajador...');
+
+      try {
+        const res = await fetch(`/logysign/api/vinculacion?trabajador=${encodeURIComponent(name)}`);
+        if (!res.ok) throw new Error('Error al consultar vinculación');
+        const data = await res.json();
+        
+        selectedTrabajadorDetails = data;
+
+        // Display panel
+        document.getElementById('vinculacion-panel').style.display = 'grid';
+        document.getElementById('grp-celular').style.display = 'block';
+        document.getElementById('grp-email').style.display = 'block';
+
+        // Set read-only info fields
+        document.getElementById('val-regional').innerText = data.vinculacion?.Regional || 'NO REGISTRADA';
+        document.getElementById('val-operacion').innerText = data.vinculacion?.operacion || 'NO REGISTRADA';
+        document.getElementById('val-cargo').innerText = data.vinculacion?.Cargo || 'NO REGISTRADO';
+        
+        let fIngreso = '-';
+        if (data.vinculacion?.fecha_ingreso) {
+          fIngreso = new Date(data.vinculacion.fecha_ingreso).toLocaleDateString('es-CO');
+        }
+        document.getElementById('val-fecha-ingreso').innerText = fIngreso;
+
+        // Set editable fields
+        document.getElementById('input-celular').value = data.segmentacion?.Celular || '';
+        document.getElementById('input-email').value = data.segmentacion?.Email || '';
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+        checkFormValidity();
+      }
+    }
+
+    // Drag & Drop PDF
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.style.backgroundColor = 'rgba(30, 60, 114, 0.08)';
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.style.backgroundColor = 'rgba(30, 60, 114, 0.02)';
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.style.backgroundColor = 'rgba(30, 60, 114, 0.02)';
+      const files = e.dataTransfer.files;
+      if (files.length) handlePDFFile(files[0]);
+    });
+
+    uploadZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) handlePDFFile(fileInput.files[0]);
+    });
+
+    // Handle PDF rendering
+    async function handlePDFFile(file) {
+      if (file.type !== 'application/pdf') {
+        showToast('El archivo cargado no es un PDF válido', 'error');
+        return;
+      }
+      originalFile = file;
+      fileNameText.innerText = file.name;
+      fileIndicator.style.display = 'flex';
+
+      showLoading('Procesando previsualización de PDF...');
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        currentPageNum = 1;
+        
+        noPdfMessage.style.display = 'none';
+        pdfContainer.style.display = 'block';
+
+        await renderPage(currentPageNum);
+      } catch (err) {
+        showToast('Error al renderizar PDF: ' + err.message, 'error');
+      } finally {
+        hideLoading();
+        checkFormValidity();
+      }
+    }
+
+    async function renderPage(pageNum) {
+      if (!pdfDoc) return;
+      showLoading('Renderizando página ' + pageNum + '...');
+      try {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.2 });
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        await page.render(renderContext).promise;
+        
+        // Update controls
+        pageIndicator.innerText = `Página: ${pageNum} / ${pdfDoc.numPages}`;
+        btnPrev.disabled = pageNum <= 1;
+        btnNext.disabled = pageNum >= pdfDoc.numPages;
+
+        // Position signature box centrally
+        sigBox.style.left = `${(viewport.width - sigBox.offsetWidth) / 2}px`;
+        sigBox.style.top = `${viewport.height - sigBox.offsetHeight - 50}px`;
+
+      } catch (err) {
+        showToast('Error al renderizar página: ' + err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    btnPrev.addEventListener('click', () => {
+      if (currentPageNum > 1) {
+        currentPageNum--;
+        renderPage(currentPageNum);
+      }
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (currentPageNum < pdfDoc.numPages) {
+        currentPageNum++;
+        renderPage(currentPageNum);
+      }
+    });
+
+    // Interactive Dragging and Resizing for SigBox
+    let isDragging = false;
+    let isResizing = false;
+    let startX, startY, startLeft, startTop, startWidth, startHeight;
+
+    sigBox.addEventListener('mousedown', (e) => {
+      if (e.target === sigResizeHandle) return; // let resize handler handle it
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = sigBox.offsetLeft;
+      startTop = sigBox.offsetTop;
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    sigResizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation(); // prevent drag
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = sigBox.offsetWidth;
+      startHeight = sigBox.offsetHeight;
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    function onMouseMove(e) {
+      if (isDragging) {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        let newLeft = startLeft + dx;
+        let newTop = startTop + dy;
+
+        // Boundary constraint checks
+        const maxLeft = pdfContainer.clientWidth - sigBox.offsetWidth;
+        const maxTop = pdfContainer.clientHeight - sigBox.offsetHeight;
+
+        newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+        newTop = Math.max(0, Math.min(newTop, maxTop));
+
+        sigBox.style.left = `${newLeft}px`;
+        sigBox.style.top = `${newTop}px`;
+      } else if (isResizing) {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        let newWidth = startWidth + dx;
+        let newHeight = startHeight + dy;
+
+        // Min/Max constraints
+        newWidth = Math.max(80, Math.min(newWidth, 300));
+        newHeight = Math.max(40, Math.min(newHeight, 150));
+
+        // Boundary constraint check
+        if (sigBox.offsetLeft + newWidth > pdfContainer.clientWidth) {
+          newWidth = pdfContainer.clientWidth - sigBox.offsetLeft;
+        }
+        if (sigBox.offsetTop + newHeight > pdfContainer.clientHeight) {
+          newHeight = pdfContainer.clientHeight - sigBox.offsetTop;
+        }
+
+        sigBox.style.width = `${newWidth}px`;
+        sigBox.style.height = `${newHeight}px`;
+      }
+    }
+
+    function onMouseUp() {
+      isDragging = false;
+      isResizing = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    // Form Validity Check
+    function checkFormValidity() {
+      const email = document.getElementById('input-email').value.trim();
+      const celular = document.getElementById('input-celular').value.trim();
+      const hasWorker = !!selectedTrabajador;
+      const hasDocType = !!selectDocumento.value;
+      const hasFile = !!originalFile;
+
+      btnSubmit.disabled = !(hasWorker && hasDocType && hasFile && email && celular);
+    }
+
+    document.getElementById('input-celular').addEventListener('input', checkFormValidity);
+    document.getElementById('input-email').addEventListener('input', checkFormValidity);
+
+    // Form submission
+    btnSubmit.addEventListener('click', async () => {
+      if (btnSubmit.disabled) return;
+
+      const email = document.getElementById('input-email').value.trim();
+      const celular = document.getElementById('input-celular').value.trim();
+      const idConfigDoc = selectDocumento.value;
+      const prefijo = selectDocumento.options[selectDocumento.selectedIndex].dataset.prefijo;
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showToast('El correo electrónico no tiene un formato válido', 'error');
+        return;
+      }
+
+      // Calculate relative coordinates of the signature box relative to viewport
+      const containerW = pdfContainer.clientWidth;
+      const containerH = pdfContainer.clientHeight;
+
+      const relX = sigBox.offsetLeft / containerW;
+      const relY = sigBox.offsetTop / containerH;
+      const relW = sigBox.offsetWidth / containerW;
+      const relH = sigBox.offsetHeight / containerH;
+
+      showLoading('Actualizando datos y enviando correo al trabajador...');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', originalFile);
+        formData.append('usuarioId', CONFIG.usuarioId);
+        formData.append('trabajador', selectedTrabajador);
+        formData.append('identificacion', selectedTrabajadorDetails.segmentacion.identificacion);
+        formData.append('emailTrabajador', email);
+        formData.append('celularTrabajador', celular);
+        formData.append('regional', selectedTrabajadorDetails.vinculacion?.Regional || '');
+        formData.append('operacion', selectedTrabajadorDetails.vinculacion?.operacion || '');
+        formData.append('cargo', selectedTrabajadorDetails.vinculacion?.Cargo || '');
+        formData.append('fechaIngreso', selectedTrabajadorDetails.vinculacion?.fecha_ingreso || '');
+        formData.append('estadoTrabajador', selectedTrabajadorDetails.vinculacion?.Estado || 'Activo');
+        formData.append('idConfigDoc', idConfigDoc);
+        formData.append('prefijo', prefijo);
+        formData.append('firmaX', relX);
+        formData.append('firmaY', relY);
+        formData.append('firmaW', relW);
+        formData.append('firmaH', relH);
+        formData.append('firmaPage', currentPageNum);
+
+        const res = await fetch('/logysign/api/enviar', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Ocurrió un error al enviar el flujo');
+
+        showToast('Documento registrado y enviado con éxito.', 'success');
+        
+        // Reset form
+        workerSearchInput.value = '';
+        selectedTrabajador = null;
+        selectedTrabajadorDetails = null;
+        document.getElementById('vinculacion-panel').style.display = 'none';
+        document.getElementById('grp-celular').style.display = 'none';
+        document.getElementById('grp-email').style.display = 'none';
+        selectClasificacion.value = '';
+        selectDocumento.innerHTML = '<option value="">-- Seleccione Tipo de Documento --</option>';
+        selectDocumento.disabled = true;
+        originalFile = null;
+        fileInput.value = '';
+        fileIndicator.style.display = 'none';
+        pdfContainer.style.display = 'none';
+        noPdfMessage.style.display = 'block';
+        pdfDoc = null;
+        pageIndicator.innerText = 'Página: 0 / 0';
+        btnPrev.disabled = true;
+        btnNext.disabled = true;
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+        checkFormValidity();
+      }
+    });
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firmar Documento — LOG&SER Gestión Documental</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+  </script>
+
+  <style>
+    :root {
+      --primary: #000b59;
+      --primary-dark: #00073a;
+      --primary-light: #1c2a7a;
+      --accent: #F55400;
+      --accent-dark: #d64700;
+      --accent-soft: rgba(245, 84, 0, 0.1);
+      --success: #16a34a;
+      --success-soft: rgba(22, 163, 74, 0.08);
+      --danger: #dc2626;
+      --bg: #f4f5f9;
+      --card-bg: #ffffff;
+      --text: #101425;
+      --text-muted: #6b7280;
+      --border: #e7e8ef;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+      --shadow-md: 0 8px 20px -6px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+      --shadow-lg: 0 20px 40px -12px rgba(0, 11, 89, 0.22);
+      --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 10px 24px;
+      color: #fff;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      flex-shrink: 0;
+    }
+
+    .brand-lockup img.brand-logo-app {
+      display: block;
+      object-fit: contain;
+      height: 30px;
+    }
+
+    /* Logyser sin Nit.png ships on a 1536x1024 canvas with the actual mark
+       occupying only a small region (x:369-1130, y:372-567). Crop it via
+       scaled absolute positioning instead of trusting object-fit on the
+       raw file, which would render the mark tiny inside a huge blank area. */
+    .brand-logo-company-crop {
+      width: 133px;
+      height: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -64px;
+      top: -65px;
+      width: 268px;
+      height: 178px;
+      max-width: none;
+    }
+
+    .brand-divider {
+      width: 80%;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .header-title h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .header-title p {
+      font-size: 0.98rem;
+      color: rgba(255, 255, 255, 0.68);
+      margin-top: 3px;
+    }
+
+    .worker-badge {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 9px 18px;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      flex-shrink: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 968px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      header {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-title .icon-chip {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: rgba(0, 11, 89, 0.06);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* PDF Viewport */
+    .pdf-workspace {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pdf-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      background: var(--bg);
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pdf-page-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-nav {
+      background: #fff;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--primary);
+      transition: var(--transition);
+    }
+
+    .btn-nav:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--primary);
+    }
+
+    .btn-nav:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .pdf-container-wrapper {
+      background: #171b30;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: auto;
+      max-height: 700px;
+      min-height: 400px;
+    }
+
+    .pdf-shadow-container {
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+      background-color: #fff;
+      max-width: 100%;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      height: auto !important;
+    }
+
+    @media (max-width: 768px) {
+      .pdf-container-wrapper {
+        padding: 8px !important;
+        min-height: 300px !important;
+      }
+    }
+
+    /* Sign Options Card */
+    .sig-options {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .option-card {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .option-card:hover {
+      border-color: var(--accent);
+      background-color: var(--accent-soft);
+    }
+
+    .option-card.selected {
+      border-color: var(--accent);
+      background-color: var(--accent-soft);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .option-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+    }
+
+    .option-radio {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    .signature-preview-container {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100px;
+    }
+
+    .signature-preview-container img {
+      max-height: 90px;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    /* Signature Drawing Canvas */
+    .drawing-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .drawing-canvas-wrapper {
+      border: 2px dashed #c7cad9;
+      border-radius: var(--radius-sm);
+      background: #fff;
+      position: relative;
+      touch-action: none; /* prevent scrolling when drawing */
+    }
+
+    .drawing-canvas {
+      display: block;
+      width: 100%;
+      height: 160px;
+      cursor: crosshair;
+    }
+
+    .btn-clear {
+      background: #fff;
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--danger);
+      transition: var(--transition);
+      align-self: flex-end;
+    }
+
+    .btn-clear:hover {
+      background: rgba(220, 38, 38, 0.06);
+      border-color: var(--danger);
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      padding: 15px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 16px -4px rgba(245, 84, 0, 0.35);
+      transition: var(--transition);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--accent-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px -4px rgba(245, 84, 0, 0.45);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Success screen */
+    .success-panel {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .success-icon {
+      width: 76px;
+      height: 76px;
+      background: var(--success-soft);
+      color: var(--success);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 24px;
+    }
+
+    .success-icon svg {
+      width: 42px;
+      height: 42px;
+    }
+
+    .success-panel h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .success-panel p {
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--primary);
+      color: #fff;
+      padding: 13px 26px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.92rem;
+      box-shadow: var(--shadow-md);
+      transition: var(--transition);
+    }
+
+    .btn-download:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    /* Toast and Loader styling */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1f2430;
+      color: #fff;
+      padding: 15px 22px;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+      display: none;
+      z-index: 1000;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .toast-success { background: var(--success); }
+    .toast-error { background: var(--danger); }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(16, 20, 37, 0.55);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1100;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .loading-overlay h3 {
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .spinner {
+      width: 46px;
+      height: 46px;
+      border: 4px solid rgba(255,255,255,0.25);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <h3 id="loading-text">Cargando PDF...</h3>
+  </div>
+
+  <div class="toast" id="toast">Mensaje de estado</div>
+
+  <div class="container">
+    <header id="header-panel">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+      <div class="header-title">
+        <h1 style="font-family: 'Outfit', sans-serif;">Firma de Documento</h1>
+        <p id="document-nombre" style="margin-top: 4px; font-weight: 500; opacity: 0.9;">Cargando documento...</p>
+      </div>
+      <div class="worker-badge" id="worker-name-badge">
+        Cargando trabajador...
+      </div>
+    </header>
+
+    <!-- Main Workspace (Hidden on success) -->
+    <div class="grid" id="main-workspace">
+      <!-- Left side: PDF Viewer -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <h2 class="card-title">
+          <span class="icon-chip">
+            <svg style="width:18px;height:18px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,3H5C3.89,3 3,3.89 3,5V19C3,20.1 3.89,21 5,21H19C20.1,21 21,20.1 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M7,17H17V15H7V17M7,13H17V11H7V13M7,9H14V7H7V9Z"/></svg>
+          </span>
+          Visor de Documento
+        </h2>
+
+        <div class="pdf-workspace">
+          <div class="pdf-controls">
+            <div class="pdf-page-nav">
+              <button type="button" class="btn-nav" id="btn-prev" disabled>&lt; Anterior</button>
+              <span style="font-weight: 500;" id="page-indicator">Página: 0 / 0</span>
+              <button type="button" class="btn-nav" id="btn-next" disabled>Siguiente &gt;</button>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+              Revise detenidamente todo el documento.
+            </div>
+          </div>
+
+          <div class="pdf-container-wrapper">
+            <div class="pdf-shadow-container">
+              <canvas id="pdf-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right side: Signing options -->
+      <div class="card">
+        <h2 class="card-title">
+          <span class="icon-chip">
+            <svg style="width:18px;height:18px" viewBox="0 0 24 24"><path fill="currentColor" d="M21.7,14.3L20.7,15.3L18.7,13.3L19.7,12.3C19.9,12.1 20.3,12.1 20.5,12.3L21.7,13.5C21.9,13.7 21.9,14.1 21.7,14.3M12,18.9L18.1,12.8L20.1,14.8L14,20.9L12,18.9M10,21A2,2 0 0,1 8,19V17H6V15H4V13H2V5A2,2 0 0,1 4,3H16A2,2 0 0,1 18,5V10.8L12.8,16H10V18.8L9.2,19.6C9.5,20.4 10,21 10,21M14,7H4V9H14V7M14,11H4V13H10V11H14Z"/></svg>
+          </span>
+          Registrar Firma
+        </h2>
+
+        <div class="sig-options">
+          <!-- Option 1: Use recent signature -->
+          <div class="option-card" id="option-existing-card" style="display: none;">
+            <div class="option-header">
+              <input type="radio" name="sig-method" value="existing" id="radio-existing" class="option-radio">
+              <label for="radio-existing" style="margin: 0; cursor: pointer;">Utilizar firma del sistema</label>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Se utilizará la firma más reciente que usted tiene registrada en nuestra base de datos.</p>
+            <div class="signature-preview-container">
+              <img id="existing-sig-img" src="" alt="Firma registrada">
+            </div>
+          </div>
+
+          <!-- Option 2: Draw new signature -->
+          <div class="option-card" id="option-draw-card">
+            <div class="option-header">
+              <input type="radio" name="sig-method" value="draw" id="radio-draw" class="option-radio" checked>
+              <label for="radio-draw" style="margin: 0; cursor: pointer;">Dibujar una nueva firma</label>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Use el mouse o la pantalla táctil de su dispositivo en el recuadro blanco para dibujar su firma.</p>
+            
+            <div class="drawing-container" id="drawing-area">
+              <div class="drawing-canvas-wrapper">
+                <canvas class="drawing-canvas" id="drawing-canvas"></canvas>
+              </div>
+              <button type="button" class="btn-clear" id="btn-clear-sig">Borrar Trazo</button>
+            </div>
+          </div>
+
+          <!-- Confirm button -->
+          <button type="button" class="btn-submit" id="btn-confirm-sign">
+            Firmar Documento Oficial
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Panel (Shown on success) -->
+    <div class="card success-panel" id="success-panel">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+      </div>
+      <h2>Documento Firmado Exitosamente</h2>
+      <p id="success-msg">El documento fue procesado de manera oficial y se ha guardado una copia en la carpeta de gestión documental del colaborador.</p>
+      
+      <a href="#" target="_blank" class="btn-download" id="success-download-link">
+        <svg style="width:20px;height:20px" viewBox="0 0 24 24"><path fill="currentColor" d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/></svg>
+        Descargar Documento Firmado (PDF)
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    // Load config from backend
+    const CONFIG = __CONFIG__;
+
+    // Globals
+    let pdfDoc = null;
+    let currentPageNum = 1;
+    let canvas = document.getElementById('pdf-canvas');
+    let ctx = canvas.getContext('2d');
+    let drawCanvas = document.getElementById('drawing-canvas');
+    let drawCtx = drawCanvas.getContext('2d');
+    let drawingActive = false;
+
+    // DOM Elements
+    const workerNameBadge = document.getElementById('worker-name-badge');
+    const docNombre = document.getElementById('document-nombre');
+    const pageIndicator = document.getElementById('page-indicator');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const optionExistingCard = document.getElementById('option-existing-card');
+    const existingSigImg = document.getElementById('existing-sig-img');
+    const radioExisting = document.getElementById('radio-existing');
+    const radioDraw = document.getElementById('radio-draw');
+    const optionDrawCard = document.getElementById('option-draw-card');
+    const drawingArea = document.getElementById('drawing-area');
+    const btnClearSig = document.getElementById('btn-clear-sig');
+    const btnConfirmSign = document.getElementById('btn-confirm-sign');
+    const headerPanel = document.getElementById('header-panel');
+    const mainWorkspace = document.getElementById('main-workspace');
+    const successPanel = document.getElementById('success-panel');
+    const successDownloadLink = document.getElementById('success-download-link');
+
+    // Init UI info
+    workerNameBadge.innerText = CONFIG.nombreTrabajador;
+    docNombre.innerText = CONFIG.nombreDocumento;
+
+    // Show toast message
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.className = `toast toast-${type}`;
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 4000);
+    }
+
+    function showLoading(text = 'Cargando...') {
+      document.getElementById('loading-text').innerText = text;
+      document.getElementById('loading-overlay').style.display = 'flex';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    // Load PDF Document
+    async function loadPDF() {
+      showLoading('Cargando documento original...');
+      try {
+        pdfDoc = await pdfjsLib.getDocument(CONFIG.originalPdfUrl).promise;
+        currentPageNum = 1;
+        await renderPage(currentPageNum);
+      } catch (err) {
+        showToast('Error al cargar PDF: ' + err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function renderPage(pageNum) {
+      if (!pdfDoc) return;
+      showLoading('Renderizando página ' + pageNum + '...');
+      try {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.2 });
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        await page.render(renderContext).promise;
+        
+        // Update controls
+        pageIndicator.innerText = `Página: ${pageNum} / ${pdfDoc.numPages}`;
+        btnPrev.disabled = pageNum <= 1;
+        btnNext.disabled = pageNum >= pdfDoc.numPages;
+      } catch (err) {
+        showToast('Error al renderizar página: ' + err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    btnPrev.addEventListener('click', () => {
+      if (currentPageNum > 1) {
+        currentPageNum--;
+        renderPage(currentPageNum);
+      }
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (currentPageNum < pdfDoc.numPages) {
+        currentPageNum++;
+        renderPage(currentPageNum);
+      }
+    });
+
+    loadPDF();
+
+    // Check GCS for recent signature
+    async function checkRecentSignature() {
+      try {
+        const res = await fetch(`/logysign/api/firma-reciente/${CONFIG.identificacion}`);
+        if (!res.ok) throw new Error('Error al cargar firma');
+        const data = await res.json();
+        
+        if (data.base64) {
+          existingSigImg.src = data.base64;
+          optionExistingCard.style.display = 'block';
+          
+          // Default selection to existing signature
+          radioExisting.checked = true;
+          selectOption('existing');
+        } else {
+          // Force drawing option if no recent signature found
+          radioDraw.checked = true;
+          selectOption('draw');
+        }
+      } catch (err) {
+        console.warn('No se pudo verificar firma registrada:', err.message);
+        radioDraw.checked = true;
+        selectOption('draw');
+      }
+    }
+
+    checkRecentSignature();
+
+    // Selection cards click listeners
+    optionExistingCard.addEventListener('click', () => {
+      radioExisting.checked = true;
+      selectOption('existing');
+    });
+
+    optionDrawCard.addEventListener('click', () => {
+      radioDraw.checked = true;
+      selectOption('draw');
+    });
+
+    function selectOption(method) {
+      if (method === 'existing') {
+        optionExistingCard.classList.add('selected');
+        optionDrawCard.classList.remove('selected');
+        drawingArea.style.opacity = '0.5';
+        drawingActive = false;
+      } else {
+        optionDrawCard.classList.add('selected');
+        optionExistingCard.classList.remove('selected');
+        drawingArea.style.opacity = '1';
+        drawingActive = true;
+        resizeDrawCanvas();
+      }
+    }
+
+    // Signature Pad canvas drawing implementation
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    function resizeDrawCanvas() {
+      // Correct canvas dimensions based on CSS display to prevent line stretching
+      const rect = drawCanvas.parentNode.getBoundingClientRect();
+      drawCanvas.width = rect.width;
+      drawCanvas.height = 160;
+      
+      // Canvas styling
+      drawCtx.strokeStyle = '#000b59';
+      drawCtx.lineWidth = 3.5;
+      drawCtx.lineCap = 'round';
+      drawCtx.lineJoin = 'round';
+    }
+
+    // Handle window resize for canvas drawing area
+    window.addEventListener('resize', () => {
+      if (radioDraw.checked) resizeDrawCanvas();
+    });
+
+    // Draw events on Canvas
+    function getCoords(e) {
+      const rect = drawCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function startDraw(e) {
+      if (!drawingActive) return;
+      isDrawing = true;
+      const coords = getCoords(e);
+      lastX = coords.x;
+      lastY = coords.y;
+      e.preventDefault();
+    }
+
+    function draw(e) {
+      if (!isDrawing || !drawingActive) return;
+      const coords = getCoords(e);
+      
+      drawCtx.beginPath();
+      drawCtx.moveTo(lastX, lastY);
+      drawCtx.lineTo(coords.x, coords.y);
+      drawCtx.stroke();
+      
+      lastX = coords.x;
+      lastY = coords.y;
+      e.preventDefault();
+    }
+
+    function stopDraw() {
+      isDrawing = false;
+    }
+
+    // Register drawing events for both Touch (mobile) and Mouse
+    drawCanvas.addEventListener('mousedown', startDraw);
+    drawCanvas.addEventListener('mousemove', draw);
+    drawCanvas.addEventListener('mouseup', stopDraw);
+    drawCanvas.addEventListener('mouseleave', stopDraw);
+
+    drawCanvas.addEventListener('touchstart', startDraw);
+    drawCanvas.addEventListener('touchmove', draw);
+    drawCanvas.addEventListener('touchend', stopDraw);
+
+    // Clear Canvas
+    btnClearSig.addEventListener('click', (e) => {
+      e.stopPropagation(); // prevent card select trigger
+      drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    });
+
+    // Submit signature
+    btnConfirmSign.addEventListener('click', async () => {
+      const sigMethod = document.querySelector('input[name="sig-method"]:checked').value;
+      const payload = {
+        token: CONFIG.token
+      };
+
+      if (sigMethod === 'existing') {
+        payload.usarFirmaReciente = true;
+      } else {
+        // Check if drawing canvas is empty
+        // Simple pixel check to see if worker actually drew something
+        const buffer = new Uint32Array(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height).data.buffer);
+        const hasDrawn = buffer.some(color => color !== 0);
+
+        if (!hasDrawn) {
+          showToast('Por favor, dibuje su firma en el recuadro antes de confirmar.', 'error');
+          return;
+        }
+
+        payload.usarFirmaReciente = false;
+        payload.firmaBase64 = drawCanvas.toDataURL('image/png');
+      }
+
+      showLoading('Generando documento firmado y notificando...');
+
+      try {
+        const res = await fetch('/logysign/api/firmar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Ocurrió un error al firmar el documento');
+
+        // Show success screen
+        headerPanel.style.display = 'none';
+        mainWorkspace.style.display = 'none';
+        successDownloadLink.href = data.pdfUrl;
+        successPanel.style.display = 'block';
+        showToast('Documento firmado con éxito', 'success');
+
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    });
+
+  </script>
+</body>
+</html>

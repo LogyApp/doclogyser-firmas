@@ -1698,4 +1698,5 @@ module.exports = {
   notificarCambiosDotacion,
   notificarCambiosPersonales,
   notificarCambiosBancos,
+  transporter,
 };
