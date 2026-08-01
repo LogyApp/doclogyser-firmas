@@ -853,7 +853,8 @@
         }
 
         let controlButtons = '—';
-        if (esCreadorOSistema) {
+        const esAutorizadoControl = (data.usuario === CONFIG.usuarioId || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol));
+        if (esAutorizadoControl) {
           const celNum = item.celular ? item.celular.trim() : '';
           const urlFirmaLink = `${window.location.origin}/participacion/firmar?item=${item.id_item_asistencia}`;
           const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para verificar y firmar digitalmente tu asistencia a la actividad sobre "${data.tema}": ${urlFirmaLink}.`);

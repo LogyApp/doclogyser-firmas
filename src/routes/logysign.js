@@ -403,7 +403,7 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
     `;
 
     await transporter.sendMail({
-      from: `"LOG&SER Gestión Documental" <${process.env.SMTP_USER || process.env.EMAIL_USER || 'noreply@logyser.com'}>`,
+      from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
       to: emailTrabajador,
       cc: ccEmails.length ? ccEmails.join(', ') : undefined,
       subject: `LOG&SER: Documento pendiente de firma (${nombreDocumento}) — ${trabajador}`,
@@ -617,7 +617,7 @@ router.post('/api/firmar', async (req, res) => {
     `;
 
     await transporter.sendMail({
-      from: `"LOG&SER Gestión Documental" <${process.env.SMTP_USER || process.env.EMAIL_USER || 'noreply@logyser.com'}>`,
+      from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
       to: ccEmails.join(', '),
       subject: `LOG&SER: Documento firmado completado (${logysign.nombre_documento || logysign.prefijo}) — ${logysign.nombre_trabajador}`,
       html: mailBody
