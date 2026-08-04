@@ -31,6 +31,7 @@ const cajaoperativaRoutes            = require('./src/routes/cajaoperativa');
 const integridadRoutes               = require('./src/routes/integridad');
 const biometricoRoutes               = require('./src/routes/biometrico');
 const logysignRoutes                 = require('./src/routes/logysign');
+const registrologysignRoutes         = require('./src/routes/registrologysign');
 
 const app = express();
 
@@ -76,6 +77,8 @@ app.use('/reembolso', cajaoperativaRoutes);
 app.use('/integridad-id', integridadRoutes);
 app.use('/biometrico', biometricoRoutes);
 app.use('/logysign', logysignRoutes);
+app.use('/registrologysign', registrologysignRoutes);
+app.use('/registroslogysign', registrologysignRoutes);
 
 
 

@@ -168,6 +168,28 @@
       flex-shrink: 0;
     }
 
+    .btn-records {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      padding: 9px 18px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .btn-records:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
     /* Main Grid Layout */
     .grid {
       display: grid;
@@ -630,8 +652,14 @@
         <h1>Logy<span class="accent">Sign</span></h1>
         <p>Módulo de Preparación y Firma Digital de Documentos PDF</p>
       </div>
-      <div class="user-badge" id="user-badge-name">
-        Cargando usuario...
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <a class="btn-records" id="btn-ver-registros" href="#">
+          <svg style="width:16px;height:16px" viewBox="0 0 24 24"><path fill="currentColor" d="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+          Ver mis registros
+        </a>
+        <div class="user-badge" id="user-badge-name">
+          Cargando usuario...
+        </div>
       </div>
     </header>
 
@@ -793,6 +821,7 @@
 
     // Init page info
     userBadge.innerText = CONFIG.usuarioNombre;
+    document.getElementById('btn-ver-registros').href = `/registrologysign?usuario=${CONFIG.usuarioId}`;
 
     // Show toast message
     function showToast(msg, type = 'success') {
