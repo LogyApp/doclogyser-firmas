@@ -176,7 +176,7 @@ router.get('/', async (req, res) => {
 // API: Listado de trabajadores (Vista Trabajador)
 router.get('/api/trabajadores', async (req, res) => {
   try {
-    const { usuario, buscar, regional, operacion } = req.query;
+    const { usuario, buscar, regional, operacion, estado } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(usuario);
@@ -195,8 +195,8 @@ router.get('/api/trabajadores', async (req, res) => {
 
     // Filtros dinámicos de UI
     if (buscar) {
-      conds.push('(s.Trabajador LIKE ? OR s.Identificación LIKE ?)');
-      params.push(`%${buscar}%`, `%${buscar}%`);
+      conds.push('s.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+      params.push(`%${buscar}%`);
     }
     if (regional) {
       conds.push('mv.Regional = ?');
@@ -206,8 +206,11 @@ router.get('/api/trabajadores', async (req, res) => {
       conds.push('mv.Operación = ?');
       params.push(operacion);
     }
+    if (estado) {
+      conds.push('mv.Estado = ?');
+      params.push(estado);
+    }
 
-    const roleFilter = construirFiltroRolTrabajador(acceso.permisos, 't');
     const whereClause = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
     const sql = `
@@ -230,8 +233,7 @@ router.get('/api/trabajadores', async (req, res) => {
       ) mv ON s.Identificación = mv.Identificación
       LEFT JOIN (
         SELECT Identificación, COUNT(*) AS doc_count
-        FROM Maestro_docTrabajador t
-        WHERE ${roleFilter}
+        FROM Maestro_docTrabajador
         GROUP BY Identificación
       ) d ON s.Identificación = d.Identificación
       ${whereClause}
@@ -269,7 +271,8 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
         t.Url,
         t.Solicitud,
         t.Justificacion_Solicitud,
-        t.Estado
+        t.Estado,
+        t.Visualizar
       FROM Maestro_docTrabajador t
       LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
       WHERE t.Identificación = ?
@@ -283,7 +286,9 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
       let permitido = false;
       const tipo = r.TipoDocumento;
 
-      if (r.Estado === 'Activo') {
+      if (r.Visualizar === 'OK') {
+        permitido = true;
+      } else if (r.Estado === 'Activo') {
         if (acceso.permisos.doc_activo === 'Todo' || (Array.isArray(acceso.permisos.doc_activo) && acceso.permisos.doc_activo.includes(tipo))) {
           permitido = true;
         }
@@ -311,30 +316,55 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
 // API: Listado de tipos de documentos (Vista Documentos)
 router.get('/api/documentos', async (req, res) => {
   try {
-    const { usuario, buscar } = req.query;
+    const { usuario, buscarTrabajador } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const sql = `
-      SELECT 
-        c.Id,
-        c.Documento,
-        c.Clasificacion,
-        c.Prefijo,
-        c.tipo_doc,
-        COALESCE(t.trabajador_count, 0) AS Trabajadores
-      FROM Config_Doc_Trabajador c
-      LEFT JOIN (
-        SELECT TipoDocumento, COUNT(DISTINCT Identificación) AS trabajador_count
-        FROM Maestro_docTrabajador
-        GROUP BY TipoDocumento
-      ) t ON CAST(c.Id AS CHAR) = t.TipoDocumento
-      ORDER BY c.Documento ASC
-    `;
+    let sql = '';
+    const params = [];
 
-    const [rows] = await pool.execute(sql);
+    if (buscarTrabajador) {
+      sql = `
+        SELECT 
+          c.Id,
+          c.Documento,
+          c.Clasificacion,
+          c.Prefijo,
+          c.tipo_doc,
+          COALESCE(t.trabajador_count, 0) AS Trabajadores
+        FROM Config_Doc_Trabajador c
+        INNER JOIN (
+          SELECT TipoDocumento, COUNT(DISTINCT t.Identificación) AS trabajador_count
+          FROM Maestro_docTrabajador t
+          LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
+          WHERE s.Trabajador COLLATE utf8mb4_general_ci LIKE ?
+          GROUP BY TipoDocumento
+        ) t ON CAST(c.Id AS CHAR) = t.TipoDocumento
+        ORDER BY c.Documento ASC
+      `;
+      params.push(`%${buscarTrabajador}%`);
+    } else {
+      sql = `
+        SELECT 
+          c.Id,
+          c.Documento,
+          c.Clasificacion,
+          c.Prefijo,
+          c.tipo_doc,
+          COALESCE(t.trabajador_count, 0) AS Trabajadores
+        FROM Config_Doc_Trabajador c
+        LEFT JOIN (
+          SELECT TipoDocumento, COUNT(DISTINCT Identificación) AS trabajador_count
+          FROM Maestro_docTrabajador
+          GROUP BY TipoDocumento
+        ) t ON CAST(c.Id AS CHAR) = t.TipoDocumento
+        ORDER BY c.Documento ASC
+      `;
+    }
+
+    const [rows] = await pool.execute(sql, params);
 
     // Filtrar por permisos del Rol
     const p = acceso.permisos;
@@ -344,16 +374,10 @@ router.get('/api/documentos', async (req, res) => {
       const allowedRetired = p.doc_retirado === 'Todo' || (Array.isArray(p.doc_retirado) && p.doc_retirado.includes(id));
       const allowedGeneral = p.doc_general === 'Todo' || (Array.isArray(p.doc_general) && p.doc_general.includes(id));
       
-      // Debe ser permitido bajo al menos una condición
       return allowedActive || allowedRetired || allowedGeneral;
     });
 
-    // Filtro de búsqueda textual si aplica
-    const result = buscar 
-      ? filtered.filter(f => f.Documento.toLowerCase().includes(buscar.toLowerCase()) || f.Prefijo.toLowerCase().includes(buscar.toLowerCase()))
-      : filtered;
-
-    res.json(result);
+    res.json(filtered);
   } catch (err) {
     console.error('[cloud-docs] GET /api/documentos:', err);
     res.status(500).json({ error: err.message });
@@ -364,7 +388,7 @@ router.get('/api/documentos', async (req, res) => {
 router.get('/api/documento/:id/registros', async (req, res) => {
   try {
     const { id } = req.params;
-    const { usuario, regional, operacion } = req.query;
+    const { usuario, regional, operacion, buscarTrabajador } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(usuario);
@@ -394,6 +418,14 @@ router.get('/api/documento/:id/registros', async (req, res) => {
       conds.push('t.Operación = ?');
       params.push(operacion);
     }
+    if (buscarTrabajador) {
+      if (configDoc.tipo_doc === 'Trabajador') {
+        conds.push('v.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+        params.push(`%${buscarTrabajador}%`);
+      } else {
+        conds.push('0 = 1');
+      }
+    }
 
     if (configDoc.tipo_doc === 'Trabajador') {
       conds.push('t.TipoDocumento = ?');
@@ -413,6 +445,7 @@ router.get('/api/documento/:id/registros', async (req, res) => {
           t.Url,
           t.Solicitud,
           t.Justificacion_Solicitud,
+          t.Visualizar,
           'Trabajador' AS tipo_registro
         FROM Maestro_docTrabajador t
         LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
@@ -438,6 +471,7 @@ router.get('/api/documento/:id/registros', async (req, res) => {
           t.Url,
           t.Solicitud,
           t.Justificacion_Solicitud,
+          t.Visualizar,
           'General' AS tipo_registro
         FROM Maestro_docEmpresa t
         ${whereClause}
@@ -485,7 +519,7 @@ router.get('/api/documento/:id/registros', async (req, res) => {
 // API: Consolidado General (Vista Todo)
 router.get('/api/todo', async (req, res) => {
   try {
-    const { usuario, buscar, regional, operacion } = req.query;
+    const { usuario, buscar, regional, operacion, tipoDocumento, estado, tipoRegistro } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(usuario);
@@ -519,13 +553,29 @@ router.get('/api/todo', async (req, res) => {
       paramsGen.push(operacion);
     }
 
-    // Filtro de búsqueda textual
-    if (buscar) {
-      condsTrab.push('(c.Documento LIKE ? OR t.Prefijo LIKE ? OR v.Trabajador LIKE ? OR t.Identificación LIKE ?)');
-      paramsTrab.push(`%${buscar}%`, `%${buscar}%`, `%${buscar}%`, `%${buscar}%`);
+    // Filtro de Tipo de Documento
+    if (tipoDocumento) {
+      condsTrab.push('t.TipoDocumento = ?');
+      paramsTrab.push(tipoDocumento);
 
-      condsGen.push('(c.Documento LIKE ? OR e.Prefijo LIKE ?)');
-      paramsGen.push(`%${buscar}%`, `%${buscar}%`);
+      condsGen.push('e.TipoDocumento = ?');
+      paramsGen.push(tipoDocumento);
+    }
+
+    // Filtro de Estado
+    if (estado) {
+      condsTrab.push('t.Estado = ?');
+      paramsTrab.push(estado);
+
+      condsGen.push('0 = 1');
+    }
+
+    // Filtro de búsqueda textual (sólo por trabajador)
+    if (buscar) {
+      condsTrab.push('v.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+      paramsTrab.push(`%${buscar}%`);
+
+      condsGen.push('0 = 1');
     }
 
     // Aplicar filtros de roles (Config_Rol) en la base de datos para restringir visualización general
@@ -538,68 +588,88 @@ router.get('/api/todo', async (req, res) => {
     const whereTrab = condsTrab.length ? `WHERE ${condsTrab.join(' AND ')}` : '';
     const whereGen = condsGen.length ? `WHERE ${condsGen.join(' AND ')}` : '';
 
-    const sql = `
-      SELECT * FROM (
-        SELECT 
-          'Trabajador' AS tipo_registro,
-          t.id,
-          t.TipoDocumento,
-          t.Prefijo,
-          c.Documento,
-          t.Identificación AS Identificacion,
-          v.Trabajador AS TrabajadorNombre,
-          t.Operación,
-          t.Estado,
-          DATE_FORMAT(t.Fecha_Ingreso, '%Y-%m-%d') AS FechaIngreso,
-          DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
-          t.Usuario,
-          t.Observaciones,
-          t.Url,
-          t.Solicitud,
-          t.Justificacion_Solicitud
-        FROM Maestro_docTrabajador t
-        LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
-        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
-        ${whereTrab}
-
-        UNION ALL
-
-        SELECT 
-          'General' AS tipo_registro,
-          e.id,
-          e.TipoDocumento,
-          e.Prefijo,
-          c.Documento,
-          NULL AS Identificacion,
-          NULL AS TrabajadorNombre,
-          e.Operación,
-          NULL AS Estado,
-          NULL AS FechaIngreso,
-          DATE_FORMAT(e.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
-          e.Usuario,
-          e.Observaciones,
-          e.Url,
-          e.Solicitud,
-          e.Justificacion_Solicitud
-        FROM Maestro_docEmpresa e
-        LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
-        ${whereGen}
-      ) combined
-      ORDER BY combined.FechaRegistro DESC
-      LIMIT 1000
+    const selectTrab = `
+      SELECT 
+        'Trabajador' AS tipo_registro,
+        t.id,
+        t.TipoDocumento,
+        t.Prefijo,
+        c.Documento,
+        t.Identificación AS Identificacion,
+        v.Trabajador AS TrabajadorNombre,
+        t.Operación,
+        t.Estado,
+        DATE_FORMAT(t.Fecha_Ingreso, '%Y-%m-%d') AS FechaIngreso,
+        DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
+        t.Usuario,
+        t.Observaciones,
+        t.Url,
+        t.Solicitud,
+        t.Justificacion_Solicitud,
+        t.Visualizar
+      FROM Maestro_docTrabajador t
+      LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
+      LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
+      ${whereTrab}
     `;
 
-    // Combinamos todos los parámetros
-    const allParams = [...paramsTrab, ...paramsGen];
+    const selectGen = `
+      SELECT 
+        'General' AS tipo_registro,
+        e.id,
+        e.TipoDocumento,
+        e.Prefijo,
+        c.Documento,
+        NULL AS Identificacion,
+        NULL AS TrabajadorNombre,
+        e.Operación,
+        NULL AS Estado,
+        NULL AS FechaIngreso,
+        DATE_FORMAT(e.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
+        e.Usuario,
+        e.Observaciones,
+        e.Url,
+        e.Solicitud,
+        e.Justificacion_Solicitud,
+        e.Visualizar
+      FROM Maestro_docEmpresa e
+      LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
+      ${whereGen}
+    `;
+
+    let sql = '';
+    let allParams = [];
+
+    if (tipoRegistro === 'Trabajador') {
+      sql = `SELECT * FROM (${selectTrab}) combined ORDER BY combined.FechaRegistro DESC LIMIT 1000`;
+      allParams = paramsTrab;
+    } else if (tipoRegistro === 'General') {
+      sql = `SELECT * FROM (${selectGen}) combined ORDER BY combined.FechaRegistro DESC LIMIT 1000`;
+      allParams = paramsGen;
+    } else {
+      sql = `
+        SELECT * FROM (
+          ${selectTrab}
+          UNION ALL
+          ${selectGen}
+        ) combined
+        ORDER BY combined.FechaRegistro DESC
+        LIMIT 1000
+      `;
+      allParams = [...paramsTrab, ...paramsGen];
+    }
+
     const [rows] = await pool.execute(sql, allParams);
 
     // Calcular indicador "permitido"
     const p = acceso.permisos;
     const result = rows.map(r => {
       let permitido = false;
-      const id = r.TipoDocumento;
 
-      if (r.tipo_registro === 'Trabajador') {
+      if (r.Visualizar === 'OK') {
+        permitido = true;
+      } else if (r.tipo_registro === 'Trabajador') {
+        const id = r.TipoDocumento;
         if (r.Estado === 'Activo') {
           if (p.doc_activo === 'Todo' || (Array.isArray(p.doc_activo) && p.doc_activo.includes(id))) {
             permitido = true;
@@ -610,6 +680,7 @@ router.get('/api/todo', async (req, res) => {
           }
         }
       } else {
+        const id = r.TipoDocumento;
         if (p.doc_general === 'Todo' || (Array.isArray(p.doc_general) && p.doc_general.includes(id))) {
           permitido = true;
         }
@@ -642,9 +713,9 @@ router.post('/api/solicitar', async (req, res) => {
     if (tipo_registro === 'Trabajador') {
       await pool.execute(
         `UPDATE Maestro_docTrabajador 
-         SET Solicitud = 'SI', Justificacion_Solicitud = ? 
+         SET Solicitud = 'SI', Justificacion_Solicitud = ?, Usuario_Solicitud = ?, Estado_Solicitud = 'Pendiente' 
          WHERE id = ?`,
-        [justificacion, id_documento]
+        [justificacion, usuario, id_documento]
       );
 
       // Obtener metadatos para el correo
@@ -669,9 +740,9 @@ router.post('/api/solicitar', async (req, res) => {
       // General
       await pool.execute(
         `UPDATE Maestro_docEmpresa 
-         SET Solicitud = 'SI', Justificacion_Solicitud = ? 
+         SET Solicitud = 'SI', Justificacion_Solicitud = ?, Usuario_Solicitud = ?, Estado_Solicitud = 'Pendiente' 
          WHERE id = ?`,
-        [justificacion, id_documento]
+        [justificacion, usuario, id_documento]
       );
 
       // Obtener metadatos
@@ -778,4 +849,261 @@ router.post('/api/solicitar', async (req, res) => {
   }
 });
 
+// API: Listado de solicitudes de acceso (Solo para roles Archivo y Sistema)
+router.get('/api/solicitudes', async (req, res) => {
+  try {
+    const { usuario, regional, operacion, buscar, estadoSolicitud } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (acceso.rol !== 'Archivo' && acceso.rol !== 'Sistema') {
+      return res.status(403).json({ error: 'Rol no autorizado para ver solicitudes' });
+    }
+
+    const condsTrab = ["t.Solicitud = 'SI'"];
+    const condsGen = ["e.Solicitud = 'SI'"];
+    const paramsTrab = [];
+    const paramsGen = [];
+
+    // Filtros de regional/operación en solicitudes
+    if (regional) {
+      condsTrab.push('t.Regional = ?');
+      condsGen.push('e.Regional = ?');
+      paramsTrab.push(regional);
+      paramsGen.push(regional);
+    }
+    if (operacion) {
+      condsTrab.push('t.Operación = ?');
+      condsGen.push('e.Operación = ?');
+      paramsTrab.push(operacion);
+      paramsGen.push(operacion);
+    }
+
+    // Filtro por Estado de Solicitud (Pendiente, Autorizado, Rechazado, Revocado)
+    if (estadoSolicitud === 'Pendiente') {
+      condsTrab.push("(t.Estado_Solicitud = 'Pendiente' OR t.Estado_Solicitud IS NULL)");
+      condsGen.push("(e.Estado_Solicitud = 'Pendiente' OR e.Estado_Solicitud IS NULL)");
+    } else if (estadoSolicitud) {
+      condsTrab.push("t.Estado_Solicitud = ?");
+      condsGen.push("e.Estado_Solicitud = ?");
+      paramsTrab.push(estadoSolicitud);
+      paramsGen.push(estadoSolicitud);
+    }
+
+    // Filtro de búsqueda por trabajador o solicitante
+    if (buscar) {
+      condsTrab.push("(v.Trabajador COLLATE utf8mb4_general_ci LIKE ? OR t.Usuario_Solicitud COLLATE utf8mb4_general_ci LIKE ?)");
+      paramsTrab.push(`%${buscar}%`, `%${buscar}%`);
+
+      condsGen.push("e.Usuario_Solicitud COLLATE utf8mb4_general_ci LIKE ?");
+      paramsGen.push(`%${buscar}%`);
+    }
+
+    const whereTrab = `WHERE ${condsTrab.join(' AND ')}`;
+    const whereGen = `WHERE ${condsGen.join(' AND ')}`;
+
+    const sql = `
+      SELECT * FROM (
+        SELECT 
+          'Trabajador' AS tipo_registro,
+          t.id,
+          t.TipoDocumento,
+          t.Prefijo,
+          c.Documento,
+          t.Identificación AS Identificacion,
+          v.Trabajador AS TrabajadorNombre,
+          t.Operación,
+          t.Estado,
+          DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
+          t.Usuario,
+          t.Observaciones,
+          t.Url,
+          t.Solicitud,
+          t.Justificacion_Solicitud,
+          t.Visualizar,
+          t.Usuario_Solicitud,
+          COALESCE(t.Estado_Solicitud, 'Pendiente') AS Estado_Solicitud
+        FROM Maestro_docTrabajador t
+        LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
+        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
+        ${whereTrab}
+
+        UNION ALL
+
+        SELECT 
+          'General' AS tipo_registro,
+          e.id,
+          e.TipoDocumento,
+          e.Prefijo,
+          c.Documento,
+          NULL AS Identificacion,
+          NULL AS TrabajadorNombre,
+          e.Operación,
+          NULL AS Estado,
+          DATE_FORMAT(e.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
+          e.Usuario,
+          e.Observaciones,
+          e.Url,
+          e.Solicitud,
+          e.Justificacion_Solicitud,
+          e.Visualizar,
+          e.Usuario_Solicitud,
+          COALESCE(e.Estado_Solicitud, 'Pendiente') AS Estado_Solicitud
+        FROM Maestro_docEmpresa e
+        LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
+        ${whereGen}
+      ) combined
+      ORDER BY combined.FechaRegistro DESC
+      LIMIT 1000
+    `;
+
+    const allParams = [...paramsTrab, ...paramsGen];
+    const [rows] = await pool.execute(sql, allParams);
+    res.json(rows);
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/solicitudes:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Gestionar solicitud (Solo roles Archivo y Sistema)
+router.post('/api/gestionar-solicitud', async (req, res) => {
+  try {
+    const { id_documento, tipo_registro, visualizar, observaciones, estado_solicitud, usuario_gestor } = req.body;
+    if (!id_documento || !tipo_registro || !estado_solicitud || !usuario_gestor) {
+      return res.status(400).json({ error: 'Parámetros incompletos' });
+    }
+
+    // 1. Obtener los detalles del documento y el usuario solicitante antes de actualizar
+    let requestDetails = null;
+    if (tipo_registro === 'Trabajador') {
+      const [rows] = await pool.execute(
+        `SELECT t.Usuario_Solicitud, t.Prefijo, c.Documento, v.Trabajador
+         FROM Maestro_docTrabajador t
+         LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
+         LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
+         WHERE t.id = ?`,
+        [id_documento]
+      );
+      if (rows.length) {
+        requestDetails = {
+          solicitante: rows[0].Usuario_Solicitud,
+          prefijo: rows[0].Prefijo,
+          documento: rows[0].Documento,
+          detalle: `Trabajador: ${rows[0].Trabajador}`
+        };
+      }
+    } else {
+      const [rows] = await pool.execute(
+        `SELECT e.Usuario_Solicitud, e.Prefijo, c.Documento
+         FROM Maestro_docEmpresa e
+         LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
+         WHERE e.id = ?`,
+        [id_documento]
+      );
+      if (rows.length) {
+        requestDetails = {
+          solicitante: rows[0].Usuario_Solicitud,
+          prefijo: rows[0].Prefijo,
+          documento: rows[0].Documento,
+          detalle: 'General de Empresa'
+        };
+      }
+    }
+
+    // 2. Actualizar el registro correspondiente
+    const vizValue = visualizar === 'OK' ? 'OK' : null;
+    if (tipo_registro === 'Trabajador') {
+      await pool.execute(
+        `UPDATE Maestro_docTrabajador 
+         SET Visualizar = ?, Observaciones = ?, Estado_Solicitud = ? 
+         WHERE id = ?`,
+        [vizValue, observaciones || null, estado_solicitud, id_documento]
+      );
+    } else {
+      await pool.execute(
+        `UPDATE Maestro_docEmpresa 
+         SET Visualizar = ?, Observaciones = ?, Estado_Solicitud = ? 
+         WHERE id = ?`,
+        [vizValue, observaciones || null, estado_solicitud, id_documento]
+      );
+    }
+
+    // 3. Enviar correo si tenemos la información del solicitante
+    if (requestDetails && requestDetails.solicitante) {
+      const [uRows] = await pool.execute(
+        'SELECT Email, Nombre FROM Maestro_Usuarios WHERE ID = ?',
+        [requestDetails.solicitante]
+      );
+      
+      const emailUsuario = uRows.length ? uRows[0].Email : null;
+      const nombreUsuario = uRows.length ? uRows[0].Nombre : requestDetails.solicitante;
+
+      if (emailUsuario) {
+        const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
+        const asunto = `Respuesta a tu Solicitud de Acceso: ${requestDetails.documento}`;
+        const colorEstado = estado_solicitud === 'Autorizado' ? '#16a34a' : '#dc2626';
+
+        const cuerpo = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #edf2f7;border-radius:8px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.05)">
+            <div style="background:#000b59;color:#ffffff;padding:20px;text-align:center">
+              <h2 style="margin:0;font-size:1.4rem">LOG&SER Gestión Documental</h2>
+              <p style="margin:5px 0 0;font-size:0.9rem;opacity:0.9">Resolución de Solicitud de Acceso</p>
+            </div>
+            <div style="padding:24px;background:#ffffff">
+              <p style="color:#333;font-size:1rem;margin-top:0">Hola <strong>${nombreUsuario}</strong>,</p>
+              <p style="color:#333;font-size:1rem">Tu solicitud de acceso para visualizar el siguiente documento restringido ha sido procesada:</p>
+              
+              <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
+                <tr style="background:#f8fafc">
+                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568;width:35%">Documento:</td>
+                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${requestDetails.documento} (${requestDetails.prefijo})</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568">Detalle:</td>
+                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${requestDetails.detalle}</td>
+                </tr>
+                <tr style="background:#f8fafc">
+                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568">Estado Solicitud:</td>
+                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:${colorEstado}">${estado_solicitud}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568;vertical-align:top">Observaciones del Gestor:</td>
+                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748;line-height:1.4">${observaciones || 'Sin observaciones adicionales'}</td>
+                </tr>
+              </table>
+
+              ${estado_solicitud === 'Autorizado' 
+                ? `<p style="color:#16a34a;font-weight:bold;font-size:0.95rem">Ya puedes ingresar a la plataforma y visualizar el documento ("Ver PDF").</p>` 
+                : `<p style="color:#dc2626;font-weight:bold;font-size:0.95rem">La solicitud ha sido rechazada/revocada y no tienes acceso de visualización temporal.</p>`
+              }
+            </div>
+            <div style="background:#edf2f7;padding:12px;text-align:center;font-size:0.75rem;color:#718096">
+              © ${new Date().getFullYear()} LOG&SER S.A.S. — Todos los derechos reservados.
+            </div>
+          </div>
+        `;
+
+        const mailOptions = {
+          from: `"LOG&SER Gestión Documental" <${EMAIL_FROM}>`,
+          to: emailUsuario,
+          cc: ['gestiondocumental@logyser.com', 'admin@logyser.com'],
+          subject: asunto,
+          html: cuerpo
+        };
+
+        await transporter.sendMail(mailOptions);
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cloud-docs] Error managing request:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
+

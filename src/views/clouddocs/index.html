@@ -5,36 +5,147 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloud Docs — LOG&SER</title>
   <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f4f6fa; color: #1e293b; line-height: 1.5; }
-    
-    .wrapper { max-width: 1300px; margin: 0 auto; padding: 24px 16px 60px; }
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    /* Header */
-    .header-card {
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-      border-radius: 12px;
-      box-shadow: 0 10px 15px -3px rgba(30, 60, 114, 0.15);
-      padding: 24px 30px;
-      margin-bottom: 24px;
+  <style>
+    :root {
+      --primary: #000b59;
+      --primary-dark: #00073a;
+      --primary-light: #1c2a7a;
+      --accent: #F55400;
+      --accent-dark: #d64700;
+      --accent-soft: rgba(245, 84, 0, 0.1);
+      --success: #16a34a;
+      --success-soft: rgba(22, 163, 74, 0.08);
+      --danger: #dc2626;
+      --bg: #f4f5f9;
+      --card-bg: #ffffff;
+      --text: #101425;
+      --text-muted: #6b7280;
+      --border: #e7e8ef;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+      --shadow-md: 0 8px 20px -6px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+      --shadow-lg: 0 20px 40px -12px rgba(0, 11, 89, 0.22);
+      --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 24px; }
+    
+    .container { max-width: 1250px; margin: 0 auto; }
+
+    /* Header styling matching logysign */
+    header {
+      background: var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 10px 24px;
+      color: #fff;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-lg);
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 20px;
-      color: #ffffff;
+      position: relative;
+      overflow: hidden;
     }
-    .header-card img { height: 48px; filter: brightness(0) invert(1); flex-shrink: 0; }
-    .header-card .title-box { flex-grow: 1; }
-    .page-title { font-size: 1.6rem; font-weight: 700; }
-    .page-sub { font-size: .88rem; opacity: 0.85; margin-top: 4px; }
-    .badge-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-    .badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      border-radius: 20px; padding: 4px 12px;
-      font-size: .78rem; font-weight: 600;
+
+    header::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3px;
+      background: var(--accent);
     }
-    .badge-user { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); color: #ffffff; }
+
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      flex-shrink: 0;
+    }
+
+    .brand-lockup img.brand-logo-app {
+      display: block;
+      object-fit: contain;
+      height: 30px;
+    }
+
+    .brand-logo-company-crop {
+      width: 133px;
+      height: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -64px;
+      top: -65px;
+      width: 268px;
+      height: 178px;
+      max-width: none;
+    }
+
+    .brand-divider {
+      width: 80%;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .header-logo {
+      text-align: center;
+    }
+
+    .header-logo h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.1rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .header-logo h1 .accent {
+      color: var(--accent);
+    }
+
+    .header-logo p {
+      font-size: 0.98rem;
+      color: rgba(255, 255, 255, 0.68);
+      margin-top: 3px;
+    }
+
+    .user-badge {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 9px 18px 9px 14px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
+    .user-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
 
     /* Tab Control */
     .tabs-bar {
@@ -42,7 +153,7 @@
       gap: 4px;
       background: #e2e8f0;
       padding: 4px;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       margin-bottom: 20px;
       width: fit-content;
     }
@@ -55,72 +166,104 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: var(--transition);
     }
     .tab-btn.active {
-      color: #1e3c72;
+      color: var(--primary);
       background: #ffffff;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      box-shadow: var(--shadow-sm);
     }
 
     /* Filters Card */
     .filters-card {
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
       padding: 20px;
       margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
     }
     .filters-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 16px;
+      align-items: end;
     }
     .field { display: flex; flex-direction: column; gap: 6px; }
     label { font-size: .82rem; font-weight: 600; color: #475569; }
     
     input[type="text"], select {
       width: 100%; padding: 10px 12px;
-      border: 1.5px solid #cbd5e1; border-radius: 8px;
+      border: 1.5px solid #cbd5e1; border-radius: var(--radius-sm);
       font-size: .9rem; color: #334155; background: #ffffff;
       outline: none; transition: border-color 0.2s;
     }
     input:focus, select:focus {
-      border-color: #1e3c72;
-      box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 11, 89, 0.1);
     }
 
-    /* Content Area */
+    /* Content Card */
     .card {
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
       padding: 24px;
-      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
       overflow: hidden;
     }
 
-    .table-container { width: 100%; overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; min-width: 800px; }
-    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
-    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
-    tr:hover td { background: #f8fafc; }
+    .table-container { width: 100%; overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; min-width: 800px; table-layout: fixed; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid var(--border); }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: #334155; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Modal Sticky Header */
+    .modal-body th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      z-index: 10;
+      border-bottom: 2px solid var(--border);
+    }
+
+    /* Clickable rows and hover effects */
+    .clickable-row { cursor: pointer; }
+    .clickable-row:hover td { background: #f8fafc; }
+
+    /* Columns resizing and sorting */
+    .th-sortable { position: relative; user-select: none; }
+    .th-label { cursor: pointer; display: block; padding-right: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .th-label:hover { color: var(--accent); }
+    .sort-arrow { font-size: .7rem; color: var(--accent); margin-left: 4px; }
+    .th-resize {
+      position: absolute; top: 0; right: -4px; width: 10px; height: 100%;
+      cursor: col-resize; touch-action: none; z-index: 2;
+    }
+    .th-resize::after {
+      content: ''; position: absolute; top: 20%; bottom: 20%; left: 4px; width: 2px;
+      background: #cbd5e1; border-radius: 2px;
+    }
+    .th-resize:hover::after, .th-resize.resizing::after { background: var(--accent); }
+
+    /* Action colors for columns click indicators */
+    .text-allowed { color: #16a34a; font-weight: 600; }
+    .text-denied { color: #dc2626; font-weight: 600; }
 
     /* Buttons & Badges */
     .btn {
       padding: 8px 16px; font-size: .85rem; font-weight: 600;
-      border-radius: 6px; border: none; cursor: pointer; transition: all .2s;
+      border-radius: var(--radius-sm); border: none; cursor: pointer; transition: var(--transition);
       text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       width: fit-content;
     }
-    .btn-view { background: #1e3c72; color: #fff; }
-    .btn-view:hover { background: #2a5298; }
     .btn-request { background: #e2e8f0; color: #475569; }
     .btn-request:hover { background: #cbd5e1; }
-    .btn-submit { background: #10b981; color: #fff; }
-    .btn-submit:hover { background: #059669; }
-    .btn-cancel { background: #ef4444; color: #fff; }
-    .btn-cancel:hover { background: #dc2626; }
+    .btn-submit { background: var(--success); color: #fff; }
+    .btn-submit:hover { background: #15803d; }
+    .btn-cancel { background: var(--danger); color: #fff; }
+    .btn-cancel:hover { background: #b91c1c; }
 
     .badge-status {
       display: inline-flex; align-items: center; gap: 4px;
@@ -134,25 +277,25 @@
     /* Modals */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      background: rgba(16, 20, 37, 0.6); backdrop-filter: blur(4px);
       display: none; align-items: center; justify-content: center; z-index: 1000;
       padding: 16px;
     }
     .modal-content {
-      background: #ffffff; border-radius: 16px; max-width: 850px; width: 100%;
+      background: #ffffff; border-radius: var(--radius-lg); max-width: 950px; width: 100%;
       max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      animation: slideUp 0.3s ease-out;
+      box-shadow: var(--shadow-lg);
+      animation: slideUp 0.22s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .modal-header {
-      padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+      padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
     }
-    .modal-title { font-size: 1.25rem; font-weight: 700; color: #0f172a; }
-    .modal-close { font-size: 1.5rem; color: #94a3b8; cursor: pointer; border: none; background: transparent; }
-    .modal-close:hover { color: #64748b; }
-    .modal-body { padding: 24px; overflow-y: auto; flex-grow: 1; }
-    .modal-footer { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; }
+    .modal-title { font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+    .modal-close { font-size: 1.8rem; color: #94a3b8; cursor: pointer; border: none; background: transparent; transition: var(--transition); }
+    .modal-close:hover { color: var(--danger); }
+    .modal-body { padding: 24px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; }
+    .modal-footer { padding: 16px 24px; background: #f8fafc; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; }
 
     @keyframes slideUp {
       from { transform: translateY(20px); opacity: 0; }
@@ -161,8 +304,8 @@
 
     /* Toast */
     .toast {
-      position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff;
-      padding: 12px 24px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+      position: fixed; bottom: 24px; right: 24px; background: #101425; color: #fff;
+      padding: 12px 24px; border-radius: var(--radius-sm); box-shadow: var(--shadow-md);
       display: none; align-items: center; gap: 10px; z-index: 2000; font-size: 0.9rem;
     }
 
@@ -173,18 +316,18 @@
     }
     .loading-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(255,255,255,0.7); display: none; align-items: center;
-      justify-content: center; z-index: 1500; font-weight: 600; color: #1e3c72;
+      background: rgba(244,245,249,0.85); display: none; align-items: center;
+      justify-content: center; z-index: 1500; font-weight: 600; color: var(--primary);
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Responsive */
     @media (max-width: 768px) {
-      .header-card { flex-direction: column; text-align: center; padding: 20px; }
-      .header-card img { height: 38px; }
+      header { flex-direction: column; text-align: center; padding: 20px; }
+      .brand-lockup { margin-bottom: 10px; }
       .tabs-bar { width: 100%; justify-content: stretch; }
       .tab-btn { flex: 1; text-align: center; padding: 8px 10px; font-size: 0.85rem; }
       .modal-content { max-height: 95vh; height: 95vh; border-radius: 12px; }
+      .filters-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -193,37 +336,78 @@
   <!-- Loading Screen -->
   <div class="loading-screen" id="global-loader">
     <div style="text-align: center;">
-      <div class="loader" style="width: 40px; height: 40px; border-top-color: #1e3c72; border-width: 4px; margin-bottom: 12px;"></div>
+      <div class="loader" style="width: 40px; height: 40px; border-top-color: var(--primary); border-width: 4px; margin-bottom: 12px;"></div>
       <div id="loader-message">Cargando datos...</div>
     </div>
   </div>
 
-  <div class="wrapper">
+  <div class="container">
     <!-- Header -->
-    <header class="header-card">
-      <div class="title-box">
-        <h1 class="page-title">Gestión Documental</h1>
-        <p class="page-sub">Panel de visualización y control de archivos corporativos</p>
-        <div class="badge-row">
-          <span class="badge badge-user" id="user-badge">Cargando usuario...</span>
+    <header>
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
         </div>
       </div>
-      <img src="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png" alt="Logyser Logo">
+      <div class="header-logo">
+        <h1>Cloud<span class="accent">Docs</span></h1>
+        <p>Gestión Documental y Archivo Digital</p>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div class="user-badge" id="user-badge-name">
+          Cargando usuario...
+        </div>
+      </div>
     </header>
 
     <!-- Tab Buttons -->
-    <div class="tabs-bar">
-      <button class="tab-btn active" onclick="switchTab('trabajador')">Trabajadores</button>
-      <button class="tab-btn" onclick="switchTab('documento')">Tipos de Documento</button>
-      <button class="tab-btn" onclick="switchTab('todo')">Consolidado (Todo)</button>
+    <div class="tabs-bar" id="tabs-container">
+      <button class="tab-btn active" id="tab-btn-trabajador" onclick="switchTab('trabajador')">Trabajadores</button>
+      <button class="tab-btn" id="tab-btn-documento" onclick="switchTab('documento')">Tipos de Documento</button>
+      <button class="tab-btn" id="tab-btn-todo" onclick="switchTab('todo')">Consolidado (Todo)</button>
+      <!-- Special authorizations Tab (dynamically shown) -->
     </div>
 
     <!-- Filters Panel -->
     <section class="filters-card">
       <div class="filters-grid">
         <div class="field">
-          <label for="filter-buscar">Buscar</label>
-          <input type="text" id="filter-buscar" placeholder="Nombre, ID, prefijo..." oninput="debounceFilter()">
+          <label for="filter-buscar" id="label-buscar">Buscar Trabajador</label>
+          <input type="text" id="filter-buscar" placeholder="Ej. Carlos o 100234..." oninput="debounceFilter()">
+        </div>
+        <div class="field" id="filter-documento-wrapper" style="display: none;">
+          <label for="filter-documento">Tipo de Documento</label>
+          <select id="filter-documento" onchange="filtrar()">
+            <option value="">— Todos los tipos —</option>
+          </select>
+        </div>
+        <div class="field" id="filter-estado-wrapper">
+          <label for="filter-estado">Estado del Trabajador</label>
+          <select id="filter-estado" onchange="filtrar()">
+            <option value="">— Todos —</option>
+            <option value="Activo">Activo</option>
+            <option value="Retirado">Retirado</option>
+          </select>
+        </div>
+        <div class="field" id="filter-registro-wrapper" style="display: none;">
+          <label for="filter-registro">Tipo de Registro</label>
+          <select id="filter-registro" onchange="filtrar()">
+            <option value="">— Todos —</option>
+            <option value="Trabajador">Trabajador</option>
+            <option value="General">General (Empresa)</option>
+          </select>
+        </div>
+        <div class="field" id="filter-solicitud-estado-wrapper" style="display: none;">
+          <label for="filter-solicitud-estado">Estado de Solicitud</label>
+          <select id="filter-solicitud-estado" onchange="filtrar()">
+            <option value="Pendiente" selected>Pendientes</option>
+            <option value="Autorizado">Autorizadas</option>
+            <option value="Rechazado">Rechazadas</option>
+            <option value="Revocado">Revocadas</option>
+            <option value="">— Todas —</option>
+          </select>
         </div>
         <div class="field">
           <label for="filter-regional">Regional</label>
@@ -237,6 +421,9 @@
             <option value="">— Todas las operaciones —</option>
           </select>
         </div>
+        <div class="field">
+          <button class="btn btn-request" style="height: 40px; width: 100%; border: 1.5px solid #cbd5e1;" onclick="limpiarFiltros()">Limpiar</button>
+        </div>
       </div>
     </section>
 
@@ -245,7 +432,7 @@
       <div class="table-container">
         <table id="main-table">
           <thead id="table-head">
-            <!-- Dynamic columns -->
+            <!-- Dynamic header with resize & sort -->
           </thead>
           <tbody id="table-body">
             <!-- Dynamic rows -->
@@ -263,16 +450,16 @@
         <button class="modal-close" onclick="closeModal('modal-worker')">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Prefijo</th>
-                <th>Documento</th>
-                <th>Fecha de Registro</th>
-                <th>Usuario</th>
-                <th>Acciones</th>
-              </tr>
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
+          <div class="field" style="min-width: 300px; max-width: 400px; flex-grow: 1;">
+            <label for="modal-worker-search">Buscar por Documento o Prefijo</label>
+            <input type="text" id="modal-worker-search" placeholder="Ej. Incapacidad, HC..." oninput="onWorkerModalSearch()">
+          </div>
+        </div>
+        <div class="table-container" style="max-height: 50vh; overflow-y: auto;">
+          <table id="modal-worker-table">
+            <thead id="modal-worker-thead">
+              <!-- Resizable and sortable headers -->
             </thead>
             <tbody id="modal-worker-body">
               <!-- Worker doc rows -->
@@ -294,12 +481,30 @@
         <button class="modal-close" onclick="closeModal('modal-doc')">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr id="modal-doc-thead">
-                <!-- Dynamic columns based on type_doc -->
-              </tr>
+        <!-- Internal filters bar in Modal -->
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;" id="modal-doc-filters-bar">
+          <div class="field" id="modal-doc-search-trabajador-wrapper" style="min-width: 180px;">
+            <label for="modal-doc-search-trabajador">Trabajador</label>
+            <input type="text" id="modal-doc-search-trabajador" placeholder="Nombre o ID..." oninput="debounceModalDocFilter()">
+          </div>
+          <div class="field" style="min-width: 160px;">
+            <label for="modal-doc-filter-regional">Regional</label>
+            <select id="modal-doc-filter-regional" onchange="onModalDocRegionalChange()">
+              <option value="">— Todas —</option>
+            </select>
+          </div>
+          <div class="field" style="min-width: 160px;">
+            <label for="modal-doc-filter-operacion">Operación</label>
+            <select id="modal-doc-filter-operacion" onchange="reloadModalDocData()">
+              <option value="">— Todas —</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="table-container" style="max-height: 50vh; overflow-y: auto;">
+          <table id="modal-doc-table">
+            <thead id="modal-doc-thead">
+              <!-- Dynamic headers -->
             </thead>
             <tbody id="modal-doc-body">
               <!-- Instances rows -->
@@ -330,7 +535,7 @@
         </div>
         <div class="field">
           <label for="solicitud-justificacion">¿Por qué lo solicita?</label>
-          <textarea id="solicitud-justificacion" rows="4" placeholder="Indica la justificación detallada..." style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:8px; outline:none; font-family:inherit; font-size:.9rem; resize:vertical;"></textarea>
+          <textarea id="solicitud-justificacion" rows="4" placeholder="Indica la justificación detallada..." style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:var(--radius-sm); outline:none; font-family:inherit; font-size:.9rem; resize:vertical;"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -340,18 +545,120 @@
     </div>
   </div>
 
-  <!-- Toast Toast -->
+  <!-- Modal: Gestionar Solicitud (Solo Archivo / Sistema) -->
+  <div class="modal-overlay" id="modal-gestionar">
+    <div class="modal-content" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="gestionar-modal-title">Gestionar Solicitud de Acceso</h3>
+        <button class="modal-close" onclick="closeModal('modal-gestionar')">&times;</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="background:#f8fafc; padding:12px; border-radius:6px; font-size:0.88rem; display:flex; flex-direction:column; gap:8px;">
+          <div><strong>Documento:</strong> <span id="gestionar-doc-name"></span></div>
+          <div><strong>Trabajador:</strong> <span id="gestionar-trabajador"></span></div>
+          <div><strong>Solicitado por:</strong> <span id="gestionar-usuario"></span></div>
+          <div><strong>Justificación:</strong> <span id="gestionar-justificacion" style="font-style:italic;"></span></div>
+        </div>
+        <div class="field">
+          <label for="gestionar-visualizar">Valor de columna Visualizar</label>
+          <input type="text" id="gestionar-visualizar" value="OK" placeholder="OK o vacío para revocar...">
+        </div>
+        <div class="field">
+          <label for="gestionar-estado">Estado de la Solicitud</label>
+          <select id="gestionar-estado" onchange="onGestionarEstadoChange()">
+            <option value="Autorizado">Autorizado</option>
+            <option value="Rechazado">Rechazado</option>
+            <option value="Revocado">Revocado</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="gestionar-observaciones">Observaciones / Anotaciones</label>
+          <textarea id="gestionar-observaciones" rows="3" placeholder="Comentarios adicionales..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-request" onclick="closeModal('modal-gestionar')">Cancelar</button>
+        <button class="btn btn-submit" onclick="guardarGestionSolicitud()">Guardar y Enviar Correo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
   <div class="toast" id="toast">
     <span id="toast-message">Mensaje</span>
   </div>
 
   <script>
-    // Injected config object from Express server
     const CONFIG = __CONFIG__;
 
     let activeTab = 'trabajador';
     let currentData = [];
     let debounceTimeout = null;
+    let debounceModalTimeout = null;
+
+    // Resizing & sorting configurations
+    const COLUMNS = {
+      trabajador: [
+        { key: 'trabajador', label: 'Trabajador', width: 350 },
+        { key: 'operacion', label: 'Operación', width: 220 },
+        { key: 'estado', label: 'Estado', width: 120 },
+        { key: 'fechaIngreso', label: 'Fecha de Ingreso', width: 150 },
+        { key: 'documentosCount', label: 'Documentos', width: 120, align: 'center' }
+      ],
+      documento: [
+        { key: 'Id', label: 'Id', width: 90 },
+        { key: 'Documento', label: 'Documento', width: 350 },
+        { key: 'Prefijo', label: 'Prefijo', width: 120 },
+        { key: 'Clasificacion', label: 'Clasificación', width: 250 },
+        { key: 'Trabajadores', label: 'Trabajadores', width: 150, align: 'center' }
+      ],
+      todo: [
+        { key: 'Documento', label: 'Documento', width: 220 },
+        { key: 'Prefijo', label: 'Prefijo', width: 90 },
+        { key: 'TrabajadorNombre', label: 'Trabajador', width: 280 },
+        { key: 'Operación', label: 'Operación', width: 180 },
+        { key: 'Estado', label: 'Estado', width: 110 },
+        { key: 'FechaIngreso', label: 'Ingreso', width: 110 },
+        { key: 'FechaRegistro', label: 'Registro', width: 160 },
+        { key: 'Usuario', label: 'Usuario', width: 140 },
+        { key: 'Observaciones', label: 'Observaciones', width: 180 }
+      ],
+      worker_modal: [
+        { key: 'Prefijo', label: 'Prefijo', width: 100 },
+        { key: 'Documento', label: 'Documento', width: 350 },
+        { key: 'FechaRegistro', label: 'Fecha de Registro', width: 200 },
+        { key: 'Usuario', label: 'Usuario', width: 180 }
+      ],
+      doc_modal_trabajador: [
+        { key: 'TrabajadorNombre', label: 'Trabajador', width: 300 },
+        { key: 'Regional', label: 'Regional', width: 150 },
+        { key: 'Operación', label: 'Operación', width: 180 },
+        { key: 'Estado', label: 'Estado', width: 110 },
+        { key: 'FechaRegistro', label: 'Fecha Registro', width: 180 },
+        { key: 'Usuario', label: 'Usuario', width: 150 }
+      ],
+      doc_modal_general: [
+        { key: 'Regional', label: 'Regional', width: 200 },
+        { key: 'Operación', label: 'Operación', width: 220 },
+        { key: 'FechaRegistro', label: 'Fecha Registro', width: 200 },
+        { key: 'Usuario', label: 'Usuario', width: 180 }
+      ],
+      solicitudes: [
+        { key: 'tipo_registro', label: 'Tipo', width: 110 },
+        { key: 'Documento', label: 'Documento', width: 220 },
+        { key: 'Prefijo', label: 'Prefijo', width: 90 },
+        { key: 'TrabajadorNombre', label: 'Trabajador', width: 260 },
+        { key: 'Usuario_Solicitud', label: 'Solicitante', width: 180 },
+        { key: 'Justificacion_Solicitud', label: 'Justificación', width: 280 },
+        { key: 'Estado_Solicitud', label: 'Estado Solicitud', width: 140 },
+        { key: 'Visualizar', label: 'Visualizar', width: 110 }
+      ]
+    };
+
+    // Sort States
+    let mainSort = { key: '', dir: '' };
+    let modalWorkerSort = { key: '', dir: '' };
+    let modalDocSort = { key: '', dir: '' };
 
     // Active solicitude reference
     let activeSolicitud = {
@@ -359,15 +666,136 @@
       tipo_registro: null
     };
 
+    // Active gestion reference
+    let activeGestion = {
+      id_documento: null,
+      tipo_registro: null,
+      solicitante: null,
+      documento: null,
+      trabajador: null,
+      justificacion: null
+    };
+
+    // Local data caches for modals
+    let rawWorkerDocs = [];
+    let filteredWorkerDocs = [];
+    
+    // Active Doc Modal state
+    let activeDocModalId = null;
+    let activeDocModalName = null;
+    let activeDocModalTipoDoc = null;
+    let rawDocInstances = [];
+
+    // Generic Resize Engine Variables
+    const MIN_COL_WIDTH = 50;
+    let resizingKey = null;
+    let resizeStartX = 0;
+    let resizeStartWidth = 0;
+    let activeResizeCols = null;
+    let activeResizeTableEl = null;
+
+    // Normalize string to ignore accents and uppercase/lowercase differences
+    function norm(str) {
+      if (!str) return '';
+      return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    // Pointer Event resize hook
+    function setupResize(handleEl, key, colsArray, tableEl) {
+      handleEl.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizingKey = key;
+        activeResizeCols = colsArray;
+        activeResizeTableEl = tableEl;
+        resizeStartX = e.clientX;
+        const colObj = colsArray.find(c => c.key === key);
+        resizeStartWidth = colObj.width || 120;
+        handleEl.classList.add('resizing');
+        try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+
+      handleEl.addEventListener('pointermove', (e) => {
+        if (resizingKey !== key || activeResizeCols !== colsArray) return;
+        const requested = Math.max(MIN_COL_WIDTH, resizeStartWidth + (e.clientX - resizeStartX));
+        const th = tableEl.querySelector(`th[data-key="${key}"]`);
+        if (!th) return;
+        th.style.width = requested + 'px';
+        const colObj = colsArray.find(c => c.key === key);
+        colObj.width = Math.round(th.getBoundingClientRect().width);
+      });
+
+      const finishResize = () => {
+        if (resizingKey !== key) return;
+        resizingKey = null;
+        handleEl.classList.remove('resizing');
+      };
+      handleEl.addEventListener('pointerup', finishResize);
+      handleEl.addEventListener('pointercancel', finishResize);
+    }
+
+    // Generic Header Render Helper
+    function renderTableHeader(theadId, colsArray, sortState, onSortChange, tableEl) {
+      const thead = document.getElementById(theadId);
+      thead.innerHTML = `<tr>${colsArray.map(c => {
+        let arrow = '';
+        if (sortState.key === c.key) {
+          arrow = `<span class="sort-arrow">${sortState.dir === 'asc' ? '▲' : '▼'}</span>`;
+        }
+        const alignStyle = c.align === 'center' ? 'text-align: center;' : '';
+        return `<th data-key="${c.key}" class="th-sortable" style="width:${c.width}px; ${alignStyle}"><span class="th-label">${esc(c.label)}${arrow}</span><span class="th-resize" title="Arrastra para cambiar el ancho"></span></th>`;
+      }).join('')}</tr>`;
+
+      colsArray.forEach(c => {
+        const th = thead.querySelector(`th[data-key="${c.key}"]`);
+        th.querySelector('.th-label').addEventListener('click', () => {
+          if (sortState.key === c.key) {
+            sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortState.key = c.key;
+            sortState.dir = 'asc';
+          }
+          onSortChange();
+        });
+        setupResize(th.querySelector('.th-resize'), c.key, colsArray, tableEl);
+      });
+    }
+
+    // Generic Sorter Helper
+    function sortDataArray(data, key, dir) {
+      if (!key) return data;
+      return data.sort((a, b) => {
+        let valA = a[key];
+        let valB = b[key];
+
+        if (typeof valA === 'string') valA = norm(valA);
+        if (typeof valB === 'string') valB = norm(valB);
+
+        if (valA === null || valA === undefined) return 1;
+        if (valB === null || valB === undefined) return -1;
+
+        if (valA < valB) return dir === 'asc' ? -1 : 1;
+        if (valA > valB) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
     // Initialize Page
     document.addEventListener('DOMContentLoaded', () => {
-      // Set User badge
-      document.getElementById('user-badge').innerText = `👤 ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+      document.getElementById('user-badge-name').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+
+      // Render Solicitudes Tab button if role matches
+      if (CONFIG.rol === 'Archivo' || CONFIG.rol === 'Sistema') {
+        const tabBtn = document.createElement('button');
+        tabBtn.className = 'tab-btn';
+        tabBtn.id = 'tab-btn-solicitudes';
+        tabBtn.onclick = () => switchTab('solicitudes');
+        tabBtn.textContent = 'Solicitudes';
+        document.getElementById('tabs-container').appendChild(tabBtn);
+      }
 
       // Populate filter dropdowns
       const regionalSelect = document.getElementById('filter-regional');
-      
-      // Sorted list of regionals
       const sortedRegs = Object.keys(CONFIG.opsPorRegional).sort();
       sortedRegs.forEach(reg => {
         const option = document.createElement('option');
@@ -376,16 +804,90 @@
         regionalSelect.appendChild(option);
       });
 
-      // Default load
+      // Populate modal-specific regional dropdown
+      const modalRegionalSelect = document.getElementById('modal-doc-filter-regional');
+      sortedRegs.forEach(reg => {
+        const option = document.createElement('option');
+        option.value = reg;
+        option.textContent = reg;
+        modalRegionalSelect.appendChild(option);
+      });
+
+      cargarTiposDocumentosParaFiltro();
+      
+      // Auto-prefill regionals & operations if only 1 is allowed
+      prellenoAutomaticoFiltros();
+
       switchTab('trabajador');
     });
+
+    // Auto-prefill helper for regionals and operations
+    function prellenoAutomaticoFiltros() {
+      const sortedRegs = Object.keys(CONFIG.opsPorRegional).sort();
+      
+      // Main filters
+      if (sortedRegs.length === 1) {
+        const regVal = sortedRegs[0];
+        document.getElementById('filter-regional').value = regVal;
+        
+        // Populate and select operations
+        const opSelect = document.getElementById('filter-operacion');
+        opSelect.innerHTML = '<option value="">— Todas las operaciones —</option>';
+        CONFIG.opsPorRegional[regVal].sort().forEach(op => {
+          const option = document.createElement('option');
+          option.value = op;
+          option.textContent = op;
+          opSelect.appendChild(option);
+        });
+        
+        if (CONFIG.opsPorRegional[regVal].length === 1) {
+          opSelect.value = CONFIG.opsPorRegional[regVal][0];
+        }
+      }
+
+      // Modal Filters
+      if (sortedRegs.length === 1) {
+        const regVal = sortedRegs[0];
+        document.getElementById('modal-doc-filter-regional').value = regVal;
+        
+        const mOpSelect = document.getElementById('modal-doc-filter-operacion');
+        mOpSelect.innerHTML = '<option value="">— Todas —</option>';
+        CONFIG.opsPorRegional[regVal].sort().forEach(op => {
+          const option = document.createElement('option');
+          option.value = op;
+          option.textContent = op;
+          mOpSelect.appendChild(option);
+        });
+
+        if (CONFIG.opsPorRegional[regVal].length === 1) {
+          mOpSelect.value = CONFIG.opsPorRegional[regVal][0];
+        }
+      }
+    }
+
+    // Fetch allowed documents and populate Tipo Documento filter select
+    async function cargarTiposDocumentosParaFiltro() {
+      try {
+        const res = await fetch(`/cloud-docs/api/documentos?usuario=${CONFIG.usuarioId}`);
+        const docs = await res.json();
+        const select = document.getElementById('filter-documento');
+        if (res.ok && Array.isArray(docs)) {
+          docs.forEach(d => {
+            const option = document.createElement('option');
+            option.value = d.Id;
+            option.textContent = `${d.Prefijo} - ${d.Documento}`;
+            select.appendChild(option);
+          });
+        }
+      } catch (err) {
+        console.error('Error al cargar tipos de documentos para filtro:', err);
+      }
+    }
 
     // Handle Regional select changes to update Operations
     function onRegionalChange() {
       const reg = document.getElementById('filter-regional').value;
       const opSelect = document.getElementById('filter-operacion');
-      
-      // Clear operation list
       opSelect.innerHTML = '<option value="">— Todas las operaciones —</option>';
 
       if (reg && CONFIG.opsPorRegional[reg]) {
@@ -396,9 +898,7 @@
           opSelect.appendChild(option);
         });
       } else if (!reg) {
-        // If "Todas", and we are not admin, maybe we have a set of operations
         if (CONFIG.sinFiltro) {
-          // Flatten all operations
           const allOps = [];
           Object.values(CONFIG.opsPorRegional).forEach(arr => allOps.push(...arr));
           [...new Set(allOps)].sort().forEach(op => {
@@ -409,94 +909,145 @@
           });
         }
       }
-
       filtrar();
     }
 
-    // Debounce text filtering
+    // Handle Regional changes inside Document instances modal
+    function onModalDocRegionalChange() {
+      const reg = document.getElementById('modal-doc-filter-regional').value;
+      const opSelect = document.getElementById('modal-doc-filter-operacion');
+      opSelect.innerHTML = '<option value="">— Todas —</option>';
+
+      if (reg && CONFIG.opsPorRegional[reg]) {
+        CONFIG.opsPorRegional[reg].sort().forEach(op => {
+          const option = document.createElement('option');
+          option.value = op;
+          option.textContent = op;
+          opSelect.appendChild(option);
+        });
+      } else if (!reg) {
+        const allOps = [];
+        Object.values(CONFIG.opsPorRegional).forEach(arr => allOps.push(...arr));
+        [...new Set(allOps)].sort().forEach(op => {
+          const option = document.createElement('option');
+          option.value = op;
+          option.textContent = op;
+          opSelect.appendChild(option);
+        });
+      }
+      reloadModalDocData();
+    }
+
+    // Debounce filters
     function debounceFilter() {
       clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(() => {
-        filtrar();
-      }, 400);
+      debounceTimeout = setTimeout(() => { filtrar(); }, 400);
+    }
+    
+    function debounceModalDocFilter() {
+      clearTimeout(debounceModalTimeout);
+      debounceModalTimeout = setTimeout(() => { reloadModalDocData(); }, 400);
     }
 
     // Switch between tabs
     function switchTab(tab) {
       activeTab = tab;
       
-      // Update UI active button
+      const docSelectWrapper = document.getElementById('filter-documento-wrapper');
+      const estadoWrapper = document.getElementById('filter-estado-wrapper');
+      const registroWrapper = document.getElementById('filter-registro-wrapper');
+      const solEstadoWrapper = document.getElementById('filter-solicitud-estado-wrapper');
+      const labelBuscar = document.getElementById('label-buscar');
+      
+      mainSort = { key: '', dir: '' };
+
+      // Reset displayed filter inputs dynamically
+      if (tab === 'todo') {
+        docSelectWrapper.style.display = 'flex';
+        estadoWrapper.style.display = 'flex';
+        registroWrapper.style.display = 'flex';
+        solEstadoWrapper.style.display = 'none';
+        labelBuscar.innerText = 'Buscar Trabajador';
+      } else if (tab === 'documento') {
+        docSelectWrapper.style.display = 'none';
+        estadoWrapper.style.display = 'none';
+        registroWrapper.style.display = 'none';
+        solEstadoWrapper.style.display = 'none';
+        labelBuscar.innerText = 'Buscar Trabajador';
+      } else if (tab === 'solicitudes') {
+        docSelectWrapper.style.display = 'none';
+        estadoWrapper.style.display = 'none';
+        registroWrapper.style.display = 'none';
+        solEstadoWrapper.style.display = 'flex';
+        labelBuscar.innerText = 'Buscar Solicitante o Trabajador';
+      } else { // trabajador
+        docSelectWrapper.style.display = 'none';
+        estadoWrapper.style.display = 'flex';
+        registroWrapper.style.display = 'none';
+        solEstadoWrapper.style.display = 'none';
+        labelBuscar.innerText = 'Buscar Trabajador';
+      }
+
+      // Update active button classes
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.textContent.toLowerCase().includes(tab === 'todo' ? 'consolidado' : tab)) {
+        if (btn.id === `tab-btn-${tab}`) {
           btn.classList.add('active');
         }
       });
 
-      // Setup table header columns
-      const thead = document.getElementById('table-head');
-      if (tab === 'trabajador') {
-        thead.innerHTML = `
-          <tr>
-            <th>Trabajador</th>
-            <th>Operación</th>
-            <th>Estado</th>
-            <th>Fecha de Ingreso</th>
-            <th style="text-align: center;">Documentos</th>
-          </tr>
-        `;
-      } else if (tab === 'documento') {
-        thead.innerHTML = `
-          <tr>
-            <th>Id</th>
-            <th>Documento</th>
-            <th>Prefijo</th>
-            <th>Clasificación</th>
-            <th style="text-align: center;">Trabajadores</th>
-          </tr>
-        `;
-      } else {
-        // Tab Todo
-        thead.innerHTML = `
-          <tr>
-            <th>Documento</th>
-            <th>Prefijo</th>
-            <th>Trabajador</th>
-            <th>Operación</th>
-            <th>Estado</th>
-            <th>Ingreso</th>
-            <th>Registro</th>
-            <th>Usuario</th>
-            <th>Observaciones</th>
-            <th>Acciones</th>
-          </tr>
-        `;
-      }
-
       filtrar();
     }
 
-    // Load data from APIs and render
+    // Reset filters
+    function limpiarFiltros() {
+      document.getElementById('filter-buscar').value = '';
+      document.getElementById('filter-estado').value = '';
+      document.getElementById('filter-documento').value = '';
+      document.getElementById('filter-registro').value = '';
+      document.getElementById('filter-solicitud-estado').value = 'Pendiente';
+      document.getElementById('filter-regional').value = '';
+      document.getElementById('filter-operacion').innerHTML = '<option value="">— Todas las operaciones —</option>';
+      
+      prellenoAutomaticoFiltros();
+      filtrar();
+    }
+
+    // Load data from APIs
     async function filtrar() {
       showLoader();
       try {
         const buscar = document.getElementById('filter-buscar').value;
         const regional = document.getElementById('filter-regional').value;
         const operacion = document.getElementById('filter-operacion').value;
+        const estado = document.getElementById('filter-estado').value;
+        const tipoDocumento = document.getElementById('filter-documento').value;
+        const tipoRegistro = document.getElementById('filter-registro').value;
+        const estadoSolicitud = document.getElementById('filter-solicitud-estado').value;
 
         const queryParams = new URLSearchParams({
           usuario: CONFIG.usuarioId,
-          buscar,
           regional,
           operacion
         });
 
         let url = '';
         if (activeTab === 'trabajador') {
+          if (buscar) queryParams.set('buscar', buscar);
+          if (estado) queryParams.set('estado', estado);
           url = `/cloud-docs/api/trabajadores?${queryParams}`;
         } else if (activeTab === 'documento') {
+          if (buscar) queryParams.set('buscarTrabajador', buscar);
           url = `/cloud-docs/api/documentos?${queryParams}`;
-        } else {
+        } else if (activeTab === 'solicitudes') {
+          if (buscar) queryParams.set('buscar', buscar);
+          if (estadoSolicitud) queryParams.set('estadoSolicitud', estadoSolicitud);
+          url = `/cloud-docs/api/solicitudes?${queryParams}`;
+        } else { // todo
+          if (buscar) queryParams.set('buscar', buscar);
+          if (estado) queryParams.set('estado', estado);
+          if (tipoDocumento) queryParams.set('tipoDocumento', tipoDocumento);
+          if (tipoRegistro) queryParams.set('tipoRegistro', tipoRegistro);
           url = `/cloud-docs/api/todo?${queryParams}`;
         }
 
@@ -504,7 +1055,7 @@
         const data = await res.json();
         if (res.ok) {
           currentData = data;
-          renderTable();
+          renderMainTable();
         } else {
           showToast(data.error || 'Error al obtener datos', 'error');
         }
@@ -516,23 +1067,44 @@
       }
     }
 
-    // Render active tab table rows
-    function renderTable() {
+    // Render the main table
+    function renderMainTable() {
+      const tableEl = document.getElementById('main-table');
+      
+      // Render columns header
+      renderTableHeader(
+        'table-head',
+        COLUMNS[activeTab],
+        mainSort,
+        () => {
+          sortDataArray(currentData, mainSort.key, mainSort.dir);
+          renderMainTableRows();
+        },
+        tableEl
+      );
+
+      // Render rows
+      renderMainTableRows();
+    }
+
+    function renderMainTableRows() {
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
 
       if (currentData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="15" style="text-align: center; color: #94a3b8; padding: 24px;">No se encontraron registros</td></tr>`;
+        const colsLength = COLUMNS[activeTab].length;
+        tbody.innerHTML = `<tr><td colspan="${colsLength}" style="text-align: center; color: #94a3b8; padding: 24px;">No se encontraron registros</td></tr>`;
         return;
       }
 
       currentData.forEach(row => {
         const tr = document.createElement('tr');
+        tr.className = 'clickable-row';
         
         if (activeTab === 'trabajador') {
           tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador);
           tr.innerHTML = `
-            <td style="font-weight: 600; color: #0f172a;">${esc(row.trabajador)}</td>
+            <td style="font-weight: 600; color: var(--primary);">${esc(row.trabajador)}</td>
             <td>${esc(row.operacion)}</td>
             <td>
               <span class="badge-status ${row.estado === 'Activo' ? 'badge-active' : 'badge-retired'}">
@@ -540,30 +1112,52 @@
               </span>
             </td>
             <td>${row.fechaIngreso || 'N/A'}</td>
-            <td style="text-align: center; font-weight: bold; color: #1e3c72;">${row.documentosCount}</td>
+            <td style="text-align: center; font-weight: bold; color: var(--primary);">${row.documentosCount}</td>
           `;
         } else if (activeTab === 'documento') {
           tr.onclick = () => openDocModal(row.Id, row.Documento, row.tipo_doc);
           tr.innerHTML = `
             <td>${row.Id}</td>
-            <td style="font-weight: 600; color: #0f172a;">${esc(row.Documento)}</td>
+            <td style="font-weight: 600; color: var(--primary);">${esc(row.Documento)}</td>
             <td>${esc(row.Prefijo)}</td>
             <td>${esc(row.Clasificacion || 'N/A')}</td>
-            <td style="text-align: center; font-weight: bold; color: #1e3c72;">
+            <td style="text-align: center; font-weight: bold; color: var(--primary);">
               ${row.tipo_doc === 'General' ? '<span class="badge-status badge-general">General</span>' : row.Trabajadores}
             </td>
           `;
-        } else {
-          // Todo consolidated view
-          const btnHtml = row.permitido 
-            ? `<a href="${row.Url}" target="_blank" class="btn btn-view btn-small">Ver PDF</a>` 
-            : `<button onclick="openSolicitudModal('${row.id}', '${row.tipo_registro}', '${esc(row.Documento)}')" class="btn btn-request btn-small">${row.Solicitud === 'SI' ? 'Re-Solicitar' : 'Solicitar'}</button>`;
-
-          const workerLabel = row.Identificacion ? `${row.Identificacion} - ${row.TrabajadorNombre || ''}` : 'N/A';
+        } else if (activeTab === 'solicitudes') {
+          tr.onclick = () => openGestionarModal(row);
+          
+          let estColor = '#64748b'; // default pending
+          if (row.Estado_Solicitud === 'Autorizado') estColor = '#16a34a';
+          if (row.Estado_Solicitud === 'Rechazado') estColor = '#dc2626';
+          if (row.Estado_Solicitud === 'Revocado') estColor = '#d97706';
 
           tr.innerHTML = `
-            <td style="font-weight: 600; color: #0f172a;">${esc(row.Documento || 'N/A')}</td>
+            <td><span class="badge-status ${row.tipo_registro === 'Trabajador' ? 'badge-active' : 'badge-general'}">${row.tipo_registro}</span></td>
+            <td style="font-weight: 600;">${esc(row.Documento)}</td>
             <td>${esc(row.Prefijo)}</td>
+            <td>${esc(row.TrabajadorNombre || '—')}</td>
+            <td style="font-size: 0.85rem;">${esc(row.Usuario_Solicitud || '—')}</td>
+            <td style="font-size: 0.85rem;" title="${esc(row.Justificacion_Solicitud || '')}">${esc(row.Justificacion_Solicitud || '—')}</td>
+            <td style="font-weight: bold; color: ${estColor}">${row.Estado_Solicitud}</td>
+            <td style="font-weight: bold;">${esc(row.Visualizar || '—')}</td>
+          `;
+        } else { // todo
+          tr.onclick = () => {
+            if (row.permitido) {
+              window.open(row.Url, '_blank');
+            } else {
+              openSolicitudModal(row.id, row.tipo_registro, row.Documento);
+            }
+          };
+
+          const workerLabel = row.TrabajadorNombre || 'N/A';
+          const prefColorClass = row.permitido ? 'text-allowed' : 'text-denied';
+
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: var(--primary);">${esc(row.Documento || 'N/A')}</td>
+            <td class="${prefColorClass}">${esc(row.Prefijo)}</td>
             <td style="font-size: 0.85rem;">${esc(workerLabel)}</td>
             <td>${esc(row.Operación || 'N/A')}</td>
             <td>
@@ -572,8 +1166,7 @@
             <td>${row.FechaIngreso || 'N/A'}</td>
             <td style="font-size: 0.82rem;">${row.FechaRegistro || 'N/A'}</td>
             <td style="font-size: 0.82rem;">${esc(row.Usuario || 'N/A')}</td>
-            <td style="font-size: 0.85rem; max-width: 150px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(row.Observaciones || '')}">${esc(row.Observaciones || '—')}</td>
-            <td>${btnHtml}</td>
+            <td style="font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(row.Observaciones || '')}">${esc(row.Observaciones || '—')}</td>
           `;
         }
         tbody.appendChild(tr);
@@ -583,125 +1176,220 @@
     // Modal: Open Worker Docs
     async function openWorkerModal(identificacion, nombre) {
       document.getElementById('modal-worker-title').textContent = `Documentos de: ${nombre}`;
+      document.getElementById('modal-worker-search').value = '';
+      
       const tbody = document.getElementById('modal-worker-body');
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Cargando documentos...</td></tr>';
       
       openModal('modal-worker');
+      modalWorkerSort = { key: '', dir: '' };
 
       try {
         const res = await fetch(`/cloud-docs/api/trabajador/${identificacion}/documentos?usuario=${CONFIG.usuarioId}`);
         const docs = await res.json();
-        tbody.innerHTML = '';
-
-        if (!docs.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #94a3b8; padding: 20px;">No se encontraron documentos</td></tr>';
-          return;
+        
+        if (res.ok && Array.isArray(docs)) {
+          rawWorkerDocs = docs;
+          filteredWorkerDocs = [...docs];
+          renderWorkerModalTable();
+        } else {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: red; padding: 20px;">${docs.error || 'Error al obtener documentos'}</td></tr>`;
         }
-
-        docs.forEach(doc => {
-          const tr = document.createElement('tr');
-          const btnHtml = doc.permitido 
-            ? `<a href="${doc.Url}" target="_blank" class="btn btn-view btn-small">Ver PDF</a>` 
-            : `<button onclick="openSolicitudModal('${doc.id}', 'Trabajador', '${esc(doc.Documento)}')" class="btn btn-request btn-small">${doc.Solicitud === 'SI' ? 'Re-Solicitar' : 'Solicitar'}</button>`;
-          
-          tr.innerHTML = `
-            <td>${esc(doc.Prefijo)}</td>
-            <td style="font-weight: 600;">${esc(doc.Documento || 'N/A')}</td>
-            <td>${doc.FechaRegistro}</td>
-            <td>${esc(doc.Usuario || 'N/A')}</td>
-            <td>${btnHtml}</td>
-          `;
-          tbody.appendChild(tr);
-        });
       } catch (err) {
         console.error(err);
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red; padding: 20px;">Error al obtener documentos</td></tr>';
       }
     }
 
+    // Client-side filtering in Worker modal (accent and case insensitive)
+    function onWorkerModalSearch() {
+      const q = norm(document.getElementById('modal-worker-search').value.trim());
+      if (!q) {
+        filteredWorkerDocs = [...rawWorkerDocs];
+      } else {
+        filteredWorkerDocs = rawWorkerDocs.filter(d => 
+          norm(d.Documento).includes(q) || norm(d.Prefijo).includes(q)
+        );
+      }
+      renderWorkerModalTableRows();
+    }
+
+    function renderWorkerModalTable() {
+      const tableEl = document.getElementById('modal-worker-table');
+      renderTableHeader(
+        'modal-worker-thead',
+        COLUMNS.worker_modal,
+        modalWorkerSort,
+        () => {
+          sortDataArray(filteredWorkerDocs, modalWorkerSort.key, modalWorkerSort.dir);
+          renderWorkerModalTableRows();
+        },
+        tableEl
+      );
+      renderWorkerModalTableRows();
+    }
+
+    function renderWorkerModalTableRows() {
+      const tbody = document.getElementById('modal-worker-body');
+      tbody.innerHTML = '';
+
+      if (!filteredWorkerDocs.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #94a3b8; padding: 20px;">No se encontraron documentos</td></tr>';
+        return;
+      }
+
+      filteredWorkerDocs.forEach(doc => {
+        const tr = document.createElement('tr');
+        tr.className = 'clickable-row';
+        tr.onclick = () => {
+          if (doc.permitido) {
+            window.open(doc.Url, '_blank');
+          } else {
+            openSolicitudModal(doc.id, 'Trabajador', doc.Documento);
+          }
+        };
+
+        const prefColorClass = doc.permitido ? 'text-allowed' : 'text-denied';
+
+        tr.innerHTML = `
+          <td class="${prefColorClass}">${esc(doc.Prefijo)}</td>
+          <td style="font-weight: 600; color: var(--primary);">${esc(doc.Documento || 'N/A')}</td>
+          <td>${doc.FechaRegistro}</td>
+          <td>${esc(doc.Usuario || 'N/A')}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
     // Modal: Open Document Type Instances
     async function openDocModal(id, documentoName, tipoDoc) {
+      activeDocModalId = id;
+      activeDocModalName = documentoName;
+      activeDocModalTipoDoc = tipoDoc;
+
       document.getElementById('modal-doc-title').textContent = `Archivo: ${documentoName}`;
       
-      const thead = document.getElementById('modal-doc-thead');
-      const tbody = document.getElementById('modal-doc-body');
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px;">Cargando registros...</td></tr>';
-
+      // Reset Modal Filters
+      document.getElementById('modal-doc-search-trabajador').value = '';
+      document.getElementById('modal-doc-filter-regional').value = '';
+      document.getElementById('modal-doc-filter-operacion').innerHTML = '<option value="">— Todas —</option>';
+      
+      const searchWrapper = document.getElementById('modal-doc-search-trabajador-wrapper');
       if (tipoDoc === 'Trabajador') {
-        thead.innerHTML = `
-          <tr>
-            <th>Trabajador</th>
-            <th>Regional</th>
-            <th>Operación</th>
-            <th>Estado</th>
-            <th>Fecha Registro</th>
-            <th>Usuario</th>
-            <th>Acción</th>
-          </tr>
-        `;
+        searchWrapper.style.display = 'flex';
       } else {
-        thead.innerHTML = `
-          <tr>
-            <th>Regional</th>
-            <th>Operación</th>
-            <th>Fecha Registro</th>
-            <th>Usuario</th>
-            <th>Acción</th>
-          </tr>
-        `;
+        searchWrapper.style.display = 'none';
       }
 
       openModal('modal-doc');
+      modalDocSort = { key: '', dir: '' };
+
+      // Apply modal auto pre-selection
+      const sortedRegs = Object.keys(CONFIG.opsPorRegional).sort();
+      if (sortedRegs.length === 1) {
+        const regVal = sortedRegs[0];
+        document.getElementById('modal-doc-filter-regional').value = regVal;
+        onModalDocRegionalChange(); // triggers load
+      } else {
+        reloadModalDocData();
+      }
+    }
+
+    // Fetch instances based on modal filters
+    async function reloadModalDocData() {
+      const tbody = document.getElementById('modal-doc-body');
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px;">Cargando registros...</td></tr>';
 
       try {
-        const regional = document.getElementById('filter-regional').value;
-        const operacion = document.getElementById('filter-operacion').value;
+        const regional = document.getElementById('modal-doc-filter-regional').value;
+        const operacion = document.getElementById('modal-doc-filter-operacion').value;
+        const buscarTrabajador = document.getElementById('modal-doc-search-trabajador').value;
+
         const queryParams = new URLSearchParams({
           usuario: CONFIG.usuarioId,
           regional,
           operacion
         });
 
-        const res = await fetch(`/cloud-docs/api/documento/${id}/registros?${queryParams}`);
-        const rows = await res.json();
-        tbody.innerHTML = '';
-
-        if (!rows.length) {
-          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color: #94a3b8; padding: 20px;">No se encontraron registros</td></tr>`;
-          return;
+        if (buscarTrabajador && activeDocModalTipoDoc === 'Trabajador') {
+          queryParams.set('buscarTrabajador', buscarTrabajador);
         }
 
-        rows.forEach(r => {
-          const tr = document.createElement('tr');
-          const btnHtml = r.permitido 
-            ? `<a href="${r.Url}" target="_blank" class="btn btn-view btn-small">Ver PDF</a>` 
-            : `<button onclick="openSolicitudModal('${r.id}', '${r.tipo_registro}', '${esc(documentoName)}')" class="btn btn-request btn-small">${r.Solicitud === 'SI' ? 'Re-Solicitar' : 'Solicitar'}</button>`;
-          
-          if (tipoDoc === 'Trabajador') {
-            tr.innerHTML = `
-              <td>${esc(r.Identificación)} - ${esc(r.TrabajadorNombre || '')}</td>
-              <td>${esc(r.Regional || '—')}</td>
-              <td>${esc(r.Operación || '—')}</td>
-              <td><span class="badge-status ${r.Estado === 'Activo' ? 'badge-active' : 'badge-retired'}">${esc(r.Estado)}</span></td>
-              <td>${r.FechaRegistro}</td>
-              <td>${esc(r.Usuario || '—')}</td>
-              <td>${btnHtml}</td>
-            `;
-          } else {
-            tr.innerHTML = `
-              <td>${esc(r.Regional || '—')}</td>
-              <td>${esc(r.Operación || '—')}</td>
-              <td>${r.FechaRegistro}</td>
-              <td>${esc(r.Usuario || '—')}</td>
-              <td>${btnHtml}</td>
-            `;
-          }
-          tbody.appendChild(tr);
-        });
+        const res = await fetch(`/cloud-docs/api/documento/${activeDocModalId}/registros?${queryParams}`);
+        const rows = await res.json();
+        
+        if (res.ok && Array.isArray(rows)) {
+          rawDocInstances = rows;
+          renderModalDocTable();
+        } else {
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color: red; padding: 20px;">${rows.error || 'Error al obtener registros'}</td></tr>`;
+        }
       } catch (err) {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color: red; padding: 20px;">Error al obtener registros</td></tr>`;
       }
+    }
+
+    function renderModalDocTable() {
+      const tableEl = document.getElementById('modal-doc-table');
+      const modalCols = activeDocModalTipoDoc === 'Trabajador' ? COLUMNS.doc_modal_trabajador : COLUMNS.doc_modal_general;
+      
+      renderTableHeader(
+        'modal-doc-thead',
+        modalCols,
+        modalDocSort,
+        () => {
+          sortDataArray(rawDocInstances, modalDocSort.key, modalDocSort.dir);
+          renderModalDocTableRows();
+        },
+        tableEl
+      );
+      renderModalDocTableRows();
+    }
+
+    function renderModalDocTableRows() {
+      const tbody = document.getElementById('modal-doc-body');
+      tbody.innerHTML = '';
+
+      if (!rawDocInstances.length) {
+        const colsCount = activeDocModalTipoDoc === 'Trabajador' ? COLUMNS.doc_modal_trabajador.length : COLUMNS.doc_modal_general.length;
+        tbody.innerHTML = `<tr><td colspan="${colsCount}" style="text-align:center; color: #94a3b8; padding: 20px;">No se encontraron registros</td></tr>`;
+        return;
+      }
+
+      rawDocInstances.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = 'clickable-row';
+        tr.onclick = () => {
+          if (r.permitido) {
+            window.open(r.Url, '_blank');
+          } else {
+            openSolicitudModal(r.id, r.tipo_registro, activeDocModalName);
+          }
+        };
+
+        const allowedColorClass = r.permitido ? 'text-allowed' : 'text-denied';
+
+        if (activeDocModalTipoDoc === 'Trabajador') {
+          // Clean layout: only show row.TrabajadorNombre (Identificación is already inside row.TrabajadorNombre)
+          tr.innerHTML = `
+            <td class="${allowedColorClass}" style="font-weight: 600;">${esc(r.TrabajadorNombre || '')}</td>
+            <td>${esc(r.Regional || '—')}</td>
+            <td>${esc(r.Operación || '—')}</td>
+            <td><span class="badge-status ${r.Estado === 'Activo' ? 'badge-active' : 'badge-retired'}">${esc(r.Estado)}</span></td>
+            <td>${r.FechaRegistro}</td>
+            <td>${esc(r.Usuario || '—')}</td>
+          `;
+        } else {
+          tr.innerHTML = `
+            <td class="${allowedColorClass}" style="font-weight: 600;">${esc(r.Regional || '—')}</td>
+            <td>${esc(r.Operación || '—')}</td>
+            <td>${r.FechaRegistro}</td>
+            <td>${esc(r.Usuario || '—')}</td>
+          `;
+        }
+        tbody.appendChild(tr);
+      });
     }
 
     // Modal: Open Request Access
@@ -742,16 +1430,12 @@
         if (res.ok && data.ok) {
           showToast('Solicitud enviada con éxito');
           
-          // Refresh open modals or current table
           if (document.getElementById('modal-worker').style.display === 'flex') {
-            // Find worker ID from title context
-            const title = document.getElementById('modal-worker-title').textContent;
-            // Extracción simple de ID del trabajador si está visible, o recargamos la tabla principal
-            filtrar();
             closeModal('modal-worker');
-          } else if (document.getElementById('modal-doc').style.display === 'flex') {
             filtrar();
+          } else if (document.getElementById('modal-doc').style.display === 'flex') {
             closeModal('modal-doc');
+            filtrar();
           } else {
             filtrar();
           }
@@ -761,6 +1445,79 @@
       } catch (err) {
         console.error(err);
         showToast('Error de red al enviar solicitud', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    // Modal: Open Gestionar Solicitud (Solo Archivo / Sistema)
+    function openGestionarModal(row) {
+      activeGestion.id_documento = row.id;
+      activeGestion.tipo_registro = row.tipo_registro;
+      activeGestion.solicitante = row.Usuario_Solicitud;
+      activeGestion.documento = row.Documento;
+      activeGestion.trabajador = row.TrabajadorNombre || 'N/A';
+      activeGestion.justificacion = row.Justificacion_Solicitud;
+
+      document.getElementById('gestionar-doc-name').innerText = `${row.Prefijo} - ${row.Documento}`;
+      document.getElementById('gestionar-trabajador').innerText = row.TrabajadorNombre || 'General / Empresa';
+      document.getElementById('gestionar-usuario').innerText = row.Usuario_Solicitud || 'Desconocido';
+      document.getElementById('gestionar-justificacion').innerText = row.Justificacion_Solicitud || 'Sin justificación';
+
+      // Set input fields defaults
+      document.getElementById('gestionar-visualizar').value = row.Visualizar === 'OK' ? 'OK' : 'OK';
+      document.getElementById('gestionar-estado').value = row.Estado_Solicitud || 'Autorizado';
+      document.getElementById('gestionar-observaciones').value = row.Observaciones || '';
+
+      onGestionarEstadoChange();
+      openModal('modal-gestionar');
+    }
+
+    // Toggle Visualizar input based on status in Gestionar Modal
+    function onGestionarEstadoChange() {
+      const est = document.getElementById('gestionar-estado').value;
+      const visInput = document.getElementById('gestionar-visualizar');
+      
+      if (est === 'Autorizado') {
+        visInput.value = 'OK';
+      } else {
+        visInput.value = ''; // clears visual OK
+      }
+    }
+
+    // Save Request Access decisions (Approve / Reject)
+    async function guardarGestionSolicitud() {
+      const visualizar = document.getElementById('gestionar-visualizar').value.trim();
+      const estado_solicitud = document.getElementById('gestionar-estado').value;
+      const observaciones = document.getElementById('gestionar-observaciones').value.trim();
+
+      showLoader('Guardando y enviando correo...');
+      closeModal('modal-gestionar');
+
+      try {
+        const res = await fetch('/cloud-docs/api/gestionar-solicitud', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_documento: activeGestion.id_documento,
+            tipo_registro: activeGestion.tipo_registro,
+            visualizar,
+            observaciones,
+            estado_solicitud,
+            usuario_gestor: CONFIG.usuarioId
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('Solicitud gestionada correctamente');
+          filtrar();
+        } else {
+          showToast(data.error || 'Error al guardar gestión', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
       } finally {
         hideLoader();
       }
@@ -789,7 +1546,7 @@
       const msgSpan = document.getElementById('toast-message');
       
       msgSpan.textContent = message;
-      toast.style.background = type === 'error' ? '#ef4444' : '#10b981';
+      toast.style.background = type === 'error' ? 'var(--danger)' : 'var(--success)';
       toast.style.display = 'flex';
       
       setTimeout(() => {
