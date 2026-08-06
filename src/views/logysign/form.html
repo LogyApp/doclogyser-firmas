@@ -725,6 +725,16 @@
           </select>
         </div>
 
+        <!-- Causa de Desvinculación (Only for Doc ID 55) -->
+        <div class="form-group" id="grp-causa" style="display: none;">
+          <label for="select-causa">Causa de Desvinculación</label>
+          <select id="select-causa">
+            <option value="">-- Seleccione Causa --</option>
+            <option value="*Nuevo">*Nuevo</option>
+          </select>
+          <input type="text" id="input-causa-nueva" style="display: none; margin-top: 8px;" placeholder="Escriba la nueva causa...">
+        </div>
+
         <!-- Drag & Drop Upload PDF area -->
         <div class="upload-zone" id="upload-zone">
           <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,8H18A2,2 0 0,0 20,20V8L14,2M13,13V18H11V13H8L12,9L16,13H13M13,9V3.5L18.5,9H13Z"/></svg>
@@ -737,6 +747,19 @@
         <div class="file-indicator" id="file-indicator">
           <svg style="width:20px;height:20px" viewBox="0 0 24 24"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
           <span id="file-name-text">archivo.pdf</span>
+        </div>
+
+        <!-- Option to schedule email delivery -->
+        <div class="form-group" style="margin-top: 15px;">
+          <label style="display: flex; align-items: center; cursor: pointer; gap: 8px; font-weight: 500; font-size: 0.9rem; color: var(--text);">
+            <input type="checkbox" id="chk-programar" style="width: 16px; height: 16px; cursor: pointer; margin: 0;">
+            Programar Envío de Correo
+          </label>
+        </div>
+
+        <div class="form-group" id="grp-programar-fecha" style="display: none; margin-top: 10px; margin-bottom: 15px;">
+          <label for="input-fecha-programacion" style="font-size: 0.85rem; color: var(--text-muted);">Fecha y Hora de Envío (Colombia)</label>
+          <input type="datetime-local" id="input-fecha-programacion">
         </div>
 
         <!-- Submit Button -->
@@ -805,11 +828,17 @@
     const autocompleteList = document.getElementById('autocomplete-list');
     const selectClasificacion = document.getElementById('select-clasificacion');
     const selectDocumento = document.getElementById('select-documento');
+    const grpCausa = document.getElementById('grp-causa');
+    const selectCausa = document.getElementById('select-causa');
+    const inputCausaNueva = document.getElementById('input-causa-nueva');
     const uploadZone = document.getElementById('upload-zone');
     const fileInput = document.getElementById('file-input');
     const fileIndicator = document.getElementById('file-indicator');
     const fileNameText = document.getElementById('file-name-text');
     const btnSubmit = document.getElementById('btn-submit');
+    const chkProgramar = document.getElementById('chk-programar');
+    const grpProgramarFecha = document.getElementById('grp-programar-fecha');
+    const inputFechaProgramacion = document.getElementById('input-fecha-programacion');
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
     const btnAddSig = document.getElementById('btn-add-sig');
@@ -908,7 +937,49 @@
       checkFormValidity();
     });
 
-    selectDocumento.addEventListener('change', checkFormValidity);
+    async function loadCausas(idConfigDoc) {
+      selectCausa.innerHTML = '<option value="">-- Seleccione Causa --</option><option value="*Nuevo">*Nuevo</option>';
+      try {
+        const res = await fetch(`/logysign/api/motivos?idConfigDoc=${idConfigDoc}`);
+        if (!res.ok) throw new Error('No se pudieron cargar las causas');
+        const list = await res.json();
+        list.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.motivo;
+          opt.innerText = m.motivo;
+          selectCausa.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Error al cargar causas:', err);
+      }
+    }
+
+    selectDocumento.addEventListener('change', () => {
+      const val = selectDocumento.value;
+      if (val === '55' || Number(val) === 55) {
+        grpCausa.style.display = 'block';
+        loadCausas(val);
+      } else {
+        grpCausa.style.display = 'none';
+        selectCausa.value = '';
+        inputCausaNueva.value = '';
+        inputCausaNueva.style.display = 'none';
+      }
+      checkFormValidity();
+    });
+
+    selectCausa.addEventListener('change', () => {
+      if (selectCausa.value === '*Nuevo') {
+        inputCausaNueva.style.display = 'block';
+        inputCausaNueva.focus();
+      } else {
+        inputCausaNueva.style.display = 'none';
+        inputCausaNueva.value = '';
+      }
+      checkFormValidity();
+    });
+
+    inputCausaNueva.addEventListener('input', checkFormValidity);
 
     // Trabajador Search Autocomplete
     let searchTimeout;
@@ -1274,11 +1345,42 @@
       const hasDocType = !!selectDocumento.value;
       const hasFile = !!originalFile;
 
-      btnSubmit.disabled = !(hasWorker && hasDocType && hasFile && email && celular);
+      let scheduleValid = true;
+      if (chkProgramar.checked) {
+        scheduleValid = !!inputFechaProgramacion.value;
+      }
+
+      let causaValid = true;
+      if (selectDocumento.value === '55' || Number(selectDocumento.value) === 55) {
+        if (selectCausa.value === '*Nuevo') {
+          causaValid = !!inputCausaNueva.value.trim();
+        } else {
+          causaValid = !!selectCausa.value;
+        }
+      }
+
+      btnSubmit.disabled = !(hasWorker && hasDocType && hasFile && email && celular && scheduleValid && causaValid);
     }
 
     document.getElementById('input-celular').addEventListener('input', checkFormValidity);
     document.getElementById('input-email').addEventListener('input', checkFormValidity);
+    inputFechaProgramacion.addEventListener('input', checkFormValidity);
+
+    chkProgramar.addEventListener('change', () => {
+      if (chkProgramar.checked) {
+        grpProgramarFecha.style.display = 'block';
+        btnSubmit.innerText = 'Programar Envío';
+        const nowColombia = new Date(Date.now() - 5 * 3600000);
+        const nowStr = nowColombia.toISOString().slice(0, 16);
+        inputFechaProgramacion.min = nowStr;
+        inputFechaProgramacion.value = nowStr;
+      } else {
+        grpProgramarFecha.style.display = 'none';
+        btnSubmit.innerText = 'Enviar al Trabajador';
+        inputFechaProgramacion.value = '';
+      }
+      checkFormValidity();
+    });
 
     // Form submission
     btnSubmit.addEventListener('click', async () => {
@@ -1312,9 +1414,14 @@
 
       const primaryBox = boxesRelative[0] || { x: 0, y: 0, w: 0, h: 0, page: 1 };
 
-      showLoading('Actualizando datos y enviando correo al trabajador...');
+      showLoading(chkProgramar.checked ? 'Programando envío de flujo...' : 'Actualizando datos y enviando correo al trabajador...');
 
       try {
+        let causaVal = '';
+        if (idConfigDoc === '55' || Number(idConfigDoc) === 55) {
+          causaVal = selectCausa.value === '*Nuevo' ? inputCausaNueva.value.trim() : selectCausa.value;
+        }
+
         const formData = new FormData();
         formData.append('file', originalFile);
         formData.append('usuarioId', CONFIG.usuarioId);
@@ -1335,6 +1442,8 @@
         formData.append('firmaH', primaryBox.h);
         formData.append('firmaPage', primaryBox.page);
         formData.append('firmasCoordenadas', JSON.stringify(boxesRelative));
+        formData.append('fechaProgramada', chkProgramar.checked ? inputFechaProgramacion.value : '');
+        formData.append('causa', causaVal);
 
         const res = await fetch('/logysign/api/enviar', {
           method: 'POST',
@@ -1344,7 +1453,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Ocurrió un error al enviar el flujo');
 
-        showToast('Documento registrado y enviado con éxito.', 'success');
+        showToast(chkProgramar.checked ? 'Envío programado con éxito.' : 'Documento registrado y enviado con éxito.', 'success');
         
         // Reset form
         workerSearchInput.value = '';
@@ -1368,6 +1477,16 @@
         btnAddSig.style.display = 'none';
         signatureBoxes = [];
         document.querySelectorAll('.sig-box').forEach(el => el.remove());
+
+        chkProgramar.checked = false;
+        grpProgramarFecha.style.display = 'none';
+        inputFechaProgramacion.value = '';
+        btnSubmit.innerText = 'Enviar al Trabajador';
+
+        grpCausa.style.display = 'none';
+        selectCausa.innerHTML = '<option value="">-- Seleccione Causa --</option><option value="*Nuevo">*Nuevo</option>';
+        inputCausaNueva.value = '';
+        inputCausaNueva.style.display = 'none';
 
       } catch (err) {
         showToast(err.message, 'error');

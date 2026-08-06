@@ -5,51 +5,7 @@ const fs = require('fs');
 const pool = require('../services/db');
 const { transporter } = require('../services/email');
 
-// Helper to resolve CC emails list (same as logysign.js)
-async function obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc) {
-  const ccList = [];
-  
-  // 1. Email of the initiating user
-  const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioId]);
-  if (uRows.length && uRows[0].Email) {
-    ccList.push(uRows[0].Email);
-  }
-
-  const omitirRolesLocales = (idConfigDoc === 18 || Number(idConfigDoc) === 18);
-
-  if (!omitirRolesLocales) {
-    // 2. AuxiliarR and CoordinadorR by Regional
-    let foundRegionalCc = false;
-    if (regional) {
-      const [regRows] = await pool.execute(
-        'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR")',
-        [regional]
-      );
-      if (regRows.length) {
-        regRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
-        foundRegionalCc = true;
-      }
-    }
-
-    // 3. Fallback: Auxiliar and Coordinador by Operación
-    if (!foundRegionalCc && operacion) {
-      const [opRows] = await pool.execute(
-        'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador")',
-        [operacion]
-      );
-      opRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
-    }
-  }
-
-  // 4. Fixed copies
-  ccList.push('admin@logyser.com');
-  if (idConfigDoc === 55 || Number(idConfigDoc) === 55) {
-    ccList.push('retiros@logyser.com');
-  }
-
-  // Filter duplicate and empty emails
-  return [...new Set(ccList.map(e => e.trim().toLowerCase()))].filter(Boolean);
-}
+const { obtenerCcEmails } = require('../services/logysignScheduler');
 
 // Servir la vista principal de registros
 router.get('/', async (req, res) => {
@@ -207,6 +163,43 @@ router.post('/api/reenviar', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[registrologysign] Error sending reminder:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Actualizar causa de un registro
+router.post('/api/update-causa', async (req, res) => {
+  try {
+    const { id, idConfigDoc, causa } = req.body;
+    if (!id) {
+      return res.status(400).json({ error: 'ID de registro requerido' });
+    }
+
+    const cleanCausa = causa ? causa.trim() : null;
+
+    // Si la causa es nueva y el documento es 55, guardarla en Config_Motivos_Documento
+    if (Number(idConfigDoc) === 55 && cleanCausa) {
+      const [mRows] = await pool.execute(
+        'SELECT id FROM Config_Motivos_Documento WHERE id_config_doc = 55 AND LOWER(motivo) = ?',
+        [cleanCausa.toLowerCase()]
+      );
+      if (!mRows.length) {
+        await pool.execute(
+          'INSERT INTO Config_Motivos_Documento (id_config_doc, motivo) VALUES (55, ?)',
+          [cleanCausa]
+        );
+      }
+    }
+
+    // Actualizar causa en Dynamic_Logysign
+    await pool.execute(
+      'UPDATE Dynamic_Logysign SET causa = ? WHERE id = ?',
+      [cleanCausa, id]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[registrologysign] Error updating causa:', err);
     res.status(500).json({ error: err.message });
   }
 });

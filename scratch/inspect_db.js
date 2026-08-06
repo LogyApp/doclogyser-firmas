@@ -11,17 +11,18 @@ async function main() {
   });
 
   try {
-    const query = `
-      SELECT s.IdServicio, s.IdRecibo, s.Estado, s.\`Forma De Pago\`, s.Fecha, s.Usuario, s.\`Hora Inicio\`, r.\`Operación\` AS Operacion
-      FROM \`Dynamic_Servicios\` s
-      LEFT JOIN \`Dynamic_Recibos\` r ON s.IdRecibo = r.IdRecibo
-      WHERE s.\`Forma De Pago\` = 4
-      LIMIT 5
-    `;
-    const [records] = await pool.query(query);
-    console.log("Joined records result:", records);
+    console.log("Checking and adding column 'causa' to Dynamic_Logysign...");
+    await pool.query(`
+      ALTER TABLE Dynamic_Logysign 
+      ADD COLUMN causa VARCHAR(255) NULL
+    `);
+    console.log("Column 'causa' added successfully.");
   } catch (err) {
-    console.error("Error during execution:", err);
+    if (err.code === 'ER_DUP_FIELDNAME') {
+      console.log("Column 'causa' already exists.");
+    } else {
+      console.error("Error during execution:", err);
+    }
   } finally {
     await pool.end();
   }

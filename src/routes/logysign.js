@@ -25,51 +25,22 @@ const upload = multer({ storage: multer.memoryStorage() });
   }
 })();
 
-// Helper to resolve CC emails list
-async function obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc) {
-  const ccList = [];
-  
-  // 1. Email of the initiating user
-  const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioId]);
-  if (uRows.length && uRows[0].Email) {
-    ccList.push(uRows[0].Email);
-  }
-
-  const omitirRolesLocales = (idConfigDoc === 18 || Number(idConfigDoc) === 18);
-
-  if (!omitirRolesLocales) {
-    // 2. AuxiliarR and CoordinadorR by Regional
-    let foundRegionalCc = false;
-    if (regional) {
-      const [regRows] = await pool.execute(
-        'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR")',
-        [regional]
-      );
-      if (regRows.length) {
-        regRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
-        foundRegionalCc = true;
-      }
-    }
-
-    // 3. Fallback: Auxiliar and Coordinador by Operación
-    if (!foundRegionalCc && operacion) {
-      const [opRows] = await pool.execute(
-        'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador")',
-        [operacion]
-      );
-      opRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+// Preventively check and add causa column if not exists
+(async () => {
+  try {
+    await pool.execute(`
+      ALTER TABLE Dynamic_Logysign 
+      ADD COLUMN causa VARCHAR(255) NULL
+    `);
+    console.log('[logysign] Column causa verified/added successfully.');
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.error('[logysign] Error checking column causa:', e);
     }
   }
+})();
 
-  // 4. Fixed copies
-  ccList.push('admin@logyser.com');
-  if (idConfigDoc === 55 || Number(idConfigDoc) === 55) {
-    ccList.push('retiros@logyser.com');
-  }
-
-  // Filter duplicate and empty emails
-  return [...new Set(ccList.map(e => e.trim().toLowerCase()))].filter(Boolean);
-}
+const { obtenerCcEmails } = require('../services/logysignScheduler');
 
 // ═════ SERVIR INTERFAZ CREADOR (form.html) ═════
 router.get('/', async (req, res) => {
@@ -275,6 +246,24 @@ router.get('/api/firma-reciente/:identificacion', async (req, res) => {
   }
 });
 
+// ═════ API: OBTENER CAUSAS/MOTIVOS DE DOCUMENTO ═════
+router.get('/api/motivos', async (req, res) => {
+  try {
+    const { idConfigDoc } = req.query;
+    if (!idConfigDoc) {
+      return res.status(400).json({ error: 'Parámetro idConfigDoc requerido' });
+    }
+    const [rows] = await pool.execute(
+      'SELECT id, motivo FROM Config_Motivos_Documento WHERE id_config_doc = ? ORDER BY motivo ASC',
+      [idConfigDoc]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[logysign] Error en /api/motivos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: ENVIAR FLUJO DE FIRMA ═════
 router.post('/api/enviar', upload.single('file'), async (req, res) => {
   try {
@@ -296,7 +285,9 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       firmaW,
       firmaH,
       firmaPage,
-      firmasCoordenadas
+      firmasCoordenadas,
+      fechaProgramada,
+      causa
     } = req.body;
 
     if (!req.file) {
@@ -308,6 +299,21 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       'UPDATE Maestro_Segmentación SET Celular = ?, Email = ? WHERE Identificación = ?',
       [celularTrabajador, emailTrabajador, identificacion]
     );
+
+    // Save custom causa in Config_Motivos_Documento if new
+    if (Number(idConfigDoc) === 55 && causa && causa.trim()) {
+      const cleanCausa = causa.trim();
+      const [mRows] = await pool.execute(
+        'SELECT id FROM Config_Motivos_Documento WHERE id_config_doc = 55 AND LOWER(motivo) = ?',
+        [cleanCausa.toLowerCase()]
+      );
+      if (!mRows.length) {
+        await pool.execute(
+          'INSERT INTO Config_Motivos_Documento (id_config_doc, motivo) VALUES (55, ?)',
+          [cleanCausa]
+        );
+      }
+    }
 
     // 2. Upload original PDF as a temporary file to GCS
     const uuid = uuidv4();
@@ -328,14 +334,17 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       ? fechaIngreso.split('T')[0] 
       : null;
 
+    const parsedFechaProgramada = fechaProgramada ? fechaProgramada.replace('T', ' ') + ':00' : null;
+    const baseUrl = `${req.secure ? 'https' : 'http'}://${req.get('host')}`;
+
     // 4. Save metadata in Dynamic_Logysign
     await pool.execute(
       `INSERT INTO Dynamic_Logysign 
        (id, token, token_expira, identificacion, nombre_trabajador, email_trabajador, 
         regional, operacion, cargo, fecha_ingreso, id_config_doc, prefijo, 
         original_pdf_url, firma_x, firma_y, firma_w, firma_h, firma_page, 
-        usuario_creador, estado, firmas_coordenadas)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE', ?)`,
+        usuario_creador, estado, firmas_coordenadas, fecha_envio_programado, base_url, causa)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         uuid,
         token,
@@ -356,59 +365,66 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         firmaH,
         firmaPage,
         usuarioId,
-        firmasCoordenadas || null
+        fechaProgramada ? 'PROGRAMADO' : 'PENDIENTE',
+        firmasCoordenadas || null,
+        parsedFechaProgramada,
+        baseUrl,
+        (Number(idConfigDoc) === 55 && causa) ? causa.trim() : null
       ]
     );
 
-    // 5. Get CC list
-    const ccEmails = await obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc);
+    // Only send email immediately if NOT scheduled
+    if (!fechaProgramada) {
+      // 5. Get CC list
+      const ccEmails = await obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc);
 
-    // Get Documento name
-    const [cRows] = await pool.execute(
-      'SELECT Documento FROM Config_Doc_Trabajador WHERE Id = ?',
-      [idConfigDoc]
-    );
-    const nombreDocumento = cRows.length ? cRows[0].Documento : (prefijo || 'Documento');
+      // Get Documento name
+      const [cRows] = await pool.execute(
+        'SELECT Documento FROM Config_Doc_Trabajador WHERE Id = ?',
+        [idConfigDoc]
+      );
+      const nombreDocumento = cRows.length ? cRows[0].Documento : (prefijo || 'Documento');
 
-    // 6. Send email to worker
-    const scheme = req.secure ? 'https' : 'http';
-    const host = req.get('host');
-    const linkFirma = `${scheme}://${host}/logysign/sign/${token}`;
+      // 6. Send email to worker
+      const scheme = req.secure ? 'https' : 'http';
+      const host = req.get('host');
+      const linkFirma = `${scheme}://${host}/logysign/sign/${token}`;
 
-    const mailBody = `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-        <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
-          <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Firma de Documento</h2>
-        </div>
-        <div style="padding:24px;background:#ffffff">
-          <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${trabajador}</strong>,</p>
-          <p style="color:#4a5568;line-height:1.6">Se ha generado un documento oficial que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
-          
-          <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
-            <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568;width:35%">Trabajador</td><td style="padding:10px">${trabajador} (${identificacion})</td></tr>
-            <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Documento</td><td style="padding:10px">${nombreDocumento}</td></tr>
-          </table>
-
-          <div style="text-align:center;margin:32px 0">
-            <a href="${linkFirma}" target="_blank" style="background:#000b59;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:bold;border-radius:6px;display:inline-block;box-shadow:0 4px 6px rgba(0,11,89,0.15)">Ver y Firmar Documento</a>
+      const mailBody = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
+          <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
+            <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Firma de Documento</h2>
           </div>
-          
-          <p style="font-size:0.85rem;color:#718096;line-height:1.4">Si el botón no funciona, copie y pegue este enlace en la barra de direcciones de su navegador:</p>
-          <p style="font-size:0.85rem;color:#000b59;word-break:break-all">${linkFirma}</p>
-        </div>
-        <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
-          <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
-        </div>
-      </div>
-    `;
+          <div style="padding:24px;background:#ffffff">
+            <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${trabajador}</strong>,</p>
+            <p style="color:#4a5568;line-height:1.6">Se ha generado un documento oficial que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
+            
+            <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
+              <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568;width:35%">Trabajador</td><td style="padding:10px">${trabajador} (${identificacion})</td></tr>
+              <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Documento</td><td style="padding:10px">${nombreDocumento}</td></tr>
+            </table>
 
-    await transporter.sendMail({
-      from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
-      to: emailTrabajador,
-      cc: ccEmails.length ? ccEmails.join(', ') : undefined,
-      subject: `LOG&SER: Documento pendiente de firma (${nombreDocumento}) — ${trabajador}`,
-      html: mailBody
-    });
+            <div style="text-align:center;margin:32px 0">
+              <a href="${linkFirma}" target="_blank" style="background:#000b59;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:bold;border-radius:6px;display:inline-block;box-shadow:0 4px 6px rgba(0,11,89,0.15)">Ver y Firmar Documento</a>
+            </div>
+            
+            <p style="font-size:0.85rem;color:#718096;line-height:1.4">Si el botón no funciona, copie y pegue este enlace en la barra de direcciones de su navegador:</p>
+            <p style="font-size:0.85rem;color:#000b59;word-break:break-all">${linkFirma}</p>
+          </div>
+          <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
+            <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
+          </div>
+        </div>
+      `;
+
+      await transporter.sendMail({
+        from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
+        to: emailTrabajador,
+        cc: ccEmails.length ? ccEmails.join(', ') : undefined,
+        subject: `LOG&SER: Documento pendiente de firma (${nombreDocumento}) — ${trabajador}`,
+        html: mailBody
+      });
+    }
 
     res.json({ success: true, logysignId: uuid });
   } catch (err) {

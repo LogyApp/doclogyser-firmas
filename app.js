@@ -148,3 +148,7 @@ setInterval(verificarEVSSTExpirados, 5 * 60 * 1000); // cada 5 minutos
 // Actualizador diario automático de Forma de Pago y reportador de pendientes (a las 7:30 AM Colombia)
 const { iniciarProgramadorFormaPago } = require('./src/services/formaPagoUpdater');
 iniciarProgramadorFormaPago();
+
+// Programador de envíos de correos de Logysign en la fecha/hora seleccionada
+const { iniciarProgramadorEnvios } = require('./src/services/logysignScheduler');
+iniciarProgramadorEnvios();

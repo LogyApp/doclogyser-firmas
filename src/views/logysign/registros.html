@@ -278,7 +278,21 @@
       text-transform: uppercase;
       font-size: 0.78rem;
       letter-spacing: 0.5px;
+      position: relative;
     }
+
+    /* Column sorting and resizing */
+    .th-sortable { cursor: pointer; }
+    .th-resize {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+      cursor: col-resize; touch-action: none; z-index: 2;
+    }
+    .th-resize::after {
+      content: ''; display: block; width: 2px; height: 100%;
+      background: rgba(0,0,0,0.06); margin: 0 auto;
+    }
+    .th-resize:hover::after, .th-resize.resizing::after { background: var(--accent); }
+    .sort-arrow { font-size: .7rem; color: var(--accent); margin-left: 4px; }
 
     td {
       padding: 14px 16px;
@@ -502,6 +516,31 @@
           <label for="filter-hasta">Hasta</label>
           <input type="date" id="filter-hasta">
         </div>
+        <div class="form-group">
+          <label for="filter-regional">Regional</label>
+          <select id="filter-regional">
+            <option value="">-- Todas --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="filter-operacion">Operación</label>
+          <select id="filter-operacion">
+            <option value="">-- Todas --</option>
+          </select>
+        </div>
+        <!-- Causa filter (only visible to Juridica / Sistema) -->
+        <div class="form-group" id="grp-filter-causa" style="display: none;">
+          <label for="filter-causa">Causa</label>
+          <select id="filter-causa">
+            <option value="">-- Todas --</option>
+          </select>
+        </div>
+        <!-- Clear Button -->
+        <div class="form-group" style="justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" id="btn-limpiar-filtros" style="height: 42px; width: 100%;">
+            Limpiar Filtros
+          </button>
+        </div>
       </div>
     </div>
 
@@ -519,16 +558,7 @@
 
       <div class="table-container">
         <table id="records-table">
-          <thead>
-            <tr>
-              <th>Colaborador</th>
-              <th>Documento</th>
-              <th>Fecha de Registro</th>
-              <th id="th-creador" style="display: none;">Creado por</th>
-              <th>Estado</th>
-              <th style="width: 260px; text-align: center;">Acciones</th>
-            </tr>
-          </thead>
+          <thead></thead>
           <tbody id="records-body">
             <tr>
               <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Cargando registros...</td>
@@ -539,12 +569,57 @@
     </div>
   </div>
 
+  <!-- Modal Editar Causa -->
+  <div id="modal-causa" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(16, 20, 37, 0.55); backdrop-filter: blur(4px); z-index: 1200; justify-content: center; align-items: center;">
+    <div class="modal-card" style="background: #fff; border-radius: var(--radius-md); padding: 24px; max-width: 450px; width: 100%; box-shadow: var(--shadow-lg); border: 1px solid var(--border);">
+      <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; color: var(--primary); margin-bottom: 16px;">Asignar Causa de Desvinculación</h3>
+      <div class="form-group" style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
+        <label for="modal-select-causa" style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Causa</label>
+        <select id="modal-select-causa" style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-family: inherit; font-size: 0.9rem;">
+          <option value="">-- Seleccione Causa --</option>
+          <option value="*Nuevo">*Nuevo</option>
+        </select>
+        <input type="text" id="modal-input-causa-nueva" style="display: none; width: 100%; margin-top: 10px; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-family: inherit; font-size: 0.9rem;" placeholder="Escriba la nueva causa...">
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModalCausa()">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-guardar-causa">Guardar Causa</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Load config from backend
     const CONFIG = __CONFIG__;
 
     // Globals
     let records = [];
+    let uniqueRegionales = [];
+    let uniqueOperaciones = [];
+    let uniqueCausas = [];
+
+    // Columns config (sortable and resizable)
+    const COL_WIDTH_KEY = 'logysign_col_widths';
+    const MIN_COL_WIDTH = 70;
+    
+    let columns = [
+      { key: 'colaborador', label: 'Colaborador', width: 220 },
+      { key: 'documento', label: 'Documento', width: 220 },
+      { key: 'fecha', label: 'Fecha de Registro', width: 180 }
+    ];
+
+    if (CONFIG.usuarioRol === 'Sistema') {
+      columns.push({ key: 'creador', label: 'Creado por', width: 150 });
+    }
+
+    if (CONFIG.usuarioRol === 'Sistema' || CONFIG.usuarioRol === 'Juridica') {
+      columns.push({ key: 'causa', label: 'Causa', width: 180 });
+    }
+
+    columns.push({ key: 'estado', label: 'Estado', width: 120 });
+    columns.push({ key: 'acciones', label: 'Acciones', width: 260 });
+
+    let sortState = { key: 'fecha', dir: 'desc' }; // Sort by date descending initially
 
     // Elements
     const userBadge = document.getElementById('user-badge-name');
@@ -553,9 +628,13 @@
     const filterStatus = document.getElementById('filter-status');
     const filterDesde = document.getElementById('filter-desde');
     const filterHasta = document.getElementById('filter-hasta');
+    const filterRegional = document.getElementById('filter-regional');
+    const filterOperacion = document.getElementById('filter-operacion');
+    const filterCausa = document.getElementById('filter-causa');
+    const grpFilterCausa = document.getElementById('grp-filter-causa');
+    const btnLimpiarFiltros = document.getElementById('btn-limpiar-filtros');
     const recordsBody = document.getElementById('records-body');
     const recordsCounter = document.getElementById('records-counter');
-    const thCreador = document.getElementById('th-creador');
     const loadingOverlay = document.getElementById('loading-overlay');
     const loadingText = document.getElementById('loading-text');
 
@@ -563,8 +642,103 @@
     userBadge.innerText = CONFIG.usuarioNombre;
     btnVolver.href = `/logysign?usuario=${CONFIG.usuarioId}`;
 
-    if (CONFIG.usuarioRol === 'Sistema') {
-      thCreador.style.display = 'table-cell';
+    if (CONFIG.usuarioRol === 'Sistema' || CONFIG.usuarioRol === 'Juridica') {
+      grpFilterCausa.style.display = 'flex';
+    }
+
+    // Load saved column widths
+    function loadColumnWidths() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(COL_WIDTH_KEY) || 'null');
+        if (saved && typeof saved === 'object') {
+          columns.forEach(c => {
+            if (typeof saved[c.key] === 'number' && saved[c.key] >= MIN_COL_WIDTH) c.width = saved[c.key];
+          });
+        }
+      } catch (e) {}
+    }
+
+    function saveColumnWidths() {
+      try {
+        const obj = {};
+        columns.forEach(c => { obj[c.key] = c.width; });
+        localStorage.setItem(COL_WIDTH_KEY, JSON.stringify(obj));
+      } catch (e) {}
+    }
+
+    let resizingKey = null;
+    let resizeStartX = 0;
+    let resizeStartWidth = 0;
+
+    function attachHeaderResize(handleEl, key) {
+      if (!handleEl) return;
+      handleEl.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizingKey = key;
+        resizeStartX = e.clientX;
+        resizeStartWidth = columns.find(c => c.key === key).width;
+        handleEl.classList.add('resizing');
+        try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+      handleEl.addEventListener('pointermove', (e) => {
+        if (resizingKey !== key) return;
+        const requested = Math.max(MIN_COL_WIDTH, resizeStartWidth + (e.clientX - resizeStartX));
+        const th = document.querySelector(`#records-table th[data-key="${key}"]`);
+        if (!th) return;
+        th.style.width = requested + 'px';
+        columns.find(c => c.key === key).width = Math.round(th.getBoundingClientRect().width);
+      });
+      const finishResize = () => {
+        if (resizingKey !== key) return;
+        resizingKey = null;
+        handleEl.classList.remove('resizing');
+        saveColumnWidths();
+      };
+      handleEl.addEventListener('pointerup', finishResize);
+      handleEl.addEventListener('pointercancel', finishResize);
+    }
+
+    function renderHeader() {
+      const thead = document.querySelector('#records-table thead');
+      thead.innerHTML = `<tr>${columns.map(c => {
+        let arrow = '';
+        if (sortState.key === c.key) {
+          arrow = `<span class="sort-arrow">${sortState.dir === 'asc' ? '▲' : '▼'}</span>`;
+        }
+        const resizeHandle = c.key !== 'acciones' ? `<span class="th-resize" title="Arrastra para cambiar el ancho"></span>` : '';
+        const thClass = c.key !== 'acciones' ? 'th-sortable' : '';
+        return `<th data-key="${c.key}" class="${thClass}" style="width:${c.width}px;"><span class="th-label">${c.label}${arrow}</span>${resizeHandle}</th>`;
+      }).join('')}</tr>`;
+
+      columns.forEach(c => {
+        const th = thead.querySelector(`th[data-key="${c.key}"]`);
+        if (c.key !== 'acciones') {
+          th.querySelector('.th-label').addEventListener('click', () => {
+            if (sortState.key === c.key) {
+              sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+              sortState.key = c.key;
+              sortState.dir = 'asc';
+            }
+            renderHeader();
+            renderRecords();
+          });
+          attachHeaderResize(th.querySelector('.th-resize'), c.key);
+        }
+      });
+    }
+
+    function getSortValue(item, key) {
+      switch (key) {
+        case 'colaborador': return (item.nombre_trabajador || '').toLowerCase();
+        case 'documento': return (item.nombre_documento || item.prefijo || '').toLowerCase();
+        case 'fecha': return item.fecha_registro || '';
+        case 'creador': return (item.nombre_creador || item.usuario_creador || '').toLowerCase();
+        case 'causa': return (item.causa || '').toLowerCase();
+        case 'estado': return (item.estado || '').toLowerCase();
+        default: return '';
+      }
     }
 
     // Show toast message
@@ -594,10 +768,19 @@
         const res = await fetch(`/registrologysign/api/registros?usuario=${CONFIG.usuarioId}`);
         if (!res.ok) throw new Error('No se pudieron cargar los registros');
         records = await res.json();
+        
+        // Extract unique lists for filters
+        uniqueRegionales = [...new Set(records.map(r => r.regional).filter(Boolean))].sort();
+        uniqueOperaciones = [...new Set(records.map(r => r.operacion).filter(Boolean))].sort();
+        uniqueCausas = [...new Set(records.map(r => r.causa).filter(Boolean))].sort();
+
+        loadColumnWidths();
+        renderHeader();
         renderRecords();
       } catch (err) {
         showToast(err.message, 'error');
-        recordsBody.innerHTML = `<tr><td colspan="${CONFIG.usuarioRol === 'Sistema' ? 6 : 5}" class="no-records">Error: ${err.message}</td></tr>`;
+        const colspanCount = columns.length;
+        recordsBody.innerHTML = `<tr><td colspan="${colspanCount}" class="no-records">Error: ${err.message}</td></tr>`;
       } finally {
         hideLoading();
       }
@@ -609,9 +792,121 @@
       const status = filterStatus.value;
       const desde = filterDesde.value;
       const hasta = filterHasta.value;
+      const regionalVal = filterRegional.value;
+      const operacionVal = filterOperacion.value;
+      const causaVal = filterCausa ? filterCausa.value : '';
 
+      // 1. Calculate dynamic count arrays based on active filters
+      const regCounts = {};
+      const opCounts = {};
+      const causaCounts = {};
+
+      records.forEach(item => {
+        // Match checking excluding Regional filter
+        let matchExcludingReg = true;
+        if (q) {
+          const textMatch = 
+            (item.nombre_trabajador || '').toLowerCase().includes(q) ||
+            (item.identificacion || '').toLowerCase().includes(q) ||
+            (item.nombre_documento || item.prefijo || '').toLowerCase().includes(q);
+          if (!textMatch) matchExcludingReg = false;
+        }
+        if (status && item.estado !== status) matchExcludingReg = false;
+        if (item.fecha_registro) {
+          const itemDate = item.fecha_registro.split('T')[0];
+          if (desde && itemDate < desde) matchExcludingReg = false;
+          if (hasta && itemDate > hasta) matchExcludingReg = false;
+        }
+        if (operacionVal && item.operacion !== operacionVal) matchExcludingReg = false;
+        if (causaVal && item.causa !== causaVal) matchExcludingReg = false;
+
+        if (matchExcludingReg && item.regional) {
+          regCounts[item.regional] = (regCounts[item.regional] || 0) + 1;
+        }
+
+        // Match checking excluding Operacion filter
+        let matchExcludingOp = true;
+        if (q) {
+          const textMatch = 
+            (item.nombre_trabajador || '').toLowerCase().includes(q) ||
+            (item.identificacion || '').toLowerCase().includes(q) ||
+            (item.nombre_documento || item.prefijo || '').toLowerCase().includes(q);
+          if (!textMatch) matchExcludingOp = false;
+        }
+        if (status && item.estado !== status) matchExcludingOp = false;
+        if (item.fecha_registro) {
+          const itemDate = item.fecha_registro.split('T')[0];
+          if (desde && itemDate < desde) matchExcludingOp = false;
+          if (hasta && itemDate > hasta) matchExcludingOp = false;
+        }
+        if (regionalVal && item.regional !== regionalVal) matchExcludingOp = false;
+        if (causaVal && item.causa !== causaVal) matchExcludingOp = false;
+
+        if (matchExcludingOp && item.operacion) {
+          opCounts[item.operacion] = (opCounts[item.operacion] || 0) + 1;
+        }
+
+        // Match checking excluding Causa filter
+        let matchExcludingCausa = true;
+        if (q) {
+          const textMatch = 
+            (item.nombre_trabajador || '').toLowerCase().includes(q) ||
+            (item.identificacion || '').toLowerCase().includes(q) ||
+            (item.nombre_documento || item.prefijo || '').toLowerCase().includes(q);
+          if (!textMatch) matchExcludingCausa = false;
+        }
+        if (status && item.estado !== status) matchExcludingCausa = false;
+        if (item.fecha_registro) {
+          const itemDate = item.fecha_registro.split('T')[0];
+          if (desde && itemDate < desde) matchExcludingCausa = false;
+          if (hasta && itemDate > hasta) matchExcludingCausa = false;
+        }
+        if (regionalVal && item.regional !== regionalVal) matchExcludingCausa = false;
+        if (operacionVal && item.operacion !== operacionVal) matchExcludingCausa = false;
+
+        if (matchExcludingCausa && item.causa) {
+          causaCounts[item.causa] = (causaCounts[item.causa] || 0) + 1;
+        }
+      });
+
+      // Update dropdown option elements with current counts
+      const currentRegVal = filterRegional.value;
+      filterRegional.innerHTML = '<option value="">-- Todas --</option>';
+      uniqueRegionales.forEach(reg => {
+        const count = regCounts[reg] || 0;
+        const opt = document.createElement('option');
+        opt.value = reg;
+        opt.innerText = `${reg} (${count})`;
+        if (reg === currentRegVal) opt.selected = true;
+        filterRegional.appendChild(opt);
+      });
+
+      const currentOpVal = filterOperacion.value;
+      filterOperacion.innerHTML = '<option value="">-- Todas --</option>';
+      uniqueOperaciones.forEach(op => {
+        const count = opCounts[op] || 0;
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.innerText = `${op} (${count})`;
+        if (op === currentOpVal) opt.selected = true;
+        filterOperacion.appendChild(opt);
+      });
+
+      if (filterCausa) {
+        const currentCausaVal = filterCausa.value;
+        filterCausa.innerHTML = '<option value="">-- Todas --</option>';
+        uniqueCausas.forEach(c => {
+          const count = causaCounts[c] || 0;
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.innerText = `${c} (${count})`;
+          if (c === currentCausaVal) opt.selected = true;
+          filterCausa.appendChild(opt);
+        });
+      }
+
+      // 2. Perform actual filter
       const filtered = records.filter(item => {
-        // Search term filter
         if (q) {
           const textMatch = 
             (item.nombre_trabajador || '').toLowerCase().includes(q) ||
@@ -620,92 +915,118 @@
           if (!textMatch) return false;
         }
 
-        // Status filter
         if (status && item.estado !== status) return false;
 
-        // Date range filter
         if (item.fecha_registro) {
           const itemDate = item.fecha_registro.split('T')[0];
           if (desde && itemDate < desde) return false;
           if (hasta && itemDate > hasta) return false;
         }
 
+        if (regionalVal && item.regional !== regionalVal) return false;
+        if (operacionVal && item.operacion !== operacionVal) return false;
+        if (causaVal && item.causa !== causaVal) return false;
+
         return true;
       });
+
+      // 3. Sort filtered list
+      if (sortState.key) {
+        filtered.sort((a, b) => {
+          const va = getSortValue(a, sortState.key);
+          const vb = getSortValue(b, sortState.key);
+          const cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+          return sortState.dir === 'asc' ? cmp : -cmp;
+        });
+      }
 
       // Update counter
       recordsCounter.innerText = `Total: ${filtered.length}`;
 
       recordsBody.innerHTML = '';
       if (filtered.length === 0) {
-        recordsBody.innerHTML = `<tr><td colspan="${CONFIG.usuarioRol === 'Sistema' ? 6 : 5}" class="no-records">No se encontraron registros.</td></tr>`;
+        recordsBody.innerHTML = `<tr><td colspan="${columns.length}" class="no-records">No se encontraron registros.</td></tr>`;
         return;
       }
 
+      // Render rows
       filtered.forEach(item => {
         const tr = document.createElement('tr');
         
-        // Date Formatting
-        let dateStr = '—';
-        if (item.fecha_registro) {
-          const dateObj = new Date(item.fecha_registro);
-          dateStr = dateObj.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) + ' ' + 
-                    dateObj.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
-        }
+        let htmlCells = columns.map(col => {
+          switch (col.key) {
+            case 'colaborador':
+              return `<td>
+                <strong>${item.nombre_trabajador}</strong><br>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">C.C. ${item.identificacion}</span>
+              </td>`;
+            case 'documento':
+              return `<td>
+                <strong>${item.nombre_documento || item.prefijo || 'Documento'}</strong><br>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Cargo: ${item.cargo || '—'}</span>
+              </td>`;
+            case 'fecha': {
+              let dateStr = '—';
+              if (item.fecha_registro) {
+                const dateObj = new Date(item.fecha_registro);
+                dateStr = dateObj.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) + ' ' + 
+                          dateObj.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+              }
+              return `<td>${dateStr}</td>`;
+            }
+            case 'creador':
+              return `<td>${item.nombre_creador || item.usuario_creador || '—'}</td>`;
+            case 'causa': {
+              const isEditable = (item.id_config_doc === 55 || Number(item.id_config_doc) === 55);
+              if (isEditable) {
+                return `<td>
+                  <span class="causa-editable" onclick="iniciarEdicionCausa('${item.id}')" style="cursor: pointer; border-bottom: 1px dashed var(--primary); padding: 2px 4px; display: inline-block; font-weight: bold;" title="Haga clic para editar Causa">
+                    ${item.causa || '—'}
+                  </span>
+                </td>`;
+              }
+              return `<td><strong>${item.causa || '—'}</strong></td>`;
+            }
+            case 'estado': {
+              const badgeClass = item.estado === 'FIRMADO' ? 'badge-signed' : 'badge-pending';
+              const badgeLabel = item.estado === 'FIRMADO' ? '✓ Firmado' : 'Pendiente';
+              return `<td><span class="badge ${badgeClass}">${badgeLabel}</span></td>`;
+            }
+            case 'acciones': {
+              let actionsHtml = '';
+              if (item.estado === 'PENDIENTE') {
+                const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
+                actionsHtml = `
+                  <div style="display: flex; gap: 6px; justify-content: center;">
+                    <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${linkFirma}')">
+                      <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+                      Copiar Enlace
+                    </button>
+                    <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')">
+                      <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/></svg>
+                      Reenviar
+                    </button>
+                  </div>
+                `;
+              } else {
+                const viewPdfUrl = `/logysign/api/signed-pdf/${item.id}`;
+                actionsHtml = `
+                  <div style="display: flex; gap: 6px; justify-content: center;">
+                    <a href="${viewPdfUrl}" target="_blank" class="btn btn-success" style="width: 100%;">
+                      <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,3H14.82C14.4,1.84 13.3,1 12,1C10.7,1 9.6,1.84 9.18,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M12,3A1,1 0 0,1 13,4A1,1 0 0,1 12,5A1,1 0 0,1 11,4A1,1 0 0,1 12,3M14,17H7V15H14V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
+                      Ver PDF Firmado
+                    </a>
+                  </div>
+                `;
+              }
+              return `<td style="text-align: center;">${actionsHtml}</td>`;
+            }
+            default:
+              return '<td></td>';
+          }
+        }).join('');
 
-        // Status badge
-        const badgeClass = item.estado === 'FIRMADO' ? 'badge-signed' : 'badge-pending';
-        const badgeLabel = item.estado === 'FIRMADO' ? '✓ Firmado' : 'Pendiente';
-        const badgeHtml = `<span class="badge ${badgeClass}">${badgeLabel}</span>`;
-
-        // Action Buttons
-        let actionsHtml = '';
-        if (item.estado === 'PENDIENTE') {
-          const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
-          actionsHtml = `
-            <div style="display: flex; gap: 6px; justify-content: center;">
-              <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${linkFirma}')">
-                <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
-                Copiar Enlace
-              </button>
-              <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')">
-                <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/></svg>
-                Reenviar
-              </button>
-            </div>
-          `;
-        } else {
-          const viewPdfUrl = `/logysign/api/signed-pdf/${item.id}`;
-          actionsHtml = `
-            <div style="display: flex; gap: 6px; justify-content: center;">
-              <a href="${viewPdfUrl}" target="_blank" class="btn btn-success" style="width: 100%;">
-                <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,3H14.82C14.4,1.84 13.3,1 12,1C10.7,1 9.6,1.84 9.18,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M12,3A1,1 0 0,1 13,4A1,1 0 0,1 12,5A1,1 0 0,1 11,4A1,1 0 0,1 12,3M14,17H7V15H14V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
-                Ver PDF Firmado
-              </a>
-            </div>
-          `;
-        }
-
-        // Conditionally render creador column
-        let creadorTdHtml = '';
-        if (CONFIG.usuarioRol === 'Sistema') {
-          creadorTdHtml = `<td>${item.nombre_creador || item.usuario_creador || '—'}</td>`;
-        }
-
-        tr.innerHTML = `
-          <td>
-            <strong>${item.nombre_trabajador}</strong><br>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">C.C. ${item.identificacion}</span>
-          </td>
-          <td>
-            <strong>${item.nombre_documento || item.prefijo || 'Documento'}</strong><br>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Cargo: ${item.cargo || '—'}</span>
-          </td>
-          <td>${dateStr}</td>
-          ${creadorTdHtml}
-          <td>${badgeHtml}</td>
-          <td>${actionsHtml}</td>
-        `;
+        tr.innerHTML = htmlCells;
         recordsBody.appendChild(tr);
       });
     }
@@ -738,11 +1059,141 @@
       }
     }
 
+    // Modal causa edit state
+    let edicionCausaId = null;
+    let edicionConfigDocId = null;
+
+    window.iniciarEdicionCausa = async function(id) {
+      const item = records.find(r => r.id === id);
+      if (!item) return;
+
+      edicionCausaId = id;
+      edicionConfigDocId = item.id_config_doc;
+      const causaActual = item.causa || '';
+
+      const modalSelect = document.getElementById('modal-select-causa');
+      const modalInput = document.getElementById('modal-input-causa-nueva');
+
+      modalSelect.innerHTML = '<option value="">-- Seleccione Causa --</option><option value="*Nuevo">*Nuevo</option>';
+      modalInput.style.display = 'none';
+      modalInput.value = '';
+
+      showLoading('Cargando motivos...');
+      try {
+        const res = await fetch(`/logysign/api/motivos?idConfigDoc=${item.id_config_doc}`);
+        if (!res.ok) throw new Error('No se pudieron cargar los motivos');
+        const list = await res.json();
+        
+        list.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.motivo;
+          opt.innerText = m.motivo;
+          modalSelect.appendChild(opt);
+        });
+
+        // Determine matching option
+        let exists = list.some(m => m.motivo === causaActual);
+        if (causaActual && exists) {
+          modalSelect.value = causaActual;
+        } else if (causaActual) {
+          modalSelect.value = '*Nuevo';
+          modalInput.style.display = 'block';
+          modalInput.value = causaActual;
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+
+      document.getElementById('modal-causa').style.display = 'flex';
+    };
+
+    window.cerrarModalCausa = function() {
+      document.getElementById('modal-causa').style.display = 'none';
+      edicionCausaId = null;
+      edicionConfigDocId = null;
+    };
+
+    // Modal listeners
+    const modalSelectCausa = document.getElementById('modal-select-causa');
+    const modalInputCausaNueva = document.getElementById('modal-input-causa-nueva');
+    const btnGuardarCausa = document.getElementById('btn-guardar-causa');
+
+    modalSelectCausa.addEventListener('change', () => {
+      if (modalSelectCausa.value === '*Nuevo') {
+        modalInputCausaNueva.style.display = 'block';
+        modalInputCausaNueva.focus();
+      } else {
+        modalInputCausaNueva.style.display = 'none';
+        modalInputCausaNueva.value = '';
+      }
+    });
+
+    btnGuardarCausa.addEventListener('click', async () => {
+      if (!edicionCausaId) return;
+      
+      const selectVal = modalSelectCausa.value;
+      const inputVal = modalInputCausaNueva.value.trim();
+
+      let causaFinal = selectVal;
+      if (selectVal === '*Nuevo') {
+        if (!inputVal) {
+          showToast('Debe escribir la nueva causa', 'error');
+          return;
+        }
+        causaFinal = inputVal;
+      }
+
+      showLoading('Guardando causa...');
+      try {
+        const res = await fetch('/registrologysign/api/update-causa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: edicionCausaId,
+            idConfigDoc: edicionConfigDocId,
+            causa: causaFinal || null
+          })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo guardar la causa');
+        
+        showToast('Causa guardada con éxito', 'success');
+        cerrarModalCausa();
+        
+        // Reload all records to refresh list & filter counts
+        await loadRecords();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    });
+
+    // Reset Filters Listener
+    btnLimpiarFiltros.addEventListener('click', () => {
+      filterSearch.value = '';
+      filterStatus.value = '';
+      filterDesde.value = '';
+      filterHasta.value = '';
+      filterRegional.value = '';
+      filterOperacion.value = '';
+      if (filterCausa) filterCausa.value = '';
+      renderRecords();
+    });
+
     // Filter listeners
     filterSearch.addEventListener('input', renderRecords);
     filterStatus.addEventListener('change', renderRecords);
     filterDesde.addEventListener('change', renderRecords);
     filterHasta.addEventListener('change', renderRecords);
+    filterRegional.addEventListener('change', renderRecords);
+    filterOperacion.addEventListener('change', renderRecords);
+    if (filterCausa) {
+      filterCausa.addEventListener('change', renderRecords);
+    }
 
     // Initial Load
     loadRecords();
