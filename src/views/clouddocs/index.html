@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Docs — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f4f6fa; color: #1e293b; line-height: 1.5; }
+    
+    .wrapper { max-width: 1300px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Header */
+    .header-card {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      border-radius: 12px;
+      box-shadow: 0 10px 15px -3px rgba(30, 60, 114, 0.15);
+      padding: 24px 30px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      color: #ffffff;
+    }
+    .header-card img { height: 48px; filter: brightness(0) invert(1); flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.6rem; font-weight: 700; }
+    .page-sub { font-size: .88rem; opacity: 0.85; margin-top: 4px; }
+    .badge-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; font-weight: 600;
+    }
+    .badge-user { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); color: #ffffff; }
+
+    /* Tab Control */
+    .tabs-bar {
+      display: flex;
+      gap: 4px;
+      background: #e2e8f0;
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      width: fit-content;
+    }
+    .tab-btn {
+      padding: 8px 20px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #64748b;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: #1e3c72;
+      background: #ffffff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Filters Card */
+    .filters-card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: .82rem; font-weight: 600; color: #475569; }
+    
+    input[type="text"], select {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #cbd5e1; border-radius: 8px;
+      font-size: .9rem; color: #334155; background: #ffffff;
+      outline: none; transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: #1e3c72;
+      box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+    }
+
+    /* Content Area */
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .table-container { width: 100%; overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; min-width: 800px; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
+    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    tr:hover td { background: #f8fafc; }
+
+    /* Buttons & Badges */
+    .btn {
+      padding: 8px 16px; font-size: .85rem; font-weight: 600;
+      border-radius: 6px; border: none; cursor: pointer; transition: all .2s;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      width: fit-content;
+    }
+    .btn-view { background: #1e3c72; color: #fff; }
+    .btn-view:hover { background: #2a5298; }
+    .btn-request { background: #e2e8f0; color: #475569; }
+    .btn-request:hover { background: #cbd5e1; }
+    .btn-submit { background: #10b981; color: #fff; }
+    .btn-submit:hover { background: #059669; }
+    .btn-cancel { background: #ef4444; color: #fff; }
+    .btn-cancel:hover { background: #dc2626; }
+
+    .badge-status {
+      display: inline-flex; align-items: center; gap: 4px;
+      border-radius: 20px; padding: 2px 10px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .badge-active { background: #d1fae5; border: 1px solid #a7f3d0; color: #065f46; }
+    .badge-retired { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; }
+    .badge-general { background: #e0f2fe; border: 1px solid #bae6fd; color: #075985; }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center; z-index: 1000;
+      padding: 16px;
+    }
+    .modal-content {
+      background: #ffffff; border-radius: 16px; max-width: 850px; width: 100%;
+      max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      animation: slideUp 0.3s ease-out;
+    }
+    .modal-header {
+      padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { font-size: 1.25rem; font-weight: 700; color: #0f172a; }
+    .modal-close { font-size: 1.5rem; color: #94a3b8; cursor: pointer; border: none; background: transparent; }
+    .modal-close:hover { color: #64748b; }
+    .modal-body { padding: 24px; overflow-y: auto; flex-grow: 1; }
+    .modal-footer { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff;
+      padding: 12px 24px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+      display: none; align-items: center; gap: 10px; z-index: 2000; font-size: 0.9rem;
+    }
+
+    /* Loader */
+    .loader {
+      display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite;
+    }
+    .loading-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255,255,255,0.7); display: none; align-items: center;
+      justify-content: center; z-index: 1500; font-weight: 600; color: #1e3c72;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-card { flex-direction: column; text-align: center; padding: 20px; }
+      .header-card img { height: 38px; }
+      .tabs-bar { width: 100%; justify-content: stretch; }
+      .tab-btn { flex: 1; text-align: center; padding: 8px 10px; font-size: 0.85rem; }
+      .modal-content { max-height: 95vh; height: 95vh; border-radius: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div class="loading-screen" id="global-loader">
+    <div style="text-align: center;">
+      <div class="loader" style="width: 40px; height: 40px; border-top-color: #1e3c72; border-width: 4px; margin-bottom: 12px;"></div>
+      <div id="loader-message">Cargando datos...</div>
+    </div>
+  </div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <header class="header-card">
+      <div class="title-box">
+        <h1 class="page-title">Gestión Documental</h1>
+        <p class="page-sub">Panel de visualización y control de archivos corporativos</p>
+        <div class="badge-row">
+          <span class="badge badge-user" id="user-badge">Cargando usuario...</span>
+        </div>
+      </div>
+      <img src="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png" alt="Logyser Logo">
+    </header>
+
+    <!-- Tab Buttons -->
+    <div class="tabs-bar">
+      <button class="tab-btn active" onclick="switchTab('trabajador')">Trabajadores</button>
+      <button class="tab-btn" onclick="switchTab('documento')">Tipos de Documento</button>
+      <button class="tab-btn" onclick="switchTab('todo')">Consolidado (Todo)</button>
+    </div>
+
+    <!-- Filters Panel -->
+    <section class="filters-card">
+      <div class="filters-grid">
+        <div class="field">
+          <label for="filter-buscar">Buscar</label>
+          <input type="text" id="filter-buscar" placeholder="Nombre, ID, prefijo..." oninput="debounceFilter()">
+        </div>
+        <div class="field">
+          <label for="filter-regional">Regional</label>
+          <select id="filter-regional" onchange="onRegionalChange()">
+            <option value="">— Todas las regionales —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-operacion">Operación</label>
+          <select id="filter-operacion" onchange="filtrar()">
+            <option value="">— Todas las operaciones —</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Table Card -->
+    <main class="card">
+      <div class="table-container">
+        <table id="main-table">
+          <thead id="table-head">
+            <!-- Dynamic columns -->
+          </thead>
+          <tbody id="table-body">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Worker Documents -->
+  <div class="modal-overlay" id="modal-worker">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-worker-title">Documentos del Trabajador</h3>
+        <button class="modal-close" onclick="closeModal('modal-worker')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Prefijo</th>
+                <th>Documento</th>
+                <th>Fecha de Registro</th>
+                <th>Usuario</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="modal-worker-body">
+              <!-- Worker doc rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-request" onclick="closeModal('modal-worker')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Document Instances -->
+  <div class="modal-overlay" id="modal-doc">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-doc-title">Instancias del Documento</h3>
+        <button class="modal-close" onclick="closeModal('modal-doc')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr id="modal-doc-thead">
+                <!-- Dynamic columns based on type_doc -->
+              </tr>
+            </thead>
+            <tbody id="modal-doc-body">
+              <!-- Instances rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-request" onclick="closeModal('modal-doc')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Solicitar Form -->
+  <div class="modal-overlay" id="modal-solicitud">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Solicitar Acceso a Documento</h3>
+        <button class="modal-close" onclick="closeModal('modal-solicitud')">&times;</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+        <p style="font-size: 0.95rem; color: #475569;" id="solicitud-details">Estás solicitando ver este documento restringido.</p>
+        <div class="field">
+          <label for="solicitud-requiere">¿Requiere ver el documento?</label>
+          <select id="solicitud-requiere" disabled>
+            <option value="SI" selected>SI</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="solicitud-justificacion">¿Por qué lo solicita?</label>
+          <textarea id="solicitud-justificacion" rows="4" placeholder="Indica la justificación detallada..." style="width:100%; padding:10px; border:1.5px solid #cbd5e1; border-radius:8px; outline:none; font-family:inherit; font-size:.9rem; resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-request" onclick="closeModal('modal-solicitud')">Cancelar</button>
+        <button class="btn btn-submit" onclick="enviarSolicitud()">Enviar Solicitud</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Toast -->
+  <div class="toast" id="toast">
+    <span id="toast-message">Mensaje</span>
+  </div>
+
+  <script>
+    // Injected config object from Express server
+    const CONFIG = __CONFIG__;
+
+    let activeTab = 'trabajador';
+    let currentData = [];
+    let debounceTimeout = null;
+
+    // Active solicitude reference
+    let activeSolicitud = {
+      id_documento: null,
+      tipo_registro: null
+    };
+
+    // Initialize Page
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set User badge
+      document.getElementById('user-badge').innerText = `👤 ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+
+      // Populate filter dropdowns
+      const regionalSelect = document.getElementById('filter-regional');
+      
+      // Sorted list of regionals
+      const sortedRegs = Object.keys(CONFIG.opsPorRegional).sort();
+      sortedRegs.forEach(reg => {
+        const option = document.createElement('option');
+        option.value = reg;
+        option.textContent = reg;
+        regionalSelect.appendChild(option);
+      });
+
+      // Default load
+      switchTab('trabajador');
+    });
+
+    // Handle Regional select changes to update Operations
+    function onRegionalChange() {
+      const reg = document.getElementById('filter-regional').value;
+      const opSelect = document.getElementById('filter-operacion');
+      
+      // Clear operation list
+      opSelect.innerHTML = '<option value="">— Todas las operaciones —</option>';
+
+      if (reg && CONFIG.opsPorRegional[reg]) {
+        CONFIG.opsPorRegional[reg].sort().forEach(op => {
+          const option = document.createElement('option');
+          option.value = op;
+          option.textContent = op;
+          opSelect.appendChild(option);
+        });
+      } else if (!reg) {
+        // If "Todas", and we are not admin, maybe we have a set of operations
+        if (CONFIG.sinFiltro) {
+          // Flatten all operations
+          const allOps = [];
+          Object.values(CONFIG.opsPorRegional).forEach(arr => allOps.push(...arr));
+          [...new Set(allOps)].sort().forEach(op => {
+            const option = document.createElement('option');
+            option.value = op;
+            option.textContent = op;
+            opSelect.appendChild(option);
+          });
+        }
+      }
+
+      filtrar();
+    }
+
+    // Debounce text filtering
+    function debounceFilter() {
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(() => {
+        filtrar();
+      }, 400);
+    }
+
+    // Switch between tabs
+    function switchTab(tab) {
+      activeTab = tab;
+      
+      // Update UI active button
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(tab === 'todo' ? 'consolidado' : tab)) {
+          btn.classList.add('active');
+        }
+      });
+
+      // Setup table header columns
+      const thead = document.getElementById('table-head');
+      if (tab === 'trabajador') {
+        thead.innerHTML = `
+          <tr>
+            <th>Trabajador</th>
+            <th>Operación</th>
+            <th>Estado</th>
+            <th>Fecha de Ingreso</th>
+            <th style="text-align: center;">Documentos</th>
+          </tr>
+        `;
+      } else if (tab === 'documento') {
+        thead.innerHTML = `
+          <tr>
+            <th>Id</th>
+            <th>Documento</th>
+            <th>Prefijo</th>
+            <th>Clasificación</th>
+            <th style="text-align: center;">Trabajadores</th>
+          </tr>
+        `;
+      } else {
+        // Tab Todo
+        thead.innerHTML = `
+          <tr>
+            <th>Documento</th>
+            <th>Prefijo</th>
+            <th>Trabajador</th>
+            <th>Operación</th>
+            <th>Estado</th>
+            <th>Ingreso</th>
+            <th>Registro</th>
+            <th>Usuario</th>
+            <th>Observaciones</th>
+            <th>Acciones</th>
+          </tr>
+        `;
+      }
+
+      filtrar();
+    }
+
+    // Load data from APIs and render
+    async function filtrar() {
+      showLoader();
+      try {
+        const buscar = document.getElementById('filter-buscar').value;
+        const regional = document.getElementById('filter-regional').value;
+        const operacion = document.getElementById('filter-operacion').value;
+
+        const queryParams = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          buscar,
+          regional,
+          operacion
+        });
+
+        let url = '';
+        if (activeTab === 'trabajador') {
+          url = `/cloud-docs/api/trabajadores?${queryParams}`;
+        } else if (activeTab === 'documento') {
+          url = `/cloud-docs/api/documentos?${queryParams}`;
+        } else {
+          url = `/cloud-docs/api/todo?${queryParams}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+        if (res.ok) {
+          currentData = data;
+          renderTable();
+        } else {
+          showToast(data.error || 'Error al obtener datos', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión con el servidor', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    // Render active tab table rows
+    function renderTable() {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      if (currentData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="15" style="text-align: center; color: #94a3b8; padding: 24px;">No se encontraron registros</td></tr>`;
+        return;
+      }
+
+      currentData.forEach(row => {
+        const tr = document.createElement('tr');
+        
+        if (activeTab === 'trabajador') {
+          tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador);
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: #0f172a;">${esc(row.trabajador)}</td>
+            <td>${esc(row.operacion)}</td>
+            <td>
+              <span class="badge-status ${row.estado === 'Activo' ? 'badge-active' : 'badge-retired'}">
+                ${esc(row.estado)}
+              </span>
+            </td>
+            <td>${row.fechaIngreso || 'N/A'}</td>
+            <td style="text-align: center; font-weight: bold; color: #1e3c72;">${row.documentosCount}</td>
+          `;
+        } else if (activeTab === 'documento') {
+          tr.onclick = () => openDocModal(row.Id, row.Documento, row.tipo_doc);
+          tr.innerHTML = `
+            <td>${row.Id}</td>
+            <td style="font-weight: 600; color: #0f172a;">${esc(row.Documento)}</td>
+            <td>${esc(row.Prefijo)}</td>
+            <td>${esc(row.Clasificacion || 'N/A')}</td>
+            <td style="text-align: center; font-weight: bold; color: #1e3c72;">
+              ${row.tipo_doc === 'General' ? '<span class="badge-status badge-general">General</span>' : row.Trabajadores}
+            </td>
+          `;
+        } else {
+          // Todo consolidated view
+          const btnHtml = row.permitido 
+            ? `<a href="${row.Url}" target="_blank" class="btn btn-view btn-small">Ver PDF</a>` 
+            : `<button onclick="openSolicitudModal('${row.id}', '${row.tipo_registro}', '${esc(row.Documento)}')" class="btn btn-request btn-small">${row.Solicitud === 'SI' ? 'Re-Solicitar' : 'Solicitar'}</button>`;
+
+          const workerLabel = row.Identificacion ? `${row.Identificacion} - ${row.TrabajadorNombre || ''}` : 'N/A';
+
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: #0f172a;">${esc(row.Documento || 'N/A')}</td>
+            <td>${esc(row.Prefijo)}</td>
+            <td style="font-size: 0.85rem;">${esc(workerLabel)}</td>
+            <td>${esc(row.Operación || 'N/A')}</td>
+            <td>
+              ${row.Estado ? `<span class="badge-status ${row.Estado === 'Activo' ? 'badge-active' : 'badge-retired'}">${esc(row.Estado)}</span>` : '<span class="badge-status badge-general">General</span>'}
+            </td>
+            <td>${row.FechaIngreso || 'N/A'}</td>
+            <td style="font-size: 0.82rem;">${row.FechaRegistro || 'N/A'}</td>
+            <td style="font-size: 0.82rem;">${esc(row.Usuario || 'N/A')}</td>
+            <td style="font-size: 0.85rem; max-width: 150px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(row.Observaciones || '')}">${esc(row.Observaciones || '—')}</td>
+            <td>${btnHtml}</td>
+          `;
+        }
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Modal: Open Worker Docs
+    async function openWorkerModal(identificacion, nombre) {
+      document.getElementById('modal-worker-title').textContent = `Documentos de: ${nombre}`;
+      const tbody = document.getElementById('modal-worker-body');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Cargando documentos...</td></tr>';
+      
+      openModal('modal-worker');
+
+      try {
+        const res = await fetch(`/cloud-docs/api/trabajador/${identificacion}/documentos?usuario=${CONFIG.usuarioId}`);
+        const docs = await res.json();
+        tbody.innerHTML = '';
+
+        if (!docs.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #94a3b8; padding: 20px;">No se encontraron documentos</td></tr>';
+          return;
+        }
+
+        docs.forEach(doc => {
+          const tr = document.createElement('tr');
+          const btnHtml = doc.permitido 
+            ? `<a href="${doc.Url}" target="_blank" class="btn btn-view btn-small">Ver PDF</a>` 
+            : `<button onclick="openSolicitudModal('${doc.id}', 'Trabajador', '${esc(doc.Documento)}')" class="btn btn-request btn-small">${doc.Solicitud === 'SI' ? 'Re-Solicitar' : 'Solicitar'}</button>`;
+          
+          tr.innerHTML = `
+            <td>${esc(doc.Prefijo)}</td>
+            <td style="font-weight: 600;">${esc(doc.Documento || 'N/A')}</td>
+            <td>${doc.FechaRegistro}</td>
+            <td>${esc(doc.Usuario || 'N/A')}</td>
+            <td>${btnHtml}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: red; padding: 20px;">Error al obtener documentos</td></tr>';
+      }
+    }
+
+    // Modal: Open Document Type Instances
+    async function openDocModal(id, documentoName, tipoDoc) {
+      document.getElementById('modal-doc-title').textContent = `Archivo: ${documentoName}`;
+      
+      const thead = document.getElementById('modal-doc-thead');
+      const tbody = document.getElementById('modal-doc-body');
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px;">Cargando registros...</td></tr>';
+
+      if (tipoDoc === 'Trabajador') {
+        thead.innerHTML = `
+          <tr>
+            <th>Trabajador</th>
+            <th>Regional</th>
+            <th>Operación</th>
+            <th>Estado</th>
+            <th>Fecha Registro</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+          </tr>
+        `;
+      } else {
+        thead.innerHTML = `
+          <tr>
+            <th>Regional</th>
+            <th>Operación</th>
+            <th>Fecha Registro</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+          </tr>
+        `;
+      }
+
+      openModal('modal-doc');
+
+      try {
+        const regional = document.getElementById('filter-regional').value;
+        const operacion = document.getElementById('filter-operacion').value;
+        const queryParams = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          regional,
+          operacion
+        });
+
+        const res = await fetch(`/cloud-docs/api/documento/${id}/registros?${queryParams}`);
+        const rows = await res.json();
+        tbody.innerHTML = '';
+
+        if (!rows.length) {
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color: #94a3b8; padding: 20px;">No se encontraron registros</td></tr>`;
+          return;
+        }
+
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          const btnHtml = r.permitido 
+            ? `<a href="${r.Url}" target="_blank" class="btn btn-view btn-small">Ver PDF</a>` 
+            : `<button onclick="openSolicitudModal('${r.id}', '${r.tipo_registro}', '${esc(documentoName)}')" class="btn btn-request btn-small">${r.Solicitud === 'SI' ? 'Re-Solicitar' : 'Solicitar'}</button>`;
+          
+          if (tipoDoc === 'Trabajador') {
+            tr.innerHTML = `
+              <td>${esc(r.Identificación)} - ${esc(r.TrabajadorNombre || '')}</td>
+              <td>${esc(r.Regional || '—')}</td>
+              <td>${esc(r.Operación || '—')}</td>
+              <td><span class="badge-status ${r.Estado === 'Activo' ? 'badge-active' : 'badge-retired'}">${esc(r.Estado)}</span></td>
+              <td>${r.FechaRegistro}</td>
+              <td>${esc(r.Usuario || '—')}</td>
+              <td>${btnHtml}</td>
+            `;
+          } else {
+            tr.innerHTML = `
+              <td>${esc(r.Regional || '—')}</td>
+              <td>${esc(r.Operación || '—')}</td>
+              <td>${r.FechaRegistro}</td>
+              <td>${esc(r.Usuario || '—')}</td>
+              <td>${btnHtml}</td>
+            `;
+          }
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color: red; padding: 20px;">Error al obtener registros</td></tr>`;
+      }
+    }
+
+    // Modal: Open Request Access
+    function openSolicitudModal(idDocumento, tipoRegistro, docName) {
+      activeSolicitud.id_documento = idDocumento;
+      activeSolicitud.tipo_registro = tipoRegistro;
+      
+      document.getElementById('solicitud-details').textContent = `Solicitud de acceso para el documento "${docName}" (${tipoRegistro}).`;
+      document.getElementById('solicitud-justificacion').value = '';
+      
+      openModal('modal-solicitud');
+    }
+
+    // Submit Solicitude to API
+    async function enviarSolicitud() {
+      const justificacion = document.getElementById('solicitud-justificacion').value.trim();
+      if (!justificacion) {
+        showToast('Por favor escribe una justificación', 'error');
+        return;
+      }
+
+      showLoader('Enviando solicitud...');
+      closeModal('modal-solicitud');
+
+      try {
+        const res = await fetch('/cloud-docs/api/solicitar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_documento: activeSolicitud.id_documento,
+            justificacion,
+            usuario: CONFIG.usuarioId,
+            tipo_registro: activeSolicitud.tipo_registro
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('Solicitud enviada con éxito');
+          
+          // Refresh open modals or current table
+          if (document.getElementById('modal-worker').style.display === 'flex') {
+            // Find worker ID from title context
+            const title = document.getElementById('modal-worker-title').textContent;
+            // Extracción simple de ID del trabajador si está visible, o recargamos la tabla principal
+            filtrar();
+            closeModal('modal-worker');
+          } else if (document.getElementById('modal-doc').style.display === 'flex') {
+            filtrar();
+            closeModal('modal-doc');
+          } else {
+            filtrar();
+          }
+        } else {
+          showToast(data.error || 'Error al enviar solicitud', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al enviar solicitud', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    // Modal Utility Functions
+    function openModal(id) {
+      document.getElementById(id).style.display = 'flex';
+    }
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    // Loader Utility Functions
+    function showLoader(msg = 'Cargando...') {
+      document.getElementById('loader-message').textContent = msg;
+      document.getElementById('global-loader').style.display = 'flex';
+    }
+    function hideLoader() {
+      document.getElementById('global-loader').style.display = 'none';
+    }
+
+    // Toast Alert
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const msgSpan = document.getElementById('toast-message');
+      
+      msgSpan.textContent = message;
+      toast.style.background = type === 'error' ? '#ef4444' : '#10b981';
+      toast.style.display = 'flex';
+      
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 4000);
+    }
+
+    // Escape HTML helpers to prevent XSS
+    function esc(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
