@@ -33,6 +33,7 @@ const biometricoRoutes               = require('./src/routes/biometrico');
 const logysignRoutes                 = require('./src/routes/logysign');
 const registrologysignRoutes         = require('./src/routes/registrologysign');
 const clouddocsRoutes                = require('./src/routes/clouddocs');
+const formclouddocsRoutes            = require('./src/routes/formclouddocs');
 
 const app = express();
 
@@ -81,6 +82,7 @@ app.use('/logysign', logysignRoutes);
 app.use('/registrologysign', registrologysignRoutes);
 app.use('/registroslogysign', registrologysignRoutes);
 app.use('/cloud-docs', clouddocsRoutes);
+app.use('/formcloud-docs', formclouddocsRoutes);
 
 
 

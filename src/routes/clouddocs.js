@@ -2,150 +2,19 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const pool = require('../services/db');
-const { transporter } = require('../services/email');
+const {
+  computarAccesoCloudDocs,
+  construirFiltroRolTrabajador,
+  construirFiltroRolGeneral,
+} = require('../services/clouddocsAccess');
+const {
+  crearSolicitudAcceso,
+  gestionarSolicitudAcceso,
+} = require('../services/clouddocsRequests');
 
 const router = express.Router();
 
 const HTML_INDEX_PATH = path.join(__dirname, '../views/clouddocs/index.html');
-
-const ROLES_SIN_FILTRO = ['Sistema', 'AdmSst', 'LiderSst'];
-const ROLES_REGIONAL = [];
-const ROLES_DISPOSITIVO = ['AuxSst'];
-const ROLES_MODALIDAD = ['AnaSst'];
-
-// Helper to parse role permissions from Config_Rol
-async function obtenerPermisosRol(rol) {
-  if (!rol) return { doc_activo: [], doc_retirado: [], doc_general: [] };
-  try {
-    const [rows] = await pool.execute('SELECT doc_activo, doc_retirado, doc_general FROM Config_Rol WHERE Rol = ?', [rol]);
-    if (!rows.length) return { doc_activo: [], doc_retirado: [], doc_general: [] };
-    
-    const parseIds = (val) => {
-      if (!val) return [];
-      if (val.trim().toLowerCase() === 'todo') return 'Todo';
-      return val.split(',').map(s => s.trim()).filter(Boolean);
-    };
-
-    return {
-      doc_activo: parseIds(rows[0].doc_activo),
-      doc_retirado: parseIds(rows[0].doc_retirado),
-      doc_general: parseIds(rows[0].doc_general)
-    };
-  } catch (err) {
-    console.error('[cloud-docs] Error fetching role permissions:', err.message);
-    return { doc_activo: [], doc_retirado: [], doc_general: [] };
-  }
-}
-
-// Lógica de computación de acceso por regional y operación
-async function computarAccesoCloudDocs(usuarioId) {
-  if (!usuarioId) return null;
-
-  const [uRows] = await pool.execute(
-    'SELECT ID, Nombre, Rol, Regional, Dispositivo, `Operación`, Email FROM Maestro_Usuarios WHERE ID = ?',
-    [usuarioId]
-  );
-  if (!uRows.length) return null;
-
-  const usuario = uRows[0];
-  const rol = usuario.Rol || '';
-
-  const acceso = {
-    usuarioId: usuario.ID,
-    usuarioNombre: usuario.Nombre || usuario.ID,
-    usuarioEmail: usuario.Email || '',
-    rol,
-    regional: usuario.Regional || '',
-    dispositivo: usuario.Dispositivo || '',
-    operacion: usuario['Operación'] || '',
-    sinFiltro: ROLES_SIN_FILTRO.includes(rol),
-    operacionesFiltro: [],
-    opsPorRegional: {},
-    permisos: await obtenerPermisosRol(rol)
-  };
-
-  let opRows = [];
-  if (acceso.sinFiltro) {
-    const [rows] = await pool.execute(
-      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
-    );
-    opRows = rows;
-  } else if (ROLES_REGIONAL.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.regional]
-    );
-    opRows = rows;
-  } else if (ROLES_DISPOSITIVO.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE SOCIODEMOGRAFICA = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (ROLES_MODALIDAD.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE MODALIDAD = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (acceso.operacion) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.operacion]
-    );
-    opRows = rows;
-  }
-
-  acceso.opsPorRegional = agruparOperacionesPorRegional(opRows);
-  acceso.operacionesFiltro = opRows.map((row) => row['OPERACIÓN'] || row['Operación']).filter(Boolean);
-
-  return acceso;
-}
-
-function agruparOperacionesPorRegional(opRows) {
-  const map = {};
-  opRows.forEach((row) => {
-    const reg = row.REGIONAL || row.Regional;
-    const op = row.OPERACIÓN || row.Operación;
-    if (reg && op) {
-      if (!map[reg]) map[reg] = [];
-      map[reg].push(op);
-    }
-  });
-  return map;
-}
-
-// Construye la condición SQL según los permisos de Config_Rol para Trabajador
-function construirFiltroRolTrabajador(permisos, tableAlias = 't') {
-  const conds = [];
-  if (permisos.doc_activo === 'Todo') {
-    conds.push(`(${tableAlias}.Estado = 'Activo')`);
-  } else if (Array.isArray(permisos.doc_activo) && permisos.doc_activo.length > 0) {
-    const ph = permisos.doc_activo.map(id => `'${id}'`).join(',');
-    conds.push(`(${tableAlias}.Estado = 'Activo' AND ${tableAlias}.TipoDocumento IN (${ph}))`);
-  }
-
-  if (permisos.doc_retirado === 'Todo') {
-    conds.push(`(${tableAlias}.Estado = 'Retirado')`);
-  } else if (Array.isArray(permisos.doc_retirado) && permisos.doc_retirado.length > 0) {
-    const ph = permisos.doc_retirado.map(id => `'${id}'`).join(',');
-    conds.push(`(${tableAlias}.Estado = 'Retirado' AND ${tableAlias}.TipoDocumento IN (${ph}))`);
-  }
-
-  if (conds.length === 0) return '0 = 1';
-  return `(${conds.join(' OR ')})`;
-}
-
-// Construye la condición SQL según los permisos de Config_Rol para General (Empresa)
-function construirFiltroRolGeneral(permisos, tableAlias = 'e') {
-  if (permisos.doc_general === 'Todo') {
-    return '1 = 1';
-  } else if (Array.isArray(permisos.doc_general) && permisos.doc_general.length > 0) {
-    const ph = permisos.doc_general.map(id => `'${id}'`).join(',');
-    return `${tableAlias}.TipoDocumento IN (${ph})`;
-  }
-  return '0 = 1';
-}
 
 // Servir la interfaz
 router.get('/', async (req, res) => {
@@ -155,7 +24,7 @@ router.get('/', async (req, res) => {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
     }
 
-    const acceso = await computarAccesoCloudDocs(usuario);
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) {
       return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
     }
@@ -179,7 +48,7 @@ router.get('/api/trabajadores', async (req, res) => {
     const { usuario, buscar, regional, operacion, estado } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoCloudDocs(usuario);
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const conds = [];
@@ -256,7 +125,7 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoCloudDocs(usuario);
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     // Consultamos todos los documentos del trabajador
@@ -269,6 +138,7 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
         DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
         t.Usuario,
         t.Url,
+        t.Observaciones,
         t.Solicitud,
         t.Justificacion_Solicitud,
         t.Estado,
@@ -319,7 +189,7 @@ router.get('/api/documentos', async (req, res) => {
     const { usuario, buscarTrabajador } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoCloudDocs(usuario);
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     let sql = '';
@@ -391,7 +261,7 @@ router.get('/api/documento/:id/registros', async (req, res) => {
     const { usuario, regional, operacion, buscarTrabajador } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoCloudDocs(usuario);
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     // Consultamos el tipo de documento para saber si es de Trabajador o General
@@ -522,7 +392,7 @@ router.get('/api/todo', async (req, res) => {
     const { usuario, buscar, regional, operacion, tipoDocumento, estado, tipoRegistro } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoCloudDocs(usuario);
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     // Filtros de acceso (segmentación regional/operación)
@@ -708,139 +578,7 @@ router.post('/api/solicitar', async (req, res) => {
       return res.status(400).json({ error: 'Parámetros incompletos' });
     }
 
-    // 1. Actualizar el registro en la base de datos
-    let docInfo = null;
-    if (tipo_registro === 'Trabajador') {
-      await pool.execute(
-        `UPDATE Maestro_docTrabajador 
-         SET Solicitud = 'SI', Justificacion_Solicitud = ?, Usuario_Solicitud = ?, Estado_Solicitud = 'Pendiente' 
-         WHERE id = ?`,
-        [justificacion, usuario, id_documento]
-      );
-
-      // Obtener metadatos para el correo
-      const [rows] = await pool.execute(
-        `SELECT t.Identificación, t.Prefijo, c.Documento, v.Trabajador
-         FROM Maestro_docTrabajador t
-         LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
-         LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
-         WHERE t.id = ?`,
-        [id_documento]
-      );
-      if (rows.length) {
-        docInfo = {
-          tipo: 'Trabajador',
-          prefijo: rows[0].Prefijo,
-          documento: rows[0].Documento,
-          trabajador: rows[0].Trabajador || rows[0].Identificación,
-          identificacion: rows[0].Identificación
-        };
-      }
-    } else {
-      // General
-      await pool.execute(
-        `UPDATE Maestro_docEmpresa 
-         SET Solicitud = 'SI', Justificacion_Solicitud = ?, Usuario_Solicitud = ?, Estado_Solicitud = 'Pendiente' 
-         WHERE id = ?`,
-        [justificacion, usuario, id_documento]
-      );
-
-      // Obtener metadatos
-      const [rows] = await pool.execute(
-        `SELECT e.Prefijo, c.Documento
-         FROM Maestro_docEmpresa e
-         LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
-         WHERE e.id = ?`,
-        [id_documento]
-      );
-      if (rows.length) {
-        docInfo = {
-          tipo: 'General / Empresa',
-          prefijo: rows[0].Prefijo,
-          documento: rows[0].Documento,
-          trabajador: 'N/A (Documento General de Empresa)',
-          identificacion: 'N/A'
-        };
-      }
-    }
-
-    if (!docInfo) {
-      docInfo = {
-        tipo: tipo_registro,
-        prefijo: 'N/A',
-        documento: 'Documento ID: ' + id_documento,
-        trabajador: 'N/A',
-        identificacion: 'N/A'
-      };
-    }
-
-    // 2. Consultar el email y nombre del usuario solicitante
-    const [uRows] = await pool.execute(
-      'SELECT Email, Nombre FROM Maestro_Usuarios WHERE ID = ?',
-      [usuario]
-    );
-    const emailUsuario = uRows.length ? uRows[0].Email : null;
-    const nombreUsuario = uRows.length ? uRows[0].Nombre : usuario;
-
-    // 3. Enviar correo electrónico
-    const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
-    const asunto = `Nueva Solicitud de Acceso a Documento: ${docInfo.documento}`;
-
-    const cuerpo = `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #edf2f7;border-radius:8px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.05)">
-        <div style="background:#1e3c72;color:#ffffff;padding:20px;text-align:center">
-          <h2 style="margin:0;font-size:1.4rem">LOG&SER Gestión Documental</h2>
-          <p style="margin:5px 0 0;font-size:0.9rem;opacity:0.9">Solicitud de Acceso a Archivo Digital</p>
-        </div>
-        <div style="padding:24px;background:#ffffff">
-          <p style="color:#333;font-size:1rem;margin-top:0">Se ha registrado una solicitud para visualizar un documento restringido:</p>
-          <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
-            <tr style="background:#f8fafc">
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568;width:35%">Solicitado por:</td>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${nombreUsuario} (${usuario})</td>
-            </tr>
-            <tr>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568">Tipo de Documento:</td>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${docInfo.documento} (${docInfo.prefijo})</td>
-            </tr>
-            <tr style="background:#f8fafc">
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568">Tipo Registro:</td>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${docInfo.tipo}</td>
-            </tr>
-            <tr>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568">Trabajador:</td>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${docInfo.trabajador}</td>
-            </tr>
-            <tr style="background:#f8fafc">
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568">Identificación:</td>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${docInfo.identificacion}</td>
-            </tr>
-            <tr>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568;vertical-align:top">Justificación:</td>
-              <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748;line-height:1.4">${justificacion}</td>
-            </tr>
-          </table>
-          <p style="color:#718096;font-size:0.8rem;margin-bottom:0">Por favor proceda a gestionar el acceso correspondiente.</p>
-        </div>
-        <div style="background:#edf2f7;padding:12px;text-align:center;font-size:0.75rem;color:#718096">
-          © ${new Date().getFullYear()} LOG&SER S.A.S. — Todos los derechos reservados.
-        </div>
-      </div>
-    `;
-
-    const recipients = ['gestiondocumental@logyser.com'];
-    const mailOptions = {
-      from: `"LOG&SER Gestión Documental" <${EMAIL_FROM}>`,
-      to: recipients.join(', '),
-      subject: asunto,
-      html: cuerpo
-    };
-
-    if (emailUsuario) {
-      mailOptions.cc = emailUsuario;
-    }
-
-    await transporter.sendMail(mailOptions);
+    await crearSolicitudAcceso(pool, { id_documento, justificacion, usuario, tipo_registro });
 
     res.json({ ok: true });
   } catch (err) {
@@ -855,7 +593,7 @@ router.get('/api/solicitudes', async (req, res) => {
     const { usuario, regional, operacion, buscar, estadoSolicitud } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoCloudDocs(usuario);
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (acceso.rol !== 'Archivo' && acceso.rol !== 'Sistema') {
@@ -976,127 +714,14 @@ router.post('/api/gestionar-solicitud', async (req, res) => {
       return res.status(400).json({ error: 'Parámetros incompletos' });
     }
 
-    // 1. Obtener los detalles del documento y el usuario solicitante antes de actualizar
-    let requestDetails = null;
-    if (tipo_registro === 'Trabajador') {
-      const [rows] = await pool.execute(
-        `SELECT t.Usuario_Solicitud, t.Prefijo, c.Documento, v.Trabajador
-         FROM Maestro_docTrabajador t
-         LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
-         LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
-         WHERE t.id = ?`,
-        [id_documento]
-      );
-      if (rows.length) {
-        requestDetails = {
-          solicitante: rows[0].Usuario_Solicitud,
-          prefijo: rows[0].Prefijo,
-          documento: rows[0].Documento,
-          detalle: `Trabajador: ${rows[0].Trabajador}`
-        };
-      }
-    } else {
-      const [rows] = await pool.execute(
-        `SELECT e.Usuario_Solicitud, e.Prefijo, c.Documento
-         FROM Maestro_docEmpresa e
-         LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
-         WHERE e.id = ?`,
-        [id_documento]
-      );
-      if (rows.length) {
-        requestDetails = {
-          solicitante: rows[0].Usuario_Solicitud,
-          prefijo: rows[0].Prefijo,
-          documento: rows[0].Documento,
-          detalle: 'General de Empresa'
-        };
-      }
-    }
-
-    // 2. Actualizar el registro correspondiente
-    const vizValue = visualizar === 'OK' ? 'OK' : null;
-    if (tipo_registro === 'Trabajador') {
-      await pool.execute(
-        `UPDATE Maestro_docTrabajador 
-         SET Visualizar = ?, Observaciones = ?, Estado_Solicitud = ? 
-         WHERE id = ?`,
-        [vizValue, observaciones || null, estado_solicitud, id_documento]
-      );
-    } else {
-      await pool.execute(
-        `UPDATE Maestro_docEmpresa 
-         SET Visualizar = ?, Observaciones = ?, Estado_Solicitud = ? 
-         WHERE id = ?`,
-        [vizValue, observaciones || null, estado_solicitud, id_documento]
-      );
-    }
-
-    // 3. Enviar correo si tenemos la información del solicitante
-    if (requestDetails && requestDetails.solicitante) {
-      const [uRows] = await pool.execute(
-        'SELECT Email, Nombre FROM Maestro_Usuarios WHERE ID = ?',
-        [requestDetails.solicitante]
-      );
-      
-      const emailUsuario = uRows.length ? uRows[0].Email : null;
-      const nombreUsuario = uRows.length ? uRows[0].Nombre : requestDetails.solicitante;
-
-      if (emailUsuario) {
-        const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
-        const asunto = `Respuesta a tu Solicitud de Acceso: ${requestDetails.documento}`;
-        const colorEstado = estado_solicitud === 'Autorizado' ? '#16a34a' : '#dc2626';
-
-        const cuerpo = `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #edf2f7;border-radius:8px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.05)">
-            <div style="background:#000b59;color:#ffffff;padding:20px;text-align:center">
-              <h2 style="margin:0;font-size:1.4rem">LOG&SER Gestión Documental</h2>
-              <p style="margin:5px 0 0;font-size:0.9rem;opacity:0.9">Resolución de Solicitud de Acceso</p>
-            </div>
-            <div style="padding:24px;background:#ffffff">
-              <p style="color:#333;font-size:1rem;margin-top:0">Hola <strong>${nombreUsuario}</strong>,</p>
-              <p style="color:#333;font-size:1rem">Tu solicitud de acceso para visualizar el siguiente documento restringido ha sido procesada:</p>
-              
-              <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
-                <tr style="background:#f8fafc">
-                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568;width:35%">Documento:</td>
-                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${requestDetails.documento} (${requestDetails.prefijo})</td>
-                </tr>
-                <tr>
-                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568">Detalle:</td>
-                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748">${requestDetails.detalle}</td>
-                </tr>
-                <tr style="background:#f8fafc">
-                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568">Estado Solicitud:</td>
-                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:${colorEstado}">${estado_solicitud}</td>
-                </tr>
-                <tr>
-                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#4a5568;vertical-align:top">Observaciones del Gestor:</td>
-                  <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#2d3748;line-height:1.4">${observaciones || 'Sin observaciones adicionales'}</td>
-                </tr>
-              </table>
-
-              ${estado_solicitud === 'Autorizado' 
-                ? `<p style="color:#16a34a;font-weight:bold;font-size:0.95rem">Ya puedes ingresar a la plataforma y visualizar el documento ("Ver PDF").</p>` 
-                : `<p style="color:#dc2626;font-weight:bold;font-size:0.95rem">La solicitud ha sido rechazada/revocada y no tienes acceso de visualización temporal.</p>`
-              }
-            </div>
-            <div style="background:#edf2f7;padding:12px;text-align:center;font-size:0.75rem;color:#718096">
-              © ${new Date().getFullYear()} LOG&SER S.A.S. — Todos los derechos reservados.
-            </div>
-          </div>
-        `;
-
-        const mailOptions = {
-          from: `"LOG&SER Gestión Documental" <${EMAIL_FROM}>`,
-          to: emailUsuario,
-          cc: ['gestiondocumental@logyser.com', 'admin@logyser.com'],
-          subject: asunto,
-          html: cuerpo
-        };
-
-        await transporter.sendMail(mailOptions);
-      }
-    }
+    await gestionarSolicitudAcceso(pool, {
+      id_documento,
+      tipo_registro,
+      visualizar,
+      observaciones,
+      estado_solicitud,
+      usuario_gestor,
+    });
 
     res.json({ ok: true });
   } catch (err) {

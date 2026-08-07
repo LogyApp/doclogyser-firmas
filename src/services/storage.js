@@ -261,4 +261,15 @@ module.exports = {
   subirPDFConfirmacionInventario,
   subirSoporteGasto,
   storage,
+  subirArchivoCloudDocs: async function (identificacion, prefix, buffer, originalName, contentType) {
+    const ext = path.extname(originalName) || '.pdf';
+    const timestamp = Date.now();
+    const cleanPrefix = prefix ? String(prefix).trim().replace(/\//g, '_') : 'DOC';
+    const nombre = identificacion 
+      ? `${identificacion}/${identificacion}.${cleanPrefix}.${timestamp}${ext}`
+      : `general/${cleanPrefix}.${timestamp}${ext}`;
+    const file = storage.bucket(BUCKET_PDFS).file(nombre);
+    await file.save(buffer, { contentType: contentType || 'application/pdf' });
+    return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+  }
 };

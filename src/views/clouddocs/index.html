@@ -264,6 +264,24 @@
     .btn-submit:hover { background: #15803d; }
     .btn-cancel { background: var(--danger); color: #fff; }
     .btn-cancel:hover { background: #b91c1c; }
+    .btn-cloud-upload {
+      background: #1e40af;
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: .82rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
+      white-space: nowrap;
+    }
+    .btn-cloud-upload:hover {
+      background: #1d4ed8;
+    }
 
     .badge-status {
       display: inline-flex; align-items: center; gap: 4px;
@@ -355,7 +373,10 @@
         <h1>Cloud<span class="accent">Docs</span></h1>
         <p>Gestión Documental y Archivo Digital</p>
       </div>
-      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <a class="btn btn-submit" id="btn-cargar-doc" href="#" style="background: var(--accent); color: #fff; box-shadow: 0 4px 10px rgba(245, 84, 0, 0.2); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm);">
+          ＋ Cargar Documento
+        </a>
         <div class="user-badge" id="user-badge-name">
           Cargando usuario...
         </div>
@@ -450,11 +471,15 @@
         <button class="modal-close" onclick="closeModal('modal-worker')">&times;</button>
       </div>
       <div class="modal-body">
-        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
+        <div style="display: flex; gap: 12px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px;">
           <div class="field" style="min-width: 300px; max-width: 400px; flex-grow: 1;">
             <label for="modal-worker-search">Buscar por Documento o Prefijo</label>
             <input type="text" id="modal-worker-search" placeholder="Ej. Incapacidad, HC..." oninput="onWorkerModalSearch()">
           </div>
+          <button type="button" class="btn-cloud-upload" onclick="openWorkerUploadForm()">
+            <span aria-hidden="true">☁</span>
+            <span>Cargar Doc. Trabajador</span>
+          </button>
         </div>
         <div class="table-container" style="max-height: 50vh; overflow-y: auto;">
           <table id="modal-worker-table">
@@ -627,7 +652,8 @@
         { key: 'Prefijo', label: 'Prefijo', width: 100 },
         { key: 'Documento', label: 'Documento', width: 350 },
         { key: 'FechaRegistro', label: 'Fecha de Registro', width: 200 },
-        { key: 'Usuario', label: 'Usuario', width: 180 }
+        { key: 'Usuario', label: 'Usuario', width: 180 },
+        { key: 'Observaciones', label: 'Observaciones', width: 260 }
       ],
       doc_modal_trabajador: [
         { key: 'TrabajadorNombre', label: 'Trabajador', width: 300 },
@@ -679,6 +705,7 @@
     // Local data caches for modals
     let rawWorkerDocs = [];
     let filteredWorkerDocs = [];
+    let activeWorkerModal = { identificacion: null, nombre: null };
     
     // Active Doc Modal state
     let activeDocModalId = null;
@@ -783,6 +810,7 @@
     // Initialize Page
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('user-badge-name').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+      document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
       // Render Solicitudes Tab button if role matches
       if (CONFIG.rol === 'Archivo' || CONFIG.rol === 'Sistema') {
@@ -1175,6 +1203,8 @@
 
     // Modal: Open Worker Docs
     async function openWorkerModal(identificacion, nombre) {
+      activeWorkerModal.identificacion = identificacion;
+      activeWorkerModal.nombre = nombre;
       document.getElementById('modal-worker-title').textContent = `Documentos de: ${nombre}`;
       document.getElementById('modal-worker-search').value = '';
       
@@ -1256,9 +1286,19 @@
           <td style="font-weight: 600; color: var(--primary);">${esc(doc.Documento || 'N/A')}</td>
           <td>${doc.FechaRegistro}</td>
           <td>${esc(doc.Usuario || 'N/A')}</td>
+          <td style="font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(doc.Observaciones || '')}">${esc(doc.Observaciones || '—')}</td>
         `;
         tbody.appendChild(tr);
       });
+    }
+
+    function openWorkerUploadForm() {
+      if (!activeWorkerModal.identificacion) {
+        showToast('Selecciona un trabajador primero.', 'error');
+        return;
+      }
+      const base = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}&identificacion=${encodeURIComponent(activeWorkerModal.identificacion)}`;
+      window.location.href = base;
     }
 
     // Modal: Open Document Type Instances

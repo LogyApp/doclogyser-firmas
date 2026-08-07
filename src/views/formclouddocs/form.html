@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cargar Documentos — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #000b59;
+      --primary-dark: #00073a;
+      --primary-light: #1c2a7a;
+      --accent: #F55400;
+      --accent-dark: #d64700;
+      --accent-soft: rgba(245, 84, 0, 0.08);
+      --success: #16a34a;
+      --success-soft: rgba(22, 163, 74, 0.08);
+      --danger: #dc2626;
+      --bg: #f4f5f9;
+      --card-bg: #ffffff;
+      --text: #101425;
+      --text-muted: #6b7280;
+      --border: #e7e8ef;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+      --shadow-md: 0 8px 24px -4px rgba(16, 24, 40, 0.08), 0 2px 6px -2px rgba(16, 24, 40, 0.04);
+      --shadow-lg: 0 20px 40px -12px rgba(0, 11, 89, 0.22);
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 24px; }
+    
+    .container { max-width: 750px; margin: 0 auto; }
+
+    /* Header styling matching logysign */
+    header {
+      background: var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 12px 24px;
+      color: #fff;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      flex-shrink: 0;
+    }
+
+    .brand-lockup img.brand-logo-app {
+      display: block;
+      object-fit: contain;
+      height: 28px;
+    }
+
+    .brand-logo-company-crop {
+      width: 120px;
+      height: 30px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -58px;
+      top: -59px;
+      width: 240px;
+      height: 160px;
+      max-width: none;
+    }
+
+    .brand-divider {
+      width: 80%;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .header-logo {
+      text-align: center;
+    }
+
+    .header-logo h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .header-logo h1 .accent {
+      color: var(--accent);
+    }
+
+    .header-logo p {
+      font-size: 0.88rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 2px;
+    }
+
+    .btn-volver {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition);
+    }
+    .btn-volver:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Form Card */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      padding: 30px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 8px;
+      margin-bottom: 4px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 8px; position: relative; }
+    label { font-size: .85rem; font-weight: 600; color: #475569; }
+    label .req { color: var(--danger); margin-left: 2px; }
+
+    /* Custom Radio Buttons */
+    .radio-group {
+      display: flex;
+      gap: 16px;
+    }
+    .radio-card {
+      flex: 1;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: var(--transition);
+    }
+    .radio-card input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .radio-card:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+    .radio-card.selected {
+      border-color: var(--primary);
+      background: rgba(0, 11, 89, 0.03);
+    }
+    .radio-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    input[type="text"], select, textarea {
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid #cbd5e1; border-radius: var(--radius-sm);
+      font-size: .93rem; color: #334155; background: #ffffff;
+      outline: none; transition: var(--transition);
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 11, 89, 0.08);
+    }
+    input[readonly] {
+      background: #f1f5f9;
+      color: #64748b;
+      cursor: not-allowed;
+      border-color: #cbd5e1;
+    }
+
+    /* Autocomplete Suggestions */
+    .suggestions-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md);
+      z-index: 1000;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-top: 4px;
+      display: none;
+    }
+    .suggestion-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .suggestion-item:last-child {
+      border-bottom: none;
+    }
+    .suggestion-item:hover {
+      background: #f1f5f9;
+      color: var(--primary);
+    }
+
+    /* Worker Info Display Block */
+    .worker-info-block {
+      background: #f8fafc;
+      border: 1.5px dashed #cbd5e1;
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: none;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px 10px;
+    }
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .info-label {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .info-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    /* File upload */
+    .file-drop-area {
+      border: 2px dashed #cbd5e1; border-radius: var(--radius-sm);
+      padding: 28px 20px; text-align: center;
+      cursor: pointer; background: #fafafa;
+      transition: var(--transition);
+    }
+    .file-drop-area:hover, .file-drop-area.drag-over { border-color: var(--primary); background: rgba(0, 11, 89, 0.02); }
+    .file-drop-icon { font-size: 2.2rem; margin-bottom: 8px; color: var(--primary); }
+    .file-drop-inner { font-size: .88rem; color: #475569; font-weight: 500; }
+    .file-drop-hint { font-size: .78rem; color: #94a3b8; margin-top: 4px; }
+
+    .worker-docs-panel {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      padding-top: 4px;
+    }
+
+    .worker-save-bar {
+      display: none;
+      position: sticky;
+      bottom: 16px;
+      z-index: 20;
+      margin-top: 6px;
+    }
+
+    .worker-save-inner {
+      background: rgba(16, 20, 37, 0.98);
+      color: #fff;
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .worker-save-count {
+      font-weight: 600;
+      font-size: .92rem;
+    }
+
+    .accordion-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .accordion-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .accordion-btn {
+      width: 100%;
+      border: 0;
+      background: #fff;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .accordion-btn:hover {
+      background: #fafafa;
+    }
+
+    .accordion-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .accordion-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .accordion-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .accordion-meta {
+      font-size: .8rem;
+      color: #64748b;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .accordion-icon {
+      transition: transform .2s ease;
+      color: #64748b;
+      flex-shrink: 0;
+    }
+
+    .accordion-body {
+      display: none;
+      border-top: 1px solid var(--border);
+      padding: 12px;
+      background: #fcfcfd;
+    }
+
+    .accordion-card.open .accordion-body {
+      display: block;
+    }
+
+    .accordion-card.open .accordion-icon {
+      transform: rotate(180deg);
+    }
+
+    .doc-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid #eef1f5;
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .drop-zone-staging {
+      border: 2px dashed #ffd2bc;
+      background: #fff7f2;
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 62px;
+      position: relative;
+    }
+
+    .drop-zone-staging.drop-over {
+      border-color: var(--accent);
+      background: rgba(245, 84, 0, 0.05);
+    }
+
+    .zone-idle, .zone-staged {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .zone-staged {
+      display: none;
+      justify-content: space-between;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge.idle { background: #fff; color: #b45309; border-color: #fde68a; }
+    .badge.pending { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+    .badge.loaded { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .badge.error { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+
+    .doc-name {
+      flex: 1;
+      min-width: 0;
+      font-size: .9rem;
+      font-weight: 600;
+      color: #334155;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .doc-subtitle {
+      font-size: .8rem;
+      color: #64748b;
+    }
+
+    .doc-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .doc-observations {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .doc-observations textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    .existing-doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: .8rem;
+      color: #64748b;
+    }
+
+    .existing-doc-link {
+      color: #1e3a8a;
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .existing-doc-link:hover {
+      color: #1d4ed8;
+    }
+
+    .doc-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    .doc-remove {
+      border: 1px solid #fecaca;
+      background: #fff;
+      color: var(--danger);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: .8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    
+    .file-preview {
+      display: none; align-items: center; gap: 12px;
+      margin-top: 10px; padding: 12px 16px;
+      background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: var(--radius-sm);
+    }
+    .file-preview-nombre { flex: 1; font-size: .9rem; font-weight: 600; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-btn-limpiar {
+      background: none; border: 1px solid #fecaca; cursor: pointer;
+      color: var(--danger); font-size: .82rem; font-weight: 600; padding: 4px 10px; border-radius: 4px; flex-shrink: 0;
+      transition: var(--transition);
+    }
+    .file-btn-limpiar:hover { background: #fee2e2; }
+
+    /* Submit button */
+    .btn-submit {
+      background: var(--success);
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      padding: 14px;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+      transition: var(--transition);
+    }
+    .btn-submit:hover {
+      background: #15803d;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(22, 163, 74, 0.3);
+    }
+    .btn-submit:disabled {
+      background: #cbd5e1;
+      color: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Success Screen */
+    .success-screen {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      padding: 40px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+      text-align: center;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      animation: fadeIn 0.25s ease-out;
+    }
+    .success-icon {
+      width: 70px; height: 70px; border-radius: 50%;
+      background: var(--success-soft); color: var(--success);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem;
+    }
+    .success-title { font-family: 'Outfit', sans-serif; font-size: 1.45rem; font-weight: 700; color: var(--primary); }
+    .success-text { font-size: 0.95rem; color: #475569; max-width: 480px; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: #101425; color: #fff;
+      padding: 12px 24px; border-radius: var(--radius-sm); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: none; align-items: center; gap: 10px; z-index: 2000; font-size: 0.9rem;
+    }
+
+    /* Loading Spinner */
+    .loader {
+      display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      header { flex-direction: column; text-align: center; gap: 12px; }
+      .radio-group { flex-direction: column; }
+      .card { padding: 20px; }
+      .worker-info-block {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+      <div class="header-logo">
+        <h1>Cargar<span class="accent">Doc</span></h1>
+        <p>Subir Archivos a la Carpeta Digital</p>
+      </div>
+      <div>
+        <a class="btn-volver" id="link-volver" href="#">
+          ← Volver al Panel
+        </a>
+      </div>
+    </header>
+
+    <!-- Success Message Container -->
+    <div class="success-screen" id="success-container">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">¡Documento Guardado!</h2>
+      <p class="success-text" id="success-msg"></p>
+      <div style="display: flex; gap: 12px; margin-top: 10px;">
+        <button class="btn-volver" style="color: var(--primary); border-color: var(--primary); background: transparent;" onclick="resetForm()">Subir otro documento</button>
+        <a class="btn-submit" id="success-link-volver" href="#" style="text-decoration: none;">Ir al Panel</a>
+      </div>
+    </div>
+
+    <!-- Form Container -->
+    <form class="card" id="form-upload" onsubmit="onSubmitForm(event)">
+      
+      <!-- Option Radio: Tipo de Documento -->
+      <div class="field">
+        <label>Tipo de Documento (Destino)<span class="req">*</span></label>
+        <div class="radio-group">
+          <label class="radio-card selected" id="radio-card-trabajador">
+            <input type="radio" name="tipo_doc" value="Trabajador" checked onchange="onTipoDocChange('Trabajador')">
+            <span class="radio-title">Trabajador</span>
+          </label>
+          <label class="radio-card" id="radio-card-general">
+            <input type="radio" name="tipo_doc" value="General" onchange="onTipoDocChange('General')">
+            <span class="radio-title">General / Empresa</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- SECTION: Trabajador Selection -->
+      <div id="section-trabajador" style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="section-title">Información del Trabajador</div>
+        
+        <!-- Search input autocomplete -->
+        <div class="field">
+          <label for="buscar-trabajador">Buscar Trabajador (Nombre o Cédula)<span class="req">*</span></label>
+          <input type="text" id="buscar-trabajador" placeholder="Ej. Carlos o 100234..." autocomplete="off" oninput="onAutocompleteInput()">
+          <div class="suggestions-list" id="autocomplete-suggestions"></div>
+        </div>
+
+        <!-- Selected Worker Details display grid -->
+        <div class="worker-info-block" id="worker-details-block">
+          <div class="info-item">
+            <span class="info-label">Cargo</span>
+            <span class="info-value" id="disp-cargo">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Regional</span>
+            <span class="info-value" id="disp-regional">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Operación</span>
+            <span class="info-value" id="disp-operacion">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Estado</span>
+            <span class="info-value" id="disp-estado">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Fecha de Ingreso</span>
+            <span class="info-value" id="disp-ingreso">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Documentos Cargados</span>
+            <span class="info-value" id="worker-docs-loaded">0</span>
+          </div>
+        </div>
+
+        <div id="worker-docs-panel" class="worker-docs-panel">
+          <div class="section-title">Documentos del Trabajador</div>
+          <div id="worker-docs-accordion" class="accordion-list"></div>
+          <div class="worker-save-bar" id="worker-save-bar">
+            <div class="worker-save-inner">
+              <div class="worker-save-count" id="worker-save-count">0 documentos listos</div>
+              <button type="button" class="btn-submit" id="worker-save-btn" style="padding: 12px 18px; font-size: .95rem; box-shadow: none;">
+                GUARDAR TODO
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: General Filters -->
+      <div id="general-doc-fields" style="display: none; flex-direction: column; gap: 20px;">
+        <div class="section-title">Segmentación General (Empresa)</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div class="field">
+            <label for="select-regional">Regional<span class="req">*</span></label>
+            <select id="select-regional" onchange="onRegionalChange()">
+              <option value="">— Selecciona la Regional —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="select-operacion">Operación<span class="req">*</span></label>
+            <select id="select-operacion">
+              <option value="">— Selecciona la Operación —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section-title">Detalles del Documento</div>
+
+        <div class="field">
+          <label for="select-tipo-doc-id">Tipo de Documento<span class="req">*</span></label>
+          <select id="select-tipo-doc-id">
+            <option value="">— Selecciona el tipo de archivo —</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Archivo PDF Adjunto<span class="req">*</span></label>
+          <!-- Drag & Drop Area -->
+          <div class="file-drop-area" id="file-drop-zone" onclick="document.getElementById('input-file').click()">
+            <div class="file-drop-icon">📁</div>
+            <div class="file-drop-inner">Arrastra tu archivo PDF aquí o haz clic para buscar</div>
+            <div class="file-drop-hint">Máximo 10MB, formato PDF solamente</div>
+          </div>
+          <input type="file" id="input-file" accept="application/pdf" style="display: none;" onchange="onFileSelected()">
+          
+          <!-- File Selected Preview -->
+          <div class="file-preview" id="file-preview-zone">
+            <div class="file-preview-nombre" id="file-preview-name">archivo.pdf</div>
+            <button type="button" class="file-btn-limpiar" onclick="limpiarArchivo()">Eliminar</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="btn-submit" disabled>
+          Guardar Documento
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span id="toast-message">Mensaje</span>
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG__;
+
+    // Active state
+    let activeTipoDoc = 'Trabajador';
+    let selectedWorker = null;
+    let selectedFile = null;
+    let selectedDocType = null;
+    let workerDocsConfig = [];
+    let workerDocsState = {};
+    let workerExistingDocs = [];
+    let workerDocsOpen = new Set();
+    let autocompleteTimeout = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set panel return links
+      const panelUrl = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      document.getElementById('link-volver').href = panelUrl;
+      document.getElementById('success-link-volver').href = panelUrl;
+
+      // Populate regional select
+      const selectReg = document.getElementById('select-regional');
+      const sortedRegs = Object.keys(CONFIG.opsPorRegional).sort();
+      sortedRegs.forEach(reg => {
+        const option = document.createElement('option');
+        option.value = reg;
+        option.textContent = reg;
+        selectReg.appendChild(option);
+      });
+
+      // Auto-prefill single regional/op for general block
+      if (sortedRegs.length === 1) {
+        selectReg.value = sortedRegs[0];
+        onRegionalChange();
+      }
+
+      // Drag and drop events setup
+      const dropZone = document.getElementById('file-drop-zone');
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+      });
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length) {
+          document.getElementById('input-file').files = files;
+          onFileSelected();
+        }
+      });
+
+      // Initial load of document types
+      cargarTiposDocumentos();
+
+      if (CONFIG.prefillIdentificacion) {
+        preseleccionarTrabajadorPorIdentificacion(CONFIG.prefillIdentificacion);
+      }
+    });
+
+    async function preseleccionarTrabajadorPorIdentificacion(identificacion) {
+      const idText = String(identificacion || '').trim();
+      if (!idText) return;
+
+      try {
+        const res = await fetch(`/formcloud-docs/api/buscar-trabajadores?q=${encodeURIComponent(idText)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const rows = await res.json();
+        if (!res.ok || !Array.isArray(rows) || !rows.length) return;
+
+        const exact = rows.find(r => String(r.identificacion) === idText) || rows[0];
+        onSelectWorker(exact);
+      } catch (err) {
+        console.error('[formcloud-docs] prefill trabajador error:', err);
+      }
+    }
+
+    // Handle Regional select change for General section
+    function onRegionalChange() {
+      const reg = document.getElementById('select-regional').value;
+      const opSelect = document.getElementById('select-operacion');
+      opSelect.innerHTML = '<option value="">— Selecciona la Operación —</option>';
+
+      if (reg && CONFIG.opsPorRegional[reg]) {
+        CONFIG.opsPorRegional[reg].sort().forEach(op => {
+          const option = document.createElement('option');
+          option.value = op;
+          option.textContent = op;
+          opSelect.appendChild(option);
+        });
+        if (CONFIG.opsPorRegional[reg].length === 1) {
+          opSelect.value = CONFIG.opsPorRegional[reg][0];
+        }
+      }
+      validarFormulario();
+    }
+
+    // Toggle Trabajador vs General
+    function onTipoDocChange(tipo) {
+      activeTipoDoc = tipo;
+      
+      const radioTrab = document.getElementById('radio-card-trabajador');
+      const radioGen = document.getElementById('radio-card-general');
+      const secTrabajador = document.getElementById('section-trabajador');
+      const secGeneral = document.getElementById('general-doc-fields');
+      const workerPanel = document.getElementById('worker-docs-panel');
+
+      if (tipo === 'Trabajador') {
+        radioTrab.classList.add('selected');
+        radioGen.classList.remove('selected');
+        secTrabajador.style.display = 'flex';
+        secGeneral.style.display = 'none';
+        workerPanel.style.display = 'flex';
+      } else {
+        radioTrab.classList.remove('selected');
+        radioGen.classList.add('selected');
+        secTrabajador.style.display = 'none';
+        secGeneral.style.display = 'flex';
+        workerPanel.style.display = 'none';
+      }
+
+      // Reload document types matching selection
+      cargarTiposDocumentos();
+      if (tipo === 'Trabajador') {
+        cargarDocsTrabajador();
+      }
+      validarFormulario();
+    }
+
+    // Fetch and populate document types list
+    async function cargarTiposDocumentos() {
+      const select = document.getElementById('select-tipo-doc-id');
+      select.innerHTML = '<option value="">Cargando tipos de documentos...</option>';
+
+      try {
+        const res = await fetch(`/formcloud-docs/api/tipos-documentos?tipo_doc=${activeTipoDoc}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const rows = await res.json();
+        
+        select.innerHTML = '<option value="">— Selecciona el tipo de archivo —</option>';
+        if (res.ok && Array.isArray(rows)) {
+          rows.forEach(r => {
+            const option = document.createElement('option');
+            option.value = r.Id;
+            option.textContent = `${r.Prefijo} - ${r.Documento}`;
+            select.appendChild(option);
+          });
+        } else {
+          showToast('Error al obtener lista de documentos', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        select.innerHTML = '<option value="">— Error de carga —</option>';
+      }
+      
+      select.onchange = () => validarFormulario();
+    }
+
+    async function cargarDocsTrabajador() {
+      const panel = document.getElementById('worker-docs-panel');
+      const accordion = document.getElementById('worker-docs-accordion');
+
+      if (!selectedWorker) {
+        accordion.innerHTML = '<div class="helper-text">Selecciona un trabajador para ver sus documentos pendientes.</div>';
+        updateWorkerDocSummary();
+        return;
+      }
+
+      accordion.innerHTML = '<div class="helper-text">Cargando documentos del trabajador...</div>';
+
+      try {
+        const [configRes, docsRes] = await Promise.all([
+          fetch(`/formcloud-docs/api/tipos-documentos?tipo_doc=Trabajador&usuario=${encodeURIComponent(CONFIG.usuarioId)}`),
+          fetch(`/cloud-docs/api/trabajador/${encodeURIComponent(selectedWorker.identificacion)}/documentos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`)
+        ]);
+        const rows = await configRes.json();
+        const docs = await docsRes.json();
+
+        if (!configRes.ok || !Array.isArray(rows)) {
+          throw new Error('No se pudo cargar la configuración documental');
+        }
+
+        workerExistingDocs = Array.isArray(docs) && docsRes.ok ? docs : [];
+
+        workerDocsConfig = rows;
+        workerDocsState = {};
+        workerDocsOpen = new Set();
+
+        rows.forEach(row => {
+          const key = String(row.Id);
+          workerDocsState[key] = {
+            config: row,
+            file: null,
+            status: 'idle',
+            error: null,
+            uploaded: false,
+            serverData: null,
+            observaciones: '',
+            existingDoc: null
+          };
+        });
+
+        workerExistingDocs.forEach(doc => {
+          const match = workerDocsState[String(doc.TipoDocumento)];
+          if (match) {
+            match.uploaded = true;
+            match.status = 'loaded';
+            match.serverData = doc;
+            match.existingDoc = doc;
+          }
+        });
+
+        renderWorkerDocsAccordion();
+        panel.style.display = 'flex';
+        updateWorkerDocSummary();
+      } catch (err) {
+        console.error(err);
+        accordion.innerHTML = '<div class="helper-text" style="color:var(--danger);">No fue posible cargar los documentos del trabajador.</div>';
+        showToast('Error al cargar la configuración de documentos del trabajador', 'error');
+      }
+    }
+
+    // Handle Attached File Select for General mode
+    function onFileSelected() {
+      const input = document.getElementById('input-file');
+      const file = input.files[0];
+
+      if (!file) return;
+
+      if (file.type !== 'application/pdf') {
+        showToast('Solo se aceptan archivos en formato PDF.', 'error');
+        input.value = '';
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('El archivo supera el límite de 10 MB.', 'error');
+        input.value = '';
+        return;
+      }
+
+      selectedFile = file;
+      document.getElementById('file-preview-name').textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      document.getElementById('file-drop-zone').style.display = 'none';
+      document.getElementById('file-preview-zone').style.display = 'flex';
+
+      validarFormulario();
+    }
+
+    // Clear Selected File for General mode
+    function limpiarArchivo() {
+      selectedFile = null;
+      document.getElementById('input-file').value = '';
+      document.getElementById('file-drop-zone').style.display = 'block';
+      document.getElementById('file-preview-zone').style.display = 'none';
+
+      validarFormulario();
+    }
+
+    function groupDocsByClasificacion() {
+      const groups = new Map();
+      workerDocsConfig.forEach(row => {
+        const clasificacion = (row.Clasificacion || 'Sin clasificación').trim();
+        if (!groups.has(clasificacion)) groups.set(clasificacion, []);
+        groups.get(clasificacion).push(row);
+      });
+      return Array.from(groups.entries()).map(([clasificacion, docs]) => ({ clasificacion, docs }));
+    }
+
+    function renderWorkerDocsAccordion() {
+      const accordion = document.getElementById('worker-docs-accordion');
+      const groups = groupDocsByClasificacion();
+
+      if (!groups.length) {
+        accordion.innerHTML = '<div class="helper-text">No hay documentos configurados para este trabajador.</div>';
+        return;
+      }
+
+      accordion.innerHTML = groups.map((group, groupIndex) => {
+        const bodyId = `accordion-body-${groupIndex}`;
+        const isOpen = workerDocsOpen.has(bodyId);
+        const docLabel = group.docs.length === 1 ? 'doc.' : 'docs.';
+
+        return `
+          <div class="accordion-card ${isOpen ? 'open' : ''}" data-body-id="${bodyId}">
+            <button type="button" class="accordion-btn" onclick="toggleAccordion('${bodyId}')">
+              <div class="accordion-left">
+                <span class="accordion-dot"></span>
+                <div class="accordion-title">${esc(group.clasificacion)}</div>
+              </div>
+              <div class="accordion-meta">${group.docs.length} ${docLabel} para cargar</div>
+              <span class="accordion-icon">⌄</span>
+            </button>
+            <div class="accordion-body" id="${bodyId}">
+              ${group.docs.map(doc => renderDocRow(doc)).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      wireDocDropzones();
+      updateWorkerDocSummary();
+    }
+
+    function renderDocRow(doc) {
+      const docState = workerDocsState[String(doc.Id)] || {};
+      const hasExisting = !!docState.existingDoc;
+      const status = docState.file ? 'pending' : (hasExisting ? 'loaded' : 'idle');
+      const statusLabel = docState.file ? 'Listo para guardar' : (hasExisting ? 'Cargado' : 'Pendiente');
+      const fileName = docState.file ? `${docState.file.name} (${(docState.file.size / 1024 / 1024).toFixed(2)} MB)` : 'Sin archivo seleccionado';
+      const safeDocName = esc(`${doc.Prefijo ? `${doc.Prefijo} - ` : ''}${doc.Documento}`);
+      const safeClass = esc(doc.Clasificacion || 'Sin clasificación');
+      const zoneId = `drop-${doc.Id}`;
+      return `
+        <div class="doc-row" data-doc-id="${doc.Id}">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div style="min-width:0; flex:1;">
+              <div class="doc-name">${safeDocName}</div>
+              <div class="doc-subtitle">${safeClass}</div>
+            </div>
+            <span class="badge ${status}">${statusLabel}</span>
+          </div>
+          <div class="drop-zone-staging ${docState.error ? 'drop-over' : ''}" id="${zoneId}" onclick="pickDocFile(${doc.Id})">
+            <div class="zone-idle" id="${zoneId}-idle" style="${docState.file ? 'display:none;' : ''}">
+              <div class="file-drop-icon">📄</div>
+              <div>
+                <div class="file-drop-inner" style="margin:0;">Arrastra el PDF o haz clic para adjuntar</div>
+                <div class="file-drop-hint" style="margin-top:2px;">Solo PDF, máximo 10MB</div>
+              </div>
+            </div>
+            <div class="zone-staged" id="${zoneId}-staged" style="${docState.file ? 'display:flex;' : ''}">
+              <div class="doc-name" id="${zoneId}-filename">${docState.file ? esc(fileName) : 'Sin archivo seleccionado'}</div>
+              <div class="doc-actions">
+                <a href="#" class="doc-link" onclick="event.preventDefault(); pickDocFile(${doc.Id})">Cambiar</a>
+                <button type="button" class="doc-remove" onclick="event.stopPropagation(); clearDocFile(${doc.Id})">Quitar</button>
+              </div>
+            </div>
+          </div>
+          <div class="doc-observations" id="obs-${doc.Id}" style="${docState.file ? 'display:flex;' : ''}">
+            <label for="obs-input-${doc.Id}">Observación del documento</label>
+            <textarea id="obs-input-${doc.Id}" placeholder="Escribe una observación para este documento..." oninput="onDocObservationInput(${doc.Id}, this.value)">${esc(docState.observaciones || '')}</textarea>
+          </div>
+          ${hasExisting ? `
+            <div class="existing-doc-meta">
+              <span class="badge loaded">Cargado</span>
+              <span>Registro: ${esc(docState.existingDoc.FechaRegistro || '')}</span>
+              ${docState.existingDoc.Url ? `<a class="existing-doc-link" href="${esc(docState.existingDoc.Url)}" target="_blank" rel="noopener">Ver documento</a>` : ''}
+            </div>
+          ` : ''}
+          <input type="file" id="input-file-${doc.Id}" accept="application/pdf" style="display:none;" onchange="onWorkerDocSelected(${doc.Id})">
+        </div>
+      `;
+    }
+
+    function wireDocDropzones() {
+      workerDocsConfig.forEach(doc => {
+        const zone = document.getElementById(`drop-${doc.Id}`);
+        const input = document.getElementById(`input-file-${doc.Id}`);
+        if (!zone || !input) return;
+
+        zone.addEventListener('dragover', event => {
+          event.preventDefault();
+          zone.classList.add('drop-over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drop-over'));
+        zone.addEventListener('drop', event => {
+          event.preventDefault();
+          zone.classList.remove('drop-over');
+          const file = event.dataTransfer.files && event.dataTransfer.files[0];
+          if (file) {
+            assignWorkerDocFile(doc.Id, file);
+          }
+        });
+      });
+    }
+
+    function toggleAccordion(bodyId) {
+      if (workerDocsOpen.has(bodyId)) {
+        workerDocsOpen.delete(bodyId);
+      } else {
+        workerDocsOpen.add(bodyId);
+      }
+
+      const card = document.querySelector(`[data-body-id="${bodyId}"]`);
+      if (card) card.classList.toggle('open');
+    }
+
+    function pickDocFile(docId) {
+      const input = document.getElementById(`input-file-${docId}`);
+      if (input) input.click();
+    }
+
+    function onWorkerDocSelected(docId) {
+      const input = document.getElementById(`input-file-${docId}`);
+      const file = input && input.files ? input.files[0] : null;
+      if (file) {
+        assignWorkerDocFile(docId, file);
+      }
+    }
+
+    function assignWorkerDocFile(docId, file) {
+      if (!file) return;
+      if (file.type !== 'application/pdf') {
+        showToast('Solo se aceptan archivos en formato PDF.', 'error');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('El archivo supera el límite de 10 MB.', 'error');
+        return;
+      }
+
+      const key = String(docId);
+      if (!workerDocsState[key]) return;
+
+      workerDocsState[key].file = file;
+      workerDocsState[key].status = 'pending';
+      workerDocsState[key].error = null;
+      workerDocsState[key].uploaded = false;
+
+      const input = document.getElementById(`input-file-${docId}`);
+      if (input) input.value = '';
+
+      renderWorkerDocsAccordion();
+    }
+
+    function clearDocFile(docId) {
+      const key = String(docId);
+      if (!workerDocsState[key]) return;
+      workerDocsState[key].file = null;
+      workerDocsState[key].status = 'idle';
+      workerDocsState[key].error = null;
+      workerDocsState[key].uploaded = false;
+
+      const input = document.getElementById(`input-file-${docId}`);
+      if (input) input.value = '';
+
+      renderWorkerDocsAccordion();
+    }
+
+    function updateWorkerDocSummary() {
+      const docs = Object.values(workerDocsState);
+      const loaded = workerExistingDocs.length;
+      const queue = docs.filter(doc => doc.file && !doc.uploaded).length;
+
+      document.getElementById('worker-docs-loaded').textContent = String(loaded);
+      document.getElementById('worker-save-count').textContent = `${queue} documento${queue === 1 ? '' : 's'} listo${queue === 1 ? '' : 's'} para guardar`;
+
+      const bar = document.getElementById('worker-save-bar');
+      bar.style.display = queue > 0 ? 'block' : 'none';
+    }
+
+    function onDocObservationInput(docId, value) {
+      const key = String(docId);
+      if (!workerDocsState[key]) return;
+      workerDocsState[key].observaciones = value;
+    }
+
+    // Autocomplete search input callback
+    function onAutocompleteInput() {
+      clearTimeout(autocompleteTimeout);
+      const input = document.getElementById('buscar-trabajador');
+      const term = input.value.trim();
+      const list = document.getElementById('autocomplete-suggestions');
+
+      if (term.length < 2) {
+        list.style.display = 'none';
+        list.innerHTML = '';
+        return;
+      }
+
+      autocompleteTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`/formcloud-docs/api/buscar-trabajadores?q=${encodeURIComponent(term)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+          const rows = await res.json();
+          
+          if (res.ok && Array.isArray(rows) && rows.length > 0) {
+            list.innerHTML = rows.map(r => `
+              <div class="suggestion-item" onclick="onSelectWorker(${JSON.stringify(r).replace(/"/g, '&quot;')})">
+                ${esc(r.trabajador)}
+              </div>
+            `).join('');
+            list.style.display = 'block';
+          } else {
+            list.innerHTML = '<div class="suggestion-item" style="color:#94a3b8; cursor:default;">No se encontraron resultados</div>';
+            list.style.display = 'block';
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }, 350);
+    }
+
+    // Select worker from autocomplete suggestions list
+    function onSelectWorker(worker) {
+      selectedWorker = worker;
+      
+      document.getElementById('buscar-trabajador').value = worker.trabajador;
+      document.getElementById('autocomplete-suggestions').style.display = 'none';
+
+      // Set display fields
+      document.getElementById('disp-cargo').textContent = worker.cargo || 'N/A';
+      document.getElementById('disp-regional').textContent = worker.Regional || 'N/A';
+      document.getElementById('disp-operacion').textContent = worker.operacion || 'N/A';
+      document.getElementById('disp-estado').textContent = worker.Estado || 'N/A';
+      document.getElementById('disp-ingreso').textContent = worker.fechaIngreso || 'N/A';
+
+      // Show details block
+      document.getElementById('worker-details-block').style.display = 'grid';
+      if (activeTipoDoc === 'Trabajador') {
+        cargarDocsTrabajador();
+      }
+      
+      validarFormulario();
+    }
+
+    // Form Validators
+    function validarFormulario() {
+      let isFormValid = true;
+
+      // Validate destination specific choices
+      if (activeTipoDoc === 'Trabajador') {
+        if (!selectedWorker) isFormValid = false;
+      } else {
+        const reg = document.getElementById('select-regional').value;
+        const op = document.getElementById('select-operacion').value;
+        if (!reg || !op) isFormValid = false;
+      }
+
+      if (activeTipoDoc === 'General') {
+        const docType = document.getElementById('select-tipo-doc-id').value;
+        const hasFile = !!selectedFile;
+        if (!docType || !hasFile) isFormValid = false;
+      } else {
+        const queued = Object.values(workerDocsState).filter(doc => doc.file && !doc.uploaded).length;
+        if (!selectedWorker || queued === 0) isFormValid = false;
+      }
+
+      // Toggle submit button state
+      document.getElementById('btn-submit').disabled = !isFormValid;
+    }
+
+    // Form submission
+    async function onSubmitForm(e) {
+      e.preventDefault();
+
+      if (activeTipoDoc === 'Trabajador') {
+        return onSubmitWorkerDocs(e);
+      }
+
+      const btn = document.getElementById('btn-submit');
+      const origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<div class="loader"></div><span>Subiendo archivo...</span>';
+
+      const formData = new FormData();
+      formData.append('tipo_doc', activeTipoDoc);
+      formData.append('tipo_documento_id', document.getElementById('select-tipo-doc-id').value);
+      formData.append('observaciones', '');
+      formData.append('usuario', CONFIG.usuarioId);
+      formData.append('documento', selectedFile);
+
+      if (activeTipoDoc === 'Trabajador') {
+        formData.append('identificacion', selectedWorker.identificacion);
+      } else {
+        formData.append('regional', document.getElementById('select-regional').value);
+        formData.append('operacion', document.getElementById('select-operacion').value);
+      }
+
+      try {
+        const res = await fetch('/formcloud-docs/api/subir', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok && data.ok) {
+          // Success
+          document.getElementById('form-upload').style.display = 'none';
+          
+          let successDetails = '';
+          if (activeTipoDoc === 'Trabajador') {
+            successDetails = `El documento fue adjuntado a la carpeta digital del trabajador <strong>${selectedWorker.trabajador}</strong> con éxito.`;
+          } else {
+            const reg = document.getElementById('select-regional').value;
+            const op = document.getElementById('select-operacion').value;
+            successDetails = `El documento general fue cargado con éxito para la Regional <strong>${reg}</strong>, Operación <strong>${op}</strong>.`;
+          }
+          document.getElementById('success-msg').innerHTML = successDetails;
+          document.getElementById('success-container').style.display = 'flex';
+        } else {
+          showToast(data.error || 'No se pudo guardar el documento', 'error');
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión con el servidor', 'error');
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
+    }
+
+    async function onSubmitWorkerDocs(e) {
+      e.preventDefault();
+
+      const docsToUpload = Object.entries(workerDocsState)
+        .map(([docId, state]) => ({ docId, ...state }))
+        .filter(item => item.file && !item.uploaded);
+
+      if (!selectedWorker || docsToUpload.length === 0) {
+        showToast('Selecciona un trabajador y al menos un documento.', 'error');
+        return;
+      }
+
+      const saveBtn = document.getElementById('worker-save-btn');
+      const originalText = saveBtn.innerHTML;
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<div class="loader"></div><span>Guardando documentos...</span>';
+
+      try {
+        for (const item of docsToUpload) {
+          const formData = new FormData();
+          formData.append('tipo_doc', 'Trabajador');
+          formData.append('tipo_documento_id', item.docId);
+          formData.append('observaciones', (item.observaciones || '').trim());
+          formData.append('usuario', CONFIG.usuarioId);
+          formData.append('identificacion', selectedWorker.identificacion);
+          formData.append('documento', item.file);
+
+          const res = await fetch('/formcloud-docs/api/subir', {
+            method: 'POST',
+            body: formData
+          });
+          const data = await res.json();
+
+          if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'No se pudo guardar uno de los documentos');
+          }
+
+          workerDocsState[item.docId].uploaded = true;
+          workerDocsState[item.docId].file = null;
+          workerDocsState[item.docId].status = 'loaded';
+          workerDocsState[item.docId].serverData = data;
+        }
+
+        await cargarDocsTrabajador();
+        showToast('Documentos del trabajador guardados correctamente.', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Error de conexión con el servidor', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+        validarFormulario();
+      }
+    }
+
+    // Reset Form to upload more files
+    function resetForm() {
+      // Reset variables
+      selectedWorker = null;
+      selectedFile = null;
+      selectedDocType = null;
+      workerDocsConfig = [];
+      workerDocsState = {};
+      workerExistingDocs = [];
+      workerDocsOpen = new Set();
+
+      // Reset inputs
+      document.getElementById('buscar-trabajador').value = '';
+      document.getElementById('select-tipo-doc-id').value = '';
+      document.getElementById('input-file').value = '';
+      document.getElementById('file-drop-zone').style.display = 'block';
+      document.getElementById('file-preview-zone').style.display = 'none';
+      
+      // Hide worker details
+      document.getElementById('worker-details-block').style.display = 'none';
+      document.getElementById('worker-docs-panel').style.display = 'none';
+      document.getElementById('worker-docs-accordion').innerHTML = '';
+      document.getElementById('worker-save-bar').style.display = 'none';
+
+      onTipoDocChange('Trabajador');
+
+      // Restore form display
+      document.getElementById('success-container').style.display = 'none';
+      document.getElementById('form-upload').style.display = 'flex';
+
+      validarFormulario();
+    }
+
+    // Toast alert helper
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const msgSpan = document.getElementById('toast-message');
+      
+      msgSpan.textContent = message;
+      toast.style.background = type === 'error' ? 'var(--danger)' : 'var(--success)';
+      toast.style.display = 'flex';
+      
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 4000);
+    }
+
+    // Escaper helper to protect from XSS
+    function esc(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.getElementById('worker-save-btn').addEventListener('click', onSubmitWorkerDocs);
+  </script>
+</body>
+</html>
