@@ -182,85 +182,116 @@ router.get('/api/marcaciones', verificarAccesoAPI, async (req, res) => {
     const startStr = `${startDate} 00:00:00`;
     const endStr = `${endDate} 23:59:59`;
 
-    const params = [startStr, endStr];
-
     let filterSql = '';
+    const filterParams = [];
     if (search) {
       filterSql += ' AND (m.identificacion LIKE ? OR m.trabajador LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
+      filterParams.push(`%${search}%`, `%${search}%`);
     }
     if (clasificacion) {
       filterSql += ' AND w.clasificacion = ?';
-      params.push(clasificacion);
+      filterParams.push(clasificacion);
     }
 
-    const query = `
-      SELECT 
-        m.id,
-        m.identificacion,
-        m.trabajador,
-        m.tipo,
-        m.score,
-        m.latitud,
-        m.longitud,
-        m.precision_gps,
-        m.es_manual,
-        m.motivo,
-        m.device_fingerprint,
-        m.ip,
-        m.fecha_hora,
-        m.fecha_entrada,
-        m.fecha_salida,
-        m.es_manual_salida,
-        m.motivo_salida,
-        m.latitud_salida,
-        m.longitud_salida,
-        m.precision_gps_salida,
-        w.clasificacion,
-        w.cargo,
-        w.operacion,
-        w.regional
-      FROM facial_marcaciones m
-      INNER JOIN (
-        SELECT 
-          Identificacion AS identificacion, 
-          CASE 
-            WHEN MAX(area) = 'sst' THEN 'sst'
-            WHEN MAX(area) = 'coordinadores' THEN 'coordinadores'
-            WHEN MAX(area) = 'auxiliares_administrativos' THEN 'auxiliares_administrativos'
-            ELSE NULL
-          END AS clasificacion,
-          MAX(cargo) AS cargo, 
-          MAX(operacion) AS operacion, 
-          MAX(regional) AS regional
-        FROM Maestro_firma_corporativa
-        WHERE ${whereFirma}
-        GROUP BY Identificacion
-        
-        UNION ALL
-        
-        SELECT 
-          v.Identificación AS identificacion, 
-          CASE 
-            WHEN MAX(v.Cargo) = 'AUXILIAR LOGISTICO' THEN 'auxiliares_logisticos'
-            WHEN MAX(v.Cargo) = 'APRENDIZ' THEN 'aprendices'
-            ELSE NULL
-          END AS clasificacion,
-          MAX(v.Cargo) AS cargo, 
-          MAX(v.\`Operación\`) AS operacion, 
-          MAX(v.Regional) AS regional
-        FROM Maestro_Vinculación v
-        WHERE ${whereVinc}
-          AND v.Identificación IS NOT NULL
-          AND v.Identificación NOT IN (
-            SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
-          )
-        GROUP BY v.Identificación
-      ) w ON m.identificacion = w.identificacion
-      WHERE m.fecha_hora >= ? AND m.fecha_hora <= ?
-      ${filterSql}
-      ORDER BY m.fecha_hora DESC
+    // El registro de salida no se guarda como fila aparte: se actualiza la misma
+    // fila de ENTRADA con fecha_salida/latitud_salida/etc. Para que el historial
+    // muestre ambos eventos, generamos una fila virtual de SALIDA por cada
+    // marcación que ya tenga fecha_salida registrada.
+    const wSubquery = `
+      SELECT
+        Identificacion AS identificacion,
+        CASE
+          WHEN MAX(area) = 'sst' THEN 'sst'
+          WHEN MAX(area) = 'coordinadores' THEN 'coordinadores'
+          WHEN MAX(area) = 'auxiliares_administrativos' THEN 'auxiliares_administrativos'
+          ELSE NULL
+        END AS clasificacion,
+        MAX(cargo) AS cargo,
+        MAX(operacion) AS operacion,
+        MAX(regional) AS regional
+      FROM Maestro_firma_corporativa
+      WHERE ${whereFirma}
+      GROUP BY Identificacion
+
+      UNION ALL
+
+      SELECT
+        v.Identificación AS identificacion,
+        CASE
+          WHEN MAX(v.Cargo) = 'AUXILIAR LOGISTICO' THEN 'auxiliares_logisticos'
+          WHEN MAX(v.Cargo) = 'APRENDIZ' THEN 'aprendices'
+          ELSE NULL
+        END AS clasificacion,
+        MAX(v.Cargo) AS cargo,
+        MAX(v.\`Operación\`) AS operacion,
+        MAX(v.Regional) AS regional
+      FROM Maestro_Vinculación v
+      WHERE ${whereVinc}
+        AND v.Identificación IS NOT NULL
+        AND v.Identificación NOT IN (
+          SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
+        )
+      GROUP BY v.Identificación
     `;
+
+    const query = `
+      SELECT * FROM (
+        SELECT
+          m.id,
+          m.identificacion,
+          m.trabajador,
+          m.tipo,
+          m.score,
+          m.latitud,
+          m.longitud,
+          m.precision_gps,
+          m.es_manual,
+          m.motivo,
+          m.device_fingerprint,
+          m.ip,
+          m.fecha_hora,
+          w.clasificacion,
+          w.cargo,
+          w.operacion,
+          w.regional
+        FROM facial_marcaciones m
+        INNER JOIN (${wSubquery}) w ON m.identificacion = w.identificacion
+        WHERE m.fecha_hora >= ? AND m.fecha_hora <= ?
+        ${filterSql}
+
+        UNION ALL
+
+        SELECT
+          m.id,
+          m.identificacion,
+          m.trabajador,
+          'SALIDA' AS tipo,
+          NULL AS score,
+          m.latitud_salida AS latitud,
+          m.longitud_salida AS longitud,
+          m.precision_gps_salida AS precision_gps,
+          m.es_manual_salida AS es_manual,
+          m.motivo_salida AS motivo,
+          m.device_fingerprint,
+          m.ip,
+          m.fecha_salida AS fecha_hora,
+          w.clasificacion,
+          w.cargo,
+          w.operacion,
+          w.regional
+        FROM facial_marcaciones m
+        INNER JOIN (${wSubquery}) w ON m.identificacion = w.identificacion
+        WHERE m.fecha_hora >= ? AND m.fecha_hora <= ?
+          AND m.fecha_salida IS NOT NULL
+        ${filterSql}
+      ) marcaciones
+      ORDER BY fecha_hora DESC
+    `;
+
+    const params = [
+      startStr, endStr, ...filterParams,
+      startStr, endStr, ...filterParams
+    ];
 
     const [rows] = await pool.execute(query, params);
     res.json({ ok: true, marcaciones: rows });
