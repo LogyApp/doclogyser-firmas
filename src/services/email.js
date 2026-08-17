@@ -1399,7 +1399,7 @@ async function notificarCapacitacionSSTCompletada({ email, nombreTrabajador, tem
     </div>
   `;
 
-  const ccList = ['admin@logyser.com', emailUsuario].filter(Boolean);
+  const ccList = [emailUsuario].filter(Boolean);
 
   await transporter.sendMail({
     from: `"LOG&SER Gestión Documental" <${EMAIL_FROM}>`,
@@ -1722,7 +1722,6 @@ async function notificarReportePendientes(records) {
         <td style="padding:8px; border:1px solid #ddd;">${r.IdServicio}</td>
         <td style="padding:8px; border:1px solid #ddd;">${r.IdRecibo || '—'}</td>
         <td style="padding:8px; border:1px solid #ddd; font-weight:bold; color:#d68910;">${r.Operacion || '—'}</td>
-        <td style="padding:8px; border:1px solid #ddd; text-align:center; font-weight:bold; color:#c0392b;">Pendiente (4)</td>
         <td style="padding:8px; border:1px solid #ddd;">${formatFecha(r.HoraInicio)}</td>
         <td style="padding:8px; border:1px solid #ddd;">${r.Usuario || '—'}</td>
       </tr>
@@ -1750,7 +1749,6 @@ async function notificarReportePendientes(records) {
                 <th style="padding:8px; border:1px solid #ddd; text-align:left;">ID Servicio</th>
                 <th style="padding:8px; border:1px solid #ddd; text-align:left;">ID Recibo</th>
                 <th style="padding:8px; border:1px solid #ddd; text-align:left;">Operación</th>
-                <th style="padding:8px; border:1px solid #ddd; text-align:center;">Forma de Pago</th>
                 <th style="padding:8px; border:1px solid #ddd; text-align:left;">Fecha</th>
                 <th style="padding:8px; border:1px solid #ddd; text-align:left;">Usuario</th>
               </tr>
@@ -1771,6 +1769,64 @@ async function notificarReportePendientes(records) {
       'facturacion.electronica@logyser.com',
       'auditoria.recaudo@logyser.com'
     ].join(', '),
+    cc: 'admin@logyser.com',
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
+async function notificarPendientesCoordinador({ email, nombreCoordinador, rol, scope, records }) {
+  const isRegional = rol === 'CoordinadorR';
+  const tipoScope = isRegional ? 'Regional' : 'Operación';
+  const asunto = `Servicios con Forma de Pago Pendiente (4) — ${tipoScope}: ${scope} — LOG&SER`;
+
+  const tableRows = records.map(r => `
+    <tr>
+      <td style="padding:8px; border:1px solid #ddd;">${r.IdServicio}</td>
+      <td style="padding:8px; border:1px solid #ddd;">${r.IdRecibo || '—'}</td>
+      <td style="padding:8px; border:1px solid #ddd; font-weight:bold; color:#d68910;">${r.Operacion || '—'}</td>
+      <td style="padding:8px; border:1px solid #ddd;">${formatFecha(r.HoraInicio)}</td>
+      <td style="padding:8px; border:1px solid #ddd;">${r.Usuario || '—'}</td>
+    </tr>
+  `).join('');
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
+      ${HEADER}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin-top:0">Hola, ${nombreCoordinador}</h2>
+        <p style="color:#555">
+          Le informamos que tiene servicios en estado de pago <strong>Pendiente (Forma de Pago = 4)</strong> para su asignación (${tipoScope}: <strong>${scope}</strong>).
+        </p>
+        <div style="margin:16px 0;padding:12px;background:#fffbea;border-left:4px solid #f0d060;font-size:.88rem;color:#7a6000">
+          <strong>Nota de Contexto:</strong><br>
+          • Los códigos de pago <strong>1 (Efectivo)</strong> y <strong>2 (Transferencia)</strong> corresponden a recaudos que deben recibirse el mismo día del servicio (cuyo recibo pasa a <strong>Verde</strong> al ser pagado).<br>
+          • Si un servicio de días anteriores permanece en <strong>Amarillo</strong>, se actualiza automáticamente a <strong>Pendiente (4)</strong> para el respectivo seguimiento administrativo.
+        </div>
+        <p style="color:#555;font-weight:bold;margin-bottom:8px">
+          Total de registros pendientes en su área: ${records.length}
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:.85rem;border:1px solid #ddd">
+          <thead>
+            <tr style="background:#f8f9fb">
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">ID Servicio</th>
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">ID Recibo</th>
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">Operación</th>
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">Fecha</th>
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Facturación" <${EMAIL_FROM}>`,
+    to: email,
     cc: 'admin@logyser.com',
     subject: asunto,
     html: cuerpo,
@@ -1809,5 +1865,6 @@ module.exports = {
   notificarCambiosPersonales,
   notificarCambiosBancos,
   notificarReportePendientes,
+  notificarPendientesCoordinador,
   transporter,
 };
