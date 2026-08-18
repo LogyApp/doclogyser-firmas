@@ -563,7 +563,8 @@
     if (fechaVal && rawFechaIngreso) {
       const [y, mo, d] = rawFechaIngreso.split('-');
       const fiDate = new Date(y, parseInt(mo) - 1, parseInt(d));
-      const frDate = new Date(fechaVal);
+      const [ry, rmo, rd] = fechaVal.split('-');
+      const frDate = new Date(ry, parseInt(rmo) - 1, parseInt(rd));
       if (!isNaN(fiDate) && !isNaN(frDate) && frDate < fiDate) {
         marcarErr('errFecha', true, 'La fecha de retiro no puede ser anterior a la fecha de ingreso');
       } else {
