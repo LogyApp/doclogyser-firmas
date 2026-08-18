@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuevo Registro de Bloqueo — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #000b59;
+      --primary-dark: #00073a;
+      --primary-light: #1c2a7a;
+      --accent: #F55400;
+      --accent-dark: #d64700;
+      --success: #16a34a;
+      --success-soft: #eafaf1;
+      --success-border: #6dcf9e;
+      --success-text: #1a7a4a;
+      --danger: #dc2626;
+      --bg: #f4f5f9;
+      --card-bg: #ffffff;
+      --text: #101425;
+      --text-muted: #6b7280;
+      --border: #e7e8ef;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+      --shadow-md: 0 8px 20px -6px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+      --shadow-lg: 0 20px 40px -12px rgba(0, 11, 89, 0.22);
+      --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 24px; }
+    
+    .container { max-width: 720px; margin: 40px auto; }
+
+    /* Header styling matching cloud-docs exactly */
+    header {
+      background: var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 10px 24px;
+      color: #fff;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .brand-logo-app {
+      display: block;
+      object-fit: contain;
+      height: 30px;
+    }
+
+    .brand-divider {
+      width: 1.5px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .brand-logo-company-crop {
+      width: 133px;
+      height: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -64px;
+      top: -65px;
+      width: 268px;
+      height: 178px;
+      max-width: none;
+    }
+
+    .header-logo h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .header-logo h2 .accent {
+      color: var(--accent);
+    }
+
+    /* Main Form Card */
+    .form-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+    }
+
+    .form-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 24px;
+      border-bottom: 1.5px solid var(--border);
+      padding-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Form Fields styling */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .form-group.half {
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .row-groups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--primary-light);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .req {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+
+    select, input[type="text"] {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: var(--transition);
+      width: 100%;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--primary-light);
+      background: var(--card-bg);
+      box-shadow: 0 0 0 3px rgba(0, 11, 89, 0.08);
+    }
+
+    select:disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: not-allowed;
+      border-color: #cbd5e1;
+    }
+
+    /* Option button group styling */
+    .option-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .opt-btn {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      outline: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .opt-btn:hover:not(.active) {
+      border-color: var(--text-muted);
+      background: #e2e8f0;
+    }
+
+    .opt-btn.active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15);
+      font-weight: 600;
+    }
+
+    .opt-btn.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Error Text */
+    .err-text {
+      color: var(--danger);
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-top: 4px;
+      display: none;
+    }
+
+    /* Action Buttons */
+    .actions-bar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 32px;
+      border-top: 1.5px solid var(--border);
+      padding-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 28px;
+      border-radius: var(--radius-sm);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: var(--transition);
+      border: none;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(245, 84, 0, 0.18);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+      transform: translateY(-1.5px);
+      box-shadow: 0 6px 16px rgba(245, 84, 0, 0.28);
+    }
+
+    .btn-secondary {
+      background: #e4e6ef;
+      color: #4b5563;
+    }
+
+    .btn-secondary:hover {
+      background: #d1d5db;
+      color: #1f2937;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(16, 20, 37, 0.5);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease-out;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 480px;
+      padding: 28px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      transform: translateY(20px);
+      transition: transform 0.2s ease-out;
+    }
+
+    .modal-overlay.open .modal {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-body {
+      font-size: 0.95rem;
+      color: var(--text);
+      line-height: 1.6;
+      margin-bottom: 24px;
+      background: var(--bg);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+    }
+
+    .modal-body strong {
+      color: var(--primary-dark);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header (exact clouddocs layout) -->
+  <header>
+    <div class="brand-lockup">
+      <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+      <div class="brand-divider"></div>
+      <div class="brand-logo-company-crop">
+        <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+      </div>
+    </div>
+    <div class="header-logo">
+      <h2>Bloqueo de <span class="accent">Datos</span></h2>
+    </div>
+    <div style="width: 180px;"></div> <!-- Spacer -->
+  </header>
+
+  <!-- Form Card -->
+  <div class="form-card">
+    <div class="form-title">
+      🔒 Registrar Nuevo Bloqueo / Desbloqueo
+    </div>
+
+    <form id="bloqueo-form" onsubmit="event.preventDefault(); openConfirmModal();">
+      <!-- Módulo (Botones Opcionales) -->
+      <div class="form-group">
+        <label>Módulo <span class="req">*</span></label>
+        <div class="option-group" id="group-modulo">
+          <button type="button" class="opt-btn" data-value="Nomina">Nómina</button>
+          <button type="button" class="opt-btn" data-value="Facturacion">Facturación</button>
+        </div>
+        <input type="hidden" id="modulo" value="">
+        <div class="err-text" id="err-modulo">El módulo es obligatorio.</div>
+      </div>
+
+      <!-- Regional y Operación -->
+      <div class="row-groups">
+        <div class="form-group half">
+          <label for="regional">Regional <span class="req">*</span></label>
+          <select id="regional" onchange="onRegionalSelect()">
+            <option value="">— Seleccione Regional —</option>
+          </select>
+          <div class="err-text" id="err-regional">Seleccione la Regional.</div>
+        </div>
+
+        <div class="form-group half">
+          <label for="operacion">Operación</label>
+          <select id="operacion">
+            <option value="">— Todas las Operaciones —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Quincena -->
+      <div class="form-group">
+        <label for="quincena">Quincena <span class="req">*</span></label>
+        <select id="quincena">
+          <option value="">— Seleccione Quincena —</option>
+        </select>
+        <div class="err-text" id="err-quincena">Seleccione la Quincena.</div>
+      </div>
+
+      <!-- Datos (Botones Opcionales) -->
+      <div class="form-group">
+        <label>Datos <span class="req">*</span></label>
+        <div class="option-group" id="group-datos">
+          <button type="button" class="opt-btn" data-value="General">Asistencia y Servicios</button>
+          <button type="button" class="opt-btn" data-value="Asistencia">Solo Asistencia</button>
+          <button type="button" class="opt-btn" data-value="Servicios">Solo Servicios</button>
+        </div>
+        <input type="hidden" id="datos" value="">
+        <div class="err-text" id="err-datos">Seleccione el tipo de Datos.</div>
+      </div>
+
+      <!-- Forma de Pago (Condicional para Servicios - Botones Opcionales) -->
+      <div class="form-group" id="group-forma-pago" style="display: none;">
+        <label>Forma de Pago</label>
+        <div class="option-group" id="group-forma-pago-btns">
+          <button type="button" class="opt-btn" data-value="">Todas</button>
+          <button type="button" class="opt-btn" data-value="1">1 - Efectivo</button>
+          <button type="button" class="opt-btn" data-value="2">2 - Transferencia</button>
+          <button type="button" class="opt-btn" data-value="3">3 - Credito</button>
+        </div>
+        <input type="hidden" id="forma-pago" value="">
+      </div>
+
+      <!-- Condición (Botones Opcionales) -->
+      <div class="form-group">
+        <label>Condición <span class="req">*</span></label>
+        <div class="option-group" id="group-condicion">
+          <button type="button" class="opt-btn" data-value="Bloquear">🔒 Bloquear</button>
+          <button type="button" class="opt-btn" data-value="Desbloquear">🔓 Desbloquear</button>
+        </div>
+        <input type="hidden" id="condicion" value="">
+        <div class="err-text" id="err-condicion">Seleccione la Acción (Bloquear o Desbloquear).</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions-bar">
+        <button type="button" class="btn btn-secondary" onclick="cancelar()">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Confirmar Registro
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Confirmación -->
+<div class="modal-overlay" id="confirm-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      ❓ Confirmar Registro de Bloqueo
+    </div>
+    <div class="modal-body" id="confirm-modal-body">
+      <!-- Carga dinámica -->
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitForm()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Éxito / Resultados -->
+<div class="modal-overlay" id="success-modal-overlay">
+  <div class="modal">
+    <div class="modal-header" style="color: var(--success); font-family: 'Outfit', sans-serif;">
+      ✅ Registro Guardado Exitosamente
+    </div>
+    <div class="modal-body" id="success-modal-body">
+      <!-- Carga dinámica con filas afectadas -->
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="cancelar()">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Inyección de configuración
+  const CONFIG = __CONFIG__;
+
+  // Inicializar grupos de selección personalizada
+  function setupOptionGroup(groupId, inputId, onChangeFn) {
+    const group = document.getElementById(groupId);
+    const input = document.getElementById(inputId);
+    const buttons = group.querySelectorAll('.opt-btn');
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('disabled')) return;
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        input.value = btn.getAttribute('data-value');
+        if (onChangeFn) onChangeFn(input.value);
+      });
+    });
+  }
+
+  function setOptionGroupVal(groupId, inputId, val, disableOthers = false) {
+    const group = document.getElementById(groupId);
+    const input = document.getElementById(inputId);
+    const buttons = group.querySelectorAll('.opt-btn');
+
+    input.value = val;
+    buttons.forEach(btn => {
+      const btnVal = btn.getAttribute('data-value');
+      if (btnVal === val) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+        if (disableOthers) {
+          btn.classList.add('disabled');
+        }
+      }
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    // 1. Configurar botones
+    setupOptionGroup('group-modulo', 'modulo');
+    setupOptionGroup('group-datos', 'datos', onDatosChange);
+    setupOptionGroup('group-forma-pago-btns', 'forma-pago');
+    setupOptionGroup('group-condicion', 'condicion');
+
+    // 2. Bloqueo de módulo según rol
+    if (CONFIG.rol === 'Nomina') {
+      setOptionGroupVal('group-modulo', 'modulo', 'Nomina', true);
+    } else if (CONFIG.rol === 'Facturación') {
+      setOptionGroupVal('group-modulo', 'modulo', 'Facturacion', true);
+    }
+
+    // 3. Cargar Regionales
+    const selRegional = document.getElementById('regional');
+    CONFIG.regionalesFiltro.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.textContent = r;
+      selRegional.appendChild(opt);
+    });
+
+    // 4. Cargar Quincenas desde API
+    try {
+      const resp = await fetch(`/bloqueodatos/api/quincenas?usuario=${CONFIG.usuarioId}`);
+      if (resp.ok) {
+        const quincenas = await resp.json();
+        const selQuincena = document.getElementById('quincena');
+        quincenas.forEach(q => {
+          const opt = document.createElement('option');
+          opt.value = q;
+          opt.textContent = q;
+          selQuincena.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.error('Error cargando quincenas:', e);
+    }
+  });
+
+  // Evento Selección de Regional
+  function onRegionalSelect() {
+    const regional = document.getElementById('regional').value;
+    const selOperacion = document.getElementById('operacion');
+
+    // Reset Operaciones
+    selOperacion.innerHTML = '<option value="">— Todas las Operaciones —</option>';
+
+    if (regional && CONFIG.opsPorRegional[regional]) {
+      CONFIG.opsPorRegional[regional].forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        selOperacion.appendChild(opt);
+      });
+    }
+  }
+
+  // Evento Selección de Datos
+  function onDatosChange(value) {
+    const divFp = document.getElementById('group-forma-pago');
+    
+    // Reset selection in button group
+    setOptionGroupVal('group-forma-pago-btns', 'forma-pago', '');
+
+    if (value === 'Servicios') {
+      divFp.style.display = 'flex';
+    } else {
+      divFp.style.display = 'none';
+    }
+  }
+
+  // Cancelar
+  function cancelar() {
+    window.location.href = `/bloqueodatos?usuario=${CONFIG.usuarioId}`;
+  }
+
+  // Mostrar u ocultar errores de validación
+  function toggleErr(id, show) {
+    document.getElementById(id).style.display = show ? 'block' : 'none';
+  }
+
+  // Abrir Modal de Confirmación
+  function openConfirmModal() {
+    const modulo = document.getElementById('modulo').value;
+    const regional = document.getElementById('regional').value;
+    const operacion = document.getElementById('operacion').value;
+    const quincena = document.getElementById('quincena').value;
+    const datos = document.getElementById('datos').value;
+    const formaPago = document.getElementById('forma-pago').value;
+    const condicion = document.getElementById('condicion').value;
+
+    let valid = true;
+
+    // Validar obligatorios
+    if (!modulo) { toggleErr('err-modulo', true); valid = false; } else { toggleErr('err-modulo', false); }
+    if (!regional) { toggleErr('err-regional', true); valid = false; } else { toggleErr('err-regional', false); }
+    if (!quincena) { toggleErr('err-quincena', true); valid = false; } else { toggleErr('err-quincena', false); }
+    if (!datos) { toggleErr('err-datos', true); valid = false; } else { toggleErr('err-datos', false); }
+    if (!condicion) { toggleErr('err-condicion', true); valid = false; } else { toggleErr('err-condicion', false); }
+
+    if (!valid) return;
+
+    // Generar resumen en modal
+    const dest = operacion ? `Operación <strong>${operacion}</strong>` : `Todas las operaciones de la Regional <strong>${regional}</strong>`;
+    
+    let datosLabel = 'Asistencia y Servicios';
+    if (datos === 'Asistencia') datosLabel = 'Solo Asistencia';
+    if (datos === 'Servicios') {
+      const fpNames = { '1': '1 - Efectivo', '2': '2 - Transferencia', '3': '3 - Credito' };
+      datosLabel = `Solo Servicios (Forma de pago: ${fpNames[formaPago] || 'Todas'})`;
+    }
+
+    const actionText = condicion === 'Bloquear' ? '<span style="color:var(--success); font-weight:bold;">BLOQUEAR 🔒</span>' : '<span style="color:var(--accent); font-weight:bold;">DESBLOQUEAR 🔓</span>';
+
+    document.getElementById('confirm-modal-body').innerHTML = `
+      Se aplicará el registro con las siguientes condiciones:<br><br>
+      • <strong>Módulo:</strong> ${modulo === 'Nomina' ? 'Nómina' : 'Facturación'}<br>
+      • <strong>Destino:</strong> ${dest}<br>
+      • <strong>Quincena:</strong> ${quincena}<br>
+      • <strong>Datos:</strong> ${datosLabel}<br>
+      • <strong>Acción:</strong> El sistema procederá a ${actionText} los datos indicados.<br><br>
+      ¿Desea guardar y aplicar los cambios ahora?
+    `;
+
+    document.getElementById('confirm-modal-overlay').classList.add('open');
+  }
+
+  // Cerrar Modal
+  function closeConfirmModal() {
+    document.getElementById('confirm-modal-overlay').classList.remove('open');
+  }
+
+  // Enviar el Formulario
+  async function submitForm() {
+    closeConfirmModal();
+
+    const modulo = document.getElementById('modulo').value;
+    const regional = document.getElementById('regional').value;
+    const operacion = document.getElementById('operacion').value;
+    const quincena = document.getElementById('quincena').value;
+    const datosVal = document.getElementById('datos').value;
+    const formaPago = document.getElementById('forma-pago').value;
+    const condicion = document.getElementById('condicion').value;
+
+    const datos = datosVal === 'General' ? '' : datosVal;
+
+    const payload = {
+      modulo,
+      regional,
+      operacion: operacion || null,
+      quincena,
+      datos,
+      formaPago: formaPago ? parseInt(formaPago) : null,
+      condicion
+    };
+
+    try {
+      const resp = await fetch(`/bloqueodatos/api/crear?usuario=${CONFIG.usuarioId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (resp.ok) {
+        const result = await resp.json();
+        
+        // Mostrar Modal de Éxito con los contadores de filas afectadas
+        document.getElementById('success-modal-body').innerHTML = `
+          El registro de bloqueo se guardó con éxito en el sistema.<br><br>
+          <strong>Filas afectadas:</strong><br>
+          • 🛠️ <strong>Servicios:</strong> ${result.affectedServicios || 0} filas.<br>
+          • 📅 <strong>Asistencia:</strong> ${result.affectedAsistencia || 0} filas.<br><br>
+          Haga clic en <strong>Aceptar</strong> para regresar al listado.
+        `;
+        document.getElementById('success-modal-overlay').classList.add('open');
+
+      } else {
+        const errData = await resp.json();
+        alert(`Error al registrar el bloqueo: ${errData.error || 'Ocurrió un error inesperado'}`);
+      }
+    } catch (e) {
+      console.error('Error enviando formulario:', e);
+      alert('Error de conexión al procesar la solicitud.');
+    }
+  }
+</script>
+
+</body>
+</html>

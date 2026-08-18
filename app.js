@@ -34,6 +34,7 @@ const logysignRoutes                 = require('./src/routes/logysign');
 const registrologysignRoutes         = require('./src/routes/registrologysign');
 const clouddocsRoutes                = require('./src/routes/clouddocs');
 const formclouddocsRoutes            = require('./src/routes/formclouddocs');
+const bloqueodatosRoutes             = require('./src/routes/bloqueodatos');
 
 const app = express();
 
@@ -83,6 +84,8 @@ app.use('/registrologysign', registrologysignRoutes);
 app.use('/registroslogysign', registrologysignRoutes);
 app.use('/cloud-docs', clouddocsRoutes);
 app.use('/formcloud-docs', formclouddocsRoutes);
+app.use('/bloqueodatos', bloqueodatosRoutes);
+app.use('/formbloqueodatos', bloqueodatosRoutes);
 
 
 
