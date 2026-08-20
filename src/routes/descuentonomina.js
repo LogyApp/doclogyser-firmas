@@ -803,13 +803,19 @@ router.post('/api/firmar-asistente', async (req, res) => {
     const anioVal = dateObj.getFullYear();
     const fechaFmt = `${diaVal} de ${mesVal} de ${anioVal}`;
 
+    let cleanNombre = String(c.nombre_trabajador || '');
+    if (cleanNombre.includes(' ** ')) {
+      cleanNombre = cleanNombre.split(' ** ')[1] || cleanNombre;
+    }
+    cleanNombre = cleanNombre.toUpperCase().trim();
+
     const datos = {
       ciudad:            c.ciudad || '',
       fecha:             fechaFmt,
       dia:               diaVal,
       mes:               mesVal,
       anio:              anioVal,
-      nombre_trabajador: String(c.nombre_trabajador).toUpperCase(),
+      nombre_trabajador: cleanNombre,
       identificacion:    String(c.identificacion),
       cargo:             c.cargo || '',
       tipo_descuento:    c.tipo_descuento,
@@ -907,13 +913,19 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
     const anioVal = dateObj.getFullYear();
     const fechaFmt = `${diaVal} de ${mesVal} de ${anioVal}`;
 
+    let cleanNombre = String(c.nombre_trabajador || '');
+    if (cleanNombre.includes(' ** ')) {
+      cleanNombre = cleanNombre.split(' ** ')[1] || cleanNombre;
+    }
+    cleanNombre = cleanNombre.toUpperCase().trim();
+
     const datos = {
       ciudad:            c.ciudad || '',
       fecha:             fechaFmt,
       dia:               diaVal,
       mes:               mesVal,
       anio:              anioVal,
-      nombre_trabajador: String(c.nombre_trabajador).toUpperCase(),
+      nombre_trabajador: cleanNombre,
       identificacion:    String(c.identificacion),
       cargo:             c.cargo || '',
       tipo_descuento:    c.tipo_descuento,
