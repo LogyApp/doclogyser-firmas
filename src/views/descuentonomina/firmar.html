@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firmar Autorización de Descuento — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f1f5f9; color: #1e293b; line-height: 1.5; padding: 16px; }
+    
+    .wrapper { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; }
+    
+    .header {
+      background: #2980b9; color: #ffffff; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .header h2 { font-size: 1.15rem; font-weight: 700; }
+    .header img { height: 36px; }
+
+    .content { padding: 24px; }
+    
+    .intro-text { font-size: .92rem; color: #475569; margin-bottom: 20px; line-height: 1.6; text-align: justify; }
+    
+    .doc-preview-box {
+      border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: #f8fafc; font-size: .9rem; margin-bottom: 24px; color: #334155; line-height: 1.6; text-align: justify;
+    }
+    
+    .signature-box {
+      border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; background: #fafbfc; margin-bottom: 20px;
+    }
+    
+    canvas {
+      border: 1.5px solid #94a3b8; border-radius: 6px; background: #ffffff; cursor: crosshair; display: block; touch-action: none; width: 100%; height: 160px;
+    }
+
+    .btn {
+      width: 100%; padding: 12px 20px; font-size: .95rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: background .2s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px;
+    }
+    .btn:last-child { margin-bottom: 0; }
+    .btn-primary { background: #2980b9; color: #ffffff; }
+    .btn-primary:hover { background: #1f618d; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: #10b981; color: #ffffff; }
+    .btn-success:hover { background: #059669; }
+    .btn-small { padding: 6px 12px; font-size: .8rem; width: auto; display: inline-flex; }
+
+    /* Exito */
+    .success-panel {
+      display: none; padding: 40px 24px; text-align: center;
+    }
+    .success-icon { font-size: 3.5rem; color: #10b981; margin-bottom: 16px; }
+    .success-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+    .success-text { font-size: .98rem; color: #64748b; margin-bottom: 24px; }
+
+    /* Pre-filled signature view */
+    .prefilled-section {
+      background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-bottom: 20px; text-align: center;
+    }
+    .prefilled-img-container {
+      background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; display: inline-block; padding: 6px; margin: 12px 0;
+    }
+    .prefilled-img-container img { max-height: 80px; display: block; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #ebf5fb; border-top-color: #2980b9;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;">Cargando...</div>
+  </div>
+
+  <div class="wrapper" id="signature-flow-container">
+    
+    <div class="header">
+      <h2>Autorización de Descuento por Nómina</h2>
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="Logo LOG&SER">
+    </div>
+
+    <!-- Flujo principal -->
+    <div class="content" id="panel-firma">
+      <div class="intro-text">
+        Por favor lee el documento de autorización de descuento por nómina. Al final de la página podrás registrar tu firma manuscrita digital para completar el proceso.
+      </div>
+
+      <!-- Preview Box dynamically built based on TipoDescuento -->
+      <div class="doc-preview-box" id="preview-container">
+        <!-- Dinámico -->
+      </div>
+
+      <!-- Sección firma prellenada (si existe) -->
+      <div class="prefilled-section" id="panel-prefilled" style="display: none;">
+        <p style="color: #15803d; font-weight: bold; font-size: .95rem;">Tienes una firma registrada en el sistema:</p>
+        <div class="prefilled-img-container" id="img-prefilled-container">
+          <!-- Dinámico -->
+        </div>
+        <div>
+          <button class="btn btn-success" id="btn-aceptar-prefilled">Usar mi firma registrada y aceptar</button>
+          <button class="btn btn-secondary" id="btn-dibujar-nueva">Dibujar otra firma...</button>
+        </div>
+      </div>
+
+      <!-- Sección dibujar firma (lienzo canvas) -->
+      <div class="signature-box" id="panel-canvas-wrap" style="display: none;">
+        <p style="margin-bottom: 12px; font-weight: 600; color: #475569; font-size: .9rem;">Dibuja tu firma en el recuadro:</p>
+        <canvas id="sig-canvas"></canvas>
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
+          <button class="btn btn-secondary btn-small" id="btn-clear-canvas" style="flex: 1;">Limpiar lienzo</button>
+          <button class="btn btn-secondary btn-small" id="btn-cancelar-canvas" style="flex: 1; display: none;">Volver</button>
+        </div>
+        <div style="margin-top: 20px;">
+          <button class="btn btn-primary" id="btn-guardar-canvas">Firmar Autorización</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Éxito -->
+    <div class="success-panel" id="panel-exito">
+      <div class="success-icon">✓</div>
+      <div class="success-title">Proceso Completado</div>
+      <div class="success-text">
+        Tu autorización de descuento por nómina ha sido firmada y guardada correctamente en el sistema.
+        Ya puedes cerrar esta ventana.
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    window.CONFIG = __CONFIG_FIRMA__;
+  </script>
+
+  <script>
+    const CONFIG = window.CONFIG;
+    const loading = document.getElementById('loading');
+
+    function showLoading(active) {
+      if (active) loading.style.display = 'flex';
+      else loading.style.display = 'none';
+    }
+
+    // Inicializar detalles del documento
+    const fechaFmt = CONFIG.fecha ? CONFIG.fecha.slice(0, 10).split('-').reverse().join('/') : '';
+    
+    // Build preview text
+    const previewContainer = document.getElementById('preview-container');
+    if (CONFIG.tipo_descuento === 'Específica') {
+      previewContainer.innerHTML = `
+        <p style="margin-bottom: 12px; font-weight: bold; text-align: center; text-transform: uppercase; color: #2980b9;">
+          FORMATO AUTORIZACIÓN DE DESCUENTO POR NÓMINA (ESPECÍFICA)
+        </p>
+        <p style="margin-bottom: 12px; font-size: .85rem; color: #64748b;">
+          <strong>Ciudad:</strong> <span>${CONFIG.ciudad || '—'}</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Fecha:</strong> <span>${fechaFmt}</span>
+        </p>
+        <p style="margin-bottom: 12px; font-weight: bold;">SEÑORES: APOYO LOGÍSTICO Y OPERATIVO SAS<br>NIT: 900.318.733-1</p>
+        <p style="margin-bottom: 12px; font-weight: bold;">ASUNTO: AUTORIZACIÓN DE DESCUENTO POR NÓMINA.</p>
+        <p style="margin-bottom: 12px;">
+          Yo, <strong>${CONFIG.nombre_trabajador}</strong>, mayor de edad, identificado con documento de identidad No. <strong>${CONFIG.identificacion}</strong>, en mi calidad de trabajador con el cargo de <strong>${CONFIG.cargo || 'Colaborador'}</strong> de la empresa <strong>APOYO LOGÍSTICO Y OPERATIVO SAS</strong>, autorizo expresa e irrevocablemente para que, de mi salario, bonificaciones, prestaciones sociales, o de cualquier suma de dinero que se vaya generando a mi favor, me sean descontados en <strong>${CONFIG.cuotas || '—'}</strong> cuotas, por valor de <strong>${CONFIG.valor || '—'}</strong> para el pago de <strong>${CONFIG.motivo || '—'}</strong>, aun en el evento de encontrarme disfrutando de vacaciones o licencias.
+        </p>
+        <p>
+          Igualmente autorizo expresa e irrevocablemente a <strong>APOYO LOGÍSTICO Y OPERATIVO SAS</strong>, a descontar de mi salario, sueldo, bonificaciones, prestaciones sociales e indemnizaciones a que tengo derecho, las cuotas que se estén adeudando si se llegare a terminar mi contrato de trabajo por cualquier causa.
+        </p>
+      `;
+    } else {
+      previewContainer.innerHTML = `
+        <p style="margin-bottom: 12px; font-weight: bold; text-align: center; text-transform: uppercase; color: #2980b9;">
+          AUTORIZACIÓN ANTICIPADA DE DESCUENTO POR NÓMINA
+        </p>
+        <p style="margin-bottom: 12px; font-size: .85rem; color: #64748b;">
+          <strong>Ciudad:</strong> <span>${CONFIG.ciudad || '—'}</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>Fecha:</strong> <span>${fechaFmt}</span>
+        </p>
+        <p style="margin-bottom: 12px; font-weight: bold;">SEÑORES: APOYO LOGÍSTICO Y OPERATIVO SAS<br>NIT: 900.318.733-1</p>
+        <p style="margin-bottom: 12px;">
+          Yo, <strong>${CONFIG.nombre_trabajador}</strong>, mayor de edad, identificado con documento de identidad No. <strong>${CONFIG.identificacion}</strong>, en mi calidad de trabajador con el cargo de <strong>${CONFIG.cargo || 'Colaborador'}</strong> de la empresa <strong>APOYO LOGÍSTICO Y OPERATIVO SAS</strong>, suscribo el presente documento de manera libre, voluntaria y expresa.
+        </p>
+        <p style="margin-bottom: 12px;">
+          Por medio del presente, <strong>AUTORIZO</strong> de manera expresa, anticipada e irrevocable a la empresa para que, en caso de que se presente cualquier daño, pérdida, deterioro o perjuicio causado por mi acción, omisión, negligencia o imprudencia en los equipos, herramientas, mercancía, vehículos, instalaciones o cualquier bien propiedad de la empresa o de terceros bajo responsabilidad de la misma, proceda a realizar el descuento correspondiente a dichos daños de mi salario, prestaciones sociales, indemnizaciones, bonificaciones o cualquier suma de dinero que se me deba por concepto de mi relación laboral.
+        </p>
+        <p style="margin-bottom: 12px;">
+          Esta autorización se firma simultáneamente con el contrato de trabajo como garantía ante eventuales siniestros futuros. El valor a descontar será equivalente al costo de reparación o reposición del bien afectado, previa comunicación escrita por parte de la empresa donde se evidencie la responsabilidad y el valor del perjuicio.
+        </p>
+        <p>
+          En caso de que el valor del daño supere el salario mensual, autorizo a que el descuento se realice en cuotas mensuales sucesivas hasta completar el valor total adeudado. Asimismo, autorizo que, si al momento de ocurrir el siniestro o posteriormente, se llegare a terminar mi contrato de trabajo por cualquier causa, el saldo pendiente de dicha obligación sea deducido de mi liquidación final de prestaciones sociales y salarios pendientes.
+        </p>
+      `;
+    }
+
+    // Canvas drawing setup
+    const panelPrefilled = document.getElementById('panel-prefilled');
+    const imgPrefilledContainer = document.getElementById('img-prefilled-container');
+    const panelCanvasWrap = document.getElementById('panel-canvas-wrap');
+    
+    const canvas = document.getElementById('sig-canvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (CONFIG.firmaBase64) {
+        imgPrefilledContainer.innerHTML = `<img src="${CONFIG.firmaBase64}" alt="Firma registrada">`;
+        panelPrefilled.style.display = 'block';
+        document.getElementById('btn-cancelar-canvas').style.display = 'inline-flex';
+      } else {
+        panelCanvasWrap.style.display = 'block';
+        resizeCanvas();
+      }
+    });
+
+    // drawing canvas helpers
+    function resizeCanvas() {
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = canvas.offsetWidth * ratio;
+      canvas.height = canvas.offsetHeight * ratio;
+      ctx.scale(ratio, ratio);
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#1e293b';
+    }
+
+    window.addEventListener('resize', () => {
+      if (panelCanvasWrap.style.display !== 'none') resizeCanvas();
+    });
+
+    // Touch events for mobile devices
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.targetTouches.length === 1) {
+        const touch = e.targetTouches[0];
+        const rect = canvas.getBoundingClientRect();
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+      }
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (drawing && e.targetTouches.length === 1) {
+        const touch = e.targetTouches[0];
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+        ctx.stroke();
+      }
+    });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      drawing = false;
+    });
+
+    // Mouse events
+    canvas.addEventListener('mousedown', (e) => {
+      drawing = true;
+      const rect = canvas.getBoundingClientRect();
+      ctx.beginPath();
+      ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (drawing) {
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        ctx.stroke();
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => { drawing = false; });
+    canvas.addEventListener('mouseleave', () => { drawing = false; });
+
+    document.getElementById('btn-clear-canvas').addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    document.getElementById('btn-dibujar-nueva').addEventListener('click', () => {
+      panelPrefilled.style.display = 'none';
+      panelCanvasWrap.style.display = 'block';
+      resizeCanvas();
+    });
+
+    document.getElementById('btn-cancelar-canvas').addEventListener('click', () => {
+      panelCanvasWrap.style.display = 'none';
+      panelPrefilled.style.display = 'block';
+    });
+
+    // Submit actions
+    document.getElementById('btn-aceptar-prefilled').addEventListener('click', async () => {
+      await enviarFirma(CONFIG.firmaBase64);
+    });
+
+    document.getElementById('btn-guardar-canvas').addEventListener('click', async () => {
+      // Check if canvas is empty
+      const blank = document.createElement('canvas');
+      blank.width = canvas.width;
+      blank.height = canvas.height;
+      if (canvas.toDataURL() === blank.toDataURL()) {
+        alert('Por favor dibuja tu firma antes de enviar.');
+        return;
+      }
+
+      const base64 = canvas.toDataURL('image/png');
+      await enviarFirma(base64);
+    });
+
+    async function enviarFirma(firmaBase64) {
+      showLoading(true);
+      try {
+        const res = await fetch('/descuentonomina/api/firmar-asistente', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_descuento: CONFIG.id_descuento,
+            firma_base64: firmaBase64
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Ocurrió un error al procesar la firma.');
+
+        // Show success panel
+        document.getElementById('panel-firma').style.display = 'none';
+        document.getElementById('panel-exito').style.display = 'block';
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+  </script>
+</body>
+</html>

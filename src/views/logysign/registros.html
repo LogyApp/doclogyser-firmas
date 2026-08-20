@@ -139,21 +139,21 @@
 
     .user-badge {
       background: rgba(255, 255, 255, 0.08);
-      padding: 9px 18px 9px 14px;
+      padding: 6px 12px 6px 10px;
       border-radius: 50px;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       font-weight: 500;
       border: 1px solid rgba(255, 255, 255, 0.16);
       display: inline-flex;
       align-items: center;
-      gap: 9px;
+      gap: 7px;
       flex-shrink: 0;
     }
 
     .user-badge::before {
       content: '';
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--accent);
       flex-shrink: 0;
@@ -162,14 +162,14 @@
     .btn-action-nav {
       background: rgba(255, 255, 255, 0.08);
       color: #fff;
-      padding: 9px 18px;
+      padding: 6px 12px;
       border-radius: 50px;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       font-weight: 500;
       border: 1px solid rgba(255, 255, 255, 0.16);
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       cursor: pointer;
       text-decoration: none;
       transition: var(--transition);
@@ -452,6 +452,41 @@
       padding: 40px;
       color: var(--text-muted);
     }
+
+    /* List view vs Detail view layout */
+    .view-container { display: flex; gap: 20px; flex-direction: column; width: 100%; }
+    .view-container.detail-active {
+      display: grid; grid-template-columns: 1.25fr 1fr;
+    }
+    .view-container > * { min-width: 0; }
+
+    /* Detail Card */
+    .detail-card {
+      background: #ffffff; border-radius: var(--radius-md); border-left: 4px solid var(--accent);
+      padding: 24px; box-shadow: var(--shadow-md);
+      position: sticky; top: 20px; display: none;
+      align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      border: 1px solid var(--border);
+    }
+
+    /* En móvil el detalle se abre como ventana emergente de pantalla completa */
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+      .detail-card {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 1400;
+        border-radius: 0;
+        max-height: 100vh;
+        margin: 0;
+        align-self: stretch;
+      }
+    }
+    .detail-info-box p { margin-bottom: 8px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+    .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; text-align: left; }
+    .detail-info-box p span { text-align: right; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -477,9 +512,17 @@
         <p>Historial de Registros y Control de Firmas</p>
       </div>
       <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <a class="btn-action-nav" id="btn-cloud-docs" href="#">
+          <svg style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          CloudDocs
+        </a>
         <a class="btn-action-nav" id="btn-volver-preparar" href="#">
-          <svg style="width:16px;height:16px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+          <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
           Nueva Firma
+        </a>
+        <a class="btn-action-nav" id="btn-descuento-nomina" href="#" style="display: none;">
+          <svg style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          Descuento Nómina
         </a>
         <div class="user-badge" id="user-badge-name">
           Cargando usuario...
@@ -544,28 +587,64 @@
       </div>
     </div>
 
-    <!-- Resultados -->
-    <div class="card">
-      <h2 class="card-title" style="justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="icon-chip">
-            <svg style="width:18px;height:18px" viewBox="0 0 24 24"><path fill="currentColor" d="M14,10H19.5L14,4.5V10M5,3H15L21,9V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5C3,3.89 3.89,3 5,3M5,5V19H19V12H12V5H5Z"/></svg>
-          </span>
-          Lista de Envios
-        </div>
-        <span id="records-counter" style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">Total: 0</span>
-      </h2>
+    <!-- Layout Container for Side-by-Side Detail View -->
+    <div class="view-container" id="layout-container">
+      
+      <!-- Resultados -->
+      <div class="card" style="margin-bottom: 0;">
+        <h2 class="card-title" style="justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="icon-chip">
+              <svg style="width:18px;height:18px" viewBox="0 0 24 24"><path fill="currentColor" d="M14,10H19.5L14,4.5V10M5,3H15L21,9V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5C3,3.89 3.89,3 5,3M5,5V19H19V12H12V5H5Z"/></svg>
+            </span>
+            Lista de Envios
+          </div>
+          <span id="records-counter" style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">Total: 0</span>
+        </h2>
 
-      <div class="table-container">
-        <table id="records-table">
-          <thead></thead>
-          <tbody id="records-body">
-            <tr>
-              <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Cargando registros...</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-container">
+          <table id="records-table">
+            <thead></thead>
+            <tbody id="records-body">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">Cargando registros...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <!-- Detail Card -->
+      <div class="detail-card" id="detalle-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px;">
+          <h3 style="color: var(--primary); font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 600; margin: 0;">Detalle del Envío</h3>
+          <button class="btn btn-secondary" onclick="cerrarDetalleClick()" style="padding: 4px 8px;">Cerrar</button>
+        </div>
+        
+        <div class="detail-info-box" id="detalle-info">
+          <!-- Dinámico -->
+        </div>
+
+        <!-- Opciones de actualización de contacto -->
+        <div id="opciones-contacto" style="margin-top: 20px; display: none;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1.5px solid var(--border); padding-bottom: 4px;">Actualizar Datos de Contacto</div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="contacto-email" style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Correo Electrónico</label>
+            <input type="email" id="contacto-email" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="contacto-celular" style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Celular (WhatsApp)</label>
+            <input type="text" id="contacto-celular" placeholder="3XXXXXXXXX">
+          </div>
+          <button class="btn btn-secondary" onclick="actualizarContacto()" style="width: 100%; border: 1.5px solid var(--border);">Actualizar Contacto</button>
+        </div>
+
+        <!-- Acciones de Control -->
+        <div id="opciones-control" style="margin-top: 20px;">
+          <!-- Dinámico (Reenviar Whatsapp / Eliminar) -->
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -641,6 +720,14 @@
     // Init page info
     userBadge.innerText = CONFIG.usuarioNombre;
     btnVolver.href = `/logysign?usuario=${CONFIG.usuarioId}`;
+    document.getElementById('btn-cloud-docs').href = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+
+    const btnDescuento = document.getElementById('btn-descuento-nomina');
+    const ALLOWED_DESCUENTO_ROLES = ['Contratación', 'Archivo', 'Asistencial', 'Sistema'];
+    if (ALLOWED_DESCUENTO_ROLES.includes(CONFIG.usuarioRol)) {
+      btnDescuento.href = `/descuentonomina?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      btnDescuento.style.display = 'inline-flex';
+    }
 
     if (CONFIG.usuarioRol === 'Sistema' || CONFIG.usuarioRol === 'Juridica') {
       grpFilterCausa.style.display = 'flex';
@@ -996,15 +1083,30 @@
               let actionsHtml = '';
               if (item.estado === 'PENDIENTE') {
                 const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
+                let msgWaText = '';
+                if (Number(item.id_config_doc) === 18 && item.auto_id_descuento) {
+                  const linkFirmaDescuento = `${window.location.origin}/descuentonomina/firmar?item=${item.auto_id_descuento}&token=${item.auto_token_firma}`;
+                  msgWaText = encodeURIComponent(`¡Hola! Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo \n\nPara completar tu proceso de ingreso de forma rápida, puedes firmar tus documentos directamente desde aquí o revisarlos en el correo electrónico que te acabamos de enviar (donde también encontrarás los mismos enlaces por si prefieres gestionarlos desde allí):\n\n📄 1. Contrato de Trabajo:\n👉 ${linkFirma}\n(Por favor verifica que tus datos personales estén correctos y lee las condiciones antes de firmar).\n\n📝 2. Autorización de Descuento:\n👉 ${linkFirmaDescuento}\n(Este formato es un requisito estándar de la compañía que se firma de manera preventiva para respaldar los activos y herramientas de trabajo frente a daños o pérdidas).\n\nUna vez firmes ambos documentos, el sistema enviará los respaldos directamente a nuestro soporte legal.\n\nAvísanos por este medio si tienes alguna duda o cuando hayas terminado. ¡Muchos éxitos en esta nueva etapa con nosotros!`);
+                } else {
+                  msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu documento: ${linkFirma}`);
+                }
+                let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+                if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+                const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
+
                 actionsHtml = `
                   <div style="display: flex; gap: 6px; justify-content: center;">
-                    <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${linkFirma}')">
-                      <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
-                      Copiar Enlace
+                    <a href="${waUrl}" target="_blank" class="btn btn-success" style="background: #25d366; border-color: #25d366; color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 7px 10px;">
+                      WhatsApp
+                    </a>
+                    <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${linkFirma}')" style="padding: 7px 10px;">
+                      Copiar
                     </button>
-                    <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')">
-                      <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/></svg>
+                    <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')" style="padding: 7px 10px;">
                       Reenviar
+                    </button>
+                    <button class="btn" onclick="marcarNoFirma('${item.id}')" style="background: #e67e22; border-color: #e67e22; color: #fff; padding: 7px 10px;" title="Marcar como No Firma (Genera soporte)">
+                      No Firma
                     </button>
                   </div>
                 `;
@@ -1027,6 +1129,13 @@
         }).join('');
 
         tr.innerHTML = htmlCells;
+        tr.style.cursor = 'pointer';
+        tr.onclick = (e) => {
+          if (e.target.closest('.causa-editable') || e.target.closest('.btn') || e.target.closest('a') || e.target.closest('svg') || e.target.closest('path')) {
+            return;
+          }
+          abrirDetalle(item.id);
+        };
         recordsBody.appendChild(tr);
       });
     }
@@ -1058,6 +1167,35 @@
         hideLoading();
       }
     }
+
+    async function marcarNoFirma(id) {
+      const anotacion = prompt(
+        "Ingrese el texto de la anotación de soporte que saldrá en la firma (por ejemplo: 'El trabajador no firma, se soporta por correo electrónico'):",
+        "El trabajador no firma,\nse soporta por correo electrónico"
+      );
+      if (anotacion === null) return;
+
+      showLoading('Generando documento soporte...');
+      try {
+        const res = await fetch('/registrologysign/api/no-firma', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, anotacion })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo procesar la acción');
+        showToast('Documento soporte generado y finalizado con éxito', 'success');
+        
+        document.getElementById('detalle-card').style.display = 'none';
+        document.getElementById('layout-container').classList.remove('detail-active');
+        await loadRecords();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+    window.marcarNoFirma = marcarNoFirma;
 
     // Modal causa edit state
     let edicionCausaId = null;
@@ -1193,6 +1331,182 @@
     filterOperacion.addEventListener('change', renderRecords);
     if (filterCausa) {
       filterCausa.addEventListener('change', renderRecords);
+    }
+
+    let selectedRegistroId = null;
+    let selectedTrabajadorId = null;
+
+    function abrirDetalle(id) {
+      const item = records.find(x => x.id === id);
+      if (!item) return;
+
+      selectedRegistroId = id;
+      selectedTrabajadorId = item.identificacion;
+
+      // Fill in details panel
+      let fechaFmt = '—';
+      if (item.fecha_registro) {
+        const dateObj = new Date(item.fecha_registro);
+        fechaFmt = dateObj.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) + ' ' + 
+                   dateObj.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+      }
+
+      let expiraHtml = '';
+      if (item.estado === 'PENDIENTE') {
+        const expDate = item.token_expira ? new Date(item.token_expira) : null;
+        if (expDate) {
+          const isExpired = expDate < new Date();
+          const color = isExpired ? '#ef4444' : '#10b981';
+          const text = isExpired ? 'Vencido' : `Vence el ${expDate.toLocaleString()}`;
+          expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: ${color}; font-weight: bold;">${text}</span></p>`;
+        } else {
+          expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color: #ef4444; font-weight: bold;">No generado o expirado</span></p>`;
+        }
+      }
+
+      document.getElementById('detalle-info').innerHTML = `
+        <p><strong>Fecha Registro:</strong> <span>${fechaFmt}</span></p>
+        <p><strong>Colaborador:</strong> <span>${item.nombre_trabajador || '—'} (C.C. ${item.identificacion})</span></p>
+        <p><strong>Cargo:</strong> <span>${item.cargo || '—'}</span></p>
+        <p><strong>Operación:</strong> <span>${item.operacion || '—'}</span></p>
+        <p><strong>Regional:</strong> <span>${item.regional || '—'}</span></p>
+        <p><strong>Documento:</strong> <span>${item.nombre_documento || item.prefijo || '—'}</span></p>
+        <p><strong>Creador:</strong> <span>${item.nombre_creador || item.usuario_creador || '—'}</span></p>
+        <p><strong>Estado:</strong> <span><span class="badge ${item.estado === 'FIRMADO' ? 'badge-signed' : 'badge-pending'}">${item.estado === 'FIRMADO' ? '✓ Firmado' : 'Pendiente'}</span></span></p>
+        ${expiraHtml}
+      `;
+
+      // Set input fields for updating contact
+      document.getElementById('contacto-email').value = item.email_trabajador || '';
+      document.getElementById('contacto-celular').value = item.celular_trabajador || '';
+      
+      document.getElementById('opciones-contacto').style.display = 'block';
+
+      // Generate dynamic control buttons
+      const optsBox = document.getElementById('opciones-control');
+      optsBox.innerHTML = '';
+      let optsHtml = '';
+
+      if (item.estado === 'PENDIENTE') {
+        const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
+        let msgWaText = '';
+        if (Number(item.id_config_doc) === 18 && item.auto_id_descuento) {
+          const linkFirmaDescuento = `${window.location.origin}/descuentonomina/firmar?item=${item.auto_id_descuento}&token=${item.auto_token_firma}`;
+          msgWaText = encodeURIComponent(`¡Hola! Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo \n\nPara completar tu proceso de ingreso de forma rápida, puedes firmar tus documentos directamente desde aquí o revisarlos en el correo electrónico que te acabamos de enviar (donde también encontrarás los mismos enlaces por si prefieres gestionarlos desde allí):\n\n📄 1. Contrato de Trabajo:\n👉 ${linkFirma}\n(Por favor verifica que tus datos personales estén correctos y lee las condiciones antes de firmar).\n\n📝 2. Autorización de Descuento:\n👉 ${linkFirmaDescuento}\n(Este formato es un requisito estándar de la compañía que se firma de manera preventiva para respaldar los activos y herramientas de trabajo frente a daños o pérdidas).\n\nUna vez firmes ambos documentos, el sistema enviará los respaldos directamente a nuestro soporte legal.\n\nAvísanos por este medio si tienes alguna duda o cuando hayas terminado. ¡Muchos éxitos en esta nueva etapa con nosotros!`);
+        } else {
+          msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu documento: ${linkFirma}`);
+        }
+        let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+        if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+        const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
+
+        optsHtml += `
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 25px; margin-bottom: 12px; border-bottom: 1.5px solid var(--border); padding-bottom: 4px;">Acciones de Control</div>
+          <button class="btn btn-primary" onclick="reenviarCorreo('${item.id}')" style="width: 100%; margin-bottom: 8px;">Enviar Correo</button>
+          <a href="${waUrl}" target="_blank" class="btn btn-success" style="width: 100%; margin-bottom: 8px; background: #25d366; border-color: #25d366; color: #fff;">Enviar WhatsApp</a>
+          <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${linkFirma}')" style="width: 100%; margin-bottom: 8px; background: #2980b9; color: #fff;">📋 Copiar Enlace</button>
+          <button class="btn" onclick="marcarNoFirma('${item.id}')" style="width: 100%; margin-bottom: 8px; background: #e67e22; border-color: #e67e22; color: #fff;">📋 Marcar como No Firma</button>
+        `;
+      } else {
+        const viewPdfUrl = `/logysign/api/signed-pdf/${item.id}`;
+        optsHtml += `
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 25px; margin-bottom: 12px; border-bottom: 1.5px solid var(--border); padding-bottom: 4px;">Acciones de Control</div>
+          <a href="${viewPdfUrl}" target="_blank" class="btn btn-success" style="width: 100%; margin-bottom: 8px;">Abrir PDF Firmado</a>
+        `;
+      }
+
+      // Delete action: Only for role 'Sistema' if not signed (estado !== 'FIRMADO')
+      if (CONFIG.usuarioRol === 'Sistema' && item.estado !== 'FIRMADO') {
+        optsHtml += `
+          <button class="btn" onclick="eliminarRegistro('${item.id}')" style="width: 100%; margin-top: 8px; background: #dc2626; border-color: #dc2626; color: #fff;">✕ Eliminar Registro</button>
+        `;
+      }
+
+      optsBox.innerHTML = optsHtml;
+
+      // Show detail card and layout
+      document.getElementById('layout-container').classList.add('detail-active');
+      document.getElementById('detalle-card').style.display = 'block';
+    }
+
+    function cerrarDetalle() {
+      document.getElementById('layout-container').classList.remove('detail-active');
+      document.getElementById('detalle-card').style.display = 'none';
+      selectedRegistroId = null;
+      selectedTrabajadorId = null;
+    }
+
+    function cerrarDetalleClick() {
+      cerrarDetalle();
+    }
+
+    // Actualizar contacto en BD
+    async function actualizarContacto() {
+      const email = document.getElementById('contacto-email').value.trim();
+      const celular = document.getElementById('contacto-celular').value.trim();
+
+      if (!selectedTrabajadorId) return;
+      showLoading('Actualizando contacto...');
+
+      try {
+        const res = await fetch('/registrologysign/api/actualizar-contacto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identificacion: selectedTrabajadorId,
+            email,
+            celular,
+            usuario: CONFIG.usuarioId
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Contacto actualizado correctamente', 'success');
+          // Actualizar en memoria
+          const idx = records.findIndex(x => x.id === selectedRegistroId);
+          if (idx !== -1) {
+            records[idx].email_trabajador = email;
+            records[idx].celular_trabajador = celular;
+            // Refrescar detalle
+            abrirDetalle(selectedRegistroId);
+            // Refrescar la tabla
+            renderRecords();
+          }
+        } else {
+          showToast(data.error || 'Error al actualizar contacto', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Eliminar registro
+    async function eliminarRegistro(id) {
+      if (!confirm('¿Está seguro de que desea eliminar este registro? Esta acción es irreversible.')) return;
+      
+      showLoading('Eliminando registro...');
+      try {
+        const res = await fetch(`/registrologysign/api/eliminar/${id}?usuario=${CONFIG.usuarioId}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Registro eliminado con éxito', 'success');
+          cerrarDetalle();
+          // Recargar listado
+          await loadRecords();
+        } else {
+          showToast(data.error || 'Error al eliminar registro', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al eliminar registro', 'error');
+      } finally {
+        hideLoading();
+      }
     }
 
     // Initial Load

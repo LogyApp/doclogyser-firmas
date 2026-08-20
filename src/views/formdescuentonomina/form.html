@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear Autorización de Descuento por Nómina — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 750px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    :root {
+      --primary: #2980b9;
+      --primary-hover: #1f618d;
+      --accent: #e67e22;
+      --radius: 12px;
+      --border: #cbd5e1;
+    }
+
+    /* Header styling */
+    .header-card {
+      background: #ffffff;
+      border-radius: var(--radius);
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid var(--primary);
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .85rem; color: #64748b; margin-top: 4px; }
+    .badge-user {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #ebf5fb; border: 1px solid #a9cce3;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; color: #21618c; margin-top: 8px; font-weight: 600;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: var(--radius);
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: var(--primary); letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #ebf5fb;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 580px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .field { margin-bottom: 20px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .85rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    label .req { color: #ef4444; margin-left: 2px; }
+    
+    input[type="text"], input[type="date"], select, textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: .95rem; color: #334155; background: #ffffff;
+      transition: all .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.15);
+    }
+    input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; }
+
+    textarea { height: 80px; resize: vertical; }
+
+    .btn-submit {
+      width: 100%; background: var(--primary); color: #ffffff; border: none;
+      padding: 14px 20px; font-size: 1rem; font-weight: 700;
+      border-radius: 8px; cursor: pointer; transition: background .2s;
+      box-shadow: 0 4px 6px -1px rgba(41, 128, 185, 0.2);
+    }
+    .btn-submit:hover { background: var(--primary-hover); }
+
+    /* Success card */
+    .success-card {
+      display: none; background: #ffffff; border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 30px 24px; text-align: center;
+      border-top: 5px solid #10b981;
+    }
+    .success-icon { font-size: 3rem; color: #10b981; margin-bottom: 16px; }
+    .success-title { font-size: 1.3rem; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+    .success-text { font-size: .95rem; color: #64748b; margin-bottom: 24px; }
+    
+    .link-box {
+      background: #f8fafc; border: 1.5px dashed var(--border);
+      border-radius: 8px; padding: 14px; margin-bottom: 24px;
+      word-break: break-all; font-family: monospace; font-size: .85rem; color: #334155;
+    }
+
+    .btn {
+      padding: 10px 20px; font-size: .92rem; font-weight: bold;
+      border-radius: 8px; border: none; cursor: pointer; transition: all .2s;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+
+    /* Checklist selection */
+    .checklist-container {
+      border: 1.5px solid var(--border); border-radius: 8px;
+      max-height: 250px; overflow-y: auto; background: #ffffff; margin-top: 10px;
+    }
+    .checklist-item {
+      display: flex; align-items: center; padding: 10px 14px;
+      border-bottom: 1px solid #e2e8f0; cursor: pointer;
+      user-select: none;
+    }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-item input[type="checkbox"] {
+      width: 18px; height: 18px; margin-right: 12px; cursor: pointer;
+    }
+    .checklist-item label {
+      margin-bottom: 0; font-weight: 500; color: #334155; cursor: pointer; flex-grow: 1;
+    }
+    .checklist-item:hover { background: #f8fafc; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #ebf5fb; border-top-color: var(--primary);
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div class="wrapper" id="form-container">
+    <!-- Header -->
+    <div class="header-card">
+      <div class="title-box">
+        <div class="page-title">Crear Autorización de Descuento</div>
+        <div class="page-sub">Generación de formatos digitales de descuento por nómina</div>
+        <div class="badge-user" id="user-badge-name">Cargando usuario...</div>
+      </div>
+      <a class="btn btn-secondary" id="btn-volver-listado" href="#">Ver Historial</a>
+    </div>
+
+    <!-- Formulario -->
+    <form id="descuento-form" onsubmit="handleSubmit(event)">
+      <!-- Ubicación y Filtro del Trabajador -->
+      <div class="card">
+        <div class="section-title">1. Ubicación y Colaboradores</div>
+        
+        <div class="grid-2">
+          <div class="field">
+            <label for="select-regional">Regional <span class="req">*</span></label>
+            <select id="select-regional" required>
+              <option value="">-- Seleccione Regional --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="select-operacion">Operación <span class="req">*</span></label>
+            <select id="select-operacion" required disabled>
+              <option value="">-- Seleccione Operación --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Checklist de trabajadores -->
+        <div class="field" style="margin-top: 15px;">
+          <label style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Colaboradores Activos (<span id="form-trabajadores-count">0</span> seleccionados)</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="chk-seleccionar-todos" style="cursor: pointer; width: 14px; height: 14px;">
+              <span style="font-size: 0.8rem; font-weight: normal; cursor: pointer;" onclick="document.getElementById('chk-seleccionar-todos').click()">Seleccionar todos</span>
+            </div>
+          </label>
+          
+          <input type="text" id="checklist-search-input" placeholder="🔍 Filtrar por nombre o CC..." style="margin-top: 8px; margin-bottom: 6px; padding: 8px 12px; font-size: 0.85rem;">
+          
+          <div id="checklist-empty" style="padding: 20px; text-align: center; border: 1.5px dashed var(--border); border-radius: 8px; color: #64748b; font-size: 0.9rem;">
+            Seleccione Regional y Operación para cargar los colaboradores.
+          </div>
+          
+          <div class="checklist-container" id="checklist-wrap" style="display: none;">
+            <div id="form-checklist-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos del documento -->
+      <div class="card">
+        <div class="section-title">2. Datos del Documento</div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="input-fecha">Fecha del Documento <span class="req">*</span></label>
+            <input type="date" id="input-fecha" required>
+          </div>
+          <div class="field">
+            <label for="input-ciudad">Ciudad <span class="req">*</span></label>
+            <input type="text" id="input-ciudad" required placeholder="Ej. Medellín">
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 15px;">
+          <label for="select-tipo-descuento">Tipo de Descuento <span class="req">*</span></label>
+          <select id="select-tipo-descuento" required>
+            <option value="Anticipada">Anticipada (General)</option>
+            <option value="Específica">Específica (Por cuotas/concepto)</option>
+          </select>
+        </div>
+
+        <!-- Conditional fields for Específica -->
+        <div id="grp-especifica" style="display: none; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-top: 15px;">
+          <div class="grid-2">
+            <div class="field">
+              <label for="input-cuotas">Cuotas <span class="req">*</span></label>
+              <input type="text" id="input-cuotas" placeholder="Número de cuotas (Ej. 3)">
+            </div>
+            <div class="field">
+              <label for="input-valor">Valor Cuota <span class="req">*</span></label>
+              <input type="text" id="input-valor" placeholder="Valor de cada cuota (Ej. $100.000)">
+            </div>
+          </div>
+          <div class="field" style="margin-top: 15px;">
+            <label for="input-motivo">Motivo / Concepto del Descuento <span class="req">*</span></label>
+            <input type="text" id="input-motivo" placeholder="Concepto (Ej. Pago de reposición de herramientas)">
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 15px;">
+          <label for="input-observaciones">Observaciones</label>
+          <textarea id="input-observaciones" placeholder="Detalles adicionales (opcional)..."></textarea>
+        </div>
+
+        <div class="field" style="margin-top: 15px; display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="chk-enviar-correo" checked style="width: 18px; height: 18px; cursor: pointer;">
+          <label for="chk-enviar-correo" style="margin-bottom: 0; font-weight: normal; cursor: pointer;">
+            Notificar automáticamente por correo electrónico al colaborador
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">Crear Autorización</button>
+    </form>
+  </div>
+
+  <!-- Vista de Éxito -->
+  <div class="wrapper" id="success-container" style="display: none;">
+    <div class="success-card" id="success-card-el" style="display: block;">
+      <div class="success-icon">✓</div>
+      <div class="success-title">Proceso Completado</div>
+      <div class="success-text" id="success-message">
+        Se han creado las autorizaciones con éxito.
+      </div>
+      
+      <div id="single-link-wrap" style="display: none;">
+        <div style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 8px; text-align: left;">
+          Enlace de firma digital para el colaborador:
+        </div>
+        <div class="link-box" id="success-link"></div>
+        
+        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;">
+          <button class="btn btn-secondary" onclick="copiarLink()">Copiar Enlace</button>
+          <a href="#" id="success-whatsapp" target="_blank" class="btn btn-success" style="background: #25d366; border-color: #25d366;">
+            Enviar por WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 24px; display: flex; gap: 12px; justify-content: center;">
+        <button class="btn btn-secondary" onclick="resetForm()">Crear Otra Autorización</button>
+        <a class="btn btn-primary" id="success-btn-volver" href="#">Ir al Historial</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG__;
+
+    // Elements
+    const userBadge = document.getElementById('user-badge-name');
+    const btnVolver = document.getElementById('btn-volver-listado');
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+
+    const regSelect = document.getElementById('select-regional');
+    const opSelect = document.getElementById('select-operacion');
+    
+    // Conditional elements
+    const selectTipoDescuento = document.getElementById('select-tipo-descuento');
+    const grpEspecifica = document.getElementById('grp-especifica');
+    
+    selectTipoDescuento.addEventListener('change', () => {
+      if (selectTipoDescuento.value === 'Específica') {
+        grpEspecifica.style.display = 'block';
+        document.getElementById('input-cuotas').setAttribute('required', '');
+        document.getElementById('input-valor').setAttribute('required', '');
+        document.getElementById('input-motivo').setAttribute('required', '');
+      } else {
+        grpEspecifica.style.display = 'none';
+        document.getElementById('input-cuotas').removeAttribute('required');
+        document.getElementById('input-valor').removeAttribute('required');
+        document.getElementById('input-motivo').removeAttribute('required');
+      }
+    });
+
+    // Populate user and navigation
+    userBadge.innerText = CONFIG.usuarioNombre;
+    btnVolver.href = `/descuentonomina?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+    document.getElementById('success-btn-volver').href = `/descuentonomina?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+
+    // Set default values
+    document.getElementById('input-fecha').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('input-ciudad').value = CONFIG.ciudad || '';
+
+    // Configure Tipo de Descuento default value and lock based on Rol
+    const ROLES_SOLO_ANTICIPADA = ['Contratación', 'Archivo', 'Asistencial'];
+    if (ROLES_SOLO_ANTICIPADA.includes(CONFIG.rol)) {
+      selectTipoDescuento.value = 'Anticipada';
+      selectTipoDescuento.disabled = true;
+    } else if (CONFIG.rol !== 'Sistema') {
+      selectTipoDescuento.value = 'Específica';
+      selectTipoDescuento.disabled = true;
+    }
+    selectTipoDescuento.dispatchEvent(new Event('change'));
+
+    // Populate Regional dropdown
+    CONFIG.regionalesFiltro.forEach(reg => {
+      const opt = document.createElement('option');
+      opt.value = reg;
+      opt.textContent = reg;
+      regSelect.appendChild(opt);
+    });
+
+    regSelect.addEventListener('change', () => {
+      const reg = regSelect.value;
+      opSelect.innerHTML = '<option value="">-- Seleccione Operación --</option>';
+      opSelect.disabled = true;
+      limpiarChecklist();
+
+      if (reg) {
+        const ops = CONFIG.opsPorRegional[reg] || [];
+        ops.forEach(op => {
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = op;
+          opSelect.appendChild(opt);
+        });
+        opSelect.disabled = false;
+      }
+    });
+    function cleanReg(str) {
+      return String(str || '')
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .trim();
+    }
+
+    // Declare role-based dropdown locks variables first
+    const isRegionalRestricted = ['AuxiliarR', 'CoordinadorR'].includes(CONFIG.rol);
+    const isOpRestricted = ['Auxiliar', 'Coordinador'].includes(CONFIG.rol);
+    const isDeviceOrOpRestricted = !CONFIG.sinFiltro && !isRegionalRestricted && !isOpRestricted;
+
+    function buscarRegionalDeOperacion(opName) {
+      for (const reg in CONFIG.opsPorRegional) {
+        if (CONFIG.opsPorRegional[reg].includes(opName)) {
+          return reg;
+        }
+      }
+      return '';
+    }
+
+    opSelect.addEventListener('change', () => {
+      if (isDeviceOrOpRestricted) {
+        const opVal = opSelect.value;
+        if (opVal) {
+          const regVal = buscarRegionalDeOperacion(opVal);
+          const targetReg = cleanReg(regVal);
+          let matchedReg = '';
+          for (let i = 0; i < regSelect.options.length; i++) {
+            if (cleanReg(regSelect.options[i].value) === targetReg) {
+              matchedReg = regSelect.options[i].value;
+              break;
+            }
+          }
+          regSelect.value = matchedReg || regVal;
+        } else {
+          regSelect.value = '';
+        }
+      }
+      cargarTrabajadoresParaChecklist();
+    });
+
+    if (isRegionalRestricted) {
+      const targetReg = cleanReg(CONFIG.regional);
+      let matchedReg = '';
+      for (let i = 0; i < regSelect.options.length; i++) {
+        if (cleanReg(regSelect.options[i].value) === targetReg) {
+          matchedReg = regSelect.options[i].value;
+          break;
+        }
+      }
+      if (matchedReg) {
+        regSelect.value = matchedReg;
+      } else {
+        // Fallback: if not found, try direct assignment
+        regSelect.value = CONFIG.regional;
+      }
+      regSelect.disabled = true;
+
+      // Populate opSelect directly with allowed operations
+      opSelect.innerHTML = '<option value="">-- Seleccione Operación --</option>';
+      CONFIG.operacionesFiltro.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        opSelect.appendChild(opt);
+      });
+      opSelect.disabled = false;
+    } else if (isOpRestricted) {
+      // Both Regional and Operacion are prefilled and locked
+      const targetReg = cleanReg(CONFIG.regional);
+      let matchedReg = '';
+      for (let i = 0; i < regSelect.options.length; i++) {
+        if (cleanReg(regSelect.options[i].value) === targetReg) {
+          matchedReg = regSelect.options[i].value;
+          break;
+        }
+      }
+      if (matchedReg) {
+        regSelect.value = matchedReg;
+      } else {
+        regSelect.value = CONFIG.regional;
+      }
+      regSelect.disabled = true;
+
+      // Populate opSelect only with CONFIG.operacion
+      opSelect.innerHTML = '';
+      const opt = document.createElement('option');
+      opt.value = CONFIG.operacion;
+      opt.textContent = CONFIG.operacion;
+      opSelect.appendChild(opt);
+      opSelect.value = CONFIG.operacion;
+      opSelect.disabled = true;
+
+      // Load workers
+      opSelect.dispatchEvent(new Event('change'));
+    } else if (isDeviceOrOpRestricted) {
+      regSelect.disabled = true; // Keep all regionals in HTML but disable select
+
+      opSelect.innerHTML = '<option value="">-- Seleccione Operación --</option>';
+      CONFIG.operacionesFiltro.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        opSelect.appendChild(opt);
+      });
+      opSelect.disabled = false;
+
+      if (CONFIG.operacionesFiltro.length === 1) {
+        opSelect.value = CONFIG.operacionesFiltro[0];
+        opSelect.disabled = true;
+        // Trigger both regional resolution and worker loading
+        opSelect.dispatchEvent(new Event('change'));
+      }
+    }
+
+    let formTrabajadores = [];
+
+    function limpiarChecklist() {
+      formTrabajadores = [];
+      document.getElementById('form-trabajadores-count').innerText = '0';
+      document.getElementById('checklist-wrap').style.display = 'none';
+      document.getElementById('checklist-empty').style.display = 'block';
+      document.getElementById('form-checklist-body').innerHTML = '';
+      document.getElementById('chk-seleccionar-todos').checked = false;
+      document.getElementById('checklist-search-input').value = '';
+    }
+
+    async function cargarTrabajadoresParaChecklist() {
+      const reg = regSelect.value;
+      const op = opSelect.value;
+      const wrap = document.getElementById('checklist-wrap');
+      const empty = document.getElementById('checklist-empty');
+      const body = document.getElementById('form-checklist-body');
+      const chkTodos = document.getElementById('chk-seleccionar-todos');
+
+      limpiarChecklist();
+
+      if (!reg || !op) return;
+
+      showLoading('Buscando trabajadores...');
+      try {
+        const r = await fetch(`/descuentonomina/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+        const trabajadores = await r.json();
+
+        if (!trabajadores.length) {
+          body.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">No hay colaboradores activos en esta operación.</div>';
+          wrap.style.display = 'block';
+          empty.style.display = 'none';
+          return;
+        }
+
+        trabajadores.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'checklist-item';
+          const idCheckbox = `chk-t-${t.identificacion}`;
+
+          let nombreLimpio = t.Trabajador || '';
+          if (nombreLimpio.includes(' ** ')) {
+            const parts = nombreLimpio.split(' ** ');
+            nombreLimpio = parts[parts.length - 1];
+          }
+          nombreLimpio = nombreLimpio.trim();
+
+          div.setAttribute('data-search', `${t.identificacion} ${nombreLimpio}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
+          div.innerHTML = `
+            <input type="checkbox" id="${idCheckbox}" value="${t.identificacion}">
+            <label for="${idCheckbox}">${nombreLimpio} <span style="color:#64748b; font-size:.8rem; margin-left: 8px;">(${t.Cargo || 'Sin Cargo'})</span></label>
+          `;
+
+          const checkbox = div.querySelector('input[type="checkbox"]');
+          checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              if (!formTrabajadores.includes(t.identificacion)) {
+                formTrabajadores.push(t.identificacion);
+              }
+            } else {
+              formTrabajadores = formTrabajadores.filter(id => id !== t.identificacion);
+            }
+            document.getElementById('form-trabajadores-count').innerText = formTrabajadores.length;
+          });
+
+          div.addEventListener('click', (e) => {
+            if (e.target !== checkbox && e.target.tagName !== 'LABEL') {
+              checkbox.checked = !checkbox.checked;
+              checkbox.dispatchEvent(new Event('change'));
+            }
+          });
+
+          body.appendChild(div);
+        });
+
+        wrap.style.display = 'block';
+        empty.style.display = 'none';
+      } catch (e) {
+        console.error(e);
+        alert('Error al buscar trabajadores');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Filter checklist in real-time
+    document.getElementById('checklist-search-input').addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const items = document.querySelectorAll('.checklist-item');
+      items.forEach(item => {
+        const searchStr = item.getAttribute('data-search') || '';
+        if (searchStr.includes(val)) {
+          item.style.display = 'flex';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+
+    // Select all
+    document.getElementById('chk-seleccionar-todos').addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const visibleCheckboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+      
+      formTrabajadores = [];
+      visibleCheckboxes.forEach(cb => {
+        // Only trigger visible items
+        const itemEl = cb.closest('.checklist-item');
+        if (itemEl && itemEl.style.display !== 'none') {
+          cb.checked = checked;
+          if (checked) {
+            formTrabajadores.push(cb.value);
+          }
+        }
+      });
+      document.getElementById('form-trabajadores-count').innerText = formTrabajadores.length;
+    });
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+
+    // Submit handler
+    let generatedFirmaLink = '';
+    
+    async function handleSubmit(event) {
+      event.preventDefault();
+      if (!formTrabajadores.length) {
+        alert('Debe seleccionar al menos un colaborador.');
+        return;
+      }
+
+      const fecha = document.getElementById('input-fecha').value;
+      const ciudad = document.getElementById('input-ciudad').value.trim();
+      const tipo_descuento = selectTipoDescuento.value;
+      const cuotas = document.getElementById('input-cuotas').value.trim();
+      const valor = document.getElementById('input-valor').value.trim();
+      const motivo = document.getElementById('input-motivo').value.trim();
+      const observaciones = document.getElementById('input-observaciones').value.trim();
+      const enviar_correo = document.getElementById('chk-enviar-correo').checked;
+
+      showLoading('Registrando autorización...');
+      try {
+        if (formTrabajadores.length === 1) {
+          // Individual creation
+          const tId = formTrabajadores[0];
+          // Get worker name
+          const itemEl = document.querySelector(`.checklist-item input[value="${tId}"]`).closest('.checklist-item');
+          const tNombre = itemEl.querySelector('label').innerText.split('(')[0].trim();
+
+          // Fetch worker cargo
+          const rTrab = await fetch(`/descuentonomina/api/trabajadores-por-operacion?regional=${encodeURIComponent(regSelect.value)}&operacion=${encodeURIComponent(opSelect.value)}`);
+          const trabs = await rTrab.json();
+          // We can use search or pass to creation. Wait, the creation API will resolve it, but we can pass cargo from segments.
+          // Since segment lists cargo, let's fetch cargo or just use general 'Colaborador' or request it dynamically.
+          // Wait! In database segment, we have t.Cargo. In our query /api/trabajadores-por-operacion, we selected:
+          // SELECT DISTINCT Identificación, Nombre...
+          // Let's modify the query in src/routes/descuentonomina.js to also select Cargo!
+          // Ah! The query already selects Cargo in pruebaconsumo but let's check:
+          // In descuentonomina.js: 'SELECT DISTINCT Identificación AS identificacion, Nombre AS nombre, Cargo AS cargo FROM Maestro_Segmentación...'
+          // Let's check: yes! We should fetch cargo.
+          const currentWorker = trabs.find(w => String(w.identificacion) === String(tId)) || {};
+          const cargoVal = currentWorker.Cargo || 'Colaborador';
+
+          const res = await fetch('/descuentonomina/api/crear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fecha,
+              identificacion: tId,
+              nombre_trabajador: tNombre,
+              cargo: cargoVal,
+              ciudad,
+              tipo_descuento,
+              cuotas,
+              valor,
+              motivo,
+              observaciones,
+              usuario: CONFIG.usuarioId,
+              enviar_correo
+            })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Error al guardar');
+
+          generatedFirmaLink = `${window.location.origin}/descuentonomina/firmar?item=${data.id_descuento}&token=${data.token_firma}`;
+          
+          document.getElementById('success-message').innerText = `Se ha creado el registro de autorización para ${tNombre} con éxito.`;
+          document.getElementById('success-link').innerText = generatedFirmaLink;
+          
+          // Setup WhatsApp
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Autorización de Descuento por Nómina: ${generatedFirmaLink}`);
+          // Fetch phone number
+          const rContact = await fetch(`/descuentonomina/api/contacto/${tId}`);
+          const contact = await rContact.json();
+          const cleanCel = contact.celular ? String(contact.celular).replace(/\D/g, '') : '';
+          let phoneParam = '';
+          if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+            phoneParam = '57' + cleanCel;
+          } else if (cleanCel) {
+            phoneParam = cleanCel;
+          }
+          document.getElementById('success-whatsapp').href = `https://wa.me/${phoneParam}?text=${msgWaText}`;
+          document.getElementById('single-link-wrap').style.display = 'block';
+
+        } else {
+          // Bulk creation
+          // Prepare items list
+          const rTrab = await fetch(`/descuentonomina/api/trabajadores-por-operacion?regional=${encodeURIComponent(regSelect.value)}&operacion=${encodeURIComponent(opSelect.value)}`);
+          const trabs = await rTrab.json();
+
+          const items = formTrabajadores.map(tId => {
+            const currentWorker = trabs.find(w => String(w.identificacion) === String(tId)) || {};
+            const itemEl = document.querySelector(`.checklist-item input[value="${tId}"]`).closest('.checklist-item');
+            const tNombre = itemEl.querySelector('label').innerText.split('(')[0].trim();
+            const cargoVal = currentWorker.Cargo || 'Colaborador';
+
+            return {
+              fecha,
+              identificacion: tId,
+              nombre_trabajador: tNombre,
+              cargo: cargoVal,
+              ciudad,
+              tipo_descuento,
+              cuotas,
+              valor,
+              motivo,
+              observaciones
+            };
+          });
+
+          const res = await fetch('/descuentonomina/api/crear-masivo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              items,
+              usuario: CONFIG.usuarioId
+            })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Error al guardar en lote');
+
+          const creadosCount = data.creados?.length || 0;
+          const erroresCount = data.errores?.length || 0;
+
+          let msg = `Se crearon ${creadosCount} autorizaciones con éxito.`;
+          if (erroresCount > 0) {
+            msg += ` Ocurrieron ${erroresCount} errores.`;
+          }
+          document.getElementById('success-message').innerText = msg;
+          document.getElementById('single-link-wrap').style.display = 'none';
+        }
+
+        // Show success layout
+        document.getElementById('form-container').style.display = 'none';
+        document.getElementById('success-container').style.display = 'block';
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function copiarLink() {
+      navigator.clipboard.writeText(generatedFirmaLink).then(() => {
+        alert('Enlace copiado al portapapeles.');
+      });
+    }
+
+    function resetForm() {
+      formTrabajadores = [];
+      document.getElementById('form-trabajadores-count').innerText = '0';
+      document.getElementById('chk-seleccionar-todos').checked = false;
+      document.getElementById('descuento-form').reset();
+      
+      document.getElementById('input-fecha').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('input-ciudad').value = CONFIG.ciudad || '';
+      
+      selectTipoDescuento.dispatchEvent(new Event('change'));
+      limpiarChecklist();
+
+      document.getElementById('form-container').style.display = 'block';
+      document.getElementById('success-container').style.display = 'none';
+    }
+  </script>
+</body>
+</html>

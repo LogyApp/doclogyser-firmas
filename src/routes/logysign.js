@@ -40,6 +40,21 @@ const upload = multer({ storage: multer.memoryStorage() });
   }
 })();
 
+// Preventively check and add id_descuento_auto column if not exists
+(async () => {
+  try {
+    await pool.execute(`
+      ALTER TABLE Dynamic_Logysign 
+      ADD COLUMN id_descuento_auto VARCHAR(255) NULL
+    `);
+    console.log('[logysign] Column id_descuento_auto verified/added successfully.');
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.error('[logysign] Error checking column id_descuento_auto:', e);
+    }
+  }
+})();
+
 const { obtenerCcEmails } = require('../services/logysignScheduler');
 
 // ═════ SERVIR INTERFAZ CREADOR (form.html) ═════
@@ -337,14 +352,57 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
     const parsedFechaProgramada = fechaProgramada ? fechaProgramada.replace('T', ' ') + ':00' : null;
     const baseUrl = `${req.secure ? 'https' : 'http'}://${req.get('host')}`;
 
-    // 4. Save metadata in Dynamic_Logysign
+    let idDescuentoAuto = null;
+    let tokenFirmaDescuento = null;
+
+    if (Number(idConfigDoc) === 18) {
+      let ciudad = '';
+      const [ccRows] = await pool.execute(
+        'SELECT `C.C.` FROM Maestro_Operaciones WHERE OPERACIÓN = ? LIMIT 1',
+        [operacion || '']
+      );
+      if (ccRows.length) {
+        ciudad = ccRows[0]['C.C.'] || '';
+      }
+
+      const crypto = require('crypto');
+      const idDescuento = uuidv4();
+      const tokenFirma = crypto.randomBytes(32).toString('hex');
+      const tokenExpiraDescuento = new Date();
+      tokenExpiraDescuento.setDate(tokenExpiraDescuento.getDate() + 30); // 30 days
+
+      const cleanTrabajador = String(trabajador || '').trim();
+      const fechaHoy = new Date().toISOString().slice(0, 10);
+
+      await pool.execute(
+        `INSERT INTO Dynamic_descuentonomina 
+         (id_descuento, fecha, identificacion, nombre_trabajador, cargo, ciudad, tipo_descuento, token_firma, token_expira, usuario)
+         VALUES (?, ?, ?, ?, ?, ?, 'Anticipada', ?, ?, ?)`,
+        [
+          idDescuento,
+          fechaHoy,
+          identificacion,
+          cleanTrabajador,
+          cargo || '',
+          ciudad,
+          tokenFirma,
+          tokenExpiraDescuento,
+          usuarioId
+        ]
+      );
+
+      idDescuentoAuto = idDescuento;
+      tokenFirmaDescuento = tokenFirma;
+    }
+
+    // 4. Save metadata in Dynamic_Logysign (including id_descuento_auto link)
     await pool.execute(
       `INSERT INTO Dynamic_Logysign 
        (id, token, token_expira, identificacion, nombre_trabajador, email_trabajador, 
         regional, operacion, cargo, fecha_ingreso, id_config_doc, prefijo, 
         original_pdf_url, firma_x, firma_y, firma_w, firma_h, firma_page, 
-        usuario_creador, estado, firmas_coordenadas, fecha_envio_programado, base_url, causa)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        usuario_creador, estado, firmas_coordenadas, fecha_envio_programado, base_url, causa, id_descuento_auto)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         uuid,
         token,
@@ -369,7 +427,8 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         firmasCoordenadas || null,
         parsedFechaProgramada,
         baseUrl,
-        (Number(idConfigDoc) === 55 && causa) ? causa.trim() : null
+        (Number(idConfigDoc) === 55 && causa) ? causa.trim() : null,
+        idDescuentoAuto
       ]
     );
 
@@ -390,38 +449,76 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       const host = req.get('host');
       const linkFirma = `${scheme}://${host}/logysign/sign/${token}`;
 
-      const mailBody = `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-          <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
-            <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Firma de Documento</h2>
-          </div>
-          <div style="padding:24px;background:#ffffff">
-            <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${trabajador}</strong>,</p>
-            <p style="color:#4a5568;line-height:1.6">Se ha generado un documento oficial que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
-            
-            <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
-              <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568;width:35%">Trabajador</td><td style="padding:10px">${trabajador} (${identificacion})</td></tr>
-              <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Documento</td><td style="padding:10px">${nombreDocumento}</td></tr>
-            </table>
+      let mailBody = '';
+      let mailSubject = `LOG&SER: Documento pendiente de firma (${nombreDocumento}) — ${trabajador}`;
 
-            <div style="text-align:center;margin:32px 0">
-              <a href="${linkFirma}" target="_blank" style="background:#000b59;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:bold;border-radius:6px;display:inline-block;box-shadow:0 4px 6px rgba(0,11,89,0.15)">Ver y Firmar Documento</a>
+      if (Number(idConfigDoc) === 18 && idDescuentoAuto) {
+        const linkFirmaDescuento = `${scheme}://${host}/descuentonomina/firmar?item=${idDescuentoAuto}&token=${tokenFirmaDescuento}`;
+        mailSubject = `LOG&SER: Documentos pendientes de ingreso (Contrato y Autorización Descuento) — ${trabajador}`;
+        mailBody = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
+            <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
+              <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Proceso de Ingreso</h2>
             </div>
-            
-            <p style="font-size:0.85rem;color:#718096;line-height:1.4">Si el botón no funciona, copie y pegue este enlace en la barra de direcciones de su navegador:</p>
-            <p style="font-size:0.85rem;color:#000b59;word-break:break-all">${linkFirma}</p>
+            <div style="padding:24px;background:#ffffff">
+              <p style="font-size:1.05rem;color:#2d3748">¡Hola <strong>${trabajador}</strong>!</p>
+              <p style="color:#4a5568;line-height:1.6">Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo.</p>
+              <p style="color:#4a5568;line-height:1.6">Para completar tu proceso de ingreso de forma rápida, por favor ingresa a los siguientes enlaces para revisar y firmar digitalmente tus documentos de ingreso obligatorios:</p>
+              
+              <div style="margin:24px 0;border-left:4px solid #000b59;padding-left:16px">
+                <p style="margin:0 0 8px 0;font-weight:bold;color:#2d3748">📄 1. Contrato de Trabajo:</p>
+                <p style="margin:0 0 12px 0;font-size:0.9rem;color:#4a5568">(Por favor verifica que tus datos personales estén correctos y lee las condiciones antes de firmar).</p>
+                <a href="${linkFirma}" target="_blank" style="background:#000b59;color:#ffffff;padding:8px 16px;text-decoration:none;font-weight:bold;border-radius:4px;display:inline-block;font-size:0.85rem">Firmar Contrato de Trabajo</a>
+              </div>
+
+              <div style="margin:24px 0;border-left:4px solid #000b59;padding-left:16px">
+                <p style="margin:0 0 8px 0;font-weight:bold;color:#2d3748">📝 2. Autorización de Descuento por Nómina:</p>
+                <p style="margin:0 0 12px 0;font-size:0.9rem;color:#4a5568">(Este formato es un requisito estándar de la compañía que se firma de manera preventiva para respaldar los activos y herramientas de trabajo frente a daños o pérdidas).</p>
+                <a href="${linkFirmaDescuento}" target="_blank" style="background:#000b59;color:#ffffff;padding:8px 16px;text-decoration:none;font-weight:bold;border-radius:4px;display:inline-block;font-size:0.85rem">Firmar Autorización de Descuento</a>
+              </div>
+
+              <p style="color:#4a5568;line-height:1.6;font-size:0.95rem">Una vez firmes ambos documentos, el sistema enviará los respaldos directamente a nuestro soporte legal.</p>
+              <p style="color:#4a5568;line-height:1.6;font-weight:bold">¡Muchos éxitos en esta nueva etapa con nosotros!</p>
+            </div>
+            <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
+              <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
+            </div>
           </div>
-          <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
-            <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
+        `;
+      } else {
+        mailBody = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
+            <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
+              <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Firma de Documento</h2>
+            </div>
+            <div style="padding:24px;background:#ffffff">
+              <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${trabajador}</strong>,</p>
+              <p style="color:#4a5568;line-height:1.6">Se ha generado un documento oficial que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
+              
+              <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
+                <tr style="background:#f7fafc"><td style="padding:10px;font-weight:bold;color:#4a5568;width:35%">Trabajador</td><td style="padding:10px">${trabajador} (${identificacion})</td></tr>
+                <tr><td style="padding:10px;font-weight:bold;color:#4a5568">Documento</td><td style="padding:10px">${nombreDocumento}</td></tr>
+              </table>
+
+              <div style="text-align:center;margin:32px 0">
+                <a href="${linkFirma}" target="_blank" style="background:#000b59;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:bold;border-radius:6px;display:inline-block;box-shadow:0 4px 6px rgba(0,11,89,0.15)">Ver y Firmar Documento</a>
+              </div>
+              
+              <p style="font-size:0.85rem;color:#718096;line-height:1.4">Si el botón no funciona, copie y pegue este enlace en la barra de direcciones de su navegador:</p>
+              <p style="font-size:0.85rem;color:#000b59;word-break:break-all">${linkFirma}</p>
+            </div>
+            <div style="background:#f7fafc;padding:16px;border-bottom-left-radius:8px;border-bottom-right-radius:8px;text-align:center;border-top:1px solid #edf2f7">
+              <p style="font-size:0.8rem;color:#a0aec0;margin:0">Este es un correo automático. Por favor no responda directamente a este mensaje.</p>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
 
       await transporter.sendMail({
         from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
         to: emailTrabajador,
         cc: ccEmails.length ? ccEmails.join(', ') : undefined,
-        subject: `LOG&SER: Documento pendiente de firma (${nombreDocumento}) — ${trabajador}`,
+        subject: mailSubject,
         html: mailBody
       });
     }

@@ -570,6 +570,384 @@ router.get('/api/todo', async (req, res) => {
   }
 });
 
+// API: Obtener conteos dinámicos para los filtros (Faceted Search)
+router.get('/api/conteos', async (req, res) => {
+  try {
+    const { usuario, activeTab, buscar, regional, operacion, estado, tipoDocumento, tipoRegistro, estadoSolicitud } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const response = {
+      regionales: {},
+      operaciones: {},
+      estados: {},
+      tiposRegistro: {},
+      estadosSolicitud: {},
+      tiposDocumento: {}
+    };
+
+    if (activeTab === 'trabajador') {
+      // 1. Regionales
+      const regConds = [];
+      const regParams = [];
+      if (!acceso.sinFiltro) {
+        regConds.push(`mv.Operación IN (${acceso.operacionesFiltro.map(()=>'?').join(',')})`);
+        regParams.push(...acceso.operacionesFiltro);
+      }
+      if (buscar) {
+        regConds.push('s.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+        regParams.push(`%${buscar}%`);
+      }
+      if (estado) {
+        regConds.push('mv.Estado = ?');
+        regParams.push(estado);
+      }
+      if (operacion) {
+        regConds.push('mv.Operación = ?');
+        regParams.push(operacion);
+      }
+      const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
+      const [regRows] = await pool.execute(
+        `SELECT mv.Regional, COUNT(*) AS total
+         FROM Maestro_Segmentación s
+         JOIN (
+           SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado
+           FROM Maestro_Vinculación v1
+           INNER JOIN (
+             SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS max_fecha
+             FROM Maestro_Vinculación
+             GROUP BY Identificación
+           ) v2 ON v1.Identificación = v2.Identificación AND v1.\`Fecha de Ingreso\` = v2.max_fecha
+         ) mv ON s.Identificación = mv.Identificación
+         ${regWhere}
+         GROUP BY mv.Regional`,
+        regParams
+      );
+      regRows.forEach(r => { if (r.Regional) response.regionales[r.Regional] = r.total; });
+
+      // 2. Operaciones
+      const opConds = [];
+      const opParams = [];
+      if (!acceso.sinFiltro) {
+        opConds.push(`mv.Operación IN (${acceso.operacionesFiltro.map(()=>'?').join(',')})`);
+        opParams.push(...acceso.operacionesFiltro);
+      }
+      if (buscar) {
+        opConds.push('s.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+        opParams.push(`%${buscar}%`);
+      }
+      if (estado) {
+        opConds.push('mv.Estado = ?');
+        opParams.push(estado);
+      }
+      if (regional) {
+        opConds.push('mv.Regional = ?');
+        opParams.push(regional);
+      }
+      const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
+      const [opRows] = await pool.execute(
+        `SELECT mv.Operación, COUNT(*) AS total
+         FROM Maestro_Segmentación s
+         JOIN (
+           SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado
+           FROM Maestro_Vinculación v1
+           INNER JOIN (
+             SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS max_fecha
+             FROM Maestro_Vinculación
+             GROUP BY Identificación
+           ) v2 ON v1.Identificación = v2.Identificación AND v1.\`Fecha de Ingreso\` = v2.max_fecha
+         ) mv ON s.Identificación = mv.Identificación
+         ${opWhere}
+         GROUP BY mv.Operación`,
+        opParams
+      );
+      opRows.forEach(o => { if (o.Operación) response.operaciones[o.Operación] = o.total; });
+
+      // 3. Estados
+      const estConds = [];
+      const estParams = [];
+      if (!acceso.sinFiltro) {
+        estConds.push(`mv.Operación IN (${acceso.operacionesFiltro.map(()=>'?').join(',')})`);
+        estParams.push(...acceso.operacionesFiltro);
+      }
+      if (buscar) {
+        estConds.push('s.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+        estParams.push(`%${buscar}%`);
+      }
+      if (regional) {
+        estConds.push('mv.Regional = ?');
+        estParams.push(regional);
+      }
+      if (operacion) {
+        estConds.push('mv.Operación = ?');
+        estParams.push(operacion);
+      }
+      const estWhere = estConds.length ? `WHERE ${estConds.join(' AND ')}` : '';
+      const [estRows] = await pool.execute(
+        `SELECT mv.Estado, COUNT(*) AS total
+         FROM Maestro_Segmentación s
+         JOIN (
+           SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado
+           FROM Maestro_Vinculación v1
+           INNER JOIN (
+             SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS max_fecha
+             FROM Maestro_Vinculación
+             GROUP BY Identificación
+           ) v2 ON v1.Identificación = v2.Identificación AND v1.\`Fecha de Ingreso\` = v2.max_fecha
+         ) mv ON s.Identificación = mv.Identificación
+         ${estWhere}
+         GROUP BY mv.Estado`,
+        estParams
+      );
+      estRows.forEach(e => { if (e.Estado) response.estados[e.Estado] = e.total; });
+    }
+
+    else if (activeTab === 'documento') {
+      // 1. Regionales
+      const regConds = [];
+      const regParams = [];
+      if (!acceso.sinFiltro) {
+        regConds.push(`t.Operación IN (${acceso.operacionesFiltro.map(()=>'?').join(',')})`);
+        regParams.push(...acceso.operacionesFiltro);
+      }
+      if (buscar) {
+        regConds.push('s.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+        regParams.push(`%${buscar}%`);
+      }
+      if (operacion) {
+        regConds.push('t.Operación = ?');
+        regParams.push(operacion);
+      }
+      const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
+      const [regRows] = await pool.execute(
+        `SELECT t.Regional, COUNT(*) AS total
+         FROM Maestro_docTrabajador t
+         LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
+         ${regWhere}
+         GROUP BY t.Regional`,
+        regParams
+      );
+      regRows.forEach(r => { if (r.Regional) response.regionales[r.Regional] = r.total; });
+
+      // 2. Operaciones
+      const opConds = [];
+      const opParams = [];
+      if (!acceso.sinFiltro) {
+        opConds.push(`t.Operación IN (${acceso.operacionesFiltro.map(()=>'?').join(',')})`);
+        opParams.push(...acceso.operacionesFiltro);
+      }
+      if (buscar) {
+        opConds.push('s.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+        opParams.push(`%${buscar}%`);
+      }
+      if (regional) {
+        opConds.push('t.Regional = ?');
+        opParams.push(regional);
+      }
+      const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
+      const [opRows] = await pool.execute(
+        `SELECT t.Operación, COUNT(*) AS total
+         FROM Maestro_docTrabajador t
+         LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
+         ${opWhere}
+         GROUP BY t.Operación`,
+        opParams
+      );
+      opRows.forEach(o => { if (o.Operación) response.operaciones[o.Operación] = o.total; });
+    }
+
+    else if (activeTab === 'todo') {
+      const buildFiltersTodoLocal = (buscarVal, regionalVal, operacionVal, tipoDocumentoVal, estadoVal, tipoRegistroVal) => {
+        const cT = [];
+        const pT = [];
+        const cG = [];
+        const pG = [];
+
+        if (!acceso.sinFiltro) {
+          cT.push(`t.Operación IN (${acceso.operacionesFiltro.map(()=>'?').join(',')})`);
+          cG.push(`e.Operación IN (${acceso.operacionesFiltro.map(()=>'?').join(',')})`);
+          pT.push(...acceso.operacionesFiltro);
+          pG.push(...acceso.operacionesFiltro);
+        }
+
+        if (buscarVal) {
+          cT.push('v.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+          pT.push(`%${buscarVal}%`);
+          cG.push('0 = 1');
+        }
+
+        if (regionalVal) {
+          cT.push('t.Regional = ?'); pT.push(regionalVal);
+          cG.push('e.Regional = ?'); pG.push(regionalVal);
+        }
+
+        if (operacionVal) {
+          cT.push('t.Operación = ?'); pT.push(operacionVal);
+          cG.push('e.Operación = ?'); pG.push(operacionVal);
+        }
+
+        if (tipoDocumentoVal) {
+          cT.push('t.TipoDocumento = ?'); pT.push(tipoDocumentoVal);
+          cG.push('e.TipoDocumento = ?'); pG.push(tipoDocumentoVal);
+        }
+
+        if (estadoVal) {
+          cT.push('t.Estado = ?'); pT.push(estadoVal);
+          cG.push('0 = 1');
+        }
+
+        cT.push(construirFiltroRolTrabajador(acceso.permisos, 't'));
+        cG.push(construirFiltroRolGeneral(acceso.permisos, 'e'));
+
+        return { cT, pT, cG, pG };
+      };
+
+      // 1. Regionales (Excluye Regional)
+      const rF = buildFiltersTodoLocal(buscar, null, operacion, tipoDocumento, estado, tipoRegistro);
+      if (tipoRegistro !== 'General') {
+        const [rowsT] = await pool.execute(`
+          SELECT t.Regional, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${rF.cT.join(' AND ')} GROUP BY t.Regional
+        `, rF.pT);
+        rowsT.forEach(r => { if (r.Regional) response.regionales[r.Regional] = (response.regionales[r.Regional] || 0) + r.total; });
+      }
+      if (tipoRegistro !== 'Trabajador') {
+        const [rowsG] = await pool.execute(`
+          SELECT e.Regional, COUNT(*) AS total FROM Maestro_docEmpresa e WHERE ${rF.cG.join(' AND ')} GROUP BY e.Regional
+        `, rF.pG);
+        rowsG.forEach(r => { if (r.Regional) response.regionales[r.Regional] = (response.regionales[r.Regional] || 0) + r.total; });
+      }
+
+      // 2. Operaciones (Excluye Operación)
+      const oF = buildFiltersTodoLocal(buscar, regional, null, tipoDocumento, estado, tipoRegistro);
+      if (tipoRegistro !== 'General') {
+        const [rowsT] = await pool.execute(`
+          SELECT t.Operación, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${oF.cT.join(' AND ')} GROUP BY t.Operación
+        `, oF.pT);
+        rowsT.forEach(r => { if (r.Operación) response.operaciones[r.Operación] = (response.operaciones[r.Operación] || 0) + r.total; });
+      }
+      if (tipoRegistro !== 'Trabajador') {
+        const [rowsG] = await pool.execute(`
+          SELECT e.Operación, COUNT(*) AS total FROM Maestro_docEmpresa e WHERE ${oF.cG.join(' AND ')} GROUP BY e.Operación
+        `, oF.pG);
+        rowsG.forEach(r => { if (r.Operación) response.operaciones[r.Operación] = (response.operaciones[r.Operación] || 0) + r.total; });
+      }
+
+      // 3. Estados (Excluye Estado, Trabajador sólo)
+      const eF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, null, tipoRegistro);
+      if (tipoRegistro !== 'General') {
+        const [rowsT] = await pool.execute(`
+          SELECT t.Estado, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${eF.cT.join(' AND ')} GROUP BY t.Estado
+        `, eF.pT);
+        rowsT.forEach(r => { if (r.Estado) response.estados[r.Estado] = r.total; });
+      }
+
+      // 4. Tipos Registro
+      const trF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, estado, null);
+      if (tipoRegistro !== 'General') {
+        const [rowsT] = await pool.execute(`
+          SELECT COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${trF.cT.join(' AND ')}
+        `, trF.pT);
+        response.tiposRegistro['Trabajador'] = rowsT[0].total || 0;
+      }
+      if (tipoRegistro !== 'Trabajador') {
+        const [rowsG] = await pool.execute(`
+          SELECT COUNT(*) AS total FROM Maestro_docEmpresa e WHERE ${trF.cG.join(' AND ')}
+        `, trF.pG);
+        response.tiposRegistro['General'] = rowsG[0].total || 0;
+      }
+
+      // 5. Tipos Documento (Excluye TipoDocumento)
+      const tdF = buildFiltersTodoLocal(buscar, regional, operacion, null, estado, tipoRegistro);
+      if (tipoRegistro !== 'General') {
+        const [rowsT] = await pool.execute(`
+          SELECT t.TipoDocumento, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${tdF.cT.join(' AND ')} GROUP BY t.TipoDocumento
+        `, tdF.pT);
+        rowsT.forEach(r => { if (r.TipoDocumento) response.tiposDocumento[r.TipoDocumento] = (response.tiposDocumento[r.TipoDocumento] || 0) + r.total; });
+      }
+      if (tipoRegistro !== 'Trabajador') {
+        const [rowsG] = await pool.execute(`
+          SELECT e.TipoDocumento, COUNT(*) AS total FROM Maestro_docEmpresa e WHERE ${tdF.cG.join(' AND ')} GROUP BY e.TipoDocumento
+        `, tdF.pG);
+        rowsG.forEach(r => { if (r.TipoDocumento) response.tiposDocumento[r.TipoDocumento] = (response.tiposDocumento[r.TipoDocumento] || 0) + r.total; });
+      }
+    }
+
+    else if (activeTab === 'solicitudes') {
+      const buildFiltersSolLocal = (buscarVal, regionalVal, operacionVal, estadoSolicitudVal) => {
+        const cT = ["t.Solicitud = 'SI'"];
+        const pT = [];
+        const cG = ["e.Solicitud = 'SI'"];
+        const pG = [];
+
+        if (regionalVal) {
+          cT.push('t.Regional = ?'); pT.push(regionalVal);
+          cG.push('e.Regional = ?'); pG.push(regionalVal);
+        }
+        if (operacionVal) {
+          cT.push('t.Operación = ?'); pT.push(operacionVal);
+          cG.push('e.Operación = ?'); pG.push(operacionVal);
+        }
+        if (estadoSolicitudVal === 'Pendiente') {
+          cT.push("(t.Estado_Solicitud = 'Pendiente' OR t.Estado_Solicitud IS NULL)");
+          cG.push("(e.Estado_Solicitud = 'Pendiente' OR e.Estado_Solicitud IS NULL)");
+        } else if (estadoSolicitudVal) {
+          cT.push("t.Estado_Solicitud = ?"); pT.push(estadoSolicitudVal);
+          cG.push("e.Estado_Solicitud = ?"); pG.push(estadoSolicitudVal);
+        }
+        if (buscarVal) {
+          cT.push("(v.Trabajador COLLATE utf8mb4_general_ci LIKE ? OR t.Usuario_Solicitud COLLATE utf8mb4_general_ci LIKE ?)");
+          pT.push(`%${buscarVal}%`, `%${buscarVal}%`);
+          cG.push("e.Usuario_Solicitud COLLATE utf8mb4_general_ci LIKE ?");
+          pG.push(`%${buscarVal}%`);
+        }
+        return { cT, pT, cG, pG };
+      };
+
+      // 1. Regionales
+      const rF = buildFiltersSolLocal(buscar, null, operacion, estadoSolicitud);
+      const [rowsTReg] = await pool.execute(`
+        SELECT t.Regional, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${rF.cT.join(' AND ')} GROUP BY t.Regional
+      `, rF.pT);
+      rowsTReg.forEach(r => { if (r.Regional) response.regionales[r.Regional] = (response.regionales[r.Regional] || 0) + r.total; });
+      const [rowsGReg] = await pool.execute(`
+        SELECT e.Regional, COUNT(*) AS total FROM Maestro_docEmpresa e WHERE ${rF.cG.join(' AND ')} GROUP BY e.Regional
+      `, rF.pG);
+      rowsGReg.forEach(r => { if (r.Regional) response.regionales[r.Regional] = (response.regionales[r.Regional] || 0) + r.total; });
+
+      // 2. Operaciones
+      const oF = buildFiltersSolLocal(buscar, regional, null, estadoSolicitud);
+      const [rowsTOp] = await pool.execute(`
+        SELECT t.Operación, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${oF.cT.join(' AND ')} GROUP BY t.Operación
+      `, oF.pT);
+      rowsTOp.forEach(o => { if (o.Operación) response.operaciones[o.Operación] = (response.operaciones[o.Operación] || 0) + o.total; });
+      const [rowsGOp] = await pool.execute(`
+        SELECT e.Operación, COUNT(*) AS total FROM Maestro_docEmpresa e WHERE ${oF.cG.join(' AND ')} GROUP BY e.Operación
+      `, oF.pG);
+      rowsGOp.forEach(o => { if (o.Operación) response.operaciones[o.Operación] = (response.operaciones[o.Operación] || 0) + o.total; });
+
+      // 3. Estados de Solicitud
+      const estadosList = ['Pendiente', 'Autorizado', 'Rechazado', 'Revocado'];
+      for (const est of estadosList) {
+        const sF = buildFiltersSolLocal(buscar, regional, operacion, est);
+        const [rowsT] = await pool.execute(`
+          SELECT COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${sF.cT.join(' AND ')}
+        `, sF.pT);
+        const [rowsG] = await pool.execute(`
+          SELECT COUNT(*) AS total FROM Maestro_docEmpresa e WHERE ${sF.cG.join(' AND ')}
+        `, sF.pG);
+        response.estadosSolicitud[est] = (rowsT[0].total || 0) + (rowsG[0].total || 0);
+      }
+    }
+
+    res.json(response);
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/conteos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Solicitar acceso a un documento
 router.post('/api/solicitar', async (req, res) => {
   try {
@@ -587,16 +965,62 @@ router.post('/api/solicitar', async (req, res) => {
   }
 });
 
-// API: Listado de solicitudes de acceso (Solo para roles Archivo y Sistema)
+// API: Listado de validaciones de carpetas (Solo para roles Archivo, Sistema y Asistencial)
+router.get('/api/validarcap', async (req, res) => {
+  try {
+    const { usuario, buscar } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (acceso.rol !== 'Archivo' && acceso.rol !== 'Sistema' && acceso.rol !== 'Asistencial') {
+      return res.status(403).json({ error: 'Rol no autorizado para validar carpetas' });
+    }
+
+    let sql = `
+      SELECT 
+        c.IdCargue,
+        c.Estado,
+        c.Identificación AS identificacion,
+        s.Trabajador AS trabajador,
+        c.Usuario AS usuario,
+        DATE_FORMAT(c.Fecha, '%Y-%m-%d %H:%i:%s') AS fecha
+      FROM Maestro_ok_carpeta c
+      LEFT JOIN Maestro_Segmentación s ON c.Identificación = s.Identificación
+    `;
+    const conds = [];
+    const params = [];
+
+    if (buscar) {
+      conds.push('(s.Trabajador COLLATE utf8mb4_general_ci LIKE ? OR CAST(c.Identificación AS CHAR) LIKE ?)');
+      params.push(`%${buscar}%`, `%${buscar}%`);
+    }
+
+    if (conds.length) {
+      sql += ` WHERE ${conds.join(' AND ')}`;
+    }
+
+    sql += ` ORDER BY c.Fecha DESC LIMIT 1000`;
+
+    const [rows] = await pool.execute(sql, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/validarcap:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Listado de solicitudes de acceso (Solo para roles Archivo, Sistema y Asistencial)
 router.get('/api/solicitudes', async (req, res) => {
   try {
     const { usuario, regional, operacion, buscar, estadoSolicitud } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
-    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!acceso) return res.status(403).json({ error: 'No unauthorized' });
 
-    if (acceso.rol !== 'Archivo' && acceso.rol !== 'Sistema') {
+    if (acceso.rol !== 'Archivo' && acceso.rol !== 'Sistema' && acceso.rol !== 'Asistencial') {
       return res.status(403).json({ error: 'Rol no autorizado para ver solicitudes' });
     }
 

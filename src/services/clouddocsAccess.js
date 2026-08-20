@@ -69,7 +69,7 @@ async function computarAccesoCloudDocs(pool, usuarioId) {
     regional: usuario.Regional || '',
     dispositivo: usuario.Dispositivo || '',
     operacion: usuario['Operación'] || '',
-    sinFiltro: ROLES_SIN_FILTRO.includes(rol),
+    sinFiltro: ROLES_SIN_FILTRO.includes(rol) || (usuario['Operación'] && ['administracion', 'administración'].includes(usuario['Operación'].toLowerCase().trim())),
     operacionesFiltro: [],
     opsPorRegional: {},
     permisos: await obtenerPermisosRol(pool, rol),

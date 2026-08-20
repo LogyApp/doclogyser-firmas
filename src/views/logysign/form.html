@@ -653,6 +653,10 @@
         <p>Módulo de Preparación y Firma Digital de Documentos PDF</p>
       </div>
       <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <a class="btn-records" id="btn-cloud-docs" href="#" style="background: rgba(255, 255, 255, 0.08); color: #fff; padding: 9px 18px; border-radius: 50px; font-size: 0.85rem; font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.16); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-decoration: none; transition: var(--transition);">
+          <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          CloudDocs
+        </a>
         <a class="btn-records" id="btn-ver-registros" href="#">
           <svg style="width:16px;height:16px" viewBox="0 0 24 24"><path fill="currentColor" d="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
           Ver mis registros
@@ -851,6 +855,7 @@
     // Init page info
     userBadge.innerText = CONFIG.usuarioNombre;
     document.getElementById('btn-ver-registros').href = `/registrologysign?usuario=${CONFIG.usuarioId}`;
+    document.getElementById('btn-cloud-docs').href = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
     // Show toast message
     function showToast(msg, type = 'success') {
@@ -1103,16 +1108,7 @@
         pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         currentPageNum = 1;
         
-        signatureBoxes = [
-          {
-            id: 'box-default',
-            page: 1,
-            x: 0,
-            y: 0,
-            w: 160,
-            h: 70
-          }
-        ];
+        signatureBoxes = [];
 
         noPdfMessage.style.display = 'none';
         pdfContainer.style.display = 'block';
@@ -1211,12 +1207,10 @@
     }
 
     function updateDeleteButtons() {
-      const showDelete = signatureBoxes.length > 1;
       document.querySelectorAll('.sig-box').forEach(boxEl => {
-        const boxId = boxEl.id;
         const deleteBtn = boxEl.querySelector('.sig-delete-btn');
         if (deleteBtn) {
-          deleteBtn.style.display = showDelete ? 'flex' : 'none';
+          deleteBtn.style.display = 'flex';
         }
       });
     }
@@ -1231,6 +1225,7 @@
           signatureBoxes = signatureBoxes.filter(b => b.id !== boxId);
           boxEl.remove();
           updateDeleteButtons();
+          checkFormValidity();
         });
       }
 
@@ -1328,13 +1323,14 @@
         id: 'box-' + Date.now(),
         page: currentPageNum,
         x: (canvas.width - 160) / 2,
-        y: canvas.height - 70 - 50,
+        y: (canvas.height - 70) / 2,
         w: 160,
         h: 70
       };
       signatureBoxes.push(newBox);
       createBoxElement(newBox);
       updateDeleteButtons();
+      checkFormValidity();
     });
 
     // Form Validity Check
@@ -1359,7 +1355,7 @@
         }
       }
 
-      btnSubmit.disabled = !(hasWorker && hasDocType && hasFile && email && celular && scheduleValid && causaValid);
+      btnSubmit.disabled = !(hasWorker && hasDocType && hasFile && email && celular && scheduleValid && causaValid && signatureBoxes.length > 0);
     }
 
     document.getElementById('input-celular').addEventListener('input', checkFormValidity);
@@ -1455,38 +1451,9 @@
 
         showToast(chkProgramar.checked ? 'Envío programado con éxito.' : 'Documento registrado y enviado con éxito.', 'success');
         
-        // Reset form
-        workerSearchInput.value = '';
-        selectedTrabajador = null;
-        selectedTrabajadorDetails = null;
-        document.getElementById('vinculacion-panel').style.display = 'none';
-        document.getElementById('grp-celular').style.display = 'none';
-        document.getElementById('grp-email').style.display = 'none';
-        selectClasificacion.value = '';
-        selectDocumento.innerHTML = '<option value="">-- Seleccione Tipo de Documento --</option>';
-        selectDocumento.disabled = true;
-        originalFile = null;
-        fileInput.value = '';
-        fileIndicator.style.display = 'none';
-        pdfContainer.style.display = 'none';
-        noPdfMessage.style.display = 'block';
-        pdfDoc = null;
-        pageIndicator.innerText = 'Página: 0 / 0';
-        btnPrev.disabled = true;
-        btnNext.disabled = true;
-        btnAddSig.style.display = 'none';
-        signatureBoxes = [];
-        document.querySelectorAll('.sig-box').forEach(el => el.remove());
-
-        chkProgramar.checked = false;
-        grpProgramarFecha.style.display = 'none';
-        inputFechaProgramacion.value = '';
-        btnSubmit.innerText = 'Enviar al Trabajador';
-
-        grpCausa.style.display = 'none';
-        selectCausa.innerHTML = '<option value="">-- Seleccione Causa --</option><option value="*Nuevo">*Nuevo</option>';
-        inputCausaNueva.value = '';
-        inputCausaNueva.style.display = 'none';
+        setTimeout(() => {
+          window.location.href = `/registrologysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        }, 1500);
 
       } catch (err) {
         showToast(err.message, 'error');

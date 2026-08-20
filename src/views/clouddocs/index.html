@@ -37,15 +37,120 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 24px; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar layout and items */
+    .sidebar {
+      width: 280px;
+      background: var(--primary);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 100;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 4px 0 15px rgba(0, 11, 89, 0.08);
+    }
     
-    .container { max-width: 1250px; margin: 0 auto; }
+    .sidebar-brand {
+      padding: 24px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      color: rgba(255, 255, 255, 0.65);
+      font-weight: 500;
+      font-size: 0.9rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2px;
+      color: rgba(255, 255, 255, 0.5);
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .nav-item:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-item:hover .nav-icon {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .nav-item.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.12);
+      font-weight: 600;
+    }
+
+    .nav-item.active .nav-icon {
+      color: var(--accent);
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 25%;
+      height: 50%;
+      width: 3px;
+      background-color: var(--accent);
+      border-radius: var(--radius-sm);
+    }
+
+    /* Main Content Area */
+    .main-content {
+      margin-left: 280px;
+      flex: 1;
+      min-width: 0;
+      padding: 24px;
+      height: 100vh;
+      overflow-y: auto;
+    }
 
     /* Header styling matching logysign */
     header {
       background: var(--primary);
       border-radius: var(--radius-lg);
-      padding: 10px 24px;
+      padding: 14px 24px;
       color: #fff;
       margin-bottom: 22px;
       box-shadow: var(--shadow-lg);
@@ -359,9 +464,9 @@
     </div>
   </div>
 
-  <div class="container">
-    <!-- Header -->
-    <header>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
       <div class="brand-lockup">
         <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
         <div class="brand-divider"></div>
@@ -369,27 +474,47 @@
           <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
         </div>
       </div>
-      <div class="header-logo">
-        <h1>Cloud<span class="accent">Docs</span></h1>
-        <p>Gestión Documental y Archivo Digital</p>
+    </div>
+    <ul class="nav-list" id="tabs-container">
+      <li class="nav-item active" id="tab-btn-trabajador" onclick="switchTab('trabajador')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Trabajadores</span>
+      </li>
+      <li class="nav-item" id="tab-btn-documento" onclick="switchTab('documento')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Tipos de Documento</span>
+      </li>
+      <li class="nav-item" id="tab-btn-todo" onclick="switchTab('todo')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+        <span>Consolidado (Todo)</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="main-content">
+    <!-- Header -->
+    <header>
+      <div class="header-logo" style="text-align: left;">
+        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 750; color: #fff;">Cloud<span class="accent" style="color: var(--accent);">Docs</span></h1>
+        <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.7);">Gestión Documental y Archivo Digital</p>
       </div>
       <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
         <a class="btn btn-submit" id="btn-cargar-doc" href="#" style="background: var(--accent); color: #fff; box-shadow: 0 4px 10px rgba(245, 84, 0, 0.2); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm);">
           ＋ Cargar Documento
+        </a>
+        <a class="btn btn-submit" id="btn-validar-cap" href="#" style="display: none; background: var(--success); color: #fff; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm);">
+          ＋ Validar Carpeta
+        </a>
+        <a class="btn btn-submit" id="btn-logysign" href="#" style="background: var(--primary-light); color: #fff; border: 1.5px solid rgba(255,255,255,0.15); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          LogySign (Firmas)
         </a>
         <div class="user-badge" id="user-badge-name">
           Cargando usuario...
         </div>
       </div>
     </header>
-
-    <!-- Tab Buttons -->
-    <div class="tabs-bar" id="tabs-container">
-      <button class="tab-btn active" id="tab-btn-trabajador" onclick="switchTab('trabajador')">Trabajadores</button>
-      <button class="tab-btn" id="tab-btn-documento" onclick="switchTab('documento')">Tipos de Documento</button>
-      <button class="tab-btn" id="tab-btn-todo" onclick="switchTab('todo')">Consolidado (Todo)</button>
-      <!-- Special authorizations Tab (dynamically shown) -->
-    </div>
 
     <!-- Filters Panel -->
     <section class="filters-card">
@@ -430,13 +555,13 @@
             <option value="">— Todas —</option>
           </select>
         </div>
-        <div class="field">
+        <div class="field" id="filter-regional-wrapper">
           <label for="filter-regional">Regional</label>
           <select id="filter-regional" onchange="onRegionalChange()">
             <option value="">— Todas las regionales —</option>
           </select>
         </div>
-        <div class="field">
+        <div class="field" id="filter-operacion-wrapper">
           <label for="filter-operacion">Operación</label>
           <select id="filter-operacion" onchange="filtrar()">
             <option value="">— Todas las operaciones —</option>
@@ -678,6 +803,12 @@
         { key: 'Justificacion_Solicitud', label: 'Justificación', width: 280 },
         { key: 'Estado_Solicitud', label: 'Estado Solicitud', width: 140 },
         { key: 'Visualizar', label: 'Visualizar', width: 110 }
+      ],
+      validarcap: [
+        { key: 'trabajador', label: 'Trabajador / Identificación', width: 350 },
+        { key: 'Estado', label: 'Estado (Carpeta)', width: 150 },
+        { key: 'usuario', label: 'Usuario Validador', width: 220 },
+        { key: 'fecha', label: 'Fecha Validación', width: 180 }
       ]
     };
 
@@ -811,15 +942,31 @@
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('user-badge-name').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
       document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      document.getElementById('btn-logysign').href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
-      // Render Solicitudes Tab button if role matches
-      if (CONFIG.rol === 'Archivo' || CONFIG.rol === 'Sistema') {
-        const tabBtn = document.createElement('button');
-        tabBtn.className = 'tab-btn';
-        tabBtn.id = 'tab-btn-solicitudes';
-        tabBtn.onclick = () => switchTab('solicitudes');
-        tabBtn.textContent = 'Solicitudes';
-        document.getElementById('tabs-container').appendChild(tabBtn);
+      // Render Solicitudes and Validar Cap Tab buttons if role matches
+      if (['Archivo', 'Sistema', 'Asistencial'].includes(CONFIG.rol)) {
+        // Solicitudes
+        const tabLi = document.createElement('li');
+        tabLi.className = 'nav-item';
+        tabLi.id = 'tab-btn-solicitudes';
+        tabLi.onclick = () => switchTab('solicitudes');
+        tabLi.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+          <span>Solicitudes</span>
+        `;
+        document.getElementById('tabs-container').appendChild(tabLi);
+
+        // Validar Cap
+        const tabCap = document.createElement('li');
+        tabCap.className = 'nav-item';
+        tabCap.id = 'tab-btn-validarcap';
+        tabCap.onclick = () => switchTab('validarcap');
+        tabCap.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          <span>Validar Cap</span>
+        `;
+        document.getElementById('tabs-container').appendChild(tabCap);
       }
 
       // Populate filter dropdowns
@@ -894,12 +1041,14 @@
     }
 
     // Fetch allowed documents and populate Tipo Documento filter select
+    let tiposDocumentosList = [];
     async function cargarTiposDocumentosParaFiltro() {
       try {
         const res = await fetch(`/cloud-docs/api/documentos?usuario=${CONFIG.usuarioId}`);
         const docs = await res.json();
         const select = document.getElementById('filter-documento');
         if (res.ok && Array.isArray(docs)) {
+          tiposDocumentosList = docs;
           docs.forEach(d => {
             const option = document.createElement('option');
             option.value = d.Id;
@@ -1008,6 +1157,12 @@
         registroWrapper.style.display = 'none';
         solEstadoWrapper.style.display = 'flex';
         labelBuscar.innerText = 'Buscar Solicitante o Trabajador';
+      } else if (tab === 'validarcap') {
+        docSelectWrapper.style.display = 'none';
+        estadoWrapper.style.display = 'none';
+        registroWrapper.style.display = 'none';
+        solEstadoWrapper.style.display = 'none';
+        labelBuscar.innerText = 'Buscar Trabajador (Nombre o Cédula)';
       } else { // trabajador
         docSelectWrapper.style.display = 'none';
         estadoWrapper.style.display = 'flex';
@@ -1016,8 +1171,27 @@
         labelBuscar.innerText = 'Buscar Trabajador';
       }
 
+      // Hide/Show Regional, Operación dropdowns and Cargar/Validar buttons
+      const regWrapper = document.getElementById('filter-regional-wrapper');
+      const opWrapper = document.getElementById('filter-operacion-wrapper');
+      const btnCargar = document.getElementById('btn-cargar-doc');
+      const btnValidar = document.getElementById('btn-validar-cap');
+
+      if (tab === 'validarcap') {
+        if (regWrapper) regWrapper.style.display = 'none';
+        if (opWrapper) opWrapper.style.display = 'none';
+        btnCargar.style.display = 'none';
+        btnValidar.style.display = 'inline-flex';
+        btnValidar.href = `/formvalidarcap?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      } else {
+        if (regWrapper) regWrapper.style.display = 'flex';
+        if (opWrapper) opWrapper.style.display = 'flex';
+        btnCargar.style.display = 'inline-flex';
+        btnValidar.style.display = 'none';
+      }
+
       // Update active button classes
-      document.querySelectorAll('.tab-btn').forEach(btn => {
+      document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.remove('active');
         if (btn.id === `tab-btn-${tab}`) {
           btn.classList.add('active');
@@ -1071,6 +1245,8 @@
           if (buscar) queryParams.set('buscar', buscar);
           if (estadoSolicitud) queryParams.set('estadoSolicitud', estadoSolicitud);
           url = `/cloud-docs/api/solicitudes?${queryParams}`;
+        } else if (activeTab === 'validarcap') {
+          url = `/cloud-docs/api/validarcap?usuario=${CONFIG.usuarioId}&buscar=${encodeURIComponent(buscar)}`;
         } else { // todo
           if (buscar) queryParams.set('buscar', buscar);
           if (estado) queryParams.set('estado', estado);
@@ -1079,7 +1255,32 @@
           url = `/cloud-docs/api/todo?${queryParams}`;
         }
 
-        const res = await fetch(url);
+        let res, countRes;
+        if (activeTab === 'validarcap') {
+          res = await fetch(url);
+        } else {
+          // Params for dynamic counts
+          const countParams = new URLSearchParams({
+            usuario: CONFIG.usuarioId,
+            activeTab,
+            buscar,
+            regional,
+            operacion,
+            estado,
+            tipoDocumento,
+            tipoRegistro,
+            estadoSolicitud
+          });
+          const countUrl = `/cloud-docs/api/conteos?${countParams}`;
+
+          const [r, cr] = await Promise.all([
+            fetch(url),
+            fetch(countUrl)
+          ]);
+          res = r;
+          countRes = cr;
+        }
+
         const data = await res.json();
         if (res.ok) {
           currentData = data;
@@ -1087,11 +1288,109 @@
         } else {
           showToast(data.error || 'Error al obtener datos', 'error');
         }
+
+        if (countRes && countRes.ok) {
+          const counts = await countRes.json();
+          actualizarFiltrosConConteos(counts);
+        }
+
       } catch (err) {
         console.error(err);
         showToast('Error de conexión con el servidor', 'error');
       } finally {
         hideLoader();
+      }
+    }
+
+    // Helper to dynamically update option counts in the selects
+    function actualizarFiltrosConConteos(counts) {
+      const selRegional = document.getElementById('filter-regional');
+      const selOperacion = document.getElementById('filter-operacion');
+      const selEstado = document.getElementById('filter-estado');
+      const selDocumento = document.getElementById('filter-documento');
+      const selRegistro = document.getElementById('filter-registro');
+      const selSolEstado = document.getElementById('filter-solicitud-estado');
+
+      const regionalVal = selRegional.value;
+      const operacionVal = selOperacion.value;
+      const estadoVal = selEstado.value;
+      const documentoVal = selDocumento.value;
+      const registroVal = selRegistro.value;
+      const solEstadoVal = selSolEstado.value;
+
+      // 1. Regional
+      selRegional.innerHTML = '<option value="">— Todas las regionales —</option>';
+      const sortedRegs = Object.keys(CONFIG.opsPorRegional).sort();
+      sortedRegs.forEach(reg => {
+        const total = counts.regionales[reg] || 0;
+        const option = document.createElement('option');
+        option.value = reg;
+        option.textContent = `${reg} (${total})`;
+        if (reg === regionalVal) option.selected = true;
+        selRegional.appendChild(option);
+      });
+
+      // 2. Operación
+      selOperacion.innerHTML = '<option value="">— Todas las operaciones —</option>';
+      const allowedOps = regionalVal ? (CONFIG.opsPorRegional[regionalVal] || []) : Object.values(CONFIG.opsPorRegional).flat();
+      const sortedOps = [...new Set(allowedOps)].sort();
+      sortedOps.forEach(op => {
+        const total = counts.operaciones[op] || 0;
+        const option = document.createElement('option');
+        option.value = op;
+        option.textContent = `${op} (${total})`;
+        if (op === operacionVal) option.selected = true;
+        selOperacion.appendChild(option);
+      });
+
+      // 3. Estado (Activo/Retirado)
+      if (activeTab === 'trabajador' || activeTab === 'todo') {
+        const totalActivo = counts.estados['Activo'] || 0;
+        const totalRetirado = counts.estados['Retirado'] || 0;
+        selEstado.innerHTML = `
+          <option value="">— Todos —</option>
+          <option value="Activo" ${estadoVal === 'Activo' ? 'selected' : ''}>Activo (${totalActivo})</option>
+          <option value="Retirado" ${estadoVal === 'Retirado' ? 'selected' : ''}>Retirado (${totalRetirado})</option>
+        `;
+      }
+
+      // 4. Tipo de Registro (Trabajador/General)
+      if (activeTab === 'todo') {
+        const totalTrab = counts.tiposRegistro['Trabajador'] || 0;
+        const totalGen = counts.tiposRegistro['General'] || 0;
+        selRegistro.innerHTML = `
+          <option value="">— Todos —</option>
+          <option value="Trabajador" ${registroVal === 'Trabajador' ? 'selected' : ''}>Trabajador (${totalTrab})</option>
+          <option value="General" ${registroVal === 'General' ? 'selected' : ''}>General (Empresa) (${totalGen})</option>
+        `;
+      }
+
+      // 5. Estado de Solicitud (Pendiente/Autorizado/Rechazado/Revocado)
+      if (activeTab === 'solicitudes') {
+        const totalPend = counts.estadosSolicitud['Pendiente'] || 0;
+        const totalAut = counts.estadosSolicitud['Autorizado'] || 0;
+        const totalRech = counts.estadosSolicitud['Rechazado'] || 0;
+        const totalRev = counts.estadosSolicitud['Revocado'] || 0;
+        selSolEstado.innerHTML = `
+          <option value="Pendiente" ${solEstadoVal === 'Pendiente' ? 'selected' : ''}>Pendientes (${totalPend})</option>
+          <option value="Autorizado" ${solEstadoVal === 'Autorizado' ? 'selected' : ''}>Autorizadas (${totalAut})</option>
+          <option value="Rechazado" ${solEstadoVal === 'Rechazado' ? 'selected' : ''}>Rechazadas (${totalRech})</option>
+          <option value="Revocado" ${solEstadoVal === 'Revocado' ? 'selected' : ''}>Revocadas (${totalRev})</option>
+          <option value="" ${solEstadoVal === '' ? 'selected' : ''}>— Todas —</option>
+        `;
+      }
+
+      // 6. Tipo de Documento
+      if (activeTab === 'todo') {
+        selDocumento.innerHTML = '<option value="">— Todos los tipos —</option>';
+        tiposDocumentosList.forEach(d => {
+          const total = counts.tiposDocumento[d.Id] || 0;
+          const option = document.createElement('option');
+          option.value = d.Id;
+          option.textContent = `${d.Prefijo} - ${d.Documento} (${total})`;
+          if (String(d.Id) === String(documentoVal)) option.selected = true;
+          selDocumento.appendChild(option);
+        });
       }
     }
 
@@ -1170,6 +1469,23 @@
             <td style="font-size: 0.85rem;" title="${esc(row.Justificacion_Solicitud || '')}">${esc(row.Justificacion_Solicitud || '—')}</td>
             <td style="font-weight: bold; color: ${estColor}">${row.Estado_Solicitud}</td>
             <td style="font-weight: bold;">${esc(row.Visualizar || '—')}</td>
+          `;
+        } else if (activeTab === 'validarcap') {
+          tr.style.cursor = 'default';
+          const workerLabel = row.trabajador || row.identificacion;
+          let badgeClass = 'badge-general';
+          if (row.Estado === 'OK') badgeClass = 'badge-active';
+          if (row.Estado === 'PEND') badgeClass = 'badge-retired';
+          
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: var(--primary);">${esc(workerLabel)}</td>
+            <td>
+              <span class="badge-status ${badgeClass}">
+                ${esc(row.Estado)}
+              </span>
+            </td>
+            <td>${esc(row.usuario || 'N/A')}</td>
+            <td style="font-size: 0.85rem;">${esc(row.fecha || 'N/A')}</td>
           `;
         } else { // todo
           tr.onclick = () => {

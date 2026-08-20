@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autorización de Descuento por Nómina — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+    .wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+
+    /* Theme Tokens */
+    :root {
+      --primary: #2980b9;
+      --primary-hover: #1f618d;
+      --accent: #e67e22;
+      --radius: 12px;
+      --border: #cbd5e1;
+    }
+
+    /* Header */
+    .header-card {
+      background: #ffffff;
+      border-radius: var(--radius);
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 5px solid var(--primary);
+    }
+    .header-card img { height: 48px; flex-shrink: 0; }
+    .header-card .title-box { flex-grow: 1; }
+    .page-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .page-sub { font-size: .88rem; color: #64748b; margin-top: 4px; }
+    .badge-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: .78rem; font-weight: 600;
+    }
+    .badge-user { background: #ebf5fb; border: 1px solid #a9cce3; color: #21618c; }
+    .badge-total { background: #e2e8f0; border: 1px solid #cbd5e1; color: #475569; }
+
+    .btn {
+      padding: 10px 20px; font-size: .92rem; font-weight: bold;
+      border-radius: 8px; border: none; cursor: pointer; transition: all .2s;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-crear {
+      background: var(--primary); color: #fff;
+      box-shadow: 0 4px 6px -1px rgba(41, 128, 185, 0.2);
+    }
+    .btn-crear:hover { background: var(--primary-hover); }
+    .btn-primary { background: #1e293b; color: #fff; }
+    .btn-primary:hover { background: #0f172a; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-small { padding: 6px 12px; font-size: .8rem; border-radius: 6px; }
+
+    .card {
+      background: #ffffff;
+      border-radius: var(--radius);
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      padding: 24px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .section-title {
+      font-size: .8rem; font-weight: 700;
+      color: var(--primary); letter-spacing: 1px;
+      text-transform: uppercase;
+      padding-bottom: 10px; margin-bottom: 20px;
+      border-bottom: 2px solid #ebf5fb;
+    }
+
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    
+    input[type="text"], input[type="date"], select {
+      width: 100%; padding: 8px 12px;
+      border: 1.5px solid var(--border); border-radius: 6px;
+      font-size: .9rem; color: #334155; background: #ffffff;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.1);
+    }
+
+    /* Layout View container */
+    .view-container { display: flex; gap: 20px; flex-direction: column; }
+    .view-container.detail-active {
+      display: grid; grid-template-columns: 1.25fr 1fr;
+    }
+    .view-container > * { min-width: 0; }
+
+    /* Table styling */
+    .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .92rem; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
+    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    tr:hover td { background: #f8fafc; cursor: pointer; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700;
+    }
+    .badge-firma-aceptada { background: #d1fae5; color: #065f46; }
+    .badge-firma-prefilled { background: #fef3c7; color: #92400e; }
+    .badge-firma-sin { background: #fee2e2; color: #991b1b; }
+
+    /* Detail Card */
+    .detail-card {
+      background: #ffffff; border-radius: var(--radius); border-left: 4px solid var(--accent);
+      padding: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+      position: sticky; top: 20px; display: none;
+      align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      border: 1px solid #cbd5e1;
+    }
+
+    @media (max-width: 900px) {
+      .view-container.detail-active { grid-template-columns: 1fr; }
+      .detail-card {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 1400; border-radius: 0; max-height: 100vh; margin: 0; align-self: stretch;
+      }
+    }
+    .detail-info-box p { margin-bottom: 8px; font-size: .88rem; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+    .detail-info-box p strong { color: #475569; min-width: 120px; display: inline-block; }
+    .detail-info-box p span { text-align: right; font-weight: 500; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.7); display: none;
+      align-items: center; justify-content: center; z-index: 1000;
+      flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #ebf5fb; border-top-color: var(--primary);
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #334155; color: #fff;
+      padding: 12px 24px; border-radius: 8px; font-size: .9rem; font-weight: 600;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 2000; display: none;
+    }
+
+    .filtros-toggle {
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      user-select: none;
+    }
+    .filtros-toggle-left { display: flex; align-items: center; gap: 8px; }
+    .filtros-badge {
+      display: none; align-items: center; justify-content: center;
+      background: var(--primary); color: #fff; border-radius: 999px;
+      font-size: .68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
+    }
+    .filtros-chevron { display: inline-block; transition: transform .2s ease; color: var(--primary); font-size: .85rem; }
+    #filtros-body { overflow: hidden; }
+
+    /* Sorting and resize columns */
+    .th-sortable { position: relative; }
+    .th-label { cursor: pointer; display: block; padding-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .th-label:hover { color: var(--primary); }
+    .sort-arrow { font-size: .7rem; color: var(--primary); margin-left: 2px; }
+
+    @media (max-width: 640px) {
+      .wrapper { padding: 14px 8px 50px; }
+      .header-card { flex-direction: column; align-items: stretch; text-align: center; padding: 18px; }
+      .badge-row { justify-content: center; }
+      #btn-nueva-prueba { width: 100%; margin-top: 8px; }
+      .card, .detail-card { padding: 16px; }
+      .grid-4 { grid-template-columns: 1fr; gap: 12px; }
+      th, td { padding: 10px 8px; font-size: .8rem; }
+      #btn-limpiar-filtros { width: 100%; }
+      .btn { font-size: .85rem; padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; color: #475569;" id="loading-text">Cargando...</div>
+  </div>
+
+  <div id="toast" class="toast">Mensaje...</div>
+
+  <!-- Modal Editar -->
+  <div id="modal-editar" class="loading-overlay" style="display: none; background: rgba(0,0,0,0.5); justify-content: center; align-items: center;">
+    <div class="card" style="background: #fff; width: 95%; max-width: 500px; padding: 24px; border-radius: 12px; border-left: 5px solid var(--primary); position: relative; margin: auto;">
+      <div class="section-title" style="margin-bottom: 15px;">Editar Registro de Descuento</div>
+      
+      <div class="field">
+        <label for="edit-ciudad">Ciudad <span style="color:red">*</span></label>
+        <input type="text" id="edit-ciudad" required>
+      </div>
+      
+      <div class="field">
+        <label for="edit-fecha">Fecha del Documento <span style="color:red">*</span></label>
+        <input type="date" id="edit-fecha" required>
+      </div>
+
+      <div class="field">
+        <label for="edit-tipo-descuento">Tipo de Descuento <span style="color:red">*</span></label>
+        <select id="edit-tipo-descuento" required>
+          <option value="Anticipada">Anticipada</option>
+          <option value="Específica">Específica</option>
+        </select>
+      </div>
+
+      <!-- Specific discount conditional fields -->
+      <div id="grp-edit-especifica" style="display: none;">
+        <div class="field">
+          <label for="edit-cuotas">Cuotas <span style="color:red">*</span></label>
+          <input type="text" id="edit-cuotas" placeholder="Ej. 3">
+        </div>
+        <div class="field">
+          <label for="edit-valor">Valor Cuota <span style="color:red">*</span></label>
+          <input type="text" id="edit-valor" placeholder="Ej. $100.000">
+        </div>
+        <div class="field">
+          <label for="edit-motivo">Motivo / Concepto <span style="color:red">*</span></label>
+          <input type="text" id="edit-motivo" placeholder="Ej. Compra de celular corporativo">
+        </div>
+      </div>
+      
+      <div class="field">
+        <label for="edit-observaciones">Observaciones</label>
+        <textarea id="edit-observaciones" style="width:100%; height:70px; padding:8px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; resize: vertical; font-family: inherit; font-size: .95rem;"></textarea>
+      </div>
+      
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn-secondary" id="btn-cerrar-modal-editar">Cancelar</button>
+        <button class="btn btn-crear" id="btn-guardar-editar">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <div class="header-card">
+      <div class="title-box">
+        <div class="page-title">Autorizaciones de Descuento por Nómina</div>
+        <div class="page-sub">Panel de administración y control de firmas de autorizaciones de nómina</div>
+        <div class="badge-row">
+          <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
+          <div class="badge badge-total" id="total-badge-count">Total: 0 registros</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <a class="btn btn-secondary" id="btn-registros-logysign" href="#" style="display: none;">
+          <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Historial LogySign
+        </a>
+        <button class="btn btn-crear" id="btn-nueva-prueba">+ Crear Autorización</button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card">
+      <div class="section-title filtros-toggle" id="filtros-toggle">
+        <span class="filtros-toggle-left">
+          Filtros de Búsqueda
+          <span class="filtros-badge" id="filtros-badge">0</span>
+        </span>
+        <span class="filtros-chevron" id="filtros-chevron">▸</span>
+      </div>
+      <div id="filtros-body">
+        <div class="grid-4" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 16px;">
+          <div class="field">
+            <label for="filtro-trabajador">Trabajador</label>
+            <input type="text" id="filtro-trabajador" placeholder="Buscar por nombre o CC...">
+          </div>
+          <div class="field">
+            <label for="filtro-regional">Regional</label>
+            <select id="filtro-regional">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="filtro-operacion">Operación</label>
+            <select id="filtro-operacion">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="filtro-tipo-descuento">Tipo Descuento</label>
+            <select id="filtro-tipo-descuento">
+              <option value="">Todos</option>
+              <option value="Anticipada">Anticipada</option>
+              <option value="Específica">Específica</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="filtro-estado">Estado de Firma</label>
+            <select id="filtro-estado">
+              <option value="">Todos</option>
+              <option value="ACEPTADA">Firmado</option>
+              <option value="PENDIENTE">Sin firmar (Pendiente)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="filtro-desde">Fecha Desde</label>
+            <input type="date" id="filtro-desde">
+          </div>
+          <div class="field">
+            <label for="filtro-hasta">Fecha Hasta</label>
+            <input type="date" id="filtro-hasta">
+          </div>
+          <div class="field" style="display: flex; align-items: flex-end;">
+            <button type="button" class="btn btn-secondary" id="btn-limpiar-filtros" style="height: 42px; width: 100%;">
+              Limpiar Filtros
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resultados y Detalle -->
+    <div class="view-container" id="layout-container">
+      
+      <!-- Listado -->
+      <div class="card" style="margin-bottom: 0;">
+        <div class="section-title">Resultados</div>
+        <div class="table-container">
+          <table id="table-pruebas">
+            <thead>
+              <tr>
+                <th style="width: 250px;">Trabajador</th>
+                <th style="width: 140px;">Fecha</th>
+                <th style="width: 150px;">Tipo Descuento</th>
+                <th style="width: 180px;">Detalles Específicos</th>
+                <th style="width: 130px;">Estado</th>
+                <th style="width: 110px;">Documento</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-pruebas">
+              <tr>
+                <td colspan="6" style="text-align:center; padding:30px; color:#888;">Cargando registros...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Detalle Lateral -->
+      <div class="detail-card" id="detail-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+          <h3 style="color: var(--primary); font-size: 1.1rem; font-weight: 700; margin: 0;">Detalle de la Autorización</h3>
+          <button class="btn btn-secondary btn-small" onclick="cerrarDetalleUI()">Cerrar</button>
+        </div>
+
+        <div class="detail-info-box" id="detail-info">
+          <!-- Dinámico -->
+        </div>
+
+        <!-- Editar contacto -->
+        <div id="opciones-contacto" style="margin-top: 20px; display: none;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 4px;">Actualizar Datos de Contacto</div>
+          <div class="field" style="margin-bottom: 12px;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Correo Electrónico</label>
+            <input type="email" id="contacto-email" placeholder="correo@ejemplo.com" style="width: 100%; padding: 8px; border: 1.5px solid var(--border); border-radius: 6px;">
+          </div>
+          <div class="field" style="margin-bottom: 16px;">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Celular (WhatsApp)</label>
+            <input type="text" id="contacto-celular" placeholder="3XXXXXXXXX" style="width: 100%; padding: 8px; border: 1.5px solid var(--border); border-radius: 6px;">
+          </div>
+          <button class="btn btn-secondary" onclick="actualizarContacto()" style="width: 100%; border: 1.5px solid var(--border); font-size: .85rem; padding: 8px 12px;">Actualizar Contacto</button>
+        </div>
+
+        <!-- Acciones control -->
+        <div id="opciones-control" style="margin-top: 20px;">
+          <!-- Dinámico -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const CONFIG = __CONFIG__;
+
+    // Elements
+    const userBadge = document.getElementById('user-badge-name');
+    const totalBadge = document.getElementById('total-badge-count');
+    const btnNuevaPrueba = document.getElementById('btn-nueva-prueba');
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const toast = document.getElementById('toast');
+
+    // Filtros inputs
+    const fTrabajador = document.getElementById('filtro-trabajador');
+    const fRegional = document.getElementById('filtro-regional');
+    const fOperacion = document.getElementById('filtro-operacion');
+    const fTipoDescuento = document.getElementById('filtro-tipo-descuento');
+    const fEstado = document.getElementById('filtro-estado');
+    const fDesde = document.getElementById('filtro-desde');
+    const fHasta = document.getElementById('filtro-hasta');
+    const btnLimpiarFiltros = document.getElementById('btn-limpiar-filtros');
+
+    // Modal editar inputs
+    const editTipoDescuento = document.getElementById('edit-tipo-descuento');
+    const grpEditEspecifica = document.getElementById('grp-edit-especifica');
+    
+    // Toggle conditional fields in edit modal
+    editTipoDescuento.addEventListener('change', () => {
+      if (editTipoDescuento.value === 'Específica') {
+        grpEditEspecifica.style.display = 'block';
+      } else {
+        grpEditEspecifica.style.display = 'none';
+      }
+    });
+
+    // Toggle Filtros Plegables
+    let filtrosPlegados = false;
+    const filtrosToggle = document.getElementById('filtros-toggle');
+    const filtrosChevron = document.getElementById('filtros-chevron');
+    const filtrosBody = document.getElementById('filtros-body');
+    const filtrosBadge = document.getElementById('filtros-badge');
+
+    filtrosToggle.addEventListener('click', () => {
+      filtrosPlegados = !filtrosPlegados;
+      if (filtrosPlegados) {
+        filtrosBody.style.display = 'none';
+        filtrosChevron.innerText = '◂';
+      } else {
+        filtrosBody.style.display = 'block';
+        filtrosChevron.innerText = '▸';
+      }
+    });
+
+    // Init page
+    userBadge.innerText = CONFIG.usuarioNombre;
+
+    const btnLogySign = document.getElementById('btn-registros-logysign');
+    const ALLOWED_LOGYSIGN_ROLES = ['Contratación', 'Archivo', 'Asistencial', 'Sistema'];
+    if (ALLOWED_LOGYSIGN_ROLES.includes(CONFIG.rol)) {
+      btnLogySign.href = `/registrologysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      btnLogySign.style.display = 'inline-flex';
+    }
+    
+    btnNuevaPrueba.addEventListener('click', () => {
+      window.location.href = `/formdescuentonomina?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+    });
+
+    let recordsList = [];
+    let selectedPruebaId = null;
+
+    // Toast alerts
+    function showToast(msg, type = 'success') {
+      toast.innerText = msg;
+      toast.style.background = type === 'error' ? '#ef4444' : '#334155';
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3500);
+    }
+
+    function showLoading(text = 'Cargando...') {
+      loadingText.innerText = text;
+      loading.style.display = 'flex';
+    }
+
+    function hideLoading() {
+      loading.style.display = 'none';
+    }
+
+    function cleanReg(str) {
+      return String(str || '')
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .trim();
+    }
+
+    // Populate filters dropdowns with item counts and role constraints
+    function populateFilters(countsData) {
+      const selReg = fRegional.value;
+      const selOp = fOperacion.value;
+
+      const isRegionalRestricted = ['AuxiliarR', 'CoordinadorR'].includes(CONFIG.rol);
+      const isOpRestricted = ['Auxiliar', 'Coordinador'].includes(CONFIG.rol);
+
+      fRegional.innerHTML = '';
+      if (isRegionalRestricted || isOpRestricted) {
+        const targetReg = cleanReg(CONFIG.regional);
+        let regName = CONFIG.regional;
+        let count = 0;
+        if (countsData.regionales) {
+          for (const key in countsData.regionales) {
+            if (cleanReg(key) === targetReg) {
+              regName = key;
+              count = countsData.regionales[key];
+              break;
+            }
+          }
+        }
+        fRegional.innerHTML = `<option value="${regName}" selected>${regName} (${count})</option>`;
+        fRegional.disabled = true;
+      } else {
+        fRegional.disabled = false;
+        fRegional.innerHTML = '<option value="">Todas</option>';
+        CONFIG.regionalesFiltro.forEach(itemReg => {
+          const count = (countsData.regionales && countsData.regionales[itemReg]) || 0;
+          const opt = document.createElement('option');
+          opt.value = itemReg;
+          opt.textContent = `${itemReg} (${count})`;
+          if (itemReg === selReg) opt.selected = true;
+          fRegional.appendChild(opt);
+        });
+      }
+
+      fOperacion.innerHTML = '';
+      if (isOpRestricted) {
+        const opName = CONFIG.operacion;
+        const count = (countsData.operaciones && countsData.operaciones[opName]) || 0;
+        fOperacion.innerHTML = `<option value="${opName}" selected>${opName} (${count})</option>`;
+        fOperacion.disabled = true;
+      } else {
+        fOperacion.disabled = false;
+        fOperacion.innerHTML = '<option value="">Todas</option>';
+        const selectedReg = fRegional.value;
+        const ops = selectedReg ? (CONFIG.opsPorRegional[selectedReg] || []) : CONFIG.operacionesFiltro;
+        ops.forEach(itemOp => {
+          const count = (countsData.operaciones && countsData.operaciones[itemOp]) || 0;
+          const opt = document.createElement('option');
+          opt.value = itemOp;
+          opt.textContent = `${itemOp} (${count})`;
+          if (itemOp === selOp) opt.selected = true;
+          fOperacion.appendChild(opt);
+        });
+      }
+    }
+
+    // Load records
+    async function loadRecords() {
+      showLoading('Cargando registros...');
+      try {
+        const qParams = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          trabajador: fTrabajador.value,
+          fechaDesde: fDesde.value,
+          fechaHasta: fHasta.value,
+          regional: fRegional.value,
+          operacion: fOperacion.value,
+          tipoDescuento: fTipoDescuento.value,
+          estado: fEstado.value
+        });
+
+        // 1. Fetch counts
+        const rCounts = await fetch(`/descuentonomina/api/conteos-filtros?${qParams.toString()}`);
+        if (rCounts.ok) {
+          const countsData = await rCounts.json();
+          populateFilters(countsData);
+        }
+
+        // 2. Fetch list
+        const res = await fetch(`/descuentonomina/api/pruebas?${qParams.toString()}`);
+        if (!res.ok) throw new Error('No se pudieron obtener registros');
+        recordsList = await res.json();
+        
+        totalBadge.innerText = `Total: ${recordsList.length} registros`;
+        renderTable();
+        updateActiveFiltersCount();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function updateActiveFiltersCount() {
+      let active = 0;
+      if (fTrabajador.value) active++;
+      if (fRegional.value) active++;
+      if (fOperacion.value) active++;
+      if (fTipoDescuento.value) active++;
+      if (fEstado.value) active++;
+      if (fDesde.value) active++;
+      if (fHasta.value) active++;
+
+      if (active > 0) {
+        filtrosBadge.innerText = active;
+        filtrosBadge.style.display = 'inline-flex';
+      } else {
+        filtrosBadge.style.display = 'none';
+      }
+    }
+
+    // Render Table
+    const tbody = document.getElementById('tbody-pruebas');
+    function renderTable() {
+      tbody.innerHTML = '';
+      if (!recordsList.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#888;">No se encontraron registros.</td></tr>`;
+        return;
+      }
+
+      recordsList.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.onclick = () => verDetalle(item.id_descuento);
+
+        // Status badge
+        let statusBadge = '';
+        if (item.url_doc) {
+          statusBadge = `<span class="status-badge badge-firma-aceptada">✓ Firmado</span>`;
+        } else if (item.token_firma) {
+          statusBadge = `<span class="status-badge badge-firma-sin">Pendiente</span>`;
+        }
+
+        let detailStr = '—';
+        if (item.tipo_descuento === 'Específica') {
+          detailStr = `<strong>${item.cuotas || '—'} Cuotas</strong> de <strong>${item.valor || '—'}</strong><br><span style="font-size:0.75rem; color:#64748b;">Motivo: ${item.motivo || '—'}</span>`;
+        }
+
+        let docLink = '—';
+        if (item.url_doc) {
+          docLink = `<a href="${item.url_doc}" target="_blank" onclick="event.stopPropagation();" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:bold; color:var(--primary);"><span style="font-size:1.15rem;">📄</span> PDF</a>`;
+        }
+
+        tr.innerHTML = `
+          <td>
+            <strong>${item.nombre_trabajador}</strong><br>
+            <span style="font-size:0.8rem; color:#64748b;">C.C. ${item.identificacion}</span>
+          </td>
+          <td>${item.fecha ? item.fecha.slice(0,10) : '—'}</td>
+          <td><span style="font-weight:600; color:var(--primary);">${item.tipo_descuento}</span></td>
+          <td>${detailStr}</td>
+          <td>${statusBadge}</td>
+          <td>${docLink}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // View detail logic
+    const detailCard = document.getElementById('detail-card');
+    const detailInfo = document.getElementById('detail-info');
+    const optContacto = document.getElementById('opciones-contacto');
+    const optControl = document.getElementById('opciones-control');
+
+    async function verDetalle(id) {
+      selectedPruebaId = id;
+      showLoading('Cargando detalles...');
+      try {
+        const res = await fetch(`/descuentonomina/api/prueba/${id}?usuario=${CONFIG.usuarioId}`);
+        if (!res.ok) throw new Error('No se pudo obtener el detalle');
+        const d = await res.json();
+
+        // Populate details
+        let expHtml = '';
+        if (!d.url_doc && d.token_expira) {
+          const expDate = new Date(d.token_expira);
+          const isExp = expDate < new Date();
+          expHtml = `<p><strong>Vence Enlace:</strong> <span style="color:${isExp ? '#ef4444' : '#10b981'}; font-weight:bold;">${isExp ? 'Expirado' : expDate.toLocaleString()}</span></p>`;
+        }
+
+        let specHtml = '';
+        if (d.tipo_descuento === 'Específica') {
+          specHtml = `
+            <p><strong>Cuotas:</strong> <span>${d.cuotas || '—'}</span></p>
+            <p><strong>Valor Cuota:</strong> <span>${d.valor || '—'}</span></p>
+            <p><strong>Motivo / Concepto:</strong> <span>${d.motivo || '—'}</span></p>
+          `;
+        }
+
+        detailInfo.innerHTML = `
+          <p><strong>Trabajador:</strong> <span>${d.nombre_trabajador}</span></p>
+          <p><strong>Identificación:</strong> <span>${d.identificacion}</span></p>
+          <p><strong>Cargo:</strong> <span>${d.cargo || '—'}</span></p>
+          <p><strong>Tipo Descuento:</strong> <span style="font-weight:bold; color:var(--primary);">${d.tipo_descuento}</span></p>
+          ${specHtml}
+          <p><strong>Ciudad:</strong> <span>${d.ciudad}</span></p>
+          <p><strong>Fecha Documento:</strong> <span>${d.fecha ? d.fecha.slice(0,10) : '—'}</span></p>
+          <p><strong>Observaciones:</strong> <span>${d.observaciones || '—'}</span></p>
+          <p><strong>Creador por:</strong> <span>${d.nombre_creador || d.usuario}</span></p>
+          <p><strong>Fecha Registro:</strong> <span>${d.fecha_registro ? new Date(d.fecha_registro).toLocaleString() : '—'}</span></p>
+          <p><strong>Estado Documento:</strong> <span><span class="status-badge ${d.url_doc ? 'badge-firma-aceptada' : 'badge-firma-sin'}">${d.url_doc ? 'Firmado' : 'Pendiente'}</span></span></p>
+          ${expHtml}
+        `;
+
+        // Contact inputs
+        document.getElementById('contacto-email').value = d.email_trabajador || '';
+        document.getElementById('contacto-celular').value = d.celular_trabajador || '';
+        optContacto.style.display = 'block';
+
+        // Control actions
+        optControl.innerHTML = '';
+        let ctrlHtml = '';
+
+        if (!d.url_doc) {
+          const urlFirmaLink = `${window.location.origin}/descuentonomina/firmar?item=${d.id_descuento}&token=${d.token_firma}`;
+          const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Autorización de Descuento por Nómina: ${urlFirmaLink}`);
+          const cleanCel = d.celular_trabajador ? String(d.celular_trabajador).replace(/\D/g, '') : '';
+          let phoneParam = '';
+          if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+            phoneParam = '57' + cleanCel;
+          } else if (cleanCel) {
+            phoneParam = cleanCel;
+          }
+          const waUrl = `https://wa.me/${phoneParam}?text=${msgWaText}`;
+
+          ctrlHtml += `
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 25px; margin-bottom: 12px; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 4px;">Acciones de Control</div>
+            <button class="btn btn-primary" onclick="notificarCorreo()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">Enviar Recordatorio Correo</button>
+            <a href="${waUrl}" target="_blank" class="btn btn-success" id="btn-whatsapp-detalle" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px; background: #25d366; border-color: #25d366; color: #fff;">Enviar WhatsApp</a>
+            <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${urlFirmaLink}')" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px; background: #2980b9; color: #fff;">📋 Copiar Enlace de Firma</button>
+            <button class="btn btn-secondary" onclick="editarRegistroClick()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">✏️ Editar Detalles</button>
+          `;
+        } else {
+          ctrlHtml += `
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 25px; margin-bottom: 12px; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 4px;">Acciones de Control</div>
+            <a href="${d.url_doc}" target="_blank" class="btn btn-success" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">📄 Abrir PDF Firmado</a>
+            <button class="btn btn-secondary" onclick="forzarRegenerarPDF()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">Forzar Regenerar PDF</button>
+          `;
+        }
+
+        // Delete (role Sistema and not signed)
+        if (CONFIG.rol === 'Sistema' && !d.url_doc) {
+          ctrlHtml += `
+            <button class="btn btn-danger" onclick="eliminarPrueba('${d.id_descuento}')" style="width:100%; margin-top: 8px; font-size:.85rem; padding: 10px;">✕ Eliminar Registro</button>
+          `;
+        }
+
+        optControl.innerHTML = ctrlHtml;
+
+        // Show layout side-by-side
+        document.getElementById('layout-container').classList.add('detail-active');
+        detailCard.style.display = 'block';
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function cerrarDetalleUI() {
+      document.getElementById('layout-container').classList.remove('detail-active');
+      detailCard.style.display = 'none';
+      selectedPruebaId = null;
+    }
+
+    // Update worker contact info
+    async function actualizarContacto() {
+      if (!selectedPruebaId) return;
+      const email = document.getElementById('contacto-email').value.trim();
+      const celular = document.getElementById('contacto-celular').value.trim();
+
+      showLoading('Actualizando contacto...');
+      try {
+        // Get worker identification
+        const rDet = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}?usuario=${CONFIG.usuarioId}`);
+        const det = await rDet.json();
+
+        const res = await fetch('/descuentonomina/api/actualizar-contacto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identificacion: det.identificacion, email, celular })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Contacto actualizado correctamente.');
+          // Refresh detail view
+          verDetalle(selectedPruebaId);
+          loadRecords();
+        } else {
+          showToast(data.error || 'Error al actualizar contacto', 'error');
+        }
+      } catch (err) {
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Re-send email
+    async function notificarCorreo() {
+      if (!selectedPruebaId) return;
+      showLoading('Enviando enlace por correo...');
+      try {
+        const res = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}/enviar-enlace`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ canal: 'email' })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('Recordatorio enviado con éxito por correo.');
+        } else {
+          showToast(data.error || 'Error al enviar recordatorio', 'error');
+        }
+      } catch (err) {
+        showToast('Error al enviar recordatorio', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Edit pending details dialog
+    async function editarRegistroClick() {
+      if (!selectedPruebaId) return;
+      showLoading('Cargando datos para editar...');
+      try {
+        const res = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}?usuario=${CONFIG.usuarioId}`);
+        const d = await res.json();
+
+        document.getElementById('edit-ciudad').value = d.ciudad || '';
+        document.getElementById('edit-fecha').value = d.fecha ? d.fecha.slice(0, 10) : '';
+        document.getElementById('edit-tipo-descuento').value = d.tipo_descuento || 'Anticipada';
+        document.getElementById('edit-cuotas').value = d.cuotas || '';
+        document.getElementById('edit-valor').value = d.valor || '';
+        document.getElementById('edit-motivo').value = d.motivo || '';
+        document.getElementById('edit-observaciones').value = d.observaciones || '';
+
+        // Trigger layout show/hide conditional fields
+        if (d.tipo_descuento === 'Específica') {
+          grpEditEspecifica.style.display = 'block';
+        } else {
+          grpEditEspecifica.style.display = 'none';
+        }
+
+        document.getElementById('modal-editar').style.display = 'flex';
+      } catch (err) {
+        showToast('Error al cargar datos del registro', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    document.getElementById('btn-cerrar-modal-editar').addEventListener('click', () => {
+      document.getElementById('modal-editar').style.display = 'none';
+    });
+
+    document.getElementById('btn-guardar-editar').addEventListener('click', async () => {
+      if (!selectedPruebaId) return;
+      const ciudad = document.getElementById('edit-ciudad').value.trim();
+      const fecha = document.getElementById('edit-fecha').value;
+      const tipo_descuento = document.getElementById('edit-tipo-descuento').value;
+      const cuotas = document.getElementById('edit-cuotas').value.trim();
+      const valor = document.getElementById('edit-valor').value.trim();
+      const motivo = document.getElementById('edit-motivo').value.trim();
+      const observaciones = document.getElementById('edit-observaciones').value.trim();
+
+      if (!ciudad || !fecha || !tipo_descuento) {
+        alert('Ciudad, fecha y Tipo de Descuento son obligatorios.');
+        return;
+      }
+
+      if (tipo_descuento === 'Específica' && (!cuotas || !valor || !motivo)) {
+        alert('Cuotas, Valor y Motivo son obligatorios para el tipo de descuento Específica.');
+        return;
+      }
+
+      showLoading('Guardando cambios...');
+      try {
+        const res = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ciudad,
+            fecha,
+            tipo_descuento,
+            cuotas: tipo_descuento === 'Específica' ? cuotas : '',
+            valor: tipo_descuento === 'Específica' ? valor : '',
+            motivo: tipo_descuento === 'Específica' ? motivo : '',
+            observaciones
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('Registro actualizado con éxito.');
+          document.getElementById('modal-editar').style.display = 'none';
+          verDetalle(selectedPruebaId);
+          loadRecords();
+        } else {
+          showToast(data.error || 'Error al actualizar', 'error');
+        }
+      } catch (err) {
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
+    });
+
+    // Force regenerate PDF
+    async function forzarRegenerarPDF() {
+      if (!selectedPruebaId) return;
+      showLoading('Regenerando documento PDF...');
+      try {
+        const res = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}/generar-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force: true })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('PDF regenerado con éxito.');
+          verDetalle(selectedPruebaId);
+          loadRecords();
+        } else {
+          showToast(data.error || 'Error al regenerar PDF', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Delete record
+    async function eliminarPrueba(id) {
+      if (!confirm('¿Está seguro de que desea eliminar permanentemente esta autorización? Esta acción no se puede deshacer.')) return;
+      showLoading('Eliminando registro...');
+      try {
+        const res = await fetch(`/descuentonomina/api/prueba/${id}?usuario=${CONFIG.usuarioId}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Autorización eliminada con éxito.');
+          cerrarDetalleUI();
+          loadRecords();
+        } else {
+          throw new Error(data.error || 'Error al eliminar');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    btnLimpiarFiltros.addEventListener('click', () => {
+      fTrabajador.value = '';
+      if (!fRegional.disabled) fRegional.value = '';
+      if (!fOperacion.disabled) fOperacion.value = '';
+      fTipoDescuento.value = '';
+      fEstado.value = '';
+      fDesde.value = '';
+      fHasta.value = '';
+      loadRecords();
+    });
+
+    // Event listeners for filters
+    fTrabajador.addEventListener('input', loadRecords);
+    fRegional.addEventListener('change', loadRecords);
+    fOperacion.addEventListener('change', loadRecords);
+    fTipoDescuento.addEventListener('change', loadRecords);
+    fEstado.addEventListener('change', loadRecords);
+    fDesde.addEventListener('change', loadRecords);
+    fHasta.addEventListener('change', loadRecords);
+
+    // Initial load
+    loadRecords();
+  </script>
+</body>
+</html>

@@ -1,56 +1,56 @@
-# Walkthrough - Data Block Management Module (bloqueodatos)
+# Walkthrough - LogySign & DescuentoNomina Módulo Completo
 
-We have created a new module to manage the blocking and unlocking of payroll data (`/bloqueodatos` and `/formbloqueodatos`) at the application level, successfully replacing the old database trigger `trg_BloqueoNomina_AfterInsert`.
-
-## Changes Made
-
-### Database Migration
-#### [NEW] [migrate_bloqueo.js](file:///C:/Users/Admin/.gemini/antigravity/brain/3374594f-a114-47e5-8e99-96b478a32d59/scratch/migrate_bloqueo.js) (Executed)
-- Altered the `Bloqueo_Nomina` table to add `Regional VARCHAR(50) NULL` (to log blocks at the regional level) and `Modulo VARCHAR(50) DEFAULT 'Nomina'` (to categorize blocks between Nomina and Facturación).
-- Dropped the database trigger `trg_BloqueoNomina_AfterInsert` to transition the update logic completely to Node.js.
-
-### Routing & Controllers
-#### [MODIFY] [app.js](file:///c:/Users/Admin/OneDrive/Documentos/GitHub/doclogyser-firmas/app.js)
-- Imported `bloqueodatosRoutes` and mapped the URLs `/bloqueodatos` and `/formbloqueodatos` to it.
-
-#### [NEW] [bloqueodatos.js](file:///c:/Users/Admin/OneDrive/Documentos/GitHub/doclogyser-firmas/src/routes/bloqueodatos.js)
-- Controller file containing all backend logic:
-  - Validates that users have roles `'Nomina'`, `'Facturación'`, or `'Sistema'`.
-  - Implemented `GET /api/quincenas` (optimized for strict SQL mode using `GROUP BY`) and `GET /api/bloqueos` (which selects records and resolves their regionals).
-  - Implemented `POST /api/crear` matching the logic of the original trigger (Cases A, B, C, and D) wrapped inside a SQL transaction. If `operacion` is empty, it resolves all operations in the selected `regional` and runs the updates across all of them.
-  - **Affected rows counter:** Captured the `affectedRows` returned by `Dynamic_Servicios` and `Dynamic_Asistencia` updates and sent them back in the JSON response of `POST /api/crear`.
-
-### Views
-#### [NEW] [index.html](file:///c:/Users/Admin/OneDrive/Documentos/GitHub/doclogyser-firmas/src/views/bloqueodatos/index.html)
-- Main list view utilizing cohesive, premium glassmorphism styling.
-- **Header:** Replicated the header of `cloud-docs` exactly, matching the application logos and structure.
-- Features dynamic tabs for "Nómina" and "Facturación". Shows/hides tabs and manages views according to the user's role.
-- Shows metric cards summarizing Total, Bloqueados (Soft Green, lock icon) and Desbloqueados (Soft Orange, unlock icon) records.
-- **Limpiar Filtros Button:** A button that clears all active filters in one click.
-- **Dynamic Faceted Option Counts:** Re-populates the select options in the filters to display counts of matching items, updating dynamically in the client-side as filters change.
-- **Payment Form Labeling:** Updated payment form 3 to be formatted and shown as `"3 - Crédito"` in the listing table.
-
-#### [NEW] [form.html](file:///c:/Users/Admin/OneDrive/Documentos/GitHub/doclogyser-firmas/src/views/formbloqueodatos/form.html)
-- Form to add new blocks/unlocks.
-- **Header:** Replicated the header of `cloud-docs` exactly, matching the application logos and structure.
-- **Custom Button Groups:** Converted the dropdown fields for **Módulo**, **Datos**, **Forma de Pago**, and **Condición** to horizontal option button groups for a premium, mobile-friendly selection feel.
-- **Payment Form 3 Labeling:** Re-labeled payment form 3 as `"3 - Credito"` instead of `"3 - Consignación"`.
-- Automatically presets and disables the "Módulo" select if the user's role is `Nomina` or `Facturación`.
-- Dynamic dropdown filters (Operación matches selected Regional).
-- Dynamically displays "Forma de Pago" inputs only when "Solo Servicios" is selected under "Datos".
-- Validation rules require selecting Regional, Datos, Quincena, and Condición before submitting.
-- Includes a review modal showing a summary of the action before proceeding to submit.
-- **Success Feedback Modal:** Shows a confirmation dialog once the registration is successful, displaying the exact number of affected rows in both **Servicios** and **Asistencia** tables.
+We have successfully implemented the requested modifications for the `logysign`/`registrologysign` flow and built the new `descuentonomina` module from scratch.
 
 ---
 
-## Verification Results
+## 1. registrologysign Updates
+- **WhatsApp Action in Table:** Added a direct "WhatsApp" button in the "Acciones" column of the main log table for all pending (`PENDIENTE`) signature records. It generates the message with the direct signing link and handles prepending the `57` international country code to the worker's cell phone number.
 
-### Syntax Verification
-- Checked syntax of `src/routes/bloqueodatos.js` and `app.js` using `node -c`.
-- Extracted and verified syntax of inline JS scripts in `src/views/bloqueodatos/index.html` and `src/views/formbloqueodatos/form.html`.
-- Result: **0 syntax errors found**.
+---
 
-### Database Queries & Integration Verification
-- Ran the `dry_run_bloqueo.js` script to verify database queries.
-- Result: **Successfully retrieved quincenas, computed date limits, and fetched regional operations**.
+## 2. Nuevo Módulo descuentonomina
+We created the new module copying the robust logic of `pruebaconsumo` but tailored for payroll discount authorization:
+
+- **Database Schema (`Dynamic_descuentonomina`):** Created the new SQL table containing all metadata (id_descuento, fecha, identificacion, nombre_trabajador, cargo, ciudad, tipo_descuento, cuotas, valor, motivo, observaciones, tokens, etc.) with corresponding optimization indexes.
+- **Templates Configuration (`Maestro_Plantillas`):** Created and configured two HTML/CSS templates dynamically resolving depending on the discount type:
+  - `descuento_anticipado` (Anticipada): A general pre-signed layout without specific amounts.
+  - `descuento_especifico` (Específica): A structured layout detailing Cuotas, Valor, and Motivo.
+  - Added corporate logo `logo.png` to both headers and worker's cargo inside document body.
+- **Backend Controller (`src/routes/descuentonomina.js`):**
+  - Configured REST endpoints (`/api/pruebas`, `/api/conteos-filtros`, `/api/crear`, `/api/crear-masivo`, `/api/firmar-asistente`, `/api/actualizar-contacto`, `/api/eliminar`).
+  - Restricts authorization to roles: `['Contratación', 'Archivo', 'Asistencial', 'Sistema']`.
+  - Integrates storage uploads to `talenthub_central` using format: `[Identificación]/[Identificación].DCTO.[yyyymmddhhss].pdf`.
+  - Saves file records to `Maestro_docTrabajador` under `TipoDocumento = 21` and `Prefijo = 'DCTO'`.
+- **Views Implementation:**
+  - **Listing (`descuentonomina/index.html`):** Renders table log, filters count, and detail side panel.
+  - **Form (`formdescuentonomina/form.html`):** Renders autocomplete worker list, dropdown for `TipoDescuento` (Anticipada / Específica), and shows/hides Cuotas, Valor, Motivo fields conditionally.
+  - **Signing (`descuentonomina/firmar.html`):** Worker signature pad with dynamic preview loading template content depending on the discount type.
+
+---
+
+## 3. Últimos Ajustes y Nuevos Permisos de Seguridad
+1. **Columna de Documento PDF:**
+   - Se adicionó la columna **"Documento"** en la tabla principal de resultados ([index.html](file:///c:/Users/Admin/OneDrive/Documentos/GitHub/doclogyser-firmas/src/views/descuentonomina/index.html)) mostrando un enlace interactivo `📄 PDF` para abrir el documento firmado directamente en una nueva pestaña (haciendo `event.stopPropagation()` para no colisionar con la apertura del detalle lateral).
+2. **Correos de Notificación de Firma Dinámicos:**
+   - Modificada la función `notificarDescuentoNominaFirmada` en ([email.js](file:///c:/Users/Admin/OneDrive/Documentos/GitHub/doclogyser-firmas/src/services/email.js)) para enrutar según el tipo de descuento:
+     - **Específico:** Destinatario `nomina@logyser.com`, con copia a `gestor.nomina@logyser.com`, `admin@logyser.com` y el correo del usuario creador.
+     - **Anticipada:** Destinatario `contratacionnacional@logyser.com`, con copia a `admin@logyser.com` y `gestiondocumental@logyser.com`.
+3. **Control de Permisos por Rol:**
+   - Si el usuario logueado posee rol de **Contratación**, **Archivo** o **Asistencial**:
+     - **Listado y Filtros:** Se restringe la consulta tanto en el listado (`/api/pruebas`) como en el conteo de filtros (`/api/conteos-filtros`) para retornar únicamente registros donde `tipo_descuento = 'Anticipada'`.
+     - **Formulario:** El campo **Tipo de Descuento** se autoselecciona por defecto en `"Anticipada (General)"` y se encuentra **deshabilitado (bloqueado)** para evitar cualquier cambio manual.
+     - **Detalle Individual:** Si intenta consultar un ID de tipo `Específica` mediante API, el backend responde con `403 Forbidden`.
+   - Si el rol es diferente y no es **Sistema** (cualquier otro rol):
+     - El formulario autoselecciona `"Específica"` y lo bloquea.
+   - Si el rol es **Sistema**:
+     - Puede ver ambos tipos de descuento y el selector del formulario permanece desbloqueado.
+4. **Filtros con Conteo Dinámico:**
+   - Los dropdowns de Regional y Operación en el listado se cargan dinámicamente mostrando el número total de registros asociados entre paréntesis, p.ej. `Regional (12)`.
+5. **Alineación de Permisos Regionales/Operación con Módulo Traslados:**
+   - Se reestructuraron las listas y variables de control en `descuentonomina.js` para adoptar el modelo completo de traslados:
+     - `Sistema`, `Control` y `Nomina` -> Visualizan todo a nivel nacional.
+     - `Contratación`, `Archivo` y `Asistencial` -> Visualizan todo a nivel nacional, pero restringidos únicamente a tipo de documento `"Anticipada"`.
+     - `AuxiliarR` y `CoordinadorR` -> Restringidos a operaciones pertenecientes a su regional asignada.
+     - `Auxiliar` y `Coordinador` -> Restringidos a operaciones asociadas a su dispositivo sociodemográfico (`Dispositivo`).
+     - Cualquier otro rol -> Restringidos únicamente a su operación directa asignada.
