@@ -356,7 +356,9 @@ router.get('/api/documento/:id/registros', async (req, res) => {
     const p = acceso.permisos;
     const result = rows.map(r => {
       let permitido = false;
-      if (r.tipo_registro === 'Trabajador') {
+      if (r.Visualizar === 'OK') {
+        permitido = true;
+      } else if (r.tipo_registro === 'Trabajador') {
         if (r.Estado === 'Activo') {
           if (p.doc_activo === 'Todo' || (Array.isArray(p.doc_activo) && p.doc_activo.includes(id))) {
             permitido = true;
@@ -584,10 +586,126 @@ router.get('/api/todo', async (req, res) => {
   }
 });
 
+// API: Doc Retiros (Pestaña Doc Retiros)
+router.get('/api/docretiros', async (req, res) => {
+  try {
+    const { usuario, buscar, regional, operacion, tipoDocumento, estado, validacion } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const conds = ["c.Clasificacion = '8. Retiro'"];
+    const params = [];
+
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) return res.json([]);
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      conds.push(`t.Operación IN (${ph})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    if (regional) {
+      conds.push('t.Regional = ?');
+      params.push(regional);
+    }
+    if (operacion) {
+      conds.push('t.Operación = ?');
+      params.push(operacion);
+    }
+    if (tipoDocumento) {
+      conds.push('t.TipoDocumento = ?');
+      params.push(tipoDocumento);
+    }
+    if (estado) {
+      conds.push('t.Estado = ?');
+      params.push(estado);
+    }
+    if (validacion) {
+      if (validacion === 'PEND') {
+        conds.push('(t.Validación = ? OR t.Validación IS NULL OR t.Validación = "")');
+      } else {
+        conds.push('t.Validación = ?');
+      }
+      params.push(validacion);
+    }
+    if (buscar) {
+      conds.push('v.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+      params.push(`%${buscar}%`);
+    }
+
+    // Role filter
+    const roleFilter = construirFiltroRolTrabajador(acceso.permisos, 't');
+    conds.push(roleFilter);
+
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+
+    const sql = `
+      SELECT 
+        'Trabajador' AS tipo_registro,
+        t.id,
+        t.TipoDocumento,
+        t.Prefijo,
+        c.Documento,
+        t.Identificación AS Identificacion,
+        v.Trabajador AS TrabajadorNombre,
+        t.Operación,
+        t.Estado,
+        t.\`Validación\` AS Validacion,
+        DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
+        t.Usuario,
+        t.Observaciones,
+        t.Url,
+        t.Solicitud,
+        t.Justificacion_Solicitud,
+        t.Visualizar
+      FROM Maestro_docTrabajador t
+      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+      LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
+      ${where}
+      ORDER BY t.FechaRegistro DESC
+      LIMIT 1000
+    `;
+
+    const [rows] = await pool.execute(sql, params);
+
+    // Access permissions map
+    const p = acceso.permisos;
+    const result = rows.map(r => {
+      let permitido = false;
+      if (r.Visualizar === 'OK') {
+        permitido = true;
+      } else {
+        const id = r.TipoDocumento;
+        if (r.Estado === 'Activo') {
+          if (p.doc_activo === 'Todo' || (Array.isArray(p.doc_activo) && p.doc_activo.includes(id))) {
+            permitido = true;
+          }
+        } else if (r.Estado === 'Retirado') {
+          if (p.doc_retirado === 'Todo' || (Array.isArray(p.doc_retirado) && p.doc_retirado.includes(id))) {
+            permitido = true;
+          }
+        }
+      }
+
+      return {
+        ...r,
+        permitido,
+        Url: permitido ? r.Url : null
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/docretiros:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Obtener conteos dinámicos para los filtros (Faceted Search)
 router.get('/api/conteos', async (req, res) => {
   try {
-    const { usuario, activeTab, buscar, regional, operacion, estado, tipoDocumento, tipoRegistro, estadoSolicitud } = req.query;
+    const { usuario, activeTab, buscar, regional, operacion, estado, tipoDocumento, tipoRegistro, estadoSolicitud, validacion } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
@@ -599,7 +717,8 @@ router.get('/api/conteos', async (req, res) => {
       estados: {},
       tiposRegistro: {},
       estadosSolicitud: {},
-      tiposDocumento: {}
+      tiposDocumento: {},
+      validation: {}
     };
 
     if (activeTab === 'trabajador') {
@@ -773,7 +892,7 @@ router.get('/api/conteos', async (req, res) => {
     }
 
     else if (activeTab === 'todo') {
-      const buildFiltersTodoLocal = (buscarVal, regionalVal, operacionVal, tipoDocumentoVal, estadoVal, tipoRegistroVal) => {
+      const buildFiltersTodoLocal = (buscarVal, regionalVal, operacionVal, tipoDocumentoVal, estadoVal, tipoRegistroVal, validacionVal) => {
         const cT = [];
         const pT = [];
         const cG = [];
@@ -812,6 +931,18 @@ router.get('/api/conteos', async (req, res) => {
           cG.push('0 = 1');
         }
 
+        if (validacionVal) {
+          if (validacionVal === 'PEND') {
+            cT.push('(t.Validación = ? OR t.Validación IS NULL OR t.Validación = "")');
+            cG.push('(e.Validación = ? OR e.Validación IS NULL OR e.Validación = "")');
+          } else {
+            cT.push('t.Validación = ?');
+            cG.push('e.Validación = ?');
+          }
+          pT.push(validacionVal);
+          pG.push(validacionVal);
+        }
+
         cT.push(construirFiltroRolTrabajador(acceso.permisos, 't'));
         cG.push(construirFiltroRolGeneral(acceso.permisos, 'e'));
 
@@ -819,7 +950,7 @@ router.get('/api/conteos', async (req, res) => {
       };
 
       // 1. Regionales (Excluye Regional)
-      const rF = buildFiltersTodoLocal(buscar, null, operacion, tipoDocumento, estado, tipoRegistro);
+      const rF = buildFiltersTodoLocal(buscar, null, operacion, tipoDocumento, estado, tipoRegistro, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
           SELECT t.Regional, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${rF.cT.join(' AND ')} GROUP BY t.Regional
@@ -834,7 +965,7 @@ router.get('/api/conteos', async (req, res) => {
       }
 
       // 2. Operaciones (Excluye Operación)
-      const oF = buildFiltersTodoLocal(buscar, regional, null, tipoDocumento, estado, tipoRegistro);
+      const oF = buildFiltersTodoLocal(buscar, regional, null, tipoDocumento, estado, tipoRegistro, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
           SELECT t.Operación, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${oF.cT.join(' AND ')} GROUP BY t.Operación
@@ -848,17 +979,17 @@ router.get('/api/conteos', async (req, res) => {
         rowsG.forEach(r => { if (r.Operación) response.operaciones[r.Operación] = (response.operaciones[r.Operación] || 0) + r.total; });
       }
 
-      // 3. Estados (Excluye Estado, Trabajador sólo)
-      const eF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, null, tipoRegistro);
+      // 3. Estados (Excluye Estado, Trabajador sólo - counts UNIQUE worker IDs)
+      const eF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, null, tipoRegistro, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
-          SELECT t.Estado, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${eF.cT.join(' AND ')} GROUP BY t.Estado
+          SELECT t.Estado, COUNT(DISTINCT t.Identificación) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${eF.cT.join(' AND ')} GROUP BY t.Estado
         `, eF.pT);
         rowsT.forEach(r => { if (r.Estado) response.estados[r.Estado] = r.total; });
       }
 
       // 4. Tipos Registro
-      const trF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, estado, null);
+      const trF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, estado, null, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
           SELECT COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${trF.cT.join(' AND ')}
@@ -873,7 +1004,7 @@ router.get('/api/conteos', async (req, res) => {
       }
 
       // 5. Tipos Documento (Excluye TipoDocumento)
-      const tdF = buildFiltersTodoLocal(buscar, regional, operacion, null, estado, tipoRegistro);
+      const tdF = buildFiltersTodoLocal(buscar, regional, operacion, null, estado, tipoRegistro, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
           SELECT t.TipoDocumento, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${tdF.cT.join(' AND ')} GROUP BY t.TipoDocumento
@@ -886,6 +1017,143 @@ router.get('/api/conteos', async (req, res) => {
         `, tdF.pG);
         rowsG.forEach(r => { if (r.TipoDocumento) response.tiposDocumento[r.TipoDocumento] = (response.tiposDocumento[r.TipoDocumento] || 0) + r.total; });
       }
+
+      // 6. Validación (Excluye Validación)
+      const valF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, estado, tipoRegistro, null);
+      if (tipoRegistro !== 'General') {
+        const [rowsT] = await pool.execute(`
+          SELECT COALESCE(t.Validación, 'PEND') AS val, COUNT(*) AS total 
+          FROM Maestro_docTrabajador t 
+          LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+          WHERE ${valF.cT.join(' AND ')} 
+          GROUP BY COALESCE(t.Validación, 'PEND')
+        `, valF.pT);
+        rowsT.forEach(r => {
+          const label = r.val === '' ? 'PEND' : r.val;
+          response.validation[label] = (response.validation[label] || 0) + r.total;
+        });
+      }
+      if (tipoRegistro !== 'Trabajador') {
+        const [rowsG] = await pool.execute(`
+          SELECT COALESCE(e.Validación, 'PEND') AS val, COUNT(*) AS total 
+          FROM Maestro_docEmpresa e 
+          WHERE ${valF.cG.join(' AND ')} 
+          GROUP BY COALESCE(e.Validación, 'PEND')
+        `, valF.pG);
+        rowsG.forEach(r => {
+          const label = r.val === '' ? 'PEND' : r.val;
+          response.validation[label] = (response.validation[label] || 0) + r.total;
+        });
+      }
+    }
+
+    else if (activeTab === 'docretiros') {
+      const buildFiltersRetirosLocal = (buscarVal, regionalVal, operacionVal, tipoDocumentoVal, estadoVal, validacionVal) => {
+        const cT = ["c.Clasificacion = '8. Retiro'"];
+        const pT = [];
+
+        if (!acceso.sinFiltro) {
+          cT.push(`t.Operación IN (${acceso.operacionesFiltro.map(()=>'?').join(',')})`);
+          pT.push(...acceso.operacionesFiltro);
+        }
+
+        if (buscarVal) {
+          cT.push('v.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
+          pT.push(`%${buscarVal}%`);
+        }
+
+        if (regionalVal) {
+          cT.push('t.Regional = ?'); pT.push(regionalVal);
+        }
+
+        if (operacionVal) {
+          cT.push('t.Operación = ?'); pT.push(operacionVal);
+        }
+
+        if (tipoDocumentoVal) {
+          cT.push('t.TipoDocumento = ?'); pT.push(tipoDocumentoVal);
+        }
+
+        if (estadoVal) {
+          cT.push('t.Estado = ?'); pT.push(estadoVal);
+        }
+
+        if (validacionVal) {
+          if (validacionVal === 'PEND') {
+            cT.push('(t.Validación = ? OR t.Validación IS NULL OR t.Validación = "")');
+          } else {
+            cT.push('t.Validación = ?');
+          }
+          pT.push(validacionVal);
+        }
+
+        cT.push(construirFiltroRolTrabajador(acceso.permisos, 't'));
+
+        return { cT, pT };
+      };
+
+      // 1. Regionales
+      const rF = buildFiltersRetirosLocal(buscar, null, operacion, tipoDocumento, estado, validacion);
+      const [rowsReg] = await pool.execute(`
+        SELECT t.Regional, COUNT(*) AS total 
+        FROM Maestro_docTrabajador t 
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        WHERE ${rF.cT.join(' AND ')} 
+        GROUP BY t.Regional
+      `, rF.pT);
+      rowsReg.forEach(r => { if (r.Regional) response.regionales[r.Regional] = r.total; });
+
+      // 2. Operaciones
+      const oF = buildFiltersRetirosLocal(buscar, regional, null, tipoDocumento, estado, validacion);
+      const [rowsOp] = await pool.execute(`
+        SELECT t.Operación, COUNT(*) AS total 
+        FROM Maestro_docTrabajador t 
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        WHERE ${oF.cT.join(' AND ')} 
+        GROUP BY t.Operación
+      `, oF.pT);
+      rowsOp.forEach(r => { if (r.Operación) response.operaciones[r.Operación] = r.total; });
+
+      // 3. Estados (Counts unique workers)
+      const eF = buildFiltersRetirosLocal(buscar, regional, operacion, tipoDocumento, null, validacion);
+      const [rowsEst] = await pool.execute(`
+        SELECT t.Estado, COUNT(DISTINCT t.Identificación) AS total 
+        FROM Maestro_docTrabajador t 
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        WHERE ${eF.cT.join(' AND ')} 
+        GROUP BY t.Estado
+      `, eF.pT);
+      rowsEst.forEach(r => { if (r.Estado) response.estados[r.Estado] = r.total; });
+
+      // 4. Tipos Documento
+      const tdF = buildFiltersRetirosLocal(buscar, regional, operacion, null, estado, validacion);
+      const [rowsTd] = await pool.execute(`
+        SELECT t.TipoDocumento, COUNT(*) AS total 
+        FROM Maestro_docTrabajador t 
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        WHERE ${tdF.cT.join(' AND ')} 
+        GROUP BY t.TipoDocumento
+      `, tdF.pT);
+      rowsTd.forEach(r => { if (r.TipoDocumento) response.tiposDocumento[r.TipoDocumento] = r.total; });
+
+      // 5. Validación
+      const valF = buildFiltersRetirosLocal(buscar, regional, operacion, tipoDocumento, estado, null);
+      const [rowsVal] = await pool.execute(`
+        SELECT COALESCE(t.Validación, 'PEND') AS val, COUNT(*) AS total 
+        FROM Maestro_docTrabajador t 
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        WHERE ${valF.cT.join(' AND ')} 
+        GROUP BY COALESCE(t.Validación, 'PEND')
+      `, valF.pT);
+      rowsVal.forEach(r => {
+        const label = r.val === '' ? 'PEND' : r.val;
+        response.validation[label] = r.total;
+      });
     }
 
     else if (activeTab === 'solicitudes') {
@@ -1187,7 +1455,7 @@ router.get('/api/permisos', async (req, res) => {
 
     const [roles] = await pool.execute('SELECT * FROM Config_Rol ORDER BY Rol ASC');
     const [documentos] = await pool.execute(
-      'SELECT Id, Prefijo, Documento, tipo_doc FROM Config_Doc_Trabajador ORDER BY Documento ASC'
+      'SELECT Id, Prefijo, Documento, tipo_doc, Clasificacion FROM Config_Doc_Trabajador ORDER BY Documento ASC'
     );
 
     res.json({ roles, documentos });
@@ -1281,6 +1549,200 @@ router.post('/api/documento-trabajador/validacion', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[cloud-docs] POST /api/documento-trabajador/validacion error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Eliminar documento (Pestaña Consolidado Todo - Solo Archivo/Sistema y Validación ERROR)
+router.post('/api/documento/eliminar', async (req, res) => {
+  try {
+    const { usuario, id, tipo_registro } = req.body;
+    if (!usuario || !id || !tipo_registro) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, id, tipo_registro)' });
+    }
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso || !['Archivo', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado para eliminar documentos' });
+    }
+
+    // Determine table
+    const table = tipo_registro === 'Trabajador' ? 'Maestro_docTrabajador' : 'Maestro_docEmpresa';
+
+    // Fetch the record first
+    const [rows] = await pool.execute(
+      `SELECT Url, \`Validación\` AS Validacion FROM ${table} WHERE id = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Documento no encontrado' });
+    }
+
+    const doc = rows[0];
+    if (doc.Validacion !== 'ERROR') {
+      return res.status(400).json({ error: 'Solo se pueden eliminar documentos con validación ERROR' });
+    }
+
+    // Delete record from DB
+    await pool.execute(`DELETE FROM ${table} WHERE id = ?`, [id]);
+
+    // Delete file from GCS bucket
+    if (doc.Url) {
+      const gcsPrefix = 'https://storage.googleapis.com/';
+      if (doc.Url.startsWith(gcsPrefix)) {
+        const parts = doc.Url.substring(gcsPrefix.length).split('/');
+        const bucketName = parts[0];
+        const fileName = parts.slice(1).join('/');
+        try {
+          const { storage } = require('../services/storage');
+          const bucket = storage.bucket(bucketName);
+          const file = bucket.file(fileName);
+          const [exists] = await file.exists();
+          if (exists) {
+            await file.delete();
+            console.log(`[cloud-docs] Deleted file from GCS: gs://${bucketName}/${fileName}`);
+          }
+        } catch (gcsErr) {
+          console.error(`[cloud-docs] Error deleting GCS file ${doc.Url}:`, gcsErr);
+          // We continue because DB is already deleted, but we log the bucket error.
+        }
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cloud-docs] POST /api/documento/eliminar error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper function to send email notification on docretiros error
+async function enviarNotificacionErrorRetiros(operacion, documentos) {
+  try {
+    const [usuarios] = await pool.execute(
+      `SELECT DISTINCT Email FROM Maestro_Usuarios 
+       WHERE Operación = ? AND Rol IN ('Auxiliar', 'AuxiliarR', 'CoordinadorR', 'Coordinador') 
+         AND Email IS NOT NULL AND Email <> ''`,
+      [operacion]
+    );
+
+    if (usuarios.length === 0) {
+      console.log(`[cloud-docs] No users with matching roles found to notify for operation ${operacion}`);
+      return;
+    }
+
+    const emails = usuarios.map(u => u.Email);
+    console.log(`[cloud-docs] Notifying emails: ${emails.join(', ')} for operation ${operacion}`);
+
+    const rowsHtml = documentos.map(doc => `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1.5px solid #eee; font-weight: bold; color: #000b59;">${doc.Documento || 'N/A'}</td>
+        <td style="padding: 10px; border-bottom: 1.5px solid #eee;">${doc.Identificacion || 'N/A'}</td>
+        <td style="padding: 10px; border-bottom: 1.5px solid #eee;">${doc.Operacion || 'N/A'}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 24px; color: #334155;">
+        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1.5px solid #e2e8f0;">
+          <div style="border-top: 5px solid #f55400; background: #000b59; padding: 20px 24px; color: #ffffff;">
+            <h2 style="margin: 0; font-size: 1.4rem; font-weight: 700;">Novedad de Nómina: Documentos de Retiro</h2>
+          </div>
+          <div style="padding: 24px;">
+            <p style="font-size: 1.05rem; line-height: 1.5; color: #1e293b;">
+              Hola,
+            </p>
+            <p style="font-size: 0.95rem; line-height: 1.5;">
+              El área de <strong>Nómina</strong> ha indicado que los siguientes documentos de retiro presentan novedades y deben volver a subirse:
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9rem; text-align: left;">
+              <thead>
+                <tr style="background: #f1f5f9; color: #475569;">
+                  <th style="padding: 10px; border-bottom: 1.5px solid #cbd5e1;">Documento</th>
+                  <th style="padding: 10px; border-bottom: 1.5px solid #cbd5e1;">Cédula</th>
+                  <th style="padding: 10px; border-bottom: 1.5px solid #cbd5e1;">Operación</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+            <p style="font-size: 0.9rem; line-height: 1.5; color: #64748b; margin-top: 24px;">
+              Por favor, ingrese al sistema para verificar y cargar nuevamente los soportes requeridos.
+            </p>
+          </div>
+          <div style="background: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1.5px solid #e2e8f0; font-size: 0.8rem; color: #94a3b8;">
+            Este es un correo automático generado por LogyApp CloudDocs. Por favor no responder a esta dirección.
+          </div>
+        </div>
+      </div>
+    `;
+
+    const { transporter } = require('../services/email');
+    await transporter.sendMail({
+      from: `"CloudDocs Nómina" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
+      to: emails.join(', '),
+      subject: `[Novedad Retiro] Documentos de retiro presentan novedad - Operación ${operacion}`,
+      html: htmlContent
+    });
+    console.log(`[cloud-docs] Email notification sent successfully for operation ${operacion}`);
+  } catch (err) {
+    console.error(`[cloud-docs] Error sending email notification for operation ${operacion}:`, err);
+  }
+}
+
+// API: Validación masiva de documentos de retiros (Rol Archivo, Nomina y Sistema)
+router.post('/api/docretiros/validacion-masiva', async (req, res) => {
+  try {
+    const { usuario, ids, validacion } = req.body;
+    if (!usuario || !Array.isArray(ids) || ids.length === 0 || !validacion) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, ids, validacion)' });
+    }
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso || !['Archivo', 'Nomina', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado para realizar validación masiva' });
+    }
+
+    if (!['OK', 'PEND', 'ERROR'].includes(validacion)) {
+      return res.status(400).json({ error: 'Valor de validación inválido' });
+    }
+
+    // Update DB in batch
+    const placeholders = ids.map(() => '?').join(',');
+    const sqlUpdate = `UPDATE Maestro_docTrabajador SET \`Validación\` = ? WHERE id IN (${placeholders})`;
+    await pool.execute(sqlUpdate, [validacion, ...ids]);
+
+    // Send emails if ERROR
+    if (validacion === 'ERROR') {
+      const sqlSelect = `
+        SELECT t.id, t.Identificación AS Identificacion, t.Operación AS Operacion, c.Documento
+        FROM Maestro_docTrabajador t
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        WHERE t.id IN (${placeholders})
+      `;
+      const [docs] = await pool.execute(sqlSelect, ids);
+
+      // Group documents by Operacion
+      const groups = {};
+      docs.forEach(doc => {
+        const op = doc.Operacion || 'Sin Operacion';
+        if (!groups[op]) groups[op] = [];
+        groups[op].push(doc);
+      });
+
+      // Send notifications async
+      for (const op of Object.keys(groups)) {
+        if (op !== 'Sin Operacion') {
+          enviarNotificacionErrorRetiros(op, groups[op]); // Trigger async
+        }
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cloud-docs] POST /api/docretiros/validacion-masiva error:', err);
     res.status(500).json({ error: err.message });
   }
 });

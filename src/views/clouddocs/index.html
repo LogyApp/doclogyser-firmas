@@ -535,6 +535,20 @@
       border-color: var(--primary) !important;
       box-shadow: 0 4px 10px rgba(0, 11, 89, 0.2);
     }
+    .btn-delete-row {
+      background: none;
+      border: none;
+      color: #dc2626;
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+    .btn-delete-row:hover {
+      background: #fee2e2;
+      transform: scale(1.1);
+    }
     .semaforo-dot {
       width: 16px;
       height: 16px;
@@ -606,6 +620,10 @@
       <li class="nav-item" id="tab-btn-todo" onclick="switchTab('todo')">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
         <span>Consolidado (Todo)</span>
+      </li>
+      <li class="nav-item" id="tab-btn-docretiros" onclick="switchTab('docretiros')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="17" y1="8" x2="22" y2="13"></line><line x1="22" y1="8" x2="17" y2="13"></line></svg>
+        <span>Doc Retiros</span>
       </li>
     </ul>
   </div>
@@ -701,6 +719,23 @@
       </div>
     </section>
 
+    <!-- Bulk Actions Toolbar (Only for Retiros mass validation) -->
+    <section class="card" id="bulk-actions-toolbar" style="display: none; padding: 14px 24px; margin-bottom: 16px; border-left: 4px solid var(--accent); align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <span style="font-weight: 600; color: var(--primary);">Acción Masiva (Doc Retiros):</span>
+        <span id="selected-rows-count" style="font-size: 0.9rem; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: var(--radius-sm); font-weight: bold;">0 seleccionados</span>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn" onclick="toggleAllCheckboxesRetiros(true)" style="padding: 6px 12px; font-size: 0.8rem; border: 1.5px solid var(--border); background: #fff; color: var(--text); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">☑ Seleccionar Todo</button>
+          <button class="btn" onclick="toggleAllCheckboxesRetiros(false)" style="padding: 6px 12px; font-size: 0.8rem; border: 1.5px solid var(--border); background: #fff; color: var(--text); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s;">☒ Deseleccionar Todo</button>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-submit" onclick="ejecutarValidacionMasiva('OK')" style="background: #16a34a; color: #fff; padding: 8px 16px; font-size: 0.85rem; border: none; cursor: pointer;">🟢 Marcar como OK</button>
+        <button class="btn btn-submit" onclick="ejecutarValidacionMasiva('PEND')" style="background: #eab308; color: #fff; padding: 8px 16px; font-size: 0.85rem; border: none; cursor: pointer;">🟡 Marcar como PEND</button>
+        <button class="btn btn-submit" onclick="ejecutarValidacionMasiva('ERROR')" style="background: #dc2626; color: #fff; padding: 8px 16px; font-size: 0.85rem; border: none; cursor: pointer;">🔴 Marcar como ERROR</button>
+      </div>
+    </section>
+
     <!-- Table Card -->
     <main class="card">
       <div class="table-container">
@@ -731,8 +766,17 @@
           <div>
             <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
               <h3 style="margin: 0; color: var(--primary); font-size: 1.25rem; font-weight: 750;" id="permisos-rol-title">Selecciona un Rol</h3>
-              <div class="field" style="width: 250px; margin: 0;">
-                <input type="text" id="permisos-doc-search" placeholder="Filtrar documentos..." oninput="onPermisosSearchInput()" style="margin: 0; padding: 8px 12px; font-size: 0.85rem; height: 36px; border: 1.5px solid var(--border);">
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <div class="field" style="width: 250px; margin: 0;">
+                  <input type="text" id="permisos-doc-search" placeholder="Filtrar documentos..." oninput="onPermisosSearchInput()" style="margin: 0; padding: 8px 12px; font-size: 0.85rem; height: 36px; border: 1.5px solid var(--border);">
+                </div>
+                <!-- Clasificación Filter Dropdown -->
+                <div id="permisos-clasificacion-filter-wrapper" style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                  <label for="permisos-clasificacion-filter" style="margin: 0; font-size: 0.85rem; font-weight: 700; white-space: nowrap; color: var(--text-muted);">Clasificación:</label>
+                  <select id="permisos-clasificacion-filter" onchange="onPermisosClasificacionChange()" style="margin: 0; padding: 6px 12px; font-size: 0.82rem; height: 36px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: #fff; color: var(--text); outline: none;">
+                    <option value="">Todas</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -743,14 +787,6 @@
                 <button class="btn btn-tab" id="btn-subtab-retirado" onclick="switchPermisosSubtab('retirado')">Retirado (Trabajador)</button>
                 <button class="btn btn-tab" id="btn-subtab-general" onclick="switchPermisosSubtab('general')">General (Empresa)</button>
                 <button class="btn btn-tab" id="btn-subtab-colaboradores" onclick="switchPermisosSubtab('colaboradores')">Colaboradores</button>
-              </div>
-
-              <!-- Clasificación Filter Dropdown -->
-              <div id="permisos-clasificacion-filter-wrapper" style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                <label for="permisos-clasificacion-filter" style="margin: 0; font-size: 0.85rem; font-weight: 700; white-space: nowrap; color: var(--text-muted);">Clasificación:</label>
-                <select id="permisos-clasificacion-filter" onchange="onPermisosClasificacionChange()" style="margin: 0; padding: 6px 12px; font-size: 0.82rem; height: 36px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: #fff; color: var(--text); outline: none;">
-                  <option value="">Todas</option>
-                </select>
               </div>
             </div>
 
@@ -960,7 +996,20 @@
         { key: 'Estado', label: 'Estado', width: 110 },
         { key: 'Validacion', label: 'Validación', width: 130, align: 'center' },
         { key: 'Usuario', label: 'Usuario', width: 140 },
-        { key: 'Observaciones', label: 'Observaciones', width: 180 }
+        { key: 'Observaciones', label: 'Observaciones', width: 180 },
+        { key: 'acciones', label: 'Acciones', width: 90, align: 'center' }
+      ],
+      docretiros: [
+        { key: 'FechaRegistro', label: 'Registro', width: 160 },
+        { key: 'Documento', label: 'Documento', width: 220 },
+        { key: 'Prefijo', label: 'Prefijo', width: 90 },
+        { key: 'TrabajadorNombre', label: 'Trabajador', width: 280 },
+        { key: 'Operación', label: 'Operación', width: 180 },
+        { key: 'Estado', label: 'Estado', width: 110 },
+        { key: 'Validacion', label: 'Validación', width: 130, align: 'center' },
+        { key: 'Usuario', label: 'Usuario', width: 140 },
+        { key: 'Observaciones', label: 'Observaciones', width: 180 },
+        { key: 'acciones', label: 'Acciones', width: 90, align: 'center' }
       ],
       worker_modal: [
         { key: 'Prefijo', label: 'Prefijo', width: 100 },
@@ -1378,10 +1427,10 @@
         }
 
         // Reset displayed filter inputs dynamically
-        if (tab === 'todo') {
+        if (tab === 'todo' || tab === 'docretiros') {
           docSelectWrapper.style.display = 'flex';
           estadoWrapper.style.display = 'flex';
-          registroWrapper.style.display = 'flex';
+          registroWrapper.style.display = tab === 'todo' ? 'flex' : 'none';
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'flex';
           solEstadoWrapper.style.display = 'none';
           labelBuscar.innerText = 'Buscar Trabajador';
@@ -1423,6 +1472,16 @@
           btn.classList.add('active');
         }
       });
+
+      const bulkToolbar = document.getElementById('bulk-actions-toolbar');
+      if (tab === 'docretiros' && ['Archivo', 'Nomina', 'Sistema'].includes(CONFIG.rol)) {
+        if (bulkToolbar) {
+          bulkToolbar.style.display = 'flex';
+          document.getElementById('selected-rows-count').innerText = '0 seleccionados';
+        }
+      } else {
+        if (bulkToolbar) bulkToolbar.style.display = 'none';
+      }
 
       if (tab === 'permisos') {
         cargarPermisosPanel();
@@ -1479,6 +1538,12 @@
           url = `/cloud-docs/api/solicitudes?${queryParams}`;
         } else if (activeTab === 'validarcap') {
           url = `/cloud-docs/api/validarcap?usuario=${CONFIG.usuarioId}&buscar=${encodeURIComponent(buscar)}`;
+        } else if (activeTab === 'docretiros') {
+          if (buscar) queryParams.set('buscar', buscar);
+          if (estado) queryParams.set('estado', estado);
+          if (tipoDocumento) queryParams.set('tipoDocumento', tipoDocumento);
+          if (validacion) queryParams.set('validacion', validacion);
+          url = `/cloud-docs/api/docretiros?${queryParams}`;
         } else { // todo
           if (buscar) queryParams.set('buscar', buscar);
           if (estado) queryParams.set('estado', estado);
@@ -1519,6 +1584,9 @@
         if (res.ok) {
           currentData = data;
           renderMainTable();
+          const masterChk = document.getElementById('select-all-retiros');
+          if (masterChk) masterChk.checked = false;
+          updateSelectedRowsCount();
         } else {
           showToast(data.error || 'Error al obtener datos', 'error');
         }
@@ -1578,7 +1646,7 @@
       });
 
       // 3. Estado (Activo/Retirado)
-      if (activeTab === 'trabajador' || activeTab === 'todo') {
+      if (activeTab === 'trabajador' || activeTab === 'todo' || activeTab === 'docretiros') {
         const totalActivo = counts.estados['Activo'] || 0;
         const totalRetirado = counts.estados['Retirado'] || 0;
         selEstado.innerHTML = `
@@ -1597,6 +1665,24 @@
           <option value="Trabajador" ${registroVal === 'Trabajador' ? 'selected' : ''}>Trabajador (${totalTrab})</option>
           <option value="General" ${registroVal === 'General' ? 'selected' : ''}>General (Empresa) (${totalGen})</option>
         `;
+
+      }
+
+      // 4.5. Validación (OK/PEND/ERROR)
+      if (activeTab === 'todo' || activeTab === 'docretiros') {
+        const selTodoVal = document.getElementById('filter-todo-validacion');
+        if (selTodoVal) {
+          const todoValVal = selTodoVal.value;
+          const totalOk = counts.validation['OK'] || 0;
+          const totalPend = counts.validation['PEND'] || 0;
+          const totalErr = counts.validation['ERROR'] || 0;
+          selTodoVal.innerHTML = `
+            <option value="">— Todas —</option>
+            <option value="OK" ${todoValVal === 'OK' ? 'selected' : ''}>OK (${totalOk})</option>
+            <option value="PEND" ${todoValVal === 'PEND' ? 'selected' : ''}>PEND (${totalPend})</option>
+            <option value="ERROR" ${todoValVal === 'ERROR' ? 'selected' : ''}>ERROR (${totalErr})</option>
+          `;
+        }
       }
 
       // 5. Estado de Solicitud (Pendiente/Autorizado/Rechazado/Revocado)
@@ -1615,9 +1701,10 @@
       }
 
       // 6. Tipo de Documento
-      if (activeTab === 'todo') {
+      if (activeTab === 'todo' || activeTab === 'docretiros') {
         selDocumento.innerHTML = '<option value="">— Todos los tipos —</option>';
         tiposDocumentosList.forEach(d => {
+          if (activeTab === 'docretiros' && d.Clasificacion !== '8. Retiro') return;
           const total = counts.tiposDocumento[d.Id] || 0;
           const option = document.createElement('option');
           option.value = d.Id;
@@ -1632,10 +1719,19 @@
     function renderMainTable() {
       const tableEl = document.getElementById('main-table');
       
+      let cols = COLUMNS[activeTab];
+      const isRetirosAuth = activeTab === 'docretiros' && ['Archivo', 'Nomina', 'Sistema'].includes(CONFIG.rol);
+      if (isRetirosAuth) {
+        cols = [
+          { key: 'select', label: 'Sel.', width: 45, align: 'center' },
+          ...COLUMNS.docretiros
+        ];
+      }
+
       // Render columns header
       renderTableHeader(
         'table-head',
-        COLUMNS[activeTab],
+        cols,
         mainSort,
         () => {
           sortDataArray(currentData, mainSort.key, mainSort.dir);
@@ -1652,8 +1748,17 @@
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
 
+      let cols = COLUMNS[activeTab];
+      const isRetirosAuth = activeTab === 'docretiros' && ['Archivo', 'Nomina', 'Sistema'].includes(CONFIG.rol);
+      if (isRetirosAuth) {
+        cols = [
+          { key: 'select', label: 'Sel.', width: 45, align: 'center' },
+          ...COLUMNS.docretiros
+        ];
+      }
+
       if (currentData.length === 0) {
-        const colsLength = COLUMNS[activeTab].length;
+        const colsLength = cols.length;
         tbody.innerHTML = `<tr><td colspan="${colsLength}" style="text-align: center; color: #94a3b8; padding: 24px;">No se encontraron registros</td></tr>`;
         return;
       }
@@ -1721,7 +1826,7 @@
             <td>${esc(row.usuario || 'N/A')}</td>
             <td style="font-size: 0.85rem;">${esc(row.fecha || 'N/A')}</td>
           `;
-        } else { // todo
+        } else if (activeTab === 'todo' || activeTab === 'docretiros') {
           tr.onclick = () => {
             if (row.permitido) {
               window.open(row.Url, '_blank');
@@ -1748,7 +1853,26 @@
           }
           const valBadge = `<span class="badge-status" style="background:${valBg}; color:${valColor}; border:1px solid ${valBorder};">${esc(valVal)}</span>`;
 
+          let actionBtnHtml = '—';
+          if (['Archivo', 'Sistema'].includes(CONFIG.rol) && valVal === 'ERROR') {
+            actionBtnHtml = `
+              <button class="btn-delete-row" onclick="event.stopPropagation(); eliminarRegistroCloudDocs('${row.id}', '${row.tipo_registro}')" title="Eliminar Registro">
+                🗑️
+              </button>
+            `;
+          }
+
+          let checkboxTdHtml = '';
+          if (isRetirosAuth) {
+            checkboxTdHtml = `
+              <td style="text-align: center;" onclick="event.stopPropagation();">
+                <input type="checkbox" class="row-select-retiro" data-id="${row.id}" onchange="onRowSelectChange()">
+              </td>
+            `;
+          }
+
           tr.innerHTML = `
+            ${checkboxTdHtml}
             <td style="font-size: 0.82rem;">${row.FechaRegistro || 'N/A'}</td>
             <td style="font-weight: 600; color: var(--primary);">${esc(row.Documento || 'N/A')}</td>
             <td class="${prefColorClass}">${esc(row.Prefijo)}</td>
@@ -1760,6 +1884,7 @@
             <td>${valBadge}</td>
             <td style="font-size: 0.82rem;">${esc(row.Usuario || 'N/A')}</td>
             <td style="font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(row.Observaciones || '')}">${esc(row.Observaciones || '—')}</td>
+            <td>${actionBtnHtml}</td>
           `;
         }
         tbody.appendChild(tr);
@@ -1909,6 +2034,94 @@
       } catch (err) {
         console.error(err);
         showToast('Error de conexión', 'error');
+      }
+    }
+
+    async function eliminarRegistroCloudDocs(id, tipoRegistro) {
+      const confirmOk = confirm(`¿Estás seguro de que deseas eliminar este documento permanentemente?\nEsta acción no se puede deshacer y borrará el archivo de almacenamiento en la nube.`);
+      if (!confirmOk) return;
+
+      showLoader();
+      try {
+        const res = await fetch('/cloud-docs/api/documento/eliminar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            id: id,
+            tipo_registro: tipoRegistro
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('Registro y archivo eliminados con éxito.');
+          filtrar();
+        } else {
+          showToast(data.error || 'Error al eliminar el documento', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    function toggleAllCheckboxesRetiros(shouldCheck) {
+      const checkboxes = document.querySelectorAll('.row-select-retiro');
+      checkboxes.forEach(cb => {
+        cb.checked = shouldCheck;
+      });
+      updateSelectedRowsCount();
+    }
+
+    function onRowSelectChange() {
+      updateSelectedRowsCount();
+    }
+
+    function updateSelectedRowsCount() {
+      const countEl = document.getElementById('selected-rows-count');
+      if (countEl) {
+        const checkedCount = document.querySelectorAll('.row-select-retiro:checked').length;
+        countEl.innerText = `${checkedCount} seleccionados`;
+      }
+    }
+
+    async function ejecutarValidacionMasiva(valState) {
+      const checkboxes = document.querySelectorAll('.row-select-retiro:checked');
+      if (checkboxes.length === 0) {
+        showToast('Selecciona al menos un documento para realizar la validación masiva.', 'warning');
+        return;
+      }
+
+      const confirmOk = confirm(`¿Estás seguro de que deseas marcar los ${checkboxes.length} documentos seleccionados como ${valState}?`);
+      if (!confirmOk) return;
+
+      const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+      showLoader();
+      try {
+        const res = await fetch('/cloud-docs/api/docretiros/validacion-masiva', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            ids: ids,
+            validacion: valState
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast(`Validación masiva aplicada con éxito.`);
+          filtrar();
+        } else {
+          showToast(data.error || 'Error al aplicar validación masiva', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoader();
       }
     }
 
