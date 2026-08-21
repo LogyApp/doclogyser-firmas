@@ -319,9 +319,33 @@
       overflow: hidden;
     }
 
-    .table-container { width: 100%; overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+    main.card {
+      margin-bottom: 24px;
+    }
+
+    #permisos-container {
+      margin-bottom: 24px;
+    }
+
+    .table-container {
+      width: 100%;
+      max-height: calc(100vh - 330px);
+      min-height: 400px;
+      overflow: auto;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; min-width: 800px; table-layout: fixed; }
-    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid var(--border); }
+    th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 600;
+      padding: 12px 16px;
+      border-bottom: 1.5px solid var(--border);
+      z-index: 5;
+    }
     td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: #334155; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* Modal Sticky Header */
@@ -452,6 +476,101 @@
       .modal-content { max-height: 95vh; height: 95vh; border-radius: 12px; }
       .filters-grid { grid-template-columns: 1fr; }
     }
+
+    .role-card {
+      padding: 12px 16px;
+      background: #f8fafc;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      text-align: left;
+    }
+    .role-card:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+    .role-card.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(245, 84, 0, 0.25);
+    }
+    .permisos-subtabs .btn-tab {
+      background: #f8fafc;
+      color: var(--text-muted);
+      border: 1.5px solid var(--border) !important;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .permisos-subtabs .btn-tab:hover {
+      background: #f1f5f9;
+      color: var(--text);
+    }
+    .permisos-subtabs .btn-tab.active {
+      background: var(--accent) !important;
+      color: #fff !important;
+      border-color: var(--accent) !important;
+      box-shadow: 0 4px 10px rgba(245, 84, 0, 0.2);
+    }
+    .permisos-subtabs #btn-subtab-colaboradores {
+      background: #e0f2fe !important;
+      color: #0369a1 !important;
+      border-color: #bae6fd !important;
+    }
+    .permisos-subtabs #btn-subtab-colaboradores:hover {
+      background: #bae6fd !important;
+      color: #0369a1 !important;
+    }
+    .permisos-subtabs #btn-subtab-colaboradores.active {
+      background: var(--primary) !important;
+      color: #fff !important;
+      border-color: var(--primary) !important;
+      box-shadow: 0 4px 10px rgba(0, 11, 89, 0.2);
+    }
+    .semaforo-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: inline-block;
+      cursor: pointer;
+      opacity: 0.3;
+      transition: all 0.2s ease-in-out;
+      border: 1px solid rgba(0,0,0,0.15);
+    }
+    .semaforo-dot:hover {
+      opacity: 0.7;
+      transform: scale(1.2);
+    }
+    .semaforo-dot.active {
+      opacity: 1;
+      transform: scale(1.3);
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      border-width: 1.5px;
+    }
+    .dot-green { background-color: #16a34a; }
+    .dot-yellow { background-color: #eab308; }
+    .dot-red { background-color: #dc2626; }
+    .permiso-checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: background 0.2s;
+    }
+    .permiso-checkbox-item:hover {
+      background: #f8fafc;
+    }
   </style>
 </head>
 <body>
@@ -545,6 +664,15 @@
             <option value="General">General (Empresa)</option>
           </select>
         </div>
+        <div class="field" id="filter-todo-validacion-wrapper" style="display: none;">
+          <label for="filter-todo-validacion">Validación</label>
+          <select id="filter-todo-validacion" onchange="filtrar()">
+            <option value="">— Todas —</option>
+            <option value="OK">OK</option>
+            <option value="PEND">PEND</option>
+            <option value="ERROR">ERROR</option>
+          </select>
+        </div>
         <div class="field" id="filter-solicitud-estado-wrapper" style="display: none;">
           <label for="filter-solicitud-estado">Estado de Solicitud</label>
           <select id="filter-solicitud-estado" onchange="filtrar()">
@@ -586,6 +714,65 @@
         </table>
       </div>
     </main>
+
+    <!-- Permisos Card Split Layout -->
+    <section class="card" id="permisos-container" style="display: none; padding: 24px;">
+      <div class="permisos-layout" style="display: grid; grid-template-columns: 280px 1fr; gap: 24px; min-height: 550px;">
+        <!-- Left Side: Roles list -->
+        <div class="roles-sidebar" style="border-right: 1.5px solid var(--border); padding-right: 20px;">
+          <h4 style="margin: 0 0 16px 0; color: var(--primary); font-size: 1.05rem; font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">Roles del Sistema</h4>
+          <div id="roles-list-div" style="display: flex; flex-direction: column; gap: 8px; max-height: 500px; overflow-y: auto;">
+            <!-- Dynamic Roles Cards -->
+          </div>
+        </div>
+
+        <!-- Right Side: Documents lists with Search -->
+        <div class="permisos-editor-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+              <h3 style="margin: 0; color: var(--primary); font-size: 1.25rem; font-weight: 750;" id="permisos-rol-title">Selecciona un Rol</h3>
+              <div class="field" style="width: 250px; margin: 0;">
+                <input type="text" id="permisos-doc-search" placeholder="Filtrar documentos..." oninput="onPermisosSearchInput()" style="margin: 0; padding: 8px 12px; font-size: 0.85rem; height: 36px; border: 1.5px solid var(--border);">
+              </div>
+            </div>
+
+            <!-- Subtabs navigation for permissions -->
+            <div class="permisos-subtabs" style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; width: 100%;">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-tab active" id="btn-subtab-activo" onclick="switchPermisosSubtab('activo')">Activo (Trabajador)</button>
+                <button class="btn btn-tab" id="btn-subtab-retirado" onclick="switchPermisosSubtab('retirado')">Retirado (Trabajador)</button>
+                <button class="btn btn-tab" id="btn-subtab-general" onclick="switchPermisosSubtab('general')">General (Empresa)</button>
+                <button class="btn btn-tab" id="btn-subtab-colaboradores" onclick="switchPermisosSubtab('colaboradores')">Colaboradores</button>
+              </div>
+
+              <!-- Clasificación Filter Dropdown -->
+              <div id="permisos-clasificacion-filter-wrapper" style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                <label for="permisos-clasificacion-filter" style="margin: 0; font-size: 0.85rem; font-weight: 700; white-space: nowrap; color: var(--text-muted);">Clasificación:</label>
+                <select id="permisos-clasificacion-filter" onchange="onPermisosClasificacionChange()" style="margin: 0; padding: 6px 12px; font-size: 0.82rem; height: 36px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: #fff; color: var(--text); outline: none;">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Select/Deselect All shortcuts -->
+            <div style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 0.8rem;">
+              <span onclick="selectAllPermisos(true)" style="color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline;">Seleccionar Todos</span>
+              <span onclick="selectAllPermisos(false)" style="color: var(--text-muted); cursor: pointer; font-weight: 600; text-decoration: underline;">Deseleccionar Todos</span>
+            </div>
+
+            <!-- Checklist container -->
+            <div id="permisos-checklist-div" style="max-height: 320px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; padding: 10px; background: #f8fafc; border-radius: var(--radius-sm); border: 1.5px solid var(--border);">
+              <!-- Dynamic Checkboxes -->
+            </div>
+          </div>
+
+          <!-- Save Actions -->
+          <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; border-top: 1.5px solid var(--border); padding-top: 16px;">
+            <button class="btn btn-submit" id="btn-guardar-permisos" onclick="savePermisosState()" style="background: var(--success); color: #fff; padding: 10px 20px; font-size: 0.9rem; font-weight: 700; box-shadow: none;" disabled>Guardar Permisos</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <!-- Modal: Worker Documents -->
@@ -710,8 +897,10 @@
           <div><strong>Justificación:</strong> <span id="gestionar-justificacion" style="font-style:italic;"></span></div>
         </div>
         <div class="field">
-          <label for="gestionar-visualizar">Valor de columna Visualizar</label>
-          <input type="text" id="gestionar-visualizar" value="OK" placeholder="OK o vacío para revocar...">
+          <label>Valor de columna Visualizar</label>
+          <button type="button" id="btn-gestionar-visualizar" onclick="toggleGestionarVisualizar()" class="btn" style="width: 100%; height: 42px; font-weight: 700; border-radius: var(--radius-sm); border: 2.5px solid var(--border); transition: all 0.2s; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: none;">
+            <span>Desaplicado (Vacío)</span>
+          </button>
         </div>
         <div class="field">
           <label for="gestionar-estado">Estado de la Solicitud</label>
@@ -756,20 +945,20 @@
         { key: 'documentosCount', label: 'Documentos', width: 120, align: 'center' }
       ],
       documento: [
-        { key: 'Id', label: 'Id', width: 90 },
         { key: 'Documento', label: 'Documento', width: 350 },
         { key: 'Prefijo', label: 'Prefijo', width: 120 },
         { key: 'Clasificacion', label: 'Clasificación', width: 250 },
+        { key: 'tipo_doc', label: 'Tipo Doc', width: 150 },
         { key: 'Trabajadores', label: 'Trabajadores', width: 150, align: 'center' }
       ],
       todo: [
+        { key: 'FechaRegistro', label: 'Registro', width: 160 },
         { key: 'Documento', label: 'Documento', width: 220 },
         { key: 'Prefijo', label: 'Prefijo', width: 90 },
         { key: 'TrabajadorNombre', label: 'Trabajador', width: 280 },
         { key: 'Operación', label: 'Operación', width: 180 },
         { key: 'Estado', label: 'Estado', width: 110 },
-        { key: 'FechaIngreso', label: 'Ingreso', width: 110 },
-        { key: 'FechaRegistro', label: 'Registro', width: 160 },
+        { key: 'Validacion', label: 'Validación', width: 130, align: 'center' },
         { key: 'Usuario', label: 'Usuario', width: 140 },
         { key: 'Observaciones', label: 'Observaciones', width: 180 }
       ],
@@ -797,7 +986,6 @@
       solicitudes: [
         { key: 'tipo_registro', label: 'Tipo', width: 110 },
         { key: 'Documento', label: 'Documento', width: 220 },
-        { key: 'Prefijo', label: 'Prefijo', width: 90 },
         { key: 'TrabajadorNombre', label: 'Trabajador', width: 260 },
         { key: 'Usuario_Solicitud', label: 'Solicitante', width: 180 },
         { key: 'Justificacion_Solicitud', label: 'Justificación', width: 280 },
@@ -806,6 +994,7 @@
       ],
       validarcap: [
         { key: 'trabajador', label: 'Trabajador / Identificación', width: 350 },
+        { key: 'documentosCount', label: 'Documentos', width: 120, align: 'center' },
         { key: 'Estado', label: 'Estado (Carpeta)', width: 150 },
         { key: 'usuario', label: 'Usuario Validador', width: 220 },
         { key: 'fecha', label: 'Fecha Validación', width: 180 }
@@ -952,7 +1141,7 @@
         tabLi.id = 'tab-btn-solicitudes';
         tabLi.onclick = () => switchTab('solicitudes');
         tabLi.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="15" y2="16"></line><line x1="9" y1="8" x2="10" y2="8"></line></svg>
           <span>Solicitudes</span>
         `;
         document.getElementById('tabs-container').appendChild(tabLi);
@@ -967,6 +1156,19 @@
           <span>Validar Cap</span>
         `;
         document.getElementById('tabs-container').appendChild(tabCap);
+      }
+
+      if (['Archivo', 'Sistema'].includes(CONFIG.rol)) {
+        // Permisos
+        const tabPerm = document.createElement('li');
+        tabPerm.className = 'nav-item';
+        tabPerm.id = 'tab-btn-permisos';
+        tabPerm.onclick = () => switchTab('permisos');
+        tabPerm.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>Permisos</span>
+        `;
+        document.getElementById('tabs-container').appendChild(tabPerm);
       }
 
       // Populate filter dropdowns
@@ -1133,61 +1335,85 @@
       const docSelectWrapper = document.getElementById('filter-documento-wrapper');
       const estadoWrapper = document.getElementById('filter-estado-wrapper');
       const registroWrapper = document.getElementById('filter-registro-wrapper');
+      const todoValidacionWrapper = document.getElementById('filter-todo-validacion-wrapper');
       const solEstadoWrapper = document.getElementById('filter-solicitud-estado-wrapper');
       const labelBuscar = document.getElementById('label-buscar');
       
       mainSort = { key: '', dir: '' };
 
-      // Reset displayed filter inputs dynamically
-      if (tab === 'todo') {
-        docSelectWrapper.style.display = 'flex';
-        estadoWrapper.style.display = 'flex';
-        registroWrapper.style.display = 'flex';
-        solEstadoWrapper.style.display = 'none';
-        labelBuscar.innerText = 'Buscar Trabajador';
-      } else if (tab === 'documento') {
-        docSelectWrapper.style.display = 'none';
-        estadoWrapper.style.display = 'none';
-        registroWrapper.style.display = 'none';
-        solEstadoWrapper.style.display = 'none';
-        labelBuscar.innerText = 'Buscar Trabajador';
-      } else if (tab === 'solicitudes') {
-        docSelectWrapper.style.display = 'none';
-        estadoWrapper.style.display = 'none';
-        registroWrapper.style.display = 'none';
-        solEstadoWrapper.style.display = 'flex';
-        labelBuscar.innerText = 'Buscar Solicitante o Trabajador';
-      } else if (tab === 'validarcap') {
-        docSelectWrapper.style.display = 'none';
-        estadoWrapper.style.display = 'none';
-        registroWrapper.style.display = 'none';
-        solEstadoWrapper.style.display = 'none';
-        labelBuscar.innerText = 'Buscar Trabajador (Nombre o Cédula)';
-      } else { // trabajador
-        docSelectWrapper.style.display = 'none';
-        estadoWrapper.style.display = 'flex';
-        registroWrapper.style.display = 'none';
-        solEstadoWrapper.style.display = 'none';
-        labelBuscar.innerText = 'Buscar Trabajador';
-      }
-
-      // Hide/Show Regional, Operación dropdowns and Cargar/Validar buttons
+      const filtersCard = document.querySelector('.filters-card');
+      const tableCard = document.querySelector('main.card');
+      const permisosContainer = document.getElementById('permisos-container');
+      
       const regWrapper = document.getElementById('filter-regional-wrapper');
       const opWrapper = document.getElementById('filter-operacion-wrapper');
       const btnCargar = document.getElementById('btn-cargar-doc');
       const btnValidar = document.getElementById('btn-validar-cap');
 
-      if (tab === 'validarcap') {
+      if (tab === 'permisos') {
+        if (filtersCard) filtersCard.style.display = 'none';
+        if (tableCard) tableCard.style.display = 'none';
+        if (permisosContainer) permisosContainer.style.display = 'block';
         if (regWrapper) regWrapper.style.display = 'none';
         if (opWrapper) opWrapper.style.display = 'none';
         btnCargar.style.display = 'none';
-        btnValidar.style.display = 'inline-flex';
-        btnValidar.href = `/formvalidarcap?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-      } else {
-        if (regWrapper) regWrapper.style.display = 'flex';
-        if (opWrapper) opWrapper.style.display = 'flex';
-        btnCargar.style.display = 'inline-flex';
         btnValidar.style.display = 'none';
+      } else {
+        if (filtersCard) filtersCard.style.display = 'block';
+        if (tableCard) tableCard.style.display = 'block';
+        if (permisosContainer) permisosContainer.style.display = 'none';
+
+        // Hide/Show Regional, Operación dropdowns and Cargar/Validar buttons
+        if (tab === 'validarcap') {
+          if (regWrapper) regWrapper.style.display = 'none';
+          if (opWrapper) opWrapper.style.display = 'none';
+          btnCargar.style.display = 'none';
+          btnValidar.style.display = 'inline-flex';
+          btnValidar.href = `/formvalidarcap?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        } else {
+          if (regWrapper) regWrapper.style.display = 'flex';
+          if (opWrapper) opWrapper.style.display = 'flex';
+          btnCargar.style.display = 'inline-flex';
+          btnValidar.style.display = 'none';
+        }
+
+        // Reset displayed filter inputs dynamically
+        if (tab === 'todo') {
+          docSelectWrapper.style.display = 'flex';
+          estadoWrapper.style.display = 'flex';
+          registroWrapper.style.display = 'flex';
+          if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'flex';
+          solEstadoWrapper.style.display = 'none';
+          labelBuscar.innerText = 'Buscar Trabajador';
+        } else if (tab === 'documento') {
+          docSelectWrapper.style.display = 'none';
+          estadoWrapper.style.display = 'none';
+          registroWrapper.style.display = 'none';
+          if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
+          solEstadoWrapper.style.display = 'none';
+          labelBuscar.innerText = 'Buscar Trabajador';
+        } else if (tab === 'solicitudes') {
+          docSelectWrapper.style.display = 'none';
+          estadoWrapper.style.display = 'none';
+          registroWrapper.style.display = 'none';
+          if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
+          solEstadoWrapper.style.display = 'flex';
+          labelBuscar.innerText = 'Buscar Solicitante o Trabajador';
+        } else if (tab === 'validarcap') {
+          docSelectWrapper.style.display = 'none';
+          estadoWrapper.style.display = 'none';
+          registroWrapper.style.display = 'none';
+          if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
+          solEstadoWrapper.style.display = 'none';
+          labelBuscar.innerText = 'Buscar Trabajador (Nombre o Cédula)';
+        } else { // trabajador
+          docSelectWrapper.style.display = 'none';
+          estadoWrapper.style.display = 'flex';
+          registroWrapper.style.display = 'none';
+          if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
+          solEstadoWrapper.style.display = 'none';
+          labelBuscar.innerText = 'Buscar Trabajador';
+        }
       }
 
       // Update active button classes
@@ -1198,7 +1424,11 @@
         }
       });
 
-      filtrar();
+      if (tab === 'permisos') {
+        cargarPermisosPanel();
+      } else {
+        filtrar();
+      }
     }
 
     // Reset filters
@@ -1207,6 +1437,7 @@
       document.getElementById('filter-estado').value = '';
       document.getElementById('filter-documento').value = '';
       document.getElementById('filter-registro').value = '';
+      document.getElementById('filter-todo-validacion').value = '';
       document.getElementById('filter-solicitud-estado').value = 'Pendiente';
       document.getElementById('filter-regional').value = '';
       document.getElementById('filter-operacion').innerHTML = '<option value="">— Todas las operaciones —</option>';
@@ -1225,6 +1456,7 @@
         const estado = document.getElementById('filter-estado').value;
         const tipoDocumento = document.getElementById('filter-documento').value;
         const tipoRegistro = document.getElementById('filter-registro').value;
+        const validacion = document.getElementById('filter-todo-validacion').value;
         const estadoSolicitud = document.getElementById('filter-solicitud-estado').value;
 
         const queryParams = new URLSearchParams({
@@ -1252,6 +1484,7 @@
           if (estado) queryParams.set('estado', estado);
           if (tipoDocumento) queryParams.set('tipoDocumento', tipoDocumento);
           if (tipoRegistro) queryParams.set('tipoRegistro', tipoRegistro);
+          if (validacion) queryParams.set('validacion', validacion);
           url = `/cloud-docs/api/todo?${queryParams}`;
         }
 
@@ -1269,7 +1502,8 @@
             estado,
             tipoDocumento,
             tipoRegistro,
-            estadoSolicitud
+            estadoSolicitud,
+            validacion
           });
           const countUrl = `/cloud-docs/api/conteos?${countParams}`;
 
@@ -1444,12 +1678,12 @@
         } else if (activeTab === 'documento') {
           tr.onclick = () => openDocModal(row.Id, row.Documento, row.tipo_doc);
           tr.innerHTML = `
-            <td>${row.Id}</td>
             <td style="font-weight: 600; color: var(--primary);">${esc(row.Documento)}</td>
             <td>${esc(row.Prefijo)}</td>
             <td>${esc(row.Clasificacion || 'N/A')}</td>
+            <td><span class="badge-status ${row.tipo_doc === 'General' ? 'badge-general' : 'badge-active'}">${esc(row.tipo_doc || 'Trabajador')}</span></td>
             <td style="text-align: center; font-weight: bold; color: var(--primary);">
-              ${row.tipo_doc === 'General' ? '<span class="badge-status badge-general">General</span>' : row.Trabajadores}
+               ${row.tipo_doc === 'General' ? '—' : row.Trabajadores}
             </td>
           `;
         } else if (activeTab === 'solicitudes') {
@@ -1463,7 +1697,6 @@
           tr.innerHTML = `
             <td><span class="badge-status ${row.tipo_registro === 'Trabajador' ? 'badge-active' : 'badge-general'}">${row.tipo_registro}</span></td>
             <td style="font-weight: 600;">${esc(row.Documento)}</td>
-            <td>${esc(row.Prefijo)}</td>
             <td>${esc(row.TrabajadorNombre || '—')}</td>
             <td style="font-size: 0.85rem;">${esc(row.Usuario_Solicitud || '—')}</td>
             <td style="font-size: 0.85rem;" title="${esc(row.Justificacion_Solicitud || '')}">${esc(row.Justificacion_Solicitud || '—')}</td>
@@ -1471,7 +1704,7 @@
             <td style="font-weight: bold;">${esc(row.Visualizar || '—')}</td>
           `;
         } else if (activeTab === 'validarcap') {
-          tr.style.cursor = 'default';
+          tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador);
           const workerLabel = row.trabajador || row.identificacion;
           let badgeClass = 'badge-general';
           if (row.Estado === 'OK') badgeClass = 'badge-active';
@@ -1479,6 +1712,7 @@
           
           tr.innerHTML = `
             <td style="font-weight: 600; color: var(--primary);">${esc(workerLabel)}</td>
+            <td style="text-align: center; font-weight: bold; color: var(--primary);">${row.documentosCount}</td>
             <td>
               <span class="badge-status ${badgeClass}">
                 ${esc(row.Estado)}
@@ -1499,7 +1733,23 @@
           const workerLabel = row.TrabajadorNombre || 'N/A';
           const prefColorClass = row.permitido ? 'text-allowed' : 'text-denied';
 
+          const valVal = row.Validacion || 'PEND';
+          let valBg = '#fef9c3'; // yellow
+          let valColor = '#eab308';
+          let valBorder = '#fef08a';
+          if (valVal === 'OK') {
+            valBg = '#dcfce7'; // green
+            valColor = '#16a34a';
+            valBorder = '#bbf7d0';
+          } else if (valVal === 'ERROR') {
+            valBg = '#fee2e2'; // red
+            valColor = '#dc2626';
+            valBorder = '#fecaca';
+          }
+          const valBadge = `<span class="badge-status" style="background:${valBg}; color:${valColor}; border:1px solid ${valBorder};">${esc(valVal)}</span>`;
+
           tr.innerHTML = `
+            <td style="font-size: 0.82rem;">${row.FechaRegistro || 'N/A'}</td>
             <td style="font-weight: 600; color: var(--primary);">${esc(row.Documento || 'N/A')}</td>
             <td class="${prefColorClass}">${esc(row.Prefijo)}</td>
             <td style="font-size: 0.85rem;">${esc(workerLabel)}</td>
@@ -1507,8 +1757,7 @@
             <td>
               ${row.Estado ? `<span class="badge-status ${row.Estado === 'Activo' ? 'badge-active' : 'badge-retired'}">${esc(row.Estado)}</span>` : '<span class="badge-status badge-general">General</span>'}
             </td>
-            <td>${row.FechaIngreso || 'N/A'}</td>
-            <td style="font-size: 0.82rem;">${row.FechaRegistro || 'N/A'}</td>
+            <td>${valBadge}</td>
             <td style="font-size: 0.82rem;">${esc(row.Usuario || 'N/A')}</td>
             <td style="font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(row.Observaciones || '')}">${esc(row.Observaciones || '—')}</td>
           `;
@@ -1562,9 +1811,19 @@
 
     function renderWorkerModalTable() {
       const tableEl = document.getElementById('modal-worker-table');
+      const cols = activeTab === 'validarcap'
+        ? [
+            { key: 'Validacion', label: 'Validación', width: 180, align: 'center' },
+            { key: 'Prefijo', label: 'Prefijo', width: 100 },
+            { key: 'Documento', label: 'Documento', width: 350 },
+            { key: 'FechaRegistro', label: 'Fecha de Registro', width: 200 },
+            { key: 'Usuario', label: 'Usuario', width: 180 }
+          ]
+        : COLUMNS.worker_modal;
+
       renderTableHeader(
         'modal-worker-thead',
-        COLUMNS.worker_modal,
+        cols,
         modalWorkerSort,
         () => {
           sortDataArray(filteredWorkerDocs, modalWorkerSort.key, modalWorkerSort.dir);
@@ -1597,15 +1856,60 @@
 
         const prefColorClass = doc.permitido ? 'text-allowed' : 'text-denied';
 
+        // Validation semaphore visual HTML
+        const valVal = doc.Validacion || 'PEND';
+        const semaforoHtml = `
+          <div style="display: flex; gap: 8px; justify-content: center; align-items: center; height: 100%;">
+            <span class="semaforo-dot dot-green ${valVal === 'OK' ? 'active' : ''}" onclick="event.stopPropagation(); setDocValidacion('${doc.id}', 'OK')" title="OK"></span>
+            <span class="semaforo-dot dot-yellow ${valVal === 'PEND' ? 'active' : ''}" onclick="event.stopPropagation(); setDocValidacion('${doc.id}', 'PEND')" title="Pendiente"></span>
+            <span class="semaforo-dot dot-red ${valVal === 'ERROR' ? 'active' : ''}" onclick="event.stopPropagation(); setDocValidacion('${doc.id}', 'ERROR')" title="Error"></span>
+          </div>
+        `;
+
         tr.innerHTML = `
+          ${activeTab === 'validarcap' ? `<td>${semaforoHtml}</td>` : ''}
           <td class="${prefColorClass}">${esc(doc.Prefijo)}</td>
           <td style="font-weight: 600; color: var(--primary);">${esc(doc.Documento || 'N/A')}</td>
           <td>${doc.FechaRegistro}</td>
           <td>${esc(doc.Usuario || 'N/A')}</td>
-          <td style="font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(doc.Observaciones || '')}">${esc(doc.Observaciones || '—')}</td>
+          ${activeTab !== 'validarcap' 
+            ? `<td style="font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(doc.Observaciones || '')}">${esc(doc.Observaciones || '—')}</td>`
+            : ''
+          }
         `;
         tbody.appendChild(tr);
       });
+    }
+
+    async function setDocValidacion(docId, valValue) {
+      try {
+        const res = await fetch('/cloud-docs/api/documento-trabajador/validacion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            id: docId,
+            validacion: valValue
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          // Update local documents cache
+          const docObj = rawWorkerDocs.find(d => d.id === docId);
+          if (docObj) docObj.Validacion = valValue;
+          
+          const fDocObj = filteredWorkerDocs.find(d => d.id === docId);
+          if (fDocObj) fDocObj.Validacion = valValue;
+
+          showToast(`Documento validado como ${valValue}`);
+          renderWorkerModalTableRows();
+        } else {
+          showToast(data.error || 'Error al guardar validación', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
+      }
     }
 
     function openWorkerUploadForm() {
@@ -1806,6 +2110,8 @@
       }
     }
 
+    let originalVisualizarValue = '';
+
     // Modal: Open Gestionar Solicitud (Solo Archivo / Sistema)
     function openGestionarModal(row) {
       activeGestion.id_documento = row.id;
@@ -1821,29 +2127,70 @@
       document.getElementById('gestionar-justificacion').innerText = row.Justificacion_Solicitud || 'Sin justificación';
 
       // Set input fields defaults
-      document.getElementById('gestionar-visualizar').value = row.Visualizar === 'OK' ? 'OK' : 'OK';
+      originalVisualizarValue = row.Visualizar || '';
       document.getElementById('gestionar-estado').value = row.Estado_Solicitud || 'Autorizado';
       document.getElementById('gestionar-observaciones').value = row.Observaciones || '';
 
-      onGestionarEstadoChange();
+      const isOk = originalVisualizarValue === 'OK';
+      setGestionarVisualizarButtonState(isOk);
+
       openModal('modal-gestionar');
+    }
+
+    function setGestionarVisualizarButtonState(isActive) {
+      const btn = document.getElementById('btn-gestionar-visualizar');
+      if (isActive) {
+        btn.classList.add('active');
+        btn.style.background = 'var(--success)';
+        btn.style.color = '#fff';
+        btn.style.borderColor = 'var(--success)';
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:-1px;"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>OK Aplicado</span>`;
+      } else {
+        btn.classList.remove('active');
+        btn.style.background = '#f8fafc';
+        btn.style.color = 'var(--text-muted)';
+        btn.style.borderColor = 'var(--border)';
+        btn.innerHTML = `<span>Desaplicado (Vacío)</span>`;
+      }
+      onVisualizarInputChange();
+    }
+
+    function toggleGestionarVisualizar() {
+      const btn = document.getElementById('btn-gestionar-visualizar');
+      const wasActive = btn.classList.contains('active');
+      setGestionarVisualizarButtonState(!wasActive);
     }
 
     // Toggle Visualizar input based on status in Gestionar Modal
     function onGestionarEstadoChange() {
       const est = document.getElementById('gestionar-estado').value;
-      const visInput = document.getElementById('gestionar-visualizar');
-      
-      if (est === 'Autorizado') {
-        visInput.value = 'OK';
+      const isOk = est === 'Autorizado';
+      setGestionarVisualizarButtonState(isOk);
+    }
+
+    // Dynamic auto-locking state selector logic based on input value
+    function onVisualizarInputChange() {
+      const btn = document.getElementById('btn-gestionar-visualizar');
+      const isOk = btn ? btn.classList.contains('active') : false;
+      const estSelect = document.getElementById('gestionar-estado');
+
+      if (isOk) {
+        estSelect.value = 'Autorizado';
+        estSelect.disabled = true;
       } else {
-        visInput.value = ''; // clears visual OK
+        if (originalVisualizarValue === 'OK') {
+          estSelect.value = 'Revocado';
+        } else {
+          estSelect.value = 'Rechazado';
+        }
+        estSelect.disabled = true;
       }
     }
 
     // Save Request Access decisions (Approve / Reject)
     async function guardarGestionSolicitud() {
-      const visualizar = document.getElementById('gestionar-visualizar').value.trim();
+      const btnVisualizar = document.getElementById('btn-gestionar-visualizar');
+      const visualizar = btnVisualizar.classList.contains('active') ? 'OK' : '';
       const estado_solicitud = document.getElementById('gestionar-estado').value;
       const observaciones = document.getElementById('gestionar-observaciones').value.trim();
 
@@ -1919,6 +2266,370 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+    // --- Permisos Tab Controller ---
+    let permisosRoles = [];
+    let permisosDocumentos = [];
+    let selectedRolName = null;
+    let selectedRolData = null;
+    let activePermisosSubtab = 'activo';
+    let docActivoSeleccionados = new Set();
+    let docRetiradoSeleccionados = new Set();
+    let docGeneralSeleccionados = new Set();
+    let colaboradoresCache = {};
+
+    async function cargarPermisosPanel() {
+      showLoader();
+      try {
+        const res = await fetch(`/cloud-docs/api/permisos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) throw new Error('Error al cargar la configuración de permisos');
+        const data = await res.json();
+        
+        permisosRoles = data.roles || [];
+        permisosDocumentos = data.documentos || [];
+        
+        actualizarClasificacionDropdown();
+        renderRolesSidebar();
+        
+        // Autoselect first role if none selected
+        if (permisosRoles.length > 0) {
+          selectRoleForEditing(permisosRoles[0].Rol);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Error de conexión', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    function renderRolesSidebar() {
+      const listDiv = document.getElementById('roles-list-div');
+      listDiv.innerHTML = '';
+      
+      permisosRoles.forEach(r => {
+        const div = document.createElement('div');
+        div.className = `role-card ${r.Rol === selectedRolName ? 'active' : ''}`;
+        div.innerText = r.Rol;
+        div.onclick = () => selectRoleForEditing(r.Rol);
+        listDiv.appendChild(div);
+      });
+    }
+
+    function parsePermisosCsv(csv) {
+      const set = new Set();
+      if (!csv) return set;
+      if (String(csv).trim().toLowerCase() === 'todo') {
+        set.add('Todo');
+        return set;
+      }
+      String(csv).split(',').forEach(id => {
+        const clean = id.trim();
+        if (clean) set.add(Number(clean));
+      });
+      return set;
+    }
+
+    function selectRoleForEditing(rolName) {
+      selectedRolName = rolName;
+      selectedRolData = permisosRoles.find(r => r.Rol === rolName);
+      
+      document.getElementById('permisos-rol-title').innerText = `Permisos para: ${rolName}`;
+      document.getElementById('permisos-doc-search').value = '';
+      
+      const selectClas = document.getElementById('permisos-clasificacion-filter');
+      if (selectClas) selectClas.value = '';
+
+      // Parse active selections
+      docActivoSeleccionados = parsePermisosCsv(selectedRolData.doc_activo);
+      docRetiradoSeleccionados = parsePermisosCsv(selectedRolData.doc_retirado);
+      docGeneralSeleccionados = parsePermisosCsv(selectedRolData.doc_general);
+      
+      // If 'Todo' was present, expand it to explicit IDs for ease of editing
+      if (docActivoSeleccionados.has('Todo')) {
+        docActivoSeleccionados = new Set(permisosDocumentos.filter(d => d.tipo_doc === 'Trabajador').map(d => d.Id));
+      }
+      if (docRetiradoSeleccionados.has('Todo')) {
+        docRetiradoSeleccionados = new Set(permisosDocumentos.filter(d => d.tipo_doc === 'Trabajador').map(d => d.Id));
+      }
+      if (docGeneralSeleccionados.has('Todo')) {
+        docGeneralSeleccionados = new Set(permisosDocumentos.filter(d => d.tipo_doc === 'General').map(d => d.Id));
+      }
+
+      renderRolesSidebar();
+      
+      if (activePermisosSubtab === 'colaboradores') {
+        document.getElementById('btn-guardar-permisos').disabled = true;
+        renderColaboradores();
+      } else {
+        document.getElementById('btn-guardar-permisos').disabled = false;
+        actualizarClasificacionDropdown();
+        renderPermisosChecklist();
+      }
+    }
+
+    function switchPermisosSubtab(subtab) {
+      activePermisosSubtab = subtab;
+      
+      // Update subtab buttons UI
+      document.querySelectorAll('.permisos-subtabs .btn-tab').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      const tabBtn = document.getElementById(`btn-subtab-${subtab}`);
+      if (tabBtn) tabBtn.classList.add('active');
+      
+      // Show/Hide classification dropdown based on subtab
+      const clasFilterWrapper = document.getElementById('permisos-clasificacion-filter-wrapper');
+      const saveBtn = document.getElementById('btn-guardar-permisos');
+      const shortcutsDiv = document.querySelector('#permisos-container div[style*="font-size: 0.8rem"]');
+      
+      if (subtab === 'colaboradores') {
+        if (clasFilterWrapper) clasFilterWrapper.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (shortcutsDiv) shortcutsDiv.style.display = 'none';
+        renderColaboradores();
+      } else {
+        if (clasFilterWrapper) clasFilterWrapper.style.display = 'flex';
+        if (saveBtn) {
+          saveBtn.style.display = 'inline-flex';
+          saveBtn.disabled = !selectedRolName;
+        }
+        if (shortcutsDiv) shortcutsDiv.style.display = 'flex';
+        
+        actualizarClasificacionDropdown();
+        renderPermisosChecklist();
+      }
+    }
+
+    function actualizarClasificacionDropdown() {
+      const selectClas = document.getElementById('permisos-clasificacion-filter');
+      if (!selectClas) return;
+      
+      const currentVal = selectClas.value;
+      const expectedType = (activePermisosSubtab === 'activo' || activePermisosSubtab === 'retirado') ? 'Trabajador' : 'General';
+      
+      // Filter documents belonging to this type of tab
+      const docsForTab = permisosDocumentos.filter(d => d.tipo_doc === expectedType);
+      const uniqueClas = Array.from(new Set(docsForTab.map(d => d.Clasificacion).filter(Boolean))).sort();
+      
+      selectClas.innerHTML = '<option value="">Todas</option>';
+      uniqueClas.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.innerText = c;
+        selectClas.appendChild(opt);
+      });
+      
+      if (uniqueClas.includes(currentVal)) {
+        selectClas.value = currentVal;
+      } else {
+        selectClas.value = '';
+      }
+    }
+
+    function getTargetDocSet() {
+      if (activePermisosSubtab === 'activo') return docActivoSeleccionados;
+      if (activePermisosSubtab === 'retirado') return docRetiradoSeleccionados;
+      return docGeneralSeleccionados;
+    }
+
+    function onPermisosClasificacionChange() {
+      renderPermisosChecklist();
+    }
+
+    function renderPermisosChecklist() {
+      const container = document.getElementById('permisos-checklist-div');
+      container.innerHTML = '';
+      
+      if (activePermisosSubtab === 'colaboradores') {
+        renderColaboradores();
+        return;
+      }
+
+      const search = document.getElementById('permisos-doc-search').value.toLowerCase().trim();
+      const targetSet = getTargetDocSet();
+      const clasFilter = document.getElementById('permisos-clasificacion-filter').value;
+      
+      // Filter documents based on subtab type
+      const expectedType = (activePermisosSubtab === 'activo' || activePermisosSubtab === 'retirado') ? 'Trabajador' : 'General';
+      
+      const filteredDocs = permisosDocumentos.filter(d => {
+        if (d.tipo_doc !== expectedType) return false;
+        if (clasFilter && d.Clasificacion !== clasFilter) return false;
+        if (search) {
+          const matchPref = (d.Prefijo || '').toLowerCase().includes(search);
+          const matchDoc = (d.Documento || '').toLowerCase().includes(search);
+          return matchPref || matchDoc;
+        }
+        return true;
+      });
+
+      if (filteredDocs.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1 / -1; color: #94a3b8; padding: 20px; text-align: center; font-size: 0.85rem;">No se encontraron documentos</div>';
+        return;
+      }
+
+      filteredDocs.forEach(d => {
+        const item = document.createElement('div');
+        item.className = 'permiso-checkbox-item';
+        
+        const isChecked = targetSet.has(d.Id);
+        
+        item.innerHTML = `
+          <input type="checkbox" id="chk-doc-${d.Id}" ${isChecked ? 'checked' : ''} onchange="togglePermisoItem(${d.Id}, this.checked)" style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+          <label for="chk-doc-${d.Id}" style="margin: 0; color: #334155; font-size: 0.82rem; cursor: pointer; user-select: none;">
+            <strong>${esc(d.Prefijo)}</strong> - ${esc(d.Documento)}
+          </label>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function renderColaboradores() {
+      const container = document.getElementById('permisos-checklist-div');
+      container.innerHTML = '<div style="grid-column: 1 / -1; color: #94a3b8; padding: 20px; text-align: center; font-size: 0.85rem;"><div class="loader" style="margin:0 auto 10px auto; border-top: 2.5px solid var(--accent);"></div>Cargando colaboradores...</div>';
+      
+      if (!selectedRolName) {
+        container.innerHTML = '<div style="grid-column: 1 / -1; color: #94a3b8; padding: 20px; text-align: center; font-size: 0.85rem;">Selecciona un rol</div>';
+        return;
+      }
+
+      let list = colaboradoresCache[selectedRolName];
+      if (!list) {
+        try {
+          const res = await fetch(`/cloud-docs/api/permisos/colaboradores?usuario=${encodeURIComponent(CONFIG.usuarioId)}&rol=${encodeURIComponent(selectedRolName)}`);
+          if (!res.ok) throw new Error('Error al consultar colaboradores');
+          const data = await res.json();
+          list = data.colaboradores || [];
+          colaboradoresCache[selectedRolName] = list;
+        } catch (err) {
+          console.error(err);
+          container.innerHTML = `<div style="grid-column: 1 / -1; color: var(--danger); padding: 20px; text-align: center; font-size: 0.85rem;">Error: ${esc(err.message)}</div>`;
+          return;
+        }
+      }
+
+      const search = document.getElementById('permisos-doc-search').value.toLowerCase().trim();
+      const filtered = list.filter(nombre => {
+        if (search) return nombre.toLowerCase().includes(search);
+        return true;
+      });
+
+      container.innerHTML = '';
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1 / -1; color: #94a3b8; padding: 20px; text-align: center; font-size: 0.85rem;">No se encontraron colaboradores</div>';
+        return;
+      }
+
+      filtered.forEach(nombre => {
+        const item = document.createElement('div');
+        item.className = 'permiso-checkbox-item';
+        item.style.cursor = 'default';
+        item.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span style="color: var(--text); font-size: 0.85rem; font-weight: 600;">${esc(nombre)}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function togglePermisoItem(id, isChecked) {
+      const targetSet = getTargetDocSet();
+      if (isChecked) {
+        targetSet.add(id);
+      } else {
+        targetSet.delete(id);
+      }
+    }
+
+    function onPermisosSearchInput() {
+      if (activePermisosSubtab === 'colaboradores') {
+        renderColaboradores();
+      } else {
+        renderPermisosChecklist();
+      }
+    }
+
+    function selectAllPermisos(isSelected) {
+      const search = document.getElementById('permisos-doc-search').value.toLowerCase().trim();
+      const targetSet = getTargetDocSet();
+      const clasFilter = document.getElementById('permisos-clasificacion-filter').value;
+      
+      const expectedType = (activePermisosSubtab === 'activo' || activePermisosSubtab === 'retirado') ? 'Trabajador' : 'General';
+      
+      const visibleDocs = permisosDocumentos.filter(d => {
+        if (d.tipo_doc !== expectedType) return false;
+        if (clasFilter && d.Clasificacion !== clasFilter) return false;
+        if (search) {
+          const matchPref = (d.Prefijo || '').toLowerCase().includes(search);
+          const matchDoc = (d.Documento || '').toLowerCase().includes(search);
+          return matchPref || matchDoc;
+        }
+        return true;
+      });
+
+      visibleDocs.forEach(d => {
+        if (isSelected) {
+          targetSet.add(d.Id);
+        } else {
+          targetSet.delete(d.Id);
+        }
+      });
+
+      renderPermisosChecklist();
+    }
+
+    async function savePermisosState() {
+      if (!selectedRolName) return;
+      
+      const btn = document.getElementById('btn-guardar-permisos');
+      const origText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<div class="loader"></div><span>Guardando...</span>';
+      
+      // Serialize selections
+      const serializeSet = (set) => {
+        if (set.size === 0) return null;
+        return Array.from(set).join(', ');
+      };
+
+      const payload = {
+        usuario: CONFIG.usuarioId,
+        rol: selectedRolName,
+        doc_activo: serializeSet(docActivoSeleccionados),
+        doc_retirado: serializeSet(docRetiradoSeleccionados),
+        doc_general: serializeSet(docGeneralSeleccionados)
+      };
+
+      try {
+        const res = await fetch('/cloud-docs/api/permisos/guardar', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar la configuración');
+
+        // Update local state
+        const roleInState = permisosRoles.find(r => r.Rol === selectedRolName);
+        if (roleInState) {
+          roleInState.doc_activo = payload.doc_activo;
+          roleInState.doc_retirado = payload.doc_retirado;
+          roleInState.doc_general = payload.doc_general;
+        }
+
+        showToast('Permisos actualizados correctamente.', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Error de conexión', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
     }
   </script>
 </body>

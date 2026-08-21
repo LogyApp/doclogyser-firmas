@@ -44,7 +44,7 @@ async function crearSolicitudAcceso(pool, payload) {
     const [rows] = await pool.execute(
       `SELECT t.Identificación, t.Prefijo, c.Documento, v.Trabajador
        FROM Maestro_docTrabajador t
-       LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
+       LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
        WHERE t.id = ?`,
       [id_documento]
@@ -70,7 +70,7 @@ async function crearSolicitudAcceso(pool, payload) {
     const [rows] = await pool.execute(
       `SELECT e.Prefijo, c.Documento
        FROM Maestro_docEmpresa e
-       LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
+       LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(e.TipoDocumento AS UNSIGNED)
        WHERE e.id = ?`,
       [id_documento]
     );
@@ -162,7 +162,7 @@ async function gestionarSolicitudAcceso(pool, payload) {
     const [rows] = await pool.execute(
       `SELECT t.Usuario_Solicitud, t.Prefijo, c.Documento, v.Trabajador
        FROM Maestro_docTrabajador t
-       LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
+       LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
        WHERE t.id = ?`,
       [id_documento]
@@ -180,7 +180,7 @@ async function gestionarSolicitudAcceso(pool, payload) {
     const [rows] = await pool.execute(
       `SELECT e.Usuario_Solicitud, e.Prefijo, c.Documento
        FROM Maestro_docEmpresa e
-       LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
+       LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(e.TipoDocumento AS UNSIGNED)
        WHERE e.id = ?`,
       [id_documento]
     );

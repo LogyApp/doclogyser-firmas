@@ -106,7 +106,7 @@ router.get('/api/trabajadores', async (req, res) => {
         GROUP BY Identificación
       ) d ON s.Identificación = d.Identificación
       ${whereClause}
-      ORDER BY s.Trabajador ASC
+      ORDER BY mv.max_fecha_ingreso DESC, mv.Operación ASC, mv.Estado ASC, s.Trabajador ASC
       LIMIT 1000
     `;
 
@@ -142,9 +142,10 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
         t.Solicitud,
         t.Justificacion_Solicitud,
         t.Estado,
-        t.Visualizar
+        t.Visualizar,
+        t.\`Validación\` AS Validacion
       FROM Maestro_docTrabajador t
-      LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
+      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
       WHERE t.Identificación = ?
       ORDER BY t.FechaRegistro DESC
     `;
@@ -211,8 +212,8 @@ router.get('/api/documentos', async (req, res) => {
           LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
           WHERE s.Trabajador COLLATE utf8mb4_general_ci LIKE ?
           GROUP BY TipoDocumento
-        ) t ON CAST(c.Id AS CHAR) = t.TipoDocumento
-        ORDER BY c.Documento ASC
+        ) t ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        ORDER BY c.Clasificacion ASC, c.Documento ASC
       `;
       params.push(`%${buscarTrabajador}%`);
     } else {
@@ -229,8 +230,8 @@ router.get('/api/documentos', async (req, res) => {
           SELECT TipoDocumento, COUNT(DISTINCT Identificación) AS trabajador_count
           FROM Maestro_docTrabajador
           GROUP BY TipoDocumento
-        ) t ON CAST(c.Id AS CHAR) = t.TipoDocumento
-        ORDER BY c.Documento ASC
+        ) t ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        ORDER BY c.Clasificacion ASC, c.Documento ASC
       `;
     }
 
@@ -389,7 +390,7 @@ router.get('/api/documento/:id/registros', async (req, res) => {
 // API: Consolidado General (Vista Todo)
 router.get('/api/todo', async (req, res) => {
   try {
-    const { usuario, buscar, regional, operacion, tipoDocumento, estado, tipoRegistro } = req.query;
+    const { usuario, buscar, regional, operacion, tipoDocumento, estado, tipoRegistro, validacion } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
@@ -440,6 +441,19 @@ router.get('/api/todo', async (req, res) => {
       condsGen.push('0 = 1');
     }
 
+    // Filtro de Validación
+    if (validacion) {
+      if (validacion === 'PEND') {
+        condsTrab.push('(t.Validación = ? OR t.Validación IS NULL OR t.Validación = "")');
+        condsGen.push('(e.Validación = ? OR e.Validación IS NULL OR e.Validación = "")');
+      } else {
+        condsTrab.push('t.Validación = ?');
+        condsGen.push('e.Validación = ?');
+      }
+      paramsTrab.push(validacion);
+      paramsGen.push(validacion);
+    }
+
     // Filtro de búsqueda textual (sólo por trabajador)
     if (buscar) {
       condsTrab.push('v.Trabajador COLLATE utf8mb4_general_ci LIKE ?');
@@ -469,7 +483,7 @@ router.get('/api/todo', async (req, res) => {
         v.Trabajador AS TrabajadorNombre,
         t.Operación,
         t.Estado,
-        DATE_FORMAT(t.Fecha_Ingreso, '%Y-%m-%d') AS FechaIngreso,
+        t.\`Validación\` AS Validacion,
         DATE_FORMAT(t.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
         t.Usuario,
         t.Observaciones,
@@ -478,7 +492,7 @@ router.get('/api/todo', async (req, res) => {
         t.Justificacion_Solicitud,
         t.Visualizar
       FROM Maestro_docTrabajador t
-      LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
+      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
       LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
       ${whereTrab}
     `;
@@ -494,7 +508,7 @@ router.get('/api/todo', async (req, res) => {
         NULL AS TrabajadorNombre,
         e.Operación,
         NULL AS Estado,
-        NULL AS FechaIngreso,
+        e.\`Validación\` AS Validacion,
         DATE_FORMAT(e.FechaRegistro, '%Y-%m-%d %H:%i:%s') AS FechaRegistro,
         e.Usuario,
         e.Observaciones,
@@ -503,7 +517,7 @@ router.get('/api/todo', async (req, res) => {
         e.Justificacion_Solicitud,
         e.Visualizar
       FROM Maestro_docEmpresa e
-      LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
+      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(e.TipoDocumento AS UNSIGNED)
       ${whereGen}
     `;
 
@@ -985,9 +999,15 @@ router.get('/api/validarcap', async (req, res) => {
         c.Identificación AS identificacion,
         s.Trabajador AS trabajador,
         c.Usuario AS usuario,
-        DATE_FORMAT(c.Fecha, '%Y-%m-%d %H:%i:%s') AS fecha
+        DATE_FORMAT(c.Fecha, '%Y-%m-%d %H:%i:%s') AS fecha,
+        COALESCE(d.doc_count, 0) AS documentosCount
       FROM Maestro_ok_carpeta c
       LEFT JOIN Maestro_Segmentación s ON c.Identificación = s.Identificación
+      LEFT JOIN (
+        SELECT Identificación, COUNT(*) AS doc_count
+        FROM Maestro_docTrabajador
+        GROUP BY Identificación
+      ) d ON c.Identificación = d.Identificación
     `;
     const conds = [];
     const params = [];
@@ -1088,7 +1108,7 @@ router.get('/api/solicitudes', async (req, res) => {
           t.Usuario_Solicitud,
           COALESCE(t.Estado_Solicitud, 'Pendiente') AS Estado_Solicitud
         FROM Maestro_docTrabajador t
-        LEFT JOIN Config_Doc_Trabajador c ON t.TipoDocumento = CAST(c.Id AS CHAR)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
         LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
         ${whereTrab}
 
@@ -1114,7 +1134,7 @@ router.get('/api/solicitudes', async (req, res) => {
           e.Usuario_Solicitud,
           COALESCE(e.Estado_Solicitud, 'Pendiente') AS Estado_Solicitud
         FROM Maestro_docEmpresa e
-        LEFT JOIN Config_Doc_Trabajador c ON e.TipoDocumento = CAST(c.Id AS CHAR)
+        LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(e.TipoDocumento AS UNSIGNED)
         ${whereGen}
       ) combined
       ORDER BY combined.FechaRegistro DESC
@@ -1150,6 +1170,117 @@ router.post('/api/gestionar-solicitud', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[cloud-docs] Error managing request:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Obtener roles y documentos para permisos (Solo Archivo y Sistema)
+router.get('/api/permisos', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso || !['Archivo', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const [roles] = await pool.execute('SELECT * FROM Config_Rol ORDER BY Rol ASC');
+    const [documentos] = await pool.execute(
+      'SELECT Id, Prefijo, Documento, tipo_doc FROM Config_Doc_Trabajador ORDER BY Documento ASC'
+    );
+
+    res.json({ roles, documentos });
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/permisos error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Guardar permisos del Rol (Solo Archivo y Sistema)
+router.post('/api/permisos/guardar', async (req, res) => {
+  try {
+    const { usuario, rol, doc_activo, doc_retirado, doc_general } = req.body;
+    if (!usuario || !rol) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, rol)' });
+    }
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso || !['Archivo', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    // Actualizar permisos
+    await pool.execute(
+      `UPDATE Config_Rol 
+       SET doc_activo = ?, doc_retirado = ?, doc_general = ? 
+       WHERE Rol = ?`,
+      [
+        doc_activo === undefined ? null : doc_activo,
+        doc_retirado === undefined ? null : doc_retirado,
+        doc_general === undefined ? null : doc_general,
+        rol
+      ]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cloud-docs] POST /api/permisos/guardar error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Obtener colaboradores de un Rol (Solo Archivo y Sistema)
+router.get('/api/permisos/colaboradores', async (req, res) => {
+  try {
+    const { usuario, rol } = req.query;
+    if (!usuario || !rol) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, rol)' });
+    }
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso || !['Archivo', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT Nombre FROM Maestro_Usuarios WHERE Rol = ? ORDER BY Nombre ASC',
+      [rol]
+    );
+
+    res.json({ ok: true, colaboradores: rows.map(r => r.Nombre) });
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/permisos/colaboradores error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Actualizar validación de un documento de trabajador (Pestaña Validar Cap)
+router.post('/api/documento-trabajador/validacion', async (req, res) => {
+  try {
+    const { usuario, id, validacion } = req.body;
+    if (!usuario || !id || !validacion) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, id, validacion)' });
+    }
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso || !['Archivo', 'Sistema', 'Asistencial'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    if (!['OK', 'PEND', 'ERROR'].includes(validacion)) {
+      return res.status(400).json({ error: 'Valor de validación inválido' });
+    }
+
+    // Actualizar columna Validación
+    await pool.execute(
+      'UPDATE Maestro_docTrabajador SET `Validación` = ? WHERE id = ?',
+      [validacion, id]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cloud-docs] POST /api/documento-trabajador/validacion error:', err);
     res.status(500).json({ error: err.message });
   }
 });

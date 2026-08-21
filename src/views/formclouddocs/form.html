@@ -641,6 +641,60 @@
         gap: 8px;
       }
     }
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 89, 0.4);
+      backdrop-filter: blur(4px);
+      display: none; justify-content: center; align-items: center;
+      z-index: 1000;
+    }
+    .modal-card {
+      background: var(--card-bg);
+      width: 100%; max-width: 480px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      padding: 24px;
+      animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes modalFadeIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-header h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem; font-weight: 700; color: var(--primary);
+    }
+    .modal-close-btn {
+      background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);
+    }
+    .modal-body {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .modal-footer {
+      display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;
+    }
+    .btn {
+      padding: 10px 20px; font-size: .92rem; font-weight: 600;
+      border-radius: 8px; border: none; cursor: pointer; transition: var(--transition);
+    }
+    .btn-secondary {
+      background: #e2e8f0; color: #475569;
+    }
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+    .btn-submit-modal {
+      background: var(--accent); color: #fff;
+    }
+    .btn-submit-modal:hover {
+      background: var(--accent-dark);
+    }
   </style>
 </head>
 <body>
@@ -769,7 +823,13 @@
         <div class="section-title">Detalles del Documento</div>
 
         <div class="field">
-          <label for="select-tipo-doc-id">Tipo de Documento<span class="req">*</span></label>
+          <div style="display: flex; align-items: center; margin-bottom: 6px;">
+            <label for="select-tipo-doc-id" style="margin-bottom: 0;">Tipo de Documento<span class="req">*</span></label>
+            <a href="javascript:void(0)" id="btn-nuevo-tipo-doc" onclick="abrirModalNuevoTipoDoc()" style="display: none; font-size: 0.82rem; font-weight: 700; color: var(--accent); text-decoration: none; margin-left: auto; cursor: pointer; align-items: center; gap: 4px;">
+              <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+              Nuevo
+            </a>
+          </div>
           <select id="select-tipo-doc-id">
             <option value="">— Selecciona el tipo de archivo —</option>
           </select>
@@ -798,6 +858,49 @@
       </div>
 
     </form>
+  </div>
+
+  <!-- Modal Crear Tipo Documento -->
+  <div id="modal-nuevo-tipo-doc" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title-text">Nuevo Tipo de Documento</h3>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalNuevoTipoDoc()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="new-doc-prefijo">Prefijo<span class="req">*</span></label>
+          <input type="text" id="new-doc-prefijo" placeholder="Ej. CON, ACT, CERT...">
+        </div>
+        <div class="field">
+          <label for="new-doc-documento">Nombre del Documento<span class="req">*</span></label>
+          <input type="text" id="new-doc-documento" placeholder="Ej. Certificación Laboral">
+        </div>
+        <div class="field">
+          <label for="new-doc-clasificacion">Clasificación<span class="req">*</span></label>
+          <select id="new-doc-clasificacion" onchange="onClasificacionChange()">
+            <!-- Loaded dynamically based on tipo_doc -->
+          </select>
+        </div>
+        
+        <!-- Field for adding a new classification if selected "+ Nuevo" -->
+        <div class="field" id="group-new-clasificacion" style="display: none;">
+          <label for="new-doc-clasificacion-nueva">Nombre de la Nueva Clasificación<span class="req">*</span></label>
+          <input type="text" id="new-doc-clasificacion-nueva" placeholder="Ej. 6. Seguridad y Salud">
+        </div>
+
+        <div class="field">
+          <label for="new-doc-area">Área Responsable (Config_Area)<span class="req">*</span></label>
+          <select id="new-doc-area">
+            <!-- Loaded dynamically where OPERACIÓN = 'Administracion' -->
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModalNuevoTipoDoc()">Cancelar</button>
+        <button type="button" class="btn btn-submit-modal" onclick="guardarNuevoTipoDoc()">Guardar</button>
+      </div>
+    </div>
   </div>
 
   <!-- Toast -->
@@ -936,16 +1039,47 @@
       validarFormulario();
     }
 
+    function verificarPermisoNuevoTipoDoc() {
+      const isSystemOrArchivo = ['Sistema', 'Archivo'].includes(CONFIG.rol);
+      const isAdministracion = CONFIG.operacion && ['administracion', 'administración'].includes(CONFIG.operacion.toLowerCase().trim());
+
+      let habilitado = false;
+      if (isSystemOrArchivo) {
+        habilitado = true;
+      } else if (isAdministracion) {
+        if (activeTipoDoc === 'General') {
+          habilitado = true;
+        }
+      }
+      return habilitado;
+    }
+
     // Fetch and populate document types list
     async function cargarTiposDocumentos() {
       const select = document.getElementById('select-tipo-doc-id');
       select.innerHTML = '<option value="">Cargando tipos de documentos...</option>';
+
+      const isAllowedNew = verificarPermisoNuevoTipoDoc();
+      const btnNuevo = document.getElementById('btn-nuevo-tipo-doc');
+      if (btnNuevo) {
+        btnNuevo.style.display = isAllowedNew ? 'inline-flex' : 'none';
+      }
 
       try {
         const res = await fetch(`/formcloud-docs/api/tipos-documentos?tipo_doc=${activeTipoDoc}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const rows = await res.json();
         
         select.innerHTML = '<option value="">— Selecciona el tipo de archivo —</option>';
+        
+        if (isAllowedNew) {
+          const optNew = document.createElement('option');
+          optNew.value = 'NUEVO_TIPO_DOC';
+          optNew.textContent = '✏️ + Nuevo (Crear Tipo Documento)';
+          optNew.style.fontWeight = 'bold';
+          optNew.style.color = 'var(--accent)';
+          select.appendChild(optNew);
+        }
+
         if (res.ok && Array.isArray(rows)) {
           rows.forEach(r => {
             const option = document.createElement('option');
@@ -961,8 +1095,138 @@
         select.innerHTML = '<option value="">— Error de carga —</option>';
       }
       
-      select.onchange = () => validarFormulario();
+      select.onchange = () => {
+        if (select.value === 'NUEVO_TIPO_DOC') {
+          select.value = '';
+          abrirModalNuevoTipoDoc();
+        }
+        validarFormulario();
+      };
     }
+
+    window.abrirModalNuevoTipoDoc = async function() {
+      document.getElementById('modal-title-text').textContent = `Nuevo Tipo Documento (${activeTipoDoc === 'General' ? 'General' : 'Trabajador'})`;
+      document.getElementById('new-doc-prefijo').value = '';
+      document.getElementById('new-doc-documento').value = '';
+      document.getElementById('new-doc-clasificacion-nueva').value = '';
+      document.getElementById('group-new-clasificacion').style.display = 'none';
+
+      const selectClasif = document.getElementById('new-doc-clasificacion');
+      const selectArea = document.getElementById('new-doc-area');
+      selectClasif.innerHTML = '<option value="">Cargando clasificaciones...</option>';
+      selectArea.innerHTML = '<option value="">Cargando áreas...</option>';
+
+      document.getElementById('modal-nuevo-tipo-doc').style.display = 'flex';
+
+      try {
+        const targetTipoDoc = activeTipoDoc === 'General' ? 'General' : 'Trabajador';
+        const res = await fetch(`/formcloud-docs/api/config-doc-options?tipo_doc=${targetTipoDoc}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) throw new Error('No se pudieron obtener las opciones');
+        const data = await res.json();
+
+        selectClasif.innerHTML = '<option value="">— Selecciona una clasificación —</option>';
+        if (Array.isArray(data.classifications)) {
+          data.classifications.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            selectClasif.appendChild(opt);
+          });
+        }
+        const optNewClasif = document.createElement('option');
+        optNewClasif.value = '__NUEVA_CLASIFICACION__';
+        optNewClasif.textContent = '✏️ + Nueva Clasificación...';
+        optNewClasif.style.fontWeight = 'bold';
+        optNewClasif.style.color = 'var(--accent)';
+        selectClasif.appendChild(optNewClasif);
+
+        selectArea.innerHTML = '<option value="">— Selecciona el Área —</option>';
+        if (Array.isArray(data.areas)) {
+          data.areas.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.area;
+            selectArea.appendChild(opt);
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de carga de opciones', 'error');
+        cerrarModalNuevoTipoDoc();
+      }
+    };
+
+    window.cerrarModalNuevoTipoDoc = function() {
+      document.getElementById('modal-nuevo-tipo-doc').style.display = 'none';
+    };
+
+    window.onClasificacionChange = function() {
+      const selectClasif = document.getElementById('new-doc-clasificacion');
+      const groupNew = document.getElementById('group-new-clasificacion');
+      if (selectClasif.value === '__NUEVA_CLASIFICACION__') {
+        groupNew.style.display = 'block';
+      } else {
+        groupNew.style.display = 'none';
+      }
+    };
+
+    window.guardarNuevoTipoDoc = async function() {
+      const prefijo = document.getElementById('new-doc-prefijo').value.trim();
+      const documento = document.getElementById('new-doc-documento').value.trim();
+      const selectClasif = document.getElementById('new-doc-clasificacion');
+      let clasificacion = selectClasif.value;
+      const area = document.getElementById('new-doc-area').value;
+
+      if (!prefijo || !documento || !clasificacion || !area) {
+        showToast('Por favor completa todos los campos obligatorios.', 'error');
+        return;
+      }
+
+      if (clasificacion === '__NUEVA_CLASIFICACION__') {
+        const nuevaClasif = document.getElementById('new-doc-clasificacion-nueva').value.trim();
+        if (!nuevaClasif) {
+          showToast('Por favor ingresa el nombre de la nueva clasificación.', 'error');
+          return;
+        }
+        clasificacion = nuevaClasif;
+      }
+
+      const btnSave = document.querySelector('.btn-submit-modal');
+      const originalText = btnSave.textContent;
+      btnSave.disabled = true;
+      btnSave.textContent = 'Guardando...';
+
+      try {
+        const targetTipoDoc = activeTipoDoc === 'General' ? 'General' : 'Trabajador';
+        const res = await fetch('/formcloud-docs/api/config-doc/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prefijo,
+            documento,
+            clasificacion,
+            area,
+            tipo_doc: targetTipoDoc,
+            usuario: CONFIG.usuarioId
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al guardar');
+
+        showToast('Tipo de documento creado con éxito');
+        cerrarModalNuevoTipoDoc();
+        
+        await cargarTiposDocumentos();
+        document.getElementById('select-tipo-doc-id').value = data.id;
+        validarFormulario();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btnSave.disabled = false;
+        btnSave.textContent = originalText;
+      }
+    };
 
     async function cargarDocsTrabajador() {
       const panel = document.getElementById('worker-docs-panel');

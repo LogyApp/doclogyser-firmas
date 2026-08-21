@@ -1,0 +1,18 @@
+- [x] Create missing indexes on `Dynamic_Logysign` table in the database
+- [x] Optimize JOIN clauses in `src/routes/clouddocs.js`
+- [x] Optimize JOIN clauses in `src/services/clouddocsRequests.js`
+- [x] Verify query execution plan performance and code syntax
+- [x] Create walkthrough documentation of changes
+- [x] Implement backend API endpoints `/api/permisos` and `/api/permisos/guardar` in `src/routes/clouddocs.js`
+- [x] Add Permisos tab navigation in `src/views/clouddocs/index.html`
+- [x] Add CSS styling and HTML container `#permisos-container` in `src/views/clouddocs/index.html`
+- [x] Implement frontend controller logic for roles selection, interactive document checkbox editing, and saving
+- [x] Verify functionality and syntax of modified files
+- [x] Implement horizontal scroll improvements (sticky header & height viewport constraint layout)
+- [x] Reorder Trabajadores table to sort by: Ingreso (max_fecha_ingreso DESC), Operacion, Estado, Trabajador
+- [x] Refactor Tipos de Documento table columns: remove Id, add tipo_doc after Clasificacion, and sort by Clasificacion, Documento
+- [x] Reorder Consolidado (Todo): move Registro (FechaRegistro) column first and sort descending by it
+- [x] Refactor Solicitudes table: remove Prefijo column
+- [x] Add Colaboradores subtab under Permisos to display names of users under selected role
+- [x] Implement Clasificacion classification filter dropdown for Permisos document lists
+- [x] Document final walkthrough

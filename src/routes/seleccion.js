@@ -275,7 +275,7 @@ function normalizarFecha(str) {
 // Helper to save file to GCS and update DB
 async function guardarArchivo(id_aspirante, id_config_doc, file) {
   const [datos] = await pool.execute(
-    `SELECT a.identificacion, c.Prefijo 
+    `SELECT a.identificacion, c.Prefijo, c.Documento 
      FROM Dynamic_hv_aspirante a 
      JOIN Config_Doc_Trabajador c ON c.Id = ? 
      WHERE a.id_aspirante = ?`,
@@ -284,7 +284,7 @@ async function guardarArchivo(id_aspirante, id_config_doc, file) {
 
   if (datos.length === 0) throw new Error('Datos no encontrados para el aspirante o documento');
 
-  const { identificacion, Prefijo } = datos[0];
+  const { identificacion, Prefijo, Documento } = datos[0];
   const extension = path.extname(file.originalname);
   const nombreArchivo = `${identificacion}.${Prefijo}.${id_aspirante}${extension}`;
   const gcsPath = `${identificacion}/${nombreArchivo}`; 
@@ -300,6 +300,15 @@ async function guardarArchivo(id_aspirante, id_config_doc, file) {
      ON DUPLICATE KEY UPDATE gcs_path = VALUES(gcs_path), estado = VALUES(estado), fecha_actualizacion = CURRENT_TIMESTAMP`,
     [id_aspirante, id_config_doc, gcsPath]
   );
+
+  // Background training collection for Document AI
+  try {
+    const { registrarEntrenamientoDocumentIA } = require('../services/documentAiTraining');
+    registrarEntrenamientoDocumentIA(identificacion, Documento, file.buffer, file.mimetype);
+  } catch (errDocAi) {
+    console.warn('[DocAI Training] Call initialization failed:', errDocAi.message);
+  }
+
   return nombreArchivo;
 }
 

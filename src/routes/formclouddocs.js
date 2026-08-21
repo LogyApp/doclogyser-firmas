@@ -112,6 +112,96 @@ router.get('/api/tipos-documentos', async (req, res) => {
   }
 });
 
+// API: Obtener opciones para nuevo tipo de documento (clasificaciones del tipo_doc y áreas de Administración)
+router.get('/api/config-doc-options', async (req, res) => {
+  try {
+    const { tipo_doc, usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!tipo_doc) return res.status(400).json({ error: 'tipo_doc requerido' });
+
+    // 1. Get unique classifications for tipo_doc
+    const [clasifRows] = await pool.execute(
+      'SELECT DISTINCT Clasificacion FROM Config_Doc_Trabajador WHERE tipo_doc = ? AND Clasificacion IS NOT NULL ORDER BY Clasificacion ASC',
+      [tipo_doc]
+    );
+
+    // 2. Get Config_Area records where OPERACIÓN = 'Administracion'
+    const [areaRows] = await pool.execute(
+      "SELECT ID, AREA FROM Config_Area WHERE `OPERACIÓN` = 'Administracion' ORDER BY AREA ASC"
+    );
+
+    res.json({
+      classifications: clasifRows.map(r => r.Clasificacion),
+      areas: areaRows.map(r => ({ id: r.ID, area: r.AREA }))
+    });
+  } catch (err) {
+    console.error('[formcloud-docs] config-doc-options error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Crear nuevo tipo de documento
+router.post('/api/config-doc/crear', async (req, res) => {
+  try {
+    const { prefijo, documento, clasificacion, area, tipo_doc, usuario } = req.body;
+    if (!prefijo || !documento || !clasificacion || !area || !tipo_doc || !usuario) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos' });
+    }
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const isSystemOrArchivo = ['Sistema', 'Archivo'].includes(acceso.rol);
+    const isAdministracion = acceso.operacion && ['administracion', 'administración'].includes(acceso.operacion.toLowerCase().trim());
+
+    let allowed = false;
+    if (isSystemOrArchivo) {
+      allowed = true;
+    } else if (isAdministracion) {
+      if (tipo_doc === 'General') {
+        allowed = true;
+      }
+    }
+
+    if (!allowed) {
+      return res.status(403).json({ error: 'No tiene permisos para crear un nuevo tipo de documento.' });
+    }
+
+    // Check if prefijo or name already exists
+    const [existing] = await pool.execute(
+      'SELECT Id FROM Config_Doc_Trabajador WHERE Prefijo = ? OR Documento = ?',
+      [prefijo.trim(), documento.trim()]
+    );
+    if (existing.length) {
+      return res.status(400).json({ error: 'Ya existe un tipo de documento con el mismo prefijo o nombre.' });
+    }
+
+    // Save to database
+    const [insertResult] = await pool.execute(
+      `INSERT INTO Config_Doc_Trabajador 
+       (Prefijo, Documento, Clasificacion, Permisos, fecha_creacion, usuario, tipo_doc, area)
+       VALUES (?, ?, ?, 'Todos', NOW(), ?, ?, ?)`,
+      [
+        prefijo.trim().toUpperCase(),
+        documento.trim(),
+        clasificacion.trim(),
+        acceso.usuarioId,
+        tipo_doc,
+        Number(area)
+      ]
+    );
+
+    res.json({ success: true, id: insertResult.insertId });
+  } catch (err) {
+    console.error('[formcloud-docs] config-doc/crear error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Subir documento y guardar registro
 router.post('/api/subir', upload.single('documento'), async (req, res) => {
   try {
@@ -161,6 +251,14 @@ router.post('/api/subir', upload.single('documento'), async (req, res) => {
         observaciones,
         url: fileUrl,
       });
+
+      // Background training collection for Document AI
+      try {
+        const { registrarEntrenamientoDocumentIA } = require('../services/documentAiTraining');
+        registrarEntrenamientoDocumentIA(identificacion, docConfig.Documento, req.file.buffer, req.file.mimetype);
+      } catch (errDocAi) {
+        console.warn('[DocAI Training] Call initialization failed:', errDocAi.message);
+      }
 
     } else {
       // General / Empresa
