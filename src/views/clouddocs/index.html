@@ -1011,6 +1011,15 @@
         { key: 'Observaciones', label: 'Observaciones', width: 180 },
         { key: 'acciones', label: 'Acciones', width: 90, align: 'center' }
       ],
+      duplicados: [
+        { key: 'trabajador', label: 'Trabajador', width: 280 },
+        { key: 'Documento', label: 'Tipo de Documento', width: 220 },
+        { key: 'Prefijo', label: 'Prefijo', width: 90 },
+        { key: 'documentosCount', label: 'Cantidad', width: 100, align: 'center' },
+        { key: 'operacion', label: 'Operación', width: 180 },
+        { key: 'fechaIngreso', label: 'Fecha de Ingreso', width: 150 },
+        { key: 'estado', label: 'Estado', width: 110 }
+      ],
       worker_modal: [
         { key: 'Prefijo', label: 'Prefijo', width: 100 },
         { key: 'Documento', label: 'Documento', width: 350 },
@@ -1218,6 +1227,17 @@
           <span>Permisos</span>
         `;
         document.getElementById('tabs-container').appendChild(tabPerm);
+
+        // Duplicados
+        const tabDup = document.createElement('li');
+        tabDup.className = 'nav-item';
+        tabDup.id = 'tab-btn-duplicados';
+        tabDup.onclick = () => switchTab('duplicados');
+        tabDup.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span>Duplicados</span>
+        `;
+        document.getElementById('tabs-container').appendChild(tabDup);
       }
 
       // Populate filter dropdowns
@@ -1377,10 +1397,35 @@
       debounceModalTimeout = setTimeout(() => { reloadModalDocData(); }, 400);
     }
 
+    function actualizarOpcionesTipoDocumento(tab) {
+      const select = document.getElementById('filter-documento');
+      if (!select) return;
+      
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">— Todos los tipos —</option>';
+      
+      tiposDocumentosList.forEach(d => {
+        if (tab === 'docretiros' && d.Clasificacion !== '8. Retiro') return;
+        if (tab === 'duplicados' && d.duplicados === 'SI') return;
+        
+        const option = document.createElement('option');
+        option.value = d.Id;
+        option.textContent = `${d.Prefijo} - ${d.Documento}`;
+        if (String(d.Id) === String(currentVal)) option.selected = true;
+        select.appendChild(option);
+      });
+      
+      if (select.value !== currentVal) {
+        select.value = '';
+      }
+    }
+
     // Switch between tabs
     function switchTab(tab) {
       activeTab = tab;
       
+      actualizarOpcionesTipoDocumento(tab);
+
       const docSelectWrapper = document.getElementById('filter-documento-wrapper');
       const estadoWrapper = document.getElementById('filter-estado-wrapper');
       const registroWrapper = document.getElementById('filter-registro-wrapper');
@@ -1455,6 +1500,13 @@
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
           solEstadoWrapper.style.display = 'none';
           labelBuscar.innerText = 'Buscar Trabajador (Nombre o Cédula)';
+        } else if (tab === 'duplicados') {
+          docSelectWrapper.style.display = 'flex';
+          estadoWrapper.style.display = 'flex';
+          registroWrapper.style.display = 'none';
+          if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
+          solEstadoWrapper.style.display = 'none';
+          labelBuscar.innerText = 'Buscar Trabajador';
         } else { // trabajador
           docSelectWrapper.style.display = 'none';
           estadoWrapper.style.display = 'flex';
@@ -1544,6 +1596,11 @@
           if (tipoDocumento) queryParams.set('tipoDocumento', tipoDocumento);
           if (validacion) queryParams.set('validacion', validacion);
           url = `/cloud-docs/api/docretiros?${queryParams}`;
+        } else if (activeTab === 'duplicados') {
+          if (buscar) queryParams.set('buscar', buscar);
+          if (estado) queryParams.set('estado', estado);
+          if (tipoDocumento) queryParams.set('tipoDocumento', tipoDocumento);
+          url = `/cloud-docs/api/duplicados?${queryParams}`;
         } else { // todo
           if (buscar) queryParams.set('buscar', buscar);
           if (estado) queryParams.set('estado', estado);
@@ -1554,7 +1611,7 @@
         }
 
         let res, countRes;
-        if (activeTab === 'validarcap') {
+        if (activeTab === 'validarcap' || activeTab === 'duplicados') {
           res = await fetch(url);
         } else {
           // Params for dynamic counts
@@ -1726,6 +1783,16 @@
           { key: 'select', label: 'Sel.', width: 45, align: 'center' },
           ...COLUMNS.docretiros
         ];
+      } else if (activeTab === 'documento' && ['Archivo', 'Sistema'].includes(CONFIG.rol)) {
+        cols = [
+          { key: 'Documento', label: 'Documento', width: 350 },
+          { key: 'Prefijo', label: 'Prefijo', width: 120 },
+          { key: 'Clasificacion', label: 'Clasificación', width: 250 },
+          { key: 'tipo_doc', label: 'Tipo Doc', width: 150 },
+          { key: 'Id', label: 'Id', width: 80, align: 'center' },
+          { key: 'duplicados', label: 'Duplicados', width: 120, align: 'center' },
+          { key: 'Trabajadores', label: 'Trabajadores', width: 150, align: 'center' }
+        ];
       }
 
       // Render columns header
@@ -1755,6 +1822,16 @@
           { key: 'select', label: 'Sel.', width: 45, align: 'center' },
           ...COLUMNS.docretiros
         ];
+      } else if (activeTab === 'documento' && ['Archivo', 'Sistema'].includes(CONFIG.rol)) {
+        cols = [
+          { key: 'Documento', label: 'Documento', width: 350 },
+          { key: 'Prefijo', label: 'Prefijo', width: 120 },
+          { key: 'Clasificacion', label: 'Clasificación', width: 250 },
+          { key: 'tipo_doc', label: 'Tipo Doc', width: 150 },
+          { key: 'Id', label: 'Id', width: 80, align: 'center' },
+          { key: 'duplicados', label: 'Duplicados', width: 120, align: 'center' },
+          { key: 'Trabajadores', label: 'Trabajadores', width: 150, align: 'center' }
+        ];
       }
 
       if (currentData.length === 0) {
@@ -1782,13 +1859,44 @@
           `;
         } else if (activeTab === 'documento') {
           tr.onclick = () => openDocModal(row.Id, row.Documento, row.tipo_doc);
+          
+          let extraTds = '';
+          if (['Archivo', 'Sistema'].includes(CONFIG.rol)) {
+            const isChecked = row.duplicados === 'SI';
+            extraTds = `
+              <td style="text-align: center;">${row.Id}</td>
+              <td style="text-align: center;" onclick="event.stopPropagation();">
+                <input type="checkbox" onchange="toggleDuplicadosDocumento('${row.Id}', this.checked)" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
+              </td>
+            `;
+          }
+
           tr.innerHTML = `
             <td style="font-weight: 600; color: var(--primary);">${esc(row.Documento)}</td>
             <td>${esc(row.Prefijo)}</td>
             <td>${esc(row.Clasificacion || 'N/A')}</td>
             <td><span class="badge-status ${row.tipo_doc === 'General' ? 'badge-general' : 'badge-active'}">${esc(row.tipo_doc || 'Trabajador')}</span></td>
+            ${extraTds}
             <td style="text-align: center; font-weight: bold; color: var(--primary);">
                ${row.tipo_doc === 'General' ? '—' : row.Trabajadores}
+            </td>
+          `;
+        } else if (activeTab === 'duplicados') {
+          // Open worker docs modal pre-filtered to this specific document name
+          tr.onclick = () => openWorkerModal(row.identificacion, row.trabajador, row.Documento);
+          
+          const badgeClass = row.estado === 'Activo' ? 'badge-active' : 'badge-retired';
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: var(--primary);">${esc(row.trabajador)}</td>
+            <td style="font-weight: 600; color: var(--primary);">${esc(row.Documento)}</td>
+            <td>${esc(row.Prefijo)}</td>
+            <td style="text-align: center; font-weight: bold; color: var(--primary);">${row.documentosCount}</td>
+            <td>${esc(row.operacion)}</td>
+            <td style="font-size: 0.85rem;">${esc(row.fechaIngreso || 'N/A')}</td>
+            <td>
+              <span class="badge-status ${badgeClass}">
+                ${esc(row.estado)}
+              </span>
             </td>
           `;
         } else if (activeTab === 'solicitudes') {
@@ -1892,11 +2000,11 @@
     }
 
     // Modal: Open Worker Docs
-    async function openWorkerModal(identificacion, nombre) {
+    async function openWorkerModal(identificacion, nombre, autoSearchDoc) {
       activeWorkerModal.identificacion = identificacion;
       activeWorkerModal.nombre = nombre;
       document.getElementById('modal-worker-title').textContent = `Documentos de: ${nombre}`;
-      document.getElementById('modal-worker-search').value = '';
+      document.getElementById('modal-worker-search').value = autoSearchDoc || '';
       
       const tbody = document.getElementById('modal-worker-body');
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Cargando documentos...</td></tr>';
@@ -1910,7 +2018,14 @@
         
         if (res.ok && Array.isArray(docs)) {
           rawWorkerDocs = docs;
-          filteredWorkerDocs = [...docs];
+          if (autoSearchDoc) {
+            const q = norm(autoSearchDoc);
+            filteredWorkerDocs = docs.filter(d => 
+              norm(d.Documento).includes(q) || norm(d.Prefijo).includes(q)
+            );
+          } else {
+            filteredWorkerDocs = [...docs];
+          }
           renderWorkerModalTable();
         } else {
           tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: red; padding: 20px;">${docs.error || 'Error al obtener documentos'}</td></tr>`;
@@ -1936,7 +2051,7 @@
 
     function renderWorkerModalTable() {
       const tableEl = document.getElementById('modal-worker-table');
-      const cols = activeTab === 'validarcap'
+      const cols = (activeTab === 'validarcap' || activeTab === 'duplicados')
         ? [
             { key: 'Validacion', label: 'Validación', width: 180, align: 'center' },
             { key: 'Prefijo', label: 'Prefijo', width: 100 },
@@ -1992,12 +2107,12 @@
         `;
 
         tr.innerHTML = `
-          ${activeTab === 'validarcap' ? `<td>${semaforoHtml}</td>` : ''}
+          ${(activeTab === 'validarcap' || activeTab === 'duplicados') ? `<td>${semaforoHtml}</td>` : ''}
           <td class="${prefColorClass}">${esc(doc.Prefijo)}</td>
           <td style="font-weight: 600; color: var(--primary);">${esc(doc.Documento || 'N/A')}</td>
           <td>${doc.FechaRegistro}</td>
           <td>${esc(doc.Usuario || 'N/A')}</td>
-          ${activeTab !== 'validarcap' 
+          ${(activeTab !== 'validarcap' && activeTab !== 'duplicados') 
             ? `<td style="font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;" title="${esc(doc.Observaciones || '')}">${esc(doc.Observaciones || '—')}</td>`
             : ''
           }
@@ -2120,6 +2235,36 @@
       } catch (err) {
         console.error(err);
         showToast('Error de conexión', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    async function toggleDuplicadosDocumento(docId, checked) {
+      showLoader();
+      try {
+        const res = await fetch('/cloud-docs/api/documento/duplicados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            id: docId,
+            duplicados: checked
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast(checked ? 'Documento marcado como duplicable (SI).' : 'Se eliminó la marca de duplicados del documento.');
+          const docRow = currentData.find(d => String(d.Id) === String(docId));
+          if (docRow) docRow.duplicados = checked ? 'SI' : null;
+        } else {
+          showToast(data.error || 'Error al actualizar estado duplicados', 'error');
+          renderMainTableRows();
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión', 'error');
+        renderMainTableRows();
       } finally {
         hideLoader();
       }

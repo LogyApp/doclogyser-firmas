@@ -204,6 +204,7 @@ router.get('/api/documentos', async (req, res) => {
           c.Clasificacion,
           c.Prefijo,
           c.tipo_doc,
+          c.duplicados,
           COALESCE(t.trabajador_count, 0) AS Trabajadores
         FROM Config_Doc_Trabajador c
         INNER JOIN (
@@ -224,6 +225,7 @@ router.get('/api/documentos', async (req, res) => {
           c.Clasificacion,
           c.Prefijo,
           c.tipo_doc,
+          c.duplicados,
           COALESCE(t.trabajador_count, 0) AS Trabajadores
         FROM Config_Doc_Trabajador c
         LEFT JOIN (
@@ -1299,6 +1301,91 @@ router.get('/api/validarcap', async (req, res) => {
   }
 });
 
+// API: Listado de duplicados (Solo para roles Archivo y Sistema)
+router.get('/api/duplicados', async (req, res) => {
+  try {
+    const { usuario, regional, operacion, estado, buscar, tipoDocumento } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso || !['Archivo', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado para ver duplicados' });
+    }
+
+    const conds = [];
+    const params = [];
+
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) return res.json([]);
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      conds.push(`mv.Operación IN (${ph})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    if (regional) {
+      conds.push('mv.Regional = ?');
+      params.push(regional);
+    }
+    if (operacion) {
+      conds.push('mv.Operación = ?');
+      params.push(operacion);
+    }
+    if (estado) {
+      conds.push('mv.Estado = ?');
+      params.push(estado);
+    }
+    if (tipoDocumento) {
+      conds.push('t.TipoDocumento = ?');
+      params.push(tipoDocumento);
+    }
+    if (buscar) {
+      conds.push('(s.Trabajador COLLATE utf8mb4_general_ci LIKE ? OR s.Identificación LIKE ?)');
+      params.push(`%${buscar}%`, `%${buscar}%`);
+    }
+
+    const whereClause = conds.length ? `AND ${conds.join(' AND ')}` : '';
+
+    const sql = `
+      SELECT 
+        s.Identificación AS identificacion,
+        s.Trabajador AS trabajador,
+        mv.Operación AS operacion,
+        mv.Estado AS estado,
+        DATE_FORMAT(mv.max_fecha_ingreso, '%Y-%m-%d') AS fechaIngreso,
+        t.TipoDocumento,
+        c.Documento,
+        c.Prefijo,
+        t.cantidad AS documentosCount
+      FROM (
+        SELECT Identificación, TipoDocumento, COUNT(*) AS cantidad
+        FROM Maestro_docTrabajador
+        GROUP BY Identificación, TipoDocumento
+        HAVING COUNT(*) > 1
+      ) t
+      LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+      LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
+      JOIN (
+        SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado, v1.\`Fecha de Ingreso\` AS max_fecha_ingreso
+        FROM Maestro_Vinculación v1
+        INNER JOIN (
+          SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS max_fecha
+          FROM Maestro_Vinculación
+          GROUP BY Identificación
+        ) v2 ON v1.Identificación = v2.Identificación AND v1.\`Fecha de Ingreso\` = v2.max_fecha
+      ) mv ON s.Identificación = mv.Identificación
+      WHERE (c.duplicados IS NULL OR c.duplicados <> 'SI') ${whereClause}
+      ORDER BY s.Trabajador ASC, c.Documento ASC
+      LIMIT 1000
+    `;
+
+    const [rows] = await pool.execute(sql, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('[cloud-docs] GET /api/duplicados error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Listado de solicitudes de acceso (Solo para roles Archivo, Sistema y Asistencial)
 router.get('/api/solicitudes', async (req, res) => {
   try {
@@ -1743,6 +1830,29 @@ router.post('/api/docretiros/validacion-masiva', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[cloud-docs] POST /api/docretiros/validacion-masiva error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Actualizar valor duplicados de un tipo de documento (Rol Archivo/Sistema)
+router.post('/api/documento/duplicados', async (req, res) => {
+  try {
+    const { usuario, id, duplicados } = req.body;
+    if (!usuario || !id) {
+      return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, id)' });
+    }
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso || !['Archivo', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado para modificar duplicados' });
+    }
+
+    const val = duplicados ? 'SI' : null;
+    await pool.execute('UPDATE Config_Doc_Trabajador SET duplicados = ? WHERE Id = ?', [val, id]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cloud-docs] POST /api/documento/duplicados error:', err);
     res.status(500).json({ error: err.message });
   }
 });
