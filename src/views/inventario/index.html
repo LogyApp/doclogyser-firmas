@@ -34,14 +34,159 @@
       font-family: 'Outfit', sans-serif;
       background-color: var(--bg);
       color: var(--text);
-      min-height: 100vh;
       line-height: 1.5;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      min-height: 100vh;
+      overflow: hidden;
     }
 
     .wrapper {
-      max-width: 1300px;
-      margin: 0 auto;
-      padding: 24px 16px 64px;
+      margin-left: 280px;
+      flex: 1;
+      min-width: 0;
+      padding: 24px;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    /* Sidebar layout and items matching clouddocs */
+    .sidebar {
+      width: 280px;
+      background: var(--primary);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 100;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 4px 0 15px rgba(0, 11, 89, 0.08);
+    }
+    
+    .sidebar-brand {
+      padding: 24px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      flex-shrink: 0;
+    }
+
+    .brand-lockup img.brand-logo-app {
+      display: block;
+      object-fit: contain;
+      height: 30px;
+    }
+
+    .brand-logo-company-crop {
+      width: 133px;
+      height: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -64px;
+      top: -65px;
+      width: 268px;
+      height: 178px;
+      max-width: none;
+    }
+
+    .brand-divider {
+      width: 80%;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.65);
+      font-weight: 500;
+      font-size: 0.9rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2px;
+      color: rgba(255, 255, 255, 0.5);
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+    }
+
+    .nav-item:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-item:hover .nav-icon {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .nav-item.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.12);
+      font-weight: 600;
+    }
+
+    .nav-item.active .nav-icon {
+      color: var(--accent);
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 25%;
+      height: 50%;
+      width: 3px;
+      background-color: var(--accent);
+      border-radius: 8px;
+    }
+
+    .nav-item.disabled {
+      opacity: 0.5;
+      cursor: not-allowed !important;
+    }
+
+    .nav-item.disabled:hover {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    .nav-item.disabled:hover .nav-icon {
+      color: rgba(255, 255, 255, 0.5);
     }
 
     /* ── Header ── */
@@ -252,18 +397,8 @@
       box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.15);
     }
 
-    /* ── Main Layout (Sidebar + Grid) ── */
     .main-layout {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 24px;
-      align-items: start;
-    }
-
-    @media (max-width: 900px) {
-      .main-layout {
-        grid-template-columns: 1fr;
-      }
+      display: block;
     }
 
     /* ── Operations Sidebar ── */
@@ -1125,9 +1260,71 @@
       color: var(--primary);
       border-color: var(--primary);
     }
+
+    /* ── Category Chips Style ── */
+    .category-chip {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+    .category-chip:hover {
+      background-color: #f8fafc;
+      border-color: #cbd5e1;
+      color: var(--text);
+    }
+    .category-chip.active {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 4px 6px -1px rgba(30, 60, 114, 0.2);
+    }
+    .btn-clear:hover {
+      background-color: #e2e8f0 !important;
+      border-color: #cbd5e1 !important;
+      color: var(--primary) !important;
+    }
   </style>
 </head>
 <body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+    </div>
+    <ul class="nav-list" id="tabs-container">
+      <li class="nav-item active" id="tab-btn-inventario">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        <span>Inventario</span>
+      </li>
+      <li class="nav-item disabled" id="tab-btn-kardex" title="Módulo Kardex (Próximamente)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Kardex</span>
+      </li>
+      <li class="nav-item disabled" id="tab-btn-solicitudes" title="Módulo Solicitudes (Próximamente)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Solicitudes</span>
+      </li>
+    </ul>
+  </div>
 
   <div class="wrapper">
     <!-- Header -->
@@ -1139,14 +1336,12 @@
           <p>Consulta de stocks valorizados por regional y operación</p>
         </div>
       </div>
-      <!-- Navigation Buttons -->
-      <div class="nav-links" style="display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; margin-right: 16px;">
-        <a href="" id="nav-btn-kardex" class="nav-btn">
-          <span>📊</span> Módulo Kardex
-        </a>
-        <a href="" id="nav-btn-solicitudes" class="nav-btn">
-          <span>📝</span> Módulo Solicitudes
-        </a>
+
+
+      <div style="display: flex; gap: 12px; align-items: center; margin-left: auto; margin-right: 16px;">
+        <button class="btn-confirmar" id="btn-confirmar-inv">
+          <span>📋</span> Confirmar Inventario
+        </button>
       </div>
 
       <div class="user-profile">
@@ -1207,11 +1402,11 @@
               <option value="">Todas las operaciones</option>
             </select>
           </div>
-          <div class="filter-group">
-            <label for="filter-categoria">Categoría</label>
-            <select id="filter-categoria">
-              <option value="">Todas las categorías</option>
-            </select>
+          <div class="filter-group" style="grid-column: span 2;">
+            <label>Categoría</label>
+            <div id="filter-categoria-buttons" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
+              <!-- Dynamic Category Buttons -->
+            </div>
           </div>
           <div class="filter-group">
             <label for="filter-clasificacion">Clasificación</label>
@@ -1223,29 +1418,21 @@
             <label for="filter-search">Buscador</label>
             <input type="text" id="filter-search" placeholder="Buscar por artículo, referencia, talla...">
           </div>
+          <div class="filter-group" style="display: flex; align-items: flex-end;">
+            <button id="btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+              <span>🧹</span> Limpiar Filtros
+            </button>
+          </div>
         </div>
       </div>
 
       <!-- Main Layout -->
       <div class="main-layout">
-        <!-- Sidebar: Operations counts -->
-        <aside class="sidebar-card">
-          <div class="sidebar-title">Stock por Operación</div>
-          <div class="op-list" id="op-list-container">
-            <!-- Operaciones dynamic list -->
-            <div class="empty-state" style="padding: 10px; box-shadow: none;">
-              <p style="font-size: 0.8rem;">Cargando operaciones...</p>
-            </div>
-          </div>
-        </aside>
 
         <!-- Main Content: Articles grid -->
         <main class="content-area">
-          <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px;">
+          <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
             <div class="results-count" id="results-text">Mostrando 0 artículos</div>
-            <button class="btn-confirmar" id="btn-confirmar-inv" disabled>
-              <span>📋</span> Confirmar Inventario
-            </button>
           </div>
 
           <div id="loader" class="loader" style="display: none;"></div>
@@ -1295,8 +1482,17 @@
       </div>
       <div class="conf-modal-body">
         <div class="filter-group">
-          <label>Operación Seleccionada</label>
-          <input type="text" id="conf-operacion" readonly style="background-color:#e2e8f0; color:#555; border-color:#cbd5e1;">
+          <label for="conf-regional">Regional</label>
+          <select id="conf-regional">
+            <option value="">Seleccione Regional</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="conf-operacion">Operación</label>
+          <select id="conf-operacion">
+            <option value="">Seleccione Operación</option>
+          </select>
         </div>
         
         <div class="filter-group">
@@ -1395,15 +1591,16 @@
     
     const filterRegional = document.getElementById('filter-regional');
     const filterOperacion = document.getElementById('filter-operacion');
-    const filterCategoria = document.getElementById('filter-categoria');
+    const filterCategoriaButtons = document.getElementById('filter-categoria-buttons');
     const filterClasificacion = document.getElementById('filter-clasificacion');
     const filterSearch = document.getElementById('filter-search');
+    const btnLimpiarFiltros = document.getElementById('btn-limpiar-filtros');
+    let activeCategory = '';
     
     const statArticles = document.getElementById('stat-articles');
     const statTotalStock = document.getElementById('stat-total-stock');
     const statValue = document.getElementById('stat-value');
     
-    const opListContainer = document.getElementById('op-list-container');
     const resultsText = document.getElementById('results-text');
     const itemsGridContainer = document.getElementById('items-grid-container');
     const loader = document.getElementById('loader');
@@ -1423,6 +1620,7 @@
     const btnConfirmarInv = document.getElementById('btn-confirmar-inv');
     const confModal = document.getElementById('conf-modal');
     const confModalClose = document.getElementById('conf-modal-close');
+    const confRegional = document.getElementById('conf-regional');
     const confOperacion = document.getElementById('conf-operacion');
     const confCategoria = document.getElementById('conf-categoria');
     const confMes = document.getElementById('conf-mes');
@@ -1471,9 +1669,7 @@
         .toUpperCase();
       userAvatarInitials.textContent = initials || 'US';
 
-      // Navigation Buttons Hrefs
-      document.getElementById('nav-btn-kardex').href = `/kardex?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-      document.getElementById('nav-btn-solicitudes').href = `/solicitudes?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+
 
       // 2. Populate Regional select
       const optionAllR = document.createElement('option');
@@ -1498,17 +1694,10 @@
       // 3. Register Event Listeners
       filterRegional.addEventListener('change', () => {
         updateOperacionesDropdown();
-        activeSidebarOp = '';
-        fetchData();
+        applyFiltersAndRender();
       });
 
       filterOperacion.addEventListener('change', () => {
-        activeSidebarOp = '';
-        fetchData();
-      });
-
-      filterCategoria.addEventListener('change', () => {
-        populateClassificationDropdown(allInventoryData);
         applyFiltersAndRender();
       });
 
@@ -1517,6 +1706,18 @@
       });
 
       filterSearch.addEventListener('input', () => {
+        applyFiltersAndRender();
+      });
+
+      btnLimpiarFiltros.addEventListener('click', () => {
+        filterSearch.value = '';
+        if (CONFIG.regionalesFiltro.length > 1) {
+          filterRegional.value = '';
+          updateOperacionesDropdown();
+        }
+        filterOperacion.value = '';
+        activeCategory = '';
+        filterClasificacion.value = '';
         applyFiltersAndRender();
       });
 
@@ -1557,6 +1758,15 @@
       // 5. Confirmation Modal listeners
       btnConfirmarInv.addEventListener('click', () => {
         openConfirmationModal();
+      });
+
+      confRegional.addEventListener('change', () => {
+        updateConfOperacionesDropdown();
+        updateConfCategoriasDropdown();
+      });
+
+      confOperacion.addEventListener('change', () => {
+        updateConfCategoriasDropdown();
       });
 
       confModalClose.addEventListener('click', () => { confModal.style.display = 'none'; });
@@ -1628,70 +1838,211 @@
       });
     }
 
-    // Populate Category Dropdown based on fetched inventory data
-    function populateCategoryDropdown(data) {
-      const currentCat = filterCategoria.value;
-      const categories = Array.from(new Set(data.map(item => item.Categoria).filter(Boolean))).sort();
+    // Faceted Search Helper: filter allInventoryData except for a specific facet
+    function getFilteredDataExcept(excludeFilterKey) {
+      let data = allInventoryData;
+      
+      // Regional filter
+      const reg = filterRegional.value;
+      if (reg && excludeFilterKey !== 'regional') {
+        data = data.filter(item => item.Regional === reg);
+      }
+      
+      // Operacion filter
+      const op = filterOperacion.value;
+      if (op && excludeFilterKey !== 'operacion') {
+        data = data.filter(item => item.Operacion === op);
+      }
+      
+      // Category filter (chip buttons)
+      if (activeCategory && excludeFilterKey !== 'categoria') {
+        data = data.filter(item => item.Categoria === activeCategory);
+      }
+      
+      // Classification filter
+      const cls = filterClasificacion.value;
+      if (cls && excludeFilterKey !== 'clasificacion') {
+        data = data.filter(item => item.Clasificacion === cls);
+      }
+      
+      // Search filter
+      const searchText = filterSearch.value.toLowerCase().trim();
+      if (searchText && excludeFilterKey !== 'search') {
+        data = data.filter(item => {
+          const article = (item.Articulo || '').toLowerCase();
+          const ref = (item.Referencia || '').toLowerCase();
+          const talla = (item.Talla || '').toLowerCase();
+          const cat = (item.Categoria || '').toLowerCase();
+          const clsName = (item.Clasificacion || '').toLowerCase();
+          return article.includes(searchText) || 
+                 ref.includes(searchText) || 
+                 talla.includes(searchText) || 
+                 cat.includes(searchText) || 
+                 clsName.includes(searchText);
+        });
+      }
+      
+      return data;
+    }
 
-      filterCategoria.innerHTML = '<option value="">Todas las categorías</option>';
-      categories.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        opt.textContent = cat;
-        if (cat === currentCat) {
-          opt.selected = true;
+    // Render Category buttons chips dynamically
+    function renderCategoryButtons(dataForCat) {
+      const allCategories = Array.from(new Set(allInventoryData.map(item => item.Categoria).filter(Boolean))).sort();
+      
+      // Calculate counts for categories in dataForCat
+      const catCounts = {};
+      dataForCat.forEach(item => {
+        if (item.Categoria) {
+          catCounts[item.Categoria] = (catCounts[item.Categoria] || 0) + 1;
         }
-        filterCategoria.appendChild(opt);
+      });
+      
+      const totalCount = dataForCat.length;
+      filterCategoriaButtons.innerHTML = '';
+      
+      // 1. Create 'Todas' button chip
+      const allBtn = document.createElement('button');
+      allBtn.type = 'button';
+      allBtn.className = `category-chip ${activeCategory === '' ? 'active' : ''}`;
+      allBtn.innerHTML = `Todas (${totalCount})`;
+      allBtn.addEventListener('click', () => {
+        if (activeCategory !== '') {
+          activeCategory = '';
+          applyFiltersAndRender();
+        }
+      });
+      filterCategoriaButtons.appendChild(allBtn);
+      
+      // 2. Create button chip for each category
+      allCategories.forEach(cat => {
+        const count = catCounts[cat] || 0;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `category-chip ${activeCategory === cat ? 'active' : ''}`;
+        btn.innerHTML = `${cat} (${count})`;
+        btn.addEventListener('click', () => {
+          if (activeCategory === cat) {
+            activeCategory = ''; // toggle off
+          } else {
+            activeCategory = cat;
+          }
+          applyFiltersAndRender();
+        });
+        filterCategoriaButtons.appendChild(btn);
       });
     }
 
-    // Populate Classification Dropdown based on fetched inventory data, filtered by selected category
-    function populateClassificationDropdown(data) {
-      const currentCat = filterCategoria.value;
-      const currentCls = filterClasificacion.value;
-
-      // Filtrar clasificaciones según la categoría elegida
-      let filteredData = data;
-      if (currentCat) {
-        filteredData = data.filter(item => item.Categoria === currentCat);
+    // Helper to dynamically update option counts in the selects (Faceted Search)
+    function updateFilterOptionsWithCounts() {
+      const selectedReg = filterRegional.value;
+      const selectedOp = filterOperacion.value;
+      const selectedCls = filterClasificacion.value;
+      
+      const dataForReg = getFilteredDataExcept('regional');
+      const dataForOp = getFilteredDataExcept('operacion');
+      const dataForCls = getFilteredDataExcept('clasificacion');
+      const dataForCat = getFilteredDataExcept('categoria');
+      
+      // Update Regional Select counts
+      const regCounts = {};
+      dataForReg.forEach(item => {
+        if (item.Regional) regCounts[item.Regional] = (regCounts[item.Regional] || 0) + 1;
+      });
+      
+      filterRegional.innerHTML = '';
+      const optionAllR = document.createElement('option');
+      optionAllR.value = '';
+      optionAllR.textContent = CONFIG.sinFiltro ? `Todas las regionales (${dataForReg.length})` : 'Seleccione Regional';
+      filterRegional.appendChild(optionAllR);
+      
+      CONFIG.regionalesFiltro.forEach(r => {
+        const count = regCounts[r] || 0;
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = `${r} (${count})`;
+        if (r === selectedReg) opt.selected = true;
+        filterRegional.appendChild(opt);
+      });
+      
+      // Update Operacion Select counts
+      const opCounts = {};
+      dataForOp.forEach(item => {
+        if (item.Operacion) opCounts[item.Operacion] = (opCounts[item.Operacion] || 0) + 1;
+      });
+      
+      filterOperacion.innerHTML = '';
+      let allowedOps = [];
+      if (selectedReg) {
+        allowedOps = CONFIG.opsPorRegional[selectedReg] || [];
+      } else {
+        const allOpsSet = new Set();
+        Object.values(CONFIG.opsPorRegional).forEach(ops => {
+          ops.forEach(op => allOpsSet.add(op));
+        });
+        allowedOps = Array.from(allOpsSet).sort();
       }
-
-      const classifications = Array.from(new Set(filteredData.map(item => item.Clasificacion).filter(Boolean))).sort();
-
-      filterClasificacion.innerHTML = '<option value="">Todas las clasificaciones</option>';
-      classifications.forEach(cls => {
+      
+      const optionAllO = document.createElement('option');
+      optionAllO.value = '';
+      optionAllO.textContent = `Todas las operaciones (${dataForOp.filter(item => allowedOps.includes(item.Operacion)).length})`;
+      filterOperacion.appendChild(optionAllO);
+      
+      allowedOps.forEach(op => {
+        const count = opCounts[op] || 0;
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = `${op} (${count})`;
+        if (op === selectedOp) opt.selected = true;
+        filterOperacion.appendChild(opt);
+      });
+      
+      // Update Clasificacion Select counts
+      const clsCounts = {};
+      dataForCls.forEach(item => {
+        if (item.Clasificacion) clsCounts[item.Clasificacion] = (clsCounts[item.Clasificacion] || 0) + 1;
+      });
+      
+      filterClasificacion.innerHTML = '';
+      const optionAllC = document.createElement('option');
+      optionAllC.value = '';
+      
+      let allowedClss = Array.from(new Set(allInventoryData.map(item => item.Clasificacion).filter(Boolean))).sort();
+      if (activeCategory) {
+        allowedClss = Array.from(new Set(allInventoryData.filter(item => item.Categoria === activeCategory).map(item => item.Clasificacion).filter(Boolean))).sort();
+      }
+      
+      optionAllC.textContent = `Todas las clasificaciones (${dataForCls.filter(item => allowedClss.includes(item.Clasificacion)).length})`;
+      filterClasificacion.appendChild(optionAllC);
+      
+      allowedClss.forEach(cls => {
+        const count = clsCounts[cls] || 0;
         const opt = document.createElement('option');
         opt.value = cls;
-        opt.textContent = cls;
-        if (cls === currentCls) {
-          opt.selected = true;
-        }
+        opt.textContent = `${cls} (${count})`;
+        if (cls === selectedCls) opt.selected = true;
         filterClasificacion.appendChild(opt);
       });
+      
+      // Render Category Buttons with counts
+      renderCategoryButtons(dataForCat);
     }
 
-    // Fetch data from server
+    // Fetch data from server (all allowed data)
     async function fetchData() {
       loader.style.display = 'block';
       itemsGridContainer.innerHTML = '';
       resultsText.textContent = 'Buscando artículos...';
 
       try {
-        const reg = filterRegional.value;
-        const op = filterOperacion.value;
-        
         let url = `/inventario/api/datos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-        if (reg) url += `&regional=${encodeURIComponent(reg)}`;
-        if (op) url += `&operacion=${encodeURIComponent(op)}`;
-
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error('Error al cargar datos de inventario');
         }
 
         allInventoryData = await response.json();
-        populateCategoryDropdown(allInventoryData);
-        populateClassificationDropdown(allInventoryData);
+        
+        updateOperacionesDropdown();
         applyFiltersAndRender();
       } catch (err) {
         console.error(err);
@@ -1708,53 +2059,18 @@
       }
     }
 
-    // Apply front-end search and sidebar filtering, then render
+    // Apply front-end search and filters, then render
     function applyFiltersAndRender() {
-      const searchText = filterSearch.value.toLowerCase().trim();
+      const filtered = getFilteredDataExcept('');
       
-      // Filter list
-      let filtered = allInventoryData;
-
-      // Apply sidebar active operation filter if present
-      if (activeSidebarOp) {
-        filtered = filtered.filter(item => item.Operacion === activeSidebarOp);
-      }
-
-      // Apply category filter
-      const selectedCat = filterCategoria.value;
-      if (selectedCat) {
-        filtered = filtered.filter(item => item.Categoria === selectedCat);
-      }
-
-      // Apply classification filter
-      const selectedCls = filterClasificacion.value;
-      if (selectedCls) {
-        filtered = filtered.filter(item => item.Clasificacion === selectedCls);
-      }
-
-      // Apply text search
-      if (searchText) {
-        filtered = filtered.filter(item => {
-          const article = (item.Articulo || '').toLowerCase();
-          const ref = (item.Referencia || '').toLowerCase();
-          const talla = (item.Talla || '').toLowerCase();
-          const cat = (item.Categoria || '').toLowerCase();
-          const cls = (item.Clasificacion || '').toLowerCase();
-          
-          return article.includes(searchText) || 
-                 ref.includes(searchText) || 
-                 talla.includes(searchText) || 
-                 cat.includes(searchText) || 
-                 cls.includes(searchText);
-        });
-      }
-
       renderStats(filtered);
-      renderSidebarBreakdown(filtered);
       renderGrid(filtered);
+      
+      // Update options counts dynamically
+      updateFilterOptionsWithCounts();
 
-      // Activar botón de confirmación si hay operación seleccionada
-      btnConfirmarInv.disabled = (filterOperacion.value === '');
+      // Siempre habilitado el botón de confirmar (ya que se desligó de los filtros de la página principal)
+      btnConfirmarInv.disabled = false;
     }
 
     // Format Currency
@@ -1909,6 +2225,13 @@
                 <span class="detail-label">Referencia:</span>
                 <div class="detail-value" title="${item.Referencia || ''}">${item.Referencia || 'N/A'}</div>
               </div>
+              <div style="grid-column: span 2; display: flex; align-items: center; justify-content: space-between; border-top: 1px dashed #f1f5f9; padding-top: 6px; margin-top: 6px;">
+                <span class="detail-label" style="font-weight: 600;">Placa:</span>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <input type="text" class="placa-input" data-id="${item.IdArticulo}" value="${item.Placa || ''}" placeholder="Sin placa" style="width: 100px; padding: 3px 8px; font-size: 0.8rem; border: 1px solid var(--border); border-radius: 6px; text-align: right; font-weight: 500;" oninput="this.value = this.value.replace(/\\D/g, '')">
+                  <button class="btn-save-placa" data-id="${item.IdArticulo}" style="display: none; background: var(--primary); color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600;" title="Guardar placa">Guardar</button>
+                </div>
+              </div>
             </div>
 
             <div class="card-stock-row">
@@ -1941,6 +2264,72 @@
             modalImg.src = imgSrc;
             modalCaption.textContent = title;
             imageModal.style.display = 'block';
+          }
+        });
+
+        // Placa Input listeners to stop propagation and send update request
+        const placaInput = card.querySelector('.placa-input');
+        const saveBtn = card.querySelector('.btn-save-placa');
+
+        placaInput.addEventListener('click', (e) => e.stopPropagation());
+        placaInput.addEventListener('focus', (e) => e.stopPropagation());
+        placaInput.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') {
+            saveBtn.click();
+          }
+        });
+        
+        saveBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const idArticulo = placaInput.getAttribute('data-id');
+          const value = placaInput.value;
+          
+          saveBtn.disabled = true;
+          saveBtn.innerHTML = '⏳';
+          
+          try {
+            const res = await fetch('/inventario/api/placa', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                usuario: CONFIG.usuarioId,
+                idArticulo,
+                placa: value
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al guardar la placa');
+            
+            // Update local dataset
+            const matchedItem = allInventoryData.find(i => i.IdArticulo == idArticulo);
+            if (matchedItem) matchedItem.Placa = value;
+            
+            // Visual feedback
+            placaInput.style.borderColor = 'var(--success)';
+            setTimeout(() => {
+              placaInput.style.borderColor = '';
+            }, 1000);
+            
+            saveBtn.style.display = 'none';
+          } catch (err) {
+            console.error(err);
+            alert(err.message);
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Guardar';
+          }
+        });
+
+        placaInput.addEventListener('input', (e) => {
+          e.stopPropagation();
+          const originalValue = item.Placa || '';
+          if (placaInput.value !== originalValue) {
+            saveBtn.style.display = 'inline-block';
+          } else {
+            saveBtn.style.display = 'none';
           }
         });
 
@@ -2009,27 +2398,80 @@
       confMes.appendChild(opt);
     }
 
-    // Abrir modal de confirmación
-    async function openConfirmationModal() {
-      const selectedOp = filterOperacion.value;
-      if (!selectedOp) return;
-
-      confOperacion.value = selectedOp;
-      confObservaciones.value = '';
-      confErrorMsg.style.display = 'none';
-
-      // Población de categorías relevantes
+    function updateConfOperacionesDropdown() {
+      const selectedReg = confRegional.value;
+      confOperacion.innerHTML = '<option value="">Seleccione Operación</option>';
       confCategoria.innerHTML = '<option value="">Seleccione categoría</option>';
-      const uniqueCats = Array.from(new Set(allInventoryData.map(item => item.Categoria).filter(Boolean))).sort();
-      uniqueCats.forEach(cat => {
+      
+      let operations = [];
+      if (selectedReg) {
+        operations = CONFIG.opsPorRegional[selectedReg] || [];
+      } else {
+        const allOpsSet = new Set();
+        Object.values(CONFIG.opsPorRegional).forEach(ops => {
+          ops.forEach(op => allOpsSet.add(op));
+        });
+        operations = Array.from(allOpsSet).sort();
+      }
+      
+      operations.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        confOperacion.appendChild(opt);
+      });
+    }
+
+    function updateConfCategoriasDropdown() {
+      const selectedOp = confOperacion.value;
+      confCategoria.innerHTML = '<option value="">Seleccione categoría</option>';
+      
+      if (!selectedOp) return;
+      
+      const catsForOp = Array.from(new Set(
+        allInventoryData
+          .filter(item => item.Operacion === selectedOp)
+          .map(item => item.Categoria)
+          .filter(Boolean)
+      )).sort();
+      
+      catsForOp.forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat;
         opt.textContent = cat;
         confCategoria.appendChild(opt);
       });
+    }
 
-      if (filterCategoria.value && uniqueCats.includes(filterCategoria.value)) {
-        confCategoria.value = filterCategoria.value;
+    // Abrir modal de confirmación
+    async function openConfirmationModal() {
+      confObservaciones.value = '';
+      confErrorMsg.style.display = 'none';
+
+      // Población de regionales
+      confRegional.innerHTML = '<option value="">Seleccione Regional</option>';
+      CONFIG.regionalesFiltro.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        confRegional.appendChild(opt);
+      });
+
+      // Pre-selección desde filtros
+      if (filterRegional.value) {
+        confRegional.value = filterRegional.value;
+      }
+      
+      updateConfOperacionesDropdown();
+
+      if (filterOperacion.value && [...confOperacion.options].some(o => o.value === filterOperacion.value)) {
+        confOperacion.value = filterOperacion.value;
+      }
+
+      updateConfCategoriasDropdown();
+
+      if (activeCategory && [...confCategoria.options].some(o => o.value === activeCategory)) {
+        confCategoria.value = activeCategory;
       }
 
       populateMonthsDropdown();
@@ -2168,11 +2610,20 @@
     async function submitConfirmation() {
       confErrorMsg.style.display = 'none';
 
+      const regional = confRegional.value;
       const operacion = confOperacion.value;
       const categoria = confCategoria.value;
       const mes = confMes.value;
       const observaciones = confObservaciones.value.trim();
 
+      if (!regional) {
+        showConfError('Debes seleccionar una regional.');
+        return;
+      }
+      if (!operacion) {
+        showConfError('Debes seleccionar una operación.');
+        return;
+      }
       if (!categoria) {
         showConfError('Debes seleccionar una categoría.');
         return;
@@ -2207,6 +2658,7 @@
           },
           body: JSON.stringify({
             usuario: CONFIG.usuarioId,
+            regional,
             operacion,
             categoria,
             mes,

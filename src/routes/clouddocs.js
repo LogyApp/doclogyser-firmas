@@ -1252,7 +1252,7 @@ router.post('/api/solicitar', async (req, res) => {
 // API: Listado de validaciones de carpetas (Solo para roles Archivo, Sistema y Asistencial)
 router.get('/api/validarcap', async (req, res) => {
   try {
-    const { usuario, buscar } = req.query;
+    const { usuario, buscar, regional, operacion } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
@@ -1278,10 +1278,35 @@ router.get('/api/validarcap', async (req, res) => {
         FROM Maestro_docTrabajador
         GROUP BY Identificación
       ) d ON c.Identificación = d.Identificación
+      LEFT JOIN (
+        SELECT v1.Identificación, v1.Regional, v1.Operación, v1.Estado
+        FROM Maestro_Vinculación v1
+        INNER JOIN (
+          SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS max_fecha
+          FROM Maestro_Vinculación
+          GROUP BY Identificación
+        ) v2 ON v1.Identificación = v2.Identificación AND v1.\`Fecha de Ingreso\` = v2.max_fecha
+      ) mv ON c.Identificación = mv.Identificación
     `;
     const conds = [];
     const params = [];
 
+    // Filter by permitted operations of the user
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) return res.json([]);
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      conds.push(`mv.Operación IN (${ph})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    if (regional) {
+      conds.push('mv.Regional = ?');
+      params.push(regional);
+    }
+    if (operacion) {
+      conds.push('mv.Operación = ?');
+      params.push(operacion);
+    }
     if (buscar) {
       conds.push('(s.Trabajador COLLATE utf8mb4_general_ci LIKE ? OR CAST(c.Identificación AS CHAR) LIKE ?)');
       params.push(`%${buscar}%`, `%${buscar}%`);

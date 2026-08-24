@@ -187,7 +187,8 @@ router.get('/api/datos', async (req, res) => {
         \`Categoria\` AS \`Categoria\`,
         \`Stock Disponible\` AS \`StockDisponible\`,
         \`Valor Stock\` AS \`ValorStock\`,
-        \`Observaciones\` AS \`Observaciones\`
+        \`Observaciones\` AS \`Observaciones\`,
+        \`Placa\` AS \`Placa\`
       FROM Vista_Inventario
       ${where}
       ORDER BY Regional, Operacion, Articulo
@@ -197,6 +198,45 @@ router.get('/api/datos', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[inventario] GET /api/datos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API para actualizar la placa de un artículo
+router.post('/api/placa', async (req, res) => {
+  try {
+    const { usuario, idArticulo, placa } = req.body;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+    if (!idArticulo) {
+      return res.status(400).json({ error: 'idArticulo es requerido' });
+    }
+
+    // Validar acceso del usuario
+    const acceso = await computarAccesoInventario(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    // Validar que placa sea solo números o vacía
+    if (placa && placa.trim() !== '' && !/^\d+$/.test(placa)) {
+      return res.status(400).json({ error: 'La placa solo debe contener números' });
+    }
+
+    // Actualizar placa en la base de datos
+    const [result] = await pool.execute(
+      'UPDATE Dynamic_Articulos SET Placa = ? WHERE Id = ?',
+      [placa && placa.trim() !== '' ? placa.trim() : null, idArticulo]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Artículo no encontrado en la base de datos' });
+    }
+
+    res.json({ success: true, message: 'Placa actualizada con éxito' });
+  } catch (err) {
+    console.error('[inventario] POST /api/placa:', err);
     res.status(500).json({ error: err.message });
   }
 });

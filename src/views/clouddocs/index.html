@@ -1459,8 +1459,8 @@
 
         // Hide/Show Regional, Operación dropdowns and Cargar/Validar buttons
         if (tab === 'validarcap') {
-          if (regWrapper) regWrapper.style.display = 'none';
-          if (opWrapper) opWrapper.style.display = 'none';
+          if (regWrapper) regWrapper.style.display = 'flex';
+          if (opWrapper) opWrapper.style.display = 'flex';
           btnCargar.style.display = 'none';
           btnValidar.style.display = 'inline-flex';
           btnValidar.href = `/formvalidarcap?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
@@ -1589,7 +1589,8 @@
           if (estadoSolicitud) queryParams.set('estadoSolicitud', estadoSolicitud);
           url = `/cloud-docs/api/solicitudes?${queryParams}`;
         } else if (activeTab === 'validarcap') {
-          url = `/cloud-docs/api/validarcap?usuario=${CONFIG.usuarioId}&buscar=${encodeURIComponent(buscar)}`;
+          if (buscar) queryParams.set('buscar', buscar);
+          url = `/cloud-docs/api/validarcap?${queryParams}`;
         } else if (activeTab === 'docretiros') {
           if (buscar) queryParams.set('buscar', buscar);
           if (estado) queryParams.set('estado', estado);

@@ -1,5 +1,5 @@
 const ROLES_SIN_FILTRO = ['Sistema', 'AdmSst', 'LiderSst'];
-const ROLES_REGIONAL = [];
+const ROLES_REGIONAL = ['AuxiliarR', 'CoordinadorR'];
 const ROLES_DISPOSITIVO = ['AuxSst'];
 const ROLES_MODALIDAD = ['AnaSst'];
 
