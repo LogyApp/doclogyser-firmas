@@ -1295,6 +1295,386 @@
       border-color: #cbd5e1 !important;
       color: var(--primary) !important;
     }
+
+    /* ── Mini Stats Cards ── */
+    .mini-stat-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      background-color: var(--card-bg);
+      border-radius: var(--radius);
+      font-size: 0.8rem;
+      min-width: 140px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+    
+    .mini-stat-icon {
+      font-size: 1.1rem;
+    }
+    
+    .mini-stat-info {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    
+    .mini-stat-info .lbl {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    
+    .mini-stat-info .val {
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    /* ── Filtros plegables ── */
+    .filtros-toggle {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    
+    .filtros-toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--primary);
+    }
+    
+    .filtros-badge {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 999px;
+      font-size: .68rem;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+    }
+    
+    .filtros-chevron {
+      display: inline-block;
+      transition: transform .2s ease;
+      color: var(--primary);
+      font-size: .95rem;
+    }
+    
+    #filtros-body {
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    /* ── Kardex Table and movements ── */
+    .kardex-table-container {
+      overflow-x: auto;
+    }
+
+    .kardex-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      text-align: left;
+    }
+
+    .kardex-table th, .kardex-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .kardex-table th {
+      background-color: #f8fafc;
+      font-weight: 600;
+      color: var(--primary);
+      text-transform: uppercase;
+      font-size: 0.76rem;
+      letter-spacing: 0.5px;
+      position: relative;
+      user-select: none;
+    }
+
+    .kardex-table tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .col-articulo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 320px;
+    }
+
+    .col-articulo img {
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      background-color: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: zoom-in;
+    }
+
+    .col-articulo-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .col-articulo-name {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 0.85rem;
+      word-break: break-word;
+    }
+
+    .col-articulo-ref {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .badge-mov {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .badge-mov.entrada { background-color: #e8f5e9; color: #2e7d32; }
+    .badge-mov.asignacion { background-color: #e0f2fe; color: #0369a1; }
+    .badge-mov.desasignacion { background-color: #fff3e0; color: #e65100; }
+    .badge-mov.transferencia { background-color: #ede7f6; color: #5e35b1; }
+    .badge-mov.baja { background-color: #ffebee; color: #c62828; }
+    .badge-mov.ajuste { background-color: #eceff1; color: #37474f; }
+    .badge-mov.reposicion { background-color: #e0f7fa; color: #00838f; }
+    .badge-mov.reparacion { background-color: #f1f8e9; color: #558b2f; }
+
+    .qty-value {
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-align: center;
+      display: block;
+    }
+
+    .qty-value.plus { color: var(--success); }
+    .qty-value.minus { color: var(--accent); }
+
+    .acta-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: #f8fafc;
+      transition: all 0.15s;
+    }
+
+    .acta-link:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .resizer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 5px;
+      cursor: col-resize;
+      user-select: none;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .resizer:hover, .resizing {
+      border-right: 3px solid var(--primary);
+    }
+    
+    .sort-indicator {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+
+    /* ── Mobile Layout Optimization ── */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      
+      .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 6px rgba(0, 11, 89, 0.05);
+      }
+      
+      .sidebar-brand {
+        padding: 12px 16px;
+      }
+      
+      .brand-lockup {
+        flex-direction: row;
+        gap: 12px;
+        padding: 4px;
+      }
+      
+      .brand-logo-company-crop {
+        height: 24px !important;
+        width: auto !important;
+      }
+      
+      .brand-logo-app {
+        height: 24px !important;
+      }
+      
+      .brand-divider {
+        height: 18px !important;
+        width: 1px !important;
+        margin: 0 !important;
+      }
+      
+      .nav-list {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 8px 16px;
+        gap: 8px;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      
+      .nav-list::-webkit-scrollbar {
+        display: none;
+      }
+      
+      .nav-item {
+        margin-bottom: 0;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+      }
+      
+      .nav-item.active::before {
+        left: 0;
+        bottom: 0;
+        top: auto;
+        width: 100%;
+        height: 3px;
+      }
+      
+      .wrapper {
+        margin-left: 0;
+        padding: 16px;
+        height: auto;
+        overflow-y: visible;
+      }
+      
+      header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+        gap: 16px;
+      }
+      
+      .logo-container {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      
+      header > div:nth-child(2) {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100%;
+        justify-content: center;
+      }
+      
+      .btn-confirmar {
+        width: 100%;
+        justify-content: center;
+      }
+      
+      .user-profile {
+        width: 100%;
+        justify-content: center;
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+      }
+      
+      .tabs-container {
+        flex-direction: column !important;
+        align-items: stretch !important;
+      }
+      
+      .tabs-container > div:first-child {
+        display: flex;
+        width: 100%;
+        gap: 8px;
+      }
+      
+      .tabs-container .tab-btn {
+        flex: 1;
+        text-align: center;
+        padding: 10px 8px;
+        font-size: 0.8rem;
+      }
+      
+      .tabs-container > div:last-child {
+        display: flex !important;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        margin-top: 4px;
+        gap: 8px !important;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      
+      .tabs-container > div:last-child::-webkit-scrollbar {
+        display: none;
+      }
+      
+      .mini-stat-card {
+        flex: 0 0 auto;
+        min-width: 130px;
+      }
+      
+      .filters-card {
+        padding: 16px;
+      }
+      
+      .filters-grid {
+        gap: 12px !important;
+      }
+      
+      .category-chip {
+        padding: 5px 10px;
+        font-size: 0.78rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1315,7 +1695,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
         <span>Inventario</span>
       </li>
-      <li class="nav-item disabled" id="tab-btn-kardex" title="Módulo Kardex (Próximamente)">
+      <li class="nav-item" id="tab-btn-kardex">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
         <span>Kardex</span>
       </li>
@@ -1326,7 +1706,7 @@
     </ul>
   </div>
 
-  <div class="wrapper">
+  <div class="wrapper" id="content-tab-inventario">
     <!-- Header -->
     <header>
       <div class="logo-container">
@@ -1354,74 +1734,88 @@
     </header>
 
     <!-- Tabs Container -->
-    <div class="tabs-container">
-      <button class="tab-btn active" id="tab-btn-consulta">Consulta de Inventario</button>
-      <button class="tab-btn" id="tab-btn-historial">Historial de Confirmaciones</button>
+    <div class="tabs-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+      <div style="display: flex; gap: 12px;">
+        <button class="tab-btn active" id="tab-btn-consulta">Consulta de Inventario</button>
+        <button class="tab-btn" id="tab-btn-historial">Historial de Confirmaciones</button>
+      </div>
+
+      <!-- Right Side: Mini Stats Info Box -->
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">📦</span>
+          <div class="mini-stat-info">
+            <span class="lbl">Artículos Distintos</span>
+            <span class="val" id="stat-articles">0</span>
+          </div>
+        </div>
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">📊</span>
+          <div class="mini-stat-info">
+            <span class="lbl">Stock Físico Total</span>
+            <span class="val" id="stat-total-stock">0</span>
+          </div>
+        </div>
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">💰</span>
+          <div class="mini-stat-info">
+            <span class="lbl">Valorización</span>
+            <span class="val" id="stat-value">$0.00</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Pestaña 1: Consulta de Inventario -->
     <div class="tab-content active" id="tab-content-consulta">
-      <!-- Stats Cards -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">📦</div>
-          <div class="stat-info">
-            <span class="label">Artículos Distintos</span>
-            <span class="value" id="stat-articles">0</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-info">
-            <span class="label">Stock Físico Total</span>
-            <span class="value" id="stat-total-stock">0</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">💰</div>
-          <div class="stat-info">
-            <span class="label">Valorización de Stock</span>
-            <span class="value" id="stat-value">$0.00</span>
-          </div>
-        </div>
-      </div>
 
       <!-- Filters Section -->
       <div class="filters-card">
-        <div class="filters-title">🔍 Filtros de Consulta</div>
-        <div class="filters-grid">
-          <div class="filter-group">
-            <label for="filter-regional">Regional</label>
-            <select id="filter-regional">
-              <option value="">Todas las regionales</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label for="filter-operacion">Operación</label>
-            <select id="filter-operacion">
-              <option value="">Todas las operaciones</option>
-            </select>
-          </div>
-          <div class="filter-group" style="grid-column: span 2;">
-            <label>Categoría</label>
-            <div id="filter-categoria-buttons" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
+        <div class="filtros-toggle" id="filtros-toggle">
+          <span class="filtros-toggle-left">
+            🔍 Filtros de Búsqueda
+            <span class="filtros-badge" id="filtros-badge">0</span>
+          </span>
+          <span class="filtros-chevron" id="filtros-chevron">▸</span>
+        </div>
+
+        <div id="filtros-body" style="display: none;">
+          <!-- Category Filter Section (Chips) -->
+          <div class="category-filter-section" style="border-bottom: 1px dashed var(--border); padding-bottom: 16px; margin-bottom: 16px; margin-top: 16px;">
+            <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Categorías</label>
+            <div id="filter-categoria-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
               <!-- Dynamic Category Buttons -->
             </div>
           </div>
-          <div class="filter-group">
-            <label for="filter-clasificacion">Clasificación</label>
-            <select id="filter-clasificacion">
-              <option value="">Todas las clasificaciones</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label for="filter-search">Buscador</label>
-            <input type="text" id="filter-search" placeholder="Buscar por artículo, referencia, talla...">
-          </div>
-          <div class="filter-group" style="display: flex; align-items: flex-end;">
-            <button id="btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
-              <span>🧹</span> Limpiar Filtros
-            </button>
+
+          <div class="filters-grid">
+            <div class="filter-group">
+              <label for="filter-regional">Regional</label>
+              <select id="filter-regional">
+                <option value="">Todas las regionales</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="filter-operacion">Operación</label>
+              <select id="filter-operacion">
+                <option value="">Todas las operaciones</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="filter-clasificacion">Clasificación</label>
+              <select id="filter-clasificacion">
+                <option value="">Todas las clasificaciones</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="filter-search">Buscador</label>
+              <input type="text" id="filter-search" placeholder="Buscar por artículo, referencia, talla...">
+            </div>
+            <div class="filter-group" style="display: flex; align-items: flex-end;">
+              <button id="btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+                <span>🧹</span> Limpiar Filtros
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1470,6 +1864,156 @@
           </table>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Wrapper for Kardex Tab -->
+  <div class="wrapper" id="content-tab-kardex" style="display: none;">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER LOGO">
+        <div class="header-titles">
+          <h1>Kardex de Inventario</h1>
+          <p>Trazabilidad y registro de movimientos de stock por regional y operación</p>
+        </div>
+      </div>
+
+      <div class="user-profile">
+        <div class="user-avatar" id="kardex-user-avatar-initials">US</div>
+        <div class="user-details">
+          <span class="user-name" id="kardex-profile-name">Cargando...</span>
+          <span class="user-role" id="kardex-profile-role">Consultor</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-icon">📈</div>
+        <div class="stat-info">
+          <span class="label">Total Movimientos</span>
+          <span class="value" id="kardex-stat-total-mov">0</span>
+        </div>
+      </div>
+      <div class="stat-card entradas">
+        <div class="stat-icon">📥</div>
+        <div class="stat-info">
+          <span class="label">Total Entradas</span>
+          <span class="value" id="kardex-stat-total-ent">0</span>
+        </div>
+      </div>
+      <div class="stat-card salidas">
+        <div class="stat-icon">📤</div>
+        <div class="stat-info">
+          <span class="label">Total Salidas</span>
+          <span class="value" id="kardex-stat-total-sal">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-card">
+      <div class="filtros-toggle" id="kardex-filtros-toggle">
+        <span class="filtros-toggle-left">
+          🔍 Filtros de Consulta
+          <span class="filtros-badge" id="kardex-filtros-badge">0</span>
+        </span>
+        <span class="filtros-chevron" id="kardex-filtros-chevron">▸</span>
+      </div>
+
+      <div id="kardex-filtros-body" style="display: none;">
+        <div class="filters-grid" style="margin-top: 16px;">
+          <div class="filter-group">
+            <label for="kardex-filter-regional">Regional</label>
+            <select id="kardex-filter-regional">
+              <option value="">Todas las regionales</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="kardex-filter-operacion">Operación</label>
+            <select id="kardex-filter-operacion">
+              <option value="">Todas las operaciones</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="kardex-filter-categoria">Categoría</label>
+            <select id="kardex-filter-categoria">
+              <option value="">Todas las categorías</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="kardex-filter-movimiento">Tipo Movimiento</label>
+            <select id="kardex-filter-movimiento">
+              <option value="">Todos los movimientos</option>
+              <option value="ENTRADA">ENTRADA</option>
+              <option value="ASIGNACION">ASIGNACIÓN</option>
+              <option value="DESASIGNACION">DESASIGNACIÓN</option>
+              <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+              <option value="BAJA">BAJA</option>
+              <option value="AJUSTE">AJUSTE</option>
+              <option value="REPOSICION">REPOSICIÓN</option>
+              <option value="REPARACION">REPARACIÓN</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="kardex-filter-search">Buscador</label>
+            <input type="text" id="kardex-filter-search" placeholder="Buscar por artículo, acta, cc...">
+          </div>
+          <div class="filter-group" style="display: flex; align-items: flex-end;">
+            <button id="kardex-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+              <span>🧹</span> Limpiar Filtros
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout" style="margin-top: 24px;">
+      <!-- Sidebar Operations list -->
+      <aside class="sidebar-card">
+        <div class="sidebar-title">Movimientos por Operación</div>
+        <div class="op-list" id="kardex-op-list-container">
+          <div class="empty-state" style="padding: 10px; box-shadow: none;">
+            <p style="font-size: 0.8rem;">Cargando operaciones...</p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Content Area -->
+      <main class="content-area">
+        <div class="content-header" style="margin-bottom: 16px;">
+          <div class="results-count" id="kardex-results-text">Mostrando 0 movimientos</div>
+        </div>
+
+        <div id="kardex-loader" class="loader" style="display: none;"></div>
+
+        <div class="kardex-table-container">
+          <table class="kardex-table">
+            <thead>
+              <tr>
+                <th style="width: 140px; cursor: pointer;" data-sort="FechaMovimiento">Fecha<span id="kardex-sort-FechaMovimiento" class="sort-indicator">▼</span></th>
+                <th style="width: 110px; cursor: pointer;" data-sort="TipoMovimiento">Movimiento<span id="kardex-sort-TipoMovimiento" class="sort-indicator"></span></th>
+                <th style="cursor: pointer;" data-sort="Articulo">Artículo<span id="kardex-sort-Articulo" class="sort-indicator"></span></th>
+                <th style="width: 80px; text-align: center; cursor: pointer;" data-sort="Cantidad">Cant.<span id="kardex-sort-Cantidad" class="sort-indicator"></span></th>
+                <th style="width: 180px; cursor: pointer;" data-sort="Operacion">Origen / Destino<span id="kardex-sort-Operacion" class="sort-indicator"></span></th>
+                <th style="width: 120px; cursor: pointer;" data-sort="UsuarioAsignado">Asignado A<span id="kardex-sort-UsuarioAsignado" class="sort-indicator"></span></th>
+                <th style="width: 90px; text-align: center; cursor: pointer;" data-sort="Acta">Acta<span id="kardex-sort-Acta" class="sort-indicator"></span></th>
+                <th style="width: 150px; cursor: pointer;" data-sort="Observaciones">Observaciones / Registro<span id="kardex-sort-Observaciones" class="sort-indicator"></span></th>
+              </tr>
+            </thead>
+            <tbody id="kardex-table-body">
+              <tr>
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
+                  Selecciona una Regional u Operación para iniciar
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
     </div>
   </div>
 
@@ -1807,6 +2351,49 @@
       // 7. Setup Canvas drawing events
       setupCanvasDrawing();
 
+      // 8. Collapsible Filters
+      const filtrosToggle = document.getElementById('filtros-toggle');
+      const filtrosBody = document.getElementById('filtros-body');
+      const filtrosChevron = document.getElementById('filtros-chevron');
+      let filtrosAbiertos = false;
+
+      function setFiltrosState(open) {
+        filtrosAbiertos = open;
+        filtrosBody.style.display = open ? 'block' : 'none';
+        filtrosChevron.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+      }
+
+      filtrosToggle.addEventListener('click', () => setFiltrosState(!filtrosAbiertos));
+      setFiltrosState(false); // Collapsed by default
+
+      // 9. Sidebar Tab Switching
+      const tabBtnInventario = document.getElementById('tab-btn-inventario');
+      const tabBtnKardex = document.getElementById('tab-btn-kardex');
+      
+      const contentTabInventario = document.getElementById('content-tab-inventario');
+      const contentTabKardex = document.getElementById('content-tab-kardex');
+
+      if (tabBtnInventario && tabBtnKardex && contentTabInventario && contentTabKardex) {
+        tabBtnInventario.addEventListener('click', () => {
+          tabBtnInventario.classList.add('active');
+          tabBtnKardex.classList.remove('active');
+          
+          contentTabInventario.style.display = 'block';
+          contentTabKardex.style.display = 'none';
+        });
+
+        tabBtnKardex.addEventListener('click', () => {
+          tabBtnInventario.classList.remove('active');
+          tabBtnKardex.classList.add('active');
+          
+          contentTabInventario.style.display = 'none';
+          contentTabKardex.style.display = 'block';
+          
+          // Lazy init Kardex
+          initKardex();
+        });
+      }
+
       // Initial Fetch
       fetchData();
     }
@@ -2071,6 +2658,27 @@
 
       // Siempre habilitado el botón de confirmar (ya que se desligó de los filtros de la página principal)
       btnConfirmarInv.disabled = false;
+
+      // Actualizar el contador de filtros activos en la cabecera plegable
+      actualizarBadgeFiltros();
+    }
+
+    function actualizarBadgeFiltros() {
+      const badge = document.getElementById('filtros-badge');
+      let activeCount = 0;
+      
+      if (filterRegional && filterRegional.value) activeCount++;
+      if (filterOperacion && filterOperacion.value) activeCount++;
+      if (activeCategory) activeCount++;
+      if (filterClasificacion && filterClasificacion.value) activeCount++;
+      if (filterSearch && filterSearch.value.trim()) activeCount++;
+      
+      if (activeCount > 0) {
+        badge.textContent = activeCount;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+      }
     }
 
     // Format Currency
@@ -2772,7 +3380,7 @@
         const reg = filterRegional.value;
         const op = filterOperacion.value;
         
-        let url = `/kardex/api/articulo/${item.IdArticulo}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        let url = `/inventario/api/kardex/articulo/${item.IdArticulo}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
         if (reg) url += `&regional=${encodeURIComponent(reg)}`;
         if (op) url += `&operacion=${encodeURIComponent(op)}`;
 
@@ -2844,6 +3452,548 @@
         console.error(err);
         drawerTimeline.innerHTML = `<div style="font-size:0.8rem; color:#dc2626; text-align:center; padding:20px 0; font-weight:600;">❌ Error: ${err.message}</div>`;
       }
+    }
+
+    // =========================================================================
+    // ── INTEGRACIÓN DE KARDEX (HISTORIAL DE TRANSACCIONES) ──
+    // =========================================================================
+    const kardexProfileName = document.getElementById('kardex-profile-name');
+    const kardexProfileRole = document.getElementById('kardex-profile-role');
+    const kardexUserAvatarInitials = document.getElementById('kardex-user-avatar-initials');
+
+    const kardexFilterRegional = document.getElementById('kardex-filter-regional');
+    const kardexFilterOperacion = document.getElementById('kardex-filter-operacion');
+    const kardexFilterCategoria = document.getElementById('kardex-filter-categoria');
+    const kardexFilterMovimiento = document.getElementById('kardex-filter-movimiento');
+    const kardexFilterSearch = document.getElementById('kardex-filter-search');
+
+    const kardexStatTotalMov = document.getElementById('kardex-stat-total-mov');
+    const kardexStatTotalEnt = document.getElementById('kardex-stat-total-ent');
+    const kardexStatTotalSal = document.getElementById('kardex-stat-total-sal');
+
+    const kardexOpListContainer = document.getElementById('kardex-op-list-container');
+    const kardexResultsText = document.getElementById('kardex-results-text');
+    const kardexTableBody = document.getElementById('kardex-table-body');
+    const kardexLoader = document.getElementById('kardex-loader');
+
+    let allKardexData = [];
+    let activeKardexSidebarOp = '';
+    let currentKardexSortColumn = 'FechaMovimiento';
+    let currentKardexSortOrder = 'desc';
+    let isKardexInitialized = false;
+
+    function initKardex() {
+      if (isKardexInitialized) return; // Prevent double initialization
+      isKardexInitialized = true;
+
+      // 1. Profile information
+      if (kardexProfileName) kardexProfileName.textContent = CONFIG.usuarioNombre;
+      if (kardexProfileRole) kardexProfileRole.textContent = CONFIG.rol;
+      
+      const initials = CONFIG.usuarioNombre
+        .split(' ')
+        .map(n => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
+      if (kardexUserAvatarInitials) kardexUserAvatarInitials.textContent = initials || 'US';
+
+      // 2. Populate regional filter
+      if (kardexFilterRegional) {
+        kardexFilterRegional.innerHTML = '';
+        const optAll = document.createElement('option');
+        optAll.value = '';
+        optAll.textContent = CONFIG.sinFiltro ? 'Todas las regionales' : 'Seleccione Regional';
+        kardexFilterRegional.appendChild(optAll);
+
+        CONFIG.regionalesFiltro.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = r;
+          kardexFilterRegional.appendChild(opt);
+        });
+
+        if (CONFIG.regionalesFiltro.length === 1) {
+          kardexFilterRegional.value = CONFIG.regionalesFiltro[0];
+          updateKardexOperacionesDropdown();
+        }
+      }
+
+      // 3. Event listeners
+      if (kardexFilterRegional) {
+        kardexFilterRegional.addEventListener('change', () => {
+          updateKardexOperacionesDropdown();
+          activeKardexSidebarOp = '';
+          fetchKardexData();
+        });
+      }
+
+      if (kardexFilterOperacion) {
+        kardexFilterOperacion.addEventListener('change', () => {
+          activeKardexSidebarOp = '';
+          fetchKardexData();
+        });
+      }
+
+      if (kardexFilterCategoria) kardexFilterCategoria.addEventListener('change', applyKardexFiltersAndRender);
+      if (kardexFilterMovimiento) kardexFilterMovimiento.addEventListener('change', applyKardexFiltersAndRender);
+      if (kardexFilterSearch) kardexFilterSearch.addEventListener('input', applyKardexFiltersAndRender);
+
+      // Limpiar filtros button
+      const kardexBtnLimpiar = document.getElementById('kardex-btn-limpiar-filtros');
+      if (kardexBtnLimpiar) {
+        kardexBtnLimpiar.addEventListener('click', () => {
+          kardexFilterRegional.value = CONFIG.regionalesFiltro.length === 1 ? CONFIG.regionalesFiltro[0] : '';
+          updateKardexOperacionesDropdown();
+          kardexFilterCategoria.value = '';
+          kardexFilterMovimiento.value = '';
+          kardexFilterSearch.value = '';
+          activeKardexSidebarOp = '';
+          fetchKardexData();
+        });
+      }
+
+      // Collapsible Filters
+      const kardexFiltrosToggle = document.getElementById('kardex-filtros-toggle');
+      const kardexFiltrosBody = document.getElementById('kardex-filtros-body');
+      const kardexFiltrosChevron = document.getElementById('kardex-filtros-chevron');
+      let kardexFiltrosAbiertos = false;
+
+      if (kardexFiltrosToggle && kardexFiltrosBody) {
+        function setKardexFiltrosState(open) {
+          kardexFiltrosAbiertos = open;
+          kardexFiltrosBody.style.display = open ? 'block' : 'none';
+          if (kardexFiltrosChevron) {
+            kardexFiltrosChevron.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+          }
+        }
+
+        kardexFiltrosToggle.addEventListener('click', () => setKardexFiltrosState(!kardexFiltrosAbiertos));
+        setKardexFiltrosState(false); // Collapsed by default
+      }
+
+      // 4. Click header sorting listeners
+      const headers = document.querySelectorAll('.kardex-table th[data-sort]');
+      headers.forEach(h => {
+        h.addEventListener('click', () => {
+          const key = h.getAttribute('data-sort');
+          sortKardexData(key);
+        });
+      });
+
+      // 5. Make columns resizable
+      makeKardexColumnsResizable();
+
+      // Initial fetch
+      fetchKardexData();
+    }
+
+    function updateKardexOperacionesDropdown() {
+      if (!kardexFilterOperacion) return;
+      const selectedReg = kardexFilterRegional ? kardexFilterRegional.value : '';
+      kardexFilterOperacion.innerHTML = '<option value="">Todas las operaciones</option>';
+
+      let ops = [];
+      if (selectedReg) {
+        ops = CONFIG.opsPorRegional[selectedReg] || [];
+      } else {
+        const allOps = new Set();
+        Object.values(CONFIG.opsPorRegional).forEach(list => {
+          list.forEach(op => allOps.add(op));
+        });
+        ops = Array.from(allOps);
+      }
+
+      ops.sort().forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        kardexFilterOperacion.appendChild(opt);
+      });
+    }
+
+    async function fetchKardexData() {
+      if (kardexLoader) kardexLoader.style.display = 'block';
+      if (kardexTableBody) kardexTableBody.innerHTML = '';
+      if (kardexResultsText) kardexResultsText.textContent = 'Buscando movimientos...';
+
+      try {
+        const reg = kardexFilterRegional ? kardexFilterRegional.value : '';
+        const op = kardexFilterOperacion ? kardexFilterOperacion.value : '';
+
+        let url = `/inventario/api/kardex/datos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        if (reg) url += `&regional=${encodeURIComponent(reg)}`;
+        if (op) url += `&operacion=${encodeURIComponent(op)}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Error al cargar datos del Kardex');
+        }
+
+        allKardexData = await response.json();
+        populateKardexCategories(allKardexData);
+        applyKardexFiltersAndRender();
+      } catch (err) {
+        console.error(err);
+        if (kardexTableBody) {
+          kardexTableBody.innerHTML = `
+            <tr>
+              <td colspan="8" style="text-align: center; color: #dc2626; padding: 48px; font-weight: 600;">
+                ❌ Error de carga: ${err.message}
+              </td>
+            </tr>
+          `;
+        }
+        if (kardexResultsText) kardexResultsText.textContent = 'Error al cargar';
+      } finally {
+        if (kardexLoader) kardexLoader.style.display = 'none';
+      }
+    }
+
+    function populateKardexCategories(data) {
+      if (!kardexFilterCategoria) return;
+      const currentCat = kardexFilterCategoria.value;
+      const categories = Array.from(new Set(data.map(item => item.Categoria).filter(Boolean))).sort();
+
+      kardexFilterCategoria.innerHTML = '<option value="">Todas las categorías</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        if (cat === currentCat) opt.selected = true;
+        kardexFilterCategoria.appendChild(opt);
+      });
+    }
+
+    function applyKardexFiltersAndRender() {
+      const selectedCat = kardexFilterCategoria ? kardexFilterCategoria.value : '';
+      const selectedMov = kardexFilterMovimiento ? kardexFilterMovimiento.value : '';
+      const searchText = kardexFilterSearch ? kardexFilterSearch.value.toLowerCase().trim() : '';
+
+      let filtered = allKardexData;
+
+      if (activeKardexSidebarOp) {
+        filtered = filtered.filter(item => item.Operacion === activeKardexSidebarOp);
+      }
+
+      if (selectedCat) {
+        filtered = filtered.filter(item => item.Categoria === selectedCat);
+      }
+
+      if (selectedMov) {
+        filtered = filtered.filter(item => item.TipoMovimiento === selectedMov);
+      }
+
+      if (searchText) {
+        filtered = filtered.filter(item => {
+          const article = (item.Articulo || '').toLowerCase();
+          const ref = (item.Referencia || '').toLowerCase();
+          const asignado = (item.UsuarioAsignado || '').toLowerCase();
+          const acta = (item.Acta || '').toLowerCase();
+          const regBy = (item.UsuarioRegistro || '').toLowerCase();
+          const obs = (item.Observaciones || '').toLowerCase();
+
+          return article.includes(searchText) ||
+                 ref.includes(searchText) ||
+                 asignado.includes(searchText) ||
+                 acta.includes(searchText) ||
+                 regBy.includes(searchText) ||
+                 obs.includes(searchText);
+        });
+      }
+
+      // Apply Sorting
+      if (currentKardexSortColumn) {
+        filtered.sort((a, b) => {
+          let valA = a[currentKardexSortColumn];
+          let valB = b[currentKardexSortColumn];
+
+          if (currentKardexSortColumn === 'Cantidad') {
+            valA = Number(valA || 0);
+            valB = Number(valB || 0);
+          } else {
+            valA = String(valA || '').toLowerCase();
+            valB = String(valB || '').toLowerCase();
+          }
+
+          if (valA < valB) return currentKardexSortOrder === 'asc' ? -1 : 1;
+          if (valA > valB) return currentKardexSortOrder === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
+      updateKardexSortIndicators();
+      updateKardexBadgeFiltros();
+
+      renderKardexStats(filtered);
+      renderKardexSidebar(filtered);
+      renderKardexTable(filtered);
+    }
+
+    function updateKardexBadgeFiltros() {
+      const badge = document.getElementById('kardex-filtros-badge');
+      if (!badge) return;
+      let activeCount = 0;
+      
+      if (kardexFilterRegional && kardexFilterRegional.value) activeCount++;
+      if (kardexFilterOperacion && kardexFilterOperacion.value) activeCount++;
+      if (kardexFilterCategoria && kardexFilterCategoria.value) activeCount++;
+      if (kardexFilterMovimiento && kardexFilterMovimiento.value) activeCount++;
+      if (kardexFilterSearch && kardexFilterSearch.value.trim()) activeCount++;
+      
+      if (activeCount > 0) {
+        badge.textContent = activeCount;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    function renderKardexStats(items) {
+      if (kardexStatTotalMov) kardexStatTotalMov.textContent = items.length;
+
+      const entradas = items.filter(item => Number(item.Cantidad || 0) > 0).length;
+      const salidas = items.filter(item => Number(item.Cantidad || 0) < 0).length;
+
+      if (kardexStatTotalEnt) kardexStatTotalEnt.textContent = entradas;
+      if (kardexStatTotalSal) kardexStatTotalSal.textContent = salidas;
+    }
+
+    function renderKardexSidebar(items) {
+      if (!kardexOpListContainer) return;
+      const counts = {};
+      items.forEach(item => {
+        const op = item.Operacion;
+        if (op) {
+          counts[op] = (counts[op] || 0) + 1;
+        }
+      });
+
+      const sortedOps = Object.keys(counts).sort();
+      kardexOpListContainer.innerHTML = '';
+
+      if (sortedOps.length === 0) {
+        kardexOpListContainer.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 12px 0;">No hay movimientos</div>';
+        return;
+      }
+
+      if (activeKardexSidebarOp) {
+        const allRow = document.createElement('div');
+        allRow.className = 'op-item';
+        allRow.innerHTML = `
+          <span class="op-name" style="font-weight: 600; color: var(--primary)">Mostrar todo</span>
+          <span class="op-badge">-</span>
+        `;
+        allRow.addEventListener('click', () => {
+          activeKardexSidebarOp = '';
+          applyKardexFiltersAndRender();
+        });
+        kardexOpListContainer.appendChild(allRow);
+      }
+
+      sortedOps.forEach(op => {
+        const row = document.createElement('div');
+        row.className = `op-item ${activeKardexSidebarOp === op ? 'active' : ''}`;
+        row.innerHTML = `
+          <span class="op-name" title="${op}">${op}</span>
+          <span class="op-badge">${counts[op]}</span>
+        `;
+        row.addEventListener('click', () => {
+          activeKardexSidebarOp = activeKardexSidebarOp === op ? '' : op;
+          applyKardexFiltersAndRender();
+        });
+        kardexOpListContainer.appendChild(row);
+      });
+    }
+
+    function renderKardexTable(items) {
+      if (!kardexTableBody) return;
+      kardexTableBody.innerHTML = '';
+      if (kardexResultsText) kardexResultsText.textContent = `Mostrando ${items.length} movimientos`;
+
+      if (items.length === 0) {
+        kardexTableBody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 48px;">
+              No se encontraron registros de Kardex con los filtros aplicados.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        // Date formatting
+        const moveDate = new Date(item.FechaMovimiento).toLocaleDateString('es-CO', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+        const regTime = new Date(item.FechaRegistro || item.FechaMovimiento).toLocaleTimeString('es-CO', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+
+        // Movement class & badge
+        const mType = item.TipoMovimiento || 'ENTRADA';
+        const mClass = mType.toLowerCase();
+        let displayType = mType;
+        if (mType === 'ASIGNACION') displayType = 'ASIGNACIÓN';
+        if (mType === 'DESASIGNACION') displayType = 'DESASIGNACIÓN';
+        if (mType === 'REPOSICION') displayType = 'REPOSICIÓN';
+        if (mType === 'REPARACION') displayType = 'REPARACIÓN';
+
+        // Image thumbnail
+        let imgHtml = '';
+        if (item.Imagen && item.Imagen.trim() !== '') {
+          imgHtml = `<img src="${item.Imagen}" alt="${item.Articulo || ''}" class="tbl-img">`;
+        } else {
+          imgHtml = `<div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background-color: #f1f5f9; border-radius: 6px; font-size: 1.5rem;">📦</div>`;
+        }
+
+        // Qty styling
+        const qty = Number(item.Cantidad || 0);
+        const qtyClass = qty > 0 ? 'plus' : 'minus';
+        const qtySign = qty > 0 ? `+${qty}` : qty;
+
+        // Destination Operación formatting
+        let opDisplay = item.Operacion;
+        if (item.OperacionDestino) {
+          opDisplay = `${item.Operacion} ➔ ${item.OperacionDestino}`;
+        }
+
+        // Acta link
+        let actaHtml = '—';
+        if (item.Acta) {
+          actaHtml = `<a href="https://storage.googleapis.com/talenthub_central/pdf_actas/${item.Acta}.pdf" target="_blank" class="acta-link">📄 ${item.Acta}</a>`;
+        }
+
+        tr.innerHTML = `
+          <td>
+            <div style="font-weight:600;">${moveDate}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">${regTime} hs</div>
+          </td>
+          <td>
+            <span class="badge-mov ${mClass}">${displayType}</span>
+          </td>
+          <td>
+            <div class="col-articulo">
+              <div class="col-img-wrap" data-img-src="${item.Imagen || ''}" data-title="${item.Articulo || ''}">
+                ${imgHtml}
+              </div>
+              <div class="col-articulo-info">
+                <span class="col-articulo-name" title="${item.Articulo || ''}">${item.Articulo || 'Artículo #' + item.IdArticulo}</span>
+                <span class="col-articulo-ref">Ref: ${item.Referencia || 'S/R'}</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="qty-value ${qtyClass}">${qtySign}</span>
+          </td>
+          <td>
+            <div style="font-weight: 500;">${opDisplay}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">${item.Regional || ''}</div>
+          </td>
+          <td>
+            <div style="font-weight: 500;">${item.UsuarioAsignado || '—'}</div>
+          </td>
+          <td style="text-align: center;">
+            ${actaHtml}
+          </td>
+          <td>
+            <div class="obs-cell" title="${item.Observaciones || ''}">${item.Observaciones || '—'}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">Por: ${item.UsuarioRegistro || '—'}</div>
+          </td>
+        `;
+
+        // Image zoom trigger
+        const imgEl = tr.querySelector('.tbl-img');
+        if (imgEl) {
+          imgEl.addEventListener('click', () => {
+            const imgModal = document.getElementById('image-modal');
+            const imgModalImg = document.getElementById('modal-img');
+            const imgModalCaption = document.getElementById('modal-caption');
+            
+            if (imgModal && imgModalImg) {
+              imgModalImg.src = item.Imagen;
+              if (imgModalCaption) imgModalCaption.textContent = item.Articulo || '';
+              imgModal.style.display = 'block';
+            }
+          });
+        }
+
+        kardexTableBody.appendChild(tr);
+      });
+    }
+
+    function sortKardexData(key) {
+      if (currentKardexSortColumn === key) {
+        currentKardexSortOrder = currentKardexSortOrder === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentKardexSortColumn = key;
+        currentKardexSortOrder = 'asc';
+      }
+      applyKardexFiltersAndRender();
+    }
+
+    function updateKardexSortIndicators() {
+      const keys = ['FechaMovimiento', 'TipoMovimiento', 'Articulo', 'Cantidad', 'Operacion', 'UsuarioAsignado', 'Acta', 'Observaciones'];
+      keys.forEach(k => {
+        const span = document.getElementById(`kardex-sort-${k}`);
+        if (span) {
+          if (currentKardexSortColumn === k) {
+            span.textContent = currentKardexSortOrder === 'asc' ? ' ▲' : ' ▼';
+            span.style.color = 'var(--primary)';
+          } else {
+            span.textContent = '';
+          }
+        }
+      });
+    }
+
+    function makeKardexColumnsResizable() {
+      const table = document.querySelector('.kardex-table');
+      if (!table) return;
+      const cols = table.querySelectorAll('th');
+      cols.forEach(col => {
+        if (!col.querySelector('.resizer')) {
+          const resizer = document.createElement('div');
+          resizer.className = 'resizer';
+          col.appendChild(resizer);
+          createKardexResizableColumn(col, resizer);
+        }
+      });
+    }
+
+    function createKardexResizableColumn(col, resizer) {
+      let x = 0;
+      let w = 0;
+
+      const mouseDownHandler = function(e) {
+        x = e.clientX;
+        const styles = window.getComputedStyle(col);
+        w = parseInt(styles.width, 10);
+
+        document.addEventListener('mousemove', mouseMoveHandler);
+        document.addEventListener('mouseup', mouseUpHandler);
+        resizer.classList.add('resizing');
+      };
+
+      const mouseMoveHandler = function(e) {
+        const dx = e.clientX - x;
+        col.style.width = `${w + dx}px`;
+      };
+
+      const mouseUpHandler = function() {
+        document.removeEventListener('mousemove', mouseMoveHandler);
+        document.removeEventListener('mouseup', mouseUpHandler);
+        resizer.classList.remove('resizing');
+      };
+
+      resizer.addEventListener('mousedown', mouseDownHandler);
     }
 
     // Run on startup

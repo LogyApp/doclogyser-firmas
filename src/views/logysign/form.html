@@ -961,7 +961,7 @@
 
     selectDocumento.addEventListener('change', () => {
       const val = selectDocumento.value;
-      if (val === '55' || Number(val) === 55) {
+      if (['55', '76', '77'].includes(val)) {
         grpCausa.style.display = 'block';
         loadCausas(val);
       } else {
@@ -1347,7 +1347,7 @@
       }
 
       let causaValid = true;
-      if (selectDocumento.value === '55' || Number(selectDocumento.value) === 55) {
+      if (['55', '76', '77'].includes(selectDocumento.value)) {
         if (selectCausa.value === '*Nuevo') {
           causaValid = !!inputCausaNueva.value.trim();
         } else {
@@ -1414,7 +1414,7 @@
 
       try {
         let causaVal = '';
-        if (idConfigDoc === '55' || Number(idConfigDoc) === 55) {
+        if (['55', '76', '77'].includes(String(idConfigDoc))) {
           causaVal = selectCausa.value === '*Nuevo' ? inputCausaNueva.value.trim() : selectCausa.value;
         }
 

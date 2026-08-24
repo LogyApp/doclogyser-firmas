@@ -536,4 +536,155 @@ router.get('/api/confirmaciones', async (req, res) => {
   }
 });
 
+// ==========================================
+// ENDPOINTS DE KARDEX INTEGRADOS
+// ==========================================
+
+// API para devolver los datos de Kardex filtrados
+router.get('/api/kardex/datos', async (req, res) => {
+  try {
+    const { usuario, regional, operacion, categoria, tipoMovimiento } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const conds = [];
+    const params = [];
+
+    // Filtro de seguridad por rol
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) {
+        return res.json([]);
+      }
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      conds.push(`k.\`Operación\` IN (${ph})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    // Filtros opcionales
+    if (regional) {
+      conds.push('k.`Regional` = ?');
+      params.push(regional);
+    }
+    if (operacion) {
+      conds.push('k.`Operación` = ?');
+      params.push(operacion);
+    }
+    if (categoria) {
+      conds.push('k.`Categoria` = ?');
+      params.push(categoria);
+    }
+    if (tipoMovimiento) {
+      conds.push('k.`TipoMovimiento` = ?');
+      params.push(tipoMovimiento);
+    }
+
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+    const query = `
+      SELECT 
+        k.IdKardex,
+        k.FechaMovimiento,
+        k.TipoMovimiento,
+        k.Regional,
+        k.\`Operación\` AS Operacion,
+        k.\`OperaciónDestino\` AS OperacionDestino,
+        k.Categoria,
+        k.IdArticulo,
+        a.Articulo,
+        a.Referencia,
+        a.Imagen,
+        k.Cantidad,
+        k.UsuarioAsignado,
+        k.Acta,
+        k.ValorUnitario,
+        k.UsuarioRegistro,
+        k.Observaciones,
+        k.FechaRegistro
+      FROM Dynamic_Kardex k
+      LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
+      ${where}
+      ORDER BY k.FechaMovimiento DESC, k.FechaRegistro DESC
+      LIMIT 2000
+    `;
+
+    const [rows] = await pool.execute(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('[inventario] GET /api/kardex/datos error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API para devolver el historial de Kardex de un artículo específico
+router.get('/api/kardex/articulo/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, regional, operacion } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const conds = ['k.IdArticulo = ?'];
+    const params = [id];
+
+    // Filtro de seguridad por rol
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) {
+        return res.json([]);
+      }
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      conds.push(`k.\`Operación\` IN (${ph})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    // Filtros adicionales por selección de UI
+    if (regional) {
+      conds.push('k.`Regional` = ?');
+      params.push(regional);
+    }
+    if (operacion) {
+      conds.push('k.`Operación` = ?');
+      params.push(operacion);
+    }
+
+    const where = conds.join(' AND ');
+    const query = `
+      SELECT 
+        k.IdKardex,
+        k.FechaMovimiento,
+        k.TipoMovimiento,
+        k.Regional,
+        k.\`Operación\` AS Operacion,
+        k.\`OperaciónDestino\` AS OperacionDestino,
+        k.Categoria,
+        k.Cantidad,
+        k.UsuarioAsignado,
+        k.Acta,
+        k.ValorUnitario,
+        k.UsuarioRegistro,
+        k.Observaciones,
+        k.FechaRegistro
+      FROM Dynamic_Kardex k
+      WHERE ${where}
+      ORDER BY k.FechaMovimiento DESC, k.FechaRegistro DESC
+    `;
+
+    const [rows] = await pool.execute(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('[inventario] GET /api/kardex/articulo/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

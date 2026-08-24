@@ -222,16 +222,16 @@ router.post('/api/update-causa', async (req, res) => {
 
     const cleanCausa = causa ? causa.trim() : null;
 
-    // Si la causa es nueva y el documento es 55, guardarla en Config_Motivos_Documento
-    if (Number(idConfigDoc) === 55 && cleanCausa) {
+    // Si la causa es nueva y el documento es 55, 76 o 77, guardarla en Config_Motivos_Documento
+    if ([55, 76, 77].includes(Number(idConfigDoc)) && cleanCausa) {
       const [mRows] = await pool.execute(
-        'SELECT id FROM Config_Motivos_Documento WHERE id_config_doc = 55 AND LOWER(motivo) = ?',
-        [cleanCausa.toLowerCase()]
+        'SELECT id FROM Config_Motivos_Documento WHERE id_config_doc = ? AND LOWER(motivo) = ?',
+        [idConfigDoc, cleanCausa.toLowerCase()]
       );
       if (!mRows.length) {
         await pool.execute(
-          'INSERT INTO Config_Motivos_Documento (id_config_doc, motivo) VALUES (55, ?)',
-          [cleanCausa]
+          'INSERT INTO Config_Motivos_Documento (id_config_doc, motivo) VALUES (?, ?)',
+          [idConfigDoc, cleanCausa]
         );
       }
     }

@@ -316,16 +316,16 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
     );
 
     // Save custom causa in Config_Motivos_Documento if new
-    if (Number(idConfigDoc) === 55 && causa && causa.trim()) {
+    if ([55, 76, 77].includes(Number(idConfigDoc)) && causa && causa.trim()) {
       const cleanCausa = causa.trim();
       const [mRows] = await pool.execute(
-        'SELECT id FROM Config_Motivos_Documento WHERE id_config_doc = 55 AND LOWER(motivo) = ?',
-        [cleanCausa.toLowerCase()]
+        'SELECT id FROM Config_Motivos_Documento WHERE id_config_doc = ? AND LOWER(motivo) = ?',
+        [idConfigDoc, cleanCausa.toLowerCase()]
       );
       if (!mRows.length) {
         await pool.execute(
-          'INSERT INTO Config_Motivos_Documento (id_config_doc, motivo) VALUES (55, ?)',
-          [cleanCausa]
+          'INSERT INTO Config_Motivos_Documento (id_config_doc, motivo) VALUES (?, ?)',
+          [idConfigDoc, cleanCausa]
         );
       }
     }
@@ -427,7 +427,7 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         firmasCoordenadas || null,
         parsedFechaProgramada,
         baseUrl,
-        (Number(idConfigDoc) === 55 && causa) ? causa.trim() : null,
+        ([55, 76, 77].includes(Number(idConfigDoc)) && causa) ? causa.trim() : null,
         idDescuentoAuto
       ]
     );
