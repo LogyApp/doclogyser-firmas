@@ -114,11 +114,9 @@ setInterval(verificarRetiros, 2 * 60 * 1000); // cada 2 minutos
 
 // Notificador de ingresos: detecta nuevos colaboradores con cargos críticos
 // y envía correo al equipo administrativo para programar capacitación
-// DESHABILITADO TEMPORALMENTE: envío masivo sobre históricos, pendiente de
-// backfill de la marca [NI] en Maestro_Vinculación antes de reactivar.
-// const { verificarIngresos } = require('./src/services/ingresoNotifier');
-// verificarIngresos(); // verificación inicial al arrancar
-// setInterval(verificarIngresos, 2 * 60 * 1000); // cada 2 minutos
+const { verificarIngresos } = require('./src/services/ingresoNotifier');
+verificarIngresos(); // verificación inicial al arrancar
+setInterval(verificarIngresos, 2 * 60 * 1000); // cada 2 minutos
 
 // Generador automático de CT cuando el token expira sin firma del trabajador
 const { verificarCTExpirados } = require('./src/services/ctExpiryNotifier');
