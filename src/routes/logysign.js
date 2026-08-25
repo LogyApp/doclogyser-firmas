@@ -599,10 +599,22 @@ router.post('/api/firmar', async (req, res) => {
     const [originalPdfBuffer] = await originalPdfFile.download();
 
     // 3. Overlay signature on PDF using pdf-lib
-    const { PDFDocument } = require('pdf-lib');
+    const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
     const pdfDoc = await PDFDocument.load(originalPdfBuffer);
     const signatureImage = await pdfDoc.embedPng(signatureBuffer);
+    const fontFecha = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const pages = pdfDoc.getPages();
+
+    // Fecha/hora de firma (Bogotá) — se usa tanto para el sello bajo la firma
+    // como para el nombre del archivo final
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+    const yyyy = now.getFullYear();
+    const mm   = String(now.getMonth() + 1).padStart(2, '0');
+    const dd   = String(now.getDate()).padStart(2, '0');
+    const hh   = String(now.getHours()).padStart(2, '0');
+    const min  = String(now.getMinutes()).padStart(2, '0');
+    const ss   = String(now.getSeconds()).padStart(2, '0');
+    const fechaFirmaTexto = `Firmado: ${dd}/${mm}/${yyyy} ${hh}:${min}`;
 
     let boxes = [];
     if (logysign.firmas_coordenadas) {
@@ -643,18 +655,23 @@ router.post('/api/firmar', async (req, res) => {
           width: pdfW,
           height: pdfH,
         });
+
+        // Fecha/hora de firma: discreta, centrada, justo debajo del recuadro
+        const fechaFontSize = Math.max(5, Math.min(7, pdfH * 0.22));
+        const fechaWidth = fontFecha.widthOfTextAtSize(fechaFirmaTexto, fechaFontSize);
+        targetPage.drawText(fechaFirmaTexto, {
+          x: pdfX + (pdfW - fechaWidth) / 2,
+          y: Math.max(pdfY - fechaFontSize - 2, 2),
+          size: fechaFontSize,
+          font: fontFecha,
+          color: rgb(0.45, 0.45, 0.45),
+        });
       }
     }
 
     const signedPdfBytes = await pdfDoc.save();
 
     // 4. Upload signed PDF
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const hh = String(now.getHours()).padStart(2, '0');
-    const ss = String(now.getSeconds()).padStart(2, '0');
     const timestampStr = `${yyyy}${mm}${dd}${hh}${ss}`;
 
     const finalPdfName = `${logysign.identificacion}/${logysign.identificacion}.${logysign.prefijo}.${timestampStr}.pdf`;
