@@ -435,7 +435,7 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
     // Only send email immediately if NOT scheduled
     if (!fechaProgramada) {
       // 5. Get CC list
-      const ccEmails = await obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc);
+      const ccEmails = await obtenerCcEmails(usuarioId, identificacion, idConfigDoc);
 
       // Get Documento name
       const [cRows] = await pool.execute(
@@ -698,7 +698,7 @@ router.post('/api/firmar', async (req, res) => {
     );
 
     // 8. Get final CC notification emails list
-    const ccEmails = await obtenerCcEmails(logysign.usuario_creador, logysign.regional, logysign.operacion, logysign.id_config_doc);
+    const ccEmails = await obtenerCcEmails(logysign.usuario_creador, logysign.identificacion, logysign.id_config_doc);
 
     const scheme = req.secure ? 'https' : 'http';
     const host = req.get('host');

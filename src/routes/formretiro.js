@@ -721,7 +721,7 @@ router.post('/:idVinculacion', async (req, res) => {
     if (!usuario) return res.status(400).json({ ok: false, error: 'Parámetro ?usuario requerido' });
 
     const [usuRows] = await pool.execute(
-      'SELECT ID, Nombre, Colaborador, Cargo, Rol FROM Maestro_Usuarios WHERE ID = ?', [usuario]
+      'SELECT ID, Nombre, Email, Colaborador, Cargo, Rol FROM Maestro_Usuarios WHERE ID = ?', [usuario]
     );
     if (!usuRows.length) return res.status(403).json({ ok: false, error: 'Usuario no autorizado' });
     const usuData = usuRows[0];
@@ -793,7 +793,8 @@ router.post('/:idVinculacion', async (req, res) => {
       operacion:      vin['Operación'],
       fechaRetiro,
       motivoRetiro,
-      registradoPor:  usuData.Nombre || usuario,
+      registradoPor:    usuData.Nombre || usuario,
+      emailRegistrador: usuData.Email || null,
     }).then(() => marcarNotificado(idVin))
       .catch(e => console.error('[retiro email]', e.message));
 

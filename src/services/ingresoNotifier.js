@@ -1,56 +1,33 @@
 const pool = require('./db');
-const { notificarIngreso } = require('./email');
+const { notificarIngreso, DESTINATARIOS_INGRESO_REDUCIDO } = require('./email');
+const { obtenerCcEmails } = require('./logysignScheduler');
 
 const MARCA = '[NI]';
 
-const CARGOS_NOTIFICAR = [
-  'COORDINADOR LOGISTICO',
-  'AUXILIAR ADMINISTRATIVO DE OPERACIÓN',
-  'ANALISTA DE SST',
-  'AUXILIAR ADMINISTRATIVO REGIONAL',
-  'AUXILIAR SST',
-  'ANALISTA DE NOMINA',
-  'ASISTENTE CONTABLE',
-  'COORDINADOR REGIONAL',
-  'ANALISTA DE FACTURACIÓN',
-  'ANALISTA DE TESORERIA',
-  'ANALISTA Y CONTROL DE DATOS',
-  'AUDITORA DE RECAUDO',
-  'AUXILIAR DE ARCHIVO',
-  'AUXILIAR FACTURACION',
-  'CONTADOR',
-  'COORDINADOR DE CALIDAD',
-  'COORDINADOR DE NOMINA',
-  'COORDINADOR DE SELECCIÓN',
-  'DIRECTOR DE CALIDAD',
-  'DIRECTOR SST',
-  'DIRECTOR TALENTO HUMANO',
-  'JEFE DE CUENTAS',
-  'JEFE DE FACTURACION',
-  'JEFE DE TECNOLOGIA',
-  'RECEPCIONISTA',
-  'SUBGERENTE DE OPERACIONES',
-];
-
-// Genera los placeholders (?,?,?...) para el IN de la query
-const PLACEHOLDERS = CARGOS_NOTIFICAR.map(() => '?').join(',');
-
+// El cargo a notificar y su grupo de destinatarios se definen en
+// Config_Cargo_Laboral.Notificar:
+//   1 → grupo completo (DESTINATARIOS_INGRESO, definido en email.js)
+//   2 → grupo reducido (DESTINATARIOS_INGRESO_REDUCIDO)
+//   3 → dinámico por Operación/Regional del trabajador (misma lógica de logysign) + admin@logyser.com
 async function obtenerIngresosPendientes() {
   const [rows] = await pool.execute(
-    `SELECT \`Id Vinculación\`            AS id,
-            \`Identificación\`            AS identificacion,
-            Trabajador,
-            Cargo,
-            \`Operación\`                 AS operacion,
-            \`Fecha de Ingreso\`          AS fechaIngreso,
-            \`Observaciones Vinculación\` AS observaciones
-     FROM \`Maestro_Vinculación\`
-     WHERE UPPER(TRIM(Cargo)) IN (${PLACEHOLDERS})
+    `SELECT mv.\`Id Vinculación\`            AS id,
+            mv.\`Identificación\`            AS identificacion,
+            mv.Trabajador,
+            mv.Cargo,
+            mv.\`Operación\`                 AS operacion,
+            mv.\`Fecha de Ingreso\`          AS fechaIngreso,
+            mv.\`Observaciones Vinculación\` AS observaciones,
+            ccl.Notificar                   AS notificar
+     FROM \`Maestro_Vinculación\` mv
+     INNER JOIN \`Config_Cargo_Laboral\` ccl
+       ON TRIM(mv.Cargo) COLLATE utf8mb4_bin = ccl.Cargo
+     WHERE ccl.Notificar IN (1, 2, 3)
        AND (
-             \`Observaciones Vinculación\` IS NULL
-          OR \`Observaciones Vinculación\` NOT LIKE ?
+             mv.\`Observaciones Vinculación\` IS NULL
+          OR mv.\`Observaciones Vinculación\` NOT LIKE ?
        )`,
-    [...CARGOS_NOTIFICAR, `%${MARCA}%`]
+    [`%${MARCA}%`]
   );
   return rows;
 }
@@ -65,6 +42,14 @@ async function marcarNotificado(idVinculacion) {
   );
 }
 
+async function resolverDestinatarios(notificar, identificacion) {
+  const grupo = Number(notificar);
+  if (grupo === 1) return undefined; // notificarIngreso usa DESTINATARIOS_INGRESO por defecto
+  if (grupo === 2) return DESTINATARIOS_INGRESO_REDUCIDO;
+  if (grupo === 3) return obtenerCcEmails(null, identificacion, null); // ya incluye admin@logyser.com
+  return null;
+}
+
 async function verificarIngresos() {
   try {
     const ingresos = await obtenerIngresosPendientes();
@@ -75,14 +60,24 @@ async function verificarIngresos() {
 
     for (const r of ingresos) {
       try {
-        console.log(`[ingresoNotifier] Notificando ingreso id=${r.id} trabajador="${r.Trabajador}"`);
+        console.log(`[ingresoNotifier] Notificando ingreso id=${r.id} trabajador="${r.Trabajador}" (Notificar=${r.notificar})`);
+
+        const destinatarios = await resolverDestinatarios(r.notificar, r.identificacion);
+        if (destinatarios === null) {
+          console.warn(`[ingresoNotifier] Valor de Notificar no reconocido (${r.notificar}) id=${r.id}`);
+          continue;
+        }
+        if (Array.isArray(destinatarios) && !destinatarios.length) {
+          console.warn(`[ingresoNotifier] Sin destinatarios resueltos (Notificar=${r.notificar}) id=${r.id}`);
+        }
 
         await notificarIngreso({
-          trabajador:    r.Trabajador,
+          trabajador:     r.Trabajador,
           identificacion: r.identificacion,
-          cargo:         r.Cargo,
-          operacion:     r.operacion,
-          fechaIngreso:  r.fechaIngreso,
+          cargo:          r.Cargo,
+          operacion:      r.operacion,
+          fechaIngreso:   r.fechaIngreso,
+          destinatarios,
         });
 
         await marcarNotificado(r.id);

@@ -2,7 +2,9 @@ const pool = require('./db');
 const { transporter } = require('./email');
 
 // Helper to resolve CC emails list (shared with logysign router)
-async function obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc) {
+// Prioriza la Operación del trabajador (Maestro_Vinculación) y, solo si no hay
+// Auxiliar/Coordinador/AuxiliarR/CoordinadorR asignado a esa Operación, cae a la Regional.
+async function obtenerCcEmails(usuarioId, identificacion, idConfigDoc) {
   const ccList = [];
   try {
     // 1. Email of the initiating user
@@ -13,34 +15,45 @@ async function obtenerCcEmails(usuarioId, regional, operacion, idConfigDoc) {
 
     const omitirRolesLocales = (idConfigDoc === 18 || Number(idConfigDoc) === 18);
 
-    if (!omitirRolesLocales) {
-      // 2. AuxiliarR and CoordinadorR by Regional
-      let foundRegionalCc = false;
-      if (regional) {
-        const [regRows] = await pool.execute(
-          'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR")',
-          [regional]
+    if (!omitirRolesLocales && identificacion) {
+      const [vinRows] = await pool.execute(
+        'SELECT `Operación`, Regional FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+        [identificacion]
+      );
+      const operacionTrabajador = vinRows.length ? vinRows[0]['Operación'] : null;
+      const regionalTrabajador  = vinRows.length ? vinRows[0].Regional : null;
+
+      // 2. Auxiliar, Coordinador, AuxiliarR y CoordinadorR por Operación del trabajador
+      let foundOperacionCc = false;
+      if (operacionTrabajador) {
+        const [opRows] = await pool.execute(
+          'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador", "AuxiliarR", "CoordinadorR")',
+          [operacionTrabajador]
         );
-        if (regRows.length) {
-          regRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
-          foundRegionalCc = true;
+        if (opRows.length) {
+          opRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+          foundOperacionCc = true;
         }
       }
 
-      // 3. Fallback: Auxiliar and Coordinador by Operación
-      if (!foundRegionalCc && operacion) {
-        const [opRows] = await pool.execute(
-          'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador")',
-          [operacion]
+      // 3. Fallback: AuxiliarR y CoordinadorR por Regional del trabajador
+      if (!foundOperacionCc && regionalTrabajador) {
+        const [regRows] = await pool.execute(
+          'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR")',
+          [regionalTrabajador]
         );
-        opRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+        regRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
       }
     }
 
     // 4. Fixed copies
     ccList.push('admin@logyser.com');
-    if (idConfigDoc === 55 || Number(idConfigDoc) === 55) {
+    const idConfigDocNum = Number(idConfigDoc);
+    if ([55, 70, 76, 77].includes(idConfigDocNum)) {
       ccList.push('retiros@logyser.com');
+    }
+    if (idConfigDocNum === 42) {
+      ccList.push('gestor.nomina@logyser.com');
     }
   } catch (err) {
     console.error('[logysignScheduler] Error fetching CC list:', err);
@@ -73,7 +86,7 @@ async function verificarEnviosProgramados() {
         console.log(`[logysignScheduler] Sending scheduled email for doc id=${doc.id} worker="${doc.nombre_trabajador}"`);
 
         // Get CC emails
-        const ccEmails = await obtenerCcEmails(doc.usuario_creador, doc.regional, doc.operacion, doc.id_config_doc);
+        const ccEmails = await obtenerCcEmails(doc.usuario_creador, doc.identificacion, doc.id_config_doc);
 
         // Get Documento name
         const [cRows] = await pool.execute(

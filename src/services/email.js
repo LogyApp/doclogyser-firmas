@@ -418,6 +418,7 @@ async function notificarRenunciaFirmada({ nombreTrabajador, identificacion, urlD
 
 // ── Notificación de nuevo ingreso ────────────────────────────────────────────
 
+// Grupo 1 (Config_Cargo_Laboral.Notificar = 1)
 const DESTINATARIOS_INGRESO = [
   'nomina@logyser.com',
   'jefe.facturacion@logyser.com',
@@ -433,7 +434,19 @@ const DESTINATARIOS_INGRESO = [
   'gestioncalidad@logyser.com',
 ];
 
-async function notificarIngreso({ trabajador, identificacion, cargo, operacion, fechaIngreso }) {
+// Grupo 2 (Config_Cargo_Laboral.Notificar = 2)
+const DESTINATARIOS_INGRESO_REDUCIDO = [
+  'nomina@logyser.com',
+  'administradorti@logyser.com',
+  'subgerenciaoperaciones@logyser.com',
+  'sst.nacional@logyser.com',
+  'sstadmon@logyser.com',
+  'seleccion@logyser.com',
+  'directorrh@logyser.com',
+  'gestioncalidad@logyser.com',
+];
+
+async function notificarIngreso({ trabajador, identificacion, cargo, operacion, fechaIngreso, destinatarios }) {
   const HEADER_VERDE = `
     <div style="border-top:5px solid #27ae60;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
       <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
@@ -493,9 +506,11 @@ async function notificarIngreso({ trabajador, identificacion, cargo, operacion, 
       ${FOOTER}
     </div>`;
 
+  const destino = (destinatarios && destinatarios.length) ? destinatarios : DESTINATARIOS_INGRESO;
+
   await transporter.sendMail({
     from:    `"LOG&SER Notificaciones" <${EMAIL_FROM}>`,
-    to:      DESTINATARIOS_INGRESO.join(', '),
+    to:      destino.join(', '),
     subject: asunto,
     html:    cuerpo,
   });
@@ -1774,6 +1789,7 @@ module.exports = {
   notificarFirmaRenuncia,
   notificarRenunciaFirmada,
   notificarIngreso,
+  DESTINATARIOS_INGRESO_REDUCIDO,
   notificarAreaPazYSalvo,
   notificarPazYSalvoTrabajador,
   notificarPazYSalvoCompletado,
@@ -1940,6 +1956,7 @@ module.exports = {
   notificarFirmaRenuncia,
   notificarRenunciaFirmada,
   notificarIngreso,
+  DESTINATARIOS_INGRESO_REDUCIDO,
   notificarAreaPazYSalvo,
   notificarPazYSalvoTrabajador,
   notificarPazYSalvoCompletado,

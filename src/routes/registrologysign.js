@@ -123,9 +123,8 @@ router.post('/api/reenviar', async (req, res) => {
 
     // Resolver CC
     const ccEmails = await obtenerCcEmails(
-      logysign.usuario_creador, 
-      logysign.regional, 
-      logysign.operacion, 
+      logysign.usuario_creador,
+      logysign.identificacion,
       logysign.id_config_doc
     );
 
