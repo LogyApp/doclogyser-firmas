@@ -836,18 +836,18 @@
         </div>
 
         <div class="field">
-          <label>Archivo PDF Adjunto<span class="req">*</span></label>
+          <label>Archivo Adjunto<span class="req">*</span></label>
           <!-- Drag & Drop Area -->
           <div class="file-drop-area" id="file-drop-zone" onclick="document.getElementById('input-file').click()">
             <div class="file-drop-icon">📁</div>
-            <div class="file-drop-inner">Arrastra tu archivo PDF aquí o haz clic para buscar</div>
-            <div class="file-drop-hint">Máximo 10MB, formato PDF solamente</div>
+            <div class="file-drop-inner">Arrastra tu archivo aquí o haz clic para buscar</div>
+            <div class="file-drop-hint">Máximo 10MB — PDF, imagen (JPG/PNG/WEBP) o Word (DOC/DOCX)</div>
           </div>
-          <input type="file" id="input-file" accept="application/pdf" style="display: none;" onchange="onFileSelected()">
-          
+          <input type="file" id="input-file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display: none;" onchange="onFileSelected()">
+
           <!-- File Selected Preview -->
           <div class="file-preview" id="file-preview-zone">
-            <div class="file-preview-nombre" id="file-preview-name">archivo.pdf</div>
+            <div class="file-preview-nombre" id="file-preview-name">archivo</div>
             <button type="button" class="file-btn-limpiar" onclick="limpiarArchivo()">Eliminar</button>
           </div>
         </div>
@@ -910,6 +910,24 @@
 
   <script>
     const CONFIG = __CONFIG__;
+
+    // Tipos de archivo permitidos para adjuntar (PDF, imágenes y Word)
+    const ARCHIVOS_MIME_PERMITIDOS = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+    const ARCHIVOS_EXT_PERMITIDAS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx'];
+    const MENSAJE_ARCHIVO_NO_PERMITIDO = 'Solo se aceptan archivos PDF, imágenes (JPG, PNG, WEBP) o Word (DOC, DOCX).';
+
+    function esArchivoPermitido(file) {
+      if (ARCHIVOS_MIME_PERMITIDOS.includes(file.type)) return true;
+      const nombre = (file.name || '').toLowerCase();
+      return ARCHIVOS_EXT_PERMITIDAS.some(ext => nombre.endsWith(ext));
+    }
 
     // Active state
     let activeTipoDoc = 'Trabajador';
@@ -1299,8 +1317,8 @@
 
       if (!file) return;
 
-      if (file.type !== 'application/pdf') {
-        showToast('Solo se aceptan archivos en formato PDF.', 'error');
+      if (!esArchivoPermitido(file)) {
+        showToast(MENSAJE_ARCHIVO_NO_PERMITIDO, 'error');
         input.value = '';
         return;
       }
@@ -1396,8 +1414,8 @@
             <div class="zone-idle" id="${zoneId}-idle" style="${docState.file ? 'display:none;' : ''}">
               <div class="file-drop-icon">📄</div>
               <div>
-                <div class="file-drop-inner" style="margin:0;">Arrastra el PDF o haz clic para adjuntar</div>
-                <div class="file-drop-hint" style="margin-top:2px;">Solo PDF, máximo 10MB</div>
+                <div class="file-drop-inner" style="margin:0;">Arrastra el archivo o haz clic para adjuntar</div>
+                <div class="file-drop-hint" style="margin-top:2px;">PDF, imagen o Word — máx. 10MB</div>
               </div>
             </div>
             <div class="zone-staged" id="${zoneId}-staged" style="${docState.file ? 'display:flex;' : ''}">
@@ -1419,7 +1437,7 @@
               ${docState.existingDoc.Url ? `<a class="existing-doc-link" href="${esc(docState.existingDoc.Url)}" target="_blank" rel="noopener">Ver documento</a>` : ''}
             </div>
           ` : ''}
-          <input type="file" id="input-file-${doc.Id}" accept="application/pdf" style="display:none;" onchange="onWorkerDocSelected(${doc.Id})">
+          <input type="file" id="input-file-${doc.Id}" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" onchange="onWorkerDocSelected(${doc.Id})">
         </div>
       `;
     }
@@ -1472,8 +1490,8 @@
 
     function assignWorkerDocFile(docId, file) {
       if (!file) return;
-      if (file.type !== 'application/pdf') {
-        showToast('Solo se aceptan archivos en formato PDF.', 'error');
+      if (!esArchivoPermitido(file)) {
+        showToast(MENSAJE_ARCHIVO_NO_PERMITIDO, 'error');
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
