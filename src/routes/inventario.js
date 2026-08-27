@@ -2,11 +2,13 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const pool = require('../services/db');
-const { obtenerFirmaBase64Reciente, obtenerUrlFirmaReciente, subirFirma, subirPDFConfirmacionInventario } = require('../services/storage');
+const { obtenerFirmaBase64Reciente, obtenerUrlFirmaReciente, subirFirma, subirPDFConfirmacionInventario, storage } = require('../services/storage');
 const { notificarConfirmacionInventario } = require('../services/email');
 const { generarPDF } = require('../services/renderer');
+const multer = require('multer');
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 const HTML_PATH = path.join(__dirname, '../views/inventario/index.html');
 
 const ROLES_SIN_FILTRO = [
@@ -30,7 +32,7 @@ function agruparOperacionesPorRegional(rows) {
   return opsPorRegional;
 }
 
-async function computarAccesoInventario(usuarioId) {
+async function computarAccesoInventario(usuarioId, seccionRequested = null) {
   if (!usuarioId) return null;
 
   const [uRows] = await pool.execute(
@@ -42,9 +44,27 @@ async function computarAccesoInventario(usuarioId) {
   const usuario = uRows[0];
   const rol = usuario.Rol || '';
 
-  // Si el rol pertenece a los excluidos, no se autoriza
-  if (ROLES_EXCLUIDOS.includes(rol)) {
+  // Obtener permisos de Maestro_Menu_Inventario para el Rol del usuario
+  const [menuRows] = await pool.execute(
+    'SELECT `Sección` as seccion, Acceso as acceso FROM Maestro_Menu_Inventario WHERE Rol = ?',
+    [rol]
+  );
+  if (!menuRows.length) return null; // Sin accesos configurados
+
+  const allowedSecciones = menuRows.map(r => r.seccion);
+
+  // Si se pide una sección específica y el usuario no la tiene asignada, denegar acceso
+  if (seccionRequested && !allowedSecciones.includes(seccionRequested)) {
     return null;
+  }
+
+  // Determinar el código de acceso activo (según la sección solicitada o la primera disponible)
+  let activeAccesoCode = 1;
+  if (seccionRequested) {
+    const matched = menuRows.find(r => r.seccion === seccionRequested);
+    if (matched) activeAccesoCode = matched.acceso;
+  } else {
+    activeAccesoCode = menuRows[0].acceso;
   }
 
   const acceso = {
@@ -54,54 +74,54 @@ async function computarAccesoInventario(usuarioId) {
     regional: usuario.Regional || '',
     dispositivo: usuario.Dispositivo || '',
     operacion: usuario['Operación'] || '',
+    secciones: allowedSecciones,
+    seccionAcceso: {},
     sinFiltro: false,
     operacionesFiltro: [],
     opsPorRegional: {},
+    filtroCategorias: null // null es acceso a todas, de lo contrario restringido a ['EPP', 'DOTACION']
   };
 
-  const tieneDispositivo = acceso.dispositivo && acceso.dispositivo.trim() !== '';
+  menuRows.forEach(r => {
+    acceso.seccionAcceso[r.seccion] = r.acceso;
+  });
+
+  // Códigos 4, 5 y 6 restringen a categorías EPP y DOTACIÓN
+  if ([4, 5, 6].includes(activeAccesoCode)) {
+    acceso.filtroCategorias = ['EPP', 'DOTACION'];
+  }
+
+  // Resolver el filtro de operaciones según el código de acceso (normalizado de 1 a 3)
+  const codeBase = activeAccesoCode > 3 ? activeAccesoCode - 3 : activeAccesoCode;
 
   let opRows = [];
-
-  // 1. Acceso por dispositivo: aplica si la columna Dispositivo tiene valor y es diferente a vacío o null, sin importar el rol
-  if (tieneDispositivo) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE SOCIODEMOGRAFICA = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  }
-  // 2. Roles sin filtro (Acceso Total)
-  else if (ROLES_SIN_FILTRO.includes(rol)) {
+  if (codeBase === 1) {
     acceso.sinFiltro = true;
     const [rows] = await pool.execute(
       "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
     );
     opRows = rows;
-  }
-  // 3. Roles regionales
-  else if (ROLES_REGIONAL.includes(rol)) {
+  } else if (codeBase === 2) {
     const [rows] = await pool.execute(
       "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
       [acceso.regional]
     );
     opRows = rows;
-  }
-  // 4. Roles modalidad
-  else if (ROLES_MODALIDAD.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE MODALIDAD = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  }
-  // 5. Acceso por operación única (roles que no están relacionados y tienen vacío/null en Dispositivo)
-  else if (acceso.operacion) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.operacion]
-    );
-    opRows = rows;
+  } else if (codeBase === 3) {
+    const tieneDispositivo = acceso.dispositivo && acceso.dispositivo.trim() !== '';
+    if (tieneDispositivo) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA = ? OR MODALIDAD = ?) AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [acceso.dispositivo, acceso.dispositivo]
+      );
+      opRows = rows;
+    } else if (acceso.operacion) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [acceso.operacion]
+      );
+      opRows = rows;
+    }
   }
 
   acceso.opsPorRegional = agruparOperacionesPorRegional(opRows);
@@ -139,41 +159,66 @@ router.get('/', async (req, res) => {
 // API para devolver los datos filtrados
 router.get('/api/datos', async (req, res) => {
   try {
-    const { usuario, regional, operacion } = req.query;
+    const { usuario, regional, operacion, clasificacion, categoria, search } = req.query;
     if (!usuario) {
       return res.status(400).json({ error: 'usuario requerido' });
     }
 
-    const acceso = await computarAccesoInventario(usuario);
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    const conds = [];
-    const params = [];
+    const securityConds = [];
+    const securityParams = [];
 
-    // Filtrar por operaciones permitidas según rol del usuario
+    // Restringir categorías si aplica (Acceso 4, 5, 6)
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      securityConds.push(`\`Categoria\` IN (${ph})`);
+      securityParams.push(...acceso.filtroCategorias);
+    }
+
+    // Security filter based on role/permissions
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro.length) {
-        return res.json([]);
+        return res.json({ results: [], counts: { regionales: {}, operaciones: {}, clasificaciones: {}, categorias: {} } });
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      conds.push(`\`Operacion\` IN (${ph})`);
-      params.push(...acceso.operacionesFiltro);
+      securityConds.push(`\`Operacion\` IN (${ph})`);
+      securityParams.push(...acceso.operacionesFiltro);
     }
 
-    // Filtros de interfaz de usuario
-    if (regional) {
-      conds.push('Regional = ?');
-      params.push(regional);
-    }
-    if (operacion) {
-      conds.push('`Operacion` = ?');
-      params.push(operacion);
-    }
+    // Build filter objects
+    const fReg = regional ? { cond: '`Regional` = ?', param: regional } : null;
+    const fOp = operacion ? { cond: '`Operacion` = ?', param: operacion } : null;
+    const fCls = clasificacion ? { cond: '`Clasificación` = ?', param: clasificacion } : null;
+    const fCat = categoria ? { cond: '`Categoria` = ?', param: categoria } : null;
+    const fSearch = search ? { cond: '(`Articulo` LIKE ? OR `Referencia` LIKE ?)', param: `%${search}%` } : null;
 
-    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const query = `
+    // Helper to join filters safely
+    const buildWhere = (filtersList) => {
+      const c = [...securityConds];
+      const p = [...securityParams];
+      filtersList.forEach(f => {
+        if (f) {
+          c.push(f.cond);
+          if (f.cond.includes('LIKE')) {
+            p.push(f.param, f.param);
+          } else {
+            p.push(f.param);
+          }
+        }
+      });
+      return {
+        where: c.length ? `WHERE ${c.join(' AND ')}` : '',
+        params: p
+      };
+    };
+
+    // 1. Fetch filtered items (limit 500 rows for speed)
+    const listFilter = buildWhere([fReg, fOp, fCls, fCat, fSearch]);
+    const listQuery = `
       SELECT 
         \`Regional\`,
         \`Operacion\` AS \`Operacion\`,
@@ -190,12 +235,62 @@ router.get('/api/datos', async (req, res) => {
         \`Observaciones\` AS \`Observaciones\`,
         \`Placa\` AS \`Placa\`
       FROM Vista_Inventario
-      ${where}
+      ${listFilter.where}
       ORDER BY Regional, Operacion, Articulo
+      LIMIT 500
     `;
+    const [results] = await pool.execute(listQuery, listFilter.params);
 
-    const [rows] = await pool.execute(query, params);
-    res.json(rows);
+    // 2. Fetch Faceted Counts
+    // regional count (exclude regional filter)
+    const cReg = buildWhere([fOp, fCls, fCat, fSearch]);
+    const [regRows] = await pool.execute(`SELECT \`Regional\`, COUNT(*) as total FROM Vista_Inventario ${cReg.where} GROUP BY \`Regional\``, cReg.params);
+    const regCounts = {};
+    regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = r.total; });
+
+    // operacion count (exclude operacion filter)
+    const cOp = buildWhere([fReg, fCls, fCat, fSearch]);
+    const [opRows] = await pool.execute(`SELECT \`Operacion\`, COUNT(*) as total FROM Vista_Inventario ${cOp.where} GROUP BY \`Operacion\``, cOp.params);
+    const opCounts = {};
+    opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = r.total; });
+
+    // clasificacion count (exclude clasificacion filter)
+    const cCls = buildWhere([fReg, fOp, fCat, fSearch]);
+    const [clsRows] = await pool.execute(`SELECT \`Clasificación\` AS Clasificacion, COUNT(*) as total FROM Vista_Inventario ${cCls.where} GROUP BY \`Clasificación\``, cCls.params);
+    const clsCounts = {};
+    clsRows.forEach(r => { if (r.Clasificacion !== null) clsCounts[r.Clasificacion] = r.total; });
+
+    // categoria count (exclude category filter)
+    const cCat = buildWhere([fReg, fOp, fCls, fSearch]);
+    const [catRows] = await pool.execute(`SELECT \`Categoria\`, COUNT(*) as total FROM Vista_Inventario ${cCat.where} GROUP BY \`Categoria\``, cCat.params);
+    const catCounts = {};
+    catRows.forEach(r => { if (r.Categoria !== null) catCounts[r.Categoria] = r.total; });
+
+    // 3. Fetch consolidated stats (for all matching records in DB)
+    const statsQuery = `
+      SELECT 
+        COUNT(DISTINCT \`IdArticulo\`) AS distinctArticles,
+        SUM(\`Stock Disponible\`) AS totalStock,
+        SUM(\`Valor Stock\`) AS totalValue
+      FROM Vista_Inventario
+      ${listFilter.where}
+    `;
+    const [[stats]] = await pool.execute(statsQuery, listFilter.params);
+
+    res.json({
+      results,
+      counts: {
+        regionales: regCounts,
+        operaciones: opCounts,
+        clasificaciones: clsCounts,
+        categorias: catCounts
+      },
+      stats: {
+        distinctArticles: stats.distinctArticles || 0,
+        totalStock: stats.totalStock || 0,
+        totalValue: stats.totalValue || 0
+      }
+    });
   } catch (err) {
     console.error('[inventario] GET /api/datos:', err);
     res.status(500).json({ error: err.message });
@@ -214,7 +309,7 @@ router.post('/api/placa', async (req, res) => {
     }
 
     // Validar acceso del usuario
-    const acceso = await computarAccesoInventario(usuario);
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
@@ -254,13 +349,21 @@ router.get('/api/firma-reciente', async (req, res) => {
     const colaborador = uRows[0].Colaborador;
     const email = uRows[0].Email;
 
-    // Buscar Identificación en Maestro_Segmentación
-    const [segRows] = await pool.execute('SELECT Identificación FROM Maestro_Segmentación WHERE Trabajador = ? LIMIT 1', [colaborador]);
-    if (!segRows.length) {
-      return res.json({ identificacion: null, email, firmaUrl: null, firmaBase64: null });
+    let identificacion = null;
+    if (colaborador) {
+      // Buscar Identificación en Maestro_Segmentación
+      const [segRows] = await pool.execute('SELECT Identificación FROM Maestro_Segmentación WHERE TRIM(Trabajador) = TRIM(?) LIMIT 1', [colaborador]);
+      if (segRows.length > 0) {
+        identificacion = segRows[0].Identificación;
+      } else if (colaborador.includes('**')) {
+        // Fallback robusto: extraer ID del texto '12345 ** NOMBRE'
+        identificacion = colaborador.split('**')[0].trim();
+      }
     }
 
-    const identificacion = segRows[0].Identificación;
+    if (!identificacion) {
+      return res.json({ identificacion: null, email, firmaUrl: null, firmaBase64: null });
+    }
 
     // Obtener firma reciente
     const url = await obtenerUrlFirmaReciente(identificacion);
@@ -284,6 +387,17 @@ router.post('/api/confirmar', async (req, res) => {
     const { usuario, operacion, categoria, observaciones, mes, nuevaFirmaBase64 } = req.body;
     if (!usuario || !operacion || !categoria || !mes) {
       return res.status(400).json({ error: 'Faltan parámetros requeridos (usuario, operacion, categoria, mes)' });
+    }
+
+    // Validar acceso del usuario
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado para confirmar inventario.' });
+    }
+
+    // Si el rol tiene categorías restringidas, verificar que la categoría elegida esté permitida
+    if (acceso.filtroCategorias && !acceso.filtroCategorias.includes(categoria)) {
+      return res.status(403).json({ error: `Su rol solo le permite confirmar las categorías: ${acceso.filtroCategorias.join(', ')}` });
     }
 
     // 1. Validar registro único por mes
@@ -481,34 +595,63 @@ router.post('/api/confirmar', async (req, res) => {
   }
 });
 
-// API para obtener el historial de confirmaciones de inventario
+// API para obtener el historial de confirmaciones de inventario con filtros facetados
 router.get('/api/confirmaciones', async (req, res) => {
   try {
-    const { usuario } = req.query;
+    const { usuario, regional, operacion, periodo, categoria } = req.query;
     if (!usuario) {
       return res.status(400).json({ error: 'usuario es requerido' });
     }
 
-    const acceso = await computarAccesoInventario(usuario);
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    const conds = [];
-    const params = [];
+    const securityConds = [];
+    const securityParams = [];
+
+    // Restringir categorías si aplica (Acceso 4, 5, 6)
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      securityConds.push(`c.categoria IN (${ph})`);
+      securityParams.push(...acceso.filtroCategorias);
+    }
 
     // Filtrar según operaciones permitidas del rol
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro.length) {
-        return res.json([]);
+        return res.json({ results: [], counts: { regionales: {}, operaciones: {}, periodos: {}, categorias: {} }, stats: { totalConfirmaciones: 0 } });
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      conds.push(`operacion IN (${ph})`);
-      params.push(...acceso.operacionesFiltro);
+      securityConds.push(`c.operacion IN (${ph})`);
+      securityParams.push(...acceso.operacionesFiltro);
     }
 
-    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const query = `
+    // Build filters
+    const fReg = regional ? { cond: `(SELECT DISTINCT o.REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = c.operacion LIMIT 1) = ?`, param: regional } : null;
+    const fOp = operacion ? { cond: 'c.operacion = ?', param: operacion } : null;
+    const fPer = periodo ? { cond: 'c.mes = ?', param: periodo } : null;
+    const fCat = categoria ? { cond: 'c.categoria = ?', param: categoria } : null;
+
+    const buildWhere = (filtersList) => {
+      const c = [...securityConds];
+      const p = [...securityParams];
+      filtersList.forEach(f => {
+        if (f) {
+          c.push(f.cond);
+          p.push(f.param);
+        }
+      });
+      return {
+        where: c.length ? `WHERE ${c.join(' AND ')}` : '',
+        params: p
+      };
+    };
+
+    // 1. Fetch filtered rows
+    const listFilter = buildWhere([fReg, fOp, fPer, fCat]);
+    const listQuery = `
       SELECT 
         c.id,
         c.area,
@@ -517,6 +660,7 @@ router.get('/api/confirmaciones', async (req, res) => {
         u.Nombre AS usuarioNombre,
         c.observaciones,
         c.operacion,
+        (SELECT DISTINCT o.REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = c.operacion LIMIT 1) AS regional,
         c.categoria,
         c.mes,
         c.fecha_confirmacion AS fechaConfirmacion,
@@ -524,12 +668,80 @@ router.get('/api/confirmaciones', async (req, res) => {
         c.pdf_url AS pdfUrl
       FROM Maestro_Confirmacion c
       LEFT JOIN Maestro_Usuarios u ON c.usuario = u.ID
-      ${where}
+      ${listFilter.where}
       ORDER BY c.fecha_confirmacion DESC
+      LIMIT 500
     `;
+    const [results] = await pool.execute(listQuery, listFilter.params);
 
-    const [rows] = await pool.execute(query, params);
-    res.json(rows);
+    // 2. Faceted counts
+    // regional count (exclude regional filter)
+    const cReg = buildWhere([fOp, fPer, fCat]);
+    const [regRows] = await pool.execute(`
+      SELECT 
+        (SELECT DISTINCT o.REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = c.operacion LIMIT 1) AS regional,
+        COUNT(*) as total 
+      FROM Maestro_Confirmacion c 
+      ${cReg.where} 
+      GROUP BY regional
+    `, cReg.params);
+    const regCounts = {};
+    regRows.forEach(r => { if (r.regional !== null && r.regional !== undefined) regCounts[r.regional] = r.total; });
+
+    // operacion count (exclude operacion filter)
+    const cOp = buildWhere([fReg, fPer, fCat]);
+    const [opRows] = await pool.execute(`
+      SELECT c.operacion, COUNT(*) as total 
+      FROM Maestro_Confirmacion c 
+      ${cOp.where} 
+      GROUP BY c.operacion
+    `, cOp.params);
+    const opCounts = {};
+    opRows.forEach(r => { if (r.operacion !== null) opCounts[r.operacion] = r.total; });
+
+    // periodo count (exclude periodo filter)
+    const cPer = buildWhere([fReg, fOp, fCat]);
+    const [perRows] = await pool.execute(`
+      SELECT c.mes, COUNT(*) as total 
+      FROM Maestro_Confirmacion c 
+      ${cPer.where} 
+      GROUP BY c.mes
+    `, cPer.params);
+    const perCounts = {};
+    perRows.forEach(r => { if (r.mes !== null) perCounts[r.mes] = r.total; });
+
+    // categoria count (exclude categoria filter)
+    const cCat = buildWhere([fReg, fOp, fPer]);
+    const [catRows] = await pool.execute(`
+      SELECT c.categoria, COUNT(*) as total 
+      FROM Maestro_Confirmacion c 
+      ${cCat.where} 
+      GROUP BY c.categoria
+    `, cCat.params);
+    const catCounts = {};
+    catRows.forEach(r => { if (r.categoria !== null) catCounts[r.categoria] = r.total; });
+
+    // 3. Consolidated stats
+    const statsQuery = `
+      SELECT COUNT(*) AS totalConfirmaciones
+      FROM Maestro_Confirmacion c
+      ${listFilter.where}
+    `;
+    const [[stats]] = await pool.execute(statsQuery, listFilter.params);
+
+    res.json({
+      results,
+      counts: {
+        regionales: regCounts,
+        operaciones: opCounts,
+        periodos: perCounts,
+        categorias: catCounts
+      },
+      stats: {
+        totalConfirmaciones: stats.totalConfirmaciones || 0
+      }
+    });
+
   } catch (err) {
     console.error('[inventario] GET /api/confirmaciones:', err);
     res.status(500).json({ error: err.message });
@@ -540,52 +752,69 @@ router.get('/api/confirmaciones', async (req, res) => {
 // ENDPOINTS DE KARDEX INTEGRADOS
 // ==========================================
 
-// API para devolver los datos de Kardex filtrados
 router.get('/api/kardex/datos', async (req, res) => {
   try {
-    const { usuario, regional, operacion, categoria, tipoMovimiento } = req.query;
+    const { usuario, regional, operacion, categoria, tipoMovimiento, idArticulo, search } = req.query;
     if (!usuario) {
       return res.status(400).json({ error: 'usuario es requerido' });
     }
 
-    const acceso = await computarAccesoInventario(usuario);
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    const conds = [];
-    const params = [];
+    const securityConds = [];
+    const securityParams = [];
 
-    // Filtro de seguridad por rol
+    // Restringir categorías si aplica (Acceso 4, 5, 6)
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      securityConds.push(`k.\`Categoria\` IN (${ph})`);
+      securityParams.push(...acceso.filtroCategorias);
+    }
+
+    // Security filter based on role/permissions
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro.length) {
-        return res.json([]);
+        return res.json({ results: [], counts: { regionales: {}, operaciones: {}, categorias: {}, movimientos: {} } });
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      conds.push(`k.\`Operación\` IN (${ph})`);
-      params.push(...acceso.operacionesFiltro);
+      securityConds.push(`k.\`Operación\` IN (${ph})`);
+      securityParams.push(...acceso.operacionesFiltro);
     }
 
-    // Filtros opcionales
-    if (regional) {
-      conds.push('k.`Regional` = ?');
-      params.push(regional);
-    }
-    if (operacion) {
-      conds.push('k.`Operación` = ?');
-      params.push(operacion);
-    }
-    if (categoria) {
-      conds.push('k.`Categoria` = ?');
-      params.push(categoria);
-    }
-    if (tipoMovimiento) {
-      conds.push('k.`TipoMovimiento` = ?');
-      params.push(tipoMovimiento);
-    }
+    // Build filter objects
+    const fReg = regional ? { cond: 'k.`Regional` = ?', param: regional } : null;
+    const fOp = operacion ? { cond: 'k.`Operación` = ?', param: operacion } : null;
+    const fCat = categoria ? { cond: 'k.`Categoria` = ?', param: categoria } : null;
+    const fMov = tipoMovimiento ? { cond: 'k.`TipoMovimiento` = ?', param: tipoMovimiento } : null;
+    const fIdArt = idArticulo ? { cond: 'k.`IdArticulo` = ?', param: idArticulo } : null;
+    const fSearch = search ? { cond: '(a.Articulo LIKE ? OR a.Referencia LIKE ? OR k.UsuarioAsignado LIKE ? OR k.Acta LIKE ? OR k.Observaciones LIKE ? OR k.UsuarioRegistro LIKE ?)', param: `%${search}%` } : null;
 
-    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-    const query = `
+    // Helper to join filters safely
+    const buildKardexWhere = (filtersList) => {
+      const c = [...securityConds];
+      const p = [...securityParams];
+      filtersList.forEach(f => {
+        if (f) {
+          c.push(f.cond);
+          if (f.cond.includes('LIKE')) {
+            p.push(f.param, f.param, f.param, f.param, f.param, f.param);
+          } else {
+            p.push(f.param);
+          }
+        }
+      });
+      return {
+        where: c.length ? `WHERE ${c.join(' AND ')}` : '',
+        params: p
+      };
+    };
+
+    // 1. Fetch filtered items (limit 500 rows for speed)
+    const listFilter = buildKardexWhere([fReg, fOp, fCat, fMov, fIdArt, fSearch]);
+    const listQuery = `
       SELECT 
         k.IdKardex,
         k.FechaMovimiento,
@@ -600,6 +829,7 @@ router.get('/api/kardex/datos', async (req, res) => {
         a.Imagen,
         k.Cantidad,
         k.UsuarioAsignado,
+        s.Trabajador AS TrabajadorAsignado,
         k.Acta,
         k.ValorUnitario,
         k.UsuarioRegistro,
@@ -607,13 +837,64 @@ router.get('/api/kardex/datos', async (req, res) => {
         k.FechaRegistro
       FROM Dynamic_Kardex k
       LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
-      ${where}
+      LEFT JOIN Maestro_Segmentación s ON k.UsuarioAsignado = s.Identificación
+      ${listFilter.where}
       ORDER BY k.FechaMovimiento DESC, k.FechaRegistro DESC
-      LIMIT 2000
+      LIMIT 500
     `;
+    const [results] = await pool.execute(listQuery, listFilter.params);
 
-    const [rows] = await pool.execute(query, params);
-    res.json(rows);
+    // 2. Fetch Faceted Counts
+    // regional count (exclude regional filter)
+    const cReg = buildKardexWhere([fOp, fCat, fMov, fIdArt, fSearch]);
+    const [regRows] = await pool.execute(`SELECT k.\`Regional\`, COUNT(*) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cReg.where} GROUP BY k.\`Regional\``, cReg.params);
+    const regCounts = {};
+    regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = r.total; });
+
+    // operacion count (exclude operacion filter)
+    const cOp = buildKardexWhere([fReg, fCat, fMov, fIdArt, fSearch]);
+    const [opRows] = await pool.execute(`SELECT k.\`Operación\` AS Operacion, COUNT(*) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cOp.where} GROUP BY k.\`Operación\``, cOp.params);
+    const opCounts = {};
+    opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = r.total; });
+
+    // categoria count (exclude category filter)
+    const cCat = buildKardexWhere([fReg, fOp, fMov, fIdArt, fSearch]);
+    const [catRows] = await pool.execute(`SELECT k.\`Categoria\`, COUNT(*) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cCat.where} GROUP BY k.\`Categoria\``, cCat.params);
+    const catCounts = {};
+    catRows.forEach(r => { if (r.Categoria !== null) catCounts[r.Categoria] = r.total; });
+
+    // tipoMovimiento count (exclude movement type filter)
+    const cMov = buildKardexWhere([fReg, fOp, fCat, fIdArt, fSearch]);
+    const [movRows] = await pool.execute(`SELECT k.\`TipoMovimiento\`, COUNT(*) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cMov.where} GROUP BY k.\`TipoMovimiento\``, cMov.params);
+    const movCounts = {};
+    movRows.forEach(r => { if (r.TipoMovimiento !== null) movCounts[r.TipoMovimiento] = r.total; });
+
+    // 3. Fetch consolidated stats (for all matching records in DB)
+    const statsQuery = `
+      SELECT 
+        COUNT(*) AS totalMov,
+        SUM(CASE WHEN k.Cantidad > 0 THEN 1 ELSE 0 END) AS totalEnt,
+        SUM(CASE WHEN k.Cantidad < 0 THEN 1 ELSE 0 END) AS totalSal
+      FROM Dynamic_Kardex k
+      LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
+      ${listFilter.where}
+    `;
+    const [[stats]] = await pool.execute(statsQuery, listFilter.params);
+
+    res.json({
+      results,
+      counts: {
+        regionales: regCounts,
+        operaciones: opCounts,
+        categorias: catCounts,
+        movimientos: movCounts
+      },
+      stats: {
+        totalMov: stats.totalMov || 0,
+        totalEnt: stats.totalEnt || 0,
+        totalSal: stats.totalSal || 0
+      }
+    });
   } catch (err) {
     console.error('[inventario] GET /api/kardex/datos error:', err);
     res.status(500).json({ error: err.message });
@@ -629,7 +910,7 @@ router.get('/api/kardex/articulo/:id', async (req, res) => {
       return res.status(400).json({ error: 'usuario es requerido' });
     }
 
-    const acceso = await computarAccesoInventario(usuario);
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
@@ -683,6 +964,585 @@ router.get('/api/kardex/articulo/:id', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[inventario] GET /api/kardex/articulo/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/kardex/eliminar - Elimina uno o más registros de Kardex (sólo Inventario o Sistema)
+router.post('/api/kardex/eliminar', async (req, res) => {
+  try {
+    const { usuario, ids } = req.body;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+    if (!ids || !Array.isArray(ids) || !ids.length) {
+      return res.status(400).json({ error: 'ids (array) es requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
+    if (!acceso || (acceso.rol !== 'Inventario' && acceso.rol !== 'Sistema')) {
+      return res.status(403).json({ error: 'No autorizado. Permisos exclusivos de Inventario o Sistema.' });
+    }
+
+    const placeholders = ids.map(() => '?').join(',');
+    const query = `DELETE FROM Dynamic_Kardex WHERE IdKardex IN (${placeholders})`;
+    await pool.execute(query, ids);
+
+    res.json({ success: true, message: `${ids.length} registro(s) eliminado(s) exitosamente.` });
+  } catch (err) {
+    console.error('[inventario] POST /api/kardex/eliminar error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/kardex/editar - Edita un registro de Kardex (sólo Inventario o Sistema)
+router.post('/api/kardex/editar', async (req, res) => {
+  try {
+    const {
+      usuario,
+      IdKardex,
+      FechaMovimiento,
+      TipoMovimiento,
+      Regional,
+      Operacion, // mapped to `Operación`
+      OperacionDestino, // mapped to `OperaciónDestino`
+      Categoria,
+      IdArticulo,
+      Cantidad,
+      UsuarioAsignado,
+      Acta,
+      ValorUnitario,
+      Observaciones
+    } = req.body;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+    if (!IdKardex) {
+      return res.status(400).json({ error: 'IdKardex es requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
+    if (!acceso || (acceso.rol !== 'Inventario' && acceso.rol !== 'Sistema')) {
+      return res.status(403).json({ error: 'No autorizado. Permisos exclusivos de Inventario o Sistema.' });
+    }
+
+    const query = `
+      UPDATE Dynamic_Kardex 
+      SET 
+        FechaMovimiento = ?,
+        TipoMovimiento = ?,
+        Regional = ?,
+        \`Operación\` = ?,
+        \`OperaciónDestino\` = ?,
+        Categoria = ?,
+        IdArticulo = ?,
+        Cantidad = ?,
+        UsuarioAsignado = ?,
+        Acta = ?,
+        ValorUnitario = ?,
+        Observaciones = ?
+      WHERE IdKardex = ?
+    `;
+
+    const params = [
+      FechaMovimiento,
+      TipoMovimiento,
+      Regional,
+      Operacion,
+      OperacionDestino || null,
+      Categoria,
+      parseInt(IdArticulo) || 0,
+      parseInt(Cantidad) || 0,
+      UsuarioAsignado || null,
+      Acta || null,
+      parseFloat(ValorUnitario) || 0,
+      Observaciones || null,
+      IdKardex
+    ];
+
+    await pool.execute(query, params);
+    res.json({ success: true, message: 'Registro de Kardex actualizado exitosamente.' });
+  } catch (err) {
+    console.error('[inventario] POST /api/kardex/editar error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// PESTAÑA ARTICULOS: APIS
+// ==========================================
+
+// 1. GET /api/articulos/datos - Obtiene artículos con filtros y conteos facetados
+router.get('/api/articulos/datos', async (req, res) => {
+  try {
+    const { usuario, categoria, clasificacion, search } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'ArtÍculos');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const conds = [];
+    const params = [];
+
+    // Restringir categorías si aplica (Acceso 4, 5, 6)
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      conds.push(`Categoria IN (${ph})`);
+      params.push(...acceso.filtroCategorias);
+    }
+
+    // Filters
+    if (categoria) {
+      conds.push('Categoria = ?');
+      params.push(categoria);
+    }
+    if (clasificacion) {
+      conds.push('ClaseArticulo = ?');
+      params.push(clasificacion);
+    }
+    if (search) {
+      conds.push('(Articulo LIKE ? OR Referencia LIKE ? OR Elemento LIKE ? OR CAST(Id AS CHAR) LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+
+    const listQuery = `
+      SELECT 
+        Id,
+        Imagen,
+        Elemento,
+        Talla,
+        Referencia,
+        Articulo,
+        Categoria,
+        Proveedor,
+        Costo,
+        \`Fecha Registro\` AS fechaRegistro,
+        Usuario,
+        ClaseArticulo,
+        Placa,
+        (SELECT IFNULL(SUM(k.Cantidad), 0) FROM Dynamic_Kardex k WHERE k.IdArticulo = a.Id) AS Stock
+      FROM Dynamic_Articulos a
+      ${where}
+      ORDER BY Id DESC
+      LIMIT 500
+    `;
+
+    const [results] = await pool.execute(listQuery, params);
+
+    // Faceted Counts
+    // Categoria count
+    const condsCat = [];
+    const paramsCat = [];
+    if (clasificacion) { condsCat.push('ClaseArticulo = ?'); paramsCat.push(clasificacion); }
+    if (search) { condsCat.push('(Articulo LIKE ? OR Referencia LIKE ? OR Elemento LIKE ?)'); paramsCat.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    const whereCat = condsCat.length ? `WHERE ${condsCat.join(' AND ')}` : '';
+    const [catRows] = await pool.execute(`SELECT Categoria, COUNT(*) as total FROM Dynamic_Articulos ${whereCat} GROUP BY Categoria`, paramsCat);
+    const catCounts = {};
+    catRows.forEach(r => { if (r.Categoria) catCounts[r.Categoria] = r.total; });
+
+    // ClaseArticulo count
+    const condsCls = [];
+    const paramsCls = [];
+    if (categoria) { condsCls.push('Categoria = ?'); paramsCls.push(categoria); }
+    if (search) { condsCls.push('(Articulo LIKE ? OR Referencia LIKE ? OR Elemento LIKE ?)'); paramsCls.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    const whereCls = condsCls.length ? `WHERE ${condsCls.join(' AND ')}` : '';
+    const [clsRows] = await pool.execute(`SELECT ClaseArticulo, COUNT(*) as total FROM Dynamic_Articulos ${whereCls} GROUP BY ClaseArticulo`, paramsCls);
+    const clsCounts = {};
+    clsRows.forEach(r => { if (r.ClaseArticulo) clsCounts[r.ClaseArticulo] = r.total; });
+
+    res.json({
+      results,
+      counts: {
+        categorias: catCounts,
+        clasificaciones: clsCounts
+      }
+    });
+
+  } catch (err) {
+    console.error('[inventario] GET /api/articulos/datos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. POST /api/articulos/guardar - Crear o Editar un Artículo (Solo Operación Administración)
+router.post('/api/articulos/guardar', upload.single('imagenArchivo'), async (req, res) => {
+  try {
+    const { usuario, id, imagen, elemento, talla, referencia, categoria, proveedor, costo, claseArticulo, placa } = req.body;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+
+    const cleanElemento = elemento ? elemento.trim().toUpperCase() : null;
+    const cleanClase = claseArticulo ? claseArticulo.trim().toUpperCase() : null;
+
+    const acceso = await computarAccesoInventario(usuario, 'ArtÍculos');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    // Verificar si pertenece a la Operación Administracion
+    const opUpper = (acceso.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    if (opUpper !== 'ADMINISTRACION') {
+      return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración pueden gestionar artículos.' });
+    }
+
+    let publicUrl = imagen || null;
+
+    if (id && req.file) {
+      const bucketName = 'logyser-recursos-corporativos';
+      const prefix = 'image-articulos/';
+      const ext = path.extname(req.file.originalname) || '.png';
+      const fileName = `${id}${ext}`;
+      const fullPath = `${prefix}${fileName}`;
+
+      const gcsFile = storage.bucket(bucketName).file(fullPath);
+      await gcsFile.save(req.file.buffer, {
+        contentType: req.file.mimetype,
+        public: true
+      });
+      publicUrl = `https://storage.googleapis.com/${bucketName}/${fullPath}`;
+    }
+
+    if (id) {
+      // Editar
+      const query = `
+        UPDATE Dynamic_Articulos SET
+          Imagen = ?,
+          Elemento = ?,
+          Talla = ?,
+          Referencia = ?,
+          Categoria = ?,
+          Proveedor = ?,
+          Costo = ?,
+          ClaseArticulo = ?,
+          Placa = ?
+        WHERE Id = ?
+      `;
+      const params = [
+        publicUrl,
+        cleanElemento,
+        talla || null,
+        referencia || null,
+        categoria || null,
+        proveedor || null,
+        costo ? parseFloat(costo) : null,
+        cleanClase,
+        placa || null,
+        parseInt(id)
+      ];
+      await pool.execute(query, params);
+      res.json({ success: true, message: 'Artículo actualizado exitosamente.', url: publicUrl });
+    } else {
+      // Crear
+      const query = `
+        INSERT INTO Dynamic_Articulos 
+        (Imagen, Elemento, Talla, Referencia, Categoria, Proveedor, Costo, \`Fecha Registro\`, Usuario, ClaseArticulo, Placa)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
+      `;
+      const params = [
+        publicUrl,
+        cleanElemento,
+        talla || null,
+        referencia || null,
+        categoria || null,
+        proveedor || null,
+        costo ? parseFloat(costo) : null,
+        acceso.usuarioNombre,
+        cleanClase,
+        placa || null
+      ];
+      await pool.execute(query, params);
+      res.json({ success: true, message: 'Artículo creado exitosamente.' });
+    }
+  } catch (err) {
+    console.error('[inventario] POST /api/articulos/guardar error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. POST /api/articulos/guardar-masivo - Guardar múltiples artículos a la vez (Solo Operación Administración)
+router.post('/api/articulos/guardar-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario, articulos } = req.body;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+    if (!Array.isArray(articulos) || articulos.length === 0) {
+      return res.status(400).json({ error: 'Debe enviar al menos un artículo para guardar' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'ArtÍculos');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    // Verificar si pertenece a la Operación Administracion
+    const opUpper = (acceso.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    if (opUpper !== 'ADMINISTRACION') {
+      return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración pueden gestionar artículos.' });
+    }
+
+    await conn.beginTransaction();
+
+    const insertQuery = `
+      INSERT INTO Dynamic_Articulos 
+      (Imagen, Elemento, Talla, Referencia, Categoria, Proveedor, Costo, \`Fecha Registro\`, Usuario, ClaseArticulo, Placa)
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
+    `;
+
+    for (const art of articulos) {
+      if (!art.elemento || !art.elemento.trim()) {
+        throw new Error('El campo Elemento es obligatorio en todos los registros.');
+      }
+      
+      const cleanElemento = art.elemento.trim().toUpperCase();
+      const cleanClase = art.claseArticulo ? art.claseArticulo.trim().toUpperCase() : null;
+
+      const params = [
+        art.imagen || null,
+        cleanElemento,
+        art.talla || null,
+        art.referencia || null,
+        art.categoria || null,
+        art.proveedor || null,
+        art.costo ? parseFloat(art.costo) : null,
+        acceso.usuarioNombre,
+        cleanClase,
+        art.placa || null
+      ];
+      await conn.execute(insertQuery, params);
+    }
+
+    await conn.commit();
+    res.json({ success: true, message: `${articulos.length} artículos guardados exitosamente en la base de datos.` });
+
+  } catch (err) {
+    await conn.rollback();
+    console.error('[inventario] POST /api/articulos/guardar-masivo error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// 4. POST /api/articulos/eliminar - Eliminar artículos de forma masiva (Solo Rol Inventario o Sistema)
+router.post('/api/articulos/eliminar', async (req, res) => {
+  try {
+    const { usuario, ids } = req.body;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+    if (!ids || !ids.length) {
+      return res.status(400).json({ error: 'No se especificaron IDs para eliminar' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'ArtÍculos');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    // Verificar si el rol es Inventario o Sistema
+    if (acceso.rol !== 'Inventario' && acceso.rol !== 'Sistema') {
+      return res.status(403).json({ error: 'Solo los usuarios con Rol Inventario o Sistema pueden eliminar artículos.' });
+    }
+
+    const placeholders = ids.map(() => '?').join(',');
+    const query = `DELETE FROM Dynamic_Articulos WHERE Id IN (${placeholders})`;
+    await pool.execute(query, ids.map(id => parseInt(id)));
+
+    res.json({ success: true, message: `${ids.length} artículos eliminados exitosamente.` });
+  } catch (err) {
+    console.error('[inventario] POST /api/articulos/eliminar error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. GET /api/articulos/stock/:id - Obtiene el stock por regional/operación para la ventana emergente
+router.get('/api/articulos/stock/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'ArtÍculos');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const query = `
+      SELECT 
+        \`Regional\` AS regional, 
+        \`Operacion\` AS operacion, 
+        \`Stock Disponible\` AS stock
+      FROM Vista_Inventario
+      WHERE IdArticulo = ? AND \`Stock Disponible\` > 0
+      ORDER BY \`Regional\`, \`Operacion\`
+    `;
+    const [rows] = await pool.execute(query, [parseInt(id) || 0]);
+    res.json(rows);
+  } catch (err) {
+    console.error('[inventario] GET /api/articulos/stock error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. GET /api/articulos/elementos - Obtiene los elementos únicos y sus imágenes
+router.get('/api/articulos/elementos', async (req, res) => {
+  try {
+    const [uniqueElements] = await pool.execute(`
+      SELECT Elemento, COUNT(*) AS total, MAX(Categoria) AS Categoria, MAX(ClaseArticulo) AS ClaseArticulo
+      FROM Dynamic_Articulos 
+      GROUP BY Elemento 
+      ORDER BY Elemento
+    `);
+
+    const [allImages] = await pool.execute(`
+      SELECT Elemento, Imagen, \`Fecha Registro\` AS fechaRegistro 
+      FROM Dynamic_Articulos 
+      WHERE Imagen IS NOT NULL AND Imagen != ''
+      ORDER BY Elemento, \`Fecha Registro\` DESC, Id DESC
+    `);
+
+    const elementImagesMap = {};
+    allImages.forEach(row => {
+      if (!elementImagesMap[row.Elemento]) {
+        elementImagesMap[row.Elemento] = [];
+      }
+      elementImagesMap[row.Elemento].push({
+        url: row.Imagen,
+        fecha: row.fechaRegistro
+      });
+    });
+
+    const results = uniqueElements.map(el => {
+      const imagesList = elementImagesMap[el.Elemento] || [];
+      const distinctUrls = [...new Set(imagesList.map(img => img.url))];
+      
+      let sugerencia = null;
+      let tieneMultiplesUrls = distinctUrls.length > 1;
+
+      if (imagesList.length > 0) {
+        sugerencia = imagesList[0].url;
+      }
+
+      return {
+        elemento: el.Elemento,
+        total: el.total,
+        categoria: el.Categoria || 'OTRO',
+        claseArticulo: el.ClaseArticulo || 'OTRO',
+        imagen: distinctUrls.length === 1 ? distinctUrls[0] : (sugerencia || null),
+        tieneMultiplesUrls,
+        distinctCount: distinctUrls.length,
+        sugerencia
+      };
+    });
+
+    res.json({ results });
+  } catch (err) {
+    console.error('[inventario] GET /api/articulos/elementos error:', err);
+    res.status(500).json({ error: 'Error al obtener los elementos únicos' });
+  }
+});
+
+// 7. POST /api/articulos/elementos/guardar-imagen - Sube una imagen a GCS y la asocia a todos los registros del Elemento
+router.post('/api/articulos/elementos/guardar-imagen', upload.single('imagen'), async (req, res) => {
+  try {
+    const { elemento } = req.body;
+    const file = req.file;
+
+    if (!elemento || !elemento.trim()) {
+      return res.status(400).json({ error: 'El nombre del elemento es requerido.' });
+    }
+    if (!file) {
+      return res.status(400).json({ error: 'Debe cargar un archivo de imagen.' });
+    }
+
+    const bucketName = 'logyser-recursos-corporativos';
+    const prefix = 'image-articulos/';
+    const ext = path.extname(file.originalname) || '.png';
+    const cleanElementoName = elemento.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const timestamp = Date.now();
+    const fileName = `${cleanElementoName}_${timestamp}${ext}`;
+    const fullPath = `${prefix}${fileName}`;
+
+    const gcsFile = storage.bucket(bucketName).file(fullPath);
+    await gcsFile.save(file.buffer, {
+      contentType: file.mimetype,
+      public: true
+    });
+
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${fullPath}`;
+
+    // Actualizar todos los registros de ese elemento
+    await pool.execute(
+      'UPDATE Dynamic_Articulos SET Imagen = ? WHERE Elemento = ?',
+      [publicUrl, elemento.trim()]
+    );
+
+    res.json({
+      message: `Imagen subida y asociada a todos los registros de "${elemento.trim()}" exitosamente.`,
+      url: publicUrl
+    });
+  } catch (err) {
+    console.error('[inventario] POST /api/articulos/elementos/guardar-imagen error:', err);
+    res.status(500).json({ error: 'Error al subir la imagen y asociar al elemento' });
+  }
+});
+
+// 8. POST /api/articulos/elementos/aplicar-sugerencia - Aplica la imagen sugerida a todos los registros del Elemento
+router.post('/api/articulos/elementos/aplicar-sugerencia', async (req, res) => {
+  try {
+    const { elemento } = req.body;
+    if (!elemento || !elemento.trim()) {
+      return res.status(400).json({ error: 'El nombre del elemento es requerido.' });
+    }
+
+    const [rows] = await pool.execute(`
+      SELECT Imagen FROM Dynamic_Articulos 
+      WHERE Elemento = ? AND Imagen IS NOT NULL AND Imagen != ''
+      ORDER BY \`Fecha Registro\` DESC, Id DESC
+      LIMIT 1
+    `, [elemento.trim()]);
+
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'No se encontraron imágenes registradas para este elemento.' });
+    }
+
+    const mostRecentUrl = rows[0].Imagen;
+
+    await pool.execute(
+      'UPDATE Dynamic_Articulos SET Imagen = ? WHERE Elemento = ?',
+      [mostRecentUrl, elemento.trim()]
+    );
+
+    res.json({
+      message: `Sugerencia aplicada: Se asignó la imagen más reciente a todos los registros de "${elemento.trim()}".`,
+      url: mostRecentUrl
+    });
+  } catch (err) {
+    console.error('[inventario] POST /api/articulos/elementos/aplicar-sugerencia error:', err);
+    res.status(500).json({ error: 'Error al aplicar la sugerencia de imagen' });
+  }
+});
+
+// GET /api/categorias - Obtiene todas las categorías de Config_Categoria_Inventario
+router.get('/api/categorias', async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE Categoria IS NOT NULL ORDER BY Categoria');
+    const categories = rows.map(r => r.Categoria);
+    res.json({ categories });
+  } catch (err) {
+    console.error('[inventario] GET /api/categorias error:', err);
     res.status(500).json({ error: err.message });
   }
 });

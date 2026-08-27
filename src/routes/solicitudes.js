@@ -4,7 +4,10 @@ const path = require('path');
 const pool = require('../services/db');
 const { randomUUID } = require('crypto');
 const { notificarSolicitudCambioEstado } = require('../services/email');
-const { despacharSolicitud } = require('../solicitudes/kardex.service');
+const { despacharSolicitud, completarSolicitud } = require('../solicitudes/kardex.service');
+const { storage } = require('../services/storage');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 const HTML_PATH = path.join(__dirname, '../views/solicitudes/index.html');
@@ -126,57 +129,126 @@ async function computarAccesoSolicitud(usuarioId) {
 
   const usuario = uRows[0];
   const rol = usuario.Rol || '';
+  const regional = usuario.Regional || '';
+  const dispositivo = usuario.Dispositivo || '';
+  const operacion = usuario['Operación'] || '';
+
+  // Query Maestro_Menu_Inventario for this role
+  const [menuRows] = await pool.execute(
+    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? LIMIT 1',
+    [rol]
+  );
+
+  let accesoCode = null;
+  if (menuRows.length > 0) {
+    accesoCode = menuRows[0].Acceso;
+  }
+
   const acceso = {
     usuarioId: usuario.ID,
     usuarioNombre: usuario.Nombre || usuario.ID,
     rol,
-    regional: usuario.Regional || '',
-    dispositivo: usuario.Dispositivo || '',
-    operacion: usuario['Operación'] || '',
-    sinFiltro: ROLES_SIN_FILTRO.includes(rol),
-    operacionesFiltro: [],
-    opsPorRegional: {},
+    regional,
+    dispositivo,
+    operacion,
+    accesoCode,
+    operacionesFiltro: []
   };
 
-  let opRows = [];
-  if (acceso.sinFiltro) {
-    const [rows] = await pool.execute(
-      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
-    );
-    opRows = rows;
-  } else if (ROLES_REGIONAL.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.regional]
-    );
-    opRows = rows;
-  } else if (ROLES_DISPOSITIVO.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE SOCIODEMOGRAFICA = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (ROLES_MODALIDAD.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE MODALIDAD = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (acceso.operacion) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.operacion]
-    );
-    opRows = rows;
+  // If there is an accesoCode, resolve the operations list for codes 3 and 6
+  if (accesoCode === 3 || accesoCode === 6) {
+    const tieneDispositivo = dispositivo && dispositivo.trim() !== '';
+    if (tieneDispositivo) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA = ? OR MODALIDAD = ?) AND REGIONAL != 'INACTIVO'",
+        [dispositivo, dispositivo]
+      );
+      acceso.operacionesFiltro = rows.map(r => r.OPERACIÓN).filter(Boolean);
+    } else if (operacion) {
+      acceso.operacionesFiltro = [operacion];
+    }
   }
-
-  acceso.opsPorRegional = agruparOperacionesPorRegional(opRows);
-  acceso.operacionesFiltro = opRows.map((row) => row['OPERACIÓN'] || row['Operación']).filter(Boolean);
 
   return acceso;
 }
 
-// ═════ SERVIR INTERFAZ ═════
+async function computarConfigCreacionSolicitud(usuarioId) {
+  if (!usuarioId) return null;
+
+  const [uRows] = await pool.execute(
+    'SELECT ID, Nombre, Rol, Regional, Dispositivo, `Operación` FROM Maestro_Usuarios WHERE ID = ?',
+    [usuarioId]
+  );
+  if (!uRows.length) return null;
+
+  const usuario = uRows[0];
+  const rol = usuario.Rol || '';
+  const regional = usuario.Regional || '';
+  const dispositivo = usuario.Dispositivo || '';
+  const operacion = usuario['Operación'] || '';
+
+  // Query Maestro_Menu_Inventario for this role
+  const [menuRows] = await pool.execute(
+    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? LIMIT 1',
+    [rol]
+  );
+
+  let accesoCode = null;
+  if (menuRows.length > 0) {
+    accesoCode = menuRows[0].Acceso;
+  }
+
+  let opRows = [];
+  if (accesoCode === 1 || accesoCode === 4) {
+    // 1 y 4: adicionar solicitudes en todo
+    const [rows] = await pool.execute(
+      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
+    );
+    opRows = rows;
+  } else if (accesoCode === 2 || accesoCode === 5) {
+    // 2 y 5: adicionar solicitudes solo en la regional a la que pertenece
+    const [rows] = await pool.execute(
+      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+      [regional]
+    );
+    opRows = rows;
+  } else if (accesoCode === 3 || accesoCode === 6) {
+    // 3 y 6: adicionar solicitudes a las operaciones a las que indique la columna Dispositivo
+    const tieneDispositivo = dispositivo && dispositivo.trim() !== '';
+    if (tieneDispositivo) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA = ? OR MODALIDAD = ?) AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [dispositivo, dispositivo]
+      );
+      opRows = rows;
+    } else if (operacion) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [operacion]
+      );
+      opRows = rows;
+    }
+  } else {
+    // Roles que no estén en la tabla: solo pueden adicionar solicitudes a la Operación a la que pertenecen
+    if (operacion) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [operacion]
+      );
+      opRows = rows;
+    }
+  }
+
+  const opsPorRegional = agruparOperacionesPorRegional(opRows);
+  return {
+    rol,
+    regional,
+    operacion,
+    opsPorRegional
+  };
+}
+
+// ═════ SERVIR INTERFAZ (REDIRECCIÓN AL MÓDULO DE INVENTARIO) ═════
 router.get('/', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -189,19 +261,11 @@ router.get('/', async (req, res) => {
       return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
     }
 
-    const html = fs.readFileSync(HTML_PATH, 'utf8');
-    const initialView = (req.baseUrl || '').toLowerCase().includes('/formsolicitud')
-      ? 'formulario'
-      : 'listado';
-    const config = JSON.stringify({
-      ...acceso,
-      regionalesFiltro: Object.keys(acceso.opsPorRegional),
-      initialView,
-    }).replace(/<\/script>/gi, '<\\/script>');
-
-    res.send(html.replace('__CONFIG__', config));
+    const isForm = (req.originalUrl || '').toLowerCase().includes('/formsolicitud');
+    const viewParam = isForm ? '&view=formulario' : '';
+    res.redirect(`/inventario?usuario=${encodeURIComponent(usuario)}${viewParam}#solicitudes`);
   } catch (err) {
-    console.error('[solicitudes] Error sirviendo interfaz:', err);
+    console.error('[solicitudes] Error redirigiendo:', err);
     res.status(500).send('<h2>Error interno del servidor</h2>');
   }
 });
@@ -252,13 +316,33 @@ router.get('/api/usuarios-buscar', async (req, res) => {
 router.get('/api/articulos', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT Id, Articulo, Categoria, Referencia, Talla, Imagen FROM Dynamic_Articulos ORDER BY Articulo'
+      'SELECT Id, Articulo, Categoria, Referencia, Talla, Imagen, ClaseArticulo FROM Dynamic_Articulos ORDER BY Articulo'
     );
 
     res.json(rows);
   } catch (err) {
     console.error('[solicitudes] GET /api/articulos:', err);
     res.status(500).json([]);
+  }
+});
+
+// ═════ API: GET /api/config-creacion ═════
+router.get('/api/config-creacion', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const config = await computarConfigCreacionSolicitud(usuario);
+    if (!config) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    res.json(config);
+  } catch (err) {
+    console.error('[solicitudes] GET /api/config-creacion:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -279,13 +363,45 @@ router.get('/api/solicitudes', async (req, res) => {
     const conds = [];
     const params = [];
 
-    if (!acceso.sinFiltro) {
-      if (!acceso.operacionesFiltro.length) {
-        return res.json([]);
+    // Enforce visibility filters based on accesoCode (Maestro_Menu_Inventario)
+    const code = acceso.accesoCode;
+    if (code === null || code === undefined) {
+      // Para los roles que no estan en la tabla solo pueden ver lo que hayan hecho con su usuario
+      conds.push('Usuario = ?');
+      params.push(acceso.usuarioId);
+    } else if (code === 1) {
+      // 1: ver todo
+    } else if (code === 2) {
+      // 2: ver por regional
+      conds.push('Regional = ?');
+      params.push(acceso.regional);
+    } else if (code === 3) {
+      // 3: ver por columna Dispositivo (Si esta vacia entonces solo por operacion)
+      if (acceso.operacionesFiltro.length > 0) {
+        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+        conds.push(`\`Operación\` IN (${ph})`);
+        params.push(...acceso.operacionesFiltro);
+      } else {
+        conds.push('1 = 0');
       }
-      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      conds.push(`\`Operación\` IN (${ph})`);
-      params.push(...acceso.operacionesFiltro);
+    } else if (code === 4) {
+      // 4: ver todo con Dotación y EPP (Adicionando lo que el usuario haya registrado en otras categorias)
+      conds.push('(Categoria IN (\'EPP\', \'DOTACION\', \'DOTACIÓN\') OR Usuario = ?)');
+      params.push(acceso.usuarioId);
+    } else if (code === 5) {
+      // 5: ver por regional solo Dotación y EPP (Adicionando lo que el usuario haya registrado en otras categorias)
+      conds.push('( (Regional = ? AND Categoria IN (\'EPP\', \'DOTACION\', \'DOTACIÓN\')) OR Usuario = ? )');
+      params.push(acceso.regional, acceso.usuarioId);
+    } else if (code === 6) {
+      // 6: ver por Dispositivo (Adicionando lo que el usuario haya registrado en otras categorias)
+      if (acceso.operacionesFiltro.length > 0) {
+        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+        conds.push(`( (\`Operación\` IN (${ph}) AND Categoria IN ('EPP', 'DOTACION', 'DOTACIÓN')) OR Usuario = ? )`);
+        params.push(...acceso.operacionesFiltro, acceso.usuarioId);
+      } else {
+        conds.push('Usuario = ?');
+        params.push(acceso.usuarioId);
+      }
     }
 
     if (estado) { conds.push('Estado = ?'); params.push(estado); }
@@ -329,13 +445,43 @@ router.get('/api/conteos-filtros', async (req, res) => {
     const baseConds = [];
     const baseParams = [];
 
-    if (!acceso.sinFiltro) {
-      if (!acceso.operacionesFiltro.length) {
-        return res.json({ regionales: {}, operaciones: {} });
+    const code = acceso.accesoCode;
+    if (code === null || code === undefined) {
+      baseConds.push('Usuario = ?');
+      baseParams.push(acceso.usuarioId);
+    } else if (code === 1) {
+      // 1: ver todo
+    } else if (code === 2) {
+      // 2: ver por regional
+      baseConds.push('Regional = ?');
+      baseParams.push(acceso.regional);
+    } else if (code === 3) {
+      // 3: ver por columna Dispositivo
+      if (acceso.operacionesFiltro.length > 0) {
+        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+        baseConds.push(`\`Operación\` IN (${ph})`);
+        baseParams.push(...acceso.operacionesFiltro);
+      } else {
+        baseConds.push('1 = 0');
       }
-      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      baseConds.push(`\`Operación\` IN (${ph})`);
-      baseParams.push(...acceso.operacionesFiltro);
+    } else if (code === 4) {
+      // 4: ver todo con Dotación y EPP
+      baseConds.push('(Categoria IN (\'EPP\', \'DOTACION\', \'DOTACIÓN\') OR Usuario = ?)');
+      baseParams.push(acceso.usuarioId);
+    } else if (code === 5) {
+      // 5: ver por regional solo Dotación y EPP
+      baseConds.push('( (Regional = ? AND Categoria IN (\'EPP\', \'DOTACION\', \'DOTACIÓN\')) OR Usuario = ? )');
+      baseParams.push(acceso.regional, acceso.usuarioId);
+    } else if (code === 6) {
+      // 6: ver por Dispositivo
+      if (acceso.operacionesFiltro.length > 0) {
+        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+        baseConds.push(`( (\`Operación\` IN (${ph}) AND Categoria IN ('EPP', 'DOTACION', 'DOTACIÓN')) OR Usuario = ? )`);
+        baseParams.push(...acceso.operacionesFiltro, acceso.usuarioId);
+      } else {
+        baseConds.push('Usuario = ?');
+        baseParams.push(acceso.usuarioId);
+      }
     }
 
     // Filtros dinámicos compartidos (estado, categoría, fechas)
@@ -398,18 +544,49 @@ router.get('/api/conteos-filtros', async (req, res) => {
 });
 
 // ═════ API: POST /api/solicitudes ═════
-router.post('/api/solicitudes', async (req, res) => {
+router.post('/api/solicitudes', upload.single('cotizacionFile'), async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { operacion, regional, prioridad, categoria, justificacion, montoEstimado, observaciones, usuario, items } = req.body;
 
     // Validar campos requeridos
-    if (!operacion || !regional || !categoria) {
-      return res.status(400).json({ error: 'Campos requeridos: operacion, regional, categoria' });
+    if (!operacion || !regional || !categoria || !prioridad) {
+      return res.status(400).json({ error: 'Campos requeridos: operacion, regional, categoria, prioridad' });
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
+    let itemsParsed = [];
+    if (items) {
+      itemsParsed = typeof items === 'string' ? JSON.parse(items) : items;
+    }
+
+    if (!Array.isArray(itemsParsed) || itemsParsed.length === 0) {
       return res.status(400).json({ error: 'Debe incluir al menos un artículo' });
+    }
+
+    let publicUrl = null;
+    if (req.file) {
+      // 1. Fetch prefix from Config_Doc_Trabajador where Id = 81
+      const [docRows] = await pool.execute('SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = 81 LIMIT 1');
+      const prefijo = docRows[0]?.Prefijo || 'COTSOL';
+
+      // 2. Format current date & time
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+      // 3. Construct name
+      const ext = path.extname(req.file.originalname) || '';
+      const fileName = `${prefijo}.${dateStr}${ext}`;
+      const bucketName = 'talenthub_central';
+      const destPath = `general/${fileName}`;
+
+      // 4. Save to GCS
+      const gcsFile = storage.bucket(bucketName).file(destPath);
+      await gcsFile.save(req.file.buffer, {
+        contentType: req.file.mimetype,
+        public: true
+      });
+      publicUrl = `https://storage.googleapis.com/${bucketName}/${destPath}`;
     }
 
     await conn.beginTransaction();
@@ -419,16 +596,20 @@ router.post('/api/solicitudes', async (req, res) => {
     await conn.execute(
       `INSERT INTO Dynamic_Solicitudes
        (IdSolicitud, \`Operación\`, Regional, Prioridad, Categoria,
-        \`Justificación\`, Monto_Estimado, Observaciones, Usuario, Estado, FechaSolicitud)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'BORRADOR', NOW())`,
-      [idSolicitud, operacion, regional, prioridad || null, categoria,
-       justificacion || null, montoEstimado || null,
-       observaciones || null, usuario]
+        \`Justificación\`, Monto_Estimado, Observaciones, Usuario, Estado, FechaSolicitud, Imagen_Cotización)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'BORRADOR', NOW(), ?)`,
+      [idSolicitud, operacion, regional, prioridad, categoria,
+       justificacion || null, montoEstimado ? parseFloat(montoEstimado) : null,
+       observaciones || null, usuario, publicUrl]
     );
 
     // Agregar items
-    for (const item of items) {
-      if (!item.idArticulo || !item.cantidad || item.cantidad <= 0) {
+    for (const item of itemsParsed) {
+      const artId = item.IdArticulo || item.idArticulo;
+      const qty = item.Cantidad || item.cantidad;
+      const note = item.Nota || item.nota;
+
+      if (!artId || !qty || qty <= 0) {
         throw new Error('Cada item requiere idArticulo y cantidad > 0');
       }
 
@@ -437,7 +618,7 @@ router.post('/api/solicitudes', async (req, res) => {
         `INSERT INTO Dynamic_Solicitudes_Items
          (IdElemento, IdSolicitud, IdArticulo, Cantidad, Nota, Usuario)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [idElemento, idSolicitud, item.idArticulo, item.cantidad, item.nota || null, usuario]
+        [idElemento, idSolicitud, artId, qty, note || null, usuario]
       );
     }
 
@@ -453,15 +634,15 @@ router.post('/api/solicitudes', async (req, res) => {
 });
 
 // ═════ API: PUT /api/solicitud/:id ═════
-router.put('/api/solicitud/:id', async (req, res) => {
+router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { operacion, regional, prioridad, categoria, justificacion, montoEstimado, observaciones, usuario, items, estado } = req.body;
+    const { operacion, regional, prioridad, categoria, justificacion, montoEstimado, observaciones, usuario, items, estado, imagenCotizacion } = req.body;
 
     // Verificar que existe y que el usuario tiene permiso para editar
     const [[solicitud]] = await pool.execute(
-      'SELECT Estado, Categoria FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
+      'SELECT Estado, Categoria, Usuario, Imagen_Cotización FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
       [id]
     );
 
@@ -475,33 +656,86 @@ router.put('/api/solicitud/:id', async (req, res) => {
       [usuario]
     );
     const usuarioRol = usuarioRow?.Rol || '';
-    const esAprobador = rolesPermitidosPorCategoria(solicitud.Categoria).includes(usuarioRol);
 
-    if (estadoActual !== 'BORRADOR' && !(estadoActual === 'PENDIENTE' && esAprobador)) {
+    // Determine if user has privileged roles for the category
+    let esAprobadorCat = false;
+    const catUpper = (solicitud.Categoria || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const stateUpper = (estadoActual || '').toUpperCase().trim();
+
+    if (usuarioRol === 'Sistema') {
+      esAprobadorCat = true;
+    } else if (catUpper === 'EPP') {
+      esAprobadorCat = ['AdmSst', 'LiderSst'].includes(usuarioRol);
+    } else if (catUpper !== 'TECNOLOGIA') {
+      esAprobadorCat = ['Inventario', 'Cuentas'].includes(usuarioRol);
+    }
+
+    let isEditable = false;
+    if (stateUpper === 'BORRADOR' || stateUpper === 'VALIDAR') {
+      isEditable = true;
+    } else if (stateUpper === 'PENDIENTE' || stateUpper === 'PARCIAL') {
+      isEditable = esAprobadorCat;
+    } else if (['APROBADA', 'COMPLETADA', 'RECHAZADA'].includes(stateUpper)) {
+      isEditable = (usuarioRol === 'Sistema');
+    }
+
+    if (!isEditable) {
       return res.status(400).json({ error: 'No tiene permiso para editar esta solicitud en su estado actual' });
     }
 
     // Validar campos
-    if (!operacion || !regional || !categoria) {
-      return res.status(400).json({ error: 'Campos requeridos: operacion, regional, categoria' });
+    if (!operacion || !regional || !categoria || !prioridad) {
+      return res.status(400).json({ error: 'Campos requeridos: operacion, regional, categoria, prioridad' });
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
+    let itemsParsed = [];
+    if (items) {
+      itemsParsed = typeof items === 'string' ? JSON.parse(items) : items;
+    }
+
+    if (!Array.isArray(itemsParsed) || itemsParsed.length === 0) {
       return res.status(400).json({ error: 'Debe incluir al menos un artículo' });
+    }
+
+    let publicUrl = imagenCotizacion || solicitud.Imagen_Cotización || null;
+    if (req.file) {
+      // 1. Fetch prefix from Config_Doc_Trabajador where Id = 81
+      const [docRows] = await pool.execute('SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = 81 LIMIT 1');
+      const prefijo = docRows[0]?.Prefijo || 'COTSOL';
+
+      // 2. Format current date & time
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+      // 3. Construct name
+      const ext = path.extname(req.file.originalname) || '';
+      const fileName = `${prefijo}.${dateStr}${ext}`;
+      const bucketName = 'talenthub_central';
+      const destPath = `general/${fileName}`;
+
+      // 4. Save to GCS
+      const gcsFile = storage.bucket(bucketName).file(destPath);
+      await gcsFile.save(req.file.buffer, {
+        contentType: req.file.mimetype,
+        public: true
+      });
+      publicUrl = `https://storage.googleapis.com/${bucketName}/${destPath}`;
     }
 
     await conn.beginTransaction();
 
     // Actualizar solicitud
-    const nuevoEstado = estadoActual === 'PENDIENTE' ? 'PENDIENTE' : (estado === 'PENDIENTE' ? 'PENDIENTE' : 'BORRADOR');
+    const nuevoEstado = estado || estadoActual || 'BORRADOR';
     await conn.execute(
       `UPDATE Dynamic_Solicitudes
        SET \`Operación\` = ?, Regional = ?, Prioridad = ?, Categoria = ?,
            \`Justificación\` = ?, Monto_Estimado = ?, Observaciones = ?,
-           Usuario = ?, Estado = ?, \`Fecha_Actualización\` = NOW()
+           Estado = ?, usuario_actualiza = ?, \`Fecha_Actualización\` = NOW(),
+           Imagen_Cotización = ?
        WHERE IdSolicitud = ?`,
-      [operacion, regional, prioridad || null, categoria, justificacion || null,
-       montoEstimado || null, observaciones || null, usuario, nuevoEstado, id]
+      [operacion, regional, prioridad, categoria, justificacion || null,
+       montoEstimado ? parseFloat(montoEstimado) : null, observaciones || null, nuevoEstado, usuario, publicUrl, id]
     );
 
     // Eliminar items anteriores
@@ -511,17 +745,21 @@ router.put('/api/solicitud/:id', async (req, res) => {
     );
 
     // Agregar nuevos items
-    for (const item of items) {
-      if (!item.IdArticulo || !item.Cantidad || item.Cantidad <= 0) {
+    for (const item of itemsParsed) {
+      const artId = item.IdArticulo || item.idArticulo;
+      const qty = item.Cantidad || item.cantidad;
+      const note = item.Nota || item.nota;
+
+      if (!artId || !qty || qty <= 0) {
         throw new Error('Cada item requiere IdArticulo y Cantidad > 0');
       }
 
       const idElemento = randomUUID().replace(/-/g, '');
       await conn.execute(
         `INSERT INTO Dynamic_Solicitudes_Items
-         (IdElemento, IdSolicitud, IdArticulo, Cantidad, Nota, Usuario)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [idElemento, id, item.IdArticulo, item.Cantidad, item.Nota || null, usuario]
+         (IdElemento, IdSolicitud, IdArticulo, Cantidad, Nota, Usuario, usuario_actualiza)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [idElemento, id, artId, qty, note || null, solicitud.Usuario, usuario]
       );
     }
 
@@ -589,7 +827,7 @@ router.get('/api/solicitud/:id', async (req, res) => {
 router.patch('/api/solicitud/:id/estado', async (req, res) => {
   try {
     const { id } = req.params;
-    const { estado, usuario, observaciones } = req.body;
+    const { estado, usuario, observaciones, aclaraciones } = req.body;
 
     if (!estado || !usuario) {
       return res.status(400).json({ error: 'estado y usuario requeridos' });
@@ -600,8 +838,9 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
       [usuario]
     );
     if (!uRows.length) {
-      return res.status(403).json({ error: 'Usuario no autorizado para cambiar estado' });
+      return res.status(403).json({ error: 'Usuario no autorizado' });
     }
+    const rolUsuario = uRows[0].Rol || '';
 
     const [[solicitud]] = await pool.execute(
       'SELECT Categoria, Estado, `Operación`, Regional FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1',
@@ -611,41 +850,57 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
       return res.status(404).json({ error: 'Solicitud no encontrada' });
     }
 
-    const rolUsuario = uRows[0].Rol || '';
-    const rolesPermitidos = rolesPermitidosPorCategoria(solicitud.Categoria);
-    if (!rolesPermitidos.includes(rolUsuario)) {
-      return res.status(403).json({
-        error: `El rol ${rolUsuario || 'N/A'} no tiene permiso para gestionar estado en la categoría ${solicitud.Categoria || 'N/A'}`,
-      });
-    }
-
     const estadoAnterior = solicitud.Estado;
     let estadoFinal = estado;
 
-    if (['DESPACHADA', 'PARCIAL'].includes(estado)) {
-      // Una sola transacción: kardex inserts + UPDATE estado (todo en kardex.service.js)
-      const resultado = await despacharSolicitud(id, usuario);
+    if (estado === 'COMPLETADA') {
+      const resultado = await completarSolicitud(id, usuario);
       estadoFinal = resultado.estado;
-    } else if (estado === 'APROBADA') {
-      await pool.execute(
-        `UPDATE Dynamic_Solicitudes
-         SET Estado = ?, Usuario = ?, Observaciones = COALESCE(?, Observaciones),
-             AprobadoPor = ?, FechaAprobacion = NOW(), \`Fecha_Actualización\` = NOW()
-         WHERE IdSolicitud = ?`,
-        [estado, usuario, observaciones || null, usuario, id]
-      );
     } else {
-      await pool.execute(
-        `UPDATE Dynamic_Solicitudes
-         SET Estado = ?, Usuario = ?, Observaciones = COALESCE(?, Observaciones),
-             \`Fecha_Actualización\` = NOW()
-         WHERE IdSolicitud = ?`,
-        [estado, usuario, observaciones || null, id]
-      );
+      const rolesPermitidos = rolesPermitidosPorCategoria(solicitud.Categoria);
+      if (!rolesPermitidos.includes(rolUsuario) && rolUsuario !== 'Sistema') {
+        return res.status(403).json({
+          error: `El rol ${rolUsuario || 'N/A'} no tiene permiso para gestionar el estado en la categoría ${solicitud.Categoria || 'N/A'}`,
+        });
+      }
+
+      if (['RECHAZADA', 'VALIDAR'].includes(estado)) {
+        if (!aclaraciones || !aclaraciones.trim()) {
+          return res.status(400).json({ error: 'Es obligatorio ingresar las aclaraciones/motivo para este estado.' });
+        }
+        
+        await pool.execute(
+          `UPDATE Dynamic_Solicitudes
+           SET Estado = ?, usuario_actualiza = ?, Aclaraciones = ?, Observaciones = COALESCE(?, Observaciones),
+               \`Fecha_Actualización\` = NOW()
+           WHERE IdSolicitud = ?`,
+          [estado, usuario, aclaraciones.trim(), observaciones || null, id]
+        );
+      } else if (estado === 'APROBADA') {
+        await pool.execute(
+          `UPDATE Dynamic_Solicitudes
+           SET Estado = ?, usuario_actualiza = ?, AprobadoPor = ?, Observaciones = COALESCE(?, Observaciones),
+               FechaAprobacion = NOW(), \`Fecha_Actualización\` = NOW(),
+               Aclaraciones = NULL
+           WHERE IdSolicitud = ?`,
+          [estado, usuario, usuario, observaciones || null, id]
+        );
+      } else {
+        await pool.execute(
+          `UPDATE Dynamic_Solicitudes
+           SET Estado = ?, usuario_actualiza = ?, Observaciones = COALESCE(?, Observaciones),
+               \`Fecha_Actualización\` = NOW()
+           WHERE IdSolicitud = ?`,
+          [estado, usuario, observaciones || null, id]
+        );
+      }
     }
 
-    // Email: notificar cambio de estado (fire and forget)
-    _enviarEmailEstado(id, estadoAnterior, estadoFinal, usuario);
+    try {
+      _enviarEmailEstado(id, estadoAnterior, estadoFinal, usuario);
+    } catch (e) {
+      console.error('Error enviando email:', e);
+    }
 
     res.json({ ok: true, idSolicitud: id, estado: estadoFinal });
   } catch (err) {

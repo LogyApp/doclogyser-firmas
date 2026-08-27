@@ -597,7 +597,7 @@ router.get('/api/docretiros', async (req, res) => {
     const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const conds = ["c.Clasificacion = '8. Retiro'"];
+    const conds = ["c.Clasificacion LIKE '%Retiro%'"];
     const params = [];
 
     if (!acceso.sinFiltro) {
@@ -1051,7 +1051,7 @@ router.get('/api/conteos', async (req, res) => {
 
     else if (activeTab === 'docretiros') {
       const buildFiltersRetirosLocal = (buscarVal, regionalVal, operacionVal, tipoDocumentoVal, estadoVal, validacionVal) => {
-        const cT = ["c.Clasificacion = '8. Retiro'"];
+        const cT = ["c.Clasificacion LIKE '%Retiro%'"];
         const pT = [];
 
         if (!acceso.sinFiltro) {

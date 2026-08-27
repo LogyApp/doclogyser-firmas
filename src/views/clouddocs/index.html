@@ -1405,7 +1405,7 @@
       select.innerHTML = '<option value="">— Todos los tipos —</option>';
       
       tiposDocumentosList.forEach(d => {
-        if (tab === 'docretiros' && d.Clasificacion !== '8. Retiro') return;
+        if (tab === 'docretiros' && !(d.Clasificacion || '').includes('Retiro')) return;
         if (tab === 'duplicados' && d.duplicados === 'SI') return;
         
         const option = document.createElement('option');
@@ -1762,7 +1762,7 @@
       if (activeTab === 'todo' || activeTab === 'docretiros') {
         selDocumento.innerHTML = '<option value="">— Todos los tipos —</option>';
         tiposDocumentosList.forEach(d => {
-          if (activeTab === 'docretiros' && d.Clasificacion !== '8. Retiro') return;
+          if (activeTab === 'docretiros' && !(d.Clasificacion || '').includes('Retiro')) return;
           const total = counts.tiposDocumento[d.Id] || 0;
           const option = document.createElement('option');
           option.value = d.Id;

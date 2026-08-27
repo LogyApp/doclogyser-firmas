@@ -108,4 +108,75 @@ async function despacharSolicitud(idSolicitud, usuario) {
   }
 }
 
-module.exports = { despacharSolicitud };
+/**
+ * Completa una solicitud aprobada:
+ *  1. Registra cada ítem en Dynamic_Kardex como ENTRADA (cantidad positiva).
+ *  2. UPDATE Dynamic_Solicitudes: Estado = 'COMPLETADA'
+ *
+ * Todo ocurre en la misma transacción: si cualquier paso falla se hace rollback.
+ *
+ * @param {string} idSolicitud
+ * @param {string} usuario  — ID del usuario que ejecuta el recibo/completado
+ * @returns {{ ok: boolean, idSolicitud: string, estado: 'COMPLETADA' }}
+ */
+async function completarSolicitud(idSolicitud, usuario) {
+  const conn = await pool.getConnection();
+  await conn.beginTransaction();
+  try {
+    const [[sol]] = await conn.execute(
+      'SELECT `Operación`, Regional, Estado FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
+      [idSolicitud]
+    );
+    if (!sol) throw new Error('Solicitud no encontrada');
+    if (sol.Estado !== 'APROBADA' && sol.Estado !== 'PARCIAL') {
+      throw new Error(`Estado inválido para completar: ${sol.Estado}`);
+    }
+
+    const [items] = await conn.execute(
+      `SELECT i.IdArticulo, i.Cantidad, a.Categoria, a.Costo
+       FROM Dynamic_Solicitudes_Items i
+       LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
+       WHERE i.IdSolicitud = ?`,
+      [idSolicitud]
+    );
+    if (!items.length) throw new Error('La solicitud no tiene ítems para completar');
+
+    for (const item of items) {
+      const idKardex = randomUUID().replace(/-/g, '').toLowerCase();
+
+      await conn.execute(
+        `INSERT INTO Dynamic_Kardex
+         (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+          \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, ValorUnitario, UsuarioRegistro)
+         VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, ?, ?)`,
+        [
+          idKardex,
+          sol.Regional,
+          sol['Operación'],
+          item.Categoria,
+          item.IdArticulo,
+          item.Cantidad,
+          item.Costo || 0,
+          usuario
+        ]
+      );
+    }
+
+    await conn.execute(
+      `UPDATE Dynamic_Solicitudes
+       SET Estado = 'COMPLETADA', usuario_actualiza = ?, \`Fecha_Actualización\` = NOW()
+       WHERE IdSolicitud = ?`,
+      [usuario, idSolicitud]
+    );
+
+    await conn.commit();
+    return { ok: true, idSolicitud, estado: 'COMPLETADA' };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+module.exports = { despacharSolicitud, completarSolicitud };

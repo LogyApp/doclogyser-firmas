@@ -52,6 +52,11 @@ async function obtenerCcEmails(usuarioId, identificacion, idConfigDoc) {
     if ([55, 70, 76, 77].includes(idConfigDocNum)) {
       ccList.push('retiros@logyser.com');
     }
+    if (idConfigDocNum === 40) {
+      ccList.push('nomina@logyser.com');
+      ccList.push('gestor.nomina@logyser.com');
+      ccList.push('contratacionnacional@logyser.com');
+    }
     if (idConfigDocNum === 42) {
       ccList.push('gestor.nomina@logyser.com');
     }

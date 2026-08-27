@@ -55,8 +55,8 @@ async function registrarDocGeneral(pool, data) {
 
   await pool.execute(
     `INSERT INTO Maestro_docEmpresa (
-      id, TipoDocumento, Prefijo, Regional, Operación, FechaRegistro, Usuario, Observaciones, Doc
-    ) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?)`,
+      id, TipoDocumento, Prefijo, Regional, Operación, FechaRegistro, Usuario, Observaciones, Url, Validación
+    ) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, 'PEND')`,
     [
       id,
       String(data.tipoDocumentoId),
