@@ -638,7 +638,7 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
   const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { operacion, regional, prioridad, categoria, justificacion, montoEstimado, observaciones, usuario, items, estado, imagenCotizacion } = req.body;
+    const { operacion, regional, prioridad, categoria, justificacion, montoEstimado, observaciones, usuario, items, estado, imagenCotizacion, aclaraciones } = req.body;
 
     // Verificar que existe y que el usuario tiene permiso para editar
     const [[solicitud]] = await pool.execute(
@@ -732,10 +732,10 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
        SET \`Operación\` = ?, Regional = ?, Prioridad = ?, Categoria = ?,
            \`Justificación\` = ?, Monto_Estimado = ?, Observaciones = ?,
            Estado = ?, usuario_actualiza = ?, \`Fecha_Actualización\` = NOW(),
-           Imagen_Cotización = ?
+           Imagen_Cotización = ?, Aclaraciones = ?
        WHERE IdSolicitud = ?`,
       [operacion, regional, prioridad, categoria, justificacion || null,
-       montoEstimado ? parseFloat(montoEstimado) : null, observaciones || null, nuevoEstado, usuario, publicUrl, id]
+       montoEstimado ? parseFloat(montoEstimado) : null, observaciones || null, nuevoEstado, usuario, publicUrl, aclaraciones || null, id]
     );
 
     // Eliminar items anteriores

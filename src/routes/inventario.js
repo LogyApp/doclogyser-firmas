@@ -88,7 +88,7 @@ async function computarAccesoInventario(usuarioId, seccionRequested = null) {
 
   // Códigos 4, 5 y 6 restringen a categorías EPP y DOTACIÓN
   if ([4, 5, 6].includes(activeAccesoCode)) {
-    acceso.filtroCategorias = ['EPP', 'DOTACION'];
+    acceso.filtroCategorias = ['EPP', 'DOTACIÓN', 'DOTACION'];
   }
 
   // Resolver el filtro de operaciones según el código de acceso (normalizado de 1 a 3)
@@ -1544,6 +1544,254 @@ router.get('/api/categorias', async (req, res) => {
   } catch (err) {
     console.error('[inventario] GET /api/categorias error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// KARDEX MASIVO & PENDIENTE POR RECIBIR ENDPOINTS
+// ==========================================
+const { randomUUID } = require('crypto');
+
+// GET /api/kardex-lookups - returns articles, operations, regionals, categories
+router.get('/api/kardex-lookups', async (req, res) => {
+  try {
+    const [artRows] = await pool.execute('SELECT Id, Articulo, Categoria, Costo FROM Dynamic_Articulos ORDER BY Articulo');
+    const [opRows] = await pool.execute("SELECT DISTINCT `OPERACIÓN` AS operacion, REGIONAL AS regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN` ORDER BY `OPERACIÓN`".replace("ORDER BY `OPERACIÓN` ORDER BY `OPERACIÓN`","ORDER BY `OPERACIÓN`"));
+    const [regRows] = await pool.execute("SELECT DISTINCT Regional FROM Config_Regionales WHERE Operacion_Principal IS NOT NULL AND Operacion_Principal != '' ORDER BY Regional");
+    const [catRows] = await pool.execute("SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE (Condicion != 'No aplica' OR Condicion IS NULL) AND Categoria IS NOT NULL ORDER BY Categoria");
+    
+    res.json({
+      articulos: artRows,
+      operaciones: opRows,
+      regionales: regRows.map(r => r.Regional),
+      categorias: catRows.map(c => c.Categoria)
+    });
+  } catch (err) {
+    console.error('[inventario] GET /api/kardex-lookups error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/kardex/guardar-masivo - saves list of kardex rows
+router.post('/api/kardex/guardar-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario, movimientos } = req.body;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+    if (!Array.isArray(movimientos) || movimientos.length === 0) {
+      return res.status(400).json({ error: 'Debe enviar al menos un movimiento' });
+    }
+
+    await conn.beginTransaction();
+
+    for (const mov of movimientos) {
+      const idKardex = randomUUID().replace(/-/g, '').toLowerCase();
+      const tipo = mov.TipoMovimiento;
+      let qty = parseInt(mov.Cantidad);
+      if (isNaN(qty)) {
+        throw new Error(`Cantidad inválida para artículo con ID ${mov.IdArticulo}`);
+      }
+
+      if (tipo === 'TRANSFERENCIA') {
+        qty = -Math.abs(qty);
+      }
+
+      const regional = mov.Regional || null;
+      const operacion = mov.Operacion;
+      const opDestino = (tipo === 'TRANSFERENCIA') ? (mov.OperacionDestino || null) : null;
+      const categoria = mov.Categoria || null;
+      const idArticulo = parseInt(mov.IdArticulo);
+      const valUnitario = mov.ValorUnitario ? parseFloat(mov.ValorUnitario) : 0;
+      const obs = mov.Observaciones || null;
+      const fechaMov = mov.FechaMovimiento || null;
+
+      let fechaInsert = fechaMov ? new Date(fechaMov) : new Date();
+      if (isNaN(fechaInsert.getTime())) {
+        fechaInsert = new Date();
+      }
+
+      await conn.execute(
+        `INSERT INTO Dynamic_Kardex
+         (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+          \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+          Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW())`,
+        [
+          idKardex,
+          fechaInsert,
+          tipo,
+          regional,
+          operacion,
+          opDestino,
+          categoria,
+          idArticulo,
+          qty,
+          valUnitario,
+          usuario,
+          obs
+        ]
+      );
+
+      if (tipo === 'TRANSFERENCIA') {
+        await conn.execute(
+          `INSERT INTO Kardex_Pendiente
+           (IdKardexOriginal, Procesado, Procesando, Novedad)
+           VALUES (?, 0, 0, '')`,
+          [idKardex]
+        );
+      }
+    }
+
+    await conn.commit();
+    res.json({ message: 'Movimientos guardados exitosamente.' });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[inventario] POST /api/kardex/guardar-masivo error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// GET /api/kardex-pendiente - pending transfers view
+router.get('/api/kardex-pendiente', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const securityConds = ['kp.Procesado = 0'];
+    const securityParams = [];
+
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      securityConds.push(`k.Categoria IN (${ph})`);
+      securityParams.push(...acceso.filtroCategorias);
+    }
+
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) {
+        return res.json({ results: [] });
+      }
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      securityConds.push(`k.OperaciónDestino IN (${ph})`);
+      securityParams.push(...acceso.operacionesFiltro);
+    }
+
+    const query = `
+      SELECT kp.IdKardexOriginal, kp.Procesado, kp.Procesando, kp.Novedad,
+             k.FechaMovimiento, k.Regional, k.\`Operación\` AS OperacionOrigen, k.OperaciónDestino,
+             k.Cantidad, k.UsuarioRegistro, k.Observaciones, k.ValorUnitario,
+             a.Articulo, a.Imagen, a.Categoria
+      FROM Kardex_Pendiente kp
+      JOIN Dynamic_Kardex k ON k.IdKardex = kp.IdKardexOriginal
+      LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
+      WHERE ${securityConds.join(' AND ')}
+      ORDER BY k.FechaMovimiento DESC
+    `;
+
+    const [rows] = await pool.execute(query, securityParams);
+    res.json({ results: rows });
+  } catch (err) {
+    console.error('[inventario] GET /api/kardex-pendiente error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/kardex-pendiente/:id/novedad - register transfer novelty
+router.patch('/api/kardex-pendiente/:id/novedad', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { novedad } = req.body;
+
+    await pool.execute(
+      'UPDATE Kardex_Pendiente SET Novedad = ? WHERE IdKardexOriginal = ?',
+      [novedad || '', id]
+    );
+
+    res.json({ ok: true, message: 'Novedad registrada exitosamente.' });
+  } catch (err) {
+    console.error('[inventario] PATCH /api/kardex-pendiente/:id/novedad error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/kardex-pendiente/recibir-masivo - massive transfer receive
+router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario, ids } = req.body;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Debe seleccionar al menos un registro' });
+    }
+
+    await conn.beginTransaction();
+
+    for (const idOriginal of ids) {
+      const [[originalKardex]] = await conn.execute(
+        'SELECT * FROM Dynamic_Kardex WHERE IdKardex = ? LIMIT 1 FOR UPDATE',
+        [idOriginal]
+      );
+      if (!originalKardex) {
+        throw new Error(`Registro original ${idOriginal} no encontrado`);
+      }
+
+      const [[destOp]] = await conn.execute(
+        'SELECT DISTINCT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+        [originalKardex.OperaciónDestino]
+      );
+      const destRegional = destOp?.REGIONAL || originalKardex.Regional;
+
+      const newIdKardex = randomUUID().replace(/-/g, '').toLowerCase();
+
+      await conn.execute(
+        `INSERT INTO Dynamic_Kardex
+         (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+          \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+          Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro)
+         VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW())`,
+        [
+          newIdKardex,
+          destRegional,
+          originalKardex.OperaciónDestino,
+          originalKardex.Categoria,
+          originalKardex.IdArticulo,
+          Math.abs(originalKardex.Cantidad),
+          originalKardex.ValorUnitario || 0,
+          usuario,
+          'GENERADO POR EL SISTEMA - RECEPCION TRANSFERENCIA'
+        ]
+      );
+
+      await conn.execute(
+        'UPDATE Kardex_Pendiente SET Procesado = 1 WHERE IdKardexOriginal = ?',
+        [idOriginal]
+      );
+      await conn.execute(
+        'DELETE FROM Kardex_Pendiente WHERE IdKardexOriginal = ?',
+        [idOriginal]
+      );
+    }
+
+    await conn.commit();
+    res.json({ message: 'Registros recibidos y agregados al Kardex exitosamente.' });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[inventario] POST /api/kardex-pendiente/recibir-masivo error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 
