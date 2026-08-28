@@ -825,6 +825,7 @@ router.get('/api/solicitud/:id', async (req, res) => {
 
 // ═════ API: PATCH /api/solicitud/:id/estado ═════
 router.patch('/api/solicitud/:id/estado', async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
     const { estado, usuario, observaciones, aclaraciones } = req.body;
@@ -833,20 +834,23 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
       return res.status(400).json({ error: 'estado y usuario requeridos' });
     }
 
-    const [uRows] = await pool.execute(
+    const [uRows] = await conn.execute(
       'SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
       [usuario]
     );
     if (!uRows.length) {
+      conn.release();
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
     const rolUsuario = uRows[0].Rol || '';
 
-    const [[solicitud]] = await pool.execute(
-      'SELECT Categoria, Estado, `Operación`, Regional FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1',
+    // Lock the row for update
+    const [[solicitud]] = await conn.execute(
+      'SELECT Categoria, Estado, `Operación`, Regional FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
       [id]
     );
     if (!solicitud) {
+      conn.release();
       return res.status(404).json({ error: 'Solicitud no encontrada' });
     }
 
@@ -854,47 +858,167 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
     let estadoFinal = estado;
 
     if (estado === 'COMPLETADA') {
+      conn.release();
       const resultado = await completarSolicitud(id, usuario);
-      estadoFinal = resultado.estado;
+      return res.json({ ok: true, idSolicitud: id, estado: resultado.estado });
+    }
+
+    const rolesPermitidos = rolesPermitidosPorCategoria(solicitud.Categoria);
+    if (!rolesPermitidos.includes(rolUsuario) && rolUsuario !== 'Sistema') {
+      conn.release();
+      return res.status(403).json({
+        error: `El rol ${rolUsuario || 'N/A'} no tiene permiso para gestionar el estado en la categoría ${solicitud.Categoria || 'N/A'}`,
+      });
+    }
+
+    await conn.beginTransaction();
+
+    let fechaAprobacionVal = null;
+    const now = new Date();
+
+    if (['APROBADA', 'PARCIAL'].includes(estado)) {
+      fechaAprobacionVal = now;
+      await conn.execute(
+        `UPDATE Dynamic_Solicitudes
+         SET Estado = ?, usuario_actualiza = ?, AprobadoPor = ?, Observaciones = COALESCE(?, Observaciones),
+             FechaAprobacion = ?, \`Fecha_Actualización\` = NOW(),
+             Aclaraciones = NULL
+         WHERE IdSolicitud = ?`,
+        [estado, usuario, usuario, observaciones || null, fechaAprobacionVal, id]
+      );
+    } else if (['RECHAZADA', 'VALIDAR'].includes(estado)) {
+      if (!aclaraciones || !aclaraciones.trim()) {
+        conn.release();
+        return res.status(400).json({ error: 'Es obligatorio ingresar las aclaraciones/motivo para este estado.' });
+      }
+      await conn.execute(
+        `UPDATE Dynamic_Solicitudes
+         SET Estado = ?, usuario_actualiza = ?, Aclaraciones = ?, Observaciones = COALESCE(?, Observaciones),
+             \`Fecha_Actualización\` = NOW()
+         WHERE IdSolicitud = ?`,
+        [estado, usuario, aclaraciones.trim(), observaciones || null, id]
+      );
     } else {
-      const rolesPermitidos = rolesPermitidosPorCategoria(solicitud.Categoria);
-      if (!rolesPermitidos.includes(rolUsuario) && rolUsuario !== 'Sistema') {
-        return res.status(403).json({
-          error: `El rol ${rolUsuario || 'N/A'} no tiene permiso para gestionar el estado en la categoría ${solicitud.Categoria || 'N/A'}`,
-        });
+      await conn.execute(
+        `UPDATE Dynamic_Solicitudes
+         SET Estado = ?, usuario_actualiza = ?, Observaciones = COALESCE(?, Observaciones),
+             \`Fecha_Actualización\` = NOW()
+         WHERE IdSolicitud = ?`,
+        [estado, usuario, observaciones || null, id]
+      );
+    }
+
+    // Si pasa a APROBADA o PARCIAL, creamos los registros en Kardex
+    if (['APROBADA', 'PARCIAL'].includes(estado)) {
+      // 1. Si es PARCIAL y se enviaron los items confirmados, actualizar CantidadDespachada
+      if (estado === 'PARCIAL' && Array.isArray(req.body.items)) {
+        for (const item of req.body.items) {
+          const artId = item.IdArticulo || item.idArticulo;
+          const qtyDesp = parseInt(item.CantidadDespachada || item.cantidadDespachada || 0);
+          await conn.execute(
+            `UPDATE Dynamic_Solicitudes_Items
+             SET CantidadDespachada = ?
+             WHERE IdSolicitud = ? AND IdArticulo = ?`,
+            [qtyDesp, id, artId]
+          );
+        }
       }
 
-      if (['RECHAZADA', 'VALIDAR'].includes(estado)) {
-        if (!aclaraciones || !aclaraciones.trim()) {
-          return res.status(400).json({ error: 'Es obligatorio ingresar las aclaraciones/motivo para este estado.' });
+      // 2. Verificar si ya se habían generado movimientos de Kardex para esta solicitud
+      // (Para prevenir doble procesamiento)
+      const [[hasKardex]] = await conn.execute(
+        'SELECT IdKardex FROM Dynamic_Solicitudes_Items WHERE IdSolicitud = ? AND IdKardex IS NOT NULL LIMIT 1',
+        [id]
+      );
+
+      if (!hasKardex) {
+        // Obtener los artículos asociados de la solicitud con su Costo
+        const [solItems] = await conn.execute(
+          `SELECT i.IdArticulo, i.Cantidad, i.CantidadDespachada, a.Categoria, a.Costo
+           FROM Dynamic_Solicitudes_Items i
+           LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
+           WHERE i.IdSolicitud = ?`,
+          [id]
+        );
+
+        for (const item of solItems) {
+          let qty = 0;
+          if (estado === 'APROBADA') {
+            qty = parseInt(item.Cantidad) || 0;
+          } else if (estado === 'PARCIAL') {
+            qty = parseInt(item.CantidadDespachada) || 0;
+          }
+
+          // Solo registrar movimientos si la cantidad aprobada/despachada es mayor a 0
+          if (qty <= 0) continue;
+
+          const costo = item.Costo || 0;
+          const idKardexEntrada = randomUUID().replace(/-/g, '').toLowerCase();
+
+          // A. Insertar ENTRADA en la operación de Administracion
+          await conn.execute(
+            `INSERT INTO Dynamic_Kardex
+             (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+              \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+              Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro)
+             VALUES (?, ?, 'ENTRADA', 'ANTIOQUIA', 'Administracion', NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW())`,
+            [
+              idKardexEntrada,
+              fechaAprobacionVal,
+              solicitud.Categoria || item.Categoria || null,
+              item.IdArticulo,
+              qty,
+              costo,
+              usuario,
+              `Destinado a la operación ${solicitud['Operación']}`
+            ]
+          );
+
+          // Guardar referencia del Kardex en la tabla de ítems de la solicitud
+          await conn.execute(
+            `UPDATE Dynamic_Solicitudes_Items
+             SET IdKardex = ?
+             WHERE IdSolicitud = ? AND IdArticulo = ?`,
+            [idKardexEntrada, id, item.IdArticulo]
+          );
+
+          // B. Insertar TRANSFERENCIA (solo si la operación destino es diferente a Administracion/Administración)
+          const opDest = (solicitud['Operación'] || '').trim();
+          const opDestLower = opDest.toLowerCase();
+          if (opDestLower !== 'administracion' && opDestLower !== 'administración') {
+            const idKardexTransferencia = randomUUID().replace(/-/g, '').toLowerCase();
+
+            await conn.execute(
+              `INSERT INTO Dynamic_Kardex
+               (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+                \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+                Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro)
+               VALUES (?, ?, 'TRANSFERENCIA', 'ANTIOQUIA', 'Administracion', ?, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW())`,
+              [
+                idKardexTransferencia,
+                fechaAprobacionVal,
+                opDest,
+                solicitud.Categoria || item.Categoria || null,
+                item.IdArticulo,
+                -qty, // Cantidad negativa para la salida de la transferencia
+                costo,
+                usuario,
+                `Destinado a la operación ${opDest}`
+              ]
+            );
+
+            // C. Crear registro en Kardex_Pendiente con Procesado = 0
+            await conn.execute(
+              `INSERT INTO Kardex_Pendiente (IdKardexOriginal, Procesado, Procesando, Novedad)
+               VALUES (?, 0, 0, '')`,
+              [idKardexTransferencia]
+            );
+          }
         }
-        
-        await pool.execute(
-          `UPDATE Dynamic_Solicitudes
-           SET Estado = ?, usuario_actualiza = ?, Aclaraciones = ?, Observaciones = COALESCE(?, Observaciones),
-               \`Fecha_Actualización\` = NOW()
-           WHERE IdSolicitud = ?`,
-          [estado, usuario, aclaraciones.trim(), observaciones || null, id]
-        );
-      } else if (estado === 'APROBADA') {
-        await pool.execute(
-          `UPDATE Dynamic_Solicitudes
-           SET Estado = ?, usuario_actualiza = ?, AprobadoPor = ?, Observaciones = COALESCE(?, Observaciones),
-               FechaAprobacion = NOW(), \`Fecha_Actualización\` = NOW(),
-               Aclaraciones = NULL
-           WHERE IdSolicitud = ?`,
-          [estado, usuario, usuario, observaciones || null, id]
-        );
-      } else {
-        await pool.execute(
-          `UPDATE Dynamic_Solicitudes
-           SET Estado = ?, usuario_actualiza = ?, Observaciones = COALESCE(?, Observaciones),
-               \`Fecha_Actualización\` = NOW()
-           WHERE IdSolicitud = ?`,
-          [estado, usuario, observaciones || null, id]
-        );
       }
     }
+
+    await conn.commit();
 
     try {
       _enviarEmailEstado(id, estadoAnterior, estadoFinal, usuario);
@@ -904,8 +1028,11 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
 
     res.json({ ok: true, idSolicitud: id, estado: estadoFinal });
   } catch (err) {
-    console.error('[solicitudes] PATCH /api/solicitud/:id/estado:', err);
+    await conn.rollback();
+    console.error('[solicitudes] PATCH /api/solicitud/:id/estado error:', err);
     res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 

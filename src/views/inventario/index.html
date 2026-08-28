@@ -2082,7 +2082,7 @@
     </div>
 
     <!-- Pestaña: Pendiente por recibir -->
-    <div class="tab-content" id="tab-content-pendiente" style="display: none; padding: 24px;">
+    <div class="tab-content" id="tab-content-pendiente" style="padding: 24px;">
       <div class="history-card" style="background: white; border-radius: 8px; box-shadow: var(--shadow-sm); padding: 20px; border-left: 4px solid var(--primary);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
           <div>
@@ -2302,6 +2302,14 @@
               </div>
 
               <div id="sol-filtros-body" style="display: none;">
+                <!-- Category Filter Section (Chips) -->
+                <div class="category-filter-section" style="border-bottom: 1px dashed var(--border); padding-bottom: 16px; margin-bottom: 16px; margin-top: 16px;">
+                  <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Categorías</label>
+                  <div id="sol-filter-categoria-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <!-- Dynamic Category Buttons -->
+                  </div>
+                </div>
+
                 <!-- Filter Grid -->
                 <div class="filters-grid" style="margin-top: 16px;">
                   <div class="filter-group">
@@ -2330,21 +2338,14 @@
                       <option value="">Todas</option>
                     </select>
                   </div>
-                  <div class="filter-group">
-                    <label for="sol-filtro-categoria">Categoría</label>
-                    <select id="sol-filtro-categoria">
-                      <option value="">Todas</option>
-                      <option value="ACTIVO FIJO">Activo Fijo</option>
-                      <option value="DOTACION">Dotación</option>
-                      <option value="HERRAMIENTA">Herramienta</option>
-                      <option value="EPP">EPP</option>
-                      <option value="PAPELERIA">Papelería</option>
-                      <option value="TECNOLOGIA">Tecnología</option>
-                    </select>
-                  </div>
                   <div class="filter-group" style="grid-column: span 2;">
                     <label for="sol-filtro-search">Búsqueda rápida</label>
                     <input type="text" id="sol-filtro-search" placeholder="Buscar por ID, asignado, acta, etc...">
+                  </div>
+                  <div class="filter-group" style="display: flex; align-items: flex-end;">
+                    <button id="sol-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+                      <span>🧹</span> Limpiar Filtros
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2973,30 +2974,15 @@
 
       <!-- Tab selector inside header -->
       <div style="background: #f1f5f9; padding: 8px 24px 0 24px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
-        <button type="button" id="formarticulos-tab-btn-excel" style="padding: 8px 16px; border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.8rem; color: var(--primary);">📋 Pegar desde Excel</button>
-        <button type="button" id="formarticulos-tab-btn-manual" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">✍️ Editor de Grid (0 filas)</button>
+        <button type="button" id="formarticulos-tab-btn-manual" style="padding: 8px 16px; border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.8rem; color: var(--primary);">✍️ Editor de Grid (0 filas)</button>
+        <button type="button" id="formarticulos-tab-btn-excel" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">📋 Pegar desde Excel</button>
       </div>
 
       <!-- Scrollable content area -->
       <div style="flex-grow: 1; overflow-y: auto; padding: 24px; min-height: 250px;">
         
-        <!-- Tab 1: Excel Import -->
-        <div id="formarticulos-tab-excel" style="display: block;">
-          <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; color: var(--text);">Pegar datos tabulados (TSV / Copiado directo de Excel):</label>
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-            Copia el rango de datos en tu hoja de Excel y pégalo en el cuadro de abajo. Las columnas se mapearán automáticamente en el siguiente orden:<br>
-            <strong>Elemento *</strong> | <strong>Talla</strong> | <strong>Placa</strong> | <strong>Referencia</strong> | <strong>Categoría *</strong> | <strong>Proveedor</strong> | <strong>Costo</strong> | <strong>Clasificación *</strong>
-          </p>
-          <textarea id="formarticulos-paste-area" placeholder="Pega tus datos aquí..." style="width: 100%; height: 160px; padding: 12px; border: 1.5px dashed var(--border); border-radius: 8px; outline: none; font-size: 0.8rem; font-family: monospace; resize: none; background: #fafbfe; transition: border-color 0.2s;"></textarea>
-          <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
-            <button type="button" id="formarticulos-btn-procesar" style="padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
-              <span>⚡</span> Procesar Datos Pegados
-            </button>
-          </div>
-        </div>
-
-        <!-- Tab 2: Manual Grid Editor -->
-        <div id="formarticulos-tab-manual" style="display: none;">
+        <!-- Tab 1: Manual Grid Editor -->
+        <div id="formarticulos-tab-manual" style="display: block;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <div style="font-size: 0.8rem; color: var(--text-muted);">Edita las celdas directamente o agrega nuevas filas a la grilla de carga:</div>
             <button type="button" id="formarticulos-btn-add-row" style="padding: 5px 12px; border: 1px solid var(--primary); border-radius: 6px; background: white; color: var(--primary); font-weight: 600; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
@@ -3028,6 +3014,21 @@
           </div>
         </div>
 
+        <!-- Tab 2: Excel Import -->
+        <div id="formarticulos-tab-excel" style="display: none;">
+          <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; color: var(--text);">Pegar datos tabulados (TSV / Copiado directo de Excel):</label>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+            Copia el rango de datos en tu hoja de Excel y pégalo en el cuadro de abajo. Las columnas se mapearán automáticamente en el siguiente orden:<br>
+            <strong>Elemento *</strong> | <strong>Talla</strong> | <strong>Placa</strong> | <strong>Referencia</strong> | <strong>Categoría *</strong> | <strong>Proveedor</strong> | <strong>Costo</strong> | <strong>Clasificación *</strong>
+          </p>
+          <textarea id="formarticulos-paste-area" placeholder="Pega tus datos aquí..." style="width: 100%; height: 160px; padding: 12px; border: 1.5px dashed var(--border); border-radius: 8px; outline: none; font-size: 0.8rem; font-family: monospace; resize: none; background: #fafbfe; transition: border-color 0.2s;"></textarea>
+          <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+            <button type="button" id="formarticulos-btn-procesar" style="padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
+              <span>⚡</span> Procesar Datos Pegados
+            </button>
+          </div>
+        </div>
+
       </div>
 
       <!-- Fixed Footer -->
@@ -3053,15 +3054,50 @@
 
       <!-- Tab selector inside header -->
       <div style="background: #f1f5f9; padding: 8px 24px 0 24px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
-        <button type="button" id="formkardex-tab-btn-excel" style="padding: 8px 16px; border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.8rem; color: var(--primary);">📋 Pegar desde Excel</button>
-        <button type="button" id="formkardex-tab-btn-manual" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">✍️ Editor de Grid (0 filas)</button>
+        <button type="button" id="formkardex-tab-btn-manual" style="padding: 8px 16px; border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.8rem; color: var(--primary);">✍️ Editor de Grid (0 filas)</button>
+        <button type="button" id="formkardex-tab-btn-excel" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">📋 Pegar desde Excel</button>
       </div>
 
       <!-- Scrollable content area -->
       <div style="flex-grow: 1; overflow-y: auto; padding: 24px; min-height: 250px;">
         
-        <!-- Tab 1: Excel Import -->
-        <div id="formkardex-tab-excel" style="display: block;">
+        <!-- Tab 1: Manual Grid Editor -->
+        <div id="formkardex-tab-manual" style="display: block;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Edita las celdas directamente o agrega nuevos movimientos a la grilla de carga:</div>
+            <button type="button" id="formkardex-btn-add-row" style="padding: 5px 12px; border: 1px solid var(--primary); border-radius: 6px; background: white; color: var(--primary); font-weight: 600; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+              <span>➕</span> Agregar Fila Vacía
+            </button>
+          </div>
+          
+          <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+            <div style="max-height: 40vh; overflow-y: auto; overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem; min-width: 1300px;" id="formkardex-grid-table">
+                <thead>
+                  <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10;">
+                    <th style="padding: 10px; font-weight: 600; width: 160px;">Fecha Movimiento *</th>
+                    <th style="padding: 10px; font-weight: 600; width: 130px;">Tipo *</th>
+                    <th style="padding: 10px; font-weight: 600; width: 140px;">Regional *</th>
+                    <th style="padding: 10px; font-weight: 600; width: 150px;">Operación *</th>
+                    <th style="padding: 10px; font-weight: 600; width: 150px;">Op Destino</th>
+                    <th style="padding: 10px; font-weight: 600; width: 140px;">Categoría *</th>
+                    <th style="padding: 10px; font-weight: 600; width: 220px;">Artículo *</th>
+                    <th style="padding: 10px; font-weight: 600; width: 90px;">Stock Actual</th>
+                    <th style="padding: 10px; font-weight: 600; width: 80px;">Cant *</th>
+                    <th style="padding: 10px; font-weight: 600;">Observaciones</th>
+                    <th style="padding: 10px; font-weight: 600; width: 50px; text-align: center;"></th>
+                  </tr>
+                </thead>
+                <tbody id="formkardex-grid-body">
+                  <!-- Generated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Excel Import -->
+        <div id="formkardex-tab-excel" style="display: none;">
           <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; color: var(--text);">Pegar datos tabulados (TSV / Copiado directo de Excel):</label>
           <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
             Copia el rango de datos en tu hoja de Excel y pégalo en el cuadro de abajo. Las columnas se mapearán automáticamente en el siguiente orden:<br>
@@ -3073,40 +3109,6 @@
             <button type="button" id="formkardex-btn-procesar" style="padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
               <span>⚡</span> Procesar Datos Pegados
             </button>
-          </div>
-        </div>
-
-        <!-- Tab 2: Manual Grid Editor -->
-        <div id="formkardex-tab-manual" style="display: none;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div style="font-size: 0.8rem; color: var(--text-muted);">Edita las celdas directamente o agrega nuevos movimientos a la grilla de carga:</div>
-            <button type="button" id="formkardex-btn-add-row" style="padding: 5px 12px; border: 1px solid var(--primary); border-radius: 6px; background: white; color: var(--primary); font-weight: 600; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-              <span>➕</span> Agregar Fila Vacía
-            </button>
-          </div>
-          
-          <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
-            <div style="max-height: 40vh; overflow-y: auto; overflow-x: auto;">
-              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem; min-width: 1200px;" id="formkardex-grid-table">
-                <thead>
-                  <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10;">
-                    <th style="padding: 10px; font-weight: 600; width: 160px;">Fecha Movimiento *</th>
-                    <th style="padding: 10px; font-weight: 600; width: 130px;">Tipo *</th>
-                    <th style="padding: 10px; font-weight: 600; width: 140px;">Regional *</th>
-                    <th style="padding: 10px; font-weight: 600; width: 150px;">Operación *</th>
-                    <th style="padding: 10px; font-weight: 600; width: 150px;">Op Destino</th>
-                    <th style="padding: 10px; font-weight: 600; width: 140px;">Categoría *</th>
-                    <th style="padding: 10px; font-weight: 600; width: 220px;">Artículo *</th>
-                    <th style="padding: 10px; font-weight: 600; width: 80px;">Cant *</th>
-                    <th style="padding: 10px; font-weight: 600;">Observaciones</th>
-                    <th style="padding: 10px; font-weight: 600; width: 50px; text-align: center;"></th>
-                  </tr>
-                </thead>
-                <tbody id="formkardex-grid-body">
-                  <!-- Generated dynamically -->
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
 
@@ -3343,8 +3345,8 @@
     let currentInventarioSortOrder = 'asc';
     let currentArticlesSortColumn = '';
     let currentArticlesSortOrder = 'asc';
-    let currentSolicitudesSortColumn = '';
-    let currentSolicitudesSortOrder = 'asc';
+    let currentSolicitudesSortColumn = 'fecha';
+    let currentSolicitudesSortOrder = 'desc';
     let activeSidebarOp = ''; // To filter by clicking sidebar operations
     let lastHistoryFacetedCounts = null;
     let activeHistoryCategory = '';
@@ -3356,6 +3358,8 @@
     let isArticlesInitialized = false;
     let dbCategories = [];
     let allSolicitudes = [];
+    let masterSolicitudes = [];
+    let activeSolicitudCategory = '';
     let allSolicitudesArticulos = [];
     let selectedSolicitudItems = [];
     let tempSelectedItems = [];
@@ -7195,7 +7199,7 @@
       populateSolicitudesFilterOperaciones();
 
       // Hook up filter events
-      const filters = ['sol-filtro-estado', 'sol-filtro-regional', 'sol-filtro-operacion', 'sol-filtro-categoria'];
+      const filters = ['sol-filtro-estado', 'sol-filtro-regional', 'sol-filtro-operacion'];
       filters.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -7203,8 +7207,7 @@
             if (id === 'sol-filtro-regional') {
               populateSolicitudesFilterOperaciones();
             }
-            fetchSolicitudesList();
-            updateSolicitudesBadgeFiltros();
+            filterAndRenderSolicitudes();
           });
         }
       });
@@ -7215,9 +7218,21 @@
         searchInput.addEventListener('input', () => {
           clearTimeout(searchTimeout);
           searchTimeout = setTimeout(() => {
-            fetchSolicitudesList();
-            updateSolicitudesBadgeFiltros();
+            filterAndRenderSolicitudes();
           }, 400);
+        });
+      }
+
+      const btnClear = document.getElementById('sol-btn-limpiar-filtros');
+      if (btnClear) {
+        btnClear.addEventListener('click', () => {
+          document.getElementById('sol-filtro-estado').value = '';
+          document.getElementById('sol-filtro-regional').value = '';
+          populateSolicitudesFilterOperaciones();
+          document.getElementById('sol-filtro-operacion').value = '';
+          activeSolicitudCategory = '';
+          document.getElementById('sol-filtro-search').value = '';
+          filterAndRenderSolicitudes();
         });
       }
 
@@ -7565,7 +7580,7 @@
       const estado = document.getElementById('sol-filtro-estado').value;
       const reg = document.getElementById('sol-filtro-regional').value;
       const op = document.getElementById('sol-filtro-operacion').value;
-      const cat = document.getElementById('sol-filtro-categoria').value;
+      const cat = activeSolicitudCategory;
       const search = document.getElementById('sol-filtro-search').value.trim();
 
       if (estado) count++;
@@ -7591,31 +7606,226 @@
       if (badgeTotal) badgeTotal.textContent = 'Buscando...';
 
       try {
-        const estado = document.getElementById('sol-filtro-estado').value;
-        const regional = document.getElementById('sol-filtro-regional').value;
-        const operacion = document.getElementById('sol-filtro-operacion').value;
-        const categoria = document.getElementById('sol-filtro-categoria').value;
-        const search = document.getElementById('sol-filtro-search').value.trim();
-
         let url = `/solicitudes/api/solicitudes?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-        if (estado) url += `&estado=${encodeURIComponent(estado)}`;
-        if (regional) url += `&regional=${encodeURIComponent(regional)}`;
-        if (operacion) url += `&operacion=${encodeURIComponent(operacion)}`;
-        if (categoria) url += `&categoria=${encodeURIComponent(categoria)}`;
-        if (search) url += `&search=${encodeURIComponent(search)}`;
-
         const res = await fetch(url);
         if (!res.ok) throw new Error('Error cargando solicitudes de la API');
 
-        allSolicitudes = await res.json();
+        masterSolicitudes = await res.json();
         
-        // Render rows
-        sortAndRenderSolicitudesTable();
+        filterAndRenderSolicitudes();
 
       } catch (err) {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
       }
+    }
+
+    function filterAndRenderSolicitudes() {
+      const estado = document.getElementById('sol-filtro-estado').value;
+      const regional = document.getElementById('sol-filtro-regional').value;
+      const operacion = document.getElementById('sol-filtro-operacion').value;
+      const categoria = activeSolicitudCategory || '';
+      const search = document.getElementById('sol-filtro-search').value.trim().toLowerCase();
+
+      allSolicitudes = masterSolicitudes.filter(sol => {
+        if (estado && sol.Estado !== estado) return false;
+        if (regional && sol.Regional !== regional) return false;
+        if (operacion && sol['Operación'] !== operacion) return false;
+        if (categoria && sol.Categoria !== categoria) return false;
+        if (search) {
+          const idMatch = (sol.IdSolicitud || '').toLowerCase().includes(search);
+          const userMatch = (sol.Usuario || '').toLowerCase().includes(search);
+          const justMatch = (sol.Justificación || '').toLowerCase().includes(search);
+          const opMatch = (sol['Operación'] || '').toLowerCase().includes(search);
+          const regMatch = (sol.Regional || '').toLowerCase().includes(search);
+          if (!idMatch && !userMatch && !justMatch && !opMatch && !regMatch) return false;
+        }
+        return true;
+      });
+
+      updateSolicitudesFilterCounts();
+      sortAndRenderSolicitudesTable();
+      updateSolicitudesBadgeFiltros();
+    }
+
+    function updateSolicitudesFilterCounts() {
+      const selectedEst = document.getElementById('sol-filtro-estado').value;
+      const selectedReg = document.getElementById('sol-filtro-regional').value;
+      const selectedOp = document.getElementById('sol-filtro-operacion').value;
+      const selectedCat = activeSolicitudCategory || '';
+      const search = document.getElementById('sol-filtro-search').value.trim().toLowerCase();
+
+      // 1. Estado counts
+      const estadoCounts = {};
+      masterSolicitudes.forEach(sol => {
+        if (selectedReg && sol.Regional !== selectedReg) return;
+        if (selectedOp && sol['Operación'] !== selectedOp) return;
+        if (selectedCat && sol.Categoria !== selectedCat) return;
+        if (search) {
+          const txt = `${sol.IdSolicitud} ${sol.Usuario} ${sol.Justificación} ${sol['Operación']} ${sol.Regional}`.toLowerCase();
+          if (!txt.includes(search)) return;
+        }
+        estadoCounts[sol.Estado] = (estadoCounts[sol.Estado] || 0) + 1;
+      });
+
+      // 2. Regional counts
+      const regionalCounts = {};
+      masterSolicitudes.forEach(sol => {
+        if (selectedEst && sol.Estado !== selectedEst) return;
+        if (selectedOp && sol['Operación'] !== selectedOp) return;
+        if (selectedCat && sol.Categoria !== selectedCat) return;
+        if (search) {
+          const txt = `${sol.IdSolicitud} ${sol.Usuario} ${sol.Justificación} ${sol['Operación']} ${sol.Regional}`.toLowerCase();
+          if (!txt.includes(search)) return;
+        }
+        if (sol.Regional) {
+          regionalCounts[sol.Regional] = (regionalCounts[sol.Regional] || 0) + 1;
+        }
+      });
+
+      // 3. Operación counts
+      const operacionCounts = {};
+      masterSolicitudes.forEach(sol => {
+        if (selectedEst && sol.Estado !== selectedEst) return;
+        if (selectedReg && sol.Regional !== selectedReg) return;
+        if (selectedCat && sol.Categoria !== selectedCat) return;
+        if (search) {
+          const txt = `${sol.IdSolicitud} ${sol.Usuario} ${sol.Justificación} ${sol['Operación']} ${sol.Regional}`.toLowerCase();
+          if (!txt.includes(search)) return;
+        }
+        if (sol['Operación']) {
+          operacionCounts[sol['Operación']] = (operacionCounts[sol['Operación']] || 0) + 1;
+        }
+      });
+
+      // 4. Categoria counts
+      const categoriaCounts = {};
+      masterSolicitudes.forEach(sol => {
+        if (selectedEst && sol.Estado !== selectedEst) return;
+        if (selectedReg && sol.Regional !== selectedReg) return;
+        if (selectedOp && sol['Operación'] !== selectedOp) return;
+        if (search) {
+          const txt = `${sol.IdSolicitud} ${sol.Usuario} ${sol.Justificación} ${sol['Operación']} ${sol.Regional}`.toLowerCase();
+          if (!txt.includes(search)) return;
+        }
+        if (sol.Categoria) {
+          categoriaCounts[sol.Categoria] = (categoriaCounts[sol.Categoria] || 0) + 1;
+        }
+      });
+
+      // Update Estado Select options
+      const estadoSelect = document.getElementById('sol-filtro-estado');
+      const estadosList = [
+        { val: 'BORRADOR', label: 'Borrador' },
+        { val: 'PENDIENTE', label: 'Pendiente' },
+        { val: 'APROBADA', label: 'Aprobada' },
+        { val: 'DESPACHADA', label: 'Despachada' },
+        { val: 'PARCIAL', label: 'Parcial' },
+        { val: 'COMPLETADA', label: 'Completada' },
+        { val: 'RECHAZADA', label: 'Rechazada' },
+        { val: 'CANCELADA', label: 'Cancelada' }
+      ];
+      estadoSelect.innerHTML = `<option value="">Todos (${masterSolicitudes.length})</option>`;
+      estadosList.forEach(e => {
+        const count = estadoCounts[e.val] || 0;
+        const opt = document.createElement('option');
+        opt.value = e.val;
+        opt.textContent = `${e.label} (${count})`;
+        if (e.val === selectedEst) opt.selected = true;
+        estadoSelect.appendChild(opt);
+      });
+
+      // Update Regional Select options
+      const regionalSelect = document.getElementById('sol-filtro-regional');
+      const sortedRegs = CONFIG.regionalesFiltro || [];
+      const totalRegCount = Object.values(regionalCounts).reduce((a, b) => a + b, 0);
+      regionalSelect.innerHTML = `<option value="">Todas (${totalRegCount})</option>`;
+      sortedRegs.forEach(r => {
+        const count = regionalCounts[r] || 0;
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = `${r} (${count})`;
+        if (r === selectedReg) opt.selected = true;
+        regionalSelect.appendChild(opt);
+      });
+
+      // Update Operacion Select options
+      const operacionSelect = document.getElementById('sol-filtro-operacion');
+      let allowedOps = [];
+      if (selectedReg) {
+        allowedOps = CONFIG.opsPorRegional[selectedReg] || [];
+      } else {
+        const allOpsSet = new Set();
+        Object.values(CONFIG.opsPorRegional).forEach(ops => {
+          ops.forEach(op => allOpsSet.add(op));
+        });
+        allowedOps = Array.from(allOpsSet).sort();
+      }
+      const totalOpCount = Object.values(operacionCounts).reduce((a, b) => a + b, 0);
+      operacionSelect.innerHTML = `<option value="">Todas (${totalOpCount})</option>`;
+      allowedOps.forEach(op => {
+        const count = operacionCounts[op] || 0;
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = `${op} (${count})`;
+        if (op === selectedOp) opt.selected = true;
+        operacionSelect.appendChild(opt);
+      });
+
+      renderSolicitudesCategoryButtons(categoriaCounts);
+    }
+
+    function renderSolicitudesCategoryButtons(categoriaCounts) {
+      const container = document.getElementById('sol-filter-categoria-buttons');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const totalCount = Object.values(categoriaCounts).reduce((a, b) => a + b, 0);
+
+      // TODAS
+      const btnAll = document.createElement('button');
+      btnAll.type = 'button';
+      btnAll.className = `category-chip ${activeSolicitudCategory === '' ? 'active' : ''}`;
+      btnAll.innerHTML = `📌 TODAS <span>(${totalCount})</span>`;
+      btnAll.addEventListener('click', () => {
+        if (activeSolicitudCategory !== '') {
+          activeSolicitudCategory = '';
+          filterAndRenderSolicitudes();
+        }
+      });
+      container.appendChild(btnAll);
+
+      // Categories from db or default fallback
+      const categories = kardexLookups.categorias && kardexLookups.categorias.length 
+        ? kardexLookups.categorias 
+        : ['ACTIVO FIJO', 'DOTACIÓN', 'HERRAMIENTA', 'EPP', 'PAPELERIA', 'TECNOLOGIA'];
+
+      categories.forEach(cat => {
+        const count = categoriaCounts[cat] || 0;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `category-chip ${activeSolicitudCategory === cat ? 'active' : ''}`;
+        
+        let icon = '🏷️';
+        const upper = cat.toUpperCase();
+        if (upper.includes('TECNOLOGIA') || upper.includes('TECNOLOGÍA')) icon = '💻';
+        else if (upper.includes('ACTIVO')) icon = '🏢';
+        else if (upper.includes('HERRAMIENTA')) icon = '🔧';
+        else if (upper.includes('DOTACION') || upper.includes('DOTACIÓN')) icon = '👕';
+        else if (upper.includes('EPP')) icon = '🦺';
+        else if (upper.includes('PAPELERIA') || upper.includes('PAPELERÍA')) icon = '📄';
+
+        btn.innerHTML = `${icon} ${cat} <span>(${count})</span>`;
+        btn.addEventListener('click', () => {
+          if (activeSolicitudCategory === cat) {
+            activeSolicitudCategory = '';
+          } else {
+            activeSolicitudCategory = cat;
+          }
+          filterAndRenderSolicitudes();
+        });
+        container.appendChild(btn);
+      });
     }
 
     function renderSolicitudesTableRows() {
@@ -8399,7 +8609,7 @@
       bulkArticlesList = [];
       if (pasteArea) pasteArea.value = '';
       
-      switchFormArticulosTab('excel');
+      switchFormArticulosTab('manual');
       updateFormArticulosGridCount();
       
       modal.style.display = 'flex';
@@ -8742,7 +8952,7 @@
         }
       }
 
-      switchFormKardexTab('excel');
+      switchFormKardexTab('manual');
       updateFormKardexGridCount();
       
       modal.style.display = 'flex';
@@ -8917,6 +9127,31 @@
       renderFormKardexGrid();
     }
 
+    async function updateRowStockActual(row, idx, tr) {
+      if (!row.IdArticulo || !row.Operacion) {
+        row.StockActual = 0;
+        const stockInput = tr.querySelector('.stock-input');
+        if (stockInput) stockInput.value = 0;
+        return;
+      }
+
+      try {
+        const res = await fetch(`/inventario/api/articulos/stock/${row.IdArticulo}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const matched = data.find(item => item.operacion.trim().toLowerCase() === row.Operacion.trim().toLowerCase());
+        const stockVal = matched ? matched.stock : 0;
+        row.StockActual = stockVal;
+        const stockInput = tr.querySelector('.stock-input');
+        if (stockInput) stockInput.value = stockVal;
+      } catch (err) {
+        console.error('Error fetching stock:', err);
+        row.StockActual = 0;
+        const stockInput = tr.querySelector('.stock-input');
+        if (stockInput) stockInput.value = 0;
+      }
+    }
+
     function renderFormKardexGrid() {
       const tbody = document.getElementById('formkardex-grid-body');
       if (!tbody) return;
@@ -8924,7 +9159,7 @@
       tbody.innerHTML = '';
 
       if (bulkKardexList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">La grilla está vacía. Agrega una fila o pega datos de Excel.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">La grilla está vacía. Agrega una fila o pega datos de Excel.</td></tr>';
         return;
       }
 
@@ -9017,6 +9252,9 @@
             <datalist id="articulo-list-${idx}">${articuloOptionsHtml}</datalist>
           </td>
           <td style="padding: 6px 10px;">
+            <input type="number" class="grid-cell-input stock-input" value="${row.StockActual || 0}" readonly disabled style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: #e2e8f0; color: #475569; text-align: right; font-weight: 600;">
+          </td>
+          <td style="padding: 6px 10px;">
             <input type="number" class="grid-cell-input cantidad-input" value="${row.Cantidad || ''}" placeholder="0" required style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; text-align: right;">
           </td>
           <td style="padding: 6px 10px;">
@@ -9067,6 +9305,7 @@
           const matchedOp = kardexLookups.operaciones.find(o => o.operacion.toUpperCase() === val.toUpperCase());
           if (matchedOp) {
             row.Operacion = matchedOp.operacion;
+            updateRowStockActual(row, idx, tr);
           }
         });
 
@@ -9101,10 +9340,12 @@
             row.IdArticulo = matchedArt.Id;
             row.ArticuloName = matchedArt.Articulo;
             row.ValorUnitario = matchedArt.Costo || 0;
+            updateRowStockActual(row, idx, tr);
           } else {
             row.IdArticulo = '';
             row.ArticuloName = '';
             row.ValorUnitario = 0;
+            updateRowStockActual(row, idx, tr);
           }
         });
 
@@ -9115,6 +9356,8 @@
         obsInput.addEventListener('input', () => {
           row.Observaciones = obsInput.value;
         });
+
+        updateRowStockActual(row, idx, tr);
 
         tbody.appendChild(tr);
       });
@@ -9406,7 +9649,7 @@
         const res = await fetch(`/inventario/api/kardex-pendiente/${id}/novedad`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ novedad: msg.trim() })
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, novedad: msg.trim() })
         });
 
         const data = await res.json();
@@ -9430,6 +9673,7 @@
       if (!confirm(confirmMsg)) return;
 
       const btn = document.getElementById('pendiente-btn-recibir-masivo');
+      const originalBtnHtml = btn.innerHTML;
       btn.disabled = true;
       btn.textContent = '⏳ Recibiendo...';
 
@@ -9455,6 +9699,7 @@
         alert(err.message);
       } finally {
         btn.disabled = false;
+        btn.innerHTML = originalBtnHtml;
         updatePendientesSelectedCount();
       }
     }

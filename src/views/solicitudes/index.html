@@ -554,26 +554,9 @@
     if (estado === 'PENDIENTE') {
       return [
         { estado: 'APROBADA', label: 'Aprobar', clase: 'btn-success' },
+        { estado: 'PARCIAL', label: 'Aprobar Parcial', clase: 'btn-warning' },
         { estado: 'RECHAZADA', label: 'Rechazar', clase: 'btn-danger' },
         { estado: 'CANCELADA', label: 'Cancelar', clase: 'btn-secondary' },
-      ];
-    }
-    if (estado === 'APROBADA') {
-      return [
-        { estado: 'DESPACHADA', label: 'Despachar', clase: 'btn-primary' },
-        { estado: 'PARCIAL', label: 'Marcar Parcial', clase: 'btn-secondary' },
-      ];
-    }
-    if (estado === 'DESPACHADA') {
-      return [
-        { estado: 'COMPLETADA', label: 'Completar', clase: 'btn-success' },
-        { estado: 'PARCIAL', label: 'Marcar Parcial', clase: 'btn-secondary' },
-      ];
-    }
-    if (estado === 'PARCIAL') {
-      return [
-        { estado: 'DESPACHADA', label: 'Despachar Restante', clase: 'btn-primary' },
-        { estado: 'COMPLETADA', label: 'Completar', clase: 'btn-success' },
       ];
     }
     return [];
@@ -1323,13 +1306,23 @@
           <div class="section-title">Artículos</div>
           <div class="table-container">
             <table style="font-size: .85rem;">
-              <thead><tr><th>Referencia</th><th>Elemento</th><th>Cantidad</th><th>Categoría</th><th>Nota</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Referencia</th>
+                  <th>Elemento</th>
+                  <th>Cant. Solicitada</th>
+                  ${['PARCIAL', 'DESPACHADA', 'COMPLETADA'].includes(solicitudActual.Estado) ? '<th>Cant. Despachada</th>' : ''}
+                  <th>Categoría</th>
+                  <th>Nota</th>
+                </tr>
+              </thead>
               <tbody>
                 ${solicitudActual.items.map(item => `
                   <tr>
                     <td>${item.Referencia || '—'}</td>
                     <td>${item.Elemento || item.Articulo || '—'}</td>
                     <td>${item.Cantidad}</td>
+                    ${['PARCIAL', 'DESPACHADA', 'COMPLETADA'].includes(solicitudActual.Estado) ? `<td><strong>${item.CantidadDespachada || 0}</strong></td>` : ''}
                     <td>${item.CategoriaArticulo || '—'}</td>
                     <td>${item.Nota || '—'}</td>
                   </tr>
@@ -1401,19 +1394,53 @@
       return;
     }
 
-    const confirmar = window.confirm(
-      `Confirma cambiar el estado de ${solicitudActual.Estado} a ${estadoDestino}?`
-    );
-    if (!confirmar) return;
+    let payloadItems = null;
+
+    if (estadoDestino === 'PARCIAL') {
+      const confirmar = window.confirm(
+        `Confirma cambiar el estado de ${solicitudActual.Estado} a PARCIAL? Deberá confirmar la cantidad despachada de cada artículo.`
+      );
+      if (!confirmar) return;
+
+      payloadItems = [];
+      for (const item of solicitudActual.items) {
+        const valDefault = item.CantidadDespachada || item.Cantidad || 0;
+        const input = window.prompt(
+          `Ingrese la cantidad despachada para el artículo:\n"${item.Elemento || item.Articulo || 'Artículo'}"\n(Cantidad Solicitada: ${item.Cantidad})`,
+          valDefault
+        );
+        if (input === null) return; // Canceló todo el flujo
+
+        const parsed = parseInt(input);
+        if (isNaN(parsed) || parsed < 0) {
+          alert('Cantidad no válida. Operación cancelada.');
+          return;
+        }
+        payloadItems.push({
+          IdArticulo: item.IdArticulo,
+          CantidadDespachada: parsed
+        });
+      }
+    } else {
+      const confirmar = window.confirm(
+        `Confirma cambiar el estado de ${solicitudActual.Estado} a ${estadoDestino}?`
+      );
+      if (!confirmar) return;
+    }
 
     try {
+      const bodyPayload = {
+        estado: estadoDestino,
+        usuario: usuarioId,
+      };
+      if (payloadItems) {
+        bodyPayload.items = payloadItems;
+      }
+
       const res = await fetch(`${API_BASE}/solicitud/${solicitudActual.IdSolicitud}/estado`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          estado: estadoDestino,
-          usuario: usuarioId,
-        }),
+        body: JSON.stringify(bodyPayload),
       });
 
       const data = await res.json();

@@ -1710,7 +1710,33 @@ router.get('/api/kardex-pendiente', async (req, res) => {
 router.patch('/api/kardex-pendiente/:id/novedad', async (req, res) => {
   try {
     const { id } = req.params;
-    const { novedad } = req.body;
+    const { usuario, novedad } = req.body;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const [[registro]] = await pool.execute(
+      `SELECT k.\`OperaciónDestino\` AS OperacionDestino, k.Categoria
+       FROM Kardex_Pendiente kp
+       JOIN Dynamic_Kardex k ON k.IdKardex = kp.IdKardexOriginal
+       WHERE kp.IdKardexOriginal = ?`,
+      [id]
+    );
+    if (!registro) {
+      return res.status(404).json({ error: 'Registro pendiente no encontrado' });
+    }
+    if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(registro.OperacionDestino)) {
+      return res.status(403).json({ error: 'Usuario no autorizado para este registro' });
+    }
+    if (acceso.filtroCategorias && !acceso.filtroCategorias.includes(registro.Categoria)) {
+      return res.status(403).json({ error: 'Usuario no autorizado para este registro' });
+    }
 
     await pool.execute(
       'UPDATE Kardex_Pendiente SET Novedad = ? WHERE IdKardexOriginal = ?',
@@ -1736,15 +1762,35 @@ router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
       return res.status(400).json({ error: 'Debe seleccionar al menos un registro' });
     }
 
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
     await conn.beginTransaction();
 
     for (const idOriginal of ids) {
+      const [[pendiente]] = await conn.execute(
+        'SELECT * FROM Kardex_Pendiente WHERE IdKardexOriginal = ? LIMIT 1 FOR UPDATE',
+        [idOriginal]
+      );
+      if (!pendiente || pendiente.Procesado) {
+        throw new Error(`El registro ${idOriginal} ya fue procesado o no existe`);
+      }
+
       const [[originalKardex]] = await conn.execute(
         'SELECT * FROM Dynamic_Kardex WHERE IdKardex = ? LIMIT 1 FOR UPDATE',
         [idOriginal]
       );
       if (!originalKardex) {
         throw new Error(`Registro original ${idOriginal} no encontrado`);
+      }
+
+      if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(originalKardex.OperaciónDestino)) {
+        throw new Error(`No autorizado para recibir el registro ${idOriginal}`);
+      }
+      if (acceso.filtroCategorias && !acceso.filtroCategorias.includes(originalKardex.Categoria)) {
+        throw new Error(`No autorizado para recibir el registro ${idOriginal}`);
       }
 
       const [[destOp]] = await conn.execute(
