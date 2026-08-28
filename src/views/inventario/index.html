@@ -1977,25 +1977,31 @@
         <main class="content-area">
           <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
             <div class="results-count" id="results-text">Mostrando 0 artículos</div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <button id="btn-view-mosaico" class="btn-view-toggle active" title="Vista Mosaico" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="14" width="7" height="7"></rect>
-                  <rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <!-- Add Kardex Button in Inventario Tab -->
+              <button id="inventario-btn-agregar-kardex" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
+                <span>➕</span> Agregar Kardex
               </button>
-              <button id="btn-view-detalle" class="btn-view-toggle" title="Vista Detalle" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="8" y1="6" x2="21" y2="6"></line>
-                  <line x1="8" y1="12" x2="21" y2="12"></line>
-                  <line x1="8" y1="18" x2="21" y2="18"></line>
-                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                </svg>
-              </button>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button id="btn-view-mosaico" class="btn-view-toggle active" title="Vista Mosaico" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                </button>
+                <button id="btn-view-detalle" class="btn-view-toggle" title="Vista Detalle" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2093,6 +2099,32 @@
             <button id="pendiente-btn-recibir-masivo" class="btn" style="background-color: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;">
               <span>✔️</span> Recibir Masivo (<span id="pendiente-selected-count">0</span>)
             </button>
+          </div>
+        </div>
+
+        <!-- Filtros de búsqueda para Pendiente por recibir -->
+        <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid var(--border); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="pendiente-filter-regional" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Regional</label>
+            <select id="pendiente-filter-regional" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
+              <option value="">Todas las regionales</option>
+            </select>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="pendiente-filter-operacion" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Operación Destino</label>
+            <select id="pendiente-filter-operacion" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
+              <option value="">Todas las operaciones</option>
+            </select>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="pendiente-filter-categoria" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Categoría</label>
+            <select id="pendiente-filter-categoria" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
+              <option value="">Todas las categorías</option>
+            </select>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="pendiente-filter-search" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Buscar Artículo</label>
+            <input type="text" id="pendiente-filter-search" placeholder="Escribe el nombre del artículo..." style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
           </div>
         </div>
 
@@ -3036,6 +3068,55 @@
         <button type="button" id="formarticulos-btn-cancel" style="padding: 8px 20px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.85rem;">Cancelar</button>
         <button type="button" id="formarticulos-btn-guardar" style="padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; background: #16a34a; color: white; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
           <span>💾</span> Guardar Artículos (0)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Ajuste Manual de Stock (Inventario) -->
+  <div id="ajuste-stock-modal" class="modal" style="display: none; align-items: center; justify-content: center; z-index: 1010; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5);">
+    <div style="max-width: 500px; width: 90%; margin: auto; background: white; color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column;">
+      <div class="modal-header" style="background: #f8fafc; color: var(--text); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--primary);">Ajuste Manual de Inventario</h3>
+          <p style="margin: 2px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Ajusta la cantidad disponible mediante un movimiento tipo AJUSTE</p>
+        </div>
+        <span id="ajuste-stock-modal-close" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+
+      <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label style="font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">Artículo</label>
+          <input type="text" id="ajuste-stock-articulo" disabled style="padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #f8fafc; color: var(--text); font-weight: 600;">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">Regional</label>
+            <input type="text" id="ajuste-stock-regional" disabled style="padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #f8fafc; color: var(--text);">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">Operación</label>
+            <input type="text" id="ajuste-stock-operacion" disabled style="padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #f8fafc; color: var(--text);">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">Cantidad Actual</label>
+            <input type="text" id="ajuste-stock-cantidad-actual" disabled style="padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #f8fafc; color: var(--text); font-weight: 600; text-align: center;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-weight: 600; font-size: 0.8rem; color: var(--primary);">Nueva Cantidad *</label>
+            <input type="number" id="ajuste-stock-nueva-cantidad" placeholder="Ingresa el nuevo stock..." style="padding: 10px; border: 1.5px solid var(--primary); border-radius: 8px; font-size: 0.85rem; background: white; color: var(--text); font-weight: 600; text-align: center; outline: none;">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="background: #f8fafc; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border);">
+        <button type="button" id="ajuste-stock-btn-cancel" style="padding: 8px 20px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.85rem;">Cancelar</button>
+        <button type="button" id="ajuste-stock-btn-guardar" style="padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+          <span>💾</span> Guardar Ajuste
         </button>
       </div>
     </div>
@@ -4187,6 +4268,9 @@
         return;
       }
 
+      const opUpper = (CONFIG.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+      const puedeEditarInventario = opUpper === 'ADMINISTRACION' || ['Inventario', 'Sistema', 'AuxiliarR', 'Auxiliar'].includes(CONFIG.rol);
+
       const table = document.createElement('table');
       table.className = 'kardex-table';
       
@@ -4194,6 +4278,7 @@
         <thead>
           <tr>
             <th style="width: 50px; text-align: center;">Imagen</th>
+            ${puedeEditarInventario ? '<th style="width: 60px; text-align: center;">Acciones</th>' : ''}
             <th style="cursor: pointer;" data-sort="Articulo">Artículo<span id="inv-sort-Articulo" class="sort-indicator"></span></th>
             <th style="width: 80px; text-align: center; cursor: pointer;" data-sort="Talla">Talla<span id="inv-sort-Talla" class="sort-indicator"></span></th>
             <th style="width: 120px; cursor: pointer;" data-sort="Categoria">Categoría<span id="inv-sort-Categoria" class="sort-indicator"></span></th>
@@ -4247,12 +4332,19 @@
           imgHtml = `<span style="font-size:1.2rem;">👔</span>`;
         }
 
+        const actionsHtml = puedeEditarInventario
+          ? `<td style="text-align: center; vertical-align: middle;" onclick="event.stopPropagation()">
+               <button class="action-btn edit-inv-btn" style="background: transparent; border: none; font-size: 1.1rem; cursor: pointer; color: var(--primary); padding: 0;" title="Ajustar stock">📝</button>
+             </td>`
+          : '';
+
         tr.innerHTML = `
           <td style="text-align: center; vertical-align: middle;">
             <div class="tbl-img-wrap" style="cursor: zoom-in; display: inline-flex; align-items: center; justify-content: center;">
               ${imgHtml}
             </div>
           </td>
+          ${actionsHtml}
           <td style="font-weight: 600; font-size: 0.8rem; max-width: 250px; word-break: break-word; vertical-align: middle;">
             ${item.Articulo}
           </td>
@@ -4284,6 +4376,16 @@
             imageModal.style.display = 'block';
           }
         });
+
+        if (puedeEditarInventario) {
+          const btnEditInv = tr.querySelector('.edit-inv-btn');
+          if (btnEditInv) {
+            btnEditInv.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openAjusteStockModal(item);
+            });
+          }
+        }
 
         // Placa input event handlers
         const placaInput = tr.querySelector('.placa-input');
@@ -4375,6 +4477,9 @@
         return;
       }
 
+      const opUpper = (CONFIG.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+      const puedeEditarInventario = opUpper === 'ADMINISTRACION' || ['Inventario', 'Sistema', 'AuxiliarR', 'Auxiliar'].includes(CONFIG.rol);
+
       items.forEach(item => {
         const card = document.createElement('div');
         card.className = 'item-card';
@@ -4409,7 +4514,10 @@
               ${item.Clasificacion ? `<span class="badge-classification">${item.Clasificacion}</span>` : ''}
             </div>
             
-            <h3 class="card-title" title="${item.Articulo}">${item.Articulo}</h3>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+              <h3 class="card-title" title="${item.Articulo}" style="margin: 0; font-size: 0.85rem; font-weight: 700; line-height: 1.3;">${item.Articulo}</h3>
+              ${puedeEditarInventario ? '<button class="action-btn edit-inv-btn" style="background: transparent; border: none; font-size: 1.1rem; cursor: pointer; color: var(--primary); padding: 0; line-height: 1;" title="Ajustar stock" onclick="event.stopPropagation()">📝</button>' : ''}
+            </div>
             
             <div class="card-details">
               <div>
@@ -4461,6 +4569,16 @@
             imageModal.style.display = 'block';
           }
         });
+
+        if (puedeEditarInventario) {
+          const btnEditInv = card.querySelector('.edit-inv-btn');
+          if (btnEditInv) {
+            btnEditInv.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openAjusteStockModal(item);
+            });
+          }
+        }
 
         // Placa Input listeners to stop propagation and send update request
         const placaInput = card.querySelector('.placa-input');
@@ -6292,7 +6410,7 @@
 
       // Check user permissions
       const opUpper = (CONFIG.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-      const esAdministracion = opUpper === 'ADMINISTRACION';
+      const esAdministracion = opUpper === 'ADMINISTRACION' || ['AuxiliarR', 'Auxiliar'].includes(CONFIG.rol);
       const puedeEliminar = CONFIG.rol === 'Inventario' || CONFIG.rol === 'Sistema';
 
       // Set user profile
@@ -6565,7 +6683,7 @@
       }
 
       const opUpper = (CONFIG.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-      const esAdministracion = opUpper === 'ADMINISTRACION';
+      const esAdministracion = opUpper === 'ADMINISTRACION' || ['AuxiliarR', 'Auxiliar'].includes(CONFIG.rol);
       const puedeEliminar = CONFIG.rol === 'Inventario' || CONFIG.rol === 'Sistema';
 
       allArticlesData.forEach(art => {
@@ -9461,6 +9579,104 @@
       }
     }
 
+    let currentAjusteItem = null;
+
+    function openAjusteStockModal(item) {
+      currentAjusteItem = item;
+      
+      const modal = document.getElementById('ajuste-stock-modal');
+      const inputArt = document.getElementById('ajuste-stock-articulo');
+      const inputReg = document.getElementById('ajuste-stock-regional');
+      const inputOp = document.getElementById('ajuste-stock-operacion');
+      const inputCantAct = document.getElementById('ajuste-stock-cantidad-actual');
+      const inputNewCant = document.getElementById('ajuste-stock-nueva-cantidad');
+
+      if (!modal) return;
+
+      inputArt.value = item.Articulo || '';
+      inputReg.value = item.Regional || '';
+      inputOp.value = item.Operacion || '';
+      inputCantAct.value = item.StockDisponible !== undefined ? item.StockDisponible : 0;
+      inputNewCant.value = '';
+
+      modal.style.display = 'flex';
+      inputNewCant.focus();
+    }
+
+    async function saveAjusteStock() {
+      if (!currentAjusteItem) return;
+
+      const inputNewCant = document.getElementById('ajuste-stock-nueva-cantidad');
+      const nuevaVal = inputNewCant.value.trim();
+      if (nuevaVal === '') {
+        alert('Por favor ingresa una nueva cantidad.');
+        return;
+      }
+
+      const nuevaCantidad = parseInt(nuevaVal);
+      if (isNaN(nuevaCantidad) || nuevaCantidad < 0) {
+        alert('Por favor ingresa una cantidad válida no negativa.');
+        return;
+      }
+
+      const cantidadActual = currentAjusteItem.StockDisponible !== undefined ? currentAjusteItem.StockDisponible : 0;
+      const diff = nuevaCantidad - cantidadActual;
+      if (diff === 0) {
+        alert('La nueva cantidad es igual a la cantidad actual. No hay cambios para guardar.');
+        return;
+      }
+
+      const msgConfirm = `¿Confirmas que deseas aplicar este ajuste en el Kardex?\n\n` +
+                         `Artículo: ${currentAjusteItem.Articulo}\n` +
+                         `Operación: ${currentAjusteItem.Operacion}\n` +
+                         `Stock anterior: ${cantidadActual}\n` +
+                         `Nuevo stock: ${nuevaCantidad}\n` +
+                         `Movimiento a registrar: AJUSTE por ${diff > 0 ? '+' : ''}${diff} unidades.`;
+
+      if (!confirm(msgConfirm)) return;
+
+      const btnGuardar = document.getElementById('ajuste-stock-btn-guardar');
+      const origText = btnGuardar.innerHTML;
+      btnGuardar.disabled = true;
+      btnGuardar.textContent = '⏳ Guardando...';
+
+      try {
+        const res = await fetch('/inventario/api/inventario/ajustar', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            idArticulo: currentAjusteItem.IdArticulo,
+            regional: currentAjusteItem.Regional,
+            operacion: currentAjusteItem.Operacion,
+            nuevaCantidad,
+            cantidadActual
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al guardar el ajuste');
+
+        alert('Ajuste guardado exitosamente.');
+        document.getElementById('ajuste-stock-modal').style.display = 'none';
+        
+        // Refresh inventory data
+        if (window.fetchData) {
+          window.fetchData();
+        } else {
+          location.reload();
+        }
+      } catch (err) {
+        console.error(err);
+        alert(err.message);
+      } finally {
+        btnGuardar.disabled = false;
+        btnGuardar.innerHTML = origText;
+      }
+    }
+
     // Set up formkardex-modal general button events
     document.addEventListener('DOMContentLoaded', () => {
       const modal = document.getElementById('formkardex-modal');
@@ -9471,6 +9687,7 @@
       const btnProcesar = document.getElementById('formkardex-btn-procesar');
       const btnAddRow = document.getElementById('formkardex-btn-add-row');
       const btnGuardar = document.getElementById('formkardex-btn-guardar');
+      const btnInventarioAgregar = document.getElementById('inventario-btn-agregar-kardex');
 
       if (closeSpan) closeSpan.addEventListener('click', () => { modal.style.display = 'none'; });
       if (btnCancel) btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
@@ -9480,6 +9697,17 @@
       if (btnProcesar) btnProcesar.addEventListener('click', processPastedKardexExcelData);
       if (btnAddRow) btnAddRow.addEventListener('click', addFormKardexBlankRow);
       if (btnGuardar) btnGuardar.addEventListener('click', saveFormKardex);
+      if (btnInventarioAgregar) btnInventarioAgregar.addEventListener('click', openFormKardexModal);
+
+      // Set up ajuste-stock-modal general button events
+      const adjModal = document.getElementById('ajuste-stock-modal');
+      const adjCloseSpan = document.getElementById('ajuste-stock-modal-close');
+      const adjBtnCancel = document.getElementById('ajuste-stock-btn-cancel');
+      const adjBtnGuardar = document.getElementById('ajuste-stock-btn-guardar');
+
+      if (adjCloseSpan) adjCloseSpan.addEventListener('click', () => { adjModal.style.display = 'none'; });
+      if (adjBtnCancel) adjBtnCancel.addEventListener('click', () => { adjModal.style.display = 'none'; });
+      if (adjBtnGuardar) adjBtnGuardar.addEventListener('click', saveAjusteStock);
     });
 
     // ==========================================
@@ -9518,6 +9746,17 @@
         });
       }
 
+      // Add event listeners for new filters
+      const fReg = document.getElementById('pendiente-filter-regional');
+      const fOp = document.getElementById('pendiente-filter-operacion');
+      const fCat = document.getElementById('pendiente-filter-categoria');
+      const fSearch = document.getElementById('pendiente-filter-search');
+
+      if (fReg) fReg.addEventListener('change', () => { renderPendientesList(); });
+      if (fOp) fOp.addEventListener('change', () => { renderPendientesList(); });
+      if (fCat) fCat.addEventListener('change', () => { renderPendientesList(); });
+      if (fSearch) fSearch.addEventListener('input', () => { renderPendientesList(); });
+
       fetchPendientesList();
     }
 
@@ -9535,11 +9774,57 @@
 
         const data = await res.json();
         allPendientes = data.results || [];
+        
+        populatePendientesFilterSelectors();
         renderPendientesList();
       } catch (err) {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #dc2626; padding: 40px; font-weight: 600;">Error: ${err.message}</td></tr>`;
       }
+    }
+
+    function populatePendientesFilterSelectors() {
+      const selReg = document.getElementById('pendiente-filter-regional');
+      const selOp = document.getElementById('pendiente-filter-operacion');
+      const selCat = document.getElementById('pendiente-filter-categoria');
+
+      if (!selReg || !selOp || !selCat) return;
+
+      const currentReg = selReg.value;
+      const currentOp = selOp.value;
+      const currentCat = selCat.value;
+
+      const regionalCounts = {};
+      const operacionCounts = {};
+      const categoriaCounts = {};
+
+      allPendientes.forEach(item => {
+        const r = item.Regional || 'Sin Regional';
+        const o = item.OperaciónDestino || 'Sin Operación';
+        const c = item.Categoria || 'Sin Categoría';
+
+        regionalCounts[r] = (regionalCounts[r] || 0) + 1;
+        operacionCounts[o] = (operacionCounts[o] || 0) + 1;
+        categoriaCounts[c] = (categoriaCounts[c] || 0) + 1;
+      });
+
+      selReg.innerHTML = `<option value="">Todas las regionales (${allPendientes.length})</option>`;
+      Object.keys(regionalCounts).sort().forEach(r => {
+        selReg.innerHTML += `<option value="${r === 'Sin Regional' ? '' : r}">${r} (${regionalCounts[r]})</option>`;
+      });
+      selReg.value = regionalCounts[currentReg] ? currentReg : '';
+
+      selOp.innerHTML = `<option value="">Todas las operaciones (${allPendientes.length})</option>`;
+      Object.keys(operacionCounts).sort().forEach(o => {
+        selOp.innerHTML += `<option value="${o === 'Sin Operación' ? '' : o}">${o} (${operacionCounts[o]})</option>`;
+      });
+      selOp.value = operacionCounts[currentOp] ? currentOp : '';
+
+      selCat.innerHTML = `<option value="">Todas las categorías (${allPendientes.length})</option>`;
+      Object.keys(categoriaCounts).sort().forEach(c => {
+        selCat.innerHTML += `<option value="${c === 'Sin Categoría' ? '' : c}">${c} (${categoriaCounts[c]})</option>`;
+      });
+      selCat.value = categoriaCounts[currentCat] ? currentCat : '';
     }
 
     function renderPendientesList() {
@@ -9550,12 +9835,28 @@
       const selectAllCheckbox = document.getElementById('pendiente-select-all');
       if (selectAllCheckbox) selectAllCheckbox.checked = false;
 
-      if (allPendientes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">No hay transferencias pendientes por recibir en tus operaciones autorizadas.</td></tr>';
+      const selReg = document.getElementById('pendiente-filter-regional')?.value || '';
+      const selOp = document.getElementById('pendiente-filter-operacion')?.value || '';
+      const selCat = document.getElementById('pendiente-filter-categoria')?.value || '';
+      const searchVal = (document.getElementById('pendiente-filter-search')?.value || '').trim().toLowerCase();
+
+      const filtered = allPendientes.filter(item => {
+        if (selReg && item.Regional !== selReg) return false;
+        if (selOp && item.OperaciónDestino !== selOp) return false;
+        if (selCat && item.Categoria !== selCat) return false;
+        if (searchVal) {
+          const name = (item.Articulo || '').toLowerCase();
+          if (!name.includes(searchVal)) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">No hay transferencias pendientes que coincidan con los filtros.</td></tr>';
         return;
       }
 
-      allPendientes.forEach(item => {
+      filtered.forEach(item => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
 

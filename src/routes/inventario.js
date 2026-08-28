@@ -1187,10 +1187,11 @@ router.post('/api/articulos/guardar', upload.single('imagenArchivo'), async (req
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    // Verificar si pertenece a la Operación Administracion
+    // Verificar si pertenece a la Operación Administracion o tiene Rol AuxiliarR/Auxiliar
     const opUpper = (acceso.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-    if (opUpper !== 'ADMINISTRACION') {
-      return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración pueden gestionar artículos.' });
+    const esAdministracion = opUpper === 'ADMINISTRACION' || ['AuxiliarR', 'Auxiliar'].includes(acceso.rol);
+    if (!esAdministracion) {
+      return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración o con Rol AuxiliarR/Auxiliar pueden gestionar artículos.' });
     }
 
     let publicUrl = imagen || null;
@@ -1284,10 +1285,11 @@ router.post('/api/articulos/guardar-masivo', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    // Verificar si pertenece a la Operación Administracion
+    // Verificar si pertenece a la Operación Administracion o tiene Rol AuxiliarR/Auxiliar
     const opUpper = (acceso.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-    if (opUpper !== 'ADMINISTRACION') {
-      return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración pueden gestionar artículos.' });
+    const esAdministracion = opUpper === 'ADMINISTRACION' || ['AuxiliarR', 'Auxiliar'].includes(acceso.rol);
+    if (!esAdministracion) {
+      return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración o con Rol AuxiliarR/Auxiliar pueden gestionar artículos.' });
     }
 
     await conn.beginTransaction();
@@ -1835,6 +1837,77 @@ router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
   } catch (err) {
     await conn.rollback();
     console.error('[inventario] POST /api/kardex-pendiente/recibir-masivo error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// POST /api/inventario/ajustar - Manual inventory adjustment (saves AJUSTE to Kardex)
+router.post('/api/inventario/ajustar', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario, idArticulo, regional, operacion, nuevaCantidad, cantidadActual } = req.body;
+    if (!usuario || !idArticulo || !operacion || nuevaCantidad === undefined || cantidadActual === undefined) {
+      return res.status(400).json({ error: 'Campos requeridos incompletos.' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado.' });
+    }
+
+    const parsedNueva = parseInt(nuevaCantidad);
+    const parsedActual = parseInt(cantidadActual);
+    if (isNaN(parsedNueva) || isNaN(parsedActual)) {
+      return res.status(400).json({ error: 'Cantidades inválidas.' });
+    }
+
+    const diff = parsedNueva - parsedActual;
+    if (diff === 0) {
+      return res.status(400).json({ error: 'La nueva cantidad es igual a la actual.' });
+    }
+
+    // 1. Fetch Costo and Categoria from Dynamic_Articulos
+    const [[articulo]] = await conn.execute(
+      'SELECT Costo, Categoria FROM Dynamic_Articulos WHERE Id = ? LIMIT 1',
+      [idArticulo]
+    );
+    if (!articulo) {
+      return res.status(404).json({ error: 'Artículo no encontrado en la base de datos.' });
+    }
+
+    const costo = articulo.Costo ? parseFloat(articulo.Costo) : 0;
+    const categoria = articulo.Categoria || 'General';
+
+    // 2. Insert AJUSTE movement into Dynamic_Kardex
+    const idKardex = randomUUID().replace(/-/g, '').toLowerCase();
+    
+    await conn.beginTransaction();
+
+    await conn.execute(
+      `INSERT INTO Dynamic_Kardex
+       (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+        \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+        Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro)
+       VALUES (?, NOW(), 'AJUSTE', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, '-Ajuste manual-', NOW())`,
+      [
+        idKardex,
+        regional || null,
+        operacion,
+        categoria,
+        idArticulo,
+        diff,
+        costo,
+        usuario
+      ]
+    );
+
+    await conn.commit();
+    res.json({ success: true, message: 'Ajuste guardado exitosamente.' });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[inventario] POST /api/inventario/ajustar error:', err);
     res.status(500).json({ error: err.message });
   } finally {
     conn.release();
