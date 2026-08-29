@@ -2105,12 +2105,6 @@
         <!-- Filtros de búsqueda para Pendiente por recibir -->
         <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid var(--border); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label for="pendiente-filter-regional" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Regional</label>
-            <select id="pendiente-filter-regional" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
-              <option value="">Todas las regionales</option>
-            </select>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
             <label for="pendiente-filter-operacion" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Operación Destino</label>
             <select id="pendiente-filter-operacion" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
               <option value="">Todas las operaciones</option>
@@ -3443,6 +3437,7 @@
     let activeSolicitudCategory = '';
     let allSolicitudesArticulos = [];
     let selectedSolicitudItems = [];
+    let solicitudItemsEditable = true;
     let tempSelectedItems = [];
     let creationOpsPorRegional = {};
     let isSolicitudesInitialized = false;
@@ -3881,7 +3876,7 @@
       const catCounts = counts.categorias || {};
       const allCategories = Object.keys(catCounts).sort();
       
-      const totalCount = Object.values(catCounts).reduce((a, b) => a + b, 0);
+      const totalCount = Object.values(catCounts).reduce((a, b) => Number(a) + Number(b), 0);
       filterCategoriaButtons.innerHTML = '';
       
       // 1. Create 'Todas' button chip
@@ -3931,7 +3926,7 @@
       filterRegional.innerHTML = '';
       const optionAllR = document.createElement('option');
       optionAllR.value = '';
-      const totalRegCount = Object.values(regCounts).reduce((a, b) => a + b, 0);
+      const totalRegCount = Object.values(regCounts).reduce((a, b) => Number(a) + Number(b), 0);
       optionAllR.textContent = CONFIG.sinFiltro ? `Todas las regionales (${totalRegCount})` : 'Seleccione Regional';
       filterRegional.appendChild(optionAllR);
       
@@ -3957,7 +3952,7 @@
         allowedOps = Array.from(allOpsSet).sort();
       }
       
-      const totalOpCount = Object.values(opCounts).reduce((a, b) => a + b, 0);
+      const totalOpCount = Object.values(opCounts).reduce((a, b) => Number(a) + Number(b), 0);
       const optionAllO = document.createElement('option');
       optionAllO.value = '';
       optionAllO.textContent = `Todas las operaciones (${totalOpCount})`;
@@ -3976,7 +3971,7 @@
       filterClasificacion.innerHTML = '';
       const optionAllC = document.createElement('option');
       optionAllC.value = '';
-      const totalClsCount = Object.values(clsCounts).reduce((a, b) => a + b, 0);
+      const totalClsCount = Object.values(clsCounts).reduce((a, b) => Number(a) + Number(b), 0);
       optionAllC.textContent = `Todas las clasificaciones (${totalClsCount})`;
       filterClasificacion.appendChild(optionAllC);
       
@@ -5173,7 +5168,7 @@
       const counts = lastHistoryFacetedCounts ? lastHistoryFacetedCounts.categorias : {};
       
       // Calculate total count (sum of all categories counts)
-      const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
+      const totalCount = Object.values(counts).reduce((a, b) => Number(a) + Number(b), 0);
 
       // Create "TODAS" button
       const btnAll = document.createElement('button');
@@ -5828,7 +5823,7 @@
       kardexFilterRegional.innerHTML = '';
       const optionAllR = document.createElement('option');
       optionAllR.value = '';
-      const totalRegCount = Object.values(regCounts).reduce((a, b) => a + b, 0);
+      const totalRegCount = Object.values(regCounts).reduce((a, b) => Number(a) + Number(b), 0);
       optionAllR.textContent = CONFIG.sinFiltro ? `Todas las regionales (${totalRegCount})` : 'Seleccione Regional';
       kardexFilterRegional.appendChild(optionAllR);
       
@@ -5854,7 +5849,7 @@
         allowedOps = Array.from(allOpsSet).sort();
       }
       
-      const totalOpCount = Object.values(opCounts).reduce((a, b) => a + b, 0);
+      const totalOpCount = Object.values(opCounts).reduce((a, b) => Number(a) + Number(b), 0);
       const optionAllO = document.createElement('option');
       optionAllO.value = '';
       optionAllO.textContent = `Todas las operaciones (${totalOpCount})`;
@@ -5874,7 +5869,7 @@
       kardexFilterMovimiento.innerHTML = '';
       const optionAllM = document.createElement('option');
       optionAllM.value = '';
-      const totalMovCount = Object.values(movCounts).reduce((a, b) => a + b, 0);
+      const totalMovCount = Object.values(movCounts).reduce((a, b) => Number(a) + Number(b), 0);
       optionAllM.textContent = `Todos los movimientos (${totalMovCount})`;
       kardexFilterMovimiento.appendChild(optionAllM);
 
@@ -5903,7 +5898,7 @@
       const catCounts = counts.categorias || {};
       const allCategories = Object.keys(catCounts).sort();
       
-      const totalCount = Object.values(catCounts).reduce((a, b) => a + b, 0);
+      const totalCount = Object.values(catCounts).reduce((a, b) => Number(a) + Number(b), 0);
       kardexFilterCategoriaButtons.innerHTML = '';
       
       // 1. Create 'Todas' button chip
@@ -6953,7 +6948,7 @@
       container.innerHTML = '';
 
       const counts = lastArticlesFacetedCounts ? lastArticlesFacetedCounts.categorias : {};
-      const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
+      const totalCount = Object.values(counts).reduce((a, b) => Number(a) + Number(b), 0);
 
       // TODAS
       const btnAll = document.createElement('button');
@@ -7856,7 +7851,7 @@
       // Update Regional Select options
       const regionalSelect = document.getElementById('sol-filtro-regional');
       const sortedRegs = CONFIG.regionalesFiltro || [];
-      const totalRegCount = Object.values(regionalCounts).reduce((a, b) => a + b, 0);
+      const totalRegCount = Object.values(regionalCounts).reduce((a, b) => Number(a) + Number(b), 0);
       regionalSelect.innerHTML = `<option value="">Todas (${totalRegCount})</option>`;
       sortedRegs.forEach(r => {
         const count = regionalCounts[r] || 0;
@@ -7879,7 +7874,7 @@
         });
         allowedOps = Array.from(allOpsSet).sort();
       }
-      const totalOpCount = Object.values(operacionCounts).reduce((a, b) => a + b, 0);
+      const totalOpCount = Object.values(operacionCounts).reduce((a, b) => Number(a) + Number(b), 0);
       operacionSelect.innerHTML = `<option value="">Todas (${totalOpCount})</option>`;
       allowedOps.forEach(op => {
         const count = operacionCounts[op] || 0;
@@ -7898,7 +7893,7 @@
       if (!container) return;
       container.innerHTML = '';
 
-      const totalCount = Object.values(categoriaCounts).reduce((a, b) => a + b, 0);
+      const totalCount = Object.values(categoriaCounts).reduce((a, b) => Number(a) + Number(b), 0);
 
       // TODAS
       const btnAll = document.createElement('button');
@@ -7973,15 +7968,6 @@
         const d = new Date(sol.FechaSolicitud);
         const dateStr = isNaN(d.getTime()) ? '—' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
-        let completeBtn = '';
-        if (stateUpper === 'APROBADA' || stateUpper === 'PARCIAL') {
-          completeBtn = `
-            <button type="button" style="margin-left: 6px; padding: 4px 8px; border: none; background: #22c55e; color: white; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;" onclick="event.stopPropagation(); window.confirmarCompletarSolicitud('${sol.IdSolicitud}')" title="Marcar como recibido">
-              ✔ Recibido
-            </button>
-          `;
-        }
-
         tr.innerHTML = `
           <td style="text-align: center; font-weight: 600; font-size: 0.8rem; color: var(--primary);">#${sol.IdSolicitud.substring(0, 8)}</td>
           <td>${dateStr}</td>
@@ -7991,7 +7977,6 @@
           <td style="text-align: center; vertical-align: middle;">
             <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
               <span class="estado-badge ${badgeClass}">${sol.Estado}</span>
-              ${completeBtn}
             </div>
           </td>
           <td style="font-size: 0.75rem; text-align: justify; line-height: 1.3;">${sol.Justificación || '—'}</td>
@@ -8175,9 +8160,14 @@
         div.style.padding = '12px';
         div.style.marginBottom = '10px';
 
-        const imgHtml = item.Imagen 
+        const imgHtml = item.Imagen
           ? `<img src="${item.Imagen}" class="item-img" style="width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:8px;">`
           : `<div class="item-img" style="width:40px; height:40px; background:#f0f0f0; border-radius:4px; margin-right:8px;"></div>`;
+
+        const quitarBtnHtml = solicitudItemsEditable
+          ? `<button type="button" class="btn-quitar-item" style="background:none; border:1px solid #fca5a5; color:#dc2626; border-radius:4px; padding:2px 6px; font-size:0.75rem; cursor:pointer;" onclick="removeSolicitudFormItem(${idx})">✕ Quitar</button>`
+          : '';
+        const disabledAttr = solicitudItemsEditable ? '' : 'disabled';
 
         div.innerHTML = `
           <div class="item-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
@@ -8188,16 +8178,16 @@
                 <div class="item-categoria" style="font-size:0.75rem; color:var(--text-muted);">${item.Categoria || 'General'}</div>
               </div>
             </div>
-            <button type="button" class="btn-quitar-item" style="background:none; border:1px solid #fca5a5; color:#dc2626; border-radius:4px; padding:2px 6px; font-size:0.75rem; cursor:pointer;" onclick="removeSolicitudFormItem(${idx})">✕ Quitar</button>
+            ${quitarBtnHtml}
           </div>
           <div style="display:grid; grid-template-columns:100px 1fr; gap:12px; align-items:center;">
             <div>
               <label style="font-size:0.75rem; display:block; margin-bottom:3px; font-weight:600;">Cantidad:</label>
-              <input type="number" class="item-cantidad" value="${item.Cantidad}" min="1" style="width:100%; padding:4px 8px; border:1px solid var(--border); border-radius:4px;" onchange="updateSolicitudFormItemQuantity(${idx}, this.value)">
+              <input type="number" class="item-cantidad" value="${item.Cantidad}" min="1" ${disabledAttr} style="width:100%; padding:4px 8px; border:1px solid var(--border); border-radius:4px;" onchange="updateSolicitudFormItemQuantity(${idx}, this.value)">
             </div>
             <div>
               <label style="font-size:0.75rem; display:block; margin-bottom:3px; font-weight:600;">Nota / Comentario:</label>
-              <input type="text" class="item-nota" value="${item.Nota || ''}" placeholder="Ej: Urgente, talle especial" style="width:100%; padding:4px 8px; border:1px solid var(--border); border-radius:4px;" oninput="updateSolicitudFormItemNote(${idx}, this.value)">
+              <input type="text" class="item-nota" value="${item.Nota || ''}" placeholder="Ej: Urgente, talle especial" ${disabledAttr} style="width:100%; padding:4px 8px; border:1px solid var(--border); border-radius:4px;" oninput="updateSolicitudFormItemNote(${idx}, this.value)">
             </div>
           </div>
         `;
@@ -8206,11 +8196,13 @@
     }
 
     window.removeSolicitudFormItem = function(idx) {
+      if (!solicitudItemsEditable) return;
       selectedSolicitudItems.splice(idx, 1);
       renderSolicitudFormItems();
     };
 
     window.updateSolicitudFormItemQuantity = function(idx, val) {
+      if (!solicitudItemsEditable) return;
       const q = parseInt(val) || 1;
       if (selectedSolicitudItems[idx]) {
         selectedSolicitudItems[idx].Cantidad = q > 0 ? q : 1;
@@ -8218,6 +8210,7 @@
     };
 
     window.updateSolicitudFormItemNote = function(idx, val) {
+      if (!solicitudItemsEditable) return;
       if (selectedSolicitudItems[idx]) {
         selectedSolicitudItems[idx].Nota = val || '';
       }
@@ -8267,6 +8260,7 @@
     function resetSolicitudForm() {
       solicitudActual = null;
       selectedSolicitudItems = [];
+      solicitudItemsEditable = true;
       const form = document.getElementById('sol-form-datos');
       if (form) form.reset();
       
@@ -8407,8 +8401,6 @@
           Nota: it.Nota || ''
         }));
 
-        renderSolicitudFormItems();
-
         // Aclaraciones warning box population
         const aclaracionesContainer = document.getElementById('sol-aclaraciones-view-container');
         const aclaracionesText = document.getElementById('sol-aclaraciones-text');
@@ -8450,6 +8442,9 @@
         } else if (['APROBADA', 'COMPLETADA', 'RECHAZADA'].includes(stateUpper)) {
           isEditable = (rol === 'Sistema');
         }
+
+        solicitudItemsEditable = isEditable;
+        renderSolicitudFormItems();
 
         const btnGuardar = document.getElementById('sol-btn-guardar-borrador');
         const btnPresentar = document.getElementById('sol-btn-presentar');
@@ -8511,10 +8506,7 @@
 
         // 4. Show and customize workflow actions panel
         let showWfActions = false;
-        if (esAprobador && (isPendiente || stateUpper === 'PARCIAL' || isAprobada)) {
-          showWfActions = true;
-        }
-        if (rol === 'Sistema') {
+        if (esAprobador && (isPendiente || isValidar)) {
           showWfActions = true;
         }
 
@@ -9747,12 +9739,10 @@
       }
 
       // Add event listeners for new filters
-      const fReg = document.getElementById('pendiente-filter-regional');
       const fOp = document.getElementById('pendiente-filter-operacion');
       const fCat = document.getElementById('pendiente-filter-categoria');
       const fSearch = document.getElementById('pendiente-filter-search');
 
-      if (fReg) fReg.addEventListener('change', () => { renderPendientesList(); });
       if (fOp) fOp.addEventListener('change', () => { renderPendientesList(); });
       if (fCat) fCat.addEventListener('change', () => { renderPendientesList(); });
       if (fSearch) fSearch.addEventListener('input', () => { renderPendientesList(); });
@@ -9784,35 +9774,24 @@
     }
 
     function populatePendientesFilterSelectors() {
-      const selReg = document.getElementById('pendiente-filter-regional');
       const selOp = document.getElementById('pendiente-filter-operacion');
       const selCat = document.getElementById('pendiente-filter-categoria');
 
-      if (!selReg || !selOp || !selCat) return;
+      if (!selOp || !selCat) return;
 
-      const currentReg = selReg.value;
       const currentOp = selOp.value;
       const currentCat = selCat.value;
 
-      const regionalCounts = {};
       const operacionCounts = {};
       const categoriaCounts = {};
 
       allPendientes.forEach(item => {
-        const r = item.Regional || 'Sin Regional';
         const o = item.OperaciónDestino || 'Sin Operación';
         const c = item.Categoria || 'Sin Categoría';
 
-        regionalCounts[r] = (regionalCounts[r] || 0) + 1;
         operacionCounts[o] = (operacionCounts[o] || 0) + 1;
         categoriaCounts[c] = (categoriaCounts[c] || 0) + 1;
       });
-
-      selReg.innerHTML = `<option value="">Todas las regionales (${allPendientes.length})</option>`;
-      Object.keys(regionalCounts).sort().forEach(r => {
-        selReg.innerHTML += `<option value="${r === 'Sin Regional' ? '' : r}">${r} (${regionalCounts[r]})</option>`;
-      });
-      selReg.value = regionalCounts[currentReg] ? currentReg : '';
 
       selOp.innerHTML = `<option value="">Todas las operaciones (${allPendientes.length})</option>`;
       Object.keys(operacionCounts).sort().forEach(o => {
@@ -9835,13 +9814,11 @@
       const selectAllCheckbox = document.getElementById('pendiente-select-all');
       if (selectAllCheckbox) selectAllCheckbox.checked = false;
 
-      const selReg = document.getElementById('pendiente-filter-regional')?.value || '';
       const selOp = document.getElementById('pendiente-filter-operacion')?.value || '';
       const selCat = document.getElementById('pendiente-filter-categoria')?.value || '';
       const searchVal = (document.getElementById('pendiente-filter-search')?.value || '').trim().toLowerCase();
 
       const filtered = allPendientes.filter(item => {
-        if (selReg && item.Regional !== selReg) return false;
         if (selOp && item.OperaciónDestino !== selOp) return false;
         if (selCat && item.Categoria !== selCat) return false;
         if (searchVal) {

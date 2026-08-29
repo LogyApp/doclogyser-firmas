@@ -244,27 +244,27 @@ router.get('/api/datos', async (req, res) => {
     // 2. Fetch Faceted Counts
     // regional count (exclude regional filter)
     const cReg = buildWhere([fOp, fCls, fCat, fSearch]);
-    const [regRows] = await pool.execute(`SELECT \`Regional\`, COUNT(*) as total FROM Vista_Inventario ${cReg.where} GROUP BY \`Regional\``, cReg.params);
+    const [regRows] = await pool.execute(`SELECT \`Regional\`, IFNULL(SUM(\`Stock Disponible\`), 0) as total FROM Vista_Inventario ${cReg.where} GROUP BY \`Regional\``, cReg.params);
     const regCounts = {};
-    regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = r.total; });
+    regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = Number(r.total); });
 
     // operacion count (exclude operacion filter)
     const cOp = buildWhere([fReg, fCls, fCat, fSearch]);
-    const [opRows] = await pool.execute(`SELECT \`Operacion\`, COUNT(*) as total FROM Vista_Inventario ${cOp.where} GROUP BY \`Operacion\``, cOp.params);
+    const [opRows] = await pool.execute(`SELECT \`Operacion\`, IFNULL(SUM(\`Stock Disponible\`), 0) as total FROM Vista_Inventario ${cOp.where} GROUP BY \`Operacion\``, cOp.params);
     const opCounts = {};
-    opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = r.total; });
+    opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = Number(r.total); });
 
     // clasificacion count (exclude clasificacion filter)
     const cCls = buildWhere([fReg, fOp, fCat, fSearch]);
-    const [clsRows] = await pool.execute(`SELECT \`Clasificación\` AS Clasificacion, COUNT(*) as total FROM Vista_Inventario ${cCls.where} GROUP BY \`Clasificación\``, cCls.params);
+    const [clsRows] = await pool.execute(`SELECT \`Clasificación\` AS Clasificacion, IFNULL(SUM(\`Stock Disponible\`), 0) as total FROM Vista_Inventario ${cCls.where} GROUP BY \`Clasificación\``, cCls.params);
     const clsCounts = {};
-    clsRows.forEach(r => { if (r.Clasificacion !== null) clsCounts[r.Clasificacion] = r.total; });
+    clsRows.forEach(r => { if (r.Clasificacion !== null) clsCounts[r.Clasificacion] = Number(r.total); });
 
     // categoria count (exclude category filter)
     const cCat = buildWhere([fReg, fOp, fCls, fSearch]);
-    const [catRows] = await pool.execute(`SELECT \`Categoria\`, COUNT(*) as total FROM Vista_Inventario ${cCat.where} GROUP BY \`Categoria\``, cCat.params);
+    const [catRows] = await pool.execute(`SELECT \`Categoria\`, IFNULL(SUM(\`Stock Disponible\`), 0) as total FROM Vista_Inventario ${cCat.where} GROUP BY \`Categoria\``, cCat.params);
     const catCounts = {};
-    catRows.forEach(r => { if (r.Categoria !== null) catCounts[r.Categoria] = r.total; });
+    catRows.forEach(r => { if (r.Categoria !== null) catCounts[r.Categoria] = Number(r.total); });
 
     // 3. Fetch consolidated stats (for all matching records in DB)
     const statsQuery = `
@@ -847,27 +847,27 @@ router.get('/api/kardex/datos', async (req, res) => {
     // 2. Fetch Faceted Counts
     // regional count (exclude regional filter)
     const cReg = buildKardexWhere([fOp, fCat, fMov, fIdArt, fSearch]);
-    const [regRows] = await pool.execute(`SELECT k.\`Regional\`, COUNT(*) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cReg.where} GROUP BY k.\`Regional\``, cReg.params);
+    const [regRows] = await pool.execute(`SELECT k.\`Regional\`, IFNULL(SUM(ABS(k.Cantidad)), 0) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cReg.where} GROUP BY k.\`Regional\``, cReg.params);
     const regCounts = {};
-    regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = r.total; });
+    regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = Number(r.total); });
 
     // operacion count (exclude operacion filter)
     const cOp = buildKardexWhere([fReg, fCat, fMov, fIdArt, fSearch]);
-    const [opRows] = await pool.execute(`SELECT k.\`Operación\` AS Operacion, COUNT(*) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cOp.where} GROUP BY k.\`Operación\``, cOp.params);
+    const [opRows] = await pool.execute(`SELECT k.\`Operación\` AS Operacion, IFNULL(SUM(ABS(k.Cantidad)), 0) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cOp.where} GROUP BY k.\`Operación\``, cOp.params);
     const opCounts = {};
-    opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = r.total; });
+    opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = Number(r.total); });
 
     // categoria count (exclude category filter)
     const cCat = buildKardexWhere([fReg, fOp, fMov, fIdArt, fSearch]);
-    const [catRows] = await pool.execute(`SELECT k.\`Categoria\`, COUNT(*) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cCat.where} GROUP BY k.\`Categoria\``, cCat.params);
+    const [catRows] = await pool.execute(`SELECT k.\`Categoria\`, IFNULL(SUM(ABS(k.Cantidad)), 0) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cCat.where} GROUP BY k.\`Categoria\``, cCat.params);
     const catCounts = {};
-    catRows.forEach(r => { if (r.Categoria !== null) catCounts[r.Categoria] = r.total; });
+    catRows.forEach(r => { if (r.Categoria !== null) catCounts[r.Categoria] = Number(r.total); });
 
     // tipoMovimiento count (exclude movement type filter)
     const cMov = buildKardexWhere([fReg, fOp, fCat, fIdArt, fSearch]);
-    const [movRows] = await pool.execute(`SELECT k.\`TipoMovimiento\`, COUNT(*) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cMov.where} GROUP BY k.\`TipoMovimiento\``, cMov.params);
+    const [movRows] = await pool.execute(`SELECT k.\`TipoMovimiento\`, IFNULL(SUM(ABS(k.Cantidad)), 0) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cMov.where} GROUP BY k.\`TipoMovimiento\``, cMov.params);
     const movCounts = {};
-    movRows.forEach(r => { if (r.TipoMovimiento !== null) movCounts[r.TipoMovimiento] = r.total; });
+    movRows.forEach(r => { if (r.TipoMovimiento !== null) movCounts[r.TipoMovimiento] = Number(r.total); });
 
     // 3. Fetch consolidated stats (for all matching records in DB)
     const statsQuery = `
@@ -1143,9 +1143,9 @@ router.get('/api/articulos/datos', async (req, res) => {
     if (clasificacion) { condsCat.push('ClaseArticulo = ?'); paramsCat.push(clasificacion); }
     if (search) { condsCat.push('(Articulo LIKE ? OR Referencia LIKE ? OR Elemento LIKE ?)'); paramsCat.push(`%${search}%`, `%${search}%`, `%${search}%`); }
     const whereCat = condsCat.length ? `WHERE ${condsCat.join(' AND ')}` : '';
-    const [catRows] = await pool.execute(`SELECT Categoria, COUNT(*) as total FROM Dynamic_Articulos ${whereCat} GROUP BY Categoria`, paramsCat);
+    const [catRows] = await pool.execute(`SELECT Categoria, IFNULL(SUM((SELECT IFNULL(SUM(Cantidad), 0) FROM Dynamic_Kardex WHERE IdArticulo = Dynamic_Articulos.Id)), 0) as total FROM Dynamic_Articulos ${whereCat} GROUP BY Categoria`, paramsCat);
     const catCounts = {};
-    catRows.forEach(r => { if (r.Categoria) catCounts[r.Categoria] = r.total; });
+    catRows.forEach(r => { if (r.Categoria) catCounts[r.Categoria] = Number(r.total); });
 
     // ClaseArticulo count
     const condsCls = [];
@@ -1153,9 +1153,9 @@ router.get('/api/articulos/datos', async (req, res) => {
     if (categoria) { condsCls.push('Categoria = ?'); paramsCls.push(categoria); }
     if (search) { condsCls.push('(Articulo LIKE ? OR Referencia LIKE ? OR Elemento LIKE ?)'); paramsCls.push(`%${search}%`, `%${search}%`, `%${search}%`); }
     const whereCls = condsCls.length ? `WHERE ${condsCls.join(' AND ')}` : '';
-    const [clsRows] = await pool.execute(`SELECT ClaseArticulo, COUNT(*) as total FROM Dynamic_Articulos ${whereCls} GROUP BY ClaseArticulo`, paramsCls);
+    const [clsRows] = await pool.execute(`SELECT ClaseArticulo, IFNULL(SUM((SELECT IFNULL(SUM(Cantidad), 0) FROM Dynamic_Kardex WHERE IdArticulo = Dynamic_Articulos.Id)), 0) as total FROM Dynamic_Articulos ${whereCls} GROUP BY ClaseArticulo`, paramsCls);
     const clsCounts = {};
-    clsRows.forEach(r => { if (r.ClaseArticulo) clsCounts[r.ClaseArticulo] = r.total; });
+    clsRows.forEach(r => { if (r.ClaseArticulo) clsCounts[r.ClaseArticulo] = Number(r.total); });
 
     res.json({
       results,
