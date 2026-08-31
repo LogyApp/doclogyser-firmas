@@ -5,6 +5,7 @@ const pool = require('../services/db');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
 const { generarToken } = require('../services/token');
 const { notificarFirmaTrabajador } = require('../services/email');
+const { obtenerCorreosOperacionDestino } = require('../services/traslados');
 
 const router = express.Router();
 
@@ -385,6 +386,9 @@ router.post('/traslados/:id/validar', async (req, res) => {
       const fechaISO = t.fecha_traslado instanceof Date
         ? t.fecha_traslado.toISOString().slice(0, 10)
         : String(t.fecha_traslado || '').slice(0, 10);
+
+      const ccOperacionDestino = await obtenerCorreosOperacionDestino(t.operacion_destino);
+
       try {
         await notificarFirmaTrabajador({
           email:            t.email_trabajador,
@@ -396,6 +400,7 @@ router.post('/traslados/:id/validar', async (req, res) => {
           urlFirma:         url,
           emailUsuario:     emailRegistrador,
           cargo,
+          ccExtra:          ccOperacionDestino,
         });
         correoEnviado = true;
       } catch (e) {
@@ -474,19 +479,25 @@ router.post('/traslados/:id/correo', async (req, res) => {
       ? t.fecha_traslado.toISOString().slice(0, 10)
       : String(t.fecha_traslado || '').slice(0, 10);
 
-    await notificarFirmaTrabajador({
-      email:            t.email_trabajador,
-      nombreCorto,
-      operacionDestino: t.operacion_destino,
-      direccionDestino: t.direccion_destino || '',
-      fechaTraslado:    fechaISO,
-      horaTraslado:     t.hora_traslado || '',
-      urlFirma:         url,
-      emailUsuario,
-      cargo,
-    });
+    let correoEnviado = false;
+    try {
+      await notificarFirmaTrabajador({
+        email:            t.email_trabajador,
+        nombreCorto,
+        operacionDestino: t.operacion_destino,
+        direccionDestino: t.direccion_destino || '',
+        fechaTraslado:    fechaISO,
+        horaTraslado:     t.hora_traslado || '',
+        urlFirma:         url,
+        emailUsuario,
+        cargo,
+      });
+      correoEnviado = true;
+    } catch (e) {
+      console.error('Error correo trabajador:', e.message);
+    }
 
-    res.json({ ok: true });
+    res.json({ ok: true, url, correoEnviado });
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, error: err.message });

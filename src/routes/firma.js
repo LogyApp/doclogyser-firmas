@@ -13,6 +13,7 @@ const {
 } = require('../services/storage');
 const { validarToken } = require('../services/token');
 const { notificarDocumentoGenerado } = require('../services/email');
+const { obtenerCorreosOperacionDestino } = require('../services/traslados');
 
 const router = express.Router();
 
@@ -251,6 +252,8 @@ router.post('/:proceso/:id', async (req, res) => {
     const partesTrab = (t.Trabajador || '').split(' ** ');
     const nombreTrabajador = partesTrab.length > 1 ? partesTrab[1].trim() : t.Trabajador;
 
+    const ccOperacionDestino = await obtenerCorreosOperacionDestino(t.operacion_destino);
+
     notificarDocumentoGenerado({
       nombreTrabajador,
       operacionDestino:  t.operacion_destino,
@@ -260,6 +263,7 @@ router.post('/:proceso/:id', async (req, res) => {
       urlDoc,
       emailUsuario,
       cargo,
+      ccExtra:           ccOperacionDestino,
     }).catch(e => console.error('Error correo generado:', e.message));
 
     res.json({ ok: true, url_doc: urlDoc });

@@ -417,8 +417,10 @@
       const r = await fetch(`/admin/traslados/${id}/correo?Usuario=${usuarioParam}`, { method: 'POST' });
       const d = await r.json();
       overlay(false);
-      if (d.ok) {
+      if (d.ok && d.correoEnviado) {
         alert('✅ Correo enviado correctamente al trabajador.');
+      } else if (d.ok && !d.correoEnviado) {
+        alert('⚠️ El enlace se generó, pero el correo no pudo enviarse. Intenta de nuevo o comparte el enlace manualmente.');
       } else {
         alert('Error: ' + d.error);
       }

@@ -105,7 +105,7 @@ async function notificarNuevoTraslado({ trabajador, identificacion, operacionOri
   });
 }
 
-async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlFirma, emailUsuario, cargo }) {
+async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlFirma, emailUsuario, cargo, ccExtra }) {
   const asunto = 'Documento de traslado laboral pendiente de firma — LOG&SER';
 
   const cuerpo = `
@@ -153,7 +153,7 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
       </p>
     </div>`;
 
-  const ccFirma = ['juridica@logyser.com', 'admin@logyser.com', emailUsuario];
+  const ccFirma = ['juridica@logyser.com', 'admin@logyser.com', emailUsuario, ...(Array.isArray(ccExtra) ? ccExtra : [])];
   if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
     ccFirma.push('gestioncalidad@logyser.com');
     ccFirma.push('directorrh@logyser.com');
@@ -168,7 +168,7 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
   });
 }
 
-async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlDoc, emailUsuario, cargo }) {
+async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlDoc, emailUsuario, cargo, ccExtra }) {
   const asunto = `Traslado firmado y completado — ${nombreTrabajador}`;
 
   const cuerpo = `
@@ -212,7 +212,8 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
     'sstadmon@logyser.com',
     'logyserinventarios@gmail.com',
     'auxiliarcompras@logyser.com',
-    emailUsuario
+    emailUsuario,
+    ...(Array.isArray(ccExtra) ? ccExtra : [])
   ];
   if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
     ccList.push('gestioncalidad@logyser.com');
