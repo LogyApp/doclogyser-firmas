@@ -2038,7 +2038,7 @@
                 <span>➕</span> Agregar Kardex
               </button>
               <div style="display: flex; align-items: center; gap: 6px;">
-                <button id="btn-view-mosaico" class="btn-view-toggle active" title="Vista Mosaico" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;">
+                <button id="btn-view-mosaico" class="btn-view-toggle" title="Vista Mosaico" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="7" height="7"></rect>
                     <rect x="14" y="3" width="7" height="7"></rect>
@@ -2046,7 +2046,7 @@
                     <rect x="3" y="14" width="7" height="7"></rect>
                   </svg>
                 </button>
-                <button id="btn-view-detalle" class="btn-view-toggle" title="Vista Detalle" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;">
+                <button id="btn-view-detalle" class="btn-view-toggle active" title="Vista Detalle" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="8" y1="6" x2="21" y2="6"></line>
                     <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -2181,6 +2181,7 @@
           <table class="history-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;" id="pendiente-table">
             <thead>
               <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); text-align: left;">
+                <th style="width: 140px; text-align: center; padding: 10px;">Acciones</th>
                 <th style="width: 40px; text-align: center; padding: 10px;">
                   <input type="checkbox" id="pendiente-select-all" style="cursor: pointer;">
                 </th>
@@ -2193,7 +2194,6 @@
                 <th style="width: 140px; padding: 10px;">Registrado por</th>
                 <th style="padding: 10px;">Observaciones</th>
                 <th style="width: 180px; padding: 10px;">Novedad</th>
-                <th style="width: 140px; text-align: center; padding: 10px;">Acciones</th>
               </tr>
             </thead>
             <tbody id="pendiente-table-body">
@@ -3223,6 +3223,10 @@
           <div>
             <span class="badge badge-estado" id="dotley-badge-total" style="background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
           </div>
+          <button type="button" id="dotley-btn-correo-masivo" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+            Enviar Correo Masivo
+          </button>
         </div>
 
         <!-- Filters Card -->
@@ -3290,6 +3294,44 @@
         </div>
 
       </main>
+    </div>
+  </div>
+
+  <!-- Modal: Envío de Correo Masivo (Dotación de Ley) -->
+  <div id="dotley-masivo-modal" class="modal" style="display: none; align-items: center; justify-content: center; z-index: 1010; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5);">
+    <div style="max-width: 480px; width: 90%; margin: auto; background: white; color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column;">
+      <div class="modal-header" style="background: #f8fafc; color: var(--text); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--primary);">Enviar Correo Masivo</h3>
+          <p style="margin: 2px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Notifica por correo a todos los colaboradores de una Operación</p>
+        </div>
+        <span id="dotley-masivo-modal-close" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+
+      <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label style="font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">Regional</label>
+          <select id="dotley-masivo-regional" style="padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: white;">
+            <option value="">Seleccione</option>
+          </select>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label style="font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">Operación</label>
+          <select id="dotley-masivo-operacion" disabled style="padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: white;">
+            <option value="">Seleccione la Regional primero</option>
+          </select>
+        </div>
+        <div id="dotley-masivo-count-wrap" style="display:none; background: #eef1ff; border: 1px solid #c5d0f5; border-radius: 8px; padding: 12px 14px; font-size: 0.85rem; color: #1a1a6e; font-weight: 600;">
+          Se enviará el correo a <span id="dotley-masivo-count">0</span> colaborador(es).
+        </div>
+      </div>
+
+      <div class="modal-footer" style="background: #f8fafc; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border);">
+        <button type="button" id="dotley-masivo-btn-cancel" style="padding: 8px 20px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.85rem;">Cancelar</button>
+        <button type="button" id="dotley-masivo-btn-enviar" disabled style="padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+          <span>📧</span> Enviar Correos
+        </button>
+      </div>
     </div>
   </div>
 
@@ -3646,11 +3688,11 @@
                 <option value="">Seleccione</option>
               </select>
             </div>
-            <div class="field">
+            <div class="field" style="position:relative;">
               <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Artículo *</label>
-              <select id="fk-single-articulo" disabled style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
-                <option value="">Seleccione la Categoría primero</option>
-              </select>
+              <input type="text" id="fk-single-articulo-search" disabled autocomplete="off" placeholder="Seleccione la Categoría primero" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+              <input type="hidden" id="fk-single-articulo">
+              <div id="fk-single-articulo-ac-list" class="ac-list" style="position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border); border-radius:6px; max-height:180px; overflow-y:auto; z-index:1000; display:none;"></div>
             </div>
             <div class="field">
               <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Stock Actual</label>
@@ -3989,7 +4031,7 @@
     let lastFacetedStats = null;
     let lastKardexFacetedCounts = null;
     let lastKardexFacetedStats = null;
-    let currentInventarioViewMode = 'mosaico';
+    let currentInventarioViewMode = 'detalle';
     let currentInventarioSortColumn = '';
     let currentInventarioSortOrder = 'asc';
     let currentArticlesSortColumn = '';
@@ -4022,6 +4064,7 @@
     let isActasInitialized = false;
     let masterActas = [];
     let allActas = [];
+    let actaFullCounts = null;
     let activeActaCategory = '';
     let actaCategoriasRestringidas = null;
     let actaAllCategorias = [];
@@ -4928,13 +4971,13 @@
             <th style="width: 50px; text-align: center;">Imagen</th>
             ${puedeEditarInventario ? '<th style="width: 60px; text-align: center;">Acciones</th>' : ''}
             <th style="cursor: pointer;" data-sort="Articulo">Artículo<span id="inv-sort-Articulo" class="sort-indicator"></span></th>
+            <th style="width: 100px; text-align: right; cursor: pointer;" data-sort="StockDisponible">Stock<span id="inv-sort-StockDisponible" class="sort-indicator"></span></th>
             <th style="width: 80px; text-align: center; cursor: pointer;" data-sort="Talla">Talla<span id="inv-sort-Talla" class="sort-indicator"></span></th>
             <th style="width: 120px; cursor: pointer;" data-sort="Categoria">Categoría<span id="inv-sort-Categoria" class="sort-indicator"></span></th>
             <th style="width: 120px; cursor: pointer;" data-sort="ClaseArticulo">Clasificación<span id="inv-sort-ClaseArticulo" class="sort-indicator"></span></th>
             <th style="width: 120px; cursor: pointer;" data-sort="Regional">Regional<span id="inv-sort-Regional" class="sort-indicator"></span></th>
             <th style="width: 120px; cursor: pointer;" data-sort="Operacion">Operación<span id="inv-sort-Operacion" class="sort-indicator"></span></th>
             <th style="width: 150px; text-align: center; cursor: pointer;" data-sort="Placa">Placa<span id="inv-sort-Placa" class="sort-indicator"></span></th>
-            <th style="width: 100px; text-align: right; cursor: pointer;" data-sort="StockDisponible">Stock<span id="inv-sort-StockDisponible" class="sort-indicator"></span></th>
             <th style="width: 120px; text-align: right; cursor: pointer;" data-sort="ValorStock">Valor Stock<span id="inv-sort-ValorStock" class="sort-indicator"></span></th>
           </tr>
         </thead>
@@ -4996,6 +5039,7 @@
           <td style="font-weight: 600; font-size: 0.8rem; max-width: 250px; word-break: break-word; vertical-align: middle;">
             ${item.Articulo}
           </td>
+          <td style="text-align: right; font-weight: 600; vertical-align: middle;">${item.StockDisponible}</td>
           <td style="text-align: center; vertical-align: middle;">${item.Talla || '—'}</td>
           <td style="vertical-align: middle;"><span class="badge-category">${item.Categoria || 'General'}</span></td>
           <td style="vertical-align: middle;">
@@ -5009,7 +5053,6 @@
               <button class="btn-save-placa" data-id="${item.IdArticulo}" style="display: none; background: var(--primary); color: white; border: none; padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; font-weight: 600;" title="Guardar placa">Guardar</button>
             </div>
           </td>
-          <td style="text-align: right; font-weight: 600; vertical-align: middle;">${item.StockDisponible}</td>
           <td style="text-align: right; font-weight: 600; color: var(--primary); vertical-align: middle;">${formatCurrency(item.ValorStock)}</td>
         `;
 
@@ -9804,7 +9847,9 @@
       const regSel = document.getElementById('fk-single-regional');
       const catSel = document.getElementById('fk-single-categoria');
       const opSel = document.getElementById('fk-single-operacion');
-      const artSel = document.getElementById('fk-single-articulo');
+      const artSearch = document.getElementById('fk-single-articulo-search');
+      const artHidden = document.getElementById('fk-single-articulo');
+      const artList = document.getElementById('fk-single-articulo-ac-list');
       const stockInput = document.getElementById('fk-single-stock');
       const fechaInput = document.getElementById('fk-single-fecha');
       const tipoSel = document.getElementById('fk-single-tipo');
@@ -9812,7 +9857,9 @@
       if (regSel) regSel.innerHTML = '<option value="">Seleccione</option>' + kardexLookups.regionales.map(r => `<option value="${r}">${r}</option>`).join('');
       if (catSel) catSel.innerHTML = '<option value="">Seleccione</option>' + kardexLookups.categorias.map(c => `<option value="${c}">${c}</option>`).join('');
       if (opSel) { opSel.innerHTML = '<option value="">Seleccione la Regional primero</option>'; opSel.disabled = true; }
-      if (artSel) { artSel.innerHTML = '<option value="">Seleccione la Categoría primero</option>'; artSel.disabled = true; }
+      if (artSearch) { artSearch.value = ''; artSearch.disabled = true; artSearch.placeholder = 'Seleccione la Categoría primero'; }
+      if (artHidden) artHidden.value = '';
+      if (artList) artList.style.display = 'none';
       if (stockInput) stockInput.value = '0';
       if (tipoSel) tipoSel.value = 'AJUSTE';
 
@@ -9863,18 +9910,67 @@
 
     function onFkSingleCategoriaChange() {
       const catSel = document.getElementById('fk-single-categoria');
-      const artSel = document.getElementById('fk-single-articulo');
-      if (!catSel || !artSel) return;
+      const artSearch = document.getElementById('fk-single-articulo-search');
+      const artHidden = document.getElementById('fk-single-articulo');
+      const artList = document.getElementById('fk-single-articulo-ac-list');
+      if (!catSel || !artSearch) return;
       const categoria = catSel.value;
+      artSearch.value = '';
+      if (artHidden) artHidden.value = '';
+      if (artList) { artList.style.display = 'none'; artList.innerHTML = ''; }
       if (!categoria) {
-        artSel.innerHTML = '<option value="">Seleccione la Categoría primero</option>';
-        artSel.disabled = true;
+        artSearch.placeholder = 'Seleccione la Categoría primero';
+        artSearch.disabled = true;
       } else {
-        const arts = kardexLookups.articulos.filter(a => a.Categoria === categoria);
-        artSel.innerHTML = '<option value="">Seleccione</option>' + arts.map(a => `<option value="${a.Id}">${a.Articulo}</option>`).join('');
-        artSel.disabled = false;
+        artSearch.placeholder = 'Escriba para buscar el artículo...';
+        artSearch.disabled = false;
       }
       updateFkSingleStock();
+    }
+
+    function renderFkSingleArticuloResultados(q) {
+      const catSel = document.getElementById('fk-single-categoria');
+      const artList = document.getElementById('fk-single-articulo-ac-list');
+      if (!catSel || !artList) return;
+      const categoria = catSel.value;
+      if (!categoria) return;
+
+      const query = (q || '').trim().toUpperCase();
+      const arts = kardexLookups.articulos
+        .filter(a => a.Categoria === categoria)
+        .filter(a => !query || a.Articulo.toUpperCase().includes(query))
+        .slice(0, 50);
+
+      artList.innerHTML = '';
+      if (arts.length === 0) {
+        artList.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted); font-size: 0.8rem;">No se encontraron artículos</div>';
+      } else {
+        arts.forEach(a => {
+          const div = document.createElement('div');
+          div.className = 'ac-item-row';
+          div.style.padding = '8px 12px';
+          div.style.cursor = 'pointer';
+          div.style.fontSize = '0.8rem';
+          div.style.borderBottom = '1px solid var(--border)';
+          div.textContent = a.Articulo;
+          div.addEventListener('click', () => {
+            document.getElementById('fk-single-articulo-search').value = a.Articulo;
+            document.getElementById('fk-single-articulo').value = a.Id;
+            artList.style.display = 'none';
+            updateFkSingleStock();
+          });
+          artList.appendChild(div);
+        });
+      }
+      artList.style.display = 'block';
+    }
+
+    function onFkSingleArticuloSearchInput() {
+      const artHidden = document.getElementById('fk-single-articulo');
+      const stockInput = document.getElementById('fk-single-stock');
+      if (artHidden) artHidden.value = '';
+      if (stockInput) stockInput.value = '0';
+      renderFkSingleArticuloResultados(document.getElementById('fk-single-articulo-search').value);
     }
 
     async function updateFkSingleStock() {
@@ -9942,7 +10038,9 @@
       document.getElementById('fk-single-cantidad').value = '';
       document.getElementById('fk-single-observaciones').value = '';
       document.getElementById('fk-single-articulo').value = '';
-      document.getElementById('fk-single-articulo').focus();
+      document.getElementById('fk-single-articulo-search').value = '';
+      document.getElementById('fk-single-stock').value = '0';
+      document.getElementById('fk-single-articulo-search').focus();
 
       mostrarFeedbackAgregado('formkardex-btn-add-single', 'Movimiento agregado');
     }
@@ -10522,7 +10620,8 @@
       const fkSingleRegional = document.getElementById('fk-single-regional');
       const fkSingleCategoria = document.getElementById('fk-single-categoria');
       const fkSingleTipo = document.getElementById('fk-single-tipo');
-      const fkSingleArticulo = document.getElementById('fk-single-articulo');
+      const fkSingleArticuloSearch = document.getElementById('fk-single-articulo-search');
+      const fkSingleArticuloAcList = document.getElementById('fk-single-articulo-ac-list');
 
       if (closeSpan) closeSpan.addEventListener('click', () => { modal.style.display = 'none'; });
       if (btnCancel) btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
@@ -10538,7 +10637,18 @@
       if (fkSingleRegional) fkSingleRegional.addEventListener('change', onFkSingleRegionalChange);
       if (fkSingleCategoria) fkSingleCategoria.addEventListener('change', onFkSingleCategoriaChange);
       if (fkSingleTipo) fkSingleTipo.addEventListener('change', toggleFkSingleOpDestino);
-      if (fkSingleArticulo) fkSingleArticulo.addEventListener('change', updateFkSingleStock);
+      if (fkSingleArticuloSearch) {
+        fkSingleArticuloSearch.addEventListener('input', onFkSingleArticuloSearchInput);
+        fkSingleArticuloSearch.addEventListener('focus', () => {
+          if (!fkSingleArticuloSearch.disabled) renderFkSingleArticuloResultados(fkSingleArticuloSearch.value);
+        });
+      }
+      document.addEventListener('click', (e) => {
+        if (fkSingleArticuloAcList && fkSingleArticuloSearch &&
+            !fkSingleArticuloSearch.contains(e.target) && !fkSingleArticuloAcList.contains(e.target)) {
+          fkSingleArticuloAcList.style.display = 'none';
+        }
+      });
 
       // Set up ajuste-stock-modal general button events
       const adjModal = document.getElementById('ajuste-stock-modal');
@@ -10699,6 +10809,12 @@
 
         tr.innerHTML = `
           <td style="text-align: center; padding: 10px;">
+            <div style="display: inline-flex; gap: 8px;">
+              <button type="button" class="btn" style="background: #22c55e; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600;" onclick="recibirUnicoPendiente('${item.IdKardexOriginal}')">✔️ Recibir</button>
+              <button type="button" class="btn" style="background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600;" onclick="marcarNovedadPendiente('${item.IdKardexOriginal}')">⚠️ Novedad</button>
+            </div>
+          </td>
+          <td style="text-align: center; padding: 10px;">
             <input type="checkbox" class="pendiente-row-check" value="${item.IdKardexOriginal}" ${isChecked ? 'checked' : ''} style="cursor: pointer;">
           </td>
           <td style="text-align: center; padding: 10px;">${imgHtml}</td>
@@ -10710,12 +10826,6 @@
           <td style="padding: 10px; font-size: 0.8rem; color: var(--text-muted);">${item.UsuarioRegistro || '—'}</td>
           <td style="padding: 10px; font-size: 0.8rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.Observaciones || ''}">${item.Observaciones || '—'}</td>
           <td style="padding: 10px;">${noveltyText}</td>
-          <td style="text-align: center; padding: 10px;">
-            <div style="display: inline-flex; gap: 8px;">
-              <button type="button" class="btn" style="background: #22c55e; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600;" onclick="recibirUnicoPendiente('${item.IdKardexOriginal}')">✔️ Recibir</button>
-              <button type="button" class="btn" style="background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600;" onclick="marcarNovedadPendiente('${item.IdKardexOriginal}')">⚠️ Novedad</button>
-            </div>
-          </td>
         `;
 
         const check = tr.querySelector('.pendiente-row-check');
@@ -11631,8 +11741,17 @@
         const res = await fetch(url);
         if (!res.ok) throw new Error('Error cargando actas de la API');
 
-        masterActas = await res.json();
+        const data = await res.json();
+        masterActas = data.results || [];
+        actaFullCounts = data.counts || null;
         filterAndRenderActas();
+        if (actaFullCounts) {
+          renderActasFilterCountsUI(actaFullCounts, {
+            selectedEst: document.getElementById('acta-filtro-estado').value,
+            selectedReg: document.getElementById('acta-filtro-regional').value,
+            selectedOp: document.getElementById('acta-filtro-operacion').value,
+          });
+        }
       } catch (err) {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
@@ -11663,54 +11782,55 @@
       updateActasBadgeFiltros();
     }
 
+    // Los conteos de los filtros de Actas reflejan el valor real de la base de datos
+    // (no solo los 500 registros cargados en pantalla): se piden al servidor con un
+    // pequeño debounce cada vez que cambia algún filtro, igual que en Kardex.
+    let actaCountsDebounceTimer = null;
+    let actaCountsFetchController = null;
+
     function updateActasFilterCounts() {
+      clearTimeout(actaCountsDebounceTimer);
+      actaCountsDebounceTimer = setTimeout(() => { refreshActasFilterCounts(); }, 250);
+    }
+
+    async function refreshActasFilterCounts() {
       const selectedEst = document.getElementById('acta-filtro-estado').value;
       const selectedReg = document.getElementById('acta-filtro-regional').value;
       const selectedOp = document.getElementById('acta-filtro-operacion').value;
       const selectedCat = activeActaCategory || '';
-      const search = document.getElementById('acta-filtro-search').value.trim().toLowerCase();
+      const search = document.getElementById('acta-filtro-search').value.trim();
 
-      const matchesTexto = (a) => {
-        if (!search) return true;
-        const txt = `${a.IdActa} ${a.Trabajador} ${a.operacion} ${a.Regional} ${a.Usuario}`.toLowerCase();
-        return txt.includes(search);
-      };
+      if (actaCountsFetchController) actaCountsFetchController.abort();
+      actaCountsFetchController = new AbortController();
 
-      const estadoCounts = {};
-      masterActas.forEach(a => {
-        if (selectedReg && a.Regional !== selectedReg) return;
-        if (selectedOp && a.operacion !== selectedOp) return;
-        if (selectedCat && a.Categoria !== selectedCat) return;
-        if (!matchesTexto(a)) return;
-        estadoCounts[a.Estado] = (estadoCounts[a.Estado] || 0) + 1;
-      });
+      let url = `/actas/api/actas?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      if (selectedEst) url += `&estado=${encodeURIComponent(selectedEst)}`;
+      if (selectedReg) url += `&regional=${encodeURIComponent(selectedReg)}`;
+      if (selectedOp) url += `&operacion=${encodeURIComponent(selectedOp)}`;
+      if (selectedCat) url += `&categoria=${encodeURIComponent(selectedCat)}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
 
-      const regionalCounts = {};
-      masterActas.forEach(a => {
-        if (selectedEst && a.Estado !== selectedEst) return;
-        if (selectedOp && a.operacion !== selectedOp) return;
-        if (selectedCat && a.Categoria !== selectedCat) return;
-        if (!matchesTexto(a)) return;
-        if (a.Regional) regionalCounts[a.Regional] = (regionalCounts[a.Regional] || 0) + 1;
-      });
+      try {
+        const res = await fetch(url, { signal: actaCountsFetchController.signal });
+        if (!res.ok) throw new Error('Error al actualizar los conteos');
+        const data = await res.json();
+        actaFullCounts = data.counts || null;
+        if (actaFullCounts) {
+          renderActasFilterCountsUI(actaFullCounts, { selectedEst, selectedReg, selectedOp });
+          const badgeTotal = document.getElementById('acta-badge-total');
+          if (badgeTotal) badgeTotal.textContent = `Total: ${actaFullCounts.total}`;
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('[actas] Error actualizando conteos de filtros:', err);
+      }
+    }
 
-      const operacionCounts = {};
-      masterActas.forEach(a => {
-        if (selectedEst && a.Estado !== selectedEst) return;
-        if (selectedReg && a.Regional !== selectedReg) return;
-        if (selectedCat && a.Categoria !== selectedCat) return;
-        if (!matchesTexto(a)) return;
-        if (a.operacion) operacionCounts[a.operacion] = (operacionCounts[a.operacion] || 0) + 1;
-      });
-
-      const categoriaCounts = {};
-      masterActas.forEach(a => {
-        if (selectedEst && a.Estado !== selectedEst) return;
-        if (selectedReg && a.Regional !== selectedReg) return;
-        if (selectedOp && a.operacion !== selectedOp) return;
-        if (!matchesTexto(a)) return;
-        if (a.Categoria) categoriaCounts[a.Categoria] = (categoriaCounts[a.Categoria] || 0) + 1;
-      });
+    function renderActasFilterCountsUI(counts, sel) {
+      const estadoCounts = counts.porEstado || {};
+      const regionalCounts = counts.porRegional || {};
+      const operacionCounts = counts.porOperacion || {};
+      const categoriaCounts = counts.porCategoria || {};
 
       const estadoSelect = document.getElementById('acta-filtro-estado');
       const estadosList = [
@@ -11718,13 +11838,14 @@
         { val: 'Firmada', label: 'Firmada' },
         { val: 'Anulada', label: 'Anulada' }
       ];
-      estadoSelect.innerHTML = `<option value="">Todos (${masterActas.length})</option>`;
+      const totalEstCount = Object.values(estadoCounts).reduce((a, b) => Number(a) + Number(b), 0);
+      estadoSelect.innerHTML = `<option value="">Todos (${totalEstCount})</option>`;
       estadosList.forEach(e => {
         const count = estadoCounts[e.val] || 0;
         const opt = document.createElement('option');
         opt.value = e.val;
         opt.textContent = `${e.label} (${count})`;
-        if (e.val === selectedEst) opt.selected = true;
+        if (e.val === sel.selectedEst) opt.selected = true;
         estadoSelect.appendChild(opt);
       });
 
@@ -11737,14 +11858,14 @@
         const opt = document.createElement('option');
         opt.value = r;
         opt.textContent = `${r} (${count})`;
-        if (r === selectedReg) opt.selected = true;
+        if (r === sel.selectedReg) opt.selected = true;
         regionalSelect.appendChild(opt);
       });
 
       const operacionSelect = document.getElementById('acta-filtro-operacion');
       let allowedOps = [];
-      if (selectedReg) {
-        allowedOps = CONFIG.opsPorRegional[selectedReg] || [];
+      if (sel.selectedReg) {
+        allowedOps = CONFIG.opsPorRegional[sel.selectedReg] || [];
       } else {
         const allOpsSet = new Set();
         Object.values(CONFIG.opsPorRegional).forEach(ops => ops.forEach(op => allOpsSet.add(op)));
@@ -11757,7 +11878,7 @@
         const opt = document.createElement('option');
         opt.value = op;
         opt.textContent = `${op} (${count})`;
-        if (op === selectedOp) opt.selected = true;
+        if (op === sel.selectedOp) opt.selected = true;
         operacionSelect.appendChild(opt);
       });
 
@@ -12607,6 +12728,8 @@
     let isDotacionLeyInitialized = false;
     let dotleySummary = [];
     let dotleyOpsPorRegional = {};
+    let dotleyRegionalTotals = {};
+    let dotleyOperacionCounts = {};
     let dotleyAllRows = [];
     let dotleyActiveRegional = '';
     let dotleyActiveOperacion = '';
@@ -12703,13 +12826,132 @@
         });
       }
 
+      // Modal de correo masivo
+      const masivoModal = document.getElementById('dotley-masivo-modal');
+      const btnAbrirMasivo = document.getElementById('dotley-btn-correo-masivo');
+      const btnCerrarMasivo = document.getElementById('dotley-masivo-modal-close');
+      const btnCancelarMasivo = document.getElementById('dotley-masivo-btn-cancel');
+      const btnEnviarMasivo = document.getElementById('dotley-masivo-btn-enviar');
+      const masivoRegSel = document.getElementById('dotley-masivo-regional');
+      const masivoOpSel = document.getElementById('dotley-masivo-operacion');
+
+      if (btnAbrirMasivo) {
+        btnAbrirMasivo.addEventListener('click', () => {
+          populateDotleyMasivoRegional();
+          document.getElementById('dotley-masivo-count-wrap').style.display = 'none';
+          btnEnviarMasivo.disabled = true;
+          if (masivoModal) masivoModal.style.display = 'flex';
+        });
+      }
+      if (btnCerrarMasivo) btnCerrarMasivo.addEventListener('click', () => { masivoModal.style.display = 'none'; });
+      if (btnCancelarMasivo) btnCancelarMasivo.addEventListener('click', () => { masivoModal.style.display = 'none'; });
+
+      if (masivoRegSel) {
+        masivoRegSel.addEventListener('change', () => {
+          populateDotleyMasivoOperacion(masivoRegSel.value);
+          document.getElementById('dotley-masivo-count-wrap').style.display = 'none';
+          btnEnviarMasivo.disabled = true;
+        });
+      }
+      if (masivoOpSel) {
+        masivoOpSel.addEventListener('change', () => {
+          actualizarDotleyMasivoConteo();
+        });
+      }
+      if (btnEnviarMasivo) {
+        btnEnviarMasivo.addEventListener('click', enviarCorreoMasivoDotacionLey);
+      }
+
       await loadDotleyResumen();
       loadDotleyTrabajadores();
     }
 
+    function populateDotleyMasivoRegional() {
+      const regSel = document.getElementById('dotley-masivo-regional');
+      const opSel = document.getElementById('dotley-masivo-operacion');
+      if (!regSel) return;
+      regSel.innerHTML = '<option value="">Seleccione</option>' +
+        Object.keys(dotleyOpsPorRegional).sort().map(r => `<option value="${r}">${r}</option>`).join('');
+      regSel.value = '';
+      if (opSel) { opSel.innerHTML = '<option value="">Seleccione la Regional primero</option>'; opSel.disabled = true; }
+    }
+
+    function populateDotleyMasivoOperacion(regional) {
+      const opSel = document.getElementById('dotley-masivo-operacion');
+      if (!opSel) return;
+      if (!regional || !dotleyOpsPorRegional[regional]) {
+        opSel.innerHTML = '<option value="">Seleccione la Regional primero</option>';
+        opSel.disabled = true;
+        return;
+      }
+      const ops = Array.from(dotleyOpsPorRegional[regional]).sort();
+      opSel.innerHTML = '<option value="">Seleccione</option>' + ops.map(op => `<option value="${op}">${op}</option>`).join('');
+      opSel.disabled = false;
+    }
+
+    async function actualizarDotleyMasivoConteo() {
+      const regional = document.getElementById('dotley-masivo-regional').value;
+      const operacion = document.getElementById('dotley-masivo-operacion').value;
+      const countWrap = document.getElementById('dotley-masivo-count-wrap');
+      const countSpan = document.getElementById('dotley-masivo-count');
+      const btnEnviarMasivo = document.getElementById('dotley-masivo-btn-enviar');
+
+      if (!regional || !operacion) {
+        countWrap.style.display = 'none';
+        btnEnviarMasivo.disabled = true;
+        return;
+      }
+
+      try {
+        const url = `/dotacionley/api/trabajadores?page=1&limit=1&usuario=${encodeURIComponent(CONFIG.usuarioId)}&regional=${encodeURIComponent(regional)}&operacion=${encodeURIComponent(operacion)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Error al calcular el total');
+        const data = await res.json();
+        countSpan.textContent = data.total || 0;
+        countWrap.style.display = 'block';
+        btnEnviarMasivo.disabled = !data.total;
+      } catch (err) {
+        console.error('[dotacionley] Error calculando conteo masivo:', err);
+        countWrap.style.display = 'none';
+        btnEnviarMasivo.disabled = true;
+      }
+    }
+
+    async function enviarCorreoMasivoDotacionLey() {
+      const regional = document.getElementById('dotley-masivo-regional').value;
+      const operacion = document.getElementById('dotley-masivo-operacion').value;
+      const countText = document.getElementById('dotley-masivo-count').textContent;
+      if (!regional || !operacion) return;
+
+      if (!confirm(`¿Confirmas enviar el correo de dotación de ley a ${countText} colaborador(es) de ${operacion} (${regional})?`)) return;
+
+      const btnEnviarMasivo = document.getElementById('dotley-masivo-btn-enviar');
+      const original = btnEnviarMasivo.innerHTML;
+      btnEnviarMasivo.disabled = true;
+      btnEnviarMasivo.innerHTML = '<span>⏳</span> Enviando...';
+
+      try {
+        const res = await fetch('/dotacionley/api/enviar-correo-masivo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, regional, operacion })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al enviar los correos');
+
+        alert(`Correos enviados: ${data.enviados} de ${data.total}.${data.sinCorreo ? ` ${data.sinCorreo} colaborador(es) sin correo registrado.` : ''}`);
+        document.getElementById('dotley-masivo-modal').style.display = 'none';
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btnEnviarMasivo.disabled = false;
+        btnEnviarMasivo.innerHTML = original;
+      }
+    }
+
     async function loadDotleyResumen() {
       try {
-        const res = await fetch('/dotacionley/api/resumen');
+        const res = await fetch(`/dotacionley/api/resumen?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         if (!res.ok) throw new Error('Error al cargar resumen');
         dotleySummary = await res.json();
       } catch (err) {
@@ -12718,17 +12960,24 @@
       }
 
       dotleyOpsPorRegional = {};
+      dotleyRegionalTotals = {};
+      dotleyOperacionCounts = {};
       dotleySummary.forEach(item => {
         const reg = item.Regional || 'Sin Regional';
         const op = item.Operacion || 'Sin Operación';
+        const total = Number(item.total) || 0;
         if (!dotleyOpsPorRegional[reg]) dotleyOpsPorRegional[reg] = new Set();
         dotleyOpsPorRegional[reg].add(op);
+        dotleyRegionalTotals[reg] = (dotleyRegionalTotals[reg] || 0) + total;
+        dotleyOperacionCounts[op] = (dotleyOperacionCounts[op] || 0) + total;
       });
+
+      const totalGeneral = Object.values(dotleyRegionalTotals).reduce((a, b) => a + b, 0);
 
       const regSel = document.getElementById('dotley-filtro-regional');
       if (regSel) {
-        regSel.innerHTML = '<option value="">Todas</option>' +
-          Object.keys(dotleyOpsPorRegional).sort().map(r => `<option value="${r}">${r}</option>`).join('');
+        regSel.innerHTML = `<option value="">Todas (${totalGeneral})</option>` +
+          Object.keys(dotleyOpsPorRegional).sort().map(r => `<option value="${r}">${r} (${dotleyRegionalTotals[r] || 0})</option>`).join('');
       }
       populateDotleyOperacionFilter('');
     }
@@ -12744,8 +12993,10 @@
         Object.values(dotleyOpsPorRegional).forEach(set => set.forEach(op => ops.add(op)));
       }
 
-      opSel.innerHTML = '<option value="">Todas</option>' +
-        Array.from(ops).sort().map(op => `<option value="${op}">${op}</option>`).join('');
+      const totalOps = Array.from(ops).reduce((sum, op) => sum + (dotleyOperacionCounts[op] || 0), 0);
+
+      opSel.innerHTML = `<option value="">Todas (${totalOps})</option>` +
+        Array.from(ops).sort().map(op => `<option value="${op}">${op} (${dotleyOperacionCounts[op] || 0})</option>`).join('');
     }
 
     function updateDotleyFiltrosBadge() {
@@ -12763,7 +13014,7 @@
       if (tbody) tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando...</td></tr>';
 
       try {
-        let url = '/dotacionley/api/trabajadores?page=1&limit=2000';
+        let url = `/dotacionley/api/trabajadores?page=1&limit=2000&usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
         if (dotleyActiveRegional) url += `&regional=${encodeURIComponent(dotleyActiveRegional)}`;
         if (dotleyActiveOperacion) url += `&operacion=${encodeURIComponent(dotleyActiveOperacion)}`;
         if (dotleySearchQuery) url += `&q=${encodeURIComponent(dotleySearchQuery)}`;
@@ -12857,11 +13108,22 @@
         const waLink = getDotleyWhatsappUrl(r, cleanName);
 
         const tr = document.createElement('tr');
+        const tieneCorreo = !!(r.Email && r.Email.trim());
+        const btnCorreoHtml = tieneCorreo
+          ? `<button type="button" class="dotley-btn-correo" onclick="enviarCorreoDotacionLey('${r.Identificacion}', this)" title="Enviar por correo" style="background: none; border: none; cursor: pointer; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
+               <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+             </button>`
+          : `<span title="Sin correo registrado" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; opacity:0.35;">
+               <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+             </span>`;
         tr.innerHTML = `
           <td style="text-align: center;">
-            <a href="${waLink}" target="_blank" title="Enviar por WhatsApp" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:6px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#25D366"></circle><path fill="#fff" d="M23.5 8.5c-1.9-1.9-4.5-3-7.3-3-5.7 0-10.3 4.6-10.3 10.3 0 1.8.5 3.6 1.4 5.1L6 26l5.3-1.4c1.5.8 3.1 1.2 4.8 1.2h.01c5.7 0 10.3-4.6 10.3-10.3 0-2.7-1.1-5.3-3-7.1zm-7.3 15.8h-.01c-1.5 0-3-.4-4.3-1.2l-.3-.2-3.2.8.9-3.1-.2-.3c-.9-1.4-1.3-3-1.3-4.6 0-4.7 3.8-8.5 8.5-8.5 2.3 0 4.4.9 6 2.5s2.5 3.7 2.5 6c0 4.7-3.9 8.6-8.6 8.6zm4.7-6.4c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.8 1-.2.2-.3.2-.5.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.8-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.5-.1 0-.3 0-.5 0s-.5.1-.7.3c-.2.3-1 1-1 2.3 0 1.4 1 2.7 1.1 2.9.1.2 2 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.2-.3-.2-.5-.3z"></path></svg>
-            </a>
+            <div style="display: flex; gap: 2px; justify-content: center; align-items: center;">
+              <a href="${waLink}" target="_blank" title="Enviar por WhatsApp" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#25D366"></circle><path fill="#fff" d="M23.5 8.5c-1.9-1.9-4.5-3-7.3-3-5.7 0-10.3 4.6-10.3 10.3 0 1.8.5 3.6 1.4 5.1L6 26l5.3-1.4c1.5.8 3.1 1.2 4.8 1.2h.01c5.7 0 10.3-4.6 10.3-10.3 0-2.7-1.1-5.3-3-7.1zm-7.3 15.8h-.01c-1.5 0-3-.4-4.3-1.2l-.3-.2-3.2.8.9-3.1-.2-.3c-.9-1.4-1.3-3-1.3-4.6 0-4.7 3.8-8.5 8.5-8.5 2.3 0 4.4.9 6 2.5s2.5 3.7 2.5 6c0 4.7-3.9 8.6-8.6 8.6zm4.7-6.4c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.8 1-.2.2-.3.2-.5.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.8-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.5-.1 0-.3 0-.5 0s-.5.1-.7.3c-.2.3-1 1-1 2.3 0 1.4 1 2.7 1.1 2.9.1.2 2 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.2-.3-.2-.5-.3z"></path></svg>
+              </a>
+              ${btnCorreoHtml}
+            </div>
           </td>
           <td style="font-weight: 600; font-size: 0.8rem; color: var(--primary);">${r.Identificacion || '—'}</td>
           <td style="font-size: 0.8rem;">${cleanName}</td>
@@ -12883,6 +13145,29 @@
         if (table) makeTableResizable(table);
       }
     }
+
+    window.enviarCorreoDotacionLey = async function(identificacion, btn) {
+      if (!confirm('¿Confirmas enviar el correo de dotación de ley a este colaborador?')) return;
+
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span style="font-size:0.7rem;">…</span>';
+      try {
+        const res = await fetch('/dotacionley/api/enviar-correo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, identificacion })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al enviar el correo');
+        btn.innerHTML = '<span style="color:#16a34a; font-size:1rem;">✓</span>';
+        setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1500);
+      } catch (err) {
+        alert(err.message);
+        btn.innerHTML = original;
+        btn.disabled = false;
+      }
+    };
 
     // Run on startup
     window.addEventListener('DOMContentLoaded', init);

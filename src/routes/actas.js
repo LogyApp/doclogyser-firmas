@@ -319,7 +319,59 @@ router.get('/api/actas', async (req, res) => {
       params
     );
 
-    res.json(rows);
+    // ── Conteos reales (sin el LIMIT 500) para los badges de los filtros ──────
+    // Respetan el mismo control de acceso del listado, más los filtros interactivos
+    // recibidos por query string, excluyendo en cada conteo su propia dimensión
+    // (mismo patrón "faceted count" usado en la pestaña Kardex).
+    const { estado, regional, operacion, categoria, search } = req.query;
+
+    const fEstado = estado ? { cond: 'da.Estado = ?', params: [estado] } : null;
+    const fRegional = regional ? { cond: 'mo.REGIONAL = ?', params: [regional] } : null;
+    const fOperacion = operacion ? { cond: 'da.operacion = ?', params: [operacion] } : null;
+    const fCategoria = categoria ? { cond: 'da.Categoria = ?', params: [categoria] } : null;
+    const fSearch = search ? {
+      cond: `(CAST(da.IdActa AS CHAR) LIKE ? OR
+              (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) LIKE ? OR
+              da.operacion LIKE ? OR mo.REGIONAL LIKE ? OR da.Usuario LIKE ?)`,
+      params: [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`]
+    } : null;
+
+    const buildActasCountWhere = (extraFilters) => {
+      const c = [...conds];
+      const p = [...params];
+      extraFilters.forEach(f => { if (f) { c.push(f.cond); p.push(...f.params); } });
+      return { where: c.length ? `WHERE ${c.join(' AND ')}` : '', params: p };
+    };
+
+    const FROM_JOIN = 'FROM Dynamic_Actas da LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = da.operacion';
+
+    const wTotal = buildActasCountWhere([fEstado, fRegional, fOperacion, fCategoria, fSearch]);
+    const wEstado = buildActasCountWhere([fRegional, fOperacion, fCategoria, fSearch]);
+    const wRegional = buildActasCountWhere([fEstado, fOperacion, fCategoria, fSearch]);
+    const wOperacion = buildActasCountWhere([fEstado, fRegional, fCategoria, fSearch]);
+    const wCategoria = buildActasCountWhere([fEstado, fRegional, fOperacion, fSearch]);
+
+    const [[totalRow]] = await pool.execute(`SELECT COUNT(*) AS total ${FROM_JOIN} ${wTotal.where}`, wTotal.params);
+    const [estadoRows] = await pool.execute(`SELECT da.Estado AS k, COUNT(*) AS total ${FROM_JOIN} ${wEstado.where} GROUP BY da.Estado`, wEstado.params);
+    const [regionalRows] = await pool.execute(`SELECT mo.REGIONAL AS k, COUNT(*) AS total ${FROM_JOIN} ${wRegional.where} GROUP BY mo.REGIONAL`, wRegional.params);
+    const [operacionRows] = await pool.execute(`SELECT da.operacion AS k, COUNT(*) AS total ${FROM_JOIN} ${wOperacion.where} GROUP BY da.operacion`, wOperacion.params);
+    const [categoriaRows] = await pool.execute(`SELECT da.Categoria AS k, COUNT(*) AS total ${FROM_JOIN} ${wCategoria.where} GROUP BY da.Categoria`, wCategoria.params);
+
+    const toMap = (dbRows) => {
+      const map = {};
+      dbRows.forEach(r => { if (r.k) map[r.k] = Number(r.total); });
+      return map;
+    };
+
+    const counts = {
+      total: Number(totalRow.total),
+      porEstado: toMap(estadoRows),
+      porRegional: toMap(regionalRows),
+      porOperacion: toMap(operacionRows),
+      porCategoria: toMap(categoriaRows),
+    };
+
+    res.json({ results: rows, counts });
   } catch (err) {
     console.error('[actas] GET /api/actas:', err);
     res.status(500).json({ error: err.message });

@@ -212,6 +212,53 @@ async function notificarActaFirma({ email, nombreTrabajador, categoria, urlFirma
   });
 }
 
+// ── Notificación de Dotación de Ley (tallas registradas) ──────────────────────
+
+async function notificarDotacionLey({ email, nombreTrabajador, tallas = {} }) {
+  const asunto = 'Entrega de Dotación de Ley — Verifica tus tallas registradas';
+
+  const filaTalla = (label, val) => val
+    ? `<tr><td style="padding:6px 10px;color:#777;font-size:.85rem">${label}</td><td style="padding:6px 10px;font-weight:700;color:#1a1a2e;font-size:.85rem">${val}</td></tr>`
+    : '';
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      ${HEADER}
+      <div style="background:#fff;padding:32px 28px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.95rem;line-height:1.6">
+          Te informamos que en el mes actual te será entregada la <strong>dotación de ley</strong>,
+          con las siguientes tallas registradas en nuestro sistema:
+        </p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;background:#f8f9fb;border-radius:8px;overflow:hidden">
+          ${filaTalla('Pantalón', tallas.pantalon)}
+          ${filaTalla('Botas', tallas.botas)}
+          ${filaTalla('Camisa / Camiseta', tallas.camiseta)}
+          ${filaTalla('Número de Buzo', tallas.numero)}
+        </table>
+        <p style="color:#555;margin:0 0 20px;font-size:.9rem;line-height:1.6">
+          Si alguna talla no corresponde, o si deseas actualizar tus datos bancarios y de contacto
+          (celular y correo electrónico), por favor ingresa al siguiente enlace para modificarlos:
+        </p>
+        <div style="text-align:center;margin-bottom:8px">
+          <a href="https://digital.logyser.com/actualizardatos"
+             style="display:inline-block;background:#e67e22;color:#fff;text-decoration:none;
+                    padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
+            Actualizar mis datos
+          </a>
+        </div>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to:      email,
+    subject: asunto,
+    html:    cuerpo,
+  });
+}
+
 async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlDoc, emailUsuario, cargo, ccExtra }) {
   const asunto = `Traslado firmado y completado — ${nombreTrabajador}`;
 
@@ -1997,6 +2044,7 @@ module.exports = {
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
   notificarActaFirma,
+  notificarDotacionLey,
   notificarDocumentoGenerado,
   notificarRetiro,
   notificarFirmaRenuncia,
