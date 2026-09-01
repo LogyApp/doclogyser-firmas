@@ -196,6 +196,21 @@ async function subirCertificadoBancario(identificacion, formattedDate, buffer, o
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirPDFActa(identificacion, prefijo, idActa, bufferPdf) {
+  const nombre = `${identificacion}/${identificacion}.${prefijo}.${idActa}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirEvidenciaActa(idActa, buffer, originalName, contentType) {
+  const ext = path.extname(originalName || '') || '.jpg';
+  const nombre = `actas-evidencias/${idActa}${ext}`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(buffer, { contentType: contentType || 'image/jpeg' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 async function subirPDFConfirmacionInventario(nombreArchivo, bufferPdf) {
   const nombre = `confirma_inventario/${nombreArchivo}`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
@@ -267,6 +282,8 @@ module.exports = {
   subirDocMovilidadExterno,
   subirCertificadoBancario,
   subirPDFConfirmacionInventario,
+  subirPDFActa,
+  subirEvidenciaActa,
   subirSoporteGasto,
   storage,
   subirArchivoCloudDocs: async function (identificacion, prefix, buffer, originalName, contentType) {

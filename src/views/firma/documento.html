@@ -35,6 +35,7 @@
     }
     .documento p { text-align: justify; margin-bottom: 8px; }
     .documento img { max-width: 100%; }
+
     .firma-seccion {
       background: #fff;
       padding: 24px;
@@ -47,25 +48,65 @@
       letter-spacing: 1px;
       color: #333;
       text-align: center;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
+
+    .sig-options { display: flex; flex-direction: column; gap: 14px; }
+
+    .option-card {
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .option-card:hover { border-color: #e67e22; background: #fff8f1; }
+    .option-card.selected { border-color: #e67e22; background: #fff8f1; box-shadow: 0 0 0 1px #e67e22; }
+
+    .option-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      color: #1a1a2e;
+      font-size: .9rem;
+      margin-bottom: 8px;
+    }
+    .option-radio { width: 17px; height: 17px; cursor: pointer; accent-color: #e67e22; }
+    .option-desc { font-size: .78rem; color: #777; margin-bottom: 10px; }
+
+    .sig-preview-box {
+      background: #f8f9fb;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 90px;
+    }
+    .sig-preview-box img { max-height: 80px; max-width: 100%; object-fit: contain; }
+
+    .drawing-wrap { display: flex; flex-direction: column; gap: 10px; }
+
     #canvasFirma {
       display: block;
-      margin: 0 auto;
-      border: 2px solid #ccc;
-      border-radius: 4px;
+      border: 2px dashed #c7cad9;
+      border-radius: 6px;
       background: #fff;
       cursor: crosshair;
       touch-action: none;
       width: 100%;
       max-width: 400px;
-      height: 200px;
+      height: 180px;
+      margin: 0 auto;
     }
+
     .firma-botones {
       display: flex;
       gap: 12px;
       justify-content: center;
-      margin-top: 16px;
+      margin-top: 18px;
     }
     .btn {
       padding: 12px 28px;
@@ -75,7 +116,7 @@
       font-weight: bold;
       cursor: pointer;
     }
-    .btn-limpiar { background: #ecf0f1; color: #333; border: 1px solid #bdc3c7; }
+    .btn-limpiar { background: #ecf0f1; color: #333; border: 1px solid #bdc3c7; align-self: center; }
     .btn-limpiar:hover { background: #bdc3c7; }
     .btn-guardar { background: #e67e22; color: #fff; }
     .btn-guardar:hover { background: #d35400; }
@@ -88,13 +129,44 @@
       .firma-seccion { padding: 16px; }
       .btn { padding: 11px 20px; font-size: .95rem; }
     }
+
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 26, 46, 0.6);
+      z-index: 5000;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .loading-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 30px 36px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,.35);
+      max-width: 300px;
+    }
+    .loading-spinner {
+      width: 46px;
+      height: 46px;
+      border: 4px solid #eee;
+      border-top-color: #e67e22;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: loading-spin .9s linear infinite;
+    }
+    @keyframes loading-spin { to { transform: rotate(360deg); } }
+    .loading-title { font-weight: 700; font-size: .95rem; color: #1a1a2e; margin-bottom: 4px; }
+    .loading-sub { font-size: .78rem; color: #777; line-height: 1.4; }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <div class="doc-card">
       <div class="doc-toggle" onclick="toggleDoc()">
-        <span class="doc-toggle-label">📄 DOCUMENTO DE TRASLADO</span>
+        <span class="doc-toggle-label" id="docTituloLabel">📄 DOCUMENTO</span>
         <button class="doc-toggle-btn" id="btnToggle">▲ Ocultar</button>
       </div>
       <div id="docBody">
@@ -104,12 +176,46 @@
 
     <div class="firma-seccion">
       <div class="firma-label">FIRMA DEL TRABAJADOR</div>
-      <canvas id="canvasFirma" width="400" height="200"></canvas>
+
+      <div class="sig-options">
+        <!-- Opción 1: usar la firma más reciente registrada (solo si existe) -->
+        <div class="option-card" id="optionExistente" style="display:none;">
+          <div class="option-header">
+            <input type="radio" name="sigMethod" value="existente" id="radioExistente" class="option-radio">
+            <label for="radioExistente" style="cursor:pointer;">Usar mi firma registrada</label>
+          </div>
+          <div class="option-desc">Se usará la firma más reciente que tiene registrada en el sistema.</div>
+          <div class="sig-preview-box">
+            <img id="imgFirmaExistente" src="" alt="Firma registrada">
+          </div>
+        </div>
+
+        <!-- Opción 2: dibujar una firma nueva -->
+        <div class="option-card" id="optionDibujar">
+          <div class="option-header">
+            <input type="radio" name="sigMethod" value="dibujar" id="radioDibujar" class="option-radio" checked>
+            <label for="radioDibujar" style="cursor:pointer;">Dibujar una nueva firma</label>
+          </div>
+          <div class="option-desc">Use el mouse o el dedo para dibujar su firma en el recuadro.</div>
+          <div class="drawing-wrap" id="drawingWrap">
+            <canvas id="canvasFirma" width="400" height="180"></canvas>
+            <button type="button" class="btn btn-limpiar" id="btnLimpiar">Limpiar trazo</button>
+          </div>
+        </div>
+      </div>
+
       <div class="firma-botones">
-        <button class="btn btn-limpiar" id="btnLimpiar">Limpiar</button>
-        <button class="btn btn-guardar" id="btnGuardar">Guardar</button>
+        <button class="btn btn-guardar" id="btnGuardar">Firmar Documento</button>
       </div>
       <div class="mensaje" id="mensaje"></div>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-title" id="loadingTitle">Estamos generando tu documento firmado...</div>
+      <div class="loading-sub">Esto puede tardar unos segundos, por favor no cierres esta ventana</div>
     </div>
   </div>
 
@@ -120,8 +226,11 @@
     const ID = _cfg.id;
     const FIRMA_PREVIA = _cfg.firmaPrevia;
     const DOCUMENTO_HTML = _cfg.documentoHtml;
+    const TITULO = _cfg.titulo || 'DOCUMENTO';
 
     document.getElementById('contenidoDoc').innerHTML = DOCUMENTO_HTML;
+    document.getElementById('docTituloLabel').textContent = `📄 ${TITULO}`;
+    document.title = TITULO;
 
     let docVisible = true;
     function toggleDoc() {
@@ -131,24 +240,60 @@
       if (!docVisible) document.querySelector('.firma-seccion').scrollIntoView({ behavior: 'smooth' });
     }
 
+    // ── Elementos ──────────────────────────────────────────────────────────
+    const optionExistente = document.getElementById('optionExistente');
+    const optionDibujar = document.getElementById('optionDibujar');
+    const radioExistente = document.getElementById('radioExistente');
+    const radioDibujar = document.getElementById('radioDibujar');
+    const imgFirmaExistente = document.getElementById('imgFirmaExistente');
+    const drawingWrap = document.getElementById('drawingWrap');
     const canvas = document.getElementById('canvasFirma');
     const ctx = canvas.getContext('2d');
-    let dibujando = false;
-    let esNuevaFirma = false;
+    const btnLimpiar = document.getElementById('btnLimpiar');
+    const btnGuardar = document.getElementById('btnGuardar');
+    const msgEl = document.getElementById('mensaje');
 
-    function limpiar() {
+    function limpiarCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    limpiarCanvas();
 
-    limpiar();
+    // ── Selección explícita del método de firma (nunca inferida) ───────────
+    let metodoActivo = 'dibujar';
+
+    function seleccionar(metodo) {
+      metodoActivo = metodo;
+      if (metodo === 'existente') {
+        optionExistente.classList.add('selected');
+        optionDibujar.classList.remove('selected');
+        drawingWrap.style.opacity = '0.5';
+      } else {
+        optionDibujar.classList.add('selected');
+        optionExistente.classList.remove('selected');
+        drawingWrap.style.opacity = '1';
+      }
+    }
 
     if (FIRMA_PREVIA) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      img.src = FIRMA_PREVIA;
+      imgFirmaExistente.src = FIRMA_PREVIA;
+      optionExistente.style.display = 'block';
+      radioExistente.checked = true;
+      seleccionar('existente');
+    } else {
+      seleccionar('dibujar');
     }
+
+    optionExistente.addEventListener('click', () => { radioExistente.checked = true; seleccionar('existente'); });
+    optionDibujar.addEventListener('click', () => { radioDibujar.checked = true; seleccionar('dibujar'); });
+    // Evitar que interactuar con el lienzo de dibujo cambie accidentalmente la selección
+    drawingWrap.addEventListener('click', (e) => e.stopPropagation());
+    drawingWrap.addEventListener('mousedown', (e) => e.stopPropagation());
+    drawingWrap.addEventListener('touchstart', (e) => e.stopPropagation());
+
+    // ── Dibujo del trazo ─────────────────────────────────────────────────
+    let dibujando = false;
 
     function coordenadas(e) {
       const r = canvas.getBoundingClientRect();
@@ -161,7 +306,6 @@
     function iniciar(e) {
       e.preventDefault();
       dibujando = true;
-      esNuevaFirma = true;
       const p = coordenadas(e);
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
@@ -189,41 +333,61 @@
     canvas.addEventListener('touchmove', trazar, { passive: false });
     canvas.addEventListener('touchend', terminar);
 
-    document.getElementById('btnLimpiar').addEventListener('click', () => {
-      limpiar();
-      esNuevaFirma = true;
-    });
+    btnLimpiar.addEventListener('click', () => limpiarCanvas());
 
-    document.getElementById('btnGuardar').addEventListener('click', async () => {
-      const btn = document.getElementById('btnGuardar');
-      const limpiarBtn = document.getElementById('btnLimpiar');
-      const msgEl = document.getElementById('mensaje');
+    // Verifica que el lienzo de dibujo realmente tenga trazos (no esté en blanco)
+    function lienzoTieneTrazo() {
+      const buffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+      return buffer.some(px => px !== 0xffffffff);
+    }
 
-      btn.disabled = true;
-      msgEl.textContent = 'Guardando…';
+    // ── Envío ────────────────────────────────────────────────────────────
+    btnGuardar.addEventListener('click', async () => {
+      let firma_base64;
+      const es_nueva_firma = metodoActivo === 'dibujar';
+
+      if (es_nueva_firma) {
+        if (!lienzoTieneTrazo()) {
+          msgEl.textContent = 'Por favor dibuje su firma en el recuadro antes de continuar.';
+          msgEl.className = 'mensaje error';
+          return;
+        }
+        firma_base64 = canvas.toDataURL('image/png');
+      } else {
+        firma_base64 = FIRMA_PREVIA;
+      }
+
+      btnGuardar.disabled = true;
+      msgEl.textContent = '';
       msgEl.className = 'mensaje';
 
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      const loadingTitle = document.getElementById('loadingTitle');
+      if (loadingTitle) loadingTitle.textContent = `Estamos generando tu ${TITULO.toLowerCase()} firmado...`;
+      if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
       try {
-        const firma_base64 = canvas.toDataURL('image/png');
         const resp = await fetch(`/doclogyser/${PROCESO}/${ID}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: TOKEN, firma_base64, es_nueva_firma: esNuevaFirma })
+          body: JSON.stringify({ token: TOKEN, firma_base64, es_nueva_firma })
         });
         const data = await resp.json();
         if (data.ok) {
           msgEl.textContent = 'Documento firmado y generado correctamente.';
           msgEl.className = 'mensaje ok';
-          limpiarBtn.disabled = true;
+          btnLimpiar.disabled = true;
         } else {
           msgEl.textContent = data.error || 'Error al guardar.';
           msgEl.className = 'mensaje error';
-          btn.disabled = false;
+          btnGuardar.disabled = false;
         }
       } catch {
         msgEl.textContent = 'Error de conexión. Intente nuevamente.';
         msgEl.className = 'mensaje error';
-        btn.disabled = false;
+        btnGuardar.disabled = false;
+      } finally {
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
       }
     });
   </script>

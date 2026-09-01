@@ -4,16 +4,22 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
-const { generarPDF } = require('../services/renderer');
+const { generarPDF, generarPDFDesdeHTML } = require('../services/renderer');
 const {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
   subirFirma,
   subirPDF,
+  subirPDFActa,
 } = require('../services/storage');
 const { validarToken } = require('../services/token');
 const { notificarDocumentoGenerado } = require('../services/email');
 const { obtenerCorreosOperacionDestino } = require('../services/traslados');
+const {
+  construirDatosPlantilla,
+  resolverTipoDocumentoActa,
+  registrarDocumentoTrabajadorActa,
+} = require('../services/actas');
 
 const router = express.Router();
 
@@ -25,8 +31,14 @@ function paginaError(mensaje) {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Error</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0f0f0}div{background:#fff;padding:2rem;border-radius:8px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.15);max-width:400px;width:90%}h2{color:#e74c3c;margin-top:0}p{color:#666;margin:0}</style></head><body><div><h2>Error</h2><p>${mensaje}</p></div></body></html>`;
 }
 
+const TITULOS_PROCESO = {
+  traslado: 'DOCUMENTO DE TRASLADO',
+  acta_entrega: 'ACTA DE ENTREGA',
+};
+
 function buildConfig(token, proceso, id, firmaPrevia, documentoHtml) {
-  return JSON.stringify({ token, proceso, id, firmaPrevia, documentoHtml }).replace(
+  const titulo = TITULOS_PROCESO[proceso.toLowerCase()] || 'DOCUMENTO';
+  return JSON.stringify({ token, proceso, id, firmaPrevia, documentoHtml, titulo }).replace(
     /<\/script>/gi,
     '<\\/script>'
   );
@@ -53,16 +65,22 @@ router.get('/:proceso/:id', async (req, res) => {
 
     const datos = rows[0];
 
-    let htmlDoc = plantilla.contenido_html || '';
-    htmlDoc = htmlDoc
-      .replace('{{firma_trabajador}}', '')
-      .replace('{{firma_representante}}',
-        `<img src="${URL_FIRMA_REPRESENTANTE}" style="max-width:240px;max-height:96px;display:block;margin-top:4px" alt="Firma representante"/>`);
-    const documentoHtml = reemplazarVariables(htmlDoc, preprocesarDatos(datos));
+    let documentoHtml;
+    if (proceso.toLowerCase() === 'acta_entrega') {
+      const { datos: datosPlantilla } = await construirDatosPlantilla(id, { firmaHtml: '' });
+      documentoHtml = reemplazarVariables(plantilla.contenido_html || '', datosPlantilla);
+    } else {
+      let htmlDoc = plantilla.contenido_html || '';
+      htmlDoc = htmlDoc
+        .replace('{{firma_trabajador}}', '')
+        .replace('{{firma_representante}}',
+          `<img src="${URL_FIRMA_REPRESENTANTE}" style="max-width:240px;max-height:96px;display:block;margin-top:4px" alt="Firma representante"/>`);
+      documentoHtml = reemplazarVariables(htmlDoc, preprocesarDatos(datos));
+    }
 
     let firmaPrevia = null;
     try {
-      firmaPrevia = await obtenerFirmaBase64Reciente(datos['Identificación']);
+      firmaPrevia = await obtenerFirmaBase64Reciente(datos['Identificación'] || datos['identificacion']);
     } catch {}
 
     const template = fs.readFileSync(DOCUMENTO_HTML, 'utf8');
@@ -92,6 +110,41 @@ router.post('/:proceso/:id', async (req, res) => {
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Registro no encontrado' });
 
     const t = rows[0];
+
+    if (proceso.toLowerCase() === 'acta_entrega') {
+      if (t.Estado !== 'Pendiente') {
+        return res.status(409).json({ ok: false, error: 'El acta no está disponible para firma' });
+      }
+
+      let urlFirmaActa;
+      if (es_nueva_firma) {
+        const base64DataActa = firma_base64.replace(/^data:image\/png;base64,/, '');
+        const bufferPngActa = Buffer.from(base64DataActa, 'base64');
+        urlFirmaActa = await subirFirma(t.identificacion, bufferPngActa);
+      } else {
+        urlFirmaActa = await obtenerUrlFirmaReciente(t.identificacion);
+      }
+
+      const firmaHtml = `<img src="${firma_base64}" style="max-height:90px;max-width:280px;" alt="Firma trabajador"/>`;
+      const { datos: datosPlantillaActa } = await construirDatosPlantilla(id, { firmaHtml });
+      const htmlFinalActa = reemplazarVariables(plantilla.contenido_html || '', datosPlantillaActa);
+
+      const pdfBufferActa = await generarPDFDesdeHTML(htmlFinalActa);
+
+      const { tipoDocumento, prefijo } = await resolverTipoDocumentoActa(t.Categoria);
+      const urlActa = await subirPDFActa(t.identificacion, prefijo, id, pdfBufferActa);
+
+      await pool.execute(
+        `UPDATE Dynamic_Actas
+         SET Estado = 'Firmada', Url_Firma = ?, Url_Acta = ?, token_firma = NULL, token_expira = NULL
+         WHERE IdActa = ?`,
+        [urlFirmaActa, urlActa, id]
+      );
+
+      await registrarDocumentoTrabajadorActa({ acta: t, tipoDocumento, prefijo, urlActa });
+
+      return res.json({ ok: true, url_doc: urlActa });
+    }
 
     if (t.estado_doc !== 'validado') {
       return res.status(409).json({ ok: false, error: 'El documento no está disponible para firma' });

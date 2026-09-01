@@ -168,6 +168,50 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
   });
 }
 
+// ── Notificación de firma de Acta de Entrega ─────────────────────────────────
+
+async function notificarActaFirma({ email, nombreTrabajador, categoria, urlFirma }) {
+  const asunto = `Acta de entrega pendiente de firma — ${categoria}`;
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #e67e22;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
+        <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
+          Le informamos que tiene un <strong>Acta de entrega de ${categoria}</strong> pendiente de su firma digital.
+          Por favor revise los detalles y firme a la brevedad.
+        </p>
+        <div style="text-align:center;margin-bottom:28px">
+          <a href="${urlFirma}"
+             style="display:inline-block;background:#e67e22;color:#fff;text-decoration:none;
+                    padding:14px 36px;border-radius:7px;font-size:1rem;font-weight:700;letter-spacing:.3px">
+            ✍️ Firmar Acta de Entrega
+          </a>
+        </div>
+        <div style="background:#fffbea;border-left:4px solid #f0d060;padding:12px 16px;border-radius:0 4px 4px 0;font-size:.83rem;color:#7a6000;margin-bottom:24px">
+          ⚠️ Este enlace tiene una validez de <strong>48 horas</strong>.
+        </div>
+        <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
+          Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
+        </p>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:.75rem;margin-top:16px">
+        Sistema de Gestión Documental — LOG&amp;SER S.A.S. · NIT 900.318.733-1
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
+    to:      email,
+    subject: asunto,
+    html:    cuerpo,
+  });
+}
+
 async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlDoc, emailUsuario, cargo, ccExtra }) {
   const asunto = `Traslado firmado y completado — ${nombreTrabajador}`;
 
@@ -1952,6 +1996,7 @@ module.exports = {
   notificarBloqueoAspirante,
   notificarNuevoTraslado,
   notificarFirmaTrabajador,
+  notificarActaFirma,
   notificarDocumentoGenerado,
   notificarRetiro,
   notificarFirmaRenuncia,

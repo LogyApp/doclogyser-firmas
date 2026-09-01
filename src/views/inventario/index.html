@@ -87,6 +87,14 @@
       background: #dbeafe !important;
       color: #1d4ed8 !important;
     }
+    .estado-FIRMADA {
+      background: #dcfce7 !important;
+      color: #15803d !important;
+    }
+    .estado-ANULADA {
+      background: #fee2e2 !important;
+      color: #b91c1c !important;
+    }
 
     * {
       box-sizing: border-box;
@@ -1819,6 +1827,45 @@
         padding: 5px 10px;
         font-size: 0.78rem;
       }
+
+      /* ── Formularios de detalle (Solicitudes / Actas de Entrega): apilar
+         la columna del formulario y la de artículos en vez de lado a lado ── */
+      .dashboard-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Cualquier grid inline de 2 columnas fijas (pares de campos en modales
+         de edición de Artículos/Kardex, Email/Celular en Actas, etc.) */
+      [style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Tablas (Kardex, Solicitudes, Actas, Artículos, Historial): más compactas
+         para aprovechar mejor el ancho disponible dentro del scroll horizontal */
+      .kardex-table th, .kardex-table td {
+        padding: 8px 10px;
+        font-size: 0.78rem;
+      }
+
+      .kardex-table-container {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Modales: menos espacio superior fijo para aprovechar el alto de pantalla */
+      .modal {
+        padding-top: 16px;
+      }
+
+      /* Encabezados de tarjeta/modal con título + botón: permitir que envuelvan */
+      .modal-header {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      /* Botones de formulario que suelen ir en fila: permitir envolver siempre */
+      .btns-grupo {
+        flex-wrap: wrap !important;
+      }
     }
   </style>
 </head>
@@ -1840,6 +1887,14 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
         <span>Inventario</span>
       </li>
+      <li class="nav-item" id="tab-btn-actas">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M9 12l2 2 4-4"></path><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.5 0 2.9.37 4.14 1.02"></path><path d="M21 5l-9 9"></path></svg>
+        <span>Actas de Entrega</span>
+      </li>
+      <li class="nav-item" id="tab-btn-solicitudes">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Solicitudes</span>
+      </li>
       <li class="nav-item" id="tab-btn-kardex">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
         <span>Kardex</span>
@@ -1848,9 +1903,9 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
         <span>Artículos</span>
       </li>
-      <li class="nav-item" id="tab-btn-solicitudes">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-        <span>Solicitudes</span>
+      <li class="nav-item" id="tab-btn-dotacionley">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>
+        <span>Dotación de Ley</span>
       </li>
     </ul>
   </div>
@@ -2404,7 +2459,7 @@
 
           <!-- VISTA DETALLE/FORMULARIO DE SOLICITUD -->
           <div id="sol-vista-formulario" class="sol-vista" style="display: none;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
               <h2 id="sol-form-title" style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin: 0;">Nueva Solicitud</h2>
               <button class="btn" id="sol-btn-volver" style="background: white; border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">⬅️ Volver al listado</button>
             </div>
@@ -2491,7 +2546,7 @@
                   </div>
 
                   <!-- Action Buttons inside Form -->
-                  <div class="btns-grupo" style="display: flex; gap: 10px; margin-top: 20px;">
+                  <div class="btns-grupo" style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
                     <button type="submit" class="btn btn-crear" id="sol-btn-guardar-borrador" style="background:#10b981; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer;">💾 Guardar Borrador</button>
                     <button type="button" class="btn btn-primary" id="sol-btn-presentar" style="background:var(--primary); color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">📤 Presentar Solicitud</button>
                     <button type="button" class="btn btn-danger" id="sol-btn-cancelar-sol" style="background:#dc2626; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">❌ Cancelar Solicitud</button>
@@ -2530,6 +2585,275 @@
           </div>
 
         </main>
+      </div>
+    </div>
+
+    <!-- Pestaña 5: Actas de Entrega -->
+    <div class="wrapper" id="content-tab-actas" style="display: none;">
+      <!-- Header -->
+      <header>
+        <div class="logo-container">
+          <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER LOGO">
+          <div class="header-titles">
+            <h1>Actas de Entrega</h1>
+            <p>Genera y firma actas de entrega de dotación, EPP y demás elementos de inventario</p>
+          </div>
+        </div>
+
+        <div class="user-profile">
+          <div class="user-avatar" id="actas-user-avatar-initials">US</div>
+          <div class="user-info">
+            <span class="user-name" id="actas-profile-name">Cargando...</span>
+            <span class="user-role" id="actas-profile-role">Cargando...</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Layout -->
+      <div class="main-layout">
+        <main class="content-area" style="width: 100%;">
+
+          <!-- VISTA LISTADO DE ACTAS -->
+          <div id="acta-vista-listado" class="acta-vista active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <span class="badge badge-estado" id="acta-badge-total" style="background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
+              </div>
+              <button class="btn-primary" id="acta-btn-nueva" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
+                <span>➕</span> Nueva Acta
+              </button>
+            </div>
+
+            <!-- Filters Card -->
+            <div class="filters-card" style="margin-bottom: 16px;">
+              <div class="filtros-toggle" id="acta-filtros-toggle">
+                <span class="filtros-toggle-left">
+                  🔍 Filtros de Búsqueda
+                  <span class="filtros-badge" id="acta-filtros-badge">0</span>
+                </span>
+                <span class="filtros-chevron" id="acta-filtros-chevron">▸</span>
+              </div>
+
+              <div id="acta-filtros-body" style="display: none;">
+                <div class="category-filter-section" style="border-bottom: 1px dashed var(--border); padding-bottom: 16px; margin-bottom: 16px; margin-top: 16px;">
+                  <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Categorías</label>
+                  <div id="acta-filter-categoria-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <!-- Dynamic Category Buttons -->
+                  </div>
+                </div>
+
+                <div class="filters-grid" style="margin-top: 16px;">
+                  <div class="filter-group">
+                    <label for="acta-filtro-estado">Estado</label>
+                    <select id="acta-filtro-estado">
+                      <option value="">Todos</option>
+                      <option value="Pendiente">Pendiente</option>
+                      <option value="Firmada">Firmada</option>
+                      <option value="Anulada">Anulada</option>
+                    </select>
+                  </div>
+                  <div class="filter-group">
+                    <label for="acta-filtro-regional">Regional</label>
+                    <select id="acta-filtro-regional">
+                      <option value="">Todas</option>
+                    </select>
+                  </div>
+                  <div class="filter-group">
+                    <label for="acta-filtro-operacion">Operación</label>
+                    <select id="acta-filtro-operacion">
+                      <option value="">Todas</option>
+                    </select>
+                  </div>
+                  <div class="filter-group" style="grid-column: span 2;">
+                    <label for="acta-filtro-search">Búsqueda rápida</label>
+                    <input type="text" id="acta-filtro-search" placeholder="Buscar por ID, trabajador, operación...">
+                  </div>
+                  <div class="filter-group" style="display: flex; align-items: flex-end;">
+                    <button id="acta-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+                      <span>🧹</span> Limpiar Filtros
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="kardex-table-container">
+              <table class="kardex-table" id="acta-table">
+                <thead>
+                  <tr>
+                    <th style="width: 130px; text-align: center;">Acciones</th>
+                    <th style="width: 70px; text-align: center; cursor: pointer;" data-sort="IdActa">ID<span id="acta-sort-IdActa" class="sort-indicator"></span></th>
+                    <th style="width: 110px; cursor: pointer;" data-sort="Fecha_Registro">Fecha<span id="acta-sort-Fecha_Registro" class="sort-indicator"></span></th>
+                    <th style="cursor: pointer;" data-sort="Trabajador">Trabajador<span id="acta-sort-Trabajador" class="sort-indicator"></span></th>
+                    <th style="width: 120px; cursor: pointer;" data-sort="Regional">Regional<span id="acta-sort-Regional" class="sort-indicator"></span></th>
+                    <th style="width: 140px; cursor: pointer;" data-sort="operacion">Operación<span id="acta-sort-operacion" class="sort-indicator"></span></th>
+                    <th style="width: 120px; cursor: pointer;" data-sort="Categoria">Categoría<span id="acta-sort-Categoria" class="sort-indicator"></span></th>
+                    <th style="width: 90px; text-align: center;">Ítems</th>
+                    <th style="width: 120px; text-align: center; cursor: pointer;" data-sort="Estado">Estado<span id="acta-sort-Estado" class="sort-indicator"></span></th>
+                    <th style="width: 140px; cursor: pointer;" data-sort="Usuario">Registrado por<span id="acta-sort-Usuario" class="sort-indicator"></span></th>
+                  </tr>
+                </thead>
+                <tbody id="acta-table-body">
+                  <tr>
+                    <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando actas...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- VISTA DETALLE/FORMULARIO DE ACTA -->
+          <div id="acta-vista-formulario" class="acta-vista" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+              <h2 id="acta-form-title" style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin: 0;">Nueva Acta de Entrega</h2>
+              <button class="btn" id="acta-btn-volver" style="background: white; border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">⬅️ Volver al listado</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;" class="dashboard-grid">
+
+              <!-- Form Column -->
+              <div class="card" style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: var(--shadow-sm);">
+                <div class="section-title" style="font-size: 0.75rem; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase;">1. Información del Acta</div>
+
+                <form id="acta-form-datos">
+                  <input type="hidden" id="acta-id-field">
+
+                  <div class="field" style="margin-bottom: 12px;">
+                    <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px;">Categoría <span style="color:red;">*</span></label>
+                    <input type="hidden" id="acta-form-categoria" required>
+                    <div id="acta-form-categoria-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                  </div>
+
+                  <div class="field" style="margin-bottom: 12px;">
+                    <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Trabajador <span style="color:red;">*</span></label>
+                    <div class="autocomplete-wrap" style="position:relative;">
+                      <input type="text" id="acta-form-trabajador-search" placeholder="Escribe identificación o nombre del trabajador..." style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+                      <input type="hidden" id="acta-form-trabajador-id">
+                      <div class="ac-list" id="acta-trabajador-ac-list" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 6px; max-height: 180px; overflow-y: auto; z-index: 1000; display: none;"></div>
+                    </div>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div class="field">
+                      <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Email</label>
+                      <input type="email" id="acta-form-email" placeholder="correo@ejemplo.com" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+                    </div>
+                    <div class="field">
+                      <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Celular</label>
+                      <input type="text" id="acta-form-celular" placeholder="3001234567" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+                    </div>
+                  </div>
+
+                  <div class="field" style="margin-bottom: 12px;">
+                    <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Regional <span style="color:red;">*</span></label>
+                    <select id="acta-form-regional" required style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+                      <option value="">Seleccione</option>
+                    </select>
+                  </div>
+
+                  <div class="field" style="margin-bottom: 12px;">
+                    <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Operación <span style="color:red;">*</span></label>
+                    <select id="acta-form-operacion" required style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+                      <option value="">Seleccione Regional primero</option>
+                    </select>
+                  </div>
+
+                  <div class="field" style="margin-bottom: 12px;">
+                    <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Fecha de Entrega</label>
+                    <input type="date" id="acta-form-fecha-entrega" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px;">
+                  </div>
+
+                  <div class="field" style="margin-bottom: 12px;">
+                    <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Evidencia (foto, opcional)</label>
+                    <div id="acta-form-evidencia-dropzone" style="border:2px dashed var(--border); border-radius:8px; padding:12px; text-align:center; background:#fafbfc; transition: border-color .15s, background-color .15s, opacity .15s; cursor:pointer;">
+                      <div id="acta-form-evidencia-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="display:block; margin:0 auto 6px;"><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path><polyline points="7 9 12 4 17 9"></polyline><line x1="12" y1="4" x2="12" y2="16"></line></svg>
+                        <div style="font-size:0.76rem; color: var(--text-muted); margin-bottom:8px;">Arrastra una foto aquí o elige una opción</div>
+                        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                          <button type="button" id="acta-form-evidencia-btn-file" onclick="event.stopPropagation(); const el=document.getElementById('acta-form-evidencia-file'); if(!el.disabled) el.click();" style="padding:6px 12px; font-size:0.75rem; border:1px solid var(--border); background:white; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                            Elegir archivo
+                          </button>
+                          <button type="button" id="acta-form-evidencia-btn-camera" onclick="event.stopPropagation(); const el=document.getElementById('acta-form-evidencia-camera'); if(!el.disabled) el.click();" style="padding:6px 12px; font-size:0.75rem; border:1px solid var(--border); background:white; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                            Tomar foto
+                          </button>
+                        </div>
+                      </div>
+                      <div id="acta-form-evidencia-preview" style="display:none;"></div>
+                    </div>
+                    <input type="file" id="acta-form-evidencia-file" accept="image/*" style="display:none;">
+                    <input type="file" id="acta-form-evidencia-camera" accept="image/*" capture="environment" style="display:none;">
+                  </div>
+
+                  <div class="field" style="margin-bottom: 12px;">
+                    <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Observaciones</label>
+                    <textarea id="acta-form-observaciones" placeholder="Escribe detalles adicionales sobre la entrega..." style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:6px; min-height:60px; resize:vertical;"></textarea>
+                  </div>
+
+                  <!-- Estado / info de firma (solo lectura, visible al abrir un acta existente) -->
+                  <div id="acta-estado-info" style="display: none; background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                      <span style="font-size:0.72rem; font-weight:700; color: var(--text-muted); text-transform:uppercase;">Estado</span>
+                      <span class="estado-badge" id="acta-estado-badge"></span>
+                    </div>
+                    <div id="acta-sin-firma-wrap" style="display:none; margin-top:8px; padding:8px 10px; background:#fffbeb; border:1px dashed #fbbf24; border-radius:6px; font-size:0.78rem; color:#92400e; font-weight:600;">
+                      ✍️ Sin firma — notificado por correo electrónico
+                    </div>
+                    <div id="acta-enlace-firma-wrap" style="display:none; margin-top:8px;">
+                      <label class="lbl" style="display:block; font-size:0.75rem; font-weight:600; margin-bottom:4px;">Enlace de firma (válido 48h)</label>
+                      <div style="display:flex; gap:6px; margin-bottom: 8px;">
+                        <input type="text" id="acta-enlace-firma-input" readonly style="flex:1; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.75rem; background:white;">
+                        <button type="button" id="acta-btn-copiar-enlace" style="padding:6px 12px; border:1px solid var(--border); border-radius:6px; background:white; cursor:pointer; font-size:0.75rem; font-weight:600;">📋 Copiar</button>
+                      </div>
+                      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" id="acta-btn-whatsapp" style="padding:6px 12px; border:1px solid #25D366; color:#128C4A; border-radius:6px; background:#eafff3; cursor:pointer; font-size:0.75rem; font-weight:600;">💬 WhatsApp</button>
+                        <button type="button" id="acta-btn-correo" style="padding:6px 12px; border:1px solid var(--border); border-radius:6px; background:white; cursor:pointer; font-size:0.75rem; font-weight:600;">📧 Correo</button>
+                      </div>
+                    </div>
+                    <div id="acta-doc-firmado-wrap" style="display:none; margin-top:8px;">
+                      <a id="acta-link-doc-firmado" href="#" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline; font-size: 0.85rem;">📄 Ver Acta Firmada (PDF)</a>
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons inside Form -->
+                  <div class="btns-grupo" style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-crear" id="acta-btn-guardar" style="background:#10b981; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer;">💾 Guardar Acta</button>
+                    <button type="button" class="btn btn-primary" id="acta-btn-enlace" style="background:var(--primary); color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">🔗 Generar Enlace de Firma</button>
+                    <button type="button" class="btn btn-danger" id="acta-btn-anular" style="background:#dc2626; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">🚫 Anular Acta</button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Items List Column -->
+              <div class="card" style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: var(--shadow-sm);">
+                <div class="section-title" style="font-size: 0.75rem; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase;">2. Artículos Entregados</div>
+
+                <div id="acta-add-item-wrap" style="margin-bottom: 16px;">
+                  <button type="button" class="btn" id="acta-btn-agregar-articulo" style="background: var(--primary); color: white; padding: 8px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                    <span>➕</span> Agregar Artículo
+                  </button>
+                </div>
+
+                <div class="items-section" id="acta-items-container">
+                  <div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.8rem;">No has añadido ningún artículo aún.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+
+    <!-- Overlay de espera al guardar/procesar una Acta de Entrega -->
+    <div id="acta-loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:5000; align-items:center; justify-content:center; backdrop-filter: blur(2px);">
+      <div style="background:white; border-radius:16px; padding:32px 40px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.35); max-width:320px;">
+        <div class="loader" style="margin:0 auto 18px;"></div>
+        <div id="acta-loading-title" style="font-weight:700; font-size:0.95rem; color:var(--text); margin-bottom:4px;">Estamos preparando el acta...</div>
+        <div id="acta-loading-sub" style="font-size:0.78rem; color:var(--text-muted); line-height:1.4;">Registrando movimientos de inventario y generando el enlace de firma</div>
       </div>
     </div>
 
@@ -2870,6 +3194,105 @@
     </div>
   </div>
 
+  <!-- Wrapper for Dotación de Ley Tab -->
+  <div class="wrapper" id="content-tab-dotacionley" style="display: none;">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER LOGO">
+        <div class="header-titles">
+          <h1>Dotación de Ley</h1>
+          <p>Consulta las tallas y datos de contacto registrados para la entrega mensual de dotación</p>
+        </div>
+      </div>
+
+      <div class="user-profile">
+        <div class="user-avatar" id="dotley-user-avatar-initials">US</div>
+        <div class="user-info">
+          <span class="user-name" id="dotley-profile-name">Cargando...</span>
+          <span class="user-role" id="dotley-profile-role">Cargando...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+      <main class="content-area" style="width: 100%;">
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <span class="badge badge-estado" id="dotley-badge-total" style="background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
+          </div>
+        </div>
+
+        <!-- Filters Card -->
+        <div class="filters-card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="dotley-filtros-toggle">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="dotley-filtros-badge">0</span>
+            </span>
+            <span class="filtros-chevron" id="dotley-filtros-chevron">▸</span>
+          </div>
+
+          <div id="dotley-filtros-body" style="display: none;">
+            <div class="filters-grid" style="margin-top: 16px;">
+              <div class="filter-group">
+                <label for="dotley-filtro-regional">Regional</label>
+                <select id="dotley-filtro-regional">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="dotley-filtro-operacion">Operación</label>
+                <select id="dotley-filtro-operacion">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="filter-group" style="grid-column: span 2;">
+                <label for="dotley-filtro-search">Búsqueda rápida</label>
+                <input type="text" id="dotley-filtro-search" placeholder="Buscar por nombre o identificación...">
+              </div>
+              <div class="filter-group" style="display: flex; align-items: flex-end;">
+                <button id="dotley-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+                  <span>🧹</span> Limpiar Filtros
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="kardex-table-container">
+          <table class="kardex-table" id="dotley-table">
+            <thead>
+              <tr>
+                <th style="width: 90px; text-align: center;">Acción</th>
+                <th style="width: 120px; cursor: pointer;" data-sort="Identificacion">Identificación<span id="dotley-sort-Identificacion" class="sort-indicator"></span></th>
+                <th style="cursor: pointer;" data-sort="Trabajador">Trabajador<span id="dotley-sort-Trabajador" class="sort-indicator"></span></th>
+                <th style="width: 130px; cursor: pointer;" data-sort="Regional">Regional<span id="dotley-sort-Regional" class="sort-indicator"></span></th>
+                <th style="width: 150px; cursor: pointer;" data-sort="Operacion">Operación<span id="dotley-sort-Operacion" class="sort-indicator"></span></th>
+                <th style="width: 150px; cursor: pointer;" data-sort="Cargo">Cargo<span id="dotley-sort-Cargo" class="sort-indicator"></span></th>
+                <th style="width: 110px; cursor: pointer;" data-sort="Fecha_Ingreso">Fecha Ingreso<span id="dotley-sort-Fecha_Ingreso" class="sort-indicator"></span></th>
+                <th style="width: 90px; text-align: center;">Camiseta</th>
+                <th style="width: 90px; text-align: center;">Buzo N°</th>
+                <th style="width: 90px; text-align: center;">Pantalón</th>
+                <th style="width: 90px; text-align: center;">Botas</th>
+                <th style="width: 120px;">Celular</th>
+              </tr>
+            </thead>
+            <tbody id="dotley-table-body">
+              <tr>
+                <td colspan="12" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
   <!-- Kardex Drawer -->
   <div id="kardex-drawer-overlay" class="kardex-drawer-overlay"></div>
   <div id="kardex-drawer" class="kardex-drawer">
@@ -3000,13 +3423,60 @@
 
       <!-- Tab selector inside header -->
       <div style="background: #f1f5f9; padding: 8px 24px 0 24px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+        <button type="button" id="formarticulos-tab-btn-single" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">➕ Agregar Registro</button>
         <button type="button" id="formarticulos-tab-btn-manual" style="padding: 8px 16px; border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.8rem; color: var(--primary);">✍️ Editor de Grid (0 filas)</button>
         <button type="button" id="formarticulos-tab-btn-excel" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">📋 Pegar desde Excel</button>
       </div>
 
       <!-- Scrollable content area -->
       <div style="flex-grow: 1; overflow-y: auto; padding: 24px; min-height: 250px;">
-        
+
+        <!-- Tab 0: Single Record Form -->
+        <div id="formarticulos-tab-single" style="display: none;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 700px;">
+            <div class="field" style="grid-column: 1 / -1;">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Elemento *</label>
+              <input type="text" id="fa-single-elemento" placeholder="Ej: PANTALÓN" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Talla</label>
+              <input type="text" id="fa-single-talla" placeholder="Ej: L" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Placa</label>
+              <input type="text" id="fa-single-placa" placeholder="Código" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;" oninput="this.value=this.value.replace(/\D/g,'')">
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Referencia</label>
+              <input type="text" id="fa-single-referencia" placeholder="Ref" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Categoría *</label>
+              <select id="fa-single-categoria" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+                <option value="">Seleccione</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Proveedor</label>
+              <input type="text" id="fa-single-proveedor" placeholder="Prov" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Costo</label>
+              <input type="number" id="fa-single-costo" placeholder="0" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Clasificación *</label>
+              <input type="text" id="fa-single-clase" list="fa-single-clase-list" placeholder="Clasificación" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
+              <datalist id="fa-single-clase-list"></datalist>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+            <button type="button" id="formarticulos-btn-add-single" style="padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
+              <span>➕</span> Agregar a la Lista
+            </button>
+          </div>
+        </div>
+
         <!-- Tab 1: Manual Grid Editor -->
         <div id="formarticulos-tab-manual" style="display: block;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -3017,8 +3487,8 @@
           </div>
           
           <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
-            <div style="max-height: 40vh; overflow-y: auto;">
-              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem;" id="formarticulos-grid-table">
+            <div style="max-height: 40vh; overflow-y: auto; overflow-x: auto;">
+              <table style="width: 100%; min-width: 900px; border-collapse: collapse; text-align: left; font-size: 0.8rem;" id="formarticulos-grid-table">
                 <thead>
                   <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10;">
                     <th style="padding: 10px; font-weight: 600; width: 250px;">Elemento *</th>
@@ -3129,13 +3599,79 @@
 
       <!-- Tab selector inside header -->
       <div style="background: #f1f5f9; padding: 8px 24px 0 24px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+        <button type="button" id="formkardex-tab-btn-single" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">➕ Agregar Registro</button>
         <button type="button" id="formkardex-tab-btn-manual" style="padding: 8px 16px; border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.8rem; color: var(--primary);">✍️ Editor de Grid (0 filas)</button>
         <button type="button" id="formkardex-tab-btn-excel" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 600; font-size: 0.8rem; color: var(--text-muted);">📋 Pegar desde Excel</button>
       </div>
 
       <!-- Scrollable content area -->
       <div style="flex-grow: 1; overflow-y: auto; padding: 24px; min-height: 250px;">
-        
+
+        <!-- Tab 0: Single Record Form -->
+        <div id="formkardex-tab-single" style="display: none;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 760px;">
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Fecha Movimiento *</label>
+              <input type="datetime-local" id="fk-single-fecha" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Tipo *</label>
+              <select id="fk-single-tipo" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+                <option value="ENTRADA">ENTRADA</option>
+                <option value="AJUSTE" selected>AJUSTE</option>
+                <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Regional *</label>
+              <select id="fk-single-regional" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+                <option value="">Seleccione</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Operación *</label>
+              <select id="fk-single-operacion" disabled style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+                <option value="">Seleccione la Regional primero</option>
+              </select>
+            </div>
+            <div class="field" id="fk-single-opdestino-wrap" style="display:none;">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Operación Destino *</label>
+              <select id="fk-single-opdestino" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+                <option value="">Seleccione</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Categoría *</label>
+              <select id="fk-single-categoria" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+                <option value="">Seleccione</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Artículo *</label>
+              <select id="fk-single-articulo" disabled style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+                <option value="">Seleccione la Categoría primero</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Stock Actual</label>
+              <input type="text" id="fk-single-stock" readonly disabled value="0" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:#e2e8f0; color:#475569; font-weight:600; text-align:right;">
+            </div>
+            <div class="field">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Cantidad *</label>
+              <input type="number" id="fk-single-cantidad" placeholder="0" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; text-align:right;">
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Observaciones</label>
+              <input type="text" id="fk-single-observaciones" placeholder="Detalle" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+            <button type="button" id="formkardex-btn-add-single" style="padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
+              <span>➕</span> Agregar a la Lista
+            </button>
+          </div>
+        </div>
+
         <!-- Tab 1: Manual Grid Editor -->
         <div id="formkardex-tab-manual" style="display: block;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -3265,6 +3801,44 @@
         <div style="display: flex; gap: 10px;">
           <button type="button" class="btn" id="sol-modal-btn-cancelar" style="background: white; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Cancelar</button>
           <button type="button" class="btn" id="sol-modal-btn-aceptar" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Aceptar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Agregar Artículos al Acta de Entrega -->
+  <div id="acta-add-articles-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 5vh; z-index: 1050;">
+    <div style="max-width: 700px; width: 95%; margin: auto; background: white; color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column; max-height: 80vh;">
+      <div class="modal-header" style="background: #f8fafc; color: var(--text); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--primary);">Seleccionar Artículos <span id="acta-modal-selected-category-badge" style="font-size:0.75rem; background: #e2e8f0; color: var(--primary); padding: 2px 8px; border-radius: 12px; margin-left: 8px; font-weight: 600; display: inline-block;"></span></h3>
+        <span id="acta-add-articles-modal-close" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+
+      <div style="padding: 16px 24px 0 24px;">
+        <p style="font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; padding: 10px 14px; border-radius: 6px; margin: 0 0 12px 0; font-weight: 600; line-height: 1.4;">
+          ⚠️ Ingresa Cantidad y Nota en cada artículo que quieras incluir. Solo se agregarán los que tengan cantidad mayor a 0.
+        </p>
+        <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
+          <div style="flex: 2;">
+            <input type="text" id="acta-modal-art-search" placeholder="Filtrar por nombre o referencia..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box;">
+          </div>
+          <div style="flex: 1;">
+            <select id="acta-modal-clase-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
+              <option value="">Todas las clasificaciones</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 16px 24px; overflow-y: auto; flex: 1; min-height: 250px;" id="acta-modal-articles-list">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div style="background: #f8fafc; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-shrink: 0;">
+        <span style="font-size: 0.85rem; font-weight: 600;" id="acta-modal-selected-count">Artículos seleccionados: 0</span>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" class="btn" id="acta-modal-btn-cancelar" style="background: white; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Cancelar</button>
+          <button type="button" class="btn" id="acta-modal-btn-aceptar" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Aceptar</button>
         </div>
       </div>
     </div>
@@ -3443,6 +4017,24 @@
     let isSolicitudesInitialized = false;
     let currentSolicitudSortKey = 'fecha';
     let currentSolicitudSortOrder = 'desc';
+
+    // Actas de Entrega
+    let isActasInitialized = false;
+    let masterActas = [];
+    let allActas = [];
+    let activeActaCategory = '';
+    let actaCategoriasRestringidas = null;
+    let actaAllCategorias = [];
+    let actaCreationOpsPorRegional = {};
+    let actaActual = null;
+    let selectedActaItems = [];
+    let actaTempSelectedItems = [];
+    let actaItemsEditable = true;
+    let actaStockMap = {};
+    let actaStockAplica = false;
+    let actaStockBloquea = false;
+    let currentActasSortColumn = 'Fecha_Registro';
+    let currentActasSortOrder = 'desc';
 
     // Initialize UI from config
     function init() {
@@ -3657,70 +4249,84 @@
       const tabBtnKardex = document.getElementById('tab-btn-kardex');
       const tabBtnArticulos = document.getElementById('tab-btn-articulos');
       const tabBtnSolicitudes = document.getElementById('tab-btn-solicitudes');
-      
+      const tabBtnActas = document.getElementById('tab-btn-actas');
+      const tabBtnDotacionLey = document.getElementById('tab-btn-dotacionley');
+
       const contentTabInventario = document.getElementById('content-tab-inventario');
       const contentTabKardex = document.getElementById('content-tab-kardex');
       const contentTabArticulos = document.getElementById('content-tab-articulos');
       const contentTabSolicitudes = document.getElementById('content-tab-solicitudes');
+      const contentTabActas = document.getElementById('content-tab-actas');
+      const contentTabDotacionLey = document.getElementById('content-tab-dotacionley');
 
-      if (tabBtnInventario && tabBtnKardex && tabBtnArticulos && tabBtnSolicitudes && 
-          contentTabInventario && contentTabKardex && contentTabArticulos && contentTabSolicitudes) {
-        
-        tabBtnInventario.addEventListener('click', () => {
-          tabBtnInventario.classList.add('active');
+      if (tabBtnInventario && tabBtnKardex && tabBtnArticulos && tabBtnSolicitudes && tabBtnActas && tabBtnDotacionLey &&
+          contentTabInventario && contentTabKardex && contentTabArticulos && contentTabSolicitudes && contentTabActas && contentTabDotacionLey) {
+
+        const desactivarTodasLasPestañas = () => {
+          tabBtnInventario.classList.remove('active');
           tabBtnKardex.classList.remove('active');
           tabBtnArticulos.classList.remove('active');
           tabBtnSolicitudes.classList.remove('active');
-          
-          contentTabInventario.style.display = 'block';
+          tabBtnActas.classList.remove('active');
+          tabBtnDotacionLey.classList.remove('active');
+
+          contentTabInventario.style.display = 'none';
           contentTabKardex.style.display = 'none';
           contentTabArticulos.style.display = 'none';
           contentTabSolicitudes.style.display = 'none';
+          contentTabActas.style.display = 'none';
+          contentTabDotacionLey.style.display = 'none';
+        };
+
+        tabBtnInventario.addEventListener('click', () => {
+          desactivarTodasLasPestañas();
+          tabBtnInventario.classList.add('active');
+          contentTabInventario.style.display = 'block';
         });
 
         tabBtnKardex.addEventListener('click', () => {
-          tabBtnInventario.classList.remove('active');
+          desactivarTodasLasPestañas();
           tabBtnKardex.classList.add('active');
-          tabBtnArticulos.classList.remove('active');
-          tabBtnSolicitudes.classList.remove('active');
-          
-          contentTabInventario.style.display = 'none';
           contentTabKardex.style.display = 'block';
-          contentTabArticulos.style.display = 'none';
-          contentTabSolicitudes.style.display = 'none';
-          
+
           // Lazy init Kardex
           initKardex();
         });
 
         tabBtnArticulos.addEventListener('click', () => {
-          tabBtnInventario.classList.remove('active');
-          tabBtnKardex.classList.remove('active');
+          desactivarTodasLasPestañas();
           tabBtnArticulos.classList.add('active');
-          tabBtnSolicitudes.classList.remove('active');
-          
-          contentTabInventario.style.display = 'none';
-          contentTabKardex.style.display = 'none';
           contentTabArticulos.style.display = 'block';
-          contentTabSolicitudes.style.display = 'none';
-          
+
           // Lazy init Articulos
           initArticulos();
         });
 
         tabBtnSolicitudes.addEventListener('click', () => {
-          tabBtnInventario.classList.remove('active');
-          tabBtnKardex.classList.remove('active');
-          tabBtnArticulos.classList.remove('active');
+          desactivarTodasLasPestañas();
           tabBtnSolicitudes.classList.add('active');
-          
-          contentTabInventario.style.display = 'none';
-          contentTabKardex.style.display = 'none';
-          contentTabArticulos.style.display = 'none';
           contentTabSolicitudes.style.display = 'block';
-          
+
           // Lazy init Solicitudes
           initSolicitudes();
+        });
+
+        tabBtnActas.addEventListener('click', () => {
+          desactivarTodasLasPestañas();
+          tabBtnActas.classList.add('active');
+          contentTabActas.style.display = 'block';
+
+          // Lazy init Actas
+          initActas();
+        });
+
+        tabBtnDotacionLey.addEventListener('click', () => {
+          desactivarTodasLasPestañas();
+          tabBtnDotacionLey.classList.add('active');
+          contentTabDotacionLey.style.display = 'block';
+
+          // Lazy init Dotación de Ley
+          initDotacionLey();
         });
       }
 
@@ -3735,6 +4341,12 @@
       if (tabBtnArticulos && !allowedSecciones.includes('ArtÍculos')) {
         tabBtnArticulos.style.display = 'none';
       }
+      if (tabBtnActas && !allowedSecciones.includes('Actas')) {
+        tabBtnActas.style.display = 'none';
+      }
+      if (tabBtnDotacionLey && !allowedSecciones.includes('DotacionLey')) {
+        tabBtnDotacionLey.style.display = 'none';
+      }
 
       // Initial Fetch or direct routing
       const params = new URLSearchParams(window.location.search);
@@ -3746,18 +4358,35 @@
         if (!allowedSecciones.includes('Inventario')) {
           if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
           else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
-          else tabLower = 'solicitudes';
+          else if (allowedSecciones.includes('Solicitudes')) tabLower = 'solicitudes';
+          else tabLower = 'actas';
         }
       } else if (tabLower === 'kardex') {
         if (!allowedSecciones.includes('Kardex')) {
           if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
           else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
-          else tabLower = 'solicitudes';
+          else if (allowedSecciones.includes('Solicitudes')) tabLower = 'solicitudes';
+          else tabLower = 'actas';
         }
       } else if (tabLower === 'articulos') {
         if (!allowedSecciones.includes('ArtÍculos')) {
           if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
           else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
+          else if (allowedSecciones.includes('Solicitudes')) tabLower = 'solicitudes';
+          else tabLower = 'actas';
+        }
+      } else if (tabLower === 'actas') {
+        if (!allowedSecciones.includes('Actas')) {
+          if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
+          else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
+          else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
+          else tabLower = 'solicitudes';
+        }
+      } else if (tabLower === 'dotacionley') {
+        if (!allowedSecciones.includes('DotacionLey')) {
+          if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
+          else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
+          else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
           else tabLower = 'solicitudes';
         }
       }
@@ -3777,6 +4406,18 @@
       } else if (tabLower === 'solicitudes') {
         if (tabBtnSolicitudes) {
           tabBtnSolicitudes.click();
+        } else {
+          fetchData();
+        }
+      } else if (tabLower === 'actas') {
+        if (tabBtnActas) {
+          tabBtnActas.click();
+        } else {
+          fetchData();
+        }
+      } else if (tabLower === 'dotacionley') {
+        if (tabBtnDotacionLey) {
+          tabBtnDotacionLey.click();
         } else {
           fetchData();
         }
@@ -4107,6 +4748,18 @@
 
       // table.style.overflow = 'hidden';
 
+      // Evita que "table-layout: fixed" + "width: 100%" aplaste las columnas para
+      // caber en pantallas angostas (texto envuelto letra por letra, filas gigantes).
+      // Sin un min-width que refleje la suma de anchos declarados, el navegador
+      // reparte el 100% del contenedor proporcionalmente entre columnas en vez de
+      // activar el scroll horizontal del contenedor.
+      let totalWidth = 0;
+      for (let i = 0; i < cols.length; i++) {
+        const declared = parseInt(cols[i].style.width) || 0;
+        totalWidth += declared > 0 ? declared : 110;
+      }
+      table.style.minWidth = totalWidth + 'px';
+
       for (let i = 0; i < cols.length; i++) {
         const th = cols[i];
         
@@ -4264,7 +4917,7 @@
       }
 
       const opUpper = (CONFIG.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-      const puedeEditarInventario = opUpper === 'ADMINISTRACION' || ['Inventario', 'Sistema', 'AuxiliarR', 'Auxiliar'].includes(CONFIG.rol);
+      const puedeEditarInventario = opUpper === 'ADMINISTRACION' || ['Inventario', 'Sistema', 'AuxiliarR', 'Auxiliar', 'AnaSst', 'AuxSst'].includes(CONFIG.rol);
 
       const table = document.createElement('table');
       table.className = 'kardex-table';
@@ -4473,7 +5126,7 @@
       }
 
       const opUpper = (CONFIG.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-      const puedeEditarInventario = opUpper === 'ADMINISTRACION' || ['Inventario', 'Sistema', 'AuxiliarR', 'Auxiliar'].includes(CONFIG.rol);
+      const puedeEditarInventario = opUpper === 'ADMINISTRACION' || ['Inventario', 'Sistema', 'AuxiliarR', 'Auxiliar', 'AnaSst', 'AuxSst'].includes(CONFIG.rol);
 
       items.forEach(item => {
         const card = document.createElement('div');
@@ -6563,18 +7216,22 @@
       const bulkModal = document.getElementById('formarticulos-modal');
       const btnCloseBulk = document.getElementById('formarticulos-modal-close');
       const btnCancelBulk = document.getElementById('formarticulos-btn-cancel');
+      const btnTabSingle = document.getElementById('formarticulos-tab-btn-single');
       const btnTabExcel = document.getElementById('formarticulos-tab-btn-excel');
       const btnTabManual = document.getElementById('formarticulos-tab-btn-manual');
       const btnProcesar = document.getElementById('formarticulos-btn-procesar');
       const btnAddRow = document.getElementById('formarticulos-btn-add-row');
+      const btnAddSingle = document.getElementById('formarticulos-btn-add-single');
       const btnGuardarBulk = document.getElementById('formarticulos-btn-guardar');
 
       if (btnCloseBulk) btnCloseBulk.addEventListener('click', () => bulkModal.style.display = 'none');
       if (btnCancelBulk) btnCancelBulk.addEventListener('click', () => bulkModal.style.display = 'none');
+      if (btnTabSingle) btnTabSingle.addEventListener('click', () => switchFormArticulosTab('single'));
       if (btnTabExcel) btnTabExcel.addEventListener('click', () => switchFormArticulosTab('excel'));
       if (btnTabManual) btnTabManual.addEventListener('click', () => switchFormArticulosTab('manual'));
       if (btnProcesar) btnProcesar.addEventListener('click', processPastedExcelData);
       if (btnAddRow) btnAddRow.addEventListener('click', addFormArticulosBlankRow);
+      if (btnAddSingle) btnAddSingle.addEventListener('click', agregarArticuloSingle);
       if (btnGuardarBulk) btnGuardarBulk.addEventListener('click', saveFormArticulos);
 
       // Form cancel & close clicks
@@ -8067,29 +8724,30 @@
 
         const itemRow = document.createElement('div');
         itemRow.style.display = 'flex';
+        itemRow.style.flexWrap = 'wrap';
         itemRow.style.alignItems = 'center';
         itemRow.style.justifyContent = 'space-between';
         itemRow.style.padding = '10px 0';
         itemRow.style.borderBottom = '1px solid var(--border)';
         itemRow.style.gap = '12px';
 
-        const imgHtml = art.Imagen 
+        const imgHtml = art.Imagen
           ? `<img src="${art.Imagen}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:8px; flex-shrink:0;">`
           : `<div style="width:40px; height:40px; background:#f0f0f0; border-radius:4px; margin-right:8px; flex-shrink:0;"></div>`;
 
         itemRow.innerHTML = `
-          <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; flex: 1 1 180px; min-width: 0;">
             ${imgHtml}
             <div style="flex: 1; min-width: 0;">
               <div style="font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${art.Articulo}</div>
               ${art.Talla ? `<div style="font-size: 0.75rem; color: var(--text-muted);">Talla: ${art.Talla}</div>` : ''}
             </div>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
-            <div style="width: 80px;">
+          <div style="display: flex; gap: 8px; align-items: center; flex: 1 1 200px;">
+            <div style="width: 80px; flex-shrink: 0;">
               <input type="number" class="modal-qty-input" data-id="${art.Id}" value="${currentQty > 0 ? currentQty : ''}" placeholder="Cant" min="0" style="width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem; text-align: center;">
             </div>
-            <div style="width: 150px;">
+            <div style="flex: 1; min-width: 100px;">
               <input type="text" class="modal-note-input" data-id="${art.Id}" value="${currentNote}" placeholder="Nota (opcional)" style="width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem;">
             </div>
           </div>
@@ -8718,50 +9376,98 @@
 
       bulkArticlesList = [];
       if (pasteArea) pasteArea.value = '';
-      
-      switchFormArticulosTab('manual');
+
+      switchFormArticulosTab('single');
       updateFormArticulosGridCount();
       
       modal.style.display = 'flex';
     }
 
     function switchFormArticulosTab(tab) {
-      const btnExcel = document.getElementById('formarticulos-tab-btn-excel');
-      const btnManual = document.getElementById('formarticulos-tab-btn-manual');
-      const tabExcel = document.getElementById('formarticulos-tab-excel');
-      const tabManual = document.getElementById('formarticulos-tab-manual');
+      const tabs = {
+        single: { btn: document.getElementById('formarticulos-tab-btn-single'), panel: document.getElementById('formarticulos-tab-single') },
+        manual: { btn: document.getElementById('formarticulos-tab-btn-manual'), panel: document.getElementById('formarticulos-tab-manual') },
+        excel:  { btn: document.getElementById('formarticulos-tab-btn-excel'), panel: document.getElementById('formarticulos-tab-excel') },
+      };
+      if (!tabs.single.btn || !tabs.manual.btn || !tabs.excel.btn) return;
 
-      if (!btnExcel || !btnManual || !tabExcel || !tabManual) return;
+      Object.keys(tabs).forEach(key => {
+        const { btn, panel } = tabs[key];
+        if (!btn || !panel) return;
+        const active = key === tab;
+        btn.style.background = active ? 'white' : 'transparent';
+        btn.style.color = active ? 'var(--primary)' : 'var(--text-muted)';
+        btn.style.border = active ? '1px solid var(--border)' : '1px solid transparent';
+        btn.style.borderBottom = 'none';
+        panel.style.display = active ? 'block' : 'none';
+      });
 
-      if (tab === 'excel') {
-        btnExcel.style.background = 'white';
-        btnExcel.style.color = 'var(--primary)';
-        btnExcel.style.border = '1px solid var(--border)';
-        btnExcel.style.borderBottom = 'none';
-
-        btnManual.style.background = 'transparent';
-        btnManual.style.color = 'var(--text-muted)';
-        btnManual.style.border = '1px solid transparent';
-        btnManual.style.borderBottom = 'none';
-
-        tabExcel.style.display = 'block';
-        tabManual.style.display = 'none';
-      } else {
-        btnManual.style.background = 'white';
-        btnManual.style.color = 'var(--primary)';
-        btnManual.style.border = '1px solid var(--border)';
-        btnManual.style.borderBottom = 'none';
-
-        btnExcel.style.background = 'transparent';
-        btnExcel.style.color = 'var(--text-muted)';
-        btnExcel.style.border = '1px solid transparent';
-        btnExcel.style.borderBottom = 'none';
-
-        tabExcel.style.display = 'none';
-        tabManual.style.display = 'block';
-        
+      if (tab === 'single') {
+        populateFormArticulosSingleForm();
+      } else if (tab === 'manual') {
         renderFormArticulosGrid();
       }
+    }
+
+    function populateFormArticulosSingleForm() {
+      const catSel = document.getElementById('fa-single-categoria');
+      const claseList = document.getElementById('fa-single-clase-list');
+      if (catSel) {
+        const defaultCats = ['ACTIVO FIJO', 'DOTACIÓN', 'HERRAMIENTA', 'EPP', 'PAPELERIA', 'TECNOLOGIA'];
+        const catsList = dbCategories.length > 0 ? dbCategories : defaultCats;
+        const current = catSel.value;
+        catSel.innerHTML = '<option value="">Seleccione</option>' + catsList.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (current) catSel.value = current;
+      }
+      if (claseList) {
+        claseList.innerHTML = getUniqueClaseArticuloValues().map(c => `<option value="${c}"></option>`).join('');
+      }
+    }
+
+    function mostrarFeedbackAgregado(btnId, msg) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      const original = btn.innerHTML;
+      btn.innerHTML = `<span>✅</span> ${msg}`;
+      setTimeout(() => { if (btn) btn.innerHTML = original; }, 1200);
+    }
+
+    function agregarArticuloSingle() {
+      const elementoInput = document.getElementById('fa-single-elemento');
+      const categoriaSel = document.getElementById('fa-single-categoria');
+      const claseInput = document.getElementById('fa-single-clase');
+
+      const elemento = elementoInput.value.trim().toUpperCase();
+      const categoria = categoriaSel.value;
+      const claseArticulo = claseInput.value.trim().toUpperCase();
+
+      if (!elemento) { alert('El campo Elemento es obligatorio.'); elementoInput.focus(); return; }
+      if (!categoria) { alert('Debe seleccionar una Categoría.'); categoriaSel.focus(); return; }
+      if (!claseArticulo) { alert('Debe seleccionar una Clasificación.'); claseInput.focus(); return; }
+
+      const talla = document.getElementById('fa-single-talla').value.trim();
+      const placa = document.getElementById('fa-single-placa').value.trim();
+      const referencia = document.getElementById('fa-single-referencia').value.trim();
+      const proveedor = document.getElementById('fa-single-proveedor').value.trim();
+      const costoRaw = document.getElementById('fa-single-costo').value;
+
+      bulkArticlesList.push({
+        elemento, talla, placa, referencia, categoria, proveedor,
+        costo: costoRaw ? parseFloat(costoRaw) : null,
+        claseArticulo
+      });
+      updateFormArticulosGridCount();
+
+      elementoInput.value = '';
+      document.getElementById('fa-single-talla').value = '';
+      document.getElementById('fa-single-placa').value = '';
+      document.getElementById('fa-single-referencia').value = '';
+      document.getElementById('fa-single-proveedor').value = '';
+      document.getElementById('fa-single-costo').value = '';
+      claseInput.value = '';
+      elementoInput.focus();
+
+      mostrarFeedbackAgregado('formarticulos-btn-add-single', `"${elemento}" agregado`);
     }
 
     function updateFormArticulosGridCount() {
@@ -9051,7 +9757,7 @@
       
       if (!isKardexLookupsLoaded) {
         try {
-          const res = await fetch('/inventario/api/kardex-lookups');
+          const res = await fetch(`/inventario/api/kardex-lookups?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
           if (!res.ok) throw new Error('Error al cargar datos auxiliares de Kardex');
           kardexLookups = await res.json();
           isKardexLookupsLoaded = true;
@@ -9062,49 +9768,183 @@
         }
       }
 
-      switchFormKardexTab('manual');
+      switchFormKardexTab('single');
       updateFormKardexGridCount();
-      
+
       modal.style.display = 'flex';
     }
 
     function switchFormKardexTab(tab) {
-      const btnExcel = document.getElementById('formkardex-tab-btn-excel');
-      const btnManual = document.getElementById('formkardex-tab-btn-manual');
-      const tabExcel = document.getElementById('formkardex-tab-excel');
-      const tabManual = document.getElementById('formkardex-tab-manual');
+      const tabs = {
+        single: { btn: document.getElementById('formkardex-tab-btn-single'), panel: document.getElementById('formkardex-tab-single') },
+        manual: { btn: document.getElementById('formkardex-tab-btn-manual'), panel: document.getElementById('formkardex-tab-manual') },
+        excel:  { btn: document.getElementById('formkardex-tab-btn-excel'), panel: document.getElementById('formkardex-tab-excel') },
+      };
+      if (!tabs.single.btn || !tabs.manual.btn || !tabs.excel.btn) return;
 
-      if (!btnExcel || !btnManual || !tabExcel || !tabManual) return;
+      Object.keys(tabs).forEach(key => {
+        const { btn, panel } = tabs[key];
+        if (!btn || !panel) return;
+        const active = key === tab;
+        btn.style.background = active ? 'white' : 'transparent';
+        btn.style.color = active ? 'var(--primary)' : 'var(--text-muted)';
+        btn.style.border = active ? '1px solid var(--border)' : '1px solid transparent';
+        btn.style.borderBottom = 'none';
+        panel.style.display = active ? 'block' : 'none';
+      });
 
-      if (tab === 'excel') {
-        btnExcel.style.background = 'white';
-        btnExcel.style.color = 'var(--primary)';
-        btnExcel.style.border = '1px solid var(--border)';
-        btnExcel.style.borderBottom = 'none';
-
-        btnManual.style.background = 'transparent';
-        btnManual.style.color = 'var(--text-muted)';
-        btnManual.style.border = '1px solid transparent';
-        btnManual.style.borderBottom = 'none';
-
-        tabExcel.style.display = 'block';
-        tabManual.style.display = 'none';
-      } else {
-        btnManual.style.background = 'white';
-        btnManual.style.color = 'var(--primary)';
-        btnManual.style.border = '1px solid var(--border)';
-        btnManual.style.borderBottom = 'none';
-
-        btnExcel.style.background = 'transparent';
-        btnExcel.style.color = 'var(--text-muted)';
-        btnExcel.style.border = '1px solid transparent';
-        btnExcel.style.borderBottom = 'none';
-
-        tabExcel.style.display = 'none';
-        tabManual.style.display = 'block';
-        
+      if (tab === 'single') {
+        populateFormKardexSingleForm();
+      } else if (tab === 'manual') {
         renderFormKardexGrid();
       }
+    }
+
+    function populateFormKardexSingleForm() {
+      const regSel = document.getElementById('fk-single-regional');
+      const catSel = document.getElementById('fk-single-categoria');
+      const opSel = document.getElementById('fk-single-operacion');
+      const artSel = document.getElementById('fk-single-articulo');
+      const stockInput = document.getElementById('fk-single-stock');
+      const fechaInput = document.getElementById('fk-single-fecha');
+      const tipoSel = document.getElementById('fk-single-tipo');
+
+      if (regSel) regSel.innerHTML = '<option value="">Seleccione</option>' + kardexLookups.regionales.map(r => `<option value="${r}">${r}</option>`).join('');
+      if (catSel) catSel.innerHTML = '<option value="">Seleccione</option>' + kardexLookups.categorias.map(c => `<option value="${c}">${c}</option>`).join('');
+      if (opSel) { opSel.innerHTML = '<option value="">Seleccione la Regional primero</option>'; opSel.disabled = true; }
+      if (artSel) { artSel.innerHTML = '<option value="">Seleccione la Categoría primero</option>'; artSel.disabled = true; }
+      if (stockInput) stockInput.value = '0';
+      if (tipoSel) tipoSel.value = 'AJUSTE';
+
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      if (fechaInput) fechaInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+      toggleFkSingleOpDestino();
+    }
+
+    function toggleFkSingleOpDestino() {
+      const tipoSel = document.getElementById('fk-single-tipo');
+      const wrap = document.getElementById('fk-single-opdestino-wrap');
+      if (!tipoSel || !wrap) return;
+      const isTransfer = tipoSel.value === 'TRANSFERENCIA';
+      wrap.style.display = isTransfer ? 'block' : 'none';
+      if (isTransfer) populateFkSingleOpDestino();
+    }
+
+    function populateFkSingleOpDestino() {
+      const regSel = document.getElementById('fk-single-regional');
+      const opDestSel = document.getElementById('fk-single-opdestino');
+      if (!opDestSel) return;
+      const regional = regSel ? regSel.value : '';
+      const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst'].includes(CONFIG.rol);
+      const allowedDestOps = isPrivileged
+        ? kardexLookups.operaciones
+        : kardexLookups.operaciones.filter(o => o.regional === regional || o.operacion === 'ADMINISTRACION');
+      opDestSel.innerHTML = '<option value="">Seleccione</option>' + allowedDestOps.map(o => `<option value="${o.operacion}">${o.operacion}</option>`).join('');
+    }
+
+    function onFkSingleRegionalChange() {
+      const regSel = document.getElementById('fk-single-regional');
+      const opSel = document.getElementById('fk-single-operacion');
+      if (!regSel || !opSel) return;
+      const regional = regSel.value;
+      if (!regional) {
+        opSel.innerHTML = '<option value="">Seleccione la Regional primero</option>';
+        opSel.disabled = true;
+      } else {
+        const ops = kardexLookups.operaciones.filter(o => o.regional === regional);
+        opSel.innerHTML = '<option value="">Seleccione</option>' + ops.map(o => `<option value="${o.operacion}">${o.operacion}</option>`).join('');
+        opSel.disabled = false;
+      }
+      updateFkSingleStock();
+      if (document.getElementById('fk-single-tipo').value === 'TRANSFERENCIA') populateFkSingleOpDestino();
+    }
+
+    function onFkSingleCategoriaChange() {
+      const catSel = document.getElementById('fk-single-categoria');
+      const artSel = document.getElementById('fk-single-articulo');
+      if (!catSel || !artSel) return;
+      const categoria = catSel.value;
+      if (!categoria) {
+        artSel.innerHTML = '<option value="">Seleccione la Categoría primero</option>';
+        artSel.disabled = true;
+      } else {
+        const arts = kardexLookups.articulos.filter(a => a.Categoria === categoria);
+        artSel.innerHTML = '<option value="">Seleccione</option>' + arts.map(a => `<option value="${a.Id}">${a.Articulo}</option>`).join('');
+        artSel.disabled = false;
+      }
+      updateFkSingleStock();
+    }
+
+    async function updateFkSingleStock() {
+      const artSel = document.getElementById('fk-single-articulo');
+      const opSel = document.getElementById('fk-single-operacion');
+      const stockInput = document.getElementById('fk-single-stock');
+      if (!stockInput) return;
+      const idArticulo = artSel ? artSel.value : '';
+      const operacion = opSel ? opSel.value : '';
+      if (!idArticulo || !operacion) { stockInput.value = '0'; return; }
+      try {
+        const res = await fetch(`/inventario/api/articulos/stock/${idArticulo}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const matched = data.find(item => item.operacion.trim().toLowerCase() === operacion.trim().toLowerCase());
+        stockInput.value = matched ? matched.stock : 0;
+      } catch (e) {
+        stockInput.value = '0';
+      }
+    }
+
+    function agregarKardexSingle() {
+      const fecha = document.getElementById('fk-single-fecha').value;
+      const tipo = document.getElementById('fk-single-tipo').value;
+      const regional = document.getElementById('fk-single-regional').value;
+      const operacion = document.getElementById('fk-single-operacion').value;
+      const opDestino = document.getElementById('fk-single-opdestino').value;
+      const categoria = document.getElementById('fk-single-categoria').value;
+      const idArticuloRaw = document.getElementById('fk-single-articulo').value;
+      const cantidadRaw = document.getElementById('fk-single-cantidad').value;
+      const observaciones = document.getElementById('fk-single-observaciones').value.trim();
+
+      if (!fecha) { alert('Debe seleccionar la Fecha Movimiento.'); return; }
+      if (!tipo) { alert('Debe seleccionar el Tipo Movimiento.'); return; }
+      if (!regional) { alert('Debe seleccionar la Regional.'); return; }
+      if (!operacion) { alert('Debe seleccionar la Operación.'); return; }
+      if (tipo === 'TRANSFERENCIA') {
+        if (!opDestino) { alert('Para movimientos de transferencia, la Operación Destino es obligatoria.'); return; }
+        if (operacion === opDestino) { alert('La Operación Destino no puede ser igual a la Operación de Origen.'); return; }
+      }
+      if (!categoria) { alert('Debe seleccionar la Categoría.'); return; }
+      if (!idArticuloRaw) { alert('Debe seleccionar el Artículo.'); return; }
+      const cantidad = parseInt(cantidadRaw) || 0;
+      if (!cantidad) { alert('La Cantidad debe ser diferente de cero.'); return; }
+      if (cantidad < 0 && tipo !== 'AJUSTE') { alert('Las cantidades negativas solo se permiten en movimientos de tipo AJUSTE.'); return; }
+
+      const matchedArt = kardexLookups.articulos.find(a => String(a.Id) === String(idArticuloRaw));
+
+      bulkKardexList.push({
+        FechaMovimiento: fecha,
+        TipoMovimiento: tipo,
+        Regional: regional,
+        Operacion: operacion,
+        OperacionDestino: tipo === 'TRANSFERENCIA' ? opDestino : '',
+        Categoria: categoria,
+        IdArticulo: matchedArt ? matchedArt.Id : idArticuloRaw,
+        ArticuloName: matchedArt ? matchedArt.Articulo : '',
+        Cantidad: cantidad,
+        ValorUnitario: matchedArt ? (matchedArt.Costo || 0) : 0,
+        Observaciones: observaciones,
+        StockActual: parseInt(document.getElementById('fk-single-stock').value) || 0
+      });
+      updateFormKardexGridCount();
+
+      document.getElementById('fk-single-cantidad').value = '';
+      document.getElementById('fk-single-observaciones').value = '';
+      document.getElementById('fk-single-articulo').value = '';
+      document.getElementById('fk-single-articulo').focus();
+
+      mostrarFeedbackAgregado('formkardex-btn-add-single', 'Movimiento agregado');
     }
 
     function updateFormKardexGridCount() {
@@ -9223,7 +10063,7 @@
 
       bulkKardexList.push({
         FechaMovimiento: nowStr,
-        TipoMovimiento: 'ENTRADA',
+        TipoMovimiento: 'AJUSTE',
         Regional: '',
         Operacion: '',
         OperacionDestino: '',
@@ -9322,11 +10162,8 @@
           });
         }
 
-        // 6. Tipo Options
-        const isSpCat = ['TECNOLOGIA', 'HERRAMIENTA', 'ACTIVO FIJO'].includes(row.Categoria);
-        const allowedTypes = isSpCat
-          ? ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA', 'BAJA', 'REPARACION']
-          : ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA'];
+        // 6. Tipo Options — solo se permiten estos 3 movimientos desde el editor de grid
+        const allowedTypes = ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA'];
 
         let tipoOptionsHtml = '';
         allowedTypes.forEach(t => {
@@ -9674,22 +10511,34 @@
       const modal = document.getElementById('formkardex-modal');
       const closeSpan = document.getElementById('formkardex-modal-close');
       const btnCancel = document.getElementById('formkardex-btn-cancel');
+      const btnSingleTab = document.getElementById('formkardex-tab-btn-single');
       const btnExcelTab = document.getElementById('formkardex-tab-btn-excel');
       const btnManualTab = document.getElementById('formkardex-tab-btn-manual');
       const btnProcesar = document.getElementById('formkardex-btn-procesar');
       const btnAddRow = document.getElementById('formkardex-btn-add-row');
+      const btnAddSingle = document.getElementById('formkardex-btn-add-single');
       const btnGuardar = document.getElementById('formkardex-btn-guardar');
       const btnInventarioAgregar = document.getElementById('inventario-btn-agregar-kardex');
+      const fkSingleRegional = document.getElementById('fk-single-regional');
+      const fkSingleCategoria = document.getElementById('fk-single-categoria');
+      const fkSingleTipo = document.getElementById('fk-single-tipo');
+      const fkSingleArticulo = document.getElementById('fk-single-articulo');
 
       if (closeSpan) closeSpan.addEventListener('click', () => { modal.style.display = 'none'; });
       if (btnCancel) btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
 
+      if (btnSingleTab) btnSingleTab.addEventListener('click', () => switchFormKardexTab('single'));
       if (btnExcelTab) btnExcelTab.addEventListener('click', () => switchFormKardexTab('excel'));
       if (btnManualTab) btnManualTab.addEventListener('click', () => switchFormKardexTab('manual'));
       if (btnProcesar) btnProcesar.addEventListener('click', processPastedKardexExcelData);
       if (btnAddRow) btnAddRow.addEventListener('click', addFormKardexBlankRow);
+      if (btnAddSingle) btnAddSingle.addEventListener('click', agregarKardexSingle);
       if (btnGuardar) btnGuardar.addEventListener('click', saveFormKardex);
       if (btnInventarioAgregar) btnInventarioAgregar.addEventListener('click', openFormKardexModal);
+      if (fkSingleRegional) fkSingleRegional.addEventListener('change', onFkSingleRegionalChange);
+      if (fkSingleCategoria) fkSingleCategoria.addEventListener('change', onFkSingleCategoriaChange);
+      if (fkSingleTipo) fkSingleTipo.addEventListener('change', toggleFkSingleOpDestino);
+      if (fkSingleArticulo) fkSingleArticulo.addEventListener('change', updateFkSingleStock);
 
       // Set up ajuste-stock-modal general button events
       const adjModal = document.getElementById('ajuste-stock-modal');
@@ -10250,6 +11099,1790 @@
         alert('Error: ' + err.message);
       }
     };
+
+    // ==========================================
+    // PESTAÑA ACTAS DE ENTREGA
+    // ==========================================
+
+    async function initActas() {
+      if (isActasInitialized) return;
+      isActasInitialized = true;
+
+      initActaEvidenciaDropzone();
+
+      // Bind click listeners for acta-table headers
+      const actaHeaders = document.querySelectorAll('#acta-table thead th[data-sort]');
+      actaHeaders.forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.getAttribute('data-sort');
+          if (currentActasSortColumn === col) {
+            currentActasSortOrder = currentActasSortOrder === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentActasSortColumn = col;
+            currentActasSortOrder = 'asc';
+          }
+          updateActasSortIndicators();
+          sortAndRenderActasTable();
+        });
+      });
+
+      // Set user profile
+      const actaProfileName = document.getElementById('actas-profile-name');
+      const actaProfileRole = document.getElementById('actas-profile-role');
+      const actaAvatarInitials = document.getElementById('actas-user-avatar-initials');
+
+      if (actaProfileName) actaProfileName.textContent = CONFIG.usuarioNombre;
+      if (actaProfileRole) actaProfileRole.textContent = `${CONFIG.rol} ${CONFIG.operacion ? `(${CONFIG.operacion})` : ''}`;
+
+      const initialsActa = CONFIG.usuarioNombre
+        .split(' ')
+        .map(n => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
+      if (actaAvatarInitials) actaAvatarInitials.textContent = initialsActa || 'US';
+
+      // Load article catalog (shared with Solicitudes) if not already loaded
+      if (allSolicitudesArticulos.length === 0) {
+        try {
+          const resArt = await fetch('/solicitudes/api/articulos');
+          if (resArt.ok) allSolicitudesArticulos = await resArt.json();
+        } catch (err) {
+          console.error('Error cargando artículos:', err);
+        }
+      }
+
+      // Load valid categories domain for Actas (Config_Categoria_Inventario)
+      try {
+        const resCat = await fetch('/actas/api/categorias');
+        if (resCat.ok) actaAllCategorias = await resCat.json();
+      } catch (err) {
+        console.error('Error cargando categorías de actas:', err);
+      }
+
+      // Populate filter dropdowns
+      const filterReg = document.getElementById('acta-filtro-regional');
+      const formReg = document.getElementById('acta-form-regional');
+
+      if (filterReg) {
+        filterReg.innerHTML = '<option value="">Todas las regionales</option>';
+        const sortedRegs = Object.keys(CONFIG.opsPorRegional).sort();
+        sortedRegs.forEach(reg => {
+          filterReg.innerHTML += `<option value="${reg}">${reg}</option>`;
+        });
+        if (sortedRegs.length === 1) {
+          filterReg.value = sortedRegs[0];
+        } else if (CONFIG.regional && sortedRegs.includes(CONFIG.regional)) {
+          filterReg.value = CONFIG.regional;
+        }
+      }
+
+      // Fetch allowed regional/operation mapping + category restriction for Acta creation
+      actaCreationOpsPorRegional = CONFIG.opsPorRegional; // Fallback
+      try {
+        const resConf = await fetch(`/actas/api/config-creacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (resConf.ok) {
+          const dataConf = await resConf.json();
+          actaCreationOpsPorRegional = dataConf.opsPorRegional || CONFIG.opsPorRegional;
+          actaCategoriasRestringidas = dataConf.categoriasRestringidas || null;
+        }
+      } catch (err) {
+        console.error('Error fetching Acta creation configuration:', err);
+      }
+
+      if (formReg) {
+        formReg.innerHTML = '<option value="">Seleccione...</option>';
+        const sortedRegs = Object.keys(actaCreationOpsPorRegional).sort();
+        sortedRegs.forEach(reg => {
+          formReg.innerHTML += `<option value="${reg}">${reg}</option>`;
+        });
+      }
+
+      // Populate filter Operations initially
+      populateActasFilterOperaciones();
+
+      // Dynamic Category buttons setup (form)
+      const catContainer = document.getElementById('acta-form-categoria-buttons');
+      const catInput = document.getElementById('acta-form-categoria');
+      if (catContainer && catInput) {
+        catContainer.innerHTML = '';
+        const catsToShow = actaCategoriasRestringidas
+          ? actaAllCategorias.filter(c => actaCategoriasRestringidas.includes(c))
+          : actaAllCategorias;
+        catsToShow.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'sol-btn-group-item';
+          btn.textContent = cat;
+          btn.setAttribute('data-value', cat);
+          btn.addEventListener('click', () => {
+            if (catInput.value === cat) return;
+            selectActaCategoryButton(cat);
+          });
+          catContainer.appendChild(btn);
+        });
+      }
+
+      // Hook up filter events
+      const filters = ['acta-filtro-estado', 'acta-filtro-regional', 'acta-filtro-operacion'];
+      filters.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('change', () => {
+            if (id === 'acta-filtro-regional') populateActasFilterOperaciones();
+            filterAndRenderActas();
+          });
+        }
+      });
+
+      let actaSearchTimeout;
+      const actaSearchInput = document.getElementById('acta-filtro-search');
+      if (actaSearchInput) {
+        actaSearchInput.addEventListener('input', () => {
+          clearTimeout(actaSearchTimeout);
+          actaSearchTimeout = setTimeout(() => filterAndRenderActas(), 400);
+        });
+      }
+
+      const actaBtnClear = document.getElementById('acta-btn-limpiar-filtros');
+      if (actaBtnClear) {
+        actaBtnClear.addEventListener('click', () => {
+          document.getElementById('acta-filtro-estado').value = '';
+          document.getElementById('acta-filtro-regional').value = '';
+          populateActasFilterOperaciones();
+          document.getElementById('acta-filtro-operacion').value = '';
+          activeActaCategory = '';
+          document.getElementById('acta-filtro-search').value = '';
+          filterAndRenderActas();
+        });
+      }
+
+      // Collapsible Filters Toggle
+      const actaToggle = document.getElementById('acta-filtros-toggle');
+      const actaBody = document.getElementById('acta-filtros-body');
+      const actaChevron = document.getElementById('acta-filtros-chevron');
+      let actaFiltrosAbiertos = false;
+      if (actaToggle && actaBody) {
+        actaToggle.addEventListener('click', () => {
+          actaFiltrosAbiertos = !actaFiltrosAbiertos;
+          actaBody.style.display = actaFiltrosAbiertos ? 'block' : 'none';
+          if (actaChevron) actaChevron.style.transform = actaFiltrosAbiertos ? 'rotate(90deg)' : 'rotate(0deg)';
+        });
+      }
+
+      // Form: Regional change -> populate Operación
+      if (formReg) {
+        formReg.addEventListener('change', (e) => {
+          populateActasFormOperaciones(e.target.value);
+        });
+      }
+
+      // Worker autocomplete search (Maestro_Vinculación, Estado = Activo)
+      const workerSearch = document.getElementById('acta-form-trabajador-search');
+      const workerAcList = document.getElementById('acta-trabajador-ac-list');
+      if (workerSearch && workerAcList) {
+        let acTimeout;
+        workerSearch.addEventListener('input', () => {
+          clearTimeout(acTimeout);
+          const q = workerSearch.value.trim();
+          if (q.length < 2) {
+            workerAcList.style.display = 'none';
+            return;
+          }
+          acTimeout = setTimeout(async () => {
+            try {
+              const res = await fetch(`/actas/api/trabajadores-buscar?q=${encodeURIComponent(q)}`);
+              if (!res.ok) throw new Error('Search failed');
+              const workers = await res.json();
+              workerAcList.innerHTML = '';
+              if (workers.length === 0) {
+                workerAcList.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted); font-size: 0.8rem;">No se encontraron resultados</div>';
+              } else {
+                workers.forEach(w => {
+                  const partes = String(w.Trabajador || '').split(' ** ');
+                  const nombreCorto = partes.length > 1 ? partes[1].trim() : w.Trabajador;
+                  const div = document.createElement('div');
+                  div.className = 'ac-item-row';
+                  div.style.padding = '8px 12px';
+                  div.style.cursor = 'pointer';
+                  div.style.fontSize = '0.8rem';
+                  div.style.borderBottom = '1px solid var(--border)';
+                  div.innerHTML = `<strong>${w['Identificación']}</strong> - ${nombreCorto}`;
+                  div.addEventListener('click', () => {
+                    workerSearch.value = nombreCorto;
+                    document.getElementById('acta-form-trabajador-id').value = w['Identificación'];
+                    workerAcList.style.display = 'none';
+
+                    // Cargar Email/Celular actuales desde Maestro_Segmentación
+                    fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(w['Identificación'])}`)
+                      .then(r => r.ok ? r.json() : { email: '', celular: '' })
+                      .then(contacto => {
+                        const emailInput = document.getElementById('acta-form-email');
+                        const celularInput = document.getElementById('acta-form-celular');
+                        if (emailInput) emailInput.value = contacto.email || '';
+                        if (celularInput) celularInput.value = contacto.celular || '';
+                      })
+                      .catch(() => {});
+
+                    // Regional y Operación se determinan por el trabajador (Maestro_Vinculación) y quedan bloqueados.
+                    const regionalActual = w['Regional'] || '';
+                    const opActual = w['Operación'] || '';
+                    const opSel = document.getElementById('acta-form-operacion');
+                    if (formReg) {
+                      formReg.innerHTML = regionalActual
+                        ? `<option value="${regionalActual}">${regionalActual}</option>`
+                        : '<option value="">Sin regional registrada</option>';
+                      formReg.value = regionalActual;
+                      formReg.disabled = true;
+                    }
+                    if (opSel) {
+                      opSel.innerHTML = opActual
+                        ? `<option value="${opActual}">${opActual}</option>`
+                        : '<option value="">Sin operación registrada</option>';
+                      opSel.value = opActual;
+                      opSel.disabled = true;
+                    }
+                  });
+                  workerAcList.appendChild(div);
+                });
+              }
+              workerAcList.style.display = 'block';
+            } catch (err) {
+              console.error(err);
+            }
+          }, 300);
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!workerSearch.contains(e.target) && !workerAcList.contains(e.target)) {
+            workerAcList.style.display = 'none';
+          }
+        });
+      }
+
+      // Agregar Artículo Popup Modal events
+      const btnAgregarArticuloActa = document.getElementById('acta-btn-agregar-articulo');
+      const actaArtModal = document.getElementById('acta-add-articles-modal');
+      const btnCloseActaArtModal = document.getElementById('acta-add-articles-modal-close');
+      const btnCancelActaArtModal = document.getElementById('acta-modal-btn-cancelar');
+      const btnAceptarActaArtModal = document.getElementById('acta-modal-btn-aceptar');
+      const modalActaArtSearch = document.getElementById('acta-modal-art-search');
+
+      if (btnAgregarArticuloActa) {
+        btnAgregarArticuloActa.addEventListener('click', async () => {
+          const cat = document.getElementById('acta-form-categoria').value;
+          const operacionSel = document.getElementById('acta-form-operacion').value;
+          if (!cat) {
+            alert('Por favor selecciona una categoría antes de buscar artículos.');
+            return;
+          }
+          if (!operacionSel) {
+            alert('Por favor selecciona la Operación antes de buscar artículos.');
+            return;
+          }
+          actaTempSelectedItems = JSON.parse(JSON.stringify(selectedActaItems));
+          if (modalActaArtSearch) modalActaArtSearch.value = '';
+
+          const badge = document.getElementById('acta-modal-selected-category-badge');
+          if (badge) badge.textContent = cat;
+
+          const classSelect = document.getElementById('acta-modal-clase-filter');
+          if (classSelect) {
+            classSelect.value = '';
+            classSelect.innerHTML = '<option value="">Todas las clasificaciones</option>';
+            const uniqueClases = Array.from(new Set(
+              allSolicitudesArticulos
+                .filter(a => a.Categoria === cat && a.ClaseArticulo)
+                .map(a => a.ClaseArticulo.toUpperCase().trim())
+            )).sort();
+            uniqueClases.forEach(cl => {
+              const opt = document.createElement('option');
+              opt.value = cl;
+              opt.textContent = cl;
+              classSelect.appendChild(opt);
+            });
+          }
+
+          // Cargar stock disponible por artículo (Operación + respaldo de Operación_Principal)
+          actaStockMap = {};
+          actaStockAplica = false;
+          actaStockBloquea = false;
+          try {
+            const resStock = await fetch(`/actas/api/stock-categoria?operacion=${encodeURIComponent(operacionSel)}&categoria=${encodeURIComponent(cat)}`);
+            if (resStock.ok) {
+              const dataStock = await resStock.json();
+              actaStockAplica = !!dataStock.aplica;
+              actaStockBloquea = !!dataStock.bloquea;
+              actaStockMap = dataStock.stock || {};
+            }
+          } catch (e) {
+            console.error('Error cargando stock:', e);
+          }
+
+          if (actaArtModal) actaArtModal.style.display = 'flex';
+          renderModalActaArticlesList();
+          updateActaModalSelectedCount();
+        });
+      }
+
+      if (btnCloseActaArtModal) btnCloseActaArtModal.addEventListener('click', () => actaArtModal.style.display = 'none');
+      if (btnCancelActaArtModal) btnCancelActaArtModal.addEventListener('click', () => actaArtModal.style.display = 'none');
+
+      if (btnAceptarActaArtModal) {
+        btnAceptarActaArtModal.addEventListener('click', () => {
+          selectedActaItems = JSON.parse(JSON.stringify(actaTempSelectedItems));
+          renderActaFormItems();
+          actaArtModal.style.display = 'none';
+        });
+      }
+
+      if (modalActaArtSearch) modalActaArtSearch.addEventListener('input', () => renderModalActaArticlesList());
+      const modalActaClaseFilter = document.getElementById('acta-modal-clase-filter');
+      if (modalActaClaseFilter) modalActaClaseFilter.addEventListener('change', () => renderModalActaArticlesList());
+
+      // Tab navigation buttons
+      const btnNuevaActa = document.getElementById('acta-btn-nueva');
+      if (btnNuevaActa) {
+        btnNuevaActa.addEventListener('click', () => mostrarActaVista('formulario'));
+      }
+
+      const btnVolverActa = document.getElementById('acta-btn-volver');
+      if (btnVolverActa) {
+        btnVolverActa.addEventListener('click', () => mostrarActaVista('listado'));
+      }
+
+      // Save (create) Acta
+      const actaFormDatos = document.getElementById('acta-form-datos');
+      if (actaFormDatos) {
+        actaFormDatos.addEventListener('submit', (e) => submitActaForm(e));
+      }
+
+      // Anular Acta
+      const btnAnularActa = document.getElementById('acta-btn-anular');
+      if (btnAnularActa) {
+        btnAnularActa.addEventListener('click', () => anularActaActual());
+      }
+
+      // Generar enlace de firma
+      const btnEnlaceActa = document.getElementById('acta-btn-enlace');
+      if (btnEnlaceActa) {
+        btnEnlaceActa.addEventListener('click', () => generarEnlaceFirmaActa());
+      }
+
+      // Copiar enlace
+      const btnCopiarEnlaceActa = document.getElementById('acta-btn-copiar-enlace');
+      if (btnCopiarEnlaceActa) {
+        btnCopiarEnlaceActa.addEventListener('click', () => {
+          const input = document.getElementById('acta-enlace-firma-input');
+          if (!input || !input.value) return;
+          navigator.clipboard.writeText(input.value)
+            .then(() => {
+              btnCopiarEnlaceActa.textContent = '✅ Copiado';
+              setTimeout(() => { btnCopiarEnlaceActa.textContent = '📋 Copiar'; }, 1500);
+            })
+            .catch(() => { input.select(); document.execCommand('copy'); });
+        });
+      }
+
+      // Enviar por WhatsApp (usa el enlace ya generado, o lo genera si aún no existe)
+      const btnWhatsAppActa = document.getElementById('acta-btn-whatsapp');
+      if (btnWhatsAppActa) {
+        btnWhatsAppActa.addEventListener('click', async () => {
+          if (!actaActual) return;
+          try {
+            const emailVal = document.getElementById('acta-form-email').value.trim();
+            const celularVal = document.getElementById('acta-form-celular').value.trim();
+            await fetch(`/actas/api/acta/${actaActual.IdActa}/contacto`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ usuario: CONFIG.usuarioId, email: emailVal, celular: celularVal })
+            });
+
+            const enlaceInput = document.getElementById('acta-enlace-firma-input');
+            let url = enlaceInput ? enlaceInput.value : '';
+            if (!url) {
+              url = await obtenerEnlaceActa(actaActual.IdActa);
+              if (enlaceInput) enlaceInput.value = url;
+              const enlaceWrap = document.getElementById('acta-enlace-firma-wrap');
+              if (enlaceWrap) enlaceWrap.style.display = 'block';
+            }
+
+            const digits = celularVal.replace(/\D/g, '');
+            const texto = encodeURIComponent(`Hola, tienes un Acta de Entrega pendiente de firma. Ingresa a este enlace para firmarla: ${url}`);
+            const wa = digits ? `https://wa.me/57${digits}?text=${texto}` : `https://wa.me/?text=${texto}`;
+            window.open(wa, '_blank');
+          } catch (err) {
+            alert(err.message);
+          }
+        });
+      }
+
+      // Enviar por correo (usa el enlace ya generado, o lo genera si aún no existe)
+      const btnCorreoActa = document.getElementById('acta-btn-correo');
+      if (btnCorreoActa) {
+        btnCorreoActa.addEventListener('click', async () => {
+          if (!actaActual) return;
+          try {
+            const emailVal = document.getElementById('acta-form-email').value.trim();
+            const celularVal = document.getElementById('acta-form-celular').value.trim();
+
+            const enlaceInput = document.getElementById('acta-enlace-firma-input');
+            let url = enlaceInput ? enlaceInput.value : '';
+            if (!url) {
+              url = await obtenerEnlaceActa(actaActual.IdActa);
+              if (enlaceInput) enlaceInput.value = url;
+              const enlaceWrap = document.getElementById('acta-enlace-firma-wrap');
+              if (enlaceWrap) enlaceWrap.style.display = 'block';
+            }
+
+            const res = await fetch(`/actas/api/acta/${actaActual.IdActa}/correo`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ usuario: CONFIG.usuarioId, email: emailVal, celular: celularVal, url })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al enviar el correo');
+            if (data.enviado) {
+              alert('Correo enviado correctamente al trabajador.');
+            } else {
+              alert(data.motivo || 'El envío de correo está desactivado temporalmente.');
+            }
+          } catch (err) {
+            alert(err.message);
+          }
+        });
+      }
+
+      fetchActasList();
+    }
+
+    function populateActasFilterOperaciones() {
+      const filterReg = document.getElementById('acta-filtro-regional');
+      const filterOp = document.getElementById('acta-filtro-operacion');
+      if (!filterOp) return;
+
+      const regVal = filterReg ? filterReg.value : '';
+      filterOp.innerHTML = '<option value="">Todas las operaciones</option>';
+
+      let ops = [];
+      if (regVal) {
+        ops = CONFIG.opsPorRegional[regVal] || [];
+      } else {
+        ops = Object.values(CONFIG.opsPorRegional).flat();
+      }
+
+      const sortedOps = [...new Set(ops)].sort();
+      sortedOps.forEach(op => {
+        filterOp.innerHTML += `<option value="${op}">${op}</option>`;
+      });
+    }
+
+    function populateActasFormOperaciones(regional) {
+      const select = document.getElementById('acta-form-operacion');
+      if (!select) return;
+
+      select.innerHTML = '<option value="">Seleccione...</option>';
+      if (!regional) return;
+
+      const ops = actaCreationOpsPorRegional[regional] || [];
+      const sortedOps = [...new Set(ops)].sort();
+      sortedOps.forEach(op => {
+        select.innerHTML += `<option value="${op}">${op}</option>`;
+      });
+
+      if (sortedOps.length === 1) {
+        select.value = sortedOps[0];
+      } else if (CONFIG.operacion && sortedOps.includes(CONFIG.operacion)) {
+        select.value = CONFIG.operacion;
+      }
+    }
+
+    function updateActasBadgeFiltros() {
+      const badge = document.getElementById('acta-filtros-badge');
+      if (!badge) return;
+
+      let count = 0;
+      const estado = document.getElementById('acta-filtro-estado').value;
+      const reg = document.getElementById('acta-filtro-regional').value;
+      const op = document.getElementById('acta-filtro-operacion').value;
+      const cat = activeActaCategory;
+      const search = document.getElementById('acta-filtro-search').value.trim();
+
+      if (estado) count++;
+      if (reg) count++;
+      if (op) count++;
+      if (cat) count++;
+      if (search) count++;
+
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+
+    async function fetchActasList() {
+      const tbody = document.getElementById('acta-table-body');
+      const badgeTotal = document.getElementById('acta-badge-total');
+      if (!tbody) return;
+
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando actas...</td></tr>';
+      if (badgeTotal) badgeTotal.textContent = 'Buscando...';
+
+      try {
+        const url = `/actas/api/actas?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Error cargando actas de la API');
+
+        masterActas = await res.json();
+        filterAndRenderActas();
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function filterAndRenderActas() {
+      const estado = document.getElementById('acta-filtro-estado').value;
+      const regional = document.getElementById('acta-filtro-regional').value;
+      const operacion = document.getElementById('acta-filtro-operacion').value;
+      const categoria = activeActaCategory || '';
+      const search = document.getElementById('acta-filtro-search').value.trim().toLowerCase();
+
+      allActas = masterActas.filter(a => {
+        if (estado && a.Estado !== estado) return false;
+        if (regional && a.Regional !== regional) return false;
+        if (operacion && a.operacion !== operacion) return false;
+        if (categoria && a.Categoria !== categoria) return false;
+        if (search) {
+          const txt = `${a.IdActa} ${a.Trabajador} ${a.operacion} ${a.Regional} ${a.Usuario}`.toLowerCase();
+          if (!txt.includes(search)) return false;
+        }
+        return true;
+      });
+
+      updateActasFilterCounts();
+      sortAndRenderActasTable();
+      updateActasBadgeFiltros();
+    }
+
+    function updateActasFilterCounts() {
+      const selectedEst = document.getElementById('acta-filtro-estado').value;
+      const selectedReg = document.getElementById('acta-filtro-regional').value;
+      const selectedOp = document.getElementById('acta-filtro-operacion').value;
+      const selectedCat = activeActaCategory || '';
+      const search = document.getElementById('acta-filtro-search').value.trim().toLowerCase();
+
+      const matchesTexto = (a) => {
+        if (!search) return true;
+        const txt = `${a.IdActa} ${a.Trabajador} ${a.operacion} ${a.Regional} ${a.Usuario}`.toLowerCase();
+        return txt.includes(search);
+      };
+
+      const estadoCounts = {};
+      masterActas.forEach(a => {
+        if (selectedReg && a.Regional !== selectedReg) return;
+        if (selectedOp && a.operacion !== selectedOp) return;
+        if (selectedCat && a.Categoria !== selectedCat) return;
+        if (!matchesTexto(a)) return;
+        estadoCounts[a.Estado] = (estadoCounts[a.Estado] || 0) + 1;
+      });
+
+      const regionalCounts = {};
+      masterActas.forEach(a => {
+        if (selectedEst && a.Estado !== selectedEst) return;
+        if (selectedOp && a.operacion !== selectedOp) return;
+        if (selectedCat && a.Categoria !== selectedCat) return;
+        if (!matchesTexto(a)) return;
+        if (a.Regional) regionalCounts[a.Regional] = (regionalCounts[a.Regional] || 0) + 1;
+      });
+
+      const operacionCounts = {};
+      masterActas.forEach(a => {
+        if (selectedEst && a.Estado !== selectedEst) return;
+        if (selectedReg && a.Regional !== selectedReg) return;
+        if (selectedCat && a.Categoria !== selectedCat) return;
+        if (!matchesTexto(a)) return;
+        if (a.operacion) operacionCounts[a.operacion] = (operacionCounts[a.operacion] || 0) + 1;
+      });
+
+      const categoriaCounts = {};
+      masterActas.forEach(a => {
+        if (selectedEst && a.Estado !== selectedEst) return;
+        if (selectedReg && a.Regional !== selectedReg) return;
+        if (selectedOp && a.operacion !== selectedOp) return;
+        if (!matchesTexto(a)) return;
+        if (a.Categoria) categoriaCounts[a.Categoria] = (categoriaCounts[a.Categoria] || 0) + 1;
+      });
+
+      const estadoSelect = document.getElementById('acta-filtro-estado');
+      const estadosList = [
+        { val: 'Pendiente', label: 'Pendiente' },
+        { val: 'Firmada', label: 'Firmada' },
+        { val: 'Anulada', label: 'Anulada' }
+      ];
+      estadoSelect.innerHTML = `<option value="">Todos (${masterActas.length})</option>`;
+      estadosList.forEach(e => {
+        const count = estadoCounts[e.val] || 0;
+        const opt = document.createElement('option');
+        opt.value = e.val;
+        opt.textContent = `${e.label} (${count})`;
+        if (e.val === selectedEst) opt.selected = true;
+        estadoSelect.appendChild(opt);
+      });
+
+      const regionalSelect = document.getElementById('acta-filtro-regional');
+      const sortedRegs = CONFIG.regionalesFiltro || [];
+      const totalRegCount = Object.values(regionalCounts).reduce((a, b) => Number(a) + Number(b), 0);
+      regionalSelect.innerHTML = `<option value="">Todas (${totalRegCount})</option>`;
+      sortedRegs.forEach(r => {
+        const count = regionalCounts[r] || 0;
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = `${r} (${count})`;
+        if (r === selectedReg) opt.selected = true;
+        regionalSelect.appendChild(opt);
+      });
+
+      const operacionSelect = document.getElementById('acta-filtro-operacion');
+      let allowedOps = [];
+      if (selectedReg) {
+        allowedOps = CONFIG.opsPorRegional[selectedReg] || [];
+      } else {
+        const allOpsSet = new Set();
+        Object.values(CONFIG.opsPorRegional).forEach(ops => ops.forEach(op => allOpsSet.add(op)));
+        allowedOps = Array.from(allOpsSet).sort();
+      }
+      const totalOpCount = Object.values(operacionCounts).reduce((a, b) => Number(a) + Number(b), 0);
+      operacionSelect.innerHTML = `<option value="">Todas (${totalOpCount})</option>`;
+      allowedOps.forEach(op => {
+        const count = operacionCounts[op] || 0;
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = `${op} (${count})`;
+        if (op === selectedOp) opt.selected = true;
+        operacionSelect.appendChild(opt);
+      });
+
+      renderActasCategoryButtons(categoriaCounts);
+    }
+
+    function renderActasCategoryButtons(categoriaCounts) {
+      const container = document.getElementById('acta-filter-categoria-buttons');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const totalCount = Object.values(categoriaCounts).reduce((a, b) => Number(a) + Number(b), 0);
+
+      const btnAll = document.createElement('button');
+      btnAll.type = 'button';
+      btnAll.className = `category-chip ${activeActaCategory === '' ? 'active' : ''}`;
+      btnAll.innerHTML = `📌 TODAS <span>(${totalCount})</span>`;
+      btnAll.addEventListener('click', () => {
+        if (activeActaCategory !== '') {
+          activeActaCategory = '';
+          filterAndRenderActas();
+        }
+      });
+      container.appendChild(btnAll);
+
+      const categories = actaAllCategorias.length ? actaAllCategorias : Object.keys(categoriaCounts).sort();
+
+      categories.forEach(cat => {
+        const count = categoriaCounts[cat] || 0;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `category-chip ${activeActaCategory === cat ? 'active' : ''}`;
+
+        let icon = '🏷️';
+        const upper = cat.toUpperCase();
+        if (upper.includes('TECNOLOGIA') || upper.includes('TECNOLOGÍA')) icon = '💻';
+        else if (upper.includes('ACTIVO')) icon = '🏢';
+        else if (upper.includes('HERRAMIENTA')) icon = '🔧';
+        else if (upper.includes('DOTACION') || upper.includes('DOTACIÓN')) icon = '👕';
+        else if (upper.includes('EPP')) icon = '🦺';
+        else if (upper.includes('PAPELERIA') || upper.includes('PAPELERÍA')) icon = '📄';
+        else if (upper.includes('CAPACITA')) icon = '🎓';
+        else if (upper.includes('CONEXION') || upper.includes('CONEXIÓN')) icon = '📶';
+        else if (upper.includes('DATOS')) icon = '🔒';
+
+        btn.innerHTML = `${icon} ${cat} <span>(${count})</span>`;
+        btn.addEventListener('click', () => {
+          activeActaCategory = (activeActaCategory === cat) ? '' : cat;
+          filterAndRenderActas();
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function renderActasTableRows() {
+      const tbody = document.getElementById('acta-table-body');
+      const badgeTotal = document.getElementById('acta-badge-total');
+      if (!tbody) return;
+
+      tbody.innerHTML = '';
+      if (badgeTotal) badgeTotal.textContent = `Total: ${allActas.length}`;
+
+      if (allActas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">No se encontraron actas.</td></tr>';
+        return;
+      }
+
+      allActas.forEach(a => {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => loadActaDetail(a.IdActa));
+
+        const stateUpper = (a.Estado || '').toUpperCase().trim();
+        const badgeClass = `estado-${stateUpper}`;
+
+        const d = new Date(a.Fecha_Registro);
+        const dateStr = isNaN(d.getTime()) ? '—' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+
+        const partes = String(a.Trabajador || '').split(' ** ');
+        const nombreCorto = partes.length > 1 ? partes[1].trim() : (a.Trabajador || '—');
+
+        let accionesHtml = '<span style="color: var(--text-muted);">—</span>';
+        if (stateUpper === 'FIRMADA' && a.Url_Acta) {
+          accionesHtml = `<a href="${a.Url_Acta}" target="_blank" onclick="event.stopPropagation()" title="Ver PDF del Acta" style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; color: var(--primary); border-radius:6px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            </a>`;
+        } else if (stateUpper === 'PENDIENTE') {
+          accionesHtml = `
+            <div style="display: flex; gap: 2px; justify-content: center; align-items: center;">
+              <button type="button" onclick="event.stopPropagation(); accionCopiarEnlaceActa(${a.IdActa})" title="Copiar enlace de firma" style="background: none; border: none; cursor: pointer; color: var(--primary); width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+              </button>
+              <button type="button" onclick="event.stopPropagation(); accionWhatsAppActa(${a.IdActa}, ${a.identificacion})" title="Enviar por WhatsApp" style="background: none; border: none; cursor: pointer; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#25D366"></circle><path fill="#fff" d="M23.5 8.5c-1.9-1.9-4.5-3-7.3-3-5.7 0-10.3 4.6-10.3 10.3 0 1.8.5 3.6 1.4 5.1L6 26l5.3-1.4c1.5.8 3.1 1.2 4.8 1.2h.01c5.7 0 10.3-4.6 10.3-10.3 0-2.7-1.1-5.3-3-7.1zm-7.3 15.8h-.01c-1.5 0-3-.4-4.3-1.2l-.3-.2-3.2.8.9-3.1-.2-.3c-.9-1.4-1.3-3-1.3-4.6 0-4.7 3.8-8.5 8.5-8.5 2.3 0 4.4.9 6 2.5s2.5 3.7 2.5 6c0 4.7-3.9 8.6-8.6 8.6zm4.7-6.4c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.8 1-.2.2-.3.2-.5.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.8-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.5-.1 0-.3 0-.5 0s-.5.1-.7.3c-.2.3-1 1-1 2.3 0 1.4 1 2.7 1.1 2.9.1.2 2 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.2-.3-.2-.5-.3z"></path></svg>
+              </button>
+              <button type="button" onclick="event.stopPropagation(); accionCorreoActa(${a.IdActa}, ${a.identificacion})" title="Enviar por correo" style="background: none; border: none; cursor: pointer; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+              </button>
+            </div>`;
+        }
+
+        tr.innerHTML = `
+          <td style="text-align: center;">${accionesHtml}</td>
+          <td style="text-align: center; font-weight: 600; font-size: 0.8rem; color: var(--primary);">#${a.IdActa}</td>
+          <td>${dateStr}</td>
+          <td style="font-size: 0.8rem;">${nombreCorto}</td>
+          <td>${a.Regional || '—'}</td>
+          <td>${a.operacion || '—'}</td>
+          <td><span class="badge-category">${a.Categoria || '—'}</span></td>
+          <td style="text-align:center;">${a.TotalItems || 0}</td>
+          <td style="text-align: center; vertical-align: middle;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <span class="estado-badge ${badgeClass}">${a.Estado}</span>
+            </div>
+          </td>
+          <td style="font-size: 0.75rem; color: var(--text-muted);">${a.Usuario || '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const table = document.getElementById('acta-table');
+      if (table) makeTableResizable(table);
+    }
+
+    function sortAndRenderActasTable() {
+      if (currentActasSortColumn) {
+        allActas.sort((a, b) => {
+          let valA = a[currentActasSortColumn];
+          let valB = b[currentActasSortColumn];
+          if (valA === undefined || valA === null) valA = '';
+          if (valB === undefined || valB === null) valB = '';
+
+          if (currentActasSortColumn === 'IdActa') {
+            const numA = Number(valA) || 0;
+            const numB = Number(valB) || 0;
+            return currentActasSortOrder === 'asc' ? numA - numB : numB - numA;
+          }
+          if (currentActasSortColumn === 'Fecha_Registro') {
+            const dateA = new Date(valA).getTime() || 0;
+            const dateB = new Date(valB).getTime() || 0;
+            return currentActasSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+          }
+
+          valA = String(valA).toLowerCase();
+          valB = String(valB).toLowerCase();
+          if (valA < valB) return currentActasSortOrder === 'asc' ? -1 : 1;
+          if (valA > valB) return currentActasSortOrder === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      renderActasTableRows();
+    }
+
+    function updateActasSortIndicators() {
+      const keys = ['IdActa', 'Fecha_Registro', 'Trabajador', 'Regional', 'operacion', 'Categoria', 'Estado', 'Usuario'];
+      keys.forEach(k => {
+        const span = document.getElementById(`acta-sort-${k}`);
+        if (span) {
+          if (currentActasSortColumn === k) {
+            span.textContent = currentActasSortOrder === 'asc' ? ' ▲' : ' ▼';
+            span.style.color = 'var(--primary)';
+          } else {
+            span.textContent = '';
+          }
+        }
+      });
+    }
+
+    function renderModalActaArticlesList() {
+      const cat = document.getElementById('acta-form-categoria').value;
+      const searchVal = (document.getElementById('acta-modal-art-search').value || '').toLowerCase().trim();
+      const claseFilter = (document.getElementById('acta-modal-clase-filter').value || '').toUpperCase().trim();
+      const listContainer = document.getElementById('acta-modal-articles-list');
+      if (!listContainer) return;
+
+      listContainer.innerHTML = '';
+
+      const filtered = allSolicitudesArticulos.filter(a =>
+        a.Categoria === cat &&
+        (a.Articulo.toLowerCase().includes(searchVal) || (a.Referencia && a.Referencia.toLowerCase().includes(searchVal))) &&
+        (!claseFilter || (a.ClaseArticulo && a.ClaseArticulo.toUpperCase().trim() === claseFilter))
+      );
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.85rem;">No se encontraron artículos en esta categoría.</div>';
+        return;
+      }
+
+      filtered.forEach(art => {
+        const existing = actaTempSelectedItems.find(it => it.IdArticulo === art.Id);
+        const currentQty = existing ? existing.Cantidad : 0;
+        const currentNote = existing ? existing.Nota : '';
+
+        const itemRow = document.createElement('div');
+        itemRow.style.display = 'flex';
+        itemRow.style.flexWrap = 'wrap';
+        itemRow.style.alignItems = 'center';
+        itemRow.style.justifyContent = 'space-between';
+        itemRow.style.padding = '10px 0';
+        itemRow.style.borderBottom = '1px solid var(--border)';
+        itemRow.style.gap = '12px';
+
+        const imgHtml = art.Imagen
+          ? `<img src="${art.Imagen}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:8px; flex-shrink:0;">`
+          : `<div style="width:40px; height:40px; background:#f0f0f0; border-radius:4px; margin-right:8px; flex-shrink:0;"></div>`;
+
+        const stockInfo = actaStockMap[art.Id];
+        const disponible = stockInfo ? stockInfo.disponible : 0;
+        const disponibleHtml = actaStockAplica
+          ? `<div class="disponible-info" style="font-size: 0.72rem; color: ${disponible > 0 ? '#15803d' : '#b91c1c'}; font-weight: 600;">Disponible: ${disponible}</div>`
+          : '';
+
+        itemRow.innerHTML = `
+          <div style="display: flex; align-items: center; flex: 1 1 180px; min-width: 0;">
+            ${imgHtml}
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${art.Articulo}</div>
+              ${art.Talla ? `<div style="font-size: 0.75rem; color: var(--text-muted);">Talla: ${art.Talla}</div>` : ''}
+              ${disponibleHtml}
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex: 1 1 200px;">
+            <div style="width: 80px; flex-shrink: 0;">
+              <input type="number" class="modal-qty-input" data-id="${art.Id}" data-disponible="${disponible}" value="${currentQty > 0 ? currentQty : ''}" placeholder="Cant" min="0" style="width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem; text-align: center;">
+            </div>
+            <div style="flex: 1; min-width: 100px;">
+              <input type="text" class="modal-note-input" data-id="${art.Id}" value="${currentNote}" placeholder="Nota (opcional)" style="width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem;">
+            </div>
+          </div>
+        `;
+
+        const qtyInput = itemRow.querySelector('.modal-qty-input');
+        const noteInput = itemRow.querySelector('.modal-note-input');
+
+        const updateTempSelection = () => {
+          let qty = parseInt(qtyInput.value) || 0;
+          if (actaStockBloquea && qty > disponible) {
+            qty = disponible > 0 ? disponible : 0;
+            qtyInput.value = qty > 0 ? qty : '';
+            qtyInput.style.borderColor = '#dc2626';
+            setTimeout(() => { qtyInput.style.borderColor = 'var(--border)'; }, 1200);
+          }
+          const note = noteInput.value || '';
+          const idx = actaTempSelectedItems.findIndex(it => it.IdArticulo === art.Id);
+          if (qty > 0) {
+            const itemData = {
+              IdArticulo: art.Id,
+              Articulo: art.Articulo,
+              Referencia: art.Referencia || '',
+              Talla: art.Talla || '',
+              Imagen: art.Imagen || '',
+              Cantidad: qty,
+              Nota: note
+            };
+            if (idx > -1) {
+              actaTempSelectedItems[idx] = itemData;
+            } else {
+              actaTempSelectedItems.push(itemData);
+            }
+          } else if (idx > -1) {
+            actaTempSelectedItems.splice(idx, 1);
+          }
+          updateActaModalSelectedCount();
+        };
+
+        qtyInput.addEventListener('input', updateTempSelection);
+        noteInput.addEventListener('input', updateTempSelection);
+
+        listContainer.appendChild(itemRow);
+      });
+    }
+
+    function updateActaModalSelectedCount() {
+      const count = actaTempSelectedItems.length;
+      const countSpan = document.getElementById('acta-modal-selected-count');
+      if (countSpan) countSpan.textContent = `Artículos seleccionados: ${count}`;
+    }
+
+    function renderActaFormItems() {
+      const container = document.getElementById('acta-items-container');
+      if (!container) return;
+
+      if (selectedActaItems.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.8rem;">No has añadido ningún artículo aún.</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      selectedActaItems.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'item-card';
+        div.style.background = '#f8f9fb';
+        div.style.border = '1px solid var(--border)';
+        div.style.borderRadius = '6px';
+        div.style.padding = '12px';
+        div.style.marginBottom = '10px';
+
+        const imgHtml = item.Imagen
+          ? `<img src="${item.Imagen}" class="item-img" style="width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:8px;">`
+          : `<div class="item-img" style="width:40px; height:40px; background:#f0f0f0; border-radius:4px; margin-right:8px;"></div>`;
+
+        const quitarBtnHtml = actaItemsEditable
+          ? `<button type="button" class="btn-quitar-item" style="background:none; border:1px solid #fca5a5; color:#dc2626; border-radius:4px; padding:2px 6px; font-size:0.75rem; cursor:pointer;" onclick="removeActaFormItem(${idx})">✕ Quitar</button>`
+          : '';
+        const disabledAttr = actaItemsEditable ? '' : 'disabled';
+
+        div.innerHTML = `
+          <div class="item-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <div style="display:flex; align-items:center;">
+              ${imgHtml}
+              <div>
+                <div class="item-nombre" style="font-size:0.85rem; font-weight:600; color:var(--text);">${item.Articulo}</div>
+              </div>
+            </div>
+            ${quitarBtnHtml}
+          </div>
+          <div style="display:grid; grid-template-columns:100px 1fr; gap:12px; align-items:center;">
+            <div>
+              <label style="font-size:0.75rem; display:block; margin-bottom:3px; font-weight:600;">Cantidad:</label>
+              <input type="number" class="item-cantidad" value="${item.Cantidad}" min="1" ${disabledAttr} style="width:100%; padding:4px 8px; border:1px solid var(--border); border-radius:4px;" onchange="updateActaFormItemQuantity(${idx}, this.value)">
+            </div>
+            <div>
+              <label style="font-size:0.75rem; display:block; margin-bottom:3px; font-weight:600;">Nota / Comentario:</label>
+              <input type="text" class="item-nota" value="${item.Nota || ''}" placeholder="Ej: talle especial" ${disabledAttr} style="width:100%; padding:4px 8px; border:1px solid var(--border); border-radius:4px;" oninput="updateActaFormItemNote(${idx}, this.value)">
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    window.removeActaFormItem = function(idx) {
+      if (!actaItemsEditable) return;
+      selectedActaItems.splice(idx, 1);
+      renderActaFormItems();
+    };
+
+    window.updateActaFormItemQuantity = function(idx, val) {
+      if (!actaItemsEditable) return;
+      const q = parseInt(val) || 1;
+      if (selectedActaItems[idx]) selectedActaItems[idx].Cantidad = q > 0 ? q : 1;
+    };
+
+    window.updateActaFormItemNote = function(idx, val) {
+      if (!actaItemsEditable) return;
+      if (selectedActaItems[idx]) selectedActaItems[idx].Nota = val || '';
+    };
+
+    window.selectActaCategoryButton = function(val) {
+      const catInput = document.getElementById('acta-form-categoria');
+      if (catInput) catInput.value = val || '';
+      const buttons = document.querySelectorAll('#acta-form-categoria-buttons button');
+      buttons.forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-value') === val);
+      });
+    };
+
+    function actaEvidenciaMostrarPreview(src, opts) {
+      opts = opts || {};
+      const placeholder = document.getElementById('acta-form-evidencia-placeholder');
+      const preview = document.getElementById('acta-form-evidencia-preview');
+      if (!preview) return;
+
+      if (!src) {
+        preview.style.display = 'none';
+        preview.innerHTML = '';
+        if (placeholder) placeholder.style.display = 'block';
+        return;
+      }
+
+      if (placeholder) placeholder.style.display = 'none';
+      preview.style.display = 'block';
+
+      const wrapTag = opts.link ? 'a' : 'div';
+      const linkAttrs = opts.link ? ` href="${opts.link}" target="_blank" onclick="event.stopPropagation()"` : '';
+      const removeBtn = opts.removable
+        ? `<button type="button" onclick="event.stopPropagation(); actaEvidenciaLimpiar();" style="margin-top:6px; font-size:0.72rem; color:#c0392b; background:none; border:none; cursor:pointer; text-decoration:underline;">Quitar foto</button>`
+        : '';
+
+      preview.innerHTML = `
+        <${wrapTag} style="display:block;"${linkAttrs}>
+          <img src="${src}" style="max-width:100%; max-height:160px; border-radius:6px; display:block; margin:0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+        </${wrapTag}>
+        ${removeBtn}
+      `;
+    }
+
+    window.actaEvidenciaLimpiar = function() {
+      const fileInput = document.getElementById('acta-form-evidencia-file');
+      const camInput = document.getElementById('acta-form-evidencia-camera');
+      if (fileInput) fileInput.value = '';
+      if (camInput) camInput.value = '';
+      actaEvidenciaMostrarPreview('');
+    };
+
+    function actaEvidenciaCargarArchivo(file) {
+      if (!file || !file.type || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = e => actaEvidenciaMostrarPreview(e.target.result, { removable: true });
+      reader.readAsDataURL(file);
+    }
+
+    function actaEvidenciaSetDisabled(disabled) {
+      const dz = document.getElementById('acta-form-evidencia-dropzone');
+      const fileInput = document.getElementById('acta-form-evidencia-file');
+      const camInput = document.getElementById('acta-form-evidencia-camera');
+      if (fileInput) fileInput.disabled = disabled;
+      if (camInput) camInput.disabled = disabled;
+      if (dz) {
+        dz.style.opacity = disabled ? '0.6' : '1';
+        dz.style.cursor = disabled ? 'default' : 'pointer';
+        dz.style.pointerEvents = disabled ? 'none' : 'auto';
+      }
+    }
+
+    function initActaEvidenciaDropzone() {
+      const dz = document.getElementById('acta-form-evidencia-dropzone');
+      const fileInput = document.getElementById('acta-form-evidencia-file');
+      const camInput = document.getElementById('acta-form-evidencia-camera');
+      if (!dz || !fileInput || dz.dataset.initDone) return;
+      dz.dataset.initDone = '1';
+
+      dz.addEventListener('click', () => {
+        if (fileInput.disabled) return;
+        fileInput.click();
+      });
+
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files && fileInput.files[0]) actaEvidenciaCargarArchivo(fileInput.files[0]);
+      });
+
+      if (camInput) {
+        camInput.addEventListener('change', () => {
+          const file = camInput.files && camInput.files[0];
+          if (!file) return;
+          // Espeja la foto capturada al input principal para que submitActaForm siga leyendo de un solo lugar.
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          fileInput.files = dt.files;
+          actaEvidenciaCargarArchivo(file);
+        });
+      }
+
+      ['dragenter', 'dragover'].forEach(evt => {
+        dz.addEventListener(evt, e => {
+          e.preventDefault(); e.stopPropagation();
+          if (fileInput.disabled) return;
+          dz.style.borderColor = 'var(--primary)';
+          dz.style.background = '#eef6ff';
+        });
+      });
+      ['dragleave', 'drop'].forEach(evt => {
+        dz.addEventListener(evt, e => {
+          e.preventDefault(); e.stopPropagation();
+          dz.style.borderColor = 'var(--border)';
+          dz.style.background = '#fafbfc';
+        });
+      });
+      dz.addEventListener('drop', e => {
+        if (fileInput.disabled) return;
+        const file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file && file.type && file.type.startsWith('image/')) {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          fileInput.files = dt.files;
+          actaEvidenciaCargarArchivo(file);
+        }
+      });
+    }
+
+    function mostrarActaVista(vista) {
+      document.querySelectorAll('.acta-vista').forEach(el => el.style.display = 'none');
+
+      const listado = document.getElementById('acta-vista-listado');
+      const formulario = document.getElementById('acta-vista-formulario');
+
+      if (vista === 'formulario') {
+        if (formulario) formulario.style.display = 'block';
+        resetActaForm();
+      } else {
+        if (listado) listado.style.display = 'block';
+        fetchActasList();
+      }
+    }
+
+    function resetActaForm() {
+      actaActual = null;
+      selectedActaItems = [];
+      actaItemsEditable = true;
+
+      const form = document.getElementById('acta-form-datos');
+      if (form) form.reset();
+
+      document.getElementById('acta-id-field').value = '';
+      document.getElementById('acta-form-title').textContent = 'Nueva Acta de Entrega';
+      document.getElementById('acta-form-trabajador-id').value = '';
+
+      selectActaCategoryButton('');
+
+      const fields = ['acta-form-fecha-entrega', 'acta-form-observaciones', 'acta-form-evidencia-file', 'acta-form-evidencia-camera', 'acta-form-trabajador-search', 'acta-form-regional', 'acta-form-operacion'];
+      fields.forEach(f => { const el = document.getElementById(f); if (el) el.disabled = false; });
+      document.querySelectorAll('#acta-form-categoria-buttons button').forEach(b => b.disabled = false);
+      actaEvidenciaSetDisabled(false);
+
+      const addItemWrap = document.getElementById('acta-add-item-wrap');
+      if (addItemWrap) addItemWrap.style.display = 'block';
+
+      const today = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      const fechaInput = document.getElementById('acta-form-fecha-entrega');
+      if (fechaInput) fechaInput.value = todayStr;
+
+      actaEvidenciaLimpiar();
+
+      const regSel = document.getElementById('acta-form-regional');
+      if (regSel) {
+        const sortedRegs = Object.keys(actaCreationOpsPorRegional).sort();
+        if (sortedRegs.length === 1) {
+          regSel.value = sortedRegs[0];
+          populateActasFormOperaciones(sortedRegs[0]);
+        } else if (CONFIG.regional && sortedRegs.includes(CONFIG.regional)) {
+          regSel.value = CONFIG.regional;
+          populateActasFormOperaciones(CONFIG.regional);
+        }
+      }
+
+      const estadoInfo = document.getElementById('acta-estado-info');
+      if (estadoInfo) estadoInfo.style.display = 'none';
+
+      const btnGuardarReset = document.getElementById('acta-btn-guardar');
+      btnGuardarReset.style.display = 'inline-flex';
+      btnGuardarReset.textContent = '💾 Guardar Acta';
+      document.getElementById('acta-btn-enlace').style.display = 'none';
+      document.getElementById('acta-btn-anular').style.display = 'none';
+
+      renderActaFormItems();
+    }
+
+    async function loadActaDetail(id) {
+      try {
+        const res = await fetch(`/actas/api/acta/${id}`);
+        if (!res.ok) throw new Error('Error al consultar detalle del acta');
+        const acta = await res.json();
+
+        mostrarActaVista('formulario');
+        actaActual = acta;
+
+        const formTitle = document.getElementById('acta-form-title');
+        if (formTitle) formTitle.textContent = `Detalle Acta #${actaActual.IdActa}`;
+
+        document.getElementById('acta-id-field').value = actaActual.IdActa;
+        selectActaCategoryButton(actaActual.Categoria || '');
+
+        const partes = String(actaActual.Trabajador || '').split(' ** ');
+        const nombreCorto = partes.length > 1 ? partes[1].trim() : actaActual.Trabajador;
+        document.getElementById('acta-form-trabajador-search').value = nombreCorto || '';
+        document.getElementById('acta-form-trabajador-id').value = actaActual.identificacion;
+        document.getElementById('acta-form-email').value = actaActual.Email || '';
+        document.getElementById('acta-form-celular').value = actaActual.Celular || '';
+
+        let regionalDetectada = '';
+        for (const [reg, ops] of Object.entries(actaCreationOpsPorRegional)) {
+          if (ops.includes(actaActual.operacion)) { regionalDetectada = reg; break; }
+        }
+        const regSel = document.getElementById('acta-form-regional');
+        if (regSel && regionalDetectada) regSel.value = regionalDetectada;
+        populateActasFormOperaciones(regionalDetectada);
+        document.getElementById('acta-form-operacion').value = actaActual.operacion || '';
+
+        const fechaEntregaInput = document.getElementById('acta-form-fecha-entrega');
+        if (fechaEntregaInput) {
+          fechaEntregaInput.value = actaActual.Fecha_Entrega ? String(actaActual.Fecha_Entrega).slice(0, 10) : '';
+        }
+        document.getElementById('acta-form-observaciones').value = actaActual.Observaciones || '';
+
+        actaEvidenciaMostrarPreview(actaActual.Url_Evidencia || '', { link: actaActual.Url_Evidencia || '' });
+
+        selectedActaItems = (actaActual.items || []).map(it => ({
+          IdArticulo: it.IdArticulo,
+          Articulo: it.Articulo,
+          Referencia: it.Referencia || '',
+          Talla: it.Talla || '',
+          Imagen: it.Imagen || '',
+          Cantidad: it.Cantidad,
+          Nota: it.Nota || ''
+        }));
+
+        actaItemsEditable = (actaActual.Estado === 'Pendiente') || (CONFIG.rol === 'Sistema');
+        renderActaFormItems();
+
+        const fields = ['acta-form-fecha-entrega', 'acta-form-observaciones', 'acta-form-evidencia-file', 'acta-form-evidencia-camera', 'acta-form-trabajador-search', 'acta-form-regional', 'acta-form-operacion'];
+        fields.forEach(f => { const el = document.getElementById(f); if (el) el.disabled = true; });
+        document.querySelectorAll('#acta-form-categoria-buttons button').forEach(b => b.disabled = true);
+        actaEvidenciaSetDisabled(true);
+
+        const addItemWrap = document.getElementById('acta-add-item-wrap');
+        if (addItemWrap) addItemWrap.style.display = actaItemsEditable ? 'block' : 'none';
+
+        const estadoInfo = document.getElementById('acta-estado-info');
+        const estadoBadge = document.getElementById('acta-estado-badge');
+        const sinFirmaWrap = document.getElementById('acta-sin-firma-wrap');
+        const enlaceWrap = document.getElementById('acta-enlace-firma-wrap');
+        const docWrap = document.getElementById('acta-doc-firmado-wrap');
+        const btnGuardar = document.getElementById('acta-btn-guardar');
+        const btnEnlace = document.getElementById('acta-btn-enlace');
+        const btnAnular = document.getElementById('acta-btn-anular');
+
+        if (estadoInfo) estadoInfo.style.display = 'block';
+        if (estadoBadge) {
+          const stateUpper = (actaActual.Estado || '').toUpperCase().trim();
+          estadoBadge.className = `estado-badge estado-${stateUpper}`;
+          estadoBadge.textContent = actaActual.Estado || '';
+        }
+        if (sinFirmaWrap) sinFirmaWrap.style.display = 'none';
+        if (enlaceWrap) enlaceWrap.style.display = 'none';
+        const enlaceInput = document.getElementById('acta-enlace-firma-input');
+        if (enlaceInput) enlaceInput.value = '';
+        if (docWrap) docWrap.style.display = 'none';
+        if (btnGuardar) {
+          btnGuardar.style.display = actaItemsEditable ? 'inline-flex' : 'none';
+          btnGuardar.textContent = '💾 Guardar Cambios en Artículos';
+        }
+
+        if (actaActual.Estado === 'Pendiente') {
+          if (sinFirmaWrap) sinFirmaWrap.style.display = 'block';
+          if (btnEnlace) btnEnlace.style.display = 'inline-flex';
+          if (btnAnular) btnAnular.style.display = 'inline-flex';
+        } else {
+          if (btnEnlace) btnEnlace.style.display = 'none';
+          if (btnAnular) btnAnular.style.display = 'none';
+          if (actaActual.Estado === 'Firmada' && actaActual.Url_Acta) {
+            if (docWrap) docWrap.style.display = 'block';
+            const link = document.getElementById('acta-link-doc-firmado');
+            if (link) link.href = actaActual.Url_Acta;
+          }
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function mostrarActaLoading(titulo, subtitulo) {
+      const overlay = document.getElementById('acta-loading-overlay');
+      const titleEl = document.getElementById('acta-loading-title');
+      const subEl = document.getElementById('acta-loading-sub');
+      if (titleEl) titleEl.textContent = titulo || 'Estamos preparando el acta...';
+      if (subEl) subEl.textContent = subtitulo || '';
+      if (overlay) overlay.style.display = 'flex';
+    }
+
+    function ocultarActaLoading() {
+      const overlay = document.getElementById('acta-loading-overlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+
+    async function submitActaForm(e) {
+      e.preventDefault();
+
+      const idActaExistente = document.getElementById('acta-id-field').value;
+      if (idActaExistente) {
+        return guardarItemsActaExistente(idActaExistente);
+      }
+
+      const identificacion = document.getElementById('acta-form-trabajador-id').value;
+      const categoria = document.getElementById('acta-form-categoria').value;
+      const operacion = document.getElementById('acta-form-operacion').value;
+      const fechaEntrega = document.getElementById('acta-form-fecha-entrega').value;
+      const observaciones = document.getElementById('acta-form-observaciones').value;
+      const email = document.getElementById('acta-form-email').value.trim();
+      const celular = document.getElementById('acta-form-celular').value.trim();
+      const evidenciaFile = document.getElementById('acta-form-evidencia-file').files[0];
+
+      if (!identificacion) { alert('Selecciona un trabajador de la lista de sugerencias.'); return; }
+      if (!categoria) { alert('Selecciona una categoría.'); return; }
+      if (!operacion) { alert('Selecciona la Operación.'); return; }
+      if (selectedActaItems.length === 0) { alert('Debes agregar al menos un artículo.'); return; }
+
+      const confirmMsg = '¿Confirmas guardar esta Acta de Entrega?\n\nEsta acción afectará el inventario (se registrarán los movimientos correspondientes en el Kardex) y se notificará automáticamente al correo electrónico registrado del trabajador con el enlace para firmar.';
+      if (!confirm(confirmMsg)) return;
+
+      const formData = new FormData();
+      formData.append('identificacion', identificacion);
+      formData.append('operacion', operacion);
+      formData.append('categoria', categoria);
+      formData.append('fechaEntrega', fechaEntrega || '');
+      formData.append('observaciones', observaciones || '');
+      formData.append('email', email || '');
+      formData.append('celular', celular || '');
+      formData.append('usuario', CONFIG.usuarioId);
+      formData.append('items', JSON.stringify(selectedActaItems.map(it => ({
+        IdArticulo: it.IdArticulo,
+        Cantidad: it.Cantidad,
+        Nota: it.Nota
+      }))));
+      if (evidenciaFile) formData.append('evidenciaFile', evidenciaFile);
+
+      mostrarActaLoading('Estamos preparando el acta...', 'Registrando movimientos de inventario y generando el enlace de firma');
+      try {
+        const res = await fetch('/actas/api/actas', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al guardar el acta');
+        alert('Acta guardada con éxito. El inventario fue actualizado y, si el trabajador tiene correo registrado, se le notificó automáticamente con el enlace de firma. Puedes verificar el estado desde el detalle.');
+        mostrarActaVista('listado');
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        ocultarActaLoading();
+      }
+    }
+
+    async function guardarItemsActaExistente(idActa) {
+      if (!actaItemsEditable) return;
+      if (selectedActaItems.length === 0) { alert('Debes tener al menos un artículo.'); return; }
+      if (!confirm('¿Confirma guardar los cambios en los artículos de esta acta? Esto ajustará el Kardex correspondiente.')) return;
+
+      mostrarActaLoading('Guardando cambios...', 'Ajustando los artículos y el Kardex de esta acta');
+      try {
+        const res = await fetch(`/actas/api/acta/${idActa}/items`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            items: selectedActaItems.map(it => ({
+              IdArticulo: it.IdArticulo,
+              Cantidad: it.Cantidad,
+              Nota: it.Nota
+            }))
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al guardar los artículos');
+        alert('Artículos actualizados correctamente.');
+        loadActaDetail(idActa);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        ocultarActaLoading();
+      }
+    }
+
+    async function anularActaActual() {
+      if (!actaActual) return;
+      if (!confirm('¿Confirma anular esta acta? Esta acción no se puede deshacer.')) return;
+      try {
+        const res = await fetch(`/actas/api/acta/${actaActual.IdActa}/anular`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al anular el acta');
+        alert('Acta anulada correctamente.');
+        loadActaDetail(actaActual.IdActa);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function generarEnlaceFirmaActa() {
+      if (!actaActual) return;
+      try {
+        const url = await obtenerEnlaceActa(actaActual.IdActa);
+        const enlaceWrap = document.getElementById('acta-enlace-firma-wrap');
+        const enlaceInput = document.getElementById('acta-enlace-firma-input');
+        if (enlaceInput) enlaceInput.value = url;
+        if (enlaceWrap) enlaceWrap.style.display = 'block';
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Genera (o regenera) el enlace de firma de un Acta y devuelve la URL.
+    async function obtenerEnlaceActa(idActa) {
+      const res = await fetch(`/actas/api/acta/${idActa}/enlace`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: CONFIG.usuarioId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al generar el enlace de firma');
+      return data.url;
+    }
+
+    window.accionCopiarEnlaceActa = async function(idActa) {
+      try {
+        const url = await obtenerEnlaceActa(idActa);
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {
+          const tmp = document.createElement('input');
+          tmp.value = url;
+          document.body.appendChild(tmp);
+          tmp.select();
+          document.execCommand('copy');
+          document.body.removeChild(tmp);
+        }
+        alert('Enlace de firma copiado al portapapeles.');
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    window.accionWhatsAppActa = async function(idActa, identificacion) {
+      try {
+        const url = await obtenerEnlaceActa(idActa);
+        let celular = '';
+        try {
+          const res = await fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(identificacion)}`);
+          if (res.ok) {
+            const data = await res.json();
+            celular = data.celular || '';
+          }
+        } catch {}
+        const digits = celular.replace(/\D/g, '');
+        const texto = encodeURIComponent(`Hola, tienes un Acta de Entrega pendiente de firma. Ingresa a este enlace para firmarla: ${url}`);
+        const wa = digits ? `https://wa.me/57${digits}?text=${texto}` : `https://wa.me/?text=${texto}`;
+        window.open(wa, '_blank');
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    window.accionCorreoActa = async function(idActa, identificacion) {
+      try {
+        const url = await obtenerEnlaceActa(idActa);
+        const res = await fetch(`/actas/api/acta/${idActa}/correo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId, url })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al enviar el correo');
+        if (data.enviado) {
+          alert('Correo enviado correctamente al trabajador.');
+        } else {
+          alert(data.motivo || 'El envío de correo está desactivado temporalmente.');
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    // ==========================================
+    // DOTACIÓN DE LEY (pestaña embebida del módulo dotacionley)
+    // ==========================================
+    let isDotacionLeyInitialized = false;
+    let dotleySummary = [];
+    let dotleyOpsPorRegional = {};
+    let dotleyAllRows = [];
+    let dotleyActiveRegional = '';
+    let dotleyActiveOperacion = '';
+    let dotleySearchQuery = '';
+    let dotleySortColumn = 'Trabajador';
+    let dotleySortOrder = 'asc';
+    let dotleySearchDebounce = null;
+
+    async function initDotacionLey() {
+      if (isDotacionLeyInitialized) return;
+      isDotacionLeyInitialized = true;
+
+      const dotleyProfileName = document.getElementById('dotley-profile-name');
+      const dotleyProfileRole = document.getElementById('dotley-profile-role');
+      const dotleyAvatarInitials = document.getElementById('dotley-user-avatar-initials');
+      if (dotleyProfileName) dotleyProfileName.textContent = CONFIG.usuarioNombre;
+      if (dotleyProfileRole) dotleyProfileRole.textContent = `${CONFIG.rol} ${CONFIG.operacion ? `(${CONFIG.operacion})` : ''}`;
+      if (dotleyAvatarInitials) {
+        const initials = CONFIG.usuarioNombre.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+        dotleyAvatarInitials.textContent = initials || 'US';
+      }
+
+      // Collapsible filters toggle
+      const dotleyToggle = document.getElementById('dotley-filtros-toggle');
+      const dotleyBody = document.getElementById('dotley-filtros-body');
+      const dotleyChevron = document.getElementById('dotley-filtros-chevron');
+      let dotleyFiltrosAbiertos = false;
+      if (dotleyToggle && dotleyBody) {
+        dotleyToggle.addEventListener('click', () => {
+          dotleyFiltrosAbiertos = !dotleyFiltrosAbiertos;
+          dotleyBody.style.display = dotleyFiltrosAbiertos ? 'block' : 'none';
+          if (dotleyChevron) dotleyChevron.style.transform = dotleyFiltrosAbiertos ? 'rotate(90deg)' : 'rotate(0deg)';
+        });
+      }
+
+      const dotleyHeaders = document.querySelectorAll('#dotley-table thead th[data-sort]');
+      dotleyHeaders.forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.getAttribute('data-sort');
+          if (dotleySortColumn === col) {
+            dotleySortOrder = dotleySortOrder === 'asc' ? 'desc' : 'asc';
+          } else {
+            dotleySortColumn = col;
+            dotleySortOrder = 'asc';
+          }
+          updateDotleySortIndicators();
+          sortAndRenderDotleyTable();
+        });
+      });
+
+      const regSel = document.getElementById('dotley-filtro-regional');
+      const opSel = document.getElementById('dotley-filtro-operacion');
+      if (regSel) {
+        regSel.addEventListener('change', () => {
+          dotleyActiveRegional = regSel.value;
+          populateDotleyOperacionFilter(dotleyActiveRegional);
+          dotleyActiveOperacion = '';
+          updateDotleyFiltrosBadge();
+          loadDotleyTrabajadores();
+        });
+      }
+      if (opSel) {
+        opSel.addEventListener('change', () => {
+          dotleyActiveOperacion = opSel.value;
+          updateDotleyFiltrosBadge();
+          loadDotleyTrabajadores();
+        });
+      }
+
+      const searchInput = document.getElementById('dotley-filtro-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          clearTimeout(dotleySearchDebounce);
+          dotleySearchDebounce = setTimeout(() => {
+            dotleySearchQuery = searchInput.value.trim();
+            updateDotleyFiltrosBadge();
+            loadDotleyTrabajadores();
+          }, 350);
+        });
+      }
+
+      const btnLimpiar = document.getElementById('dotley-btn-limpiar-filtros');
+      if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', () => {
+          dotleyActiveRegional = '';
+          dotleyActiveOperacion = '';
+          dotleySearchQuery = '';
+          if (regSel) regSel.value = '';
+          if (opSel) opSel.value = '';
+          if (searchInput) searchInput.value = '';
+          populateDotleyOperacionFilter('');
+          updateDotleyFiltrosBadge();
+          loadDotleyTrabajadores();
+        });
+      }
+
+      await loadDotleyResumen();
+      loadDotleyTrabajadores();
+    }
+
+    async function loadDotleyResumen() {
+      try {
+        const res = await fetch('/dotacionley/api/resumen');
+        if (!res.ok) throw new Error('Error al cargar resumen');
+        dotleySummary = await res.json();
+      } catch (err) {
+        console.error('[dotacionley] Error cargando resumen:', err);
+        dotleySummary = [];
+      }
+
+      dotleyOpsPorRegional = {};
+      dotleySummary.forEach(item => {
+        const reg = item.Regional || 'Sin Regional';
+        const op = item.Operacion || 'Sin Operación';
+        if (!dotleyOpsPorRegional[reg]) dotleyOpsPorRegional[reg] = new Set();
+        dotleyOpsPorRegional[reg].add(op);
+      });
+
+      const regSel = document.getElementById('dotley-filtro-regional');
+      if (regSel) {
+        regSel.innerHTML = '<option value="">Todas</option>' +
+          Object.keys(dotleyOpsPorRegional).sort().map(r => `<option value="${r}">${r}</option>`).join('');
+      }
+      populateDotleyOperacionFilter('');
+    }
+
+    function populateDotleyOperacionFilter(regional) {
+      const opSel = document.getElementById('dotley-filtro-operacion');
+      if (!opSel) return;
+
+      let ops = new Set();
+      if (regional && dotleyOpsPorRegional[regional]) {
+        ops = dotleyOpsPorRegional[regional];
+      } else {
+        Object.values(dotleyOpsPorRegional).forEach(set => set.forEach(op => ops.add(op)));
+      }
+
+      opSel.innerHTML = '<option value="">Todas</option>' +
+        Array.from(ops).sort().map(op => `<option value="${op}">${op}</option>`).join('');
+    }
+
+    function updateDotleyFiltrosBadge() {
+      const badge = document.getElementById('dotley-filtros-badge');
+      if (!badge) return;
+      let count = 0;
+      if (dotleyActiveRegional) count++;
+      if (dotleyActiveOperacion) count++;
+      if (dotleySearchQuery) count++;
+      badge.textContent = count;
+    }
+
+    async function loadDotleyTrabajadores() {
+      const tbody = document.getElementById('dotley-table-body');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando...</td></tr>';
+
+      try {
+        let url = '/dotacionley/api/trabajadores?page=1&limit=2000';
+        if (dotleyActiveRegional) url += `&regional=${encodeURIComponent(dotleyActiveRegional)}`;
+        if (dotleyActiveOperacion) url += `&operacion=${encodeURIComponent(dotleyActiveOperacion)}`;
+        if (dotleySearchQuery) url += `&q=${encodeURIComponent(dotleySearchQuery)}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Error al cargar la lista de colaboradores');
+        const data = await res.json();
+        dotleyAllRows = data.rows || [];
+
+        const badgeTotal = document.getElementById('dotley-badge-total');
+        if (badgeTotal) badgeTotal.textContent = `Total: ${data.total || dotleyAllRows.length}`;
+
+        sortAndRenderDotleyTable();
+      } catch (err) {
+        console.error('[dotacionley] Error cargando trabajadores:', err);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function sortAndRenderDotleyTable() {
+      if (dotleySortColumn) {
+        dotleyAllRows.sort((a, b) => {
+          let valA = a[dotleySortColumn];
+          let valB = b[dotleySortColumn];
+          if (valA === undefined || valA === null) valA = '';
+          if (valB === undefined || valB === null) valB = '';
+
+          if (dotleySortColumn === 'Fecha_Ingreso') {
+            const dateA = new Date(valA).getTime() || 0;
+            const dateB = new Date(valB).getTime() || 0;
+            return dotleySortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+          }
+
+          valA = String(valA).toLowerCase();
+          valB = String(valB).toLowerCase();
+          if (valA < valB) return dotleySortOrder === 'asc' ? -1 : 1;
+          if (valA > valB) return dotleySortOrder === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      renderDotleyTableRows();
+    }
+
+    function updateDotleySortIndicators() {
+      const keys = ['Identificacion', 'Trabajador', 'Regional', 'Operacion', 'Cargo', 'Fecha_Ingreso'];
+      keys.forEach(k => {
+        const span = document.getElementById(`dotley-sort-${k}`);
+        if (span) {
+          if (dotleySortColumn === k) {
+            span.textContent = dotleySortOrder === 'asc' ? ' ▲' : ' ▼';
+            span.style.color = 'var(--primary)';
+          } else {
+            span.textContent = '';
+          }
+        }
+      });
+    }
+
+    function getDotleyWhatsappUrl(row, cleanName) {
+      const msg = `Hola ${cleanName}, te informamos que en el mes actual te será entregada la dotación de ley, con las siguientes tallas registradas:\n\n` +
+                  `- Pantalón: ${row.Pantalon || '—'}\n` +
+                  `- Botas: ${row.Botas || '—'}\n` +
+                  `- Camisa/Camiseta: ${row.Camiseta || '—'}\n` +
+                  (row.Cargo === 'AUXILIAR LOGISTICO' ? `- Número de Buzo: ${row.Numero || '—'}\n` : '') +
+                  `\nSi alguna talla no corresponde, o si deseas actualizar tus datos bancarios y de contacto (celular y email), por favor ingresa al siguiente enlace para modificarlos:\n\n` +
+                  `https://digital.logyser.com/actualizardatos`;
+
+      const cleanCel = row.Celular ? String(row.Celular).replace(/\D/g, '') : '';
+      let phoneParam = '';
+      if (cleanCel.length === 10 && cleanCel.startsWith('3')) {
+        phoneParam = '57' + cleanCel;
+      } else if (cleanCel) {
+        phoneParam = cleanCel;
+      }
+      return `https://wa.me/${phoneParam}?text=${encodeURIComponent(msg)}`;
+    }
+
+    function renderDotleyTableRows() {
+      const tbody = document.getElementById('dotley-table-body');
+      if (!tbody) return;
+
+      if (dotleyAllRows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 30px;">No se encontraron colaboradores en este ámbito de selección.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      dotleyAllRows.forEach(r => {
+        const cleanName = String(r.Trabajador || '').split(' ** ')[1] || r.Trabajador || '';
+        const fechaStr = r.Fecha_Ingreso ? String(r.Fecha_Ingreso).slice(0, 10).split('-').reverse().join('/') : '—';
+        const waLink = getDotleyWhatsappUrl(r, cleanName);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align: center;">
+            <a href="${waLink}" target="_blank" title="Enviar por WhatsApp" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:6px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#25D366"></circle><path fill="#fff" d="M23.5 8.5c-1.9-1.9-4.5-3-7.3-3-5.7 0-10.3 4.6-10.3 10.3 0 1.8.5 3.6 1.4 5.1L6 26l5.3-1.4c1.5.8 3.1 1.2 4.8 1.2h.01c5.7 0 10.3-4.6 10.3-10.3 0-2.7-1.1-5.3-3-7.1zm-7.3 15.8h-.01c-1.5 0-3-.4-4.3-1.2l-.3-.2-3.2.8.9-3.1-.2-.3c-.9-1.4-1.3-3-1.3-4.6 0-4.7 3.8-8.5 8.5-8.5 2.3 0 4.4.9 6 2.5s2.5 3.7 2.5 6c0 4.7-3.9 8.6-8.6 8.6zm4.7-6.4c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.8 1-.2.2-.3.2-.5.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.8-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.5-.1 0-.3 0-.5 0s-.5.1-.7.3c-.2.3-1 1-1 2.3 0 1.4 1 2.7 1.1 2.9.1.2 2 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.2-.3-.2-.5-.3z"></path></svg>
+            </a>
+          </td>
+          <td style="font-weight: 600; font-size: 0.8rem; color: var(--primary);">${r.Identificacion || '—'}</td>
+          <td style="font-size: 0.8rem;">${cleanName}</td>
+          <td>${r.Regional || '—'}</td>
+          <td>${r.Operacion || '—'}</td>
+          <td><span class="badge-category">${r.Cargo || '—'}</span></td>
+          <td>${fechaStr}</td>
+          <td style="text-align: center;">${r.Camiseta || '—'}</td>
+          <td style="text-align: center;">${r.Cargo === 'AUXILIAR LOGISTICO' ? (r.Numero || '—') : '<span style="color:var(--text-muted);">—</span>'}</td>
+          <td style="text-align: center;">${r.Pantalon || '—'}</td>
+          <td style="text-align: center;">${r.Botas || '—'}</td>
+          <td>${r.Celular || '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (typeof makeTableResizable === 'function') {
+        const table = document.getElementById('dotley-table');
+        if (table) makeTableResizable(table);
+      }
+    }
 
     // Run on startup
     window.addEventListener('DOMContentLoaded', init);

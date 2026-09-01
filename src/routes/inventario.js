@@ -1555,17 +1555,34 @@ router.get('/api/categorias', async (req, res) => {
 const { randomUUID } = require('crypto');
 
 // GET /api/kardex-lookups - returns articles, operations, regionals, categories
+// Regional/Operación se filtran según el acceso de Kardex del Rol del usuario (computarAccesoInventario).
 router.get('/api/kardex-lookups', async (req, res) => {
   try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
     const [artRows] = await pool.execute('SELECT Id, Articulo, Categoria, Costo FROM Dynamic_Articulos ORDER BY Articulo');
-    const [opRows] = await pool.execute("SELECT DISTINCT `OPERACIÓN` AS operacion, REGIONAL AS regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN` ORDER BY `OPERACIÓN`".replace("ORDER BY `OPERACIÓN` ORDER BY `OPERACIÓN`","ORDER BY `OPERACIÓN`"));
+    const [opRows] = await pool.execute("SELECT DISTINCT `OPERACIÓN` AS operacion, REGIONAL AS regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN`");
     const [regRows] = await pool.execute("SELECT DISTINCT Regional FROM Config_Regionales WHERE Operacion_Principal IS NOT NULL AND Operacion_Principal != '' ORDER BY Regional");
     const [catRows] = await pool.execute("SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE (Condicion != 'No aplica' OR Condicion IS NULL) AND Categoria IS NOT NULL ORDER BY Categoria");
-    
+
+    let operaciones = opRows;
+    let regionales = regRows.map(r => r.Regional);
+
+    if (!acceso.sinFiltro) {
+      const operacionesPermitidas = new Set(acceso.operacionesFiltro);
+      operaciones = opRows.filter(o => operacionesPermitidas.has(o.operacion));
+      const regionalesPermitidos = new Set(Object.keys(acceso.opsPorRegional));
+      regionales = regionales.filter(r => regionalesPermitidos.has(r));
+    }
+
     res.json({
       articulos: artRows,
-      operaciones: opRows,
-      regionales: regRows.map(r => r.Regional),
+      operaciones,
+      regionales,
       categorias: catRows.map(c => c.Categoria)
     });
   } catch (err) {
