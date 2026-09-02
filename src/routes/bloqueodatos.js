@@ -81,7 +81,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// API: Obtener quincenas activas
+// API: Obtener quincenas activas (del año actual)
 router.get('/api/quincenas', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -90,9 +90,19 @@ router.get('/api/quincenas', async (req, res) => {
     const acceso = await computarAccesoBloqueo(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const [qRows] = await pool.execute(
-      "SELECT Quincena FROM Config_Quincenas WHERE Quincena != 'Todo' GROUP BY Quincena ORDER BY MAX(Id) DESC"
+    const currentYear = new Date().getFullYear();
+    let [qRows] = await pool.execute(
+      "SELECT Quincena FROM Config_Quincenas WHERE Quincena != 'Todo' AND `Año` = ? GROUP BY Quincena ORDER BY MIN(`Fecha Final`) ASC",
+      [currentYear]
     );
+
+    // Si no hay quincenas configuradas para el año actual, fallback a todas
+    if (!qRows.length) {
+      [qRows] = await pool.execute(
+        "SELECT Quincena FROM Config_Quincenas WHERE Quincena != 'Todo' GROUP BY Quincena ORDER BY MAX(Id) DESC"
+      );
+    }
+
     res.json(qRows.map(row => row.Quincena));
   } catch (err) {
     console.error('[bloqueodatos] GET /api/quincenas:', err);
@@ -145,18 +155,26 @@ router.post('/api/crear', async (req, res) => {
       return res.status(400).json({ error: 'La condición es inválida (debe ser Bloquear o Desbloquear)' });
     }
 
-    // Resolver Año a partir de la quincena
+    // Resolver Año: Asegurar que se registre la quincena del año actual
+    const currentYear = new Date().getFullYear();
     const [qRow] = await pool.execute(
-      "SELECT `Año` FROM Config_Quincenas WHERE Quincena = ? LIMIT 1",
-      [quincena]
+      "SELECT `Año` FROM Config_Quincenas WHERE Quincena = ? AND `Año` = ? LIMIT 1",
+      [quincena, currentYear]
     );
-    const anio = qRow.length ? qRow[0].Año : new Date().getFullYear();
+    const anio = qRow.length ? qRow[0].Año : currentYear;
 
-    // Obtener fecha límite de la quincena
-    const [fRows] = await pool.execute(
-      "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ?",
-      [quincena]
+    // Obtener fecha límite de la quincena correspondiente al año actual
+    let [fRows] = await pool.execute(
+      "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ? AND `Año` = ?",
+      [quincena, anio]
     );
+    if (!fRows.length || !fRows[0].fecha_limite) {
+      const [fallbackRows] = await pool.execute(
+        "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ?",
+        [quincena]
+      );
+      fRows = fallbackRows;
+    }
     if (!fRows.length || !fRows[0].fecha_limite) {
       return res.status(400).json({ error: 'No se encontró la fecha límite para la quincena especificada en Maestro_Fechas.' });
     }
