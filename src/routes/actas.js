@@ -233,10 +233,10 @@ router.get('/api/stock-categoria', async (req, res) => {
     if (!operacion || !categoria) return res.status(400).json({ error: 'operacion y categoria requeridos' });
 
     const condicion = await resolverCondicionCategoria(categoria);
-    const aplica = condicion === 'Definitivo' || condicion === 'Recuperable';
-    // Solo Condicion = 'Definitivo' bloquea el ingreso de cantidad por encima del stock;
-    // 'Recuperable' (y cualquier otra) solo muestra el disponible como referencia.
-    const bloquea = condicion === 'Definitivo';
+    // Solo Condicion = 'Definitivo' mueve Kardex; para cualquier otra ni se muestra
+    // el disponible ni se bloquea el ingreso de cantidad.
+    const aplica = condicion === 'Definitivo';
+    const bloquea = aplica;
     if (!aplica) return res.json({ aplica: false, bloquea: false, operacionPrincipal: null, stock: {} });
 
     const resultado = await calcularStockCategoria(operacion, categoria);
@@ -442,8 +442,8 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
       }
     }
 
-    // Validar stock disponible: solo bloquea si la Condicion de la Categoria es 'Definitivo'.
-    // 'Recuperable' (y cualquier otra) permite registrar cualquier cantidad aunque no haya stock.
+    // Validar stock disponible: solo aplica (y solo mueve Kardex) si la Condicion es 'Definitivo'.
+    // Cualquier otra condición permite registrar cualquier cantidad y no toca el inventario.
     const condicion = await resolverCondicionCategoria(categoria);
     if (condicion === 'Definitivo') {
       for (const item of itemsParsed) {
@@ -568,7 +568,7 @@ router.put('/api/acta/:id/items', async (req, res) => {
     await conn.execute('DELETE FROM Dynamic_Kardex WHERE Acta = ?', [String(id)]);
     await conn.execute('DELETE FROM Dynamic_Actas_Items WHERE IdActa = ?', [id]);
 
-    // Solo Condicion = 'Definitivo' bloquea por stock insuficiente; 'Recuperable' permite cualquier cantidad.
+    // Solo Condicion = 'Definitivo' bloquea por stock insuficiente y mueve Kardex; cualquier otra permite cualquier cantidad.
     const condicion = await resolverCondicionCategoria(acta.Categoria);
     if (condicion === 'Definitivo') {
       for (const item of itemsParsed) {

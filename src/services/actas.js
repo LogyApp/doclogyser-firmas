@@ -244,13 +244,43 @@ async function resolverCondicionCategoria(categoria) {
   return (row && row.Condicion) || null;
 }
 
-// Inserta en Dynamic_Kardex un movimiento ASIGNACION por cada ítem del Acta, dentro de la
-// misma transacción de creación. Solo aplica si la Condicion de la Categoria es Definitivo
-// (resta, cantidad negativa) o Recuperable (suma, cantidad positiva); en cualquier otro caso
-// (p.ej. "No aplica") no se toca el Kardex.
+// Inserta un único movimiento de Kardex para un ítem del Acta.
+async function insertarMovimientoKardexActa(conn, acta, item, regional, operacion, cantidad, valorUnitario) {
+  await conn.execute(
+    `INSERT INTO Dynamic_Kardex
+     (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`, \`OperaciónDestino\`,
+      Categoria, IdArticulo, Cantidad, UsuarioAsignado, Acta, ValorUnitario,
+      UsuarioRegistro, Observaciones, FechaRegistro)
+     VALUES (?, ?, 'ASIGNACION', ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+    [
+      uuidv4().replace(/-/g, ''),
+      acta.Fecha_Registro,
+      regional,
+      operacion,
+      acta.Categoria,
+      item.IdArticulo,
+      cantidad,
+      String(acta.identificacion),
+      String(acta.IdActa),
+      valorUnitario,
+      acta.Usuario,
+      acta.Observaciones || null,
+    ]
+  );
+}
+
+// Inserta en Dynamic_Kardex el/los movimiento(s) ASIGNACION por cada ítem del Acta, dentro de
+// la misma transacción de creación/edición. Solo aplica si la Condicion de la Categoria es
+// Definitivo (resta); cualquier otro caso (Recuperable, "No aplica", etc.) no toca el Kardex.
+//
+// El descuento se reparte entre las dos operaciones que respaldan el "Disponible" mostrado en
+// el formulario: primero se descuenta lo que haya en la Operación propia del trabajador, y si
+// la cantidad pedida supera ese stock, el faltante se descuenta de la Operación Principal de
+// respaldo de la Regional — generando un segundo movimiento de Kardex cuando corresponda. Así
+// el stock real por Operación nunca queda negativo aunque el "Disponible" combinado sí alcance.
 async function registrarKardexActa({ conn, acta, items }) {
   const condicion = await resolverCondicionCategoria(acta.Categoria);
-  if (condicion !== 'Definitivo' && condicion !== 'Recuperable') return;
+  if (condicion !== 'Definitivo') return;
 
   const [[opRow]] = await conn.execute(
     'SELECT REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? LIMIT 1',
@@ -258,32 +288,41 @@ async function registrarKardexActa({ conn, acta, items }) {
   );
   const regional = opRow ? opRow.REGIONAL : null;
 
+  const operacionPrincipal = await resolverOperacionPrincipal(acta.operacion, conn);
+  const hayRespaldo = !!(operacionPrincipal && operacionPrincipal !== acta.operacion);
+
+  let regionalPrincipal = regional;
+  if (hayRespaldo) {
+    const [[opPrincipalRow]] = await conn.execute(
+      'SELECT REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? LIMIT 1',
+      [operacionPrincipal]
+    );
+    regionalPrincipal = opPrincipalRow ? opPrincipalRow.REGIONAL : regional;
+  }
+
   for (const item of items) {
     const [[artRow]] = await conn.execute('SELECT Costo FROM Dynamic_Articulos WHERE Id = ? LIMIT 1', [item.IdArticulo]);
     const valorUnitario = (artRow && artRow.Costo) || 0;
-    const cantidad = condicion === 'Definitivo' ? -Math.abs(item.Cantidad) : Math.abs(item.Cantidad);
 
-    await conn.execute(
-      `INSERT INTO Dynamic_Kardex
-       (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`, \`OperaciónDestino\`,
-        Categoria, IdArticulo, Cantidad, UsuarioAsignado, Acta, ValorUnitario,
-        UsuarioRegistro, Observaciones, FechaRegistro)
-       VALUES (?, ?, 'ASIGNACION', ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [
-        uuidv4().replace(/-/g, ''),
-        acta.Fecha_Registro,
-        regional,
-        acta.operacion,
-        acta.Categoria,
-        item.IdArticulo,
-        cantidad,
-        String(acta.identificacion),
-        String(acta.IdActa),
-        valorUnitario,
-        acta.Usuario,
-        acta.Observaciones || null,
-      ]
-    );
+    const cantidadTotal = Math.abs(item.Cantidad);
+    const stockPropio = Math.max(await stockEnOperacion(acta.operacion, item.IdArticulo, conn), 0);
+
+    const cantidadPropia = Math.min(cantidadTotal, stockPropio);
+    const cantidadRespaldo = cantidadTotal - cantidadPropia;
+
+    if (cantidadPropia > 0) {
+      await insertarMovimientoKardexActa(conn, acta, item, regional, acta.operacion, -cantidadPropia, valorUnitario);
+    }
+
+    if (cantidadRespaldo > 0) {
+      if (hayRespaldo) {
+        await insertarMovimientoKardexActa(conn, acta, item, regionalPrincipal, operacionPrincipal, -cantidadRespaldo, valorUnitario);
+      } else {
+        // No hay Operación Principal de respaldo distinta: se registra igual contra la
+        // Operación propia (puede quedar en negativo si de verdad no había stock suficiente).
+        await insertarMovimientoKardexActa(conn, acta, item, regional, acta.operacion, -cantidadRespaldo, valorUnitario);
+      }
+    }
   }
 }
 
