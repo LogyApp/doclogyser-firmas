@@ -2698,6 +2698,14 @@
                       <option value="">Todas</option>
                     </select>
                   </div>
+                  <div class="filter-group">
+                    <label for="acta-filtro-fecha-inicio">Fecha Inicial</label>
+                    <input type="date" id="acta-filtro-fecha-inicio" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem;">
+                  </div>
+                  <div class="filter-group">
+                    <label for="acta-filtro-fecha-fin">Fecha Final</label>
+                    <input type="date" id="acta-filtro-fecha-fin" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem;">
+                  </div>
                   <div class="filter-group" style="grid-column: span 2;">
                     <label for="acta-filtro-search">Búsqueda rápida</label>
                     <input type="text" id="acta-filtro-search" placeholder="Buscar por ID, trabajador, operación...">
@@ -2716,24 +2724,41 @@
               <table class="kardex-table" id="acta-table">
                 <thead>
                   <tr>
-                    <th style="width: 130px; text-align: center;">Acciones</th>
+                    <th style="width: 120px; text-align: center;">Acciones</th>
                     <th style="width: 70px; text-align: center; cursor: pointer;" data-sort="IdActa">ID<span id="acta-sort-IdActa" class="sort-indicator"></span></th>
-                    <th style="width: 110px; cursor: pointer;" data-sort="Fecha_Registro">Fecha<span id="acta-sort-Fecha_Registro" class="sort-indicator"></span></th>
+                    <th style="width: 115px; cursor: pointer;" data-sort="Fecha_Entrega">Fecha Entrega<span id="acta-sort-Fecha_Entrega" class="sort-indicator"></span></th>
                     <th style="cursor: pointer;" data-sort="Trabajador">Trabajador<span id="acta-sort-Trabajador" class="sort-indicator"></span></th>
                     <th style="width: 120px; cursor: pointer;" data-sort="Regional">Regional<span id="acta-sort-Regional" class="sort-indicator"></span></th>
                     <th style="width: 140px; cursor: pointer;" data-sort="operacion">Operación<span id="acta-sort-operacion" class="sort-indicator"></span></th>
                     <th style="width: 120px; cursor: pointer;" data-sort="Categoria">Categoría<span id="acta-sort-Categoria" class="sort-indicator"></span></th>
-                    <th style="width: 90px; text-align: center;">Ítems</th>
-                    <th style="width: 120px; text-align: center; cursor: pointer;" data-sort="Estado">Estado<span id="acta-sort-Estado" class="sort-indicator"></span></th>
-                    <th style="width: 140px; cursor: pointer;" data-sort="Usuario">Registrado por<span id="acta-sort-Usuario" class="sort-indicator"></span></th>
+                    <th style="width: 80px; text-align: center;">Ítems</th>
+                    <th style="width: 110px; text-align: center; cursor: pointer;" data-sort="Estado">Estado<span id="acta-sort-Estado" class="sort-indicator"></span></th>
+                    <th style="width: 130px; cursor: pointer;" data-sort="Usuario">Registrado por<span id="acta-sort-Usuario" class="sort-indicator"></span></th>
+                    <th style="width: 115px; cursor: pointer;" data-sort="Fecha_Registro">Fecha Registro<span id="acta-sort-Fecha_Registro" class="sort-indicator"></span></th>
                   </tr>
                 </thead>
                 <tbody id="acta-table-body">
                   <tr>
-                    <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando actas...</td>
+                    <td colspan="11" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando actas...</td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- Pagination Bar -->
+            <div id="acta-pagination-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding: 8px 4px; flex-wrap: wrap; gap: 10px;">
+              <div style="font-size: 0.85rem; color: var(--text-muted);" id="acta-pagination-info">
+                Página 1 de 1
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" id="acta-page-prev" class="btn" style="background: white; border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" disabled>
+                  ◀ Anterior
+                </button>
+                <span id="acta-page-current-display" style="font-size: 0.85rem; font-weight: 700; color: var(--primary); padding: 0 4px;">1</span>
+                <button type="button" id="acta-page-next" class="btn" style="background: white; border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" disabled>
+                  Siguiente ▶
+                </button>
+              </div>
             </div>
           </div>
 
@@ -4113,6 +4138,8 @@
     let actaStockBloquea = false;
     let currentActasSortColumn = 'Fecha_Registro';
     let currentActasSortOrder = 'desc';
+    let currentActasPage = 1;
+    let currentActasTotalPages = 1;
 
     // Initialize UI from config
     function init() {
@@ -11266,13 +11293,31 @@
             currentActasSortOrder = currentActasSortOrder === 'asc' ? 'desc' : 'asc';
           } else {
             currentActasSortColumn = col;
-            currentActasSortOrder = (col === 'Fecha_Registro' || col === 'IdActa') ? 'desc' : 'asc';
+            currentActasSortOrder = (col === 'Fecha_Registro' || col === 'Fecha_Entrega' || col === 'IdActa') ? 'desc' : 'asc';
           }
           updateActasSortIndicators();
-          fetchActasList();
+          fetchActasList(1);
         });
       });
       updateActasSortIndicators();
+
+      // Pagination button handlers
+      const btnActaPrev = document.getElementById('acta-page-prev');
+      const btnActaNext = document.getElementById('acta-page-next');
+      if (btnActaPrev) {
+        btnActaPrev.addEventListener('click', () => {
+          if (currentActasPage > 1) {
+            fetchActasList(currentActasPage - 1);
+          }
+        });
+      }
+      if (btnActaNext) {
+        btnActaNext.addEventListener('click', () => {
+          if (currentActasPage < currentActasTotalPages) {
+            fetchActasList(currentActasPage + 1);
+          }
+        });
+      }
 
       // Set user profile
       const actaProfileName = document.getElementById('actas-profile-name');
@@ -11320,8 +11365,8 @@
         });
         if (sortedRegs.length === 1) {
           filterReg.value = sortedRegs[0];
-        } else if (CONFIG.regional && sortedRegs.includes(CONFIG.regional)) {
-          filterReg.value = CONFIG.regional;
+        } else {
+          filterReg.value = '';
         }
       }
 
@@ -11378,17 +11423,27 @@
         if (el) {
           el.addEventListener('change', () => {
             if (id === 'acta-filtro-regional') populateActasFilterOperaciones();
-            fetchActasList();
+            fetchActasList(1);
           });
         }
       });
+
+      // Hook up date filters
+      const filterFechaIni = document.getElementById('acta-filtro-fecha-inicio');
+      const filterFechaFin = document.getElementById('acta-filtro-fecha-fin');
+      if (filterFechaIni) {
+        filterFechaIni.addEventListener('change', () => fetchActasList(1));
+      }
+      if (filterFechaFin) {
+        filterFechaFin.addEventListener('change', () => fetchActasList(1));
+      }
 
       let actaSearchTimeout;
       const actaSearchInput = document.getElementById('acta-filtro-search');
       if (actaSearchInput) {
         actaSearchInput.addEventListener('input', () => {
           clearTimeout(actaSearchTimeout);
-          actaSearchTimeout = setTimeout(() => fetchActasList(), 400);
+          actaSearchTimeout = setTimeout(() => fetchActasList(1), 400);
         });
       }
 
@@ -11399,9 +11454,13 @@
           document.getElementById('acta-filtro-regional').value = '';
           populateActasFilterOperaciones();
           document.getElementById('acta-filtro-operacion').value = '';
+          const fIni = document.getElementById('acta-filtro-fecha-inicio');
+          const fFin = document.getElementById('acta-filtro-fecha-fin');
+          if (fIni) fIni.value = '';
+          if (fFin) fFin.value = '';
           activeActaCategory = '';
           document.getElementById('acta-filtro-search').value = '';
-          fetchActasList();
+          fetchActasList(1);
         });
       }
 
@@ -11750,15 +11809,19 @@
       if (!badge) return;
 
       let count = 0;
-      const estado = document.getElementById('acta-filtro-estado').value;
-      const reg = document.getElementById('acta-filtro-regional').value;
-      const op = document.getElementById('acta-filtro-operacion').value;
+      const estado = document.getElementById('acta-filtro-estado')?.value;
+      const reg = document.getElementById('acta-filtro-regional')?.value;
+      const op = document.getElementById('acta-filtro-operacion')?.value;
+      const fInicio = document.getElementById('acta-filtro-fecha-inicio')?.value;
+      const fFin = document.getElementById('acta-filtro-fecha-fin')?.value;
       const cat = activeActaCategory;
-      const search = document.getElementById('acta-filtro-search').value.trim();
+      const search = document.getElementById('acta-filtro-search')?.value.trim();
 
       if (estado) count++;
       if (reg) count++;
       if (op) count++;
+      if (fInicio) count++;
+      if (fFin) count++;
       if (cat) count++;
       if (search) count++;
 
@@ -11766,7 +11829,8 @@
       badge.style.display = count > 0 ? 'inline-flex' : 'none';
     }
 
-    async function fetchActasList() {
+    async function fetchActasList(page = 1) {
+      currentActasPage = page;
       const tbody = document.getElementById('acta-table-body');
       const badgeTotal = document.getElementById('acta-badge-total');
       const resultsText = document.getElementById('acta-results-text');
@@ -11779,13 +11843,17 @@
       const estado = document.getElementById('acta-filtro-estado')?.value || '';
       const regional = document.getElementById('acta-filtro-regional')?.value || '';
       const operacion = document.getElementById('acta-filtro-operacion')?.value || '';
+      const fechaInicio = document.getElementById('acta-filtro-fecha-inicio')?.value || '';
+      const fechaFin = document.getElementById('acta-filtro-fecha-fin')?.value || '';
       const categoria = activeActaCategory || '';
       const search = document.getElementById('acta-filtro-search')?.value.trim() || '';
 
-      let url = `/actas/api/actas?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      let url = `/actas/api/actas?usuario=${encodeURIComponent(CONFIG.usuarioId)}&page=${page}&limit=500`;
       if (estado) url += `&estado=${encodeURIComponent(estado)}`;
       if (regional) url += `&regional=${encodeURIComponent(regional)}`;
       if (operacion) url += `&operacion=${encodeURIComponent(operacion)}`;
+      if (fechaInicio) url += `&fechaInicio=${encodeURIComponent(fechaInicio)}`;
+      if (fechaFin) url += `&fechaFin=${encodeURIComponent(fechaFin)}`;
       if (categoria) url += `&categoria=${encodeURIComponent(categoria)}`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (currentActasSortColumn) {
@@ -11800,6 +11868,9 @@
         allActas = data.results || [];
         actaFullCounts = data.counts || null;
         lastActasStats = data.stats || { totalActas: 0, totalFirmadas: 0, totalPendientes: 0, totalAnuladas: 0 };
+        if (data.pagination) {
+          currentActasTotalPages = data.pagination.totalPages || 1;
+        }
 
         renderActasStats();
         if (actaFullCounts) {
@@ -11811,10 +11882,34 @@
         }
         updateActasBadgeFiltros();
         sortAndRenderActasTable();
+        renderActasPagination();
       } catch (err) {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
         if (resultsText) resultsText.textContent = 'Error al cargar';
+      }
+    }
+
+    function renderActasPagination() {
+      const container = document.getElementById('acta-pagination-container');
+      const info = document.getElementById('acta-pagination-info');
+      const btnPrev = document.getElementById('acta-page-prev');
+      const btnNext = document.getElementById('acta-page-next');
+      const pageDisplay = document.getElementById('acta-page-current-display');
+      if (!container) return;
+
+      const totalDb = actaFullCounts ? actaFullCounts.total : allActas.length;
+      if (info) {
+        info.textContent = `Página ${currentActasPage} de ${currentActasTotalPages} (${totalDb} actas encontradas)`;
+      }
+      if (pageDisplay) {
+        pageDisplay.textContent = `${currentActasPage} / ${currentActasTotalPages}`;
+      }
+      if (btnPrev) {
+        btnPrev.disabled = currentActasPage <= 1;
+      }
+      if (btnNext) {
+        btnNext.disabled = currentActasPage >= currentActasTotalPages;
       }
     }
 
@@ -11907,7 +12002,7 @@
       btnAll.addEventListener('click', () => {
         if (activeActaCategory !== '') {
           activeActaCategory = '';
-          fetchActasList();
+          fetchActasList(1);
         }
       });
       container.appendChild(btnAll);
@@ -11935,7 +12030,7 @@
         btn.innerHTML = `${icon} ${cat} <span>(${count})</span>`;
         btn.addEventListener('click', () => {
           activeActaCategory = (activeActaCategory === cat) ? '' : cat;
-          fetchActasList();
+          fetchActasList(1);
         });
         container.appendChild(btn);
       });
@@ -11954,7 +12049,7 @@
       tbody.innerHTML = '';
 
       if (allActas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">No se encontraron actas.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 30px;">No se encontraron actas.</td></tr>';
         return;
       }
 
@@ -11966,11 +12061,28 @@
         const stateUpper = (a.Estado || '').toUpperCase().trim();
         const badgeClass = `estado-${stateUpper}`;
 
-        const d = new Date(a.Fecha_Registro);
-        const dateStr = isNaN(d.getTime()) ? '—' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        // Fecha de Entrega
+        let dateEntregaStr = '—';
+        if (a.Fecha_Entrega) {
+          const rawE = String(a.Fecha_Entrega).substring(0, 10);
+          const partsE = rawE.split('-');
+          if (partsE.length === 3) {
+            dateEntregaStr = `${partsE[2]}/${partsE[1]}/${partsE[0]}`;
+          } else {
+            const dE = new Date(a.Fecha_Entrega);
+            dateEntregaStr = isNaN(dE.getTime()) ? '—' : `${String(dE.getDate()).padStart(2, '0')}/${String(dE.getMonth() + 1).padStart(2, '0')}/${dE.getFullYear()}`;
+          }
+        }
+
+        // Fecha de Registro
+        let dateRegistroStr = '—';
+        if (a.Fecha_Registro) {
+          const dR = new Date(a.Fecha_Registro);
+          dateRegistroStr = isNaN(dR.getTime()) ? '—' : `${String(dR.getDate()).padStart(2, '0')}/${String(dR.getMonth() + 1).padStart(2, '0')}/${dR.getFullYear()}`;
+        }
 
         const partes = String(a.Trabajador || '').split(' ** ');
-        const nombreCorto = partes.length > 1 ? partes[1].trim() : (a.Trabajador || '—');
+        const nombreCorto = partes.length > 1 ? partes[1].trim() : (a.Trabajador || (a.identificacion ? `Doc: ${a.identificacion}` : '—'));
 
         let accionesHtml = '<span style="color: var(--text-muted);">—</span>';
         if (stateUpper === 'FIRMADA' && a.Url_Acta) {
@@ -11995,7 +12107,7 @@
         tr.innerHTML = `
           <td style="text-align: center;">${accionesHtml}</td>
           <td style="text-align: center; font-weight: 600; font-size: 0.8rem; color: var(--primary);">#${a.IdActa}</td>
-          <td>${dateStr}</td>
+          <td>${dateEntregaStr}</td>
           <td style="font-size: 0.8rem;">${nombreCorto}</td>
           <td>${a.Regional || '—'}</td>
           <td>${a.operacion || '—'}</td>
@@ -12007,6 +12119,7 @@
             </div>
           </td>
           <td style="font-size: 0.75rem; color: var(--text-muted);">${a.Usuario || '—'}</td>
+          <td style="font-size: 0.8rem; color: var(--text-muted);">${dateRegistroStr}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -12028,7 +12141,7 @@
             const numB = Number(valB) || 0;
             return currentActasSortOrder === 'asc' ? numA - numB : numB - numA;
           }
-          if (currentActasSortColumn === 'Fecha_Registro') {
+          if (currentActasSortColumn === 'Fecha_Registro' || currentActasSortColumn === 'Fecha_Entrega') {
             const dateA = new Date(valA).getTime() || 0;
             const dateB = new Date(valB).getTime() || 0;
             return currentActasSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
@@ -12045,7 +12158,7 @@
     }
 
     function updateActasSortIndicators() {
-      const keys = ['IdActa', 'Fecha_Registro', 'Trabajador', 'Regional', 'operacion', 'Categoria', 'Estado', 'Usuario'];
+      const keys = ['IdActa', 'Fecha_Entrega', 'Fecha_Registro', 'Trabajador', 'Regional', 'operacion', 'Categoria', 'Estado', 'Usuario'];
       keys.forEach(k => {
         const span = document.getElementById(`acta-sort-${k}`);
         if (span) {

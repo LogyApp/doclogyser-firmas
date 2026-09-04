@@ -307,18 +307,26 @@ router.get('/api/actas', async (req, res) => {
       }
     }
 
-    const { estado, regional, operacion, categoria, search, sort, order } = req.query;
+    const { estado, regional, operacion, categoria, search, fechaInicio, fechaFin, sort, order, page, limit } = req.query;
 
     const fEstado = estado ? { cond: 'da.Estado = ?', params: [estado] } : null;
     const fRegional = regional ? { cond: 'mo.REGIONAL = ?', params: [regional] } : null;
     const fOperacion = operacion ? { cond: 'da.operacion = ?', params: [operacion] } : null;
     const fCategoria = categoria ? { cond: 'da.Categoria = ?', params: [categoria] } : null;
+    const fFechaInicio = fechaInicio ? { cond: 'da.Fecha_Entrega >= ?', params: [fechaInicio] } : null;
+    const fFechaFin = fechaFin ? { cond: 'da.Fecha_Entrega <= ?', params: [fechaFin] } : null;
+    const searchParam = search ? `%${search.trim()}%` : null;
     const fSearch = search ? {
       cond: `(CAST(da.IdActa AS CHAR) LIKE ? OR
               da.identificacion LIKE ? OR
-              (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) LIKE ? OR
-              da.operacion LIKE ? OR mo.REGIONAL LIKE ? OR da.Usuario LIKE ?)`,
-      params: [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`]
+              UPPER(COALESCE(
+                (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1),
+                (SELECT s.Trabajador FROM \`Maestro_Segmentación\` s WHERE s.Identificación = da.identificacion LIMIT 1)
+              )) LIKE UPPER(?) OR
+              UPPER(da.operacion) LIKE UPPER(?) OR
+              UPPER(mo.REGIONAL) LIKE UPPER(?) OR
+              UPPER(da.Usuario) LIKE UPPER(?))`,
+      params: [searchParam, searchParam, searchParam, searchParam, searchParam, searchParam]
     } : null;
 
     const buildActasCountWhere = (extraFilters) => {
@@ -330,16 +338,17 @@ router.get('/api/actas', async (req, res) => {
 
     const FROM_JOIN = 'FROM Dynamic_Actas da LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = da.operacion';
 
-    // Ordenamiento dinámico seguro para permitir ver primeras actas (ASC) o más recientes (DESC)
+    // Ordenamiento dinámico seguro para permitir ver actas por fecha registro (por defecto DESC), fecha entrega, ID, etc.
     const ALLOWED_SORT_COLS = {
       IdActa: 'da.IdActa',
+      Fecha_Entrega: 'da.Fecha_Entrega',
       Fecha_Registro: 'da.Fecha_Registro',
       Estado: 'da.Estado',
       Categoria: 'da.Categoria',
       operacion: 'da.operacion',
       Regional: 'mo.REGIONAL',
       Usuario: 'da.Usuario',
-      Trabajador: '(SELECT Trabajador FROM `Maestro_Vinculación` v WHERE v.Identificación = da.identificacion ORDER BY v.`Fecha de Ingreso` DESC LIMIT 1)'
+      Trabajador: 'COALESCE((SELECT v.Trabajador FROM `Maestro_Vinculación` v WHERE v.Identificación = da.identificacion ORDER BY v.`Fecha de Ingreso` DESC LIMIT 1), (SELECT s.Trabajador FROM `Maestro_Segmentación` s WHERE s.Identificación = da.identificacion LIMIT 1))'
     };
 
     const sortCol = ALLOWED_SORT_COLS[sort] || 'da.Fecha_Registro';
@@ -347,26 +356,33 @@ router.get('/api/actas', async (req, res) => {
     const tieBreaker = sortCol === 'da.IdActa' ? '' : `, da.IdActa ${sortDir}`;
     const orderByClause = `ORDER BY ${sortCol} ${sortDir}${tieBreaker}`;
 
-    // 1. Consulta de filas con filtros y orden aplicados (límite 500 para rendimiento)
-    const listFilter = buildActasCountWhere([fEstado, fRegional, fOperacion, fCategoria, fSearch]);
+    const pageSize = Math.min(Math.max(parseInt(limit, 10) || 500, 10), 2000);
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const offset = (pageNum - 1) * pageSize;
+
+    // 1. Consulta de filas con filtros y orden aplicados
+    const listFilter = buildActasCountWhere([fEstado, fRegional, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch]);
     const [rows] = await pool.execute(
       `SELECT da.*,
         mo.REGIONAL AS Regional,
-        (SELECT Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) AS Trabajador,
+        COALESCE(
+          (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1),
+          (SELECT s.Trabajador FROM \`Maestro_Segmentación\` s WHERE s.Identificación = da.identificacion LIMIT 1)
+        ) AS Trabajador,
         (SELECT COUNT(*) FROM Dynamic_Actas_Items i WHERE i.IdActa = da.IdActa) AS TotalItems
        ${FROM_JOIN}
        ${listFilter.where}
        ${orderByClause}
-       LIMIT 500`,
+       LIMIT ${pageSize} OFFSET ${offset}`,
       listFilter.params
     );
 
     // 2. Conteos facetados en toda la base de datos
-    const wTotal = buildActasCountWhere([fEstado, fRegional, fOperacion, fCategoria, fSearch]);
-    const wEstado = buildActasCountWhere([fRegional, fOperacion, fCategoria, fSearch]);
-    const wRegional = buildActasCountWhere([fEstado, fOperacion, fCategoria, fSearch]);
-    const wOperacion = buildActasCountWhere([fEstado, fRegional, fCategoria, fSearch]);
-    const wCategoria = buildActasCountWhere([fEstado, fRegional, fOperacion, fSearch]);
+    const wTotal = buildActasCountWhere([fEstado, fRegional, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch]);
+    const wEstado = buildActasCountWhere([fRegional, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch]);
+    const wRegional = buildActasCountWhere([fEstado, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch]);
+    const wOperacion = buildActasCountWhere([fEstado, fRegional, fCategoria, fFechaInicio, fFechaFin, fSearch]);
+    const wCategoria = buildActasCountWhere([fEstado, fRegional, fOperacion, fFechaInicio, fFechaFin, fSearch]);
 
     const [[totalRow]] = await pool.execute(`SELECT COUNT(*) AS total ${FROM_JOIN} ${wTotal.where}`, wTotal.params);
     const [estadoRows] = await pool.execute(`SELECT da.Estado AS k, COUNT(*) AS total ${FROM_JOIN} ${wEstado.where} GROUP BY da.Estado`, wEstado.params);
@@ -374,7 +390,7 @@ router.get('/api/actas', async (req, res) => {
     const [operacionRows] = await pool.execute(`SELECT da.operacion AS k, COUNT(*) AS total ${FROM_JOIN} ${wOperacion.where} GROUP BY da.operacion`, wOperacion.params);
     const [categoriaRows] = await pool.execute(`SELECT da.Categoria AS k, COUNT(*) AS total ${FROM_JOIN} ${wCategoria.where} GROUP BY da.Categoria`, wCategoria.params);
 
-    // 3. Stats consolidados de toda la base de datos (respetando filtros de búsqueda/región/op/categoría activos)
+    // 3. Stats consolidados de toda la base de datos (respetando filtros activos excepto estado)
     const [[statsRow]] = await pool.execute(
       `SELECT 
         COUNT(*) AS totalActas,
@@ -392,8 +408,10 @@ router.get('/api/actas', async (req, res) => {
       return map;
     };
 
+    const totalCountVal = Number(totalRow.total || 0);
+
     const counts = {
-      total: Number(totalRow.total || 0),
+      total: totalCountVal,
       porEstado: toMap(estadoRows),
       porRegional: toMap(regionalRows),
       porOperacion: toMap(operacionRows),
@@ -407,7 +425,17 @@ router.get('/api/actas', async (req, res) => {
       totalAnuladas: Number(statsRow.totalAnuladas || 0),
     };
 
-    res.json({ results: rows, counts, stats });
+    res.json({
+      results: rows,
+      counts,
+      stats,
+      pagination: {
+        page: pageNum,
+        limit: pageSize,
+        total: totalCountVal,
+        totalPages: Math.ceil(totalCountVal / pageSize) || 1
+      }
+    });
   } catch (err) {
     console.error('[actas] GET /api/actas:', err);
     res.status(500).json({ error: err.message });
