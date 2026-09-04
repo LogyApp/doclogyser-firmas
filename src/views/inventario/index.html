@@ -2615,8 +2615,42 @@
 
           <!-- VISTA LISTADO DE ACTAS -->
           <div id="acta-vista-listado" class="acta-vista active">
+
+            <!-- Stats Container (Mini-Stats Next to Tab Title) -->
+            <div class="tabs-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 10px; margin-bottom: 20px;">
+              <div style="font-weight: 700; color: var(--primary); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                <span>📊</span> Resumen de Actas
+              </div>
+
+              <!-- Right Side: Mini Stats Info Box -->
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <div class="mini-stat-card">
+                  <span class="mini-stat-icon">📄</span>
+                  <div class="mini-stat-info">
+                    <span class="lbl">Total Actas</span>
+                    <span class="val" id="acta-stat-total">0</span>
+                  </div>
+                </div>
+                <div class="mini-stat-card">
+                  <span class="mini-stat-icon">✍️</span>
+                  <div class="mini-stat-info">
+                    <span class="lbl">Firmadas</span>
+                    <span class="val" id="acta-stat-firmadas">0</span>
+                  </div>
+                </div>
+                <div class="mini-stat-card">
+                  <span class="mini-stat-icon">⏳</span>
+                  <div class="mini-stat-info">
+                    <span class="lbl">Pendientes</span>
+                    <span class="val" id="acta-stat-pendientes">0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-              <div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="results-count" id="acta-results-text">Mostrando 0 actas</div>
                 <span class="badge badge-estado" id="acta-badge-total" style="background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
               </div>
               <button class="btn-primary" id="acta-btn-nueva" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
@@ -4065,6 +4099,7 @@
     let masterActas = [];
     let allActas = [];
     let actaFullCounts = null;
+    let lastActasStats = null;
     let activeActaCategory = '';
     let actaCategoriasRestringidas = null;
     let actaAllCategorias = [];
@@ -9884,10 +9919,11 @@
       const opDestSel = document.getElementById('fk-single-opdestino');
       if (!opDestSel) return;
       const regional = regSel ? regSel.value : '';
-      const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst'].includes(CONFIG.rol);
+      const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+      const destPool = kardexLookups.operacionesTodas || kardexLookups.operaciones;
       const allowedDestOps = isPrivileged
-        ? kardexLookups.operaciones
-        : kardexLookups.operaciones.filter(o => o.regional === regional || o.operacion === 'ADMINISTRACION');
+        ? destPool
+        : destPool.filter(o => o.regional === regional || o.operacion === 'ADMINISTRACION');
       opDestSel.innerHTML = '<option value="">Seleccione</option>' + allowedDestOps.map(o => `<option value="${o.operacion}">${o.operacion}</option>`).join('');
     }
 
@@ -10232,12 +10268,13 @@
 
         // 3. Operación Destino Options
         let destOpOptionsHtml = '';
-        const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst'].includes(CONFIG.rol);
+        const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+        const destPool = kardexLookups.operacionesTodas || kardexLookups.operaciones;
         let allowedDestOps = [];
         if (isPrivileged) {
-          allowedDestOps = kardexLookups.operaciones;
+          allowedDestOps = destPool;
         } else {
-          allowedDestOps = kardexLookups.operaciones.filter(o => o.regional === row.Regional || o.operacion === 'ADMINISTRACION');
+          allowedDestOps = destPool.filter(o => o.regional === row.Regional || o.operacion === 'ADMINISTRACION');
         }
         allowedDestOps.forEach(o => {
           destOpOptionsHtml += `<option value="${o.operacion}"></option>`;
@@ -11229,12 +11266,13 @@
             currentActasSortOrder = currentActasSortOrder === 'asc' ? 'desc' : 'asc';
           } else {
             currentActasSortColumn = col;
-            currentActasSortOrder = 'asc';
+            currentActasSortOrder = (col === 'Fecha_Registro' || col === 'IdActa') ? 'desc' : 'asc';
           }
           updateActasSortIndicators();
-          sortAndRenderActasTable();
+          fetchActasList();
         });
       });
+      updateActasSortIndicators();
 
       // Set user profile
       const actaProfileName = document.getElementById('actas-profile-name');
@@ -11340,7 +11378,7 @@
         if (el) {
           el.addEventListener('change', () => {
             if (id === 'acta-filtro-regional') populateActasFilterOperaciones();
-            filterAndRenderActas();
+            fetchActasList();
           });
         }
       });
@@ -11350,7 +11388,7 @@
       if (actaSearchInput) {
         actaSearchInput.addEventListener('input', () => {
           clearTimeout(actaSearchTimeout);
-          actaSearchTimeout = setTimeout(() => filterAndRenderActas(), 400);
+          actaSearchTimeout = setTimeout(() => fetchActasList(), 400);
         });
       }
 
@@ -11363,7 +11401,7 @@
           document.getElementById('acta-filtro-operacion').value = '';
           activeActaCategory = '';
           document.getElementById('acta-filtro-search').value = '';
-          filterAndRenderActas();
+          fetchActasList();
         });
       }
 
@@ -11731,99 +11769,63 @@
     async function fetchActasList() {
       const tbody = document.getElementById('acta-table-body');
       const badgeTotal = document.getElementById('acta-badge-total');
+      const resultsText = document.getElementById('acta-results-text');
       if (!tbody) return;
 
       tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando actas...</td></tr>';
       if (badgeTotal) badgeTotal.textContent = 'Buscando...';
+      if (resultsText) resultsText.textContent = 'Buscando actas...';
+
+      const estado = document.getElementById('acta-filtro-estado')?.value || '';
+      const regional = document.getElementById('acta-filtro-regional')?.value || '';
+      const operacion = document.getElementById('acta-filtro-operacion')?.value || '';
+      const categoria = activeActaCategory || '';
+      const search = document.getElementById('acta-filtro-search')?.value.trim() || '';
+
+      let url = `/actas/api/actas?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      if (estado) url += `&estado=${encodeURIComponent(estado)}`;
+      if (regional) url += `&regional=${encodeURIComponent(regional)}`;
+      if (operacion) url += `&operacion=${encodeURIComponent(operacion)}`;
+      if (categoria) url += `&categoria=${encodeURIComponent(categoria)}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (currentActasSortColumn) {
+        url += `&sort=${encodeURIComponent(currentActasSortColumn)}&order=${encodeURIComponent(currentActasSortOrder)}`;
+      }
 
       try {
-        const url = `/actas/api/actas?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Error cargando actas de la API');
 
         const data = await res.json();
-        masterActas = data.results || [];
+        allActas = data.results || [];
         actaFullCounts = data.counts || null;
-        filterAndRenderActas();
+        lastActasStats = data.stats || { totalActas: 0, totalFirmadas: 0, totalPendientes: 0, totalAnuladas: 0 };
+
+        renderActasStats();
         if (actaFullCounts) {
           renderActasFilterCountsUI(actaFullCounts, {
-            selectedEst: document.getElementById('acta-filtro-estado').value,
-            selectedReg: document.getElementById('acta-filtro-regional').value,
-            selectedOp: document.getElementById('acta-filtro-operacion').value,
+            selectedEst: estado,
+            selectedReg: regional,
+            selectedOp: operacion,
           });
         }
+        updateActasBadgeFiltros();
+        sortAndRenderActasTable();
       } catch (err) {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
+        if (resultsText) resultsText.textContent = 'Error al cargar';
       }
     }
 
-    function filterAndRenderActas() {
-      const estado = document.getElementById('acta-filtro-estado').value;
-      const regional = document.getElementById('acta-filtro-regional').value;
-      const operacion = document.getElementById('acta-filtro-operacion').value;
-      const categoria = activeActaCategory || '';
-      const search = document.getElementById('acta-filtro-search').value.trim().toLowerCase();
-
-      allActas = masterActas.filter(a => {
-        if (estado && a.Estado !== estado) return false;
-        if (regional && a.Regional !== regional) return false;
-        if (operacion && a.operacion !== operacion) return false;
-        if (categoria && a.Categoria !== categoria) return false;
-        if (search) {
-          const txt = `${a.IdActa} ${a.Trabajador} ${a.operacion} ${a.Regional} ${a.Usuario}`.toLowerCase();
-          if (!txt.includes(search)) return false;
-        }
-        return true;
-      });
-
-      updateActasFilterCounts();
-      sortAndRenderActasTable();
-      updateActasBadgeFiltros();
-    }
-
-    // Los conteos de los filtros de Actas reflejan el valor real de la base de datos
-    // (no solo los 500 registros cargados en pantalla): se piden al servidor con un
-    // pequeño debounce cada vez que cambia algún filtro, igual que en Kardex.
-    let actaCountsDebounceTimer = null;
-    let actaCountsFetchController = null;
-
-    function updateActasFilterCounts() {
-      clearTimeout(actaCountsDebounceTimer);
-      actaCountsDebounceTimer = setTimeout(() => { refreshActasFilterCounts(); }, 250);
-    }
-
-    async function refreshActasFilterCounts() {
-      const selectedEst = document.getElementById('acta-filtro-estado').value;
-      const selectedReg = document.getElementById('acta-filtro-regional').value;
-      const selectedOp = document.getElementById('acta-filtro-operacion').value;
-      const selectedCat = activeActaCategory || '';
-      const search = document.getElementById('acta-filtro-search').value.trim();
-
-      if (actaCountsFetchController) actaCountsFetchController.abort();
-      actaCountsFetchController = new AbortController();
-
-      let url = `/actas/api/actas?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-      if (selectedEst) url += `&estado=${encodeURIComponent(selectedEst)}`;
-      if (selectedReg) url += `&regional=${encodeURIComponent(selectedReg)}`;
-      if (selectedOp) url += `&operacion=${encodeURIComponent(selectedOp)}`;
-      if (selectedCat) url += `&categoria=${encodeURIComponent(selectedCat)}`;
-      if (search) url += `&search=${encodeURIComponent(search)}`;
-
-      try {
-        const res = await fetch(url, { signal: actaCountsFetchController.signal });
-        if (!res.ok) throw new Error('Error al actualizar los conteos');
-        const data = await res.json();
-        actaFullCounts = data.counts || null;
-        if (actaFullCounts) {
-          renderActasFilterCountsUI(actaFullCounts, { selectedEst, selectedReg, selectedOp });
-          const badgeTotal = document.getElementById('acta-badge-total');
-          if (badgeTotal) badgeTotal.textContent = `Total: ${actaFullCounts.total}`;
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.error('[actas] Error actualizando conteos de filtros:', err);
-      }
+    function renderActasStats() {
+      const stats = lastActasStats || { totalActas: 0, totalFirmadas: 0, totalPendientes: 0, totalAnuladas: 0 };
+      const elTotal = document.getElementById('acta-stat-total');
+      const elFirmadas = document.getElementById('acta-stat-firmadas');
+      const elPendientes = document.getElementById('acta-stat-pendientes');
+      if (elTotal) elTotal.textContent = stats.totalActas;
+      if (elFirmadas) elFirmadas.textContent = stats.totalFirmadas;
+      if (elPendientes) elPendientes.textContent = stats.totalPendientes;
     }
 
     function renderActasFilterCountsUI(counts, sel) {
@@ -11839,28 +11841,32 @@
         { val: 'Anulada', label: 'Anulada' }
       ];
       const totalEstCount = Object.values(estadoCounts).reduce((a, b) => Number(a) + Number(b), 0);
-      estadoSelect.innerHTML = `<option value="">Todos (${totalEstCount})</option>`;
-      estadosList.forEach(e => {
-        const count = estadoCounts[e.val] || 0;
-        const opt = document.createElement('option');
-        opt.value = e.val;
-        opt.textContent = `${e.label} (${count})`;
-        if (e.val === sel.selectedEst) opt.selected = true;
-        estadoSelect.appendChild(opt);
-      });
+      if (estadoSelect) {
+        estadoSelect.innerHTML = `<option value="">Todos (${totalEstCount})</option>`;
+        estadosList.forEach(e => {
+          const count = estadoCounts[e.val] || 0;
+          const opt = document.createElement('option');
+          opt.value = e.val;
+          opt.textContent = `${e.label} (${count})`;
+          if (e.val === sel.selectedEst) opt.selected = true;
+          estadoSelect.appendChild(opt);
+        });
+      }
 
       const regionalSelect = document.getElementById('acta-filtro-regional');
       const sortedRegs = CONFIG.regionalesFiltro || [];
       const totalRegCount = Object.values(regionalCounts).reduce((a, b) => Number(a) + Number(b), 0);
-      regionalSelect.innerHTML = `<option value="">Todas (${totalRegCount})</option>`;
-      sortedRegs.forEach(r => {
-        const count = regionalCounts[r] || 0;
-        const opt = document.createElement('option');
-        opt.value = r;
-        opt.textContent = `${r} (${count})`;
-        if (r === sel.selectedReg) opt.selected = true;
-        regionalSelect.appendChild(opt);
-      });
+      if (regionalSelect) {
+        regionalSelect.innerHTML = `<option value="">Todas (${totalRegCount})</option>`;
+        sortedRegs.forEach(r => {
+          const count = regionalCounts[r] || 0;
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = `${r} (${count})`;
+          if (r === sel.selectedReg) opt.selected = true;
+          regionalSelect.appendChild(opt);
+        });
+      }
 
       const operacionSelect = document.getElementById('acta-filtro-operacion');
       let allowedOps = [];
@@ -11872,15 +11878,17 @@
         allowedOps = Array.from(allOpsSet).sort();
       }
       const totalOpCount = Object.values(operacionCounts).reduce((a, b) => Number(a) + Number(b), 0);
-      operacionSelect.innerHTML = `<option value="">Todas (${totalOpCount})</option>`;
-      allowedOps.forEach(op => {
-        const count = operacionCounts[op] || 0;
-        const opt = document.createElement('option');
-        opt.value = op;
-        opt.textContent = `${op} (${count})`;
-        if (op === sel.selectedOp) opt.selected = true;
-        operacionSelect.appendChild(opt);
-      });
+      if (operacionSelect) {
+        operacionSelect.innerHTML = `<option value="">Todas (${totalOpCount})</option>`;
+        allowedOps.forEach(op => {
+          const count = operacionCounts[op] || 0;
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = `${op} (${count})`;
+          if (op === sel.selectedOp) opt.selected = true;
+          operacionSelect.appendChild(opt);
+        });
+      }
 
       renderActasCategoryButtons(categoriaCounts);
     }
@@ -11899,7 +11907,7 @@
       btnAll.addEventListener('click', () => {
         if (activeActaCategory !== '') {
           activeActaCategory = '';
-          filterAndRenderActas();
+          fetchActasList();
         }
       });
       container.appendChild(btnAll);
@@ -11927,7 +11935,7 @@
         btn.innerHTML = `${icon} ${cat} <span>(${count})</span>`;
         btn.addEventListener('click', () => {
           activeActaCategory = (activeActaCategory === cat) ? '' : cat;
-          filterAndRenderActas();
+          fetchActasList();
         });
         container.appendChild(btn);
       });
@@ -11936,10 +11944,14 @@
     function renderActasTableRows() {
       const tbody = document.getElementById('acta-table-body');
       const badgeTotal = document.getElementById('acta-badge-total');
+      const resultsText = document.getElementById('acta-results-text');
       if (!tbody) return;
 
+      const totalDb = actaFullCounts ? actaFullCounts.total : allActas.length;
+      if (badgeTotal) badgeTotal.textContent = `Total: ${totalDb}`;
+      if (resultsText) resultsText.textContent = `Mostrando ${allActas.length} de ${totalDb} actas`;
+
       tbody.innerHTML = '';
-      if (badgeTotal) badgeTotal.textContent = `Total: ${allActas.length}`;
 
       if (allActas.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">No se encontraron actas.</td></tr>';

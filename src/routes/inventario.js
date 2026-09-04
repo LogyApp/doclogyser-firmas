@@ -1474,6 +1474,10 @@ router.get('/api/kardex-lookups', async (req, res) => {
       articulos: artRows,
       operaciones,
       regionales,
+      // Lista completa (sin restringir por el acceso de origen del usuario), para poblar la
+      // Operación Destino de una TRANSFERENCIA: cualquier usuario puede transferir a cualquier
+      // operación de su misma Regional, aunque su acceso de origen esté limitado a una sola.
+      operacionesTodas: opRows,
       categorias: catRows.map(c => c.Categoria)
     });
   } catch (err) {
