@@ -8,6 +8,7 @@ const {
   calcularStockCategoria,
   resolverCondicionCategoria,
   registrarKardexActa,
+  revertirKardexActa,
   construirDatosPlantilla,
 } = require('../services/actas');
 const { notificarActaFirma } = require('../services/email');
@@ -603,7 +604,10 @@ router.put('/api/acta/:id/items', async (req, res) => {
 });
 
 // ═════ API: POST /api/acta/:id/anular ═════
+// Si la Categoria del Acta es Definitivo, revierte en el Kardex la salida de inventario que
+// se generó al crearla (ver revertirKardexActa).
 router.post('/api/acta/:id/anular', async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
     const { usuario } = req.body;
@@ -612,20 +616,29 @@ router.post('/api/acta/:id/anular', async (req, res) => {
     const acceso = await computarAccesoActas(usuario);
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const [[acta]] = await pool.execute('SELECT Estado FROM Dynamic_Actas WHERE IdActa = ?', [id]);
+    const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
     if (acta.Estado !== 'Pendiente') {
       return res.status(400).json({ error: 'Solo se pueden anular actas en estado Pendiente' });
     }
 
-    await pool.execute(
+    await conn.beginTransaction();
+
+    await revertirKardexActa({ conn, acta, usuarioAnula: usuario });
+
+    await conn.execute(
       "UPDATE Dynamic_Actas SET Estado = 'Anulada', token_firma = NULL, token_expira = NULL WHERE IdActa = ?",
       [id]
     );
+
+    await conn.commit();
     res.json({ ok: true });
   } catch (err) {
+    await conn.rollback();
     console.error('[actas] POST /api/acta/:id/anular:', err);
     res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
   }
 });
 

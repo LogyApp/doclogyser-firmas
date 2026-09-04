@@ -326,6 +326,44 @@ async function registrarKardexActa({ conn, acta, items }) {
   }
 }
 
+// Al anular un Acta cuya Categoria es Definitivo, revierte cada movimiento ASIGNACION que
+// registrarKardexActa generó (uno o dos por ítem, según haya usado o no la Operación Principal
+// de respaldo), insertando un movimiento DESASIGNACION de signo contrario por cada uno. No se
+// borran ni modifican los movimientos originales: quedan como historial, y el reverso queda
+// como un evento nuevo fechado al momento de la anulación.
+async function revertirKardexActa({ conn, acta, usuarioAnula }) {
+  const condicion = await resolverCondicionCategoria(acta.Categoria);
+  if (condicion !== 'Definitivo') return;
+
+  const [rows] = await conn.execute(
+    "SELECT * FROM Dynamic_Kardex WHERE Acta = ? AND TipoMovimiento = 'ASIGNACION'",
+    [String(acta.IdActa)]
+  );
+
+  for (const row of rows) {
+    await conn.execute(
+      `INSERT INTO Dynamic_Kardex
+       (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`, \`OperaciónDestino\`,
+        Categoria, IdArticulo, Cantidad, UsuarioAsignado, Acta, ValorUnitario,
+        UsuarioRegistro, Observaciones, FechaRegistro)
+       VALUES (?, NOW(), 'DESASIGNACION', ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        uuidv4().replace(/-/g, ''),
+        row.Regional,
+        row['Operación'],
+        row.Categoria,
+        row.IdArticulo,
+        -row.Cantidad,
+        row.UsuarioAsignado,
+        String(acta.IdActa),
+        row.ValorUnitario,
+        usuarioAnula,
+        `Reverso por anulación del Acta #${acta.IdActa}`,
+      ]
+    );
+  }
+}
+
 module.exports = {
   normalizarCategoria,
   resolverTipoDocumentoActa,
@@ -335,4 +373,5 @@ module.exports = {
   calcularStockCategoria,
   resolverCondicionCategoria,
   registrarKardexActa,
+  revertirKardexActa,
 };
