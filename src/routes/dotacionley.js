@@ -85,22 +85,22 @@ router.get('/api/trabajadores', async (req, res) => {
       params.push(`%${q}%`, `%${q}%`);
     }
 
-    // 1. Obtener total de registros con el filtro actual
-    const [[{ total }]] = await pool.execute(
-      `SELECT COUNT(*) AS total FROM vista_dotacion_ley ${where}`,
-      params
-    );
-
-    // 2. Obtener los registros paginados
     const safeLimit = parseInt(limit) || 50;
     const safeOffset = (parseInt(page) - 1) * safeLimit;
 
-    const [rows] = await pool.execute(
-      `SELECT * FROM vista_dotacion_ley ${where}
-       ORDER BY Trabajador ASC
-       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
-      params
-    );
+    // Obtener total de registros y registros paginados en paralelo
+    const [
+      [[{ total }]],
+      [rows]
+    ] = await Promise.all([
+      pool.execute(`SELECT COUNT(*) AS total FROM vista_dotacion_ley ${where}`, params),
+      pool.execute(
+        `SELECT * FROM vista_dotacion_ley ${where}
+         ORDER BY Trabajador ASC
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        params
+      )
+    ]);
 
     res.json({
       total: parseInt(total),

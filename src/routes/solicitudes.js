@@ -506,24 +506,19 @@ router.get('/api/conteos-filtros', async (req, res) => {
     }
     const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
 
-    const [regRows] = await pool.execute(
-      `SELECT Regional, COUNT(*) AS total FROM Dynamic_Solicitudes ${regWhere} GROUP BY Regional`,
-      regParams
-    );
-
-    // 2. Query para Operaciones (aplica filtros compartidos y Regional, pero excluye Operación)
-    const opConds = [...baseConds, ...sharedConds];
-    const opParams = [...baseParams, ...sharedParams];
-    if (regional) {
-      opConds.push('Regional = ?');
-      opParams.push(regional);
-    }
-    const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
-
-    const [opRows] = await pool.execute(
-      `SELECT \`Operación\`, COUNT(*) AS total FROM Dynamic_Solicitudes ${opWhere} GROUP BY \`Operación\``,
-      opParams
-    );
+    const [
+      [regRows],
+      [opRows]
+    ] = await Promise.all([
+      pool.execute(
+        `SELECT Regional, COUNT(*) AS total FROM Dynamic_Solicitudes ${regWhere} GROUP BY Regional`,
+        regParams
+      ),
+      pool.execute(
+        `SELECT \`Operación\`, COUNT(*) AS total FROM Dynamic_Solicitudes ${opWhere} GROUP BY \`Operación\``,
+        opParams
+      )
+    ]);
 
     const regionales = {};
     regRows.forEach(r => {

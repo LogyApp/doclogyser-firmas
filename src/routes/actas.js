@@ -360,47 +360,53 @@ router.get('/api/actas', async (req, res) => {
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
     const offset = (pageNum - 1) * pageSize;
 
-    // 1. Consulta de filas con filtros y orden aplicados
+    // 1. Preparar consultas de filas, conteos facetados y estadísticas consolidadas
     const listFilter = buildActasCountWhere([fEstado, fRegional, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch]);
-    const [rows] = await pool.execute(
-      `SELECT da.*,
-        mo.REGIONAL AS Regional,
-        COALESCE(
-          (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1),
-          (SELECT s.Trabajador FROM \`Maestro_Segmentación\` s WHERE s.Identificación = da.identificacion LIMIT 1)
-        ) AS Trabajador,
-        (SELECT COUNT(*) FROM Dynamic_Actas_Items i WHERE i.IdActa = da.IdActa) AS TotalItems
-       ${FROM_JOIN}
-       ${listFilter.where}
-       ${orderByClause}
-       LIMIT ${pageSize} OFFSET ${offset}`,
-      listFilter.params
-    );
-
-    // 2. Conteos facetados en toda la base de datos
     const wTotal = buildActasCountWhere([fEstado, fRegional, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch]);
     const wEstado = buildActasCountWhere([fRegional, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch]);
     const wRegional = buildActasCountWhere([fEstado, fOperacion, fCategoria, fFechaInicio, fFechaFin, fSearch]);
     const wOperacion = buildActasCountWhere([fEstado, fRegional, fCategoria, fFechaInicio, fFechaFin, fSearch]);
     const wCategoria = buildActasCountWhere([fEstado, fRegional, fOperacion, fFechaInicio, fFechaFin, fSearch]);
 
-    const [[totalRow]] = await pool.execute(`SELECT COUNT(*) AS total ${FROM_JOIN} ${wTotal.where}`, wTotal.params);
-    const [estadoRows] = await pool.execute(`SELECT da.Estado AS k, COUNT(*) AS total ${FROM_JOIN} ${wEstado.where} GROUP BY da.Estado`, wEstado.params);
-    const [regionalRows] = await pool.execute(`SELECT mo.REGIONAL AS k, COUNT(*) AS total ${FROM_JOIN} ${wRegional.where} GROUP BY mo.REGIONAL`, wRegional.params);
-    const [operacionRows] = await pool.execute(`SELECT da.operacion AS k, COUNT(*) AS total ${FROM_JOIN} ${wOperacion.where} GROUP BY da.operacion`, wOperacion.params);
-    const [categoriaRows] = await pool.execute(`SELECT da.Categoria AS k, COUNT(*) AS total ${FROM_JOIN} ${wCategoria.where} GROUP BY da.Categoria`, wCategoria.params);
-
-    // 3. Stats consolidados de toda la base de datos (respetando filtros activos excepto estado)
-    const [[statsRow]] = await pool.execute(
-      `SELECT 
-        COUNT(*) AS totalActas,
-        SUM(CASE WHEN da.Estado = 'Firmada' THEN 1 ELSE 0 END) AS totalFirmadas,
-        SUM(CASE WHEN da.Estado = 'Pendiente' THEN 1 ELSE 0 END) AS totalPendientes,
-        SUM(CASE WHEN da.Estado = 'Anulada' THEN 1 ELSE 0 END) AS totalAnuladas
-       ${FROM_JOIN}
-       ${wEstado.where}`,
-      wEstado.params
-    );
+    const [
+      [rows],
+      [[totalRow]],
+      [estadoRows],
+      [regionalRows],
+      [operacionRows],
+      [categoriaRows],
+      [[statsRow]]
+    ] = await Promise.all([
+      pool.execute(
+        `SELECT da.*,
+          mo.REGIONAL AS Regional,
+          COALESCE(
+            (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.Identificación = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1),
+            (SELECT s.Trabajador FROM \`Maestro_Segmentación\` s WHERE s.Identificación = da.identificacion LIMIT 1)
+          ) AS Trabajador,
+          (SELECT COUNT(*) FROM Dynamic_Actas_Items i WHERE i.IdActa = da.IdActa) AS TotalItems
+         ${FROM_JOIN}
+         ${listFilter.where}
+         ${orderByClause}
+         LIMIT ${pageSize} OFFSET ${offset}`,
+        listFilter.params
+      ),
+      pool.execute(`SELECT COUNT(*) AS total ${FROM_JOIN} ${wTotal.where}`, wTotal.params),
+      pool.execute(`SELECT da.Estado AS k, COUNT(*) AS total ${FROM_JOIN} ${wEstado.where} GROUP BY da.Estado`, wEstado.params),
+      pool.execute(`SELECT mo.REGIONAL AS k, COUNT(*) AS total ${FROM_JOIN} ${wRegional.where} GROUP BY mo.REGIONAL`, wRegional.params),
+      pool.execute(`SELECT da.operacion AS k, COUNT(*) AS total ${FROM_JOIN} ${wOperacion.where} GROUP BY da.operacion`, wOperacion.params),
+      pool.execute(`SELECT da.Categoria AS k, COUNT(*) AS total ${FROM_JOIN} ${wCategoria.where} GROUP BY da.Categoria`, wCategoria.params),
+      pool.execute(
+        `SELECT 
+          COUNT(*) AS totalActas,
+          SUM(CASE WHEN da.Estado = 'Firmada' THEN 1 ELSE 0 END) AS totalFirmadas,
+          SUM(CASE WHEN da.Estado = 'Pendiente' THEN 1 ELSE 0 END) AS totalPendientes,
+          SUM(CASE WHEN da.Estado = 'Anulada' THEN 1 ELSE 0 END) AS totalAnuladas
+         ${FROM_JOIN}
+         ${wEstado.where}`,
+        wEstado.params
+      )
+    ]);
 
     const toMap = (dbRows) => {
       const map = {};
