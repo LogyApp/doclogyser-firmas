@@ -799,4 +799,284 @@ router.post('/api/acta/:id/correo', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── SUBPESTAÑA: LÓGICA DE ABASTECIMIENTO (Maestro_Dotacion_Cargos) ───────────
+// ══════════════════════════════════════════════════════════════════════════════
+const ROLES_LOGICA_ABASTECIMIENTO = ['Sistema', 'Inventario', 'AdmSst'];
+
+async function validarAccesoLogica(usuarioId) {
+  if (!usuarioId) return null;
+  const [uRows] = await pool.execute(
+    'SELECT ID, Nombre, Rol FROM Maestro_Usuarios WHERE ID = ?',
+    [usuarioId]
+  );
+  if (!uRows.length) return null;
+  const rol = uRows[0].Rol || '';
+  if (!ROLES_LOGICA_ABASTECIMIENTO.includes(rol)) return null;
+  return { usuarioId: uRows[0].ID, usuarioNombre: uRows[0].Nombre, rol };
+}
+
+// ── GET /api/logica-abastecimiento/opciones (Cargos, Operaciones y Categorías) ──
+router.get('/api/logica-abastecimiento/opciones', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const acceso = await validarAccesoLogica(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para acceder a la Lógica de Abastecimiento' });
+
+    const [
+      [cargosRows],
+      [opRows]
+    ] = await Promise.all([
+      pool.execute('SELECT DISTINCT Cargo FROM `Config_Cargo_Laboral` WHERE Cargo IS NOT NULL AND TRIM(Cargo) != "" ORDER BY Cargo ASC'),
+      pool.execute('SELECT DISTINCT `OPERACIÓN` AS Operacion FROM `Maestro_Operaciones` WHERE `REGIONAL` != "INACTIVO" AND `OPERACIÓN` IS NOT NULL AND TRIM(`OPERACIÓN`) != "" ORDER BY `OPERACIÓN` ASC')
+    ]);
+
+    const cargos = cargosRows.map(r => r.Cargo).filter(Boolean);
+    const operaciones = opRows.map(r => r.Operacion).filter(Boolean);
+    const categorias = ['DOTACIÓN', 'EPP', 'TECNOLOGIA'];
+
+    res.json({ ok: true, cargos, operaciones, categorias });
+  } catch (err) {
+    console.error('[actas] GET /api/logica-abastecimiento/opciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/logica-abastecimiento/clasificaciones (ClaseArticulo filtrado por Categoria) ──
+router.get('/api/logica-abastecimiento/clasificaciones', async (req, res) => {
+  try {
+    const { usuario, categoria } = req.query;
+    const acceso = await validarAccesoLogica(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!categoria) return res.json({ ok: true, clasificaciones: [] });
+
+    let catVariants = [categoria.trim()];
+    if (categoria.trim().toUpperCase() === 'DOTACIÓN' || categoria.trim().toUpperCase() === 'DOTACION') {
+      catVariants = ['DOTACIÓN', 'DOTACION'];
+    } else if (categoria.trim().toUpperCase() === 'TECNOLOGIA' || categoria.trim().toUpperCase() === 'TECNOLOGÍA') {
+      catVariants = ['TECNOLOGIA', 'TECNOLOGÍA'];
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT DISTINCT ClaseArticulo 
+       FROM Dynamic_Articulos 
+       WHERE Categoria IN (${catVariants.map(() => '?').join(',')})
+         AND ClaseArticulo IS NOT NULL 
+         AND TRIM(ClaseArticulo) != ''
+       ORDER BY ClaseArticulo ASC`,
+      catVariants
+    );
+
+    const clasificaciones = rows.map(r => r.ClaseArticulo).filter(Boolean);
+    res.json({ ok: true, clasificaciones });
+  } catch (err) {
+    console.error('[actas] GET /api/logica-abastecimiento/clasificaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/logica-abastecimiento/elementos (Elemento filtrado por Categoria y ClaseArticulo) ──
+router.get('/api/logica-abastecimiento/elementos', async (req, res) => {
+  try {
+    const { usuario, categoria, clasificacion } = req.query;
+    const acceso = await validarAccesoLogica(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!categoria || !clasificacion) return res.json({ ok: true, elementos: [] });
+
+    let catVariants = [categoria.trim()];
+    if (categoria.trim().toUpperCase() === 'DOTACIÓN' || categoria.trim().toUpperCase() === 'DOTACION') {
+      catVariants = ['DOTACIÓN', 'DOTACION'];
+    } else if (categoria.trim().toUpperCase() === 'TECNOLOGIA' || categoria.trim().toUpperCase() === 'TECNOLOGÍA') {
+      catVariants = ['TECNOLOGIA', 'TECNOLOGÍA'];
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT DISTINCT Elemento 
+       FROM Dynamic_Articulos 
+       WHERE Categoria IN (${catVariants.map(() => '?').join(',')})
+         AND ClaseArticulo = ?
+         AND Elemento IS NOT NULL 
+         AND TRIM(Elemento) != ''
+       ORDER BY Elemento ASC`,
+      [...catVariants, clasificacion.trim()]
+    );
+
+    const elementos = rows.map(r => r.Elemento).filter(Boolean);
+    res.json({ ok: true, elementos });
+  } catch (err) {
+    console.error('[actas] GET /api/logica-abastecimiento/elementos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/logica-abastecimiento (Listado con filtros facetados) ──
+router.get('/api/logica-abastecimiento', async (req, res) => {
+  try {
+    const { usuario, operacion, cargo, categoria, clasificacion, search } = req.query;
+    const acceso = await validarAccesoLogica(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para acceder a la Lógica de Abastecimiento' });
+
+    // Definición de filtros individuales (cada uno con su condición SQL y sus parámetros)
+    const filterDefs = {};
+    if (operacion && operacion.trim()) {
+      filterDefs.operacion = { cond: 'Operacion = ?', params: [operacion.trim()] };
+    }
+    if (cargo && cargo.trim()) {
+      filterDefs.cargo = { cond: 'Cargo = ?', params: [cargo.trim()] };
+    }
+    if (categoria && categoria.trim()) {
+      filterDefs.categoria = { cond: 'Categoria = ?', params: [categoria.trim()] };
+    }
+    if (clasificacion && clasificacion.trim()) {
+      filterDefs.clasificacion = { cond: 'Clasificacion = ?', params: [clasificacion.trim()] };
+    }
+    if (search && search.trim()) {
+      const q = `%${search.trim()}%`;
+      filterDefs.search = {
+        cond: '(Operacion LIKE ? OR Cargo LIKE ? OR Categoria LIKE ? OR Clasificacion LIKE ? OR Elemento LIKE ?)',
+        params: [q, q, q, q, q]
+      };
+    }
+
+    const allKeys = ['operacion', 'cargo', 'categoria', 'clasificacion', 'search'];
+    const buildWhere = (excludeKey) => {
+      const conds = [];
+      const params = [];
+      allKeys.forEach(key => {
+        if (key === excludeKey) return;
+        const f = filterDefs[key];
+        if (f) {
+          conds.push(f.cond);
+          params.push(...f.params);
+        }
+      });
+      return { where: conds.length > 0 ? `WHERE ${conds.join(' AND ')}` : '', params };
+    };
+
+    const mainFilter = buildWhere(null);
+    // Cada faceta excluye su propio filtro para poder seguir mostrando sus otras opciones,
+    // pero respeta el resto de filtros activos (patrón de búsqueda facetada).
+    const opFilter = buildWhere('operacion');
+    const cargoFilter = buildWhere('cargo');
+    const catFilter = buildWhere('categoria');
+    const clasifFilter = buildWhere('clasificacion');
+
+    // Queries concurrentes para datos y conteos facetados
+    const [
+      [rows],
+      [[totalRow]],
+      [opCountsRows],
+      [cargoCountsRows],
+      [catCountsRows],
+      [clasifCountsRows]
+    ] = await Promise.all([
+      pool.execute(`SELECT * FROM Maestro_Dotacion_Cargos ${mainFilter.where} ORDER BY Id DESC`, mainFilter.params),
+      pool.execute(`SELECT COUNT(*) AS total FROM Maestro_Dotacion_Cargos ${mainFilter.where}`, mainFilter.params),
+      pool.execute(`SELECT Operacion, COUNT(*) AS total FROM Maestro_Dotacion_Cargos ${opFilter.where} GROUP BY Operacion ORDER BY Operacion ASC`, opFilter.params),
+      pool.execute(`SELECT Cargo, COUNT(*) AS total FROM Maestro_Dotacion_Cargos ${cargoFilter.where} GROUP BY Cargo ORDER BY Cargo ASC`, cargoFilter.params),
+      pool.execute(`SELECT Categoria, COUNT(*) AS total FROM Maestro_Dotacion_Cargos ${catFilter.where} GROUP BY Categoria ORDER BY Categoria ASC`, catFilter.params),
+      pool.execute(`SELECT Clasificacion, COUNT(*) AS total FROM Maestro_Dotacion_Cargos ${clasifFilter.where} GROUP BY Clasificacion ORDER BY Clasificacion ASC`, clasifFilter.params)
+    ]);
+
+    const opCounts = {};
+    opCountsRows.forEach(r => { opCounts[r.Operacion] = r.total; });
+
+    const cargoCounts = {};
+    cargoCountsRows.forEach(r => { cargoCounts[r.Cargo] = r.total; });
+
+    const catCounts = {};
+    catCountsRows.forEach(r => { catCounts[r.Categoria] = r.total; });
+
+    const clasifCounts = {};
+    clasifCountsRows.forEach(r => { clasifCounts[r.Clasificacion] = r.total; });
+
+    res.json({
+      ok: true,
+      results: rows,
+      total: totalRow ? totalRow.total : 0,
+      counts: {
+        operaciones: opCounts,
+        cargos: cargoCounts,
+        categorias: catCounts,
+        clasificaciones: clasifCounts
+      }
+    });
+  } catch (err) {
+    console.error('[actas] GET /api/logica-abastecimiento:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/logica-abastecimiento (Crear nueva regla) ──
+router.post('/api/logica-abastecimiento', async (req, res) => {
+  try {
+    const { usuario, operacion, cargo, categoria, clasificacion, elemento } = req.body;
+    const acceso = await validarAccesoLogica(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para agregar reglas de abastecimiento' });
+
+    if (!operacion || !cargo || !categoria || !clasificacion || !elemento) {
+      return res.status(400).json({ error: 'Todos los campos (Operación, Cargo, Categoría, Clasificación y Elemento) son obligatorios.' });
+    }
+
+    const [result] = await pool.execute(
+      `INSERT INTO Maestro_Dotacion_Cargos (Operacion, Cargo, Categoria, Clasificacion, Elemento, Usuario, Fecha_Registro)
+       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+      [operacion.trim(), cargo.trim(), categoria.trim(), clasificacion.trim(), elemento.trim(), acceso.usuarioNombre || usuario]
+    );
+
+    res.status(201).json({ ok: true, id: result.insertId });
+  } catch (err) {
+    console.error('[actas] POST /api/logica-abastecimiento:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /api/logica-abastecimiento/:id (Editar regla) ──
+router.put('/api/logica-abastecimiento/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, operacion, cargo, categoria, clasificacion, elemento } = req.body;
+    const acceso = await validarAccesoLogica(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para editar reglas de abastecimiento' });
+
+    if (!operacion || !cargo || !categoria || !clasificacion || !elemento) {
+      return res.status(400).json({ error: 'Todos los campos (Operación, Cargo, Categoría, Clasificación y Elemento) son obligatorios.' });
+    }
+
+    const [result] = await pool.execute(
+      `UPDATE Maestro_Dotacion_Cargos 
+       SET Operacion = ?, Cargo = ?, Categoria = ?, Clasificacion = ?, Elemento = ?, Usuario = ?
+       WHERE Id = ?`,
+      [operacion.trim(), cargo.trim(), categoria.trim(), clasificacion.trim(), elemento.trim(), acceso.usuarioNombre || usuario, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Regla no encontrada' });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[actas] PUT /api/logica-abastecimiento/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/logica-abastecimiento/:id (Eliminar regla) ──
+router.delete('/api/logica-abastecimiento/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.query.usuario || (req.body && req.body.usuario);
+    const acceso = await validarAccesoLogica(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado para eliminar reglas de abastecimiento' });
+
+    await pool.execute('DELETE FROM Maestro_Dotacion_Cargos WHERE Id = ?', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[actas] DELETE /api/logica-abastecimiento/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -215,4 +215,60 @@ router.post('/api/enviar-correo-masivo', async (req, res) => {
   }
 });
 
+// ═════ API: Actualizar campo individual (Camiseta, Numero, Pantalon, Botas, Celular) ═════
+router.post('/api/actualizar-campo', async (req, res) => {
+  try {
+    const { usuario, identificacion, campo, valor } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'usuario es requerido' });
+    if (!identificacion) return res.status(400).json({ error: 'identificacion es requerida' });
+    if (!campo) return res.status(400).json({ error: 'campo es requerido' });
+
+    const ALLOWED_FIELDS = ['Camiseta', 'Numero', 'Pantalon', 'Botas', 'Celular'];
+    if (!ALLOWED_FIELDS.includes(campo)) {
+      return res.status(400).json({ error: `Campo no permitido: ${campo}` });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'DotacionLey');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    // Verificar si el colaborador existe y validar acceso a su operación
+    const [[colaborador]] = await pool.execute(
+      'SELECT `Identificación`, `Operación` FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+      [identificacion]
+    );
+    if (!colaborador) {
+      return res.status(404).json({ error: 'Colaborador no encontrado en la base de datos' });
+    }
+
+    if (!acceso.sinFiltro && colaborador.Operación && !acceso.operacionesFiltro.includes(colaborador.Operación)) {
+      return res.status(403).json({ error: 'No tienes permiso para modificar este colaborador' });
+    }
+
+    let cleanVal = (valor !== undefined && valor !== null) ? String(valor).trim() : '';
+    if (campo === 'Celular') {
+      cleanVal = cleanVal.replace(/\D/g, '');
+    } else {
+      cleanVal = cleanVal.toUpperCase();
+    }
+    const valToSave = cleanVal !== '' ? cleanVal : null;
+
+    await pool.execute(
+      `UPDATE \`Maestro_Segmentación\` 
+       SET \`${campo}\` = ?, \`Usuario\` = ?, \`Fecha de Actualización\` = NOW() 
+       WHERE \`Identificación\` = ?`,
+      [valToSave, acceso.usuarioNombre || usuario, identificacion]
+    );
+
+    res.json({
+      success: true,
+      message: `${campo} actualizado con éxito`,
+      campo,
+      valor: valToSave
+    });
+  } catch (err) {
+    console.error('[dotacionley] POST /api/actualizar-campo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

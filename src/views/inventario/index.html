@@ -1887,6 +1887,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
         <span>Inventario</span>
       </li>
+      <li class="nav-item" id="tab-btn-pendiente-recibir-main" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7V2.5"></path></svg>
+        <span>Pendiente por recibir</span>
+      </li>
       <li class="nav-item" id="tab-btn-actas">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M9 12l2 2 4-4"></path><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.5 0 2.9.37 4.14 1.02"></path><path d="M21 5l-9 9"></path></svg>
         <span>Actas de Entrega</span>
@@ -1942,7 +1946,6 @@
       <div style="display: flex; gap: 12px;">
         <button class="tab-btn active" id="tab-btn-consulta">Consulta de Inventario</button>
         <button class="tab-btn" id="tab-btn-historial">Historial de Confirmaciones</button>
-        <button class="tab-btn" id="tab-btn-pendiente-recibir">Pendiente por recibir</button>
       </div>
 
       <!-- Right Side: Mini Stats Info Box -->
@@ -2141,14 +2144,62 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Pestaña: Pendiente por recibir -->
-    <div class="tab-content" id="tab-content-pendiente" style="padding: 24px;">
+  <!-- Pestaña Principal: Pendiente por recibir e Ingresos -->
+  <div class="wrapper" id="content-tab-pendiente-recibir" style="display: none;">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER LOGO">
+        <div class="header-titles">
+          <h1>Pendiente por Recibir e Ingresos</h1>
+          <p>Recepción de transferencias en tránsito e historial de actas de ingreso</p>
+        </div>
+      </div>
+
+      <div class="user-profile">
+        <div class="user-avatar" id="pendiente-user-avatar-initials">US</div>
+        <div class="user-details">
+          <span class="user-name" id="pendiente-profile-name">Cargando...</span>
+          <span class="user-role" id="pendiente-profile-role">Consultor</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Subtabs Container -->
+    <div class="tabs-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+      <div style="display: flex; gap: 12px;">
+        <button class="tab-btn active" id="subtab-btn-pendientes">📦 Transferencias Pendientes</button>
+        <button class="tab-btn" id="subtab-btn-historial-ingresos">📜 Historial de Ingresos</button>
+      </div>
+
+      <!-- Right Side: Pendiente mini-stats -->
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">🚚</span>
+          <div class="mini-stat-info">
+            <span class="lbl">En Tránsito</span>
+            <span class="val" id="stat-pendientes-count">0</span>
+          </div>
+        </div>
+        <div class="mini-stat-card">
+          <span class="mini-stat-icon">📦</span>
+          <div class="mini-stat-info">
+            <span class="lbl">Unidades en Tránsito</span>
+            <span class="val" id="stat-pendientes-units">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subpestaña 1: Transferencias Pendientes -->
+    <div class="tab-content active" id="subtab-content-pendientes">
       <div class="history-card" style="background: white; border-radius: 8px; box-shadow: var(--shadow-sm); padding: 20px; border-left: 4px solid var(--primary);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
           <div>
-            <h2 style="font-size: 1.1rem; color: var(--primary); margin: 0; font-weight: 700;">Pendiente por recibir</h2>
-            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Transferencias de inventario en tránsito que están pendientes por recibir en tus operaciones destino.</p>
+            <h2 style="font-size: 1.1rem; color: var(--primary); margin: 0; font-weight: 700;">Transferencias Pendientes por Recibir</h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Verifica físicamente los elementos recibidos, registra novedades o faltantes y valida la entrega mediante firma digital.</p>
           </div>
           <div>
             <button id="pendiente-btn-recibir-masivo" class="btn" style="background-color: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;">
@@ -2157,7 +2208,7 @@
           </div>
         </div>
 
-        <!-- Filtros de búsqueda para Pendiente por recibir -->
+        <!-- Filtros de búsqueda para Pendientes -->
         <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid var(--border); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <label for="pendiente-filter-operacion" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Operación Destino</label>
@@ -2172,33 +2223,108 @@
             </select>
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label for="pendiente-filter-search" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Buscar Artículo</label>
-            <input type="text" id="pendiente-filter-search" placeholder="Escribe el nombre del artículo..." style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
+            <label for="pendiente-filter-search" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Buscar Artículo / No. Pedido</label>
+            <input type="text" id="pendiente-filter-search" placeholder="Escribe el nombre del artículo o ID..." style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
           </div>
         </div>
 
-        <div class="kardex-table-container" style="overflow-x: auto; margin-top: 16px;">
-          <table class="history-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;" id="pendiente-table">
+        <!-- Barra de selección masiva y controles -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #475569;">
+            <input type="checkbox" id="pendiente-select-all" style="cursor: pointer; width: 16px; height: 16px;">
+            <label for="pendiente-select-all" style="cursor: pointer; font-weight: 600;">Seleccionar todos los pedidos</label>
+          </div>
+          <div id="pendiente-orders-stats" style="font-size: 0.8rem; color: #64748b; font-weight: 500;">
+            Mostrando <span id="pendiente-total-orders" style="font-weight: 700; color: var(--primary);">0</span> pedidos en tránsito
+          </div>
+        </div>
+
+        <!-- Contenedor dinámico de Pedidos Agrupados -->
+        <div id="pendiente-orders-container" style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+            Cargando transferencias pendientes por recibir...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subpestaña 2: Historial de Ingresos -->
+    <div class="tab-content" id="subtab-content-historial-ingresos">
+      <div class="history-card" style="background: white; border-radius: 8px; box-shadow: var(--shadow-sm); padding: 20px; border-left: 4px solid #16a34a;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h2 style="font-size: 1.1rem; color: #16a34a; margin: 0; font-weight: 700;">Historial de Ingresos y Actas de Verificación</h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Consulta todas las transferencias recibidas, sus actas digitales generadas con firma y el detalle de devoluciones por novedad.</p>
+          </div>
+          <div>
+            <button id="btn-refrescar-historial-ingresos" class="btn" style="background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+              <span>🔄</span> Actualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros de búsqueda para Historial de Ingresos -->
+        <div class="filters-card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="historial-ingresos-filtros-toggle">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Consulta
+              <span class="filtros-badge" id="historial-ingresos-filtros-badge">0</span>
+            </span>
+            <span class="filtros-chevron" id="historial-ingresos-filtros-chevron">▸</span>
+          </div>
+
+          <div id="historial-ingresos-filtros-body" style="display: none;">
+            <div class="filters-grid" style="margin-top: 14px;">
+              <div class="filter-group">
+                <label for="historial-ingresos-filter-regional">Regional</label>
+                <select id="historial-ingresos-filter-regional">
+                  <option value="">Todas las regionales</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="historial-ingresos-filter-operacion">Operación Destino</label>
+                <select id="historial-ingresos-filter-operacion">
+                  <option value="">Todas las operaciones</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="historial-ingresos-filter-fecha-inicio">Fecha Recibido (Desde)</label>
+                <input type="date" id="historial-ingresos-filter-fecha-inicio">
+              </div>
+              <div class="filter-group">
+                <label for="historial-ingresos-filter-fecha-fin">Fecha Recibido (Hasta)</label>
+                <input type="date" id="historial-ingresos-filter-fecha-fin">
+              </div>
+              <div class="filter-group">
+                <label for="historial-ingresos-filter-search">Buscador</label>
+                <input type="text" id="historial-ingresos-filter-search" placeholder="ID transferencia, artículo, responsable...">
+              </div>
+              <div class="filter-group" style="display: flex; align-items: flex-end;">
+                <button id="btn-limpiar-filtros-historial-ingresos" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">
+                  <span>🧹</span> Limpiar Filtros
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="history-table-container">
+          <table class="history-table">
             <thead>
-              <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); text-align: left;">
-                <th style="width: 140px; text-align: center; padding: 10px;">Acciones</th>
-                <th style="width: 40px; text-align: center; padding: 10px;">
-                  <input type="checkbox" id="pendiente-select-all" style="cursor: pointer;">
-                </th>
-                <th style="width: 80px; text-align: center; padding: 10px;">Imagen</th>
-                <th style="width: 180px; padding: 10px;">Artículo</th>
-                <th style="width: 120px; padding: 10px;">Fecha Movimiento</th>
-                <th style="width: 150px; padding: 10px;">Origen (Op)</th>
-                <th style="width: 150px; padding: 10px;">Destino (Op)</th>
-                <th style="width: 80px; text-align: center; padding: 10px;">Cantidad</th>
-                <th style="width: 140px; padding: 10px;">Registrado por</th>
-                <th style="padding: 10px;">Observaciones</th>
-                <th style="width: 180px; padding: 10px;">Novedad</th>
+              <tr>
+                <th style="width: 140px;">No. Transferencia</th>
+                <th style="width: 130px;">Fecha Recepción</th>
+                <th style="width: 110px;">Regional</th>
+                <th style="width: 160px;">Origen ➔ Destino</th>
+                <th style="width: 160px; text-align: center;">Artículos / Unidades</th>
+                <th style="width: 140px;">Recibido Por</th>
+                <th>Novedades / Observaciones</th>
+                <th style="width: 120px; text-align: center;">Acta PDF</th>
               </tr>
             </thead>
-            <tbody id="pendiente-table-body">
+            <tbody id="historial-ingresos-table-body">
               <tr>
-                <td colspan="11" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">Cargando transferencias pendientes...</td>
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando historial de ingresos...</td>
               </tr>
             </tbody>
           </table>
@@ -2613,8 +2739,21 @@
       <div class="main-layout">
         <main class="content-area" style="width: 100%;">
 
-          <!-- VISTA LISTADO DE ACTAS -->
-          <div id="acta-vista-listado" class="acta-vista active">
+          <!-- Sub-Pestañas de Actas de Entrega -->
+          <div class="subtabs-bar" id="actas-subtabs-nav" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px;">
+            <button type="button" class="subtab-btn active" id="actas-subtab-btn-actas" onclick="cambiarSubtabActas('actas')" style="padding: 8px 18px; font-weight: 700; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--primary); background: var(--primary); color: white; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+              <span>📄</span> Actas de Entrega
+            </button>
+            <button type="button" class="subtab-btn" id="actas-subtab-btn-logica" onclick="cambiarSubtabActas('logica')" style="display: none; padding: 8px 18px; font-weight: 700; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--border); background: white; color: var(--text); cursor: pointer; align-items: center; gap: 6px;">
+              <span>⚙️</span> Lógica de Abastecimiento
+            </button>
+          </div>
+
+          <!-- SUBTAB CONTENT 1: ACTAS (Listado y Formulario) -->
+          <div id="actas-subtab-content-actas">
+
+            <!-- VISTA LISTADO DE ACTAS -->
+            <div id="acta-vista-listado" class="acta-vista active">
 
             <!-- Stats Container (Mini-Stats Next to Tab Title) -->
             <div class="tabs-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 10px; margin-bottom: 20px;">
@@ -2902,6 +3041,132 @@
 
             </div>
           </div>
+          </div>
+          <!-- FIN SUBTAB CONTENT 1 -->
+
+          <!-- SUBTAB CONTENT 2: LÓGICA DE ABASTECIMIENTO -->
+          <div id="actas-subtab-content-logica" style="display: none;">
+            
+            <!-- Header & Stats Bar -->
+            <div class="tabs-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 10px; margin-bottom: 20px;">
+              <div style="font-weight: 700; color: var(--primary); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                <span>📋</span> Lógica de Abastecimiento
+              </div>
+
+              <!-- Mini Stats Cards -->
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <div class="mini-stat-card">
+                  <span class="mini-stat-icon">📑</span>
+                  <div class="mini-stat-info">
+                    <span class="lbl">Total Reglas</span>
+                    <span class="val" id="logica-stat-total">0</span>
+                  </div>
+                </div>
+                <div class="mini-stat-card">
+                  <span class="mini-stat-icon">🏢</span>
+                  <div class="mini-stat-info">
+                    <span class="lbl">Operaciones</span>
+                    <span class="val" id="logica-stat-operaciones">0</span>
+                  </div>
+                </div>
+                <div class="mini-stat-card">
+                  <span class="mini-stat-icon">👔</span>
+                  <div class="mini-stat-info">
+                    <span class="lbl">Cargos</span>
+                    <span class="val" id="logica-stat-cargos">0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Top Actions Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="results-count" id="logica-results-text">Mostrando 0 registros</div>
+                <span class="badge badge-estado" id="logica-badge-total" style="background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
+              </div>
+              <button class="btn-primary" id="logica-btn-nueva" onclick="openLogicaModal()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
+                <span>➕</span> Nueva Lógica
+              </button>
+            </div>
+
+            <!-- Filters Card -->
+            <div class="filters-card" style="margin-bottom: 16px;">
+              <div class="filtros-toggle" id="logica-filtros-toggle">
+                <span class="filtros-toggle-left">
+                  🔍 Filtros de Consulta
+                  <span class="filtros-badge" id="logica-filtros-badge">0</span>
+                </span>
+                <span class="filtros-chevron" id="logica-filtros-chevron" style="transform: rotate(90deg);">▸</span>
+              </div>
+
+              <div id="logica-filtros-body" style="display: block;">
+                <!-- Category Buttons / Chips -->
+                <div class="category-filter-section" style="border-bottom: 1px dashed var(--border); padding-bottom: 16px; margin-bottom: 16px; margin-top: 16px;">
+                  <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Categorías</label>
+                  <div id="logica-filter-categoria-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <!-- Dynamic Category Buttons -->
+                  </div>
+                </div>
+
+                <div class="filters-grid" style="margin-top: 16px;">
+                  <div class="filter-group">
+                    <label for="logica-filtro-operacion">Operación</label>
+                    <select id="logica-filtro-operacion">
+                      <option value="">Todas</option>
+                    </select>
+                  </div>
+                  <div class="filter-group">
+                    <label for="logica-filtro-cargo">Cargo</label>
+                    <select id="logica-filtro-cargo">
+                      <option value="">Todos</option>
+                    </select>
+                  </div>
+                  <div class="filter-group">
+                    <label for="logica-filtro-clasificacion">Clasificación</label>
+                    <select id="logica-filtro-clasificacion">
+                      <option value="">Todas</option>
+                    </select>
+                  </div>
+                  <div class="filter-group" style="grid-column: span 2;">
+                    <label for="logica-filtro-search">Búsqueda rápida</label>
+                    <input type="text" id="logica-filtro-search" placeholder="Buscar por operación, cargo, elemento...">
+                  </div>
+                  <div class="filter-group" style="display: flex; align-items: flex-end;">
+                    <button id="logica-btn-limpiar-filtros" onclick="limpiarFiltrosLogica()" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #edf2f7; color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
+                      <span>🧹</span> Limpiar Filtros
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="kardex-table-container">
+              <table class="kardex-table" id="logica-table">
+                <thead>
+                  <tr>
+                    <th style="width: 85px; text-align: center;">Acciones</th>
+                    <th style="width: 60px; text-align: center; cursor: pointer;" data-sort="Id">ID<span id="logica-sort-Id" class="sort-indicator"></span></th>
+                    <th style="width: 150px; cursor: pointer;" data-sort="Operacion">Operación<span id="logica-sort-Operacion" class="sort-indicator"></span></th>
+                    <th style="width: 180px; cursor: pointer;" data-sort="Cargo">Cargo<span id="logica-sort-Cargo" class="sort-indicator"></span></th>
+                    <th style="width: 110px; text-align: center; cursor: pointer;" data-sort="Categoria">Categoría<span id="logica-sort-Categoria" class="sort-indicator"></span></th>
+                    <th style="width: 140px; cursor: pointer;" data-sort="Clasificacion">Clasificación<span id="logica-sort-Clasificacion" class="sort-indicator"></span></th>
+                    <th style="cursor: pointer;" data-sort="Elemento">Elemento Asignado<span id="logica-sort-Elemento" class="sort-indicator"></span></th>
+                    <th style="width: 120px; cursor: pointer;" data-sort="Usuario">Registrado por<span id="logica-sort-Usuario" class="sort-indicator"></span></th>
+                    <th style="width: 120px; cursor: pointer;" data-sort="Fecha_Registro">Fecha Registro<span id="logica-sort-Fecha_Registro" class="sort-indicator"></span></th>
+                  </tr>
+                </thead>
+                <tbody id="logica-table-body">
+                  <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando lógica de abastecimiento...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+          <!-- FIN SUBTAB CONTENT 2 -->
 
         </main>
       </div>
@@ -3159,6 +3424,74 @@
         <button type="button" class="btn-modal-cancel" id="btn-conf-cancel">Cancelar</button>
         <button type="button" class="btn-modal-save" id="btn-conf-save">
           <span>💾</span> Guardar y Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Recepción de Transferencia con Firma -->
+  <div id="recibir-transferencia-modal" class="conf-modal" style="display: none; z-index: 3050;">
+    <div class="conf-modal-content" style="max-width: 680px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="conf-modal-header" style="background: #1e3c72; color: white; padding: 16px 20px;">
+        <h2 style="color: white; margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+          <span>📦</span> Acta de Ingreso y Verificación de Inventario
+        </h2>
+        <span class="conf-modal-close" id="recibir-transferencia-modal-close" style="color: white; font-size: 1.5rem; cursor: pointer;">&times;</span>
+      </div>
+      <div class="conf-modal-body" style="overflow-y: auto; padding: 20px; flex: 1;">
+        <!-- Resumen del Pedido / Transferencia -->
+        <div id="recibir-modal-order-summary" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px; font-size: 0.85rem;">
+          <!-- Se puebla dinámicamente -->
+        </div>
+
+        <!-- Lista de artículos a verificar -->
+        <div style="margin-bottom: 16px;">
+          <label style="font-weight: 700; font-size: 0.82rem; color: #1e293b; display: block; margin-bottom: 6px;">
+            Artículos a Recibir y Novedades Físicas:
+          </label>
+          <div id="recibir-modal-items-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: white;">
+            <!-- Filas dinámicas -->
+          </div>
+        </div>
+
+        <!-- Observaciones / Novedades Generales -->
+        <div class="filter-group" style="margin-bottom: 16px;">
+          <label for="recibir-modal-observaciones" style="font-weight: 600; font-size: 0.82rem; color: #1e293b;">Observaciones Generales / Novedad de Recepción</label>
+          <textarea id="recibir-modal-observaciones" rows="2" placeholder="Escribe cualquier observación general o confirma la recepción si todo llegó conforme..." style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.82rem;"></textarea>
+        </div>
+
+        <!-- Firma Digital del Receptor -->
+        <div class="filter-group" style="margin-bottom: 10px;">
+          <label style="font-weight: 700; font-size: 0.82rem; color: #1e293b; margin-bottom: 2px;">Firma Digital Responsable que Recibe</label>
+          <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;">Firme en el recuadro o use su firma digital registrada para validar el acta de ingreso.</p>
+          
+          <!-- Vista previa de firma existente -->
+          <div id="recibir-sig-preview-box" class="signature-preview-box" style="display: none; padding: 10px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; text-align: center;">
+            <p style="font-size: 0.75rem; font-weight: 600; color: var(--primary); margin-bottom: 6px;">Firma Reciente Detectada</p>
+            <img id="recibir-sig-preview-img" class="signature-preview-img" src="" alt="Firma Reciente" style="max-height: 70px; max-width: 240px; object-fit: contain;">
+            <div style="margin-top: 8px;">
+              <button type="button" class="btn-modal-cancel" id="recibir-btn-draw-new-sig" style="padding: 4px 10px; font-size: 0.75rem;">Dibujar Nueva Firma</button>
+            </div>
+          </div>
+
+          <!-- Lienzo para dibujar firma -->
+          <div id="recibir-panel-canvas-wrap" style="display: block;">
+            <div class="signature-area" style="border: 1px solid #cbd5e1; border-radius: 6px; background: white; width: 100%;">
+              <canvas id="recibir-sig-canvas" class="signature-canvas" style="width: 100%; height: 130px; display: block;"></canvas>
+            </div>
+            <div class="signature-actions" style="margin-top: 8px; display: flex; gap: 8px;">
+              <button type="button" class="btn-modal-cancel" id="recibir-btn-clear-canvas" style="padding: 4px 10px; font-size: 0.75rem;">Limpiar Lienzo</button>
+              <button type="button" class="btn-modal-cancel" id="recibir-btn-use-existing-sig" style="padding: 4px 10px; font-size: 0.75rem; display: none;">Usar Firma Existente</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="recibir-modal-error" style="display: none; padding: 8px 12px; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px; color: #dc2626; font-size: 0.8rem; font-weight: 600; margin-top: 10px;"></div>
+      </div>
+      <div class="conf-modal-footer" style="padding: 14px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-modal-cancel" id="recibir-modal-btn-cancel">Cancelar</button>
+        <button type="button" class="btn-modal-save" id="recibir-modal-btn-confirm" style="background: #22c55e; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 600; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+          <span>✔️</span> Confirmar Recepción y Firmar
         </button>
       </div>
     </div>
@@ -4008,6 +4341,81 @@
     </div>
   </div>
 
+  <!-- Modal: Nueva Lógica de Abastecimiento -->
+  <div id="logica-form-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 5vh; z-index: 1050;">
+    <div class="modal-content" style="background: white; border-radius: 12px; width: 90%; max-width: 600px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); border: 1px solid var(--border);">
+      <!-- Header -->
+      <div style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+        <h2 id="logica-modal-title" style="font-size: 1.05rem; color: var(--primary); font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+          <span>➕</span> Nueva Lógica de Abastecimiento
+        </h2>
+        <span id="logica-modal-close" onclick="closeLogicaModal()" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+
+      <!-- Form Body -->
+      <form id="logica-abastecimiento-form" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+        <input type="hidden" id="logica-form-id">
+        
+        <!-- 1. Operación -->
+        <div class="field">
+          <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 4px;">1. Operación <span style="color: #dc2626;">*</span></label>
+          <select id="logica-form-operacion" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: white;">
+            <option value="">Seleccione Operación...</option>
+          </select>
+        </div>
+
+        <!-- 2. Cargo -->
+        <div class="field">
+          <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 4px;">2. Cargo <span style="color: #dc2626;">*</span></label>
+          <select id="logica-form-cargo" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: white;">
+            <option value="">Seleccione Cargo...</option>
+          </select>
+        </div>
+
+        <!-- 3. Categoría (Botones) -->
+        <div class="field">
+          <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 6px;">3. Categoría <span style="color: #dc2626;">*</span></label>
+          <div id="logica-form-cat-buttons" style="display: flex; gap: 10px;">
+            <button type="button" class="btn-logica-cat" data-cat="DOTACIÓN" style="flex: 1; padding: 10px 8px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; cursor: pointer; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+              <span>👔</span> DOTACIÓN
+            </button>
+            <button type="button" class="btn-logica-cat" data-cat="EPP" style="flex: 1; padding: 10px 8px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; cursor: pointer; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+              <span>🦺</span> EPP
+            </button>
+            <button type="button" class="btn-logica-cat" data-cat="TECNOLOGIA" style="flex: 1; padding: 10px 8px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; cursor: pointer; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+              <span>💻</span> TECNOLOGIA
+            </button>
+          </div>
+          <input type="hidden" id="logica-form-categoria" required>
+        </div>
+
+        <!-- 4. Clasificación -->
+        <div class="field">
+          <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 4px;">4. Clasificación (Clase de Artículo) <span style="color: #dc2626;">*</span></label>
+          <select id="logica-form-clasificacion" required disabled style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #f1f5f9;">
+            <option value="">Seleccione primero una categoría...</option>
+          </select>
+        </div>
+
+        <!-- 5. Elemento -->
+        <div class="field">
+          <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 4px;">5. Elemento <span style="color: #dc2626;">*</span></label>
+          <select id="logica-form-elemento" required disabled style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #f1f5f9;">
+            <option value="">Seleccione primero una clasificación...</option>
+          </select>
+        </div>
+
+        <!-- Footer Buttons -->
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 14px;">
+          <button type="button" id="logica-form-btn-cancel" onclick="closeLogicaModal()" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Cancelar</button>
+          <button type="submit" id="logica-form-btn-submit" style="padding: 8px 20px; border: none; border-radius: 6px; background: var(--primary); color: white; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+            <span>💾</span> Guardar Lógica
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Config script injected from backend -->
   <script>
     const CONFIG = __CONFIG__;
@@ -4275,37 +4683,21 @@
         }
       });
 
-      // 4. Tab switching event listeners
+      // 4. Tab switching event listeners (Inventario)
       tabBtnConsulta.addEventListener('click', () => {
         tabBtnConsulta.classList.add('active');
         tabBtnHistorial.classList.remove('active');
-        if (tabBtnPendiente) tabBtnPendiente.classList.remove('active');
         tabContentConsulta.classList.add('active');
         tabContentHistorial.classList.remove('active');
-        if (tabContentPendiente) tabContentPendiente.classList.remove('active');
       });
 
       tabBtnHistorial.addEventListener('click', () => {
         tabBtnHistorial.classList.add('active');
         tabBtnConsulta.classList.remove('active');
-        if (tabBtnPendiente) tabBtnPendiente.classList.remove('active');
         tabContentHistorial.classList.add('active');
         tabContentConsulta.classList.remove('active');
-        if (tabContentPendiente) tabContentPendiente.classList.remove('active');
         initHistory();
       });
-
-      if (tabBtnPendiente) {
-        tabBtnPendiente.addEventListener('click', () => {
-          tabBtnPendiente.classList.add('active');
-          tabBtnConsulta.classList.remove('active');
-          tabBtnHistorial.classList.remove('active');
-          if (tabContentPendiente) tabContentPendiente.classList.add('active');
-          tabContentConsulta.classList.remove('active');
-          tabContentHistorial.classList.remove('active');
-          initPendientes();
-        });
-      }
 
       // 5. Confirmation Modal listeners
       btnConfirmarInv.addEventListener('click', () => {
@@ -4376,6 +4768,7 @@
 
       // 9. Sidebar Tab Switching
       const tabBtnInventario = document.getElementById('tab-btn-inventario');
+      const tabBtnPendienteRecibirMain = document.getElementById('tab-btn-pendiente-recibir-main');
       const tabBtnKardex = document.getElementById('tab-btn-kardex');
       const tabBtnArticulos = document.getElementById('tab-btn-articulos');
       const tabBtnSolicitudes = document.getElementById('tab-btn-solicitudes');
@@ -4383,79 +4776,89 @@
       const tabBtnDotacionLey = document.getElementById('tab-btn-dotacionley');
 
       const contentTabInventario = document.getElementById('content-tab-inventario');
+      const contentTabPendienteRecibir = document.getElementById('content-tab-pendiente-recibir');
       const contentTabKardex = document.getElementById('content-tab-kardex');
       const contentTabArticulos = document.getElementById('content-tab-articulos');
       const contentTabSolicitudes = document.getElementById('content-tab-solicitudes');
       const contentTabActas = document.getElementById('content-tab-actas');
       const contentTabDotacionLey = document.getElementById('content-tab-dotacionley');
 
-      if (tabBtnInventario && tabBtnKardex && tabBtnArticulos && tabBtnSolicitudes && tabBtnActas && tabBtnDotacionLey &&
-          contentTabInventario && contentTabKardex && contentTabArticulos && contentTabSolicitudes && contentTabActas && contentTabDotacionLey) {
+      const desactivarTodasLasPestañas = () => {
+        if (tabBtnInventario) tabBtnInventario.classList.remove('active');
+        if (tabBtnPendienteRecibirMain) tabBtnPendienteRecibirMain.classList.remove('active');
+        if (tabBtnKardex) tabBtnKardex.classList.remove('active');
+        if (tabBtnArticulos) tabBtnArticulos.classList.remove('active');
+        if (tabBtnSolicitudes) tabBtnSolicitudes.classList.remove('active');
+        if (tabBtnActas) tabBtnActas.classList.remove('active');
+        if (tabBtnDotacionLey) tabBtnDotacionLey.classList.remove('active');
 
-        const desactivarTodasLasPestañas = () => {
-          tabBtnInventario.classList.remove('active');
-          tabBtnKardex.classList.remove('active');
-          tabBtnArticulos.classList.remove('active');
-          tabBtnSolicitudes.classList.remove('active');
-          tabBtnActas.classList.remove('active');
-          tabBtnDotacionLey.classList.remove('active');
+        if (contentTabInventario) contentTabInventario.style.display = 'none';
+        if (contentTabPendienteRecibir) contentTabPendienteRecibir.style.display = 'none';
+        if (contentTabKardex) contentTabKardex.style.display = 'none';
+        if (contentTabArticulos) contentTabArticulos.style.display = 'none';
+        if (contentTabSolicitudes) contentTabSolicitudes.style.display = 'none';
+        if (contentTabActas) contentTabActas.style.display = 'none';
+        if (contentTabDotacionLey) contentTabDotacionLey.style.display = 'none';
+      };
 
-          contentTabInventario.style.display = 'none';
-          contentTabKardex.style.display = 'none';
-          contentTabArticulos.style.display = 'none';
-          contentTabSolicitudes.style.display = 'none';
-          contentTabActas.style.display = 'none';
-          contentTabDotacionLey.style.display = 'none';
-        };
-
+      if (tabBtnInventario) {
         tabBtnInventario.addEventListener('click', () => {
           desactivarTodasLasPestañas();
           tabBtnInventario.classList.add('active');
-          contentTabInventario.style.display = 'block';
+          if (contentTabInventario) contentTabInventario.style.display = 'block';
         });
+      }
 
+      if (tabBtnPendienteRecibirMain) {
+        tabBtnPendienteRecibirMain.addEventListener('click', () => {
+          desactivarTodasLasPestañas();
+          tabBtnPendienteRecibirMain.classList.add('active');
+          if (contentTabPendienteRecibir) contentTabPendienteRecibir.style.display = 'block';
+          initPendientesMain();
+        });
+      }
+
+      if (tabBtnKardex) {
         tabBtnKardex.addEventListener('click', () => {
           desactivarTodasLasPestañas();
           tabBtnKardex.classList.add('active');
-          contentTabKardex.style.display = 'block';
-
-          // Lazy init Kardex
+          if (contentTabKardex) contentTabKardex.style.display = 'block';
           initKardex();
         });
+      }
 
+      if (tabBtnArticulos) {
         tabBtnArticulos.addEventListener('click', () => {
           desactivarTodasLasPestañas();
           tabBtnArticulos.classList.add('active');
-          contentTabArticulos.style.display = 'block';
-
-          // Lazy init Articulos
+          if (contentTabArticulos) contentTabArticulos.style.display = 'block';
           initArticulos();
         });
+      }
 
+      if (tabBtnSolicitudes) {
         tabBtnSolicitudes.addEventListener('click', () => {
           desactivarTodasLasPestañas();
           tabBtnSolicitudes.classList.add('active');
-          contentTabSolicitudes.style.display = 'block';
-
-          // Lazy init Solicitudes
+          if (contentTabSolicitudes) contentTabSolicitudes.style.display = 'block';
           initSolicitudes();
         });
+      }
 
+      if (tabBtnActas) {
         tabBtnActas.addEventListener('click', () => {
           desactivarTodasLasPestañas();
           tabBtnActas.classList.add('active');
-          contentTabActas.style.display = 'block';
-
-          // Lazy init Actas
+          if (contentTabActas) contentTabActas.style.display = 'block';
           initActas();
         });
+      }
 
+      if (tabBtnDotacionLey) {
         tabBtnDotacionLey.addEventListener('click', () => {
           desactivarTodasLasPestañas();
           tabBtnDotacionLey.classList.add('active');
-          contentTabDotacionLey.style.display = 'block';
-
-          // Lazy init Dotación de Ley
+          if (contentTabDotacionLey) contentTabDotacionLey.style.display = 'block';
           initDotacionLey();
         });
       }
@@ -4464,6 +4867,13 @@
       const allowedSecciones = CONFIG.secciones || [];
       if (tabBtnInventario && !allowedSecciones.includes('Inventario')) {
         tabBtnInventario.style.display = 'none';
+      }
+      if (tabBtnPendienteRecibirMain) {
+        if (allowedSecciones.includes('pendienteRecibir')) {
+          tabBtnPendienteRecibirMain.style.display = 'flex';
+        } else {
+          tabBtnPendienteRecibirMain.style.display = 'none';
+        }
       }
       if (tabBtnKardex && !allowedSecciones.includes('Kardex')) {
         tabBtnKardex.style.display = 'none';
@@ -4478,15 +4888,30 @@
         tabBtnDotacionLey.style.display = 'none';
       }
 
+      const puedeVerLogica = ['Sistema', 'Inventario', 'AdmSst'].includes(CONFIG.rol);
+      const subtabBtnLogica = document.getElementById('actas-subtab-btn-logica');
+      if (puedeVerLogica && subtabBtnLogica) {
+        subtabBtnLogica.style.display = 'inline-flex';
+      }
+
       // Initial Fetch or direct routing
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab') || window.location.hash.replace('#', '');
       let tabLower = tabParam ? tabParam.toLowerCase() : '';
 
-      // Validate requested tab against allowed sections. If not allowed, pick first allowed section or solicitudes
+      // Validate requested tab against allowed sections. If not allowed, pick first allowed section
       if (tabLower === 'inventario' || tabLower === '') {
         if (!allowedSecciones.includes('Inventario')) {
-          if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
+          if (allowedSecciones.includes('pendienteRecibir')) tabLower = 'pendienterecibir';
+          else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
+          else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
+          else if (allowedSecciones.includes('Solicitudes')) tabLower = 'solicitudes';
+          else tabLower = 'actas';
+        }
+      } else if (tabLower === 'pendienterecibir' || tabLower === 'pendiente' || tabLower === 'pendiente-recibir') {
+        if (!allowedSecciones.includes('pendienteRecibir')) {
+          if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
+          else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
           else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
           else if (allowedSecciones.includes('Solicitudes')) tabLower = 'solicitudes';
           else tabLower = 'actas';
@@ -4494,6 +4919,7 @@
       } else if (tabLower === 'kardex') {
         if (!allowedSecciones.includes('Kardex')) {
           if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
+          else if (allowedSecciones.includes('pendienteRecibir')) tabLower = 'pendienterecibir';
           else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
           else if (allowedSecciones.includes('Solicitudes')) tabLower = 'solicitudes';
           else tabLower = 'actas';
@@ -4501,6 +4927,7 @@
       } else if (tabLower === 'articulos') {
         if (!allowedSecciones.includes('ArtÍculos')) {
           if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
+          else if (allowedSecciones.includes('pendienteRecibir')) tabLower = 'pendienterecibir';
           else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
           else if (allowedSecciones.includes('Solicitudes')) tabLower = 'solicitudes';
           else tabLower = 'actas';
@@ -4508,6 +4935,7 @@
       } else if (tabLower === 'actas') {
         if (!allowedSecciones.includes('Actas')) {
           if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
+          else if (allowedSecciones.includes('pendienteRecibir')) tabLower = 'pendienterecibir';
           else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
           else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
           else tabLower = 'solicitudes';
@@ -4515,13 +4943,20 @@
       } else if (tabLower === 'dotacionley') {
         if (!allowedSecciones.includes('DotacionLey')) {
           if (allowedSecciones.includes('Inventario')) tabLower = 'inventario';
+          else if (allowedSecciones.includes('pendienteRecibir')) tabLower = 'pendienterecibir';
           else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
           else if (allowedSecciones.includes('ArtÍculos')) tabLower = 'articulos';
           else tabLower = 'solicitudes';
         }
       }
 
-      if (tabLower === 'kardex') {
+      if (tabLower === 'pendienterecibir' || tabLower === 'pendiente' || tabLower === 'pendiente-recibir') {
+        if (tabBtnPendienteRecibirMain && allowedSecciones.includes('pendienteRecibir')) {
+          tabBtnPendienteRecibirMain.click();
+        } else {
+          fetchData();
+        }
+      } else if (tabLower === 'kardex') {
         if (tabBtnKardex) {
           tabBtnKardex.click();
         } else {
@@ -6145,8 +6580,12 @@
           }
 
           let actaText = '';
-          if (row.Acta) {
-            actaText = `<div style="margin-top: 6px;"><a href="https://storage.googleapis.com/talenthub_central/pdf_actas/${row.Acta}.pdf" target="_blank" class="acta-link" style="font-size:0.75rem; padding:2px 6px;">📄 Acta: ${row.Acta}</a></div>`;
+          if (row.Acta && row.Acta !== '0') {
+            if (row.UrlActa) {
+              actaText = `<div style="margin-top: 6px;"><a href="${row.UrlActa}" target="_blank" rel="noopener noreferrer" class="acta-link" style="font-size:0.75rem; padding:2px 6px; color: var(--primary); font-weight: 600; text-decoration: underline;">📄 Acta: ${row.Acta}</a></div>`;
+            } else {
+              actaText = `<div style="margin-top: 6px;"><a href="javascript:void(0)" onclick="verActaKardex('${row.Acta}', '')" class="acta-link" style="font-size:0.75rem; padding:2px 6px; color: var(--primary); font-weight: 600; text-decoration: underline;">📄 Acta: ${row.Acta}</a></div>`;
+            }
           }
 
           div.innerHTML = `
@@ -6735,14 +7174,48 @@
       }
     }
 
-    function renderKardexStats(items) {
+    window.verActaKardex = async function(idActa, urlActa) {
+      if (urlActa && urlActa.trim() !== '') {
+        window.open(urlActa, '_blank');
+        return;
+      }
+      try {
+        const res = await fetch(`/actas/api/acta/${idActa}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.Url_Acta && data.Url_Acta.trim() !== '') {
+            window.open(data.Url_Acta, '_blank');
+            return;
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      alert(`El Acta #${idActa} no tiene un documento PDF registrado actualmente.`);
+    };
+
+    function getKardexFilteredData() {
+      return allKardexData || [];
+    }
+
+    function renderKardexStats(filtered) {
       const stats = lastKardexFacetedStats || { totalMov: 0, totalEnt: 0, totalSal: 0 };
-      if (kardexStatTotalMov) kardexStatTotalMov.textContent = stats.totalMov;
-      if (kardexStatTotalEnt) kardexStatTotalEnt.textContent = stats.totalEnt;
-      if (kardexStatTotalSal) kardexStatTotalSal.textContent = stats.totalSal;
+      if (kardexStatTotalMov) {
+        kardexStatTotalMov.textContent = Number(stats.totalMov !== undefined ? stats.totalMov : (filtered ? filtered.length : 0)).toLocaleString('es-CO');
+      }
+      if (kardexStatTotalEnt) {
+        kardexStatTotalEnt.textContent = Number(stats.totalEnt !== undefined ? stats.totalEnt : 0).toLocaleString('es-CO');
+      }
+      if (kardexStatTotalSal) {
+        kardexStatTotalSal.textContent = Number(stats.totalSal !== undefined ? stats.totalSal : 0).toLocaleString('es-CO');
+      }
     }
 
     function renderKardexTable(items) {
+      renderKardexTableRows(items);
+    }
+
+    function renderKardexTableRows(items) {
       if (!kardexTableBody) return;
       kardexTableBody.innerHTML = '';
       if (kardexResultsText) kardexResultsText.textContent = `Mostrando ${items.length} movimientos`;
@@ -6804,9 +7277,13 @@
         }
 
         // Acta link
-        let actaHtml = '—';
-        if (item.Acta) {
-          actaHtml = `<a href="https://storage.googleapis.com/talenthub_central/pdf_actas/${item.Acta}.pdf" target="_blank" class="acta-link">📄 ${item.Acta}</a>`;
+        let actaHtml = '<span style="color: var(--text-muted); font-size: 0.75rem;">—</span>';
+        if (item.Acta && item.Acta !== '0') {
+          if (item.UrlActa) {
+            actaHtml = `<a href="${item.UrlActa}" target="_blank" rel="noopener noreferrer" class="acta-link" style="color: var(--primary); font-weight: 600; text-decoration: underline;" title="Abrir PDF del Acta">📄 ${item.Acta}</a>`;
+          } else {
+            actaHtml = `<a href="javascript:void(0)" onclick="verActaKardex('${item.Acta}', '')" class="acta-link" style="color: var(--primary); font-weight: 600; text-decoration: underline;" title="Buscar documento de Acta #${item.Acta}">📄 ${item.Acta}</a>`;
+          }
         }
 
         // Checkbox column HTML
@@ -10776,73 +11253,122 @@
     });
 
     // ==========================================
-    // PENDIENTES POR RECIBIR SUBTAB LOGIC
+    // PENDIENTE POR RECIBIR E HISTORIAL DE INGRESOS
     // ==========================================
     let allPendientes = [];
     let selectedPendientesIds = new Set();
-    let isPendientesInitialized = false;
+    let isPendientesMainInitialized = false;
+    let isHistorialIngresosInitialized = false;
 
-    function initPendientes() {
-      if (isPendientesInitialized) {
-        fetchPendientesList();
-        return;
+    function initPendientesMain() {
+      // Profile Info
+      const profileName = document.getElementById('pendiente-profile-name');
+      const profileRole = document.getElementById('pendiente-profile-role');
+      const profileAvatar = document.getElementById('pendiente-user-avatar-initials');
+      if (profileName) profileName.textContent = CONFIG.usuarioNombre || CONFIG.usuarioId;
+      if (profileRole) profileRole.textContent = CONFIG.rol || 'Consultor';
+      if (profileAvatar) {
+        const initials = (CONFIG.usuarioNombre || CONFIG.usuarioId).split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        profileAvatar.textContent = initials || 'US';
       }
-      isPendientesInitialized = true;
 
-      const selectAllCheckbox = document.getElementById('pendiente-select-all');
-      if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', () => {
-          const checks = document.querySelectorAll('.pendiente-row-check');
-          selectedPendientesIds.clear();
-          checks.forEach(chk => {
-            chk.checked = selectAllCheckbox.checked;
-            if (chk.checked) {
-              selectedPendientesIds.add(chk.value);
-            }
+      if (!isPendientesMainInitialized) {
+        isPendientesMainInitialized = true;
+
+        const subtabBtnPendientes = document.getElementById('subtab-btn-pendientes');
+        const subtabBtnHistorial = document.getElementById('subtab-btn-historial-ingresos');
+        const subtabContentPendientes = document.getElementById('subtab-content-pendientes');
+        const subtabContentHistorial = document.getElementById('subtab-content-historial-ingresos');
+
+        if (subtabBtnPendientes && subtabBtnHistorial && subtabContentPendientes && subtabContentHistorial) {
+          subtabBtnPendientes.addEventListener('click', () => {
+            subtabBtnPendientes.classList.add('active');
+            subtabBtnHistorial.classList.remove('active');
+            subtabContentPendientes.classList.add('active');
+            subtabContentHistorial.classList.remove('active');
+            fetchPendientesList();
           });
-          updatePendientesSelectedCount();
-        });
+
+          subtabBtnHistorial.addEventListener('click', () => {
+            subtabBtnHistorial.classList.add('active');
+            subtabBtnPendientes.classList.remove('active');
+            subtabContentHistorial.classList.add('active');
+            subtabContentPendientes.classList.remove('active');
+            initHistorialIngresos();
+          });
+        }
+
+        const selectAllCheckbox = document.getElementById('pendiente-select-all');
+        if (selectAllCheckbox) {
+          selectAllCheckbox.addEventListener('change', () => {
+            const checks = document.querySelectorAll('.pendiente-order-check');
+            selectedPendientesIds.clear();
+            checks.forEach(chk => {
+              chk.checked = selectAllCheckbox.checked;
+              if (chk.checked) {
+                selectedPendientesIds.add(chk.value);
+              }
+            });
+            updatePendientesSelectedCount();
+          });
+        }
+
+        const btnRecibirMasivo = document.getElementById('pendiente-btn-recibir-masivo');
+        if (btnRecibirMasivo) {
+          btnRecibirMasivo.addEventListener('click', () => {
+            if (selectedPendientesIds.size === 0) {
+              alert('Por favor selecciona al menos un pedido de transferencia para recibir.');
+              return;
+            }
+            const selectedOrders = allPendientes.filter(o => selectedPendientesIds.has(o.Id));
+            openRecibirTransferenciaModal(selectedOrders);
+          });
+        }
+
+        // Filtros de Pendientes
+        const fOp = document.getElementById('pendiente-filter-operacion');
+        const fCat = document.getElementById('pendiente-filter-categoria');
+        const fSearch = document.getElementById('pendiente-filter-search');
+
+        if (fOp) fOp.addEventListener('change', () => { renderPendientesList(); });
+        if (fCat) fCat.addEventListener('change', () => { renderPendientesList(); });
+        if (fSearch) fSearch.addEventListener('input', () => { renderPendientesList(); });
+
+        setupRecibirModalSignature();
       }
-
-      const btnRecibirMasivo = document.getElementById('pendiente-btn-recibir-masivo');
-      if (btnRecibirMasivo) {
-        btnRecibirMasivo.addEventListener('click', () => {
-          recibirPendientesMasivos();
-        });
-      }
-
-      // Add event listeners for new filters
-      const fOp = document.getElementById('pendiente-filter-operacion');
-      const fCat = document.getElementById('pendiente-filter-categoria');
-      const fSearch = document.getElementById('pendiente-filter-search');
-
-      if (fOp) fOp.addEventListener('change', () => { renderPendientesList(); });
-      if (fCat) fCat.addEventListener('change', () => { renderPendientesList(); });
-      if (fSearch) fSearch.addEventListener('input', () => { renderPendientesList(); });
 
       fetchPendientesList();
     }
 
     async function fetchPendientesList() {
-      const tbody = document.getElementById('pendiente-table-body');
-      if (!tbody) return;
+      const container = document.getElementById('pendiente-orders-container');
+      if (!container) return;
 
-      tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 40px;">Cargando transferencias pendientes...</td></tr>';
+      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">Cargando transferencias pendientes...</div>';
       selectedPendientesIds.clear();
       updatePendientesSelectedCount();
 
       try {
         const res = await fetch(`/inventario/api/kardex-pendiente?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
-        if (!res.ok) throw new Error('Error al cargar pendientes de API');
+        if (!res.ok) throw new Error('Error al cargar pedidos pendientes de la API');
 
         const data = await res.json();
         allPendientes = data.results || [];
         
+        // Update stats
+        const statCount = document.getElementById('stat-pendientes-count');
+        const statUnits = document.getElementById('stat-pendientes-units');
+        if (statCount) statCount.textContent = allPendientes.length;
+        if (statUnits) {
+          const totalUnds = allPendientes.reduce((sum, o) => sum + (Number(o.totalUnidades) || 0), 0);
+          statUnits.textContent = totalUnds;
+        }
+
         populatePendientesFilterSelectors();
         renderPendientesList();
       } catch (err) {
         console.error(err);
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #dc2626; padding: 40px; font-weight: 600;">Error: ${err.message}</td></tr>`;
+        container.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 40px; font-weight: 600; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;">Error: ${err.message}</div>`;
       }
     }
 
@@ -10858,12 +11384,16 @@
       const operacionCounts = {};
       const categoriaCounts = {};
 
-      allPendientes.forEach(item => {
-        const o = item.OperaciónDestino || 'Sin Operación';
-        const c = item.Categoria || 'Sin Categoría';
-
+      allPendientes.forEach(order => {
+        const o = order.OperacionDestino || 'Sin Operación';
         operacionCounts[o] = (operacionCounts[o] || 0) + 1;
-        categoriaCounts[c] = (categoriaCounts[c] || 0) + 1;
+
+        if (order.items && order.items.length) {
+          order.items.forEach(it => {
+            const c = it.Categoria || 'Sin Categoría';
+            categoriaCounts[c] = (categoriaCounts[c] || 0) + 1;
+          });
+        }
       });
 
       selOp.innerHTML = `<option value="">Todas las operaciones (${allPendientes.length})</option>`;
@@ -10872,7 +11402,7 @@
       });
       selOp.value = operacionCounts[currentOp] ? currentOp : '';
 
-      selCat.innerHTML = `<option value="">Todas las categorías (${allPendientes.length})</option>`;
+      selCat.innerHTML = `<option value="">Todas las categorías (${Object.keys(categoriaCounts).length})</option>`;
       Object.keys(categoriaCounts).sort().forEach(c => {
         selCat.innerHTML += `<option value="${c === 'Sin Categoría' ? '' : c}">${c} (${categoriaCounts[c]})</option>`;
       });
@@ -10880,10 +11410,11 @@
     }
 
     function renderPendientesList() {
-      const tbody = document.getElementById('pendiente-table-body');
-      if (!tbody) return;
+      const container = document.getElementById('pendiente-orders-container');
+      const totalCountSpan = document.getElementById('pendiente-total-orders');
+      if (!container) return;
 
-      tbody.innerHTML = '';
+      container.innerHTML = '';
       const selectAllCheckbox = document.getElementById('pendiente-select-all');
       if (selectAllCheckbox) selectAllCheckbox.checked = false;
 
@@ -10891,70 +11422,154 @@
       const selCat = document.getElementById('pendiente-filter-categoria')?.value || '';
       const searchVal = (document.getElementById('pendiente-filter-search')?.value || '').trim().toLowerCase();
 
-      const filtered = allPendientes.filter(item => {
-        if (selOp && item.OperaciónDestino !== selOp) return false;
-        if (selCat && item.Categoria !== selCat) return false;
+      const filtered = allPendientes.filter(order => {
+        if (selOp && order.OperacionDestino !== selOp) return false;
+        if (selCat) {
+          const hasCat = (order.items || []).some(it => it.Categoria === selCat);
+          if (!hasCat) return false;
+        }
         if (searchVal) {
-          const name = (item.Articulo || '').toLowerCase();
-          if (!name.includes(searchVal)) return false;
+          const matchOrder = (order.Id || '').toLowerCase().includes(searchVal) ||
+                             (order.OperacionOrigen || '').toLowerCase().includes(searchVal) ||
+                             (order.OperacionDestino || '').toLowerCase().includes(searchVal);
+          const matchItem = (order.items || []).some(it => (it.Articulo || '').toLowerCase().includes(searchVal));
+          if (!matchOrder && !matchItem) return false;
         }
         return true;
       });
 
+      if (totalCountSpan) totalCountSpan.textContent = filtered.length;
+
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">No hay transferencias pendientes que coincidan con los filtros.</td></tr>';
+        container.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 50px 20px; font-weight: 500; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+            <span style="font-size: 2rem; display: block; margin-bottom: 8px;">📦</span>
+            No hay pedidos de transferencia pendientes que coincidan con los filtros seleccionados.
+          </div>
+        `;
         return;
       }
 
-      filtered.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid var(--border)';
-
-        const d = new Date(item.FechaMovimiento);
+      filtered.forEach((order, orderIdx) => {
+        const isChecked = selectedPendientesIds.has(order.Id);
+        const d = new Date(order.FechaDespacho);
         const dateStr = isNaN(d.getTime()) ? '—' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-        const isChecked = selectedPendientesIds.has(item.IdKardexOriginal);
+        const card = document.createElement('div');
+        card.className = 'pendiente-order-card';
+        card.style.background = 'white';
+        card.style.border = '1px solid #e2e8f0';
+        card.style.borderRadius = '10px';
+        card.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+        card.style.overflow = 'hidden';
+        card.style.transition = 'border-color 0.2s, box-shadow 0.2s';
 
-        const imgHtml = item.Imagen 
-          ? `<img src="${item.Imagen}" alt="" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" onclick="openImageModal('${item.Imagen}', '${item.Articulo}')">`
-          : `<span style="font-size: 1.5rem; filter: grayscale(1);">📦</span>`;
+        // Order items table rows
+        let itemsHtml = '';
+        (order.items || []).forEach((item, itemIdx) => {
+          const imgHtml = item.Imagen 
+            ? `<img src="${item.Imagen}" alt="" style="width: 38px; height: 38px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; cursor: pointer;" onclick="openImageModal('${item.Imagen}', '${item.Articulo}')">`
+            : `<span style="font-size: 1.3rem; filter: grayscale(1);">📦</span>`;
 
-        const noveltyText = item.Novedad ? `<span style="display: block; font-size: 0.78rem; font-weight: 700; color: #c2410c; background: #fff7ed; padding: 4px 8px; border-radius: 4px; margin-top: 4px; line-height: 1.3;">⚠️ ${item.Novedad}</span>` : '—';
+          const noveltyBadge = item.Novedad 
+            ? `<span style="display: inline-block; font-size: 0.75rem; font-weight: 700; color: #c2410c; background: #fff7ed; border: 1px solid #ffedd5; padding: 3px 8px; border-radius: 4px; line-height: 1.3;">⚠️ ${item.Novedad}</span>`
+            : `<span style="color: #94a3b8; font-size: 0.75rem;">Sin novedades</span>`;
 
-        tr.innerHTML = `
-          <td style="text-align: center; padding: 10px;">
-            <div style="display: inline-flex; gap: 8px;">
-              <button type="button" class="btn" style="background: #22c55e; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600;" onclick="recibirUnicoPendiente('${item.IdKardexOriginal}')">✔️ Recibir</button>
-              <button type="button" class="btn" style="background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600;" onclick="marcarNovedadPendiente('${item.IdKardexOriginal}')">⚠️ Novedad</button>
+          itemsHtml += `
+            <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.82rem;">
+              <td style="padding: 8px 12px; text-align: center; width: 40px; color: #94a3b8;">${itemIdx + 1}</td>
+              <td style="padding: 8px 12px; text-align: center; width: 50px;">${imgHtml}</td>
+              <td style="padding: 8px 12px; font-weight: 600; color: #1e293b;">
+                ${item.Articulo || '—'}
+                ${item.Referencia && item.Referencia !== '—' ? `<span style="display: block; font-size: 0.72rem; color: #64748b; font-weight: normal;">Ref: ${item.Referencia}</span>` : ''}
+                ${item.Talla && item.Talla !== '—' ? `<span style="display: block; font-size: 0.72rem; color: #64748b; font-weight: normal;">Talla: ${item.Talla}</span>` : ''}
+              </td>
+              <td style="padding: 8px 12px; text-align: center;">
+                <span style="font-size: 0.75rem; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${item.Categoria || 'General'}</span>
+              </td>
+              <td style="padding: 8px 12px; text-align: center; font-weight: 700; font-size: 0.9rem; color: #1e3c72;">
+                ${item.Cantidad}
+              </td>
+              <td style="padding: 8px 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <div>${noveltyBadge}</div>
+                  <button type="button" class="btn" style="background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600;" onclick="marcarNovedadItem('${order.Id}', '${item.IdKardex}', '${(item.Novedad || '').replace(/'/g, "\\'")}')">
+                    ✏️ Novedad
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+
+        card.innerHTML = `
+          <!-- Header de la Transferencia -->
+          <div style="background: #f8fafc; padding: 14px 18px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <input type="checkbox" class="pendiente-order-check" value="${order.Id}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 17px; height: 17px;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="font-weight: 700; color: #1e3c72; font-size: 0.95rem; letter-spacing: 0.5px;">📋 ${order.Id}</span>
+                  <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">${order.Regional || 'Regional'}</span>
+                  <span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">⏳ En Tránsito</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 0.8rem; color: #475569;">
+                  <span><strong>Origen:</strong> ${order.OperacionOrigen || '—'}</span>
+                  <span style="color: #94a3b8;">➔</span>
+                  <span><strong style="color: var(--primary);">Destino:</strong> ${order.OperacionDestino || '—'}</span>
+                  <span style="color: #cbd5e1;">|</span>
+                  <span style="color: #64748b;">📅 ${dateStr}</span>
+                  <span style="color: #cbd5e1;">|</span>
+                  <span style="color: #64748b;">👤 Despachado por: <strong>${order.UsuarioDespacha || '—'}</strong></span>
+                </div>
+                ${order.Observaciones ? `<div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;"><em>Obs. Despacho: ${order.Observaciones}</em></div>` : ''}
+              </div>
             </div>
-          </td>
-          <td style="text-align: center; padding: 10px;">
-            <input type="checkbox" class="pendiente-row-check" value="${item.IdKardexOriginal}" ${isChecked ? 'checked' : ''} style="cursor: pointer;">
-          </td>
-          <td style="text-align: center; padding: 10px;">${imgHtml}</td>
-          <td style="padding: 10px; font-weight: 600;">${item.Articulo || '—'}</td>
-          <td style="padding: 10px; color: var(--text-muted); font-size: 0.8rem;">${dateStr}</td>
-          <td style="padding: 10px;">${item.OperacionOrigen || '—'}</td>
-          <td style="padding: 10px; font-weight: 500; color: var(--primary);">${item.OperaciónDestino || '—'}</td>
-          <td style="text-align: center; padding: 10px; font-weight: 700;">${Math.abs(item.Cantidad)}</td>
-          <td style="padding: 10px; font-size: 0.8rem; color: var(--text-muted);">${item.UsuarioRegistro || '—'}</td>
-          <td style="padding: 10px; font-size: 0.8rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.Observaciones || ''}">${item.Observaciones || '—'}</td>
-          <td style="padding: 10px;">${noveltyText}</td>
+
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="text-align: right; margin-right: 8px;">
+                <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">${order.totalArticulos} artículos</div>
+                <div style="font-size: 0.75rem; color: #64748b;">${order.totalUnidades} unidades en total</div>
+              </div>
+              <button type="button" class="btn" style="background: #22c55e; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);" onclick="recibirUnicoPedido('${order.Id}')">
+                <span>✔️</span> Recibir Pedido
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de artículos del pedido -->
+          <div style="padding: 0; overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead>
+                <tr style="background: #f1f5f9; font-size: 0.74rem; color: #475569; text-transform: uppercase; border-bottom: 1px solid #e2e8f0;">
+                  <th style="padding: 8px 12px; width: 40px; text-align: center;">#</th>
+                  <th style="padding: 8px 12px; width: 50px; text-align: center;">Img</th>
+                  <th style="padding: 8px 12px;">Artículo</th>
+                  <th style="padding: 8px 12px; text-align: center; width: 140px;">Categoría</th>
+                  <th style="padding: 8px 12px; text-align: center; width: 90px;">Cantidad</th>
+                  <th style="padding: 8px 12px; width: 280px;">Novedad en Físico</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+          </div>
         `;
 
-        const check = tr.querySelector('.pendiente-row-check');
+        const check = card.querySelector('.pendiente-order-check');
         check.addEventListener('change', () => {
           if (check.checked) {
-            selectedPendientesIds.add(item.IdKardexOriginal);
+            selectedPendientesIds.add(order.Id);
           } else {
-            selectedPendientesIds.delete(item.IdKardexOriginal);
+            selectedPendientesIds.delete(order.Id);
             const selectAllCheckbox = document.getElementById('pendiente-select-all');
             if (selectAllCheckbox) selectAllCheckbox.checked = false;
           }
           updatePendientesSelectedCount();
         });
 
-        tbody.appendChild(tr);
+        container.appendChild(card);
       });
     }
 
@@ -10963,50 +11578,24 @@
       if (countSpan) countSpan.textContent = selectedPendientesIds.size;
     }
 
-    window.recibirUnicoPendiente = async function(id) {
-      if (!confirm('¿Confirmas que deseas recibir este artículo en stock?')) return;
-      try {
-        const res = await fetch('/inventario/api/kardex-pendiente/recibir-masivo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            usuario: CONFIG.usuarioId,
-            ids: [id]
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al recibir transferencia');
-
-        alert('Artículo recibido exitosamente.');
-        fetchPendientesList();
-        
-        if (window.fetchData) fetchData();
-      } catch (err) {
-        console.error(err);
-        alert(err.message);
-      }
-    };
-
-    window.marcarNovedadPendiente = async function(id) {
-      const msg = prompt('Escribe el detalle de la novedad o por qué no se puede recibir este artículo:');
+    window.marcarNovedadItem = async function(orderId, idKardex, currentNovedad) {
+      const msg = prompt('Escribe el detalle de la novedad o discrepancia física para este artículo:', currentNovedad || '');
       if (msg === null) return;
-      if (!msg.trim()) {
-        alert('La descripción de la novedad es obligatoria.');
-        return;
-      }
 
       try {
-        const res = await fetch(`/inventario/api/kardex-pendiente/${id}/novedad`, {
+        const res = await fetch(`/inventario/api/kardex-pendiente/${orderId}/novedad`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ usuario: CONFIG.usuarioId, novedad: msg.trim() })
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            idKardex,
+            novedad: msg.trim()
+          })
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al registrar novedad');
+        if (!res.ok) throw new Error(data.error || 'Error al guardar novedad');
 
-        alert('Novedad guardada exitosamente.');
         fetchPendientesList();
       } catch (err) {
         console.error(err);
@@ -11014,45 +11603,627 @@
       }
     };
 
-    async function recibirPendientesMasivos() {
-      if (selectedPendientesIds.size === 0) {
-        alert('Por favor selecciona al menos una transferencia para recibir.');
+    // ==========================================
+    // MODAL DE RECEPCION Y FIRMA DIGITAL DE PEDIDOS
+    // ==========================================
+    let currentReceivingOrders = [];
+    let recibirSigCanvas = null;
+    let recibirSigCtx = null;
+    let isRecibirDrawing = false;
+    let isRecibirCanvasDrawn = false;
+    let recibirRecentSignature = null;
+    let activeRecibirFirmaMode = 'new'; // 'existing' | 'new'
+
+    function setupRecibirModalSignature() {
+      recibirSigCanvas = document.getElementById('recibir-sig-canvas');
+      if (!recibirSigCanvas) return;
+      recibirSigCtx = recibirSigCanvas.getContext('2d');
+
+      const btnClose = document.getElementById('recibir-transferencia-modal-close');
+      const btnCancel = document.getElementById('recibir-modal-btn-cancel');
+      const btnConfirm = document.getElementById('recibir-modal-btn-confirm');
+      const btnClearCanvas = document.getElementById('recibir-btn-clear-canvas');
+      const btnDrawNewSig = document.getElementById('recibir-btn-draw-new-sig');
+      const btnUseExistingSig = document.getElementById('recibir-btn-use-existing-sig');
+
+      if (btnClose) btnClose.addEventListener('click', () => closeRecibirTransferenciaModal());
+      if (btnCancel) btnCancel.addEventListener('click', () => closeRecibirTransferenciaModal());
+      if (btnConfirm) btnConfirm.addEventListener('click', () => submitRecibirTransferencia());
+      if (btnClearCanvas) btnClearCanvas.addEventListener('click', () => clearRecibirCanvas());
+
+      if (btnDrawNewSig) {
+        btnDrawNewSig.addEventListener('click', () => {
+          activeRecibirFirmaMode = 'new';
+          document.getElementById('recibir-sig-preview-box').style.display = 'none';
+          document.getElementById('recibir-panel-canvas-wrap').style.display = 'block';
+          if (btnUseExistingSig) btnUseExistingSig.style.display = 'inline-flex';
+          setTimeout(resizeRecibirCanvas, 50);
+        });
+      }
+
+      if (btnUseExistingSig) {
+        btnUseExistingSig.addEventListener('click', () => {
+          activeRecibirFirmaMode = 'existing';
+          document.getElementById('recibir-sig-preview-box').style.display = 'block';
+          document.getElementById('recibir-panel-canvas-wrap').style.display = 'none';
+        });
+      }
+
+      // Drawing events
+      recibirSigCanvas.addEventListener('mousedown', (e) => {
+        isRecibirDrawing = true;
+        isRecibirCanvasDrawn = true;
+        const rect = recibirSigCanvas.getBoundingClientRect();
+        const scaleX = recibirSigCanvas.width / rect.width;
+        const scaleY = recibirSigCanvas.height / rect.height;
+        recibirSigCtx.beginPath();
+        recibirSigCtx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+      });
+
+      recibirSigCanvas.addEventListener('mousemove', (e) => {
+        if (!isRecibirDrawing) return;
+        const rect = recibirSigCanvas.getBoundingClientRect();
+        const scaleX = recibirSigCanvas.width / rect.width;
+        const scaleY = recibirSigCanvas.height / rect.height;
+        recibirSigCtx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+        recibirSigCtx.lineWidth = 2.5;
+        recibirSigCtx.lineCap = 'round';
+        recibirSigCtx.lineJoin = 'round';
+        recibirSigCtx.strokeStyle = '#1e3c72';
+        recibirSigCtx.stroke();
+      });
+
+      window.addEventListener('mouseup', () => {
+        isRecibirDrawing = false;
+      });
+
+      recibirSigCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isRecibirDrawing = true;
+        isRecibirCanvasDrawn = true;
+        const rect = recibirSigCanvas.getBoundingClientRect();
+        const scaleX = recibirSigCanvas.width / rect.width;
+        const scaleY = recibirSigCanvas.height / rect.height;
+        const touch = e.touches[0];
+        recibirSigCtx.beginPath();
+        recibirSigCtx.moveTo((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+      }, { passive: false });
+
+      recibirSigCanvas.addEventListener('touchmove', (e) => {
+        if (!isRecibirDrawing) return;
+        e.preventDefault();
+        const rect = recibirSigCanvas.getBoundingClientRect();
+        const scaleX = recibirSigCanvas.width / rect.width;
+        const scaleY = recibirSigCanvas.height / rect.height;
+        const touch = e.touches[0];
+        recibirSigCtx.lineTo((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+        recibirSigCtx.lineWidth = 2.5;
+        recibirSigCtx.lineCap = 'round';
+        recibirSigCtx.lineJoin = 'round';
+        recibirSigCtx.strokeStyle = '#1e3c72';
+        recibirSigCtx.stroke();
+      }, { passive: false });
+
+      recibirSigCanvas.addEventListener('touchend', () => {
+        isRecibirDrawing = false;
+      });
+    }
+
+    function clearRecibirCanvas() {
+      if (!recibirSigCanvas || !recibirSigCtx) return;
+      recibirSigCtx.clearRect(0, 0, recibirSigCanvas.width, recibirSigCanvas.height);
+      recibirSigCtx.fillStyle = '#ffffff';
+      recibirSigCtx.fillRect(0, 0, recibirSigCanvas.width, recibirSigCanvas.height);
+      isRecibirCanvasDrawn = false;
+    }
+
+    function resizeRecibirCanvas() {
+      if (!recibirSigCanvas || !recibirSigCtx) return;
+      const rect = recibirSigCanvas.getBoundingClientRect();
+      recibirSigCanvas.width = rect.width || 450;
+      recibirSigCanvas.height = 130;
+      recibirSigCtx.fillStyle = '#ffffff';
+      recibirSigCtx.fillRect(0, 0, recibirSigCanvas.width, recibirSigCanvas.height);
+      isRecibirCanvasDrawn = false;
+    }
+
+    window.recibirUnicoPedido = function(id) {
+      const order = allPendientes.find(o => o.Id === id);
+      if (!order) return;
+      openRecibirTransferenciaModal([order]);
+    };
+
+    async function openRecibirTransferenciaModal(orders) {
+      currentReceivingOrders = orders;
+      const modal = document.getElementById('recibir-transferencia-modal');
+      const summaryDiv = document.getElementById('recibir-modal-order-summary');
+      const itemsDiv = document.getElementById('recibir-modal-items-container');
+      const obsInput = document.getElementById('recibir-modal-observaciones');
+      const errorDiv = document.getElementById('recibir-modal-error');
+
+      if (!modal) return;
+      if (errorDiv) errorDiv.style.display = 'none';
+      if (obsInput) obsInput.value = '';
+
+      // Build Summary
+      if (orders.length === 1) {
+        const o = orders[0];
+        summaryDiv.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div><strong>No. Transferencia:</strong> <span style="color: #1e3c72; font-weight: 700;">${o.Id}</span></div>
+            <div><strong>Regional:</strong> ${o.Regional || '—'}</div>
+            <div><strong>Origen:</strong> ${o.OperacionOrigen || '—'}</div>
+            <div><strong>Destino:</strong> <span style="color: var(--primary); font-weight: 600;">${o.OperacionDestino || '—'}</span></div>
+            <div><strong>Despachado por:</strong> ${o.UsuarioDespacha || '—'}</div>
+            <div><strong>Artículos / Unidades:</strong> ${o.totalArticulos} artículos (${o.totalUnidades} unds)</div>
+          </div>
+          <div style="margin-top: 8px; font-size: 0.75rem; color: #64748b; background: #e0f2fe; border: 1px solid #bae6fd; padding: 6px 10px; border-radius: 4px;">
+            💡 <strong>Nota:</strong> Si la <em>Cantidad Recibida</em> es menor a la despachada, la diferencia se devolverá automáticamente a la sede de origen (<strong>${o.OperacionOrigen || 'Origen'}</strong>).
+          </div>
+        `;
+      } else {
+        const totalUnits = orders.reduce((s, o) => s + (o.totalUnidades || 0), 0);
+        summaryDiv.innerHTML = `
+          <div>
+            <strong>Recepción Masiva:</strong> <span style="color: #1e3c72; font-weight: 700;">${orders.length} pedidos de transferencia seleccionados</span> (${totalUnits} unidades en total).
+          </div>
+          <div style="margin-top: 8px; font-size: 0.75rem; color: #64748b; background: #e0f2fe; border: 1px solid #bae6fd; padding: 6px 10px; border-radius: 4px;">
+            💡 <strong>Nota:</strong> Cualquier faltante en la cantidad recibida se devolverá automáticamente al origen correspondiente.
+          </div>
+        `;
+      }
+
+      // Build Items Table with Editable Cantidad Recibida
+      let itemsListHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">';
+      itemsListHtml += `
+        <thead>
+          <tr style="background: #f1f5f9; color: #475569; border-bottom: 1px solid #e2e8f0; font-size: 0.72rem; text-transform: uppercase;">
+            <th style="padding: 6px 8px; width: 36px; text-align: center;">Img</th>
+            <th style="padding: 6px 8px; text-align: left;">Artículo</th>
+            <th style="padding: 6px 8px; text-align: center; width: 60px;">Enviado</th>
+            <th style="padding: 6px 8px; text-align: center; width: 80px;">Recibido</th>
+            <th style="padding: 6px 8px; text-align: left; width: 200px;">Novedad / Obs</th>
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      orders.forEach(o => {
+        (o.items || []).forEach(it => {
+          const imgHtml = it.Imagen 
+            ? `<img src="${it.Imagen}" alt="" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;">` 
+            : `<span style="font-size: 1.1rem;">📦</span>`;
+          
+          itemsListHtml += `
+            <tr style="border-bottom: 1px solid #f8fafc;" class="recibir-item-row" data-id-kardex="${it.IdKardex}">
+              <td style="padding: 6px 8px; text-align: center;">${imgHtml}</td>
+              <td style="padding: 6px 8px; font-weight: 600; color: #1e293b;">
+                ${it.Articulo || '—'}
+                ${orders.length > 1 ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Ped: ${o.Id} (${o.OperacionDestino})</span>` : ''}
+              </td>
+              <td style="padding: 6px 8px; text-align: center; font-weight: 700; color: #64748b;">${it.Cantidad}</td>
+              <td style="padding: 6px 8px; text-align: center;">
+                <input type="number" class="recibir-item-cant-input" data-id-kardex="${it.IdKardex}" data-max="${it.Cantidad}" min="0" max="${it.Cantidad}" value="${it.Cantidad}" style="width: 60px; text-align: center; font-weight: 700; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.82rem; color: #1e3c72; outline: none;">
+              </td>
+              <td style="padding: 6px 8px;">
+                <input type="text" class="recibir-item-novedad-input" data-id-kardex="${it.IdKardex}" value="${it.Novedad || ''}" placeholder="Escribe novedad si hay faltante..." style="width: 100%; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem;">
+                <div class="recibir-item-diff-note" id="diff-note-${it.IdKardex}" style="font-size: 0.7rem; color: #dc2626; display: none; margin-top: 2px; font-weight: 600;"></div>
+              </td>
+            </tr>
+          `;
+        });
+      });
+
+      itemsListHtml += '</tbody></table>';
+      itemsDiv.innerHTML = itemsListHtml;
+
+      // Add live change listeners on Cantidad inputs
+      const cantInputs = itemsDiv.querySelectorAll('.recibir-item-cant-input');
+      cantInputs.forEach(inp => {
+        inp.addEventListener('input', () => {
+          const max = parseInt(inp.getAttribute('data-max')) || 0;
+          let val = parseInt(inp.value);
+          if (isNaN(val) || val < 0) val = 0;
+          if (val > max) {
+            val = max;
+            inp.value = max;
+          }
+
+          const idK = inp.getAttribute('data-id-kardex');
+          const diffNote = document.getElementById(`diff-note-${idK}`);
+          const diff = max - val;
+
+          if (diff > 0) {
+            inp.style.borderColor = '#ea580c';
+            inp.style.backgroundColor = '#fff7ed';
+            if (diffNote) {
+              diffNote.textContent = `⚠️ Faltan ${diff} und(s) que retornarán al origen.`;
+              diffNote.style.display = 'block';
+            }
+          } else {
+            inp.style.borderColor = '#cbd5e1';
+            inp.style.backgroundColor = 'white';
+            if (diffNote) diffNote.style.display = 'none';
+          }
+        });
+      });
+
+      // Show Modal
+      modal.style.display = 'flex';
+      clearRecibirCanvas();
+
+      // Fetch Recent Signature
+      try {
+        const res = await fetch(`/inventario/api/firma-reciente?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        recibirRecentSignature = data;
+
+        if (data.firmaUrl && data.firmaBase64) {
+          activeRecibirFirmaMode = 'existing';
+          document.getElementById('recibir-sig-preview-img').src = data.firmaBase64;
+          document.getElementById('recibir-sig-preview-box').style.display = 'block';
+          document.getElementById('recibir-panel-canvas-wrap').style.display = 'none';
+        } else {
+          activeRecibirFirmaMode = 'new';
+          document.getElementById('recibir-sig-preview-box').style.display = 'none';
+          document.getElementById('recibir-panel-canvas-wrap').style.display = 'block';
+          setTimeout(resizeRecibirCanvas, 50);
+        }
+      } catch (err) {
+        console.error('Error fetching recent signature:', err);
+        activeRecibirFirmaMode = 'new';
+        document.getElementById('recibir-sig-preview-box').style.display = 'none';
+        document.getElementById('recibir-panel-canvas-wrap').style.display = 'block';
+        setTimeout(resizeRecibirCanvas, 50);
+      }
+    }
+
+    function closeRecibirTransferenciaModal() {
+      const modal = document.getElementById('recibir-transferencia-modal');
+      if (modal) modal.style.display = 'none';
+      currentReceivingOrders = [];
+    }
+
+    async function submitRecibirTransferencia() {
+      const errorDiv = document.getElementById('recibir-modal-error');
+      const obsInput = document.getElementById('recibir-modal-observaciones');
+      const btnConfirm = document.getElementById('recibir-modal-btn-confirm');
+
+      if (errorDiv) errorDiv.style.display = 'none';
+
+      if (!currentReceivingOrders || currentReceivingOrders.length === 0) {
+        alert('No hay pedidos seleccionados para recibir.');
         return;
       }
 
-      const confirmMsg = `¿Deseas recibir de forma masiva los ${selectedPendientesIds.size} artículos seleccionados en stock?`;
-      if (!confirm(confirmMsg)) return;
+      let firmaBase64 = null;
+      let useRecentSignature = false;
 
-      const btn = document.getElementById('pendiente-btn-recibir-masivo');
-      const originalBtnHtml = btn.innerHTML;
-      btn.disabled = true;
-      btn.textContent = '⏳ Recibiendo...';
+      if (activeRecibirFirmaMode === 'new') {
+        if (!isRecibirCanvasDrawn) {
+          if (errorDiv) {
+            errorDiv.textContent = 'Debes registrar tu firma digital en el lienzo para validar el Acta de Ingreso.';
+            errorDiv.style.display = 'block';
+          }
+          return;
+        }
+        firmaBase64 = recibirSigCanvas.toDataURL('image/png');
+      } else {
+        if (!recibirRecentSignature || !recibirRecentSignature.firmaUrl) {
+          if (errorDiv) {
+            errorDiv.textContent = 'No se encontró firma previa guardada. Por favor dibuja una firma en el lienzo.';
+            errorDiv.style.display = 'block';
+          }
+          return;
+        }
+        useRecentSignature = true;
+      }
+
+      // Collect item quantities and novedades
+      const cantidadesRecibidas = {};
+      const novedadesItems = {};
+
+      const cantInputs = document.querySelectorAll('.recibir-item-cant-input');
+      cantInputs.forEach(inp => {
+        const idK = inp.getAttribute('data-id-kardex');
+        const max = parseInt(inp.getAttribute('data-max')) || 0;
+        let val = parseInt(inp.value);
+        if (isNaN(val) || val < 0) val = 0;
+        if (val > max) val = max;
+        if (idK) {
+          cantidadesRecibidas[idK] = val;
+        }
+      });
+
+      const novInputs = document.querySelectorAll('.recibir-item-novedad-input');
+      novInputs.forEach(inp => {
+        const idK = inp.getAttribute('data-id-kardex');
+        const val = inp.value.trim();
+        if (idK && val) {
+          novedadesItems[idK] = val;
+        }
+      });
+
+      const observacionesGenerales = obsInput ? obsInput.value.trim() : '';
+
+      const originalBtnHtml = btnConfirm.innerHTML;
+      btnConfirm.disabled = true;
+      btnConfirm.innerHTML = '<span>⏳</span> Procesando Acta y Firma...';
 
       try {
-        const res = await fetch('/inventario/api/kardex-pendiente/recibir-masivo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            usuario: CONFIG.usuarioId,
-            ids: Array.from(selectedPendientesIds)
-          })
-        });
+        let res, data;
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al recibir masivo');
+        if (currentReceivingOrders.length === 1) {
+          res = await fetch('/inventario/api/kardex-pendiente/recibir-orden', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              usuario: CONFIG.usuarioId,
+              idPedido: currentReceivingOrders[0].Id,
+              cantidadesRecibidas,
+              novedadesItems,
+              observacionesGenerales,
+              firmaBase64,
+              useRecentSignature
+            })
+          });
+          data = await res.json();
+        } else {
+          res = await fetch('/inventario/api/kardex-pendiente/recibir-masivo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              usuario: CONFIG.usuarioId,
+              ids: currentReceivingOrders.map(o => o.Id),
+              cantidadesRecibidas,
+              novedadesItems,
+              observacionesGenerales,
+              firmaBase64,
+              useRecentSignature
+            })
+          });
+          data = await res.json();
+        }
 
-        alert(data.message || 'Transferencias recibidas exitosamente.');
+        if (!res.ok) throw new Error(data.error || 'Error al procesar la recepción');
+
+        closeRecibirTransferenciaModal();
+
+        // Mostrar confirmación
+        if (data.pdfUrl) {
+          alert(`Transferencia recibida con éxito.\nSe ha generado el Acta de Ingreso y verificación de inventario.`);
+          window.open(data.pdfUrl, '_blank');
+        } else if (data.actas && data.actas.length) {
+          alert(`${data.actas.length} transferencias recibidas con éxito y Actas de Ingreso generadas.`);
+        } else {
+          alert(data.message || 'Transferencia recibida con éxito.');
+        }
+
         fetchPendientesList();
-
+        if (isHistorialIngresosInitialized) {
+          fetchHistorialIngresos();
+        }
         if (window.fetchData) fetchData();
+        if (window.fetchKardexData) window.fetchKardexData();
+
       } catch (err) {
         console.error(err);
-        alert(err.message);
+        if (errorDiv) {
+          errorDiv.textContent = err.message;
+          errorDiv.style.display = 'block';
+        } else {
+          alert(err.message);
+        }
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalBtnHtml;
-        updatePendientesSelectedCount();
+        btnConfirm.disabled = false;
+        btnConfirm.innerHTML = originalBtnHtml;
       }
+    }
+
+    // ==========================================
+    // HISTORIAL DE INGRESOS (ACTAS RECIBIDAS)
+    // ==========================================
+    let allHistorialIngresos = [];
+
+    function initHistorialIngresos() {
+      if (!isHistorialIngresosInitialized) {
+        isHistorialIngresosInitialized = true;
+
+        // Collapsible Filters
+        const toggle = document.getElementById('historial-ingresos-filtros-toggle');
+        const body = document.getElementById('historial-ingresos-filtros-body');
+        const chevron = document.getElementById('historial-ingresos-filtros-chevron');
+        let abierto = false;
+
+        if (toggle && body && chevron) {
+          toggle.addEventListener('click', () => {
+            abierto = !abierto;
+            body.style.display = abierto ? 'block' : 'none';
+            chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
+          });
+        }
+
+        // Dropdowns de Regional y Operacion
+        const selReg = document.getElementById('historial-ingresos-filter-regional');
+        const selOp = document.getElementById('historial-ingresos-filter-operacion');
+        const fInicio = document.getElementById('historial-ingresos-filter-fecha-inicio');
+        const fFin = document.getElementById('historial-ingresos-filter-fecha-fin');
+        const fSearch = document.getElementById('historial-ingresos-filter-search');
+        const btnLimpiar = document.getElementById('btn-limpiar-filtros-historial-ingresos');
+        const btnRefrescar = document.getElementById('btn-refrescar-historial-ingresos');
+
+        // Populate Regionales
+        if (selReg) {
+          selReg.innerHTML = '<option value="">Todas las regionales</option>';
+          CONFIG.regionalesFiltro.forEach(r => {
+            selReg.innerHTML += `<option value="${r}">${r}</option>`;
+          });
+
+          selReg.addEventListener('change', () => {
+            updateHistorialOperacionesDropdown();
+            fetchHistorialIngresos();
+          });
+        }
+
+        updateHistorialOperacionesDropdown();
+
+        if (selOp) selOp.addEventListener('change', () => fetchHistorialIngresos());
+        if (fInicio) fInicio.addEventListener('change', () => fetchHistorialIngresos());
+        if (fFin) fFin.addEventListener('change', () => fetchHistorialIngresos());
+
+        let searchTimeout;
+        if (fSearch) {
+          fSearch.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => fetchHistorialIngresos(), 400);
+          });
+        }
+
+        if (btnLimpiar) {
+          btnLimpiar.addEventListener('click', () => {
+            if (selReg) selReg.value = '';
+            updateHistorialOperacionesDropdown();
+            if (selOp) selOp.value = '';
+            if (fInicio) fInicio.value = '';
+            if (fFin) fFin.value = '';
+            if (fSearch) fSearch.value = '';
+            fetchHistorialIngresos();
+          });
+        }
+
+        if (btnRefrescar) {
+          btnRefrescar.addEventListener('click', () => fetchHistorialIngresos());
+        }
+      }
+
+      fetchHistorialIngresos();
+    }
+
+    function updateHistorialOperacionesDropdown() {
+      const selReg = document.getElementById('historial-ingresos-filter-regional');
+      const selOp = document.getElementById('historial-ingresos-filter-operacion');
+      if (!selOp) return;
+
+      const reg = selReg ? selReg.value : '';
+      selOp.innerHTML = '<option value="">Todas las operaciones</option>';
+
+      let ops = [];
+      if (reg && CONFIG.opsPorRegional[reg]) {
+        ops = CONFIG.opsPorRegional[reg];
+      } else {
+        const allOpsSet = new Set();
+        Object.values(CONFIG.opsPorRegional).forEach(list => list.forEach(o => allOpsSet.add(o)));
+        ops = Array.from(allOpsSet).sort();
+      }
+
+      ops.forEach(op => {
+        selOp.innerHTML += `<option value="${op}">${op}</option>`;
+      });
+    }
+
+    async function fetchHistorialIngresos() {
+      const tbody = document.getElementById('historial-ingresos-table-body');
+      const badge = document.getElementById('historial-ingresos-filtros-badge');
+      if (!tbody) return;
+
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando historial de ingresos...</td></tr>';
+
+      const selReg = document.getElementById('historial-ingresos-filter-regional')?.value || '';
+      const selOp = document.getElementById('historial-ingresos-filter-operacion')?.value || '';
+      const fInicio = document.getElementById('historial-ingresos-filter-fecha-inicio')?.value || '';
+      const fFin = document.getElementById('historial-ingresos-filter-fecha-fin')?.value || '';
+      const searchVal = document.getElementById('historial-ingresos-filter-search')?.value || '';
+
+      // Count active filters for badge
+      let activeFilterCount = 0;
+      if (selReg) activeFilterCount++;
+      if (selOp) activeFilterCount++;
+      if (fInicio) activeFilterCount++;
+      if (fFin) activeFilterCount++;
+      if (searchVal) activeFilterCount++;
+      if (badge) badge.textContent = activeFilterCount;
+
+      try {
+        const queryParams = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          ...(selReg && { regional: selReg }),
+          ...(selOp && { operacion: selOp }),
+          ...(fInicio && { fechaInicio: fInicio }),
+          ...(fFin && { fechaFin: fFin }),
+          ...(searchVal && { search: searchVal })
+        });
+
+        const res = await fetch(`/inventario/api/kardex-pendiente/historial?${queryParams.toString()}`);
+        if (!res.ok) throw new Error('Error al consultar historial de ingresos');
+
+        const data = await res.json();
+        allHistorialIngresos = data.results || [];
+
+        renderHistorialIngresosTable();
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function renderHistorialIngresosTable() {
+      const tbody = document.getElementById('historial-ingresos-table-body');
+      if (!tbody) return;
+
+      if (allHistorialIngresos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">No se encontraron registros de ingresos con los filtros seleccionados.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      allHistorialIngresos.forEach(ord => {
+        const d = new Date(ord.FechaRecibido || ord.FechaDespacho);
+        const dateStr = isNaN(d.getTime()) ? '—' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+        const novedadStr = ord.NovedadGeneral 
+          ? `<span style="color: #c2410c; font-weight: bold;">⚠️ ${ord.NovedadGeneral}</span>` 
+          : (ord.Observaciones ? `<span>${ord.Observaciones}</span>` : '<span style="color: #94a3b8;">Sin observaciones</span>');
+
+        const pdfButtonHtml = ord.Url_Acta 
+          ? `<a href="${ord.Url_Acta}" target="_blank" class="btn" style="background: #1e3c72; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+              <span>📄</span> Ver Acta
+             </a>`
+          : '<span style="color: #94a3b8; font-size: 0.75rem;">Sin Acta</span>';
+
+        const unitsDetail = `
+          <div style="font-weight: 700; color: #1e3c72; font-size: 0.85rem;">${ord.totalArticulos} artículos</div>
+          <div style="font-size: 0.75rem;">
+            <span style="color: #16a34a; font-weight: 600;">${ord.totalRecibidas} rec</span>
+            ${ord.totalDevueltas > 0 ? `<span style="color: #dc2626; font-weight: 600; margin-left: 4px;">(-${ord.totalDevueltas} dev)</span>` : ''}
+          </div>
+        `;
+
+        html += `
+          <tr>
+            <td>
+              <div style="font-weight: 700; color: #1e3c72; font-size: 0.85rem;">${ord.Id}</div>
+              <span style="display: inline-block; background: #dcfce7; color: #15803d; font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 10px;">RECIBIDO</span>
+            </td>
+            <td style="font-size: 0.8rem; color: #475569;">${dateStr}</td>
+            <td style="font-size: 0.8rem;">
+              <span style="background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${ord.Regional}</span>
+            </td>
+            <td>
+              <div style="font-size: 0.78rem;"><strong>Orig:</strong> ${ord.OperacionOrigen}</div>
+              <div style="font-size: 0.78rem; color: var(--primary);"><strong>Dest:</strong> ${ord.OperacionDestino}</div>
+            </td>
+            <td style="text-align: center;">${unitsDetail}</td>
+            <td style="font-size: 0.78rem; color: #334155;">
+              <strong>${ord.UsuarioRecibe}</strong>
+              <div style="font-size: 0.7rem; color: #64748b;">Desp: ${ord.UsuarioDespacha}</div>
+            </td>
+            <td style="font-size: 0.8rem;">${novedadStr}</td>
+            <td style="text-align: center;">${pdfButtonHtml}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
     }
 
     // ==========================================
@@ -11331,6 +12502,21 @@
     async function initActas() {
       if (isActasInitialized) return;
       isActasInitialized = true;
+
+      // ── Subpestañas: Actas de Entrega vs Lógica de Abastecimiento ──
+      const puedeVerLogica = ['Sistema', 'Inventario', 'AdmSst'].includes(CONFIG.rol);
+      const subtabBtnLogica = document.getElementById('actas-subtab-btn-logica');
+      if (puedeVerLogica && subtabBtnLogica) {
+        subtabBtnLogica.style.display = 'inline-flex';
+      }
+
+      const subtabBtnActas = document.getElementById('actas-subtab-btn-actas');
+      if (subtabBtnActas) {
+        subtabBtnActas.addEventListener('click', () => window.cambiarSubtabActas('actas'));
+      }
+      if (subtabBtnLogica) {
+        subtabBtnLogica.addEventListener('click', () => window.cambiarSubtabActas('logica'));
+      }
 
       initActaEvidenciaDropzone();
 
@@ -12898,6 +14084,738 @@
     };
 
     // ==========================================
+    // SUBPESTAÑA: LÓGICA DE ABASTECIMIENTO
+    // ==========================================
+    let isLogicaInitialized = false;
+    let allLogicaData = [];
+    let lastLogicaFacetedCounts = null;
+    let activeLogicaCategory = '';
+    let currentLogicaSortColumn = 'Id';
+    let currentLogicaSortOrder = 'desc';
+    let logicaSearchDebounceTimeout = null;
+
+    window.cambiarSubtabActas = function(subtab) {
+      const subtabBtnActas = document.getElementById('actas-subtab-btn-actas');
+      const subtabBtnLogica = document.getElementById('actas-subtab-btn-logica');
+      const subtabContentActas = document.getElementById('actas-subtab-content-actas');
+      const subtabContentLogica = document.getElementById('actas-subtab-content-logica');
+
+      if (subtab === 'logica') {
+        if (subtabBtnLogica) {
+          subtabBtnLogica.style.background = 'var(--primary)';
+          subtabBtnLogica.style.color = 'white';
+          subtabBtnLogica.style.borderColor = 'var(--primary)';
+          subtabBtnLogica.classList.add('active');
+        }
+        if (subtabBtnActas) {
+          subtabBtnActas.style.background = 'white';
+          subtabBtnActas.style.color = 'var(--text)';
+          subtabBtnActas.style.borderColor = 'var(--border)';
+          subtabBtnActas.classList.remove('active');
+        }
+        if (subtabContentActas) subtabContentActas.style.display = 'none';
+        if (subtabContentLogica) subtabContentLogica.style.display = 'block';
+
+        initLogicaAbastecimiento();
+      } else {
+        if (subtabBtnActas) {
+          subtabBtnActas.style.background = 'var(--primary)';
+          subtabBtnActas.style.color = 'white';
+          subtabBtnActas.style.borderColor = 'var(--primary)';
+          subtabBtnActas.classList.add('active');
+        }
+        if (subtabBtnLogica) {
+          subtabBtnLogica.style.background = 'white';
+          subtabBtnLogica.style.color = 'var(--text)';
+          subtabBtnLogica.style.borderColor = 'var(--border)';
+          subtabBtnLogica.classList.remove('active');
+        }
+        if (subtabContentActas) subtabContentActas.style.display = 'block';
+        if (subtabContentLogica) subtabContentLogica.style.display = 'none';
+      }
+    };
+
+    window.closeLogicaModal = function() {
+      const modal = document.getElementById('logica-form-modal');
+      if (modal) modal.style.display = 'none';
+    };
+
+    window.limpiarFiltrosLogica = function() {
+      const filtroOp = document.getElementById('logica-filtro-operacion');
+      const filtroCargo = document.getElementById('logica-filtro-cargo');
+      const filtroClasif = document.getElementById('logica-filtro-clasificacion');
+      const filtroSearch = document.getElementById('logica-filtro-search');
+
+      if (filtroOp) filtroOp.value = '';
+      if (filtroCargo) filtroCargo.value = '';
+      if (filtroClasif) filtroClasif.value = '';
+      if (filtroSearch) filtroSearch.value = '';
+      activeLogicaCategory = '';
+      fetchLogicaAbastecimiento();
+    };
+
+    async function initLogicaAbastecimiento() {
+      if (isLogicaInitialized) {
+        fetchLogicaAbastecimiento();
+        return;
+      }
+      isLogicaInitialized = true;
+
+      // 1. Collapsible Filters
+      const toggle = document.getElementById('logica-filtros-toggle');
+      const body = document.getElementById('logica-filtros-body');
+      const chevron = document.getElementById('logica-filtros-chevron');
+      let filtrosAbiertos = true;
+
+      if (toggle && body) {
+        function setFiltrosState(open) {
+          filtrosAbiertos = open;
+          body.style.display = open ? 'block' : 'none';
+          if (chevron) {
+            chevron.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+          }
+        }
+        toggle.addEventListener('click', () => setFiltrosState(!filtrosAbiertos));
+        setFiltrosState(true);
+      }
+
+      // 2. Filter change listeners
+      const filtroOp = document.getElementById('logica-filtro-operacion');
+      const filtroCargo = document.getElementById('logica-filtro-cargo');
+      const filtroClasif = document.getElementById('logica-filtro-clasificacion');
+      const filtroSearch = document.getElementById('logica-filtro-search');
+      const btnLimpiar = document.getElementById('logica-btn-limpiar-filtros');
+
+      if (filtroOp) filtroOp.addEventListener('change', () => fetchLogicaAbastecimiento());
+      if (filtroCargo) filtroCargo.addEventListener('change', () => fetchLogicaAbastecimiento());
+      if (filtroClasif) filtroClasif.addEventListener('change', () => fetchLogicaAbastecimiento());
+      if (filtroSearch) {
+        filtroSearch.addEventListener('input', () => {
+          clearTimeout(logicaSearchDebounceTimeout);
+          logicaSearchDebounceTimeout = setTimeout(() => fetchLogicaAbastecimiento(), 400);
+        });
+      }
+
+      if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', window.limpiarFiltrosLogica);
+      }
+
+      // 3. Table Header Sorting
+      const headers = document.querySelectorAll('#logica-table thead th[data-sort]');
+      headers.forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.getAttribute('data-sort');
+          if (currentLogicaSortColumn === col) {
+            currentLogicaSortOrder = currentLogicaSortOrder === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentLogicaSortColumn = col;
+            currentLogicaSortOrder = (col === 'Id' || col === 'Fecha_Registro') ? 'desc' : 'asc';
+          }
+          updateLogicaSortIndicators();
+          applyLogicaFiltersAndRender();
+        });
+      });
+      updateLogicaSortIndicators();
+
+      // 4. Modal listeners
+      const btnNueva = document.getElementById('logica-btn-nueva');
+      const modal = document.getElementById('logica-form-modal');
+      const modalClose = document.getElementById('logica-modal-close');
+      const btnCancel = document.getElementById('logica-form-btn-cancel');
+      const form = document.getElementById('logica-abastecimiento-form');
+
+      if (btnNueva) {
+        btnNueva.addEventListener('click', openLogicaModal);
+      }
+      if (modalClose) {
+        modalClose.addEventListener('click', () => { if (modal) modal.style.display = 'none'; });
+      }
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => { if (modal) modal.style.display = 'none'; });
+      }
+      if (form) {
+        form.addEventListener('submit', submitLogicaForm);
+      }
+
+      // 5. Modal Category buttons
+      const catBtns = document.querySelectorAll('.btn-logica-cat');
+      catBtns.forEach(btn => {
+        btn.addEventListener('click', async () => {
+          catBtns.forEach(b => {
+            b.classList.remove('active');
+            b.style.background = '#f8fafc';
+            b.style.borderColor = 'var(--border)';
+            b.style.color = 'var(--text-dark)';
+          });
+          btn.classList.add('active');
+          btn.style.background = '#eff6ff';
+          btn.style.borderColor = 'var(--primary)';
+          btn.style.color = 'var(--primary)';
+
+          const catVal = btn.getAttribute('data-cat');
+          document.getElementById('logica-form-categoria').value = catVal;
+
+          // Load classifications for this category
+          await loadLogicaClasificaciones(catVal);
+        });
+      });
+
+      // 6. Modal Clasificación dropdown change listener
+      const clasifSelect = document.getElementById('logica-form-clasificacion');
+      if (clasifSelect) {
+        clasifSelect.addEventListener('change', async () => {
+          const catVal = document.getElementById('logica-form-categoria').value;
+          const clasifVal = clasifSelect.value;
+          await loadLogicaElementos(catVal, clasifVal);
+        });
+      }
+
+      // Load initial data
+      await loadLogicaModalOptions();
+      await fetchLogicaAbastecimiento();
+    }
+
+    function updateLogicaSortIndicators() {
+      const keys = ['Id', 'Operacion', 'Cargo', 'Categoria', 'Clasificacion', 'Elemento', 'Usuario', 'Fecha_Registro'];
+      keys.forEach(k => {
+        const span = document.getElementById(`logica-sort-${k}`);
+        if (span) {
+          if (currentLogicaSortColumn === k) {
+            span.textContent = currentLogicaSortOrder === 'asc' ? ' ▲' : ' ▼';
+            span.style.color = 'var(--primary)';
+          } else {
+            span.textContent = '';
+          }
+        }
+      });
+    }
+
+    async function loadLogicaModalOptions() {
+      try {
+        const res = await fetch(`/actas/api/logica-abastecimiento/opciones?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const opSelect = document.getElementById('logica-form-operacion');
+        const cargoSelect = document.getElementById('logica-form-cargo');
+
+        if (opSelect && data.operaciones) {
+          opSelect.innerHTML = '<option value="">Seleccione Operación...</option>';
+          data.operaciones.forEach(op => {
+            const opt = document.createElement('option');
+            opt.value = op;
+            opt.textContent = op;
+            opSelect.appendChild(opt);
+          });
+        }
+
+        if (cargoSelect && data.cargos) {
+          cargoSelect.innerHTML = '<option value="">Seleccione Cargo...</option>';
+          data.cargos.forEach(cg => {
+            const opt = document.createElement('option');
+            opt.value = cg;
+            opt.textContent = cg;
+            cargoSelect.appendChild(opt);
+          });
+        }
+      } catch (err) {
+        console.error('Error al cargar opciones de modal:', err);
+      }
+    }
+
+    async function loadLogicaClasificaciones(categoria) {
+      const clasifSelect = document.getElementById('logica-form-clasificacion');
+      const elemSelect = document.getElementById('logica-form-elemento');
+      if (!clasifSelect) return;
+
+      clasifSelect.innerHTML = '<option value="">Cargando clasificaciones...</option>';
+      clasifSelect.disabled = true;
+      clasifSelect.style.background = '#f1f5f9';
+
+      if (elemSelect) {
+        elemSelect.innerHTML = '<option value="">Seleccione primero una clasificación...</option>';
+        elemSelect.disabled = true;
+        elemSelect.style.background = '#f1f5f9';
+      }
+
+      try {
+        const res = await fetch(`/actas/api/logica-abastecimiento/clasificaciones?usuario=${encodeURIComponent(CONFIG.usuarioId)}&categoria=${encodeURIComponent(categoria)}`);
+        const data = await res.json();
+
+        clasifSelect.innerHTML = '<option value="">Seleccione Clasificación...</option>';
+        if (data.clasificaciones && data.clasificaciones.length > 0) {
+          data.clasificaciones.forEach(cl => {
+            const opt = document.createElement('option');
+            opt.value = cl;
+            opt.textContent = cl;
+            clasifSelect.appendChild(opt);
+          });
+          clasifSelect.disabled = false;
+          clasifSelect.style.background = 'white';
+        } else {
+          clasifSelect.innerHTML = '<option value="">No hay clasificaciones disponibles</option>';
+        }
+      } catch (err) {
+        console.error('Error al cargar clasificaciones:', err);
+        clasifSelect.innerHTML = '<option value="">Error al cargar</option>';
+      }
+    }
+
+    async function loadLogicaElementos(categoria, clasificacion) {
+      const elemSelect = document.getElementById('logica-form-elemento');
+      if (!elemSelect) return;
+
+      if (!clasificacion) {
+        elemSelect.innerHTML = '<option value="">Seleccione primero una clasificación...</option>';
+        elemSelect.disabled = true;
+        elemSelect.style.background = '#f1f5f9';
+        return;
+      }
+
+      elemSelect.innerHTML = '<option value="">Cargando elementos...</option>';
+      elemSelect.disabled = true;
+      elemSelect.style.background = '#f1f5f9';
+
+      try {
+        const res = await fetch(`/actas/api/logica-abastecimiento/elementos?usuario=${encodeURIComponent(CONFIG.usuarioId)}&categoria=${encodeURIComponent(categoria)}&clasificacion=${encodeURIComponent(clasificacion)}`);
+        const data = await res.json();
+
+        elemSelect.innerHTML = '<option value="">Seleccione Elemento...</option>';
+        if (data.elementos && data.elementos.length > 0) {
+          data.elementos.forEach(el => {
+            const opt = document.createElement('option');
+            opt.value = el;
+            opt.textContent = el;
+            elemSelect.appendChild(opt);
+          });
+          elemSelect.disabled = false;
+          elemSelect.style.background = 'white';
+        } else {
+          elemSelect.innerHTML = '<option value="">No hay elementos disponibles</option>';
+        }
+      } catch (err) {
+        console.error('Error al cargar elementos:', err);
+        elemSelect.innerHTML = '<option value="">Error al cargar</option>';
+      }
+    }
+
+    async function openLogicaModal(item = null) {
+      const modal = document.getElementById('logica-form-modal');
+      const form = document.getElementById('logica-abastecimiento-form');
+      const titleEl = document.getElementById('logica-modal-title');
+      const submitBtn = document.getElementById('logica-form-btn-submit');
+      const hiddenId = document.getElementById('logica-form-id');
+
+      if (form) form.reset();
+
+      // Reset category buttons
+      const catBtns = document.querySelectorAll('.btn-logica-cat');
+      catBtns.forEach(b => {
+        b.classList.remove('active');
+        b.style.background = '#f8fafc';
+        b.style.borderColor = 'var(--border)';
+        b.style.color = 'var(--text-dark)';
+      });
+
+      const clasifSelect = document.getElementById('logica-form-clasificacion');
+      const elemSelect = document.getElementById('logica-form-elemento');
+
+      if (clasifSelect) {
+        clasifSelect.innerHTML = '<option value="">Seleccione primero una categoría...</option>';
+        clasifSelect.disabled = true;
+        clasifSelect.style.background = '#f1f5f9';
+      }
+
+      if (elemSelect) {
+        elemSelect.innerHTML = '<option value="">Seleccione primero una clasificación...</option>';
+        elemSelect.disabled = true;
+        elemSelect.style.background = '#f1f5f9';
+      }
+
+      await loadLogicaModalOptions();
+
+      if (item) {
+        if (titleEl) titleEl.innerHTML = '<span>✏️</span> Editar Lógica de Abastecimiento';
+        if (submitBtn) submitBtn.innerHTML = '<span>💾</span> Actualizar Lógica';
+        if (hiddenId) hiddenId.value = item.Id;
+
+        const opSelect = document.getElementById('logica-form-operacion');
+        const cgSelect = document.getElementById('logica-form-cargo');
+        if (opSelect) opSelect.value = item.Operacion;
+        if (cgSelect) cgSelect.value = item.Cargo;
+
+        const catVal = String(item.Categoria || '').trim();
+        document.getElementById('logica-form-categoria').value = catVal;
+        catBtns.forEach(b => {
+          if (b.getAttribute('data-cat') === catVal) {
+            b.classList.add('active');
+            b.style.background = '#eff6ff';
+            b.style.borderColor = 'var(--primary)';
+            b.style.color = 'var(--primary)';
+          }
+        });
+
+        await loadLogicaClasificaciones(catVal);
+        if (clasifSelect) clasifSelect.value = item.Clasificacion;
+
+        await loadLogicaElementos(catVal, item.Clasificacion);
+        if (elemSelect) elemSelect.value = item.Elemento;
+      } else {
+        if (titleEl) titleEl.innerHTML = '<span>➕</span> Nueva Lógica de Abastecimiento';
+        if (submitBtn) submitBtn.innerHTML = '<span>💾</span> Guardar Lógica';
+        if (hiddenId) hiddenId.value = '';
+        document.getElementById('logica-form-categoria').value = '';
+      }
+
+      if (modal) modal.style.display = 'flex';
+    }
+    window.openLogicaModal = openLogicaModal;
+    window.initLogicaAbastecimiento = initLogicaAbastecimiento;
+
+    window.editLogicaItem = function(id) {
+      const item = allLogicaData.find(x => Number(x.Id) === Number(id));
+      if (!item) {
+        alert('No se encontró el registro seleccionado.');
+        return;
+      }
+      openLogicaModal(item);
+    };
+
+    async function submitLogicaForm(e) {
+      e.preventDefault();
+      const id = document.getElementById('logica-form-id') ? document.getElementById('logica-form-id').value : '';
+      const operacion = document.getElementById('logica-form-operacion').value;
+      const cargo = document.getElementById('logica-form-cargo').value;
+      const categoria = document.getElementById('logica-form-categoria').value;
+      const clasificacion = document.getElementById('logica-form-clasificacion').value;
+      const elemento = document.getElementById('logica-form-elemento').value;
+
+      if (!operacion || !cargo || !categoria || !clasificacion || !elemento) {
+        alert('Por favor complete todos los campos obligatorios antes de guardar.');
+        return;
+      }
+
+      const btnSubmit = document.getElementById('logica-form-btn-submit');
+      const origText = btnSubmit ? btnSubmit.innerHTML : '';
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<span>⏳</span> Guardando...';
+      }
+
+      try {
+        const url = id ? `/actas/api/logica-abastecimiento/${id}` : '/actas/api/logica-abastecimiento';
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            operacion,
+            cargo,
+            categoria,
+            clasificacion,
+            elemento
+          })
+        });
+
+        const result = await res.json();
+        if (!res.ok || !result.ok) {
+          throw new Error(result.error || (id ? 'Error al actualizar la regla' : 'Error al guardar la regla'));
+        }
+
+        alert(id ? '✅ Regla de abastecimiento actualizada exitosamente.' : '✅ Regla de abastecimiento registrada exitosamente.');
+        const modal = document.getElementById('logica-form-modal');
+        if (modal) modal.style.display = 'none';
+
+        fetchLogicaAbastecimiento();
+      } catch (err) {
+        console.error(err);
+        alert('Error: ' + err.message);
+      } finally {
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = origText;
+        }
+      }
+    }
+
+    window.deleteLogicaItem = async function(id, desc) {
+      if (!confirm(`⚠️ ¿Está seguro de que desea eliminar esta regla de abastecimiento?\n\n"${desc}"\n\nEsta acción no se puede deshacer.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/actas/api/logica-abastecimiento/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'DELETE'
+        });
+        const result = await res.json();
+        if (!res.ok || !result.ok) {
+          throw new Error(result.error || 'Error al eliminar la regla');
+        }
+
+        alert('Registro eliminado exitosamente.');
+        fetchLogicaAbastecimiento();
+      } catch (err) {
+        console.error(err);
+        alert('Error: ' + err.message);
+      }
+    };
+
+    async function fetchLogicaAbastecimiento() {
+      const tbody = document.getElementById('logica-table-body');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando registros...</td></tr>';
+
+      try {
+        const op = document.getElementById('logica-filtro-operacion') ? document.getElementById('logica-filtro-operacion').value : '';
+        const cg = document.getElementById('logica-filtro-cargo') ? document.getElementById('logica-filtro-cargo').value : '';
+        const cl = document.getElementById('logica-filtro-clasificacion') ? document.getElementById('logica-filtro-clasificacion').value : '';
+        const sr = document.getElementById('logica-filtro-search') ? document.getElementById('logica-filtro-search').value.trim() : '';
+
+        let url = `/actas/api/logica-abastecimiento?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        if (op) url += `&operacion=${encodeURIComponent(op)}`;
+        if (cg) url += `&cargo=${encodeURIComponent(cg)}`;
+        if (cl) url += `&clasificacion=${encodeURIComponent(cl)}`;
+        if (activeLogicaCategory) url += `&categoria=${encodeURIComponent(activeLogicaCategory)}`;
+        if (sr) url += `&search=${encodeURIComponent(sr)}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Error al consultar datos');
+
+        const data = await res.json();
+        allLogicaData = data.results || [];
+        lastLogicaFacetedCounts = data.counts || {};
+
+        // Update Stats
+        const statTotal = document.getElementById('logica-stat-total');
+        const statOps = document.getElementById('logica-stat-operaciones');
+        const statCargos = document.getElementById('logica-stat-cargos');
+
+        if (statTotal) statTotal.textContent = Number(data.total || allLogicaData.length).toLocaleString('es-CO');
+        if (statOps) statOps.textContent = Object.keys(lastLogicaFacetedCounts.operaciones || {}).length;
+        if (statCargos) statCargos.textContent = Object.keys(lastLogicaFacetedCounts.cargos || {}).length;
+
+        const badgeTotal = document.getElementById('logica-badge-total');
+        if (badgeTotal) badgeTotal.textContent = `Total: ${data.total || allLogicaData.length}`;
+
+        renderLogicaCategoryButtons();
+        updateLogicaFilterDropdowns();
+        updateLogicaBadgeFiltros();
+        applyLogicaFiltersAndRender();
+
+      } catch (err) {
+        console.error(err);
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #dc2626; padding: 30px; font-weight: 600;">❌ Error de carga: ${err.message}</td></tr>`;
+        }
+      }
+    }
+
+    function renderLogicaCategoryButtons() {
+      const container = document.getElementById('logica-filter-categoria-buttons');
+      if (!container) return;
+
+      const counts = lastLogicaFacetedCounts ? (lastLogicaFacetedCounts.categorias || {}) : {};
+      const categories = ['DOTACIÓN', 'EPP', 'TECNOLOGIA'];
+      const totalCount = Object.values(counts).reduce((a, b) => Number(a) + Number(b), 0);
+
+      container.innerHTML = '';
+
+      // Button "Todas"
+      const btnAll = document.createElement('button');
+      btnAll.type = 'button';
+      btnAll.className = `category-chip ${activeLogicaCategory === '' ? 'active' : ''}`;
+      btnAll.innerHTML = `Todas (${totalCount})`;
+      btnAll.addEventListener('click', () => {
+        if (activeLogicaCategory !== '') {
+          activeLogicaCategory = '';
+          fetchLogicaAbastecimiento();
+        }
+      });
+      container.appendChild(btnAll);
+
+      // Buttons per category
+      categories.forEach(cat => {
+        const count = counts[cat] || 0;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `category-chip ${activeLogicaCategory === cat ? 'active' : ''}`;
+        btn.innerHTML = `${cat} (${count})`;
+        btn.addEventListener('click', () => {
+          if (activeLogicaCategory === cat) {
+            activeLogicaCategory = '';
+          } else {
+            activeLogicaCategory = cat;
+          }
+          fetchLogicaAbastecimiento();
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function updateLogicaFilterDropdowns() {
+      const counts = lastLogicaFacetedCounts || {};
+      const opCounts = counts.operaciones || {};
+      const cgCounts = counts.cargos || {};
+      const clCounts = counts.clasificaciones || {};
+
+      const opSelect = document.getElementById('logica-filtro-operacion');
+      const cgSelect = document.getElementById('logica-filtro-cargo');
+      const clSelect = document.getElementById('logica-filtro-clasificacion');
+
+      if (opSelect) {
+        const selVal = opSelect.value;
+        const total = Object.values(opCounts).reduce((a, b) => Number(a) + Number(b), 0);
+        opSelect.innerHTML = `<option value="">Todas (${total})</option>`;
+        Object.keys(opCounts).sort().forEach(op => {
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = `${op} (${opCounts[op]})`;
+          if (op === selVal) opt.selected = true;
+          opSelect.appendChild(opt);
+        });
+      }
+
+      if (cgSelect) {
+        const selVal = cgSelect.value;
+        const total = Object.values(cgCounts).reduce((a, b) => Number(a) + Number(b), 0);
+        cgSelect.innerHTML = `<option value="">Todos (${total})</option>`;
+        Object.keys(cgCounts).sort().forEach(cg => {
+          const opt = document.createElement('option');
+          opt.value = cg;
+          opt.textContent = `${cg} (${cgCounts[cg]})`;
+          if (cg === selVal) opt.selected = true;
+          cgSelect.appendChild(opt);
+        });
+      }
+
+      if (clSelect) {
+        const selVal = clSelect.value;
+        const total = Object.values(clCounts).reduce((a, b) => Number(a) + Number(b), 0);
+        clSelect.innerHTML = `<option value="">Todas (${total})</option>`;
+        Object.keys(clCounts).sort().forEach(cl => {
+          const opt = document.createElement('option');
+          opt.value = cl;
+          opt.textContent = `${cl} (${clCounts[cl]})`;
+          if (cl === selVal) opt.selected = true;
+          clSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function updateLogicaBadgeFiltros() {
+      const badge = document.getElementById('logica-filtros-badge');
+      if (!badge) return;
+      let activeCount = 0;
+
+      const op = document.getElementById('logica-filtro-operacion') ? document.getElementById('logica-filtro-operacion').value : '';
+      const cg = document.getElementById('logica-filtro-cargo') ? document.getElementById('logica-filtro-cargo').value : '';
+      const cl = document.getElementById('logica-filtro-clasificacion') ? document.getElementById('logica-filtro-clasificacion').value : '';
+      const sr = document.getElementById('logica-filtro-search') ? document.getElementById('logica-filtro-search').value.trim() : '';
+
+      if (op) activeCount++;
+      if (cg) activeCount++;
+      if (cl) activeCount++;
+      if (activeLogicaCategory) activeCount++;
+      if (sr) activeCount++;
+
+      if (activeCount > 0) {
+        badge.textContent = activeCount;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    function applyLogicaFiltersAndRender() {
+      let filtered = [...allLogicaData];
+
+      if (currentLogicaSortColumn) {
+        filtered.sort((a, b) => {
+          let valA = a[currentLogicaSortColumn];
+          let valB = b[currentLogicaSortColumn];
+
+          if (currentLogicaSortColumn === 'Id') {
+            valA = Number(valA || 0);
+            valB = Number(valB || 0);
+          } else {
+            valA = String(valA || '').toLowerCase();
+            valB = String(valB || '').toLowerCase();
+          }
+
+          if (valA < valB) return currentLogicaSortOrder === 'asc' ? -1 : 1;
+          if (valA > valB) return currentLogicaSortOrder === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
+      renderLogicaTableRows(filtered);
+    }
+
+    function renderLogicaTableRows(items) {
+      const tbody = document.getElementById('logica-table-body');
+      const resultsText = document.getElementById('logica-results-text');
+      if (!tbody) return;
+
+      tbody.innerHTML = '';
+      if (resultsText) resultsText.textContent = `Mostrando ${items.length} registros`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 48px;">
+              No se encontraron reglas de abastecimiento con los filtros aplicados.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+
+        // Date formatting
+        let regDateStr = '—';
+        if (item.Fecha_Registro) {
+          const d = new Date(item.Fecha_Registro);
+          regDateStr = d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        // Category badge color
+        let catBadgeStyle = 'background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;';
+        const catUpper = String(item.Categoria || '').toUpperCase();
+        if (catUpper.includes('EPP')) {
+          catBadgeStyle = 'background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;';
+        } else if (catUpper.includes('TECNO')) {
+          catBadgeStyle = 'background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff;';
+        }
+
+        const safeDesc = `${item.Operacion} - ${item.Cargo} - ${item.Elemento}`.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+        tr.innerHTML = `
+          <td style="text-align: center; white-space: nowrap;">
+            <button type="button" class="btn" onclick="editLogicaItem(${item.Id})" style="background: none; border: none; cursor: pointer; padding: 4px 6px; font-size: 0.95rem; border-radius: 4px; transition: background 0.2s;" title="Editar regla">✏️</button>
+            <button type="button" class="btn" onclick="deleteLogicaItem(${item.Id}, '${safeDesc}')" style="background: none; border: none; cursor: pointer; padding: 4px 6px; font-size: 0.95rem; border-radius: 4px; transition: background 0.2s;" title="Eliminar regla">🗑️</button>
+          </td>
+          <td style="text-align: center; font-weight: 700; color: var(--primary);">#${item.Id}</td>
+          <td style="font-weight: 600; color: var(--text-dark);">${item.Operacion}</td>
+          <td style="font-weight: 500;">${item.Cargo}</td>
+          <td style="text-align: center;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; ${catBadgeStyle}">${item.Categoria}</span>
+          </td>
+          <td>
+            <span style="display: inline-block; padding: 2px 6px; background: #f1f5f9; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: #475569;">${item.Clasificacion}</span>
+          </td>
+          <td style="font-weight: 600; color: #1e293b;">${item.Elemento}</td>
+          <td style="font-size: 0.75rem; color: var(--text-muted);">${item.Usuario || '—'}</td>
+          <td style="font-size: 0.75rem; color: var(--text-muted);">${regDateStr}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ==========================================
     // DOTACIÓN DE LEY (pestaña embebida del módulo dotacionley)
     // ==========================================
     let isDotacionLeyInitialized = false;
@@ -13291,27 +15209,127 @@
           : `<span title="Sin correo registrado" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; opacity:0.35;">
                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
              </span>`;
+
         tr.innerHTML = `
-          <td style="text-align: center;">
+          <td style="text-align: center; vertical-align: middle;">
             <div style="display: flex; gap: 2px; justify-content: center; align-items: center;">
-              <a href="${waLink}" target="_blank" title="Enviar por WhatsApp" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:6px;">
+              <a href="${waLink}" target="_blank" title="Enviar por WhatsApp" class="dotley-wa-link" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:6px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#25D366"></circle><path fill="#fff" d="M23.5 8.5c-1.9-1.9-4.5-3-7.3-3-5.7 0-10.3 4.6-10.3 10.3 0 1.8.5 3.6 1.4 5.1L6 26l5.3-1.4c1.5.8 3.1 1.2 4.8 1.2h.01c5.7 0 10.3-4.6 10.3-10.3 0-2.7-1.1-5.3-3-7.1zm-7.3 15.8h-.01c-1.5 0-3-.4-4.3-1.2l-.3-.2-3.2.8.9-3.1-.2-.3c-.9-1.4-1.3-3-1.3-4.6 0-4.7 3.8-8.5 8.5-8.5 2.3 0 4.4.9 6 2.5s2.5 3.7 2.5 6c0 4.7-3.9 8.6-8.6 8.6zm4.7-6.4c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.8 1-.2.2-.3.2-.5.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.8-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.5-.1 0-.3 0-.5 0s-.5.1-.7.3c-.2.3-1 1-1 2.3 0 1.4 1 2.7 1.1 2.9.1.2 2 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.2-.3-.2-.5-.3z"></path></svg>
               </a>
               ${btnCorreoHtml}
             </div>
           </td>
-          <td style="font-weight: 600; font-size: 0.8rem; color: var(--primary);">${r.Identificacion || '—'}</td>
-          <td style="font-size: 0.8rem;">${cleanName}</td>
-          <td>${r.Regional || '—'}</td>
-          <td>${r.Operacion || '—'}</td>
-          <td><span class="badge-category">${r.Cargo || '—'}</span></td>
-          <td>${fechaStr}</td>
-          <td style="text-align: center;">${r.Camiseta || '—'}</td>
-          <td style="text-align: center;">${r.Cargo === 'AUXILIAR LOGISTICO' ? (r.Numero || '—') : '<span style="color:var(--text-muted);">—</span>'}</td>
-          <td style="text-align: center;">${r.Pantalon || '—'}</td>
-          <td style="text-align: center;">${r.Botas || '—'}</td>
-          <td>${r.Celular || '—'}</td>
+          <td style="font-weight: 600; font-size: 0.8rem; color: var(--primary); vertical-align: middle;">${r.Identificacion || '—'}</td>
+          <td style="font-size: 0.8rem; vertical-align: middle;">${cleanName}</td>
+          <td style="vertical-align: middle;">${r.Regional || '—'}</td>
+          <td style="vertical-align: middle;">${r.Operacion || '—'}</td>
+          <td style="vertical-align: middle;"><span class="badge-category">${r.Cargo || '—'}</span></td>
+          <td style="vertical-align: middle;">${fechaStr}</td>
+          <td style="text-align: center; vertical-align: middle;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 3px;">
+              <input type="text" class="dotley-input" data-id="${r.Identificacion}" data-campo="Camiseta" value="${r.Camiseta || ''}" placeholder="—" style="width: 50px; padding: 2px 4px; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-weight: 500; outline: none; background: white; text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+              <button type="button" class="btn-save-dotley" data-id="${r.Identificacion}" data-campo="Camiseta" style="display: none; background: var(--primary); color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; font-weight: 600;" title="Guardar">✓</button>
+            </div>
+          </td>
+          <td style="text-align: center; vertical-align: middle;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 3px;">
+              <input type="text" class="dotley-input" data-id="${r.Identificacion}" data-campo="Numero" value="${r.Numero || ''}" placeholder="—" style="width: 50px; padding: 2px 4px; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-weight: 500; outline: none; background: white; text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+              <button type="button" class="btn-save-dotley" data-id="${r.Identificacion}" data-campo="Numero" style="display: none; background: var(--primary); color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; font-weight: 600;" title="Guardar">✓</button>
+            </div>
+          </td>
+          <td style="text-align: center; vertical-align: middle;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 3px;">
+              <input type="text" class="dotley-input" data-id="${r.Identificacion}" data-campo="Pantalon" value="${r.Pantalon || ''}" placeholder="—" style="width: 50px; padding: 2px 4px; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-weight: 500; outline: none; background: white; text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+              <button type="button" class="btn-save-dotley" data-id="${r.Identificacion}" data-campo="Pantalon" style="display: none; background: var(--primary); color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; font-weight: 600;" title="Guardar">✓</button>
+            </div>
+          </td>
+          <td style="text-align: center; vertical-align: middle;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 3px;">
+              <input type="text" class="dotley-input" data-id="${r.Identificacion}" data-campo="Botas" value="${r.Botas || ''}" placeholder="—" style="width: 50px; padding: 2px 4px; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-weight: 500; outline: none; background: white; text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+              <button type="button" class="btn-save-dotley" data-id="${r.Identificacion}" data-campo="Botas" style="display: none; background: var(--primary); color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; font-weight: 600;" title="Guardar">✓</button>
+            </div>
+          </td>
+          <td style="vertical-align: middle;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 3px;">
+              <input type="text" class="dotley-input" data-id="${r.Identificacion}" data-campo="Celular" value="${r.Celular || ''}" placeholder="Sin cel" style="width: 90px; padding: 2px 6px; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; font-weight: 500; outline: none; background: white;" oninput="this.value = this.value.replace(/\\D/g, '')">
+              <button type="button" class="btn-save-dotley" data-id="${r.Identificacion}" data-campo="Celular" style="display: none; background: var(--primary); color: white; border: none; padding: 2px 5px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; font-weight: 600;" title="Guardar">✓</button>
+            </div>
+          </td>
         `;
+
+        // Attach event handlers for each editable input in this row
+        tr.querySelectorAll('.dotley-input').forEach(input => {
+          const campo = input.getAttribute('data-campo');
+          const id = input.getAttribute('data-id');
+          const saveBtn = tr.querySelector(`.btn-save-dotley[data-campo="${campo}"][data-id="${id}"]`);
+
+          input.addEventListener('click', (e) => e.stopPropagation());
+          input.addEventListener('focus', (e) => e.stopPropagation());
+          input.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+              if (saveBtn) saveBtn.click();
+            }
+          });
+
+          input.addEventListener('input', (e) => {
+            e.stopPropagation();
+            const origVal = (r[campo] || '').toString().trim();
+            if (input.value.trim() !== origVal) {
+              if (saveBtn) saveBtn.style.display = 'inline-block';
+            } else {
+              if (saveBtn) saveBtn.style.display = 'none';
+            }
+          });
+
+          if (saveBtn) {
+            saveBtn.addEventListener('click', async (e) => {
+              e.stopPropagation();
+              const val = input.value.trim();
+              saveBtn.disabled = true;
+              saveBtn.innerHTML = '⏳';
+
+              try {
+                const res = await fetch('/dotacionley/api/actualizar-campo', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    usuario: CONFIG.usuarioId,
+                    identificacion: id,
+                    campo,
+                    valor: val
+                  })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Error al guardar');
+
+                // Update local dataset item
+                r[campo] = data.valor || '';
+
+                // Update WhatsApp URL in this row
+                const waAnchor = tr.querySelector('.dotley-wa-link');
+                if (waAnchor) {
+                  waAnchor.href = getDotleyWhatsappUrl(r, cleanName);
+                }
+
+                // Visual success feedback
+                input.style.borderColor = 'var(--success)';
+                setTimeout(() => {
+                  input.style.borderColor = '';
+                }, 1200);
+
+                saveBtn.style.display = 'none';
+              } catch (err) {
+                console.error(err);
+                alert(err.message);
+              } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '✓';
+              }
+            });
+          }
+        });
+
         tbody.appendChild(tr);
       });
 

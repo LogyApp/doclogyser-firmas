@@ -212,7 +212,7 @@ async function subirEvidenciaActa(idActa, buffer, originalName, contentType) {
 }
 
 async function subirPDFConfirmacionInventario(nombreArchivo, bufferPdf) {
-  const nombre = `confirma_inventario/${nombreArchivo}`;
+  const nombre = `general/${nombreArchivo}`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
   await file.save(bufferPdf, { contentType: 'application/pdf' });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;

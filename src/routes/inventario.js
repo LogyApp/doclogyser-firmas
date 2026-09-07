@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { randomUUID } = require('crypto');
 const pool = require('../services/db');
 const { obtenerFirmaBase64Reciente, obtenerUrlFirmaReciente, subirFirma, subirPDFConfirmacionInventario, storage } = require('../services/storage');
 const { notificarConfirmacionInventario } = require('../services/email');
@@ -439,21 +440,83 @@ router.post('/api/confirmar', async (req, res) => {
       margin: { top: '15mm', bottom: '20mm', left: '15mm', right: '15mm' }
     });
 
-    // 7. Subir PDF a GCS
-    const cleanOp = operacion.replace(/[^a-zA-Z0-9]/g, '_');
-    const cleanCat = categoria.replace(/[^a-zA-Z0-9]/g, '_');
-    const cleanMes = mes.replace(/[^a-zA-Z0-9]/g, '_');
-    const fileName = `confirmacion_${cleanOp}_${cleanCat}_${cleanMes}_${Date.now()}.pdf`;
+    // 7. Obtener Prefijo para TipoDocumento = 86 y generar nombre del archivo
+    let prefijo = 'ACTINV';
+    try {
+      const [docRows] = await pool.execute(
+        'SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = 86 LIMIT 1'
+      );
+      if (docRows.length && docRows[0].Prefijo) {
+        prefijo = docRows[0].Prefijo.trim();
+      }
+    } catch (errPrefijo) {
+      console.warn('[inventario] Error consultando Prefijo Id 86:', errPrefijo.message);
+    }
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const fileName = `${prefijo}.${timestamp}.pdf`;
     
     const pdfUrl = await subirPDFConfirmacionInventario(fileName, pdfBuffer);
 
-    // 8. Insertar en DB
+    // 8. Insertar en Maestro_Confirmacion
     await pool.execute(
       `INSERT INTO Maestro_Confirmacion 
        (area, periodo, usuario, observaciones, operacion, categoria, mes, fecha_confirmacion, firma_url, pdf_url)
        VALUES ('Inventario', 'mensual', ?, ?, ?, ?, ?, NOW(), ?, ?)`,
       [usuario, observaciones || null, operacion, categoria, mes, signatureUrl, pdfUrl]
     );
+
+    // 9. Obtener Regional de Maestro_Operaciones e insertar en Maestro_docEmpresa
+    let regional = null;
+    try {
+      const [opRows] = await pool.execute(
+        'SELECT `REGIONAL` FROM `Maestro_Operaciones` WHERE `OPERACIÓN` = ? LIMIT 1',
+        [operacion]
+      );
+      if (opRows.length && opRows[0].REGIONAL) {
+        regional = opRows[0].REGIONAL;
+      }
+    } catch (errOp) {
+      console.warn('[inventario] Error consultando regional:', errOp.message);
+    }
+
+    const docEmpresaId = randomUUID();
+    const obsClean = observaciones ? String(observaciones).substring(0, 512) : null;
+
+    try {
+      await pool.execute(
+        `INSERT INTO \`Maestro_docEmpresa\` (
+          \`id\`,
+          \`Validación\`,
+          \`Regional\`,
+          \`Operación\`,
+          \`TipoDocumento\`,
+          \`Prefijo\`,
+          \`Observaciones\`,
+          \`Visualizar\`,
+          \`Solicitud\`,
+          \`Justificacion_Solicitud\`,
+          \`FechaRegistro\`,
+          \`Usuario\`,
+          \`Url\`,
+          \`Usuario_Solicitud\`,
+          \`Estado_Solicitud\`
+        ) VALUES (?, 'PEND', ?, ?, '86', ?, ?, NULL, NULL, NULL, NOW(), ?, ?, NULL, NULL)`,
+        [
+          docEmpresaId,
+          regional,
+          operacion,
+          prefijo,
+          obsClean,
+          usuario,
+          pdfUrl
+        ]
+      );
+    } catch (errDocEmp) {
+      console.error('[inventario] Error insertando en Maestro_docEmpresa:', errDocEmp);
+    }
 
     // 9. Configurar destinatarios del correo según Categoría
     let emailRecipients = ['admin@logyser.com'];
@@ -729,6 +792,7 @@ router.get('/api/kardex/datos', async (req, res) => {
         k.UsuarioAsignado,
         s.Trabajador AS TrabajadorAsignado,
         k.Acta,
+        da.Url_Acta AS UrlActa,
         k.ValorUnitario,
         k.UsuarioRegistro,
         k.Observaciones,
@@ -736,6 +800,7 @@ router.get('/api/kardex/datos', async (req, res) => {
       FROM Dynamic_Kardex k
       LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
       LEFT JOIN Maestro_Segmentación s ON k.UsuarioAsignado = s.Identificación
+      LEFT JOIN Dynamic_Actas da ON da.IdActa = k.Acta
       ${listFilter.where}
       ORDER BY k.FechaMovimiento DESC, k.FechaRegistro DESC
       LIMIT 500
@@ -856,11 +921,13 @@ router.get('/api/kardex/articulo/:id', async (req, res) => {
         k.Cantidad,
         k.UsuarioAsignado,
         k.Acta,
+        da.Url_Acta AS UrlActa,
         k.ValorUnitario,
         k.UsuarioRegistro,
         k.Observaciones,
         k.FechaRegistro
       FROM Dynamic_Kardex k
+      LEFT JOIN Dynamic_Actas da ON da.IdActa = k.Acta
       WHERE ${where}
       ORDER BY k.FechaMovimiento DESC, k.FechaRegistro DESC
     `;
@@ -1465,7 +1532,6 @@ router.get('/api/categorias', async (req, res) => {
 // ==========================================
 // KARDEX MASIVO & PENDIENTE POR RECIBIR ENDPOINTS
 // ==========================================
-const { randomUUID } = require('crypto');
 
 // GET /api/kardex-lookups - returns articles, operations, regionals, categories
 // Regional/Operación se filtran según el acceso de Kardex del Rol del usuario (computarAccesoInventario).
@@ -1508,7 +1574,254 @@ router.get('/api/kardex-lookups', async (req, res) => {
   }
 });
 
-// POST /api/kardex/guardar-masivo - saves list of kardex rows
+// ==========================================
+// KARDEX MASIVO & PENDIENTE POR RECIBIR ENDPOINTS
+// ==========================================
+
+/**
+ * Genera el PDF del Acta de Ingreso y verificación de inventario (Id 87 / INVREC),
+ * lo sube a Google Cloud Storage y registra el documento en Maestro_docEmpresa.
+ */
+async function generarYGuardarActaRecepcionTransferencia({
+  order,
+  items,
+  usuarioReceptor,
+  colaboradorReceptor,
+  identificacionReceptor,
+  signatureBase64,
+  observacionesGenerales
+}) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+  const fechaDespachoStr = order.FechaDespacho ? new Date(order.FechaDespacho).toLocaleDateString('es-CO', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  }) : '—';
+
+  const fechaRecepcionStr = now.toLocaleDateString('es-CO', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  // Consultar nombre del colaborador que despachó si es posible
+  let colaboradorDespacha = order.UsuarioDespacha || '—';
+  try {
+    const [dRows] = await pool.execute(
+      'SELECT Colaborador FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+      [order.UsuarioDespacha]
+    );
+    if (dRows.length && dRows[0].Colaborador) {
+      colaboradorDespacha = `${dRows[0].Colaborador} (${order.UsuarioDespacha})`;
+    }
+  } catch (errDisp) {
+    console.warn('[inventario] Error consultando despachador:', errDisp.message);
+  }
+
+  // Filas de la tabla de artículos
+  let itemsRowsHtml = '';
+  let totalUnidadesEnviadas = 0;
+  let totalUnidadesRecibidas = 0;
+  let totalUnidadesDevueltas = 0;
+
+  items.forEach((item, idx) => {
+    const cantEnviada = item.CantidadDespachada !== undefined ? Number(item.CantidadDespachada) : Math.abs(Number(item.Cantidad) || 0);
+    const cantRecibida = item.CantidadRecibida !== undefined ? Number(item.CantidadRecibida) : cantEnviada;
+    const cantDevuelta = item.CantidadDevuelta !== undefined ? Number(item.CantidadDevuelta) : Math.max(0, cantEnviada - cantRecibida);
+
+    totalUnidadesEnviadas += cantEnviada;
+    totalUnidadesRecibidas += cantRecibida;
+    totalUnidadesDevueltas += cantDevuelta;
+
+    const novedadItem = item.Novedad 
+      ? `<span style="color: #c2410c; font-weight: bold;">⚠️ ${item.Novedad}</span>` 
+      : (cantDevuelta > 0 ? `<span style="color: #dc2626; font-weight: bold;">⚠️ Incompleto (-${cantDevuelta})</span>` : '<span style="color: #16a34a;">Conforme</span>');
+      
+    const imgHtml = item.Imagen 
+      ? `<img src="${item.Imagen}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;" alt="">` 
+      : `<span style="font-size: 1.2rem;">📦</span>`;
+
+    const devueltoHtml = cantDevuelta > 0 
+      ? `<span style="color: #dc2626; font-weight: bold;">-${cantDevuelta} (Retornado)</span>` 
+      : `<span style="color: #64748b;">0</span>`;
+
+    itemsRowsHtml += `
+      <tr>
+        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${idx + 1}</td>
+        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${imgHtml}</td>
+        <td style="border: 1px solid #ddd; padding: 6px; vertical-align: middle;">
+          <strong>${item.Articulo || 'Artículo'}</strong>
+          ${item.Referencia && item.Referencia !== '—' ? `<br><span style="font-size: 8pt; color: #666;">Ref: ${item.Referencia}</span>` : ''}
+          ${item.Talla && item.Talla !== '—' ? `<br><span style="font-size: 8pt; color: #666;">Talla: ${item.Talla}</span>` : ''}
+        </td>
+        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${item.Categoria || item.CategoriaArticulo || 'General'}</td>
+        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-weight: bold;">${cantEnviada}</td>
+        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-weight: bold; color: ${cantDevuelta > 0 ? '#ea580c' : '#16a34a'};">${cantRecibida}</td>
+        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-size: 8.5pt;">${devueltoHtml}</td>
+        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-size: 8.5pt;">${novedadItem}</td>
+      </tr>
+    `;
+  });
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; padding: 10px; color: #333;">
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+        <tr>
+          <td style="width: 130px; vertical-align: middle;">
+            <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height: 50px;" alt="LOG&SER">
+          </td>
+          <td style="text-align: center; font-size: 13pt; font-weight: bold; line-height: 1.4; color: #1e3c72; vertical-align: middle;">
+            ACTA DE INGRESO Y VERIFICACIÓN DE INVENTARIO<br>
+            <span style="font-size: 10pt; color: #555; font-weight: normal;">TRANSFERENCIA DE INVENTARIO ENTRE SEDES</span>
+          </td>
+        </tr>
+      </table>
+
+      <div style="margin-bottom: 16px; font-size: 9.5pt; line-height: 1.6; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="width: 50%; padding-bottom: 4px;"><strong>No. Pedido / Transferencia:</strong> ${order.Id}</td>
+            <td style="width: 50%; padding-bottom: 4px;"><strong>Regional:</strong> ${order.Regional || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding-bottom: 4px;"><strong>Sede / Operación Origen:</strong> ${order.OperacionOrigen || '—'}</td>
+            <td style="padding-bottom: 4px;"><strong>Sede / Operación Destino:</strong> ${order.OperacionDestino || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding-bottom: 4px;"><strong>Fecha Despacho (Envío):</strong> ${fechaDespachoStr}</td>
+            <td style="padding-bottom: 4px;"><strong>Fecha Recepción (Verificación):</strong> ${fechaRecepcionStr}</td>
+          </tr>
+          <tr>
+            <td style="padding-bottom: 4px;"><strong>Despachado Por:</strong> ${colaboradorDespacha}</td>
+            <td style="padding-bottom: 4px;"><strong>Recibido Por:</strong> ${colaboradorReceptor} (C.C. ${identificacionReceptor})</td>
+          </tr>
+          ${order.Observaciones ? `<tr><td colspan="2" style="padding-top: 4px;"><strong>Obs. Despacho:</strong> ${order.Observaciones}</td></tr>` : ''}
+          ${observacionesGenerales ? `<tr><td colspan="2" style="padding-top: 4px; color: #c2410c;"><strong>Novedades / Observaciones de Recepción:</strong> ${observacionesGenerales}</td></tr>` : ''}
+        </table>
+      </div>
+
+      <div style="margin-bottom: 8px; font-size: 10pt; font-weight: bold; color: #1e3c72;">
+        ARTÍCULOS RECIBIDOS Y VERIFICADOS EN FÍSICO:
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 24px;">
+        <thead>
+          <tr style="background-color: #e2e8f0;">
+            <th style="border: 1px solid #ddd; padding: 6px; width: 5%; text-align: center;">ÍTEM</th>
+            <th style="border: 1px solid #ddd; padding: 6px; width: 8%; text-align: center;">IMAGEN</th>
+            <th style="border: 1px solid #ddd; padding: 6px; width: 35%; text-align: left;">DESCRIPCIÓN DEL ARTÍCULO</th>
+            <th style="border: 1px solid #ddd; padding: 6px; width: 12%; text-align: center;">CATEGORÍA</th>
+            <th style="border: 1px solid #ddd; padding: 6px; width: 10%; text-align: center;">CANT. ENVIADA</th>
+            <th style="border: 1px solid #ddd; padding: 6px; width: 10%; text-align: center;">CANT. RECIBIDA</th>
+            <th style="border: 1px solid #ddd; padding: 6px; width: 10%; text-align: center;">DIF. RETORNADA</th>
+            <th style="border: 1px solid #ddd; padding: 6px; width: 10%; text-align: center;">ESTADO / NOVEDAD</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsRowsHtml}
+          <tr style="background-color: #f1f5f9; font-weight: bold;">
+            <td colspan="4" style="border: 1px solid #ddd; padding: 6px; text-align: right;">TOTALES:</td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">${totalUnidadesEnviadas}</td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: #16a34a;">${totalUnidadesRecibidas}</td>
+            <td style="border: 1px solid #ddd; padding: 6px; text-align: center; color: ${totalUnidadesDevueltas > 0 ? '#dc2626' : '#64748b'};">${totalUnidadesDevueltas}</td>
+            <td style="border: 1px solid #ddd; padding: 6px;"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="font-size: 8.5pt; color: #555; margin-bottom: 30px; text-align: justify; line-height: 1.4;">
+        Certifico mediante la presente acta que he recibido y verificado físicamente el estado y cantidad de los elementos relacionados en esta transferencia de inventario para la operación destino, dejando constancia de las novedades u observaciones indicadas anteriormente.
+      </div>
+
+      <div style="page-break-inside: avoid; margin-top: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="border-bottom: 1.5px solid #333; width: 280px; padding-bottom: 6px; margin-bottom: 6px;">
+          ${signatureBase64 ? `<img src="${signatureBase64}" style="max-height: 70px; max-width: 240px; object-fit: contain;" alt="Firma">` : '<div style="height: 50px;"></div>'}
+        </div>
+        <div style="font-size: 9.5pt; font-weight: bold; color: #1e3c72; text-transform: uppercase;">
+          FIRMA RESPONSABLE QUE RECIBE
+        </div>
+        <div style="font-size: 8.5pt; color: #555; margin-top: 2px;">
+          Nombre: ${colaboradorReceptor}<br>
+          C.C.: ${identificacionReceptor}
+        </div>
+      </div>
+    </div>
+  `;
+
+  const pdfBuffer = await generarPDF(htmlContent, {
+    margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }
+  });
+
+  // Consultar Prefijo para TipoDocumento = 87
+  let prefijo = 'INVREC';
+  try {
+    const [docRows] = await pool.execute(
+      'SELECT Prefijo FROM Config_Doc_Trabajador WHERE Id = 87 LIMIT 1'
+    );
+    if (docRows.length && docRows[0].Prefijo) {
+      prefijo = docRows[0].Prefijo.trim();
+    }
+  } catch (errPrefijo) {
+    console.warn('[inventario] Error consultando Prefijo Id 87:', errPrefijo.message);
+  }
+
+  const fileName = `${prefijo}.${timestamp}.pdf`;
+  const pdfUrl = await subirPDFConfirmacionInventario(fileName, pdfBuffer);
+
+  // Obtener Regional de la OperacionDestino
+  let regional = order.Regional || null;
+  try {
+    const [opRows] = await pool.execute(
+      'SELECT `REGIONAL` FROM `Maestro_Operaciones` WHERE `OPERACIÓN` = ? LIMIT 1',
+      [order.OperacionDestino]
+    );
+    if (opRows.length && opRows[0].REGIONAL) {
+      regional = opRows[0].REGIONAL;
+    }
+  } catch (errOp) {
+    console.warn('[inventario] Error consultando regional:', errOp.message);
+  }
+
+  // Insertar en Maestro_docEmpresa
+  const docEmpresaId = randomUUID();
+  const obsClean = observacionesGenerales ? String(observacionesGenerales).substring(0, 512) : (order.Observaciones ? String(order.Observaciones).substring(0, 512) : null);
+
+  try {
+    await pool.execute(
+      `INSERT INTO \`Maestro_docEmpresa\` (
+        \`id\`,
+        \`Validación\`,
+        \`Regional\`,
+        \`Operación\`,
+        \`TipoDocumento\`,
+        \`Prefijo\`,
+        \`Observaciones\`,
+        \`Visualizar\`,
+        \`Solicitud\`,
+        \`Justificacion_Solicitud\`,
+        \`FechaRegistro\`,
+        \`Usuario\`,
+        \`Url\`,
+        \`Usuario_Solicitud\`,
+        \`Estado_Solicitud\`
+      ) VALUES (?, 'PEND', ?, ?, '87', ?, ?, NULL, NULL, NULL, NOW(), ?, ?, NULL, NULL)`,
+      [
+        docEmpresaId,
+        regional,
+        order.OperacionDestino,
+        prefijo,
+        obsClean,
+        usuarioReceptor,
+        pdfUrl
+      ]
+    );
+  } catch (errDocEmp) {
+    console.error('[inventario] Error insertando en Maestro_docEmpresa:', errDocEmp);
+  }
+
+  return { pdfUrl, fileName, prefijo };
+}
+
+// POST /api/kardex/guardar-masivo - saves list of kardex rows and groups transfers under Kardex_Pendiente parent orders
 router.post('/api/kardex/guardar-masivo', async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -1522,21 +1835,107 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
 
     await conn.beginTransaction();
 
+    // Group transfers by Operacion (Origen) + OperacionDestino
+    const transferGroups = new Map();
+    const nonTransferMovs = [];
+
     for (const mov of movimientos) {
+      if (mov.TipoMovimiento === 'TRANSFERENCIA') {
+        const key = `${mov.Operacion || ''}|${mov.OperacionDestino || ''}`;
+        if (!transferGroups.has(key)) {
+          transferGroups.set(key, {
+            operacionOrigen: mov.Operacion,
+            operacionDestino: mov.OperacionDestino,
+            regional: mov.Regional || null,
+            fechaMovimiento: mov.FechaMovimiento || null,
+            observaciones: mov.Observaciones || null,
+            items: []
+          });
+        }
+        transferGroups.get(key).items.push(mov);
+      } else {
+        nonTransferMovs.push(mov);
+      }
+    }
+
+    // Process Transfer Groups
+    for (const [key, group] of transferGroups.entries()) {
+      const idKardexPendiente = `TR-${Date.now()}-${randomUUID().slice(0, 6)}`.toUpperCase();
+
+      // Retrieve regional of OperacionDestino if not available
+      let regional = group.regional;
+      if (!regional) {
+        const [[destOp]] = await conn.execute(
+          'SELECT DISTINCT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+          [group.operacionDestino]
+        );
+        regional = destOp?.REGIONAL || null;
+      }
+
+      let fechaInsert = group.fechaMovimiento ? new Date(group.fechaMovimiento) : new Date();
+      if (isNaN(fechaInsert.getTime())) fechaInsert = new Date();
+
+      // Insert parent record into Kardex_Pendiente
+      await conn.execute(
+        `INSERT INTO Kardex_Pendiente
+         (Id, IdKardexOriginal, Procesado, Procesando, Novedad, OperacionOrigen, OperacionDestino, Regional, FechaDespacho, UsuarioDespacha, UsuarioRecibe, FechaRecibido, Estado, Observaciones, NovedadGeneral, Url_Acta, Firma_Url)
+         VALUES (?, NULL, 0, 0, '', ?, ?, ?, ?, ?, NULL, NULL, 'PENDIENTE', ?, NULL, NULL, NULL)`,
+        [
+          idKardexPendiente,
+          group.operacionOrigen,
+          group.operacionDestino,
+          regional,
+          fechaInsert,
+          usuario,
+          group.observaciones
+        ]
+      );
+
+      // Insert each transfer item into Dynamic_Kardex
+      for (const mov of group.items) {
+        const idKardex = randomUUID().replace(/-/g, '').toLowerCase();
+        let qty = parseInt(mov.Cantidad);
+        if (isNaN(qty)) throw new Error(`Cantidad inválida para artículo con ID ${mov.IdArticulo}`);
+        qty = -Math.abs(qty); // Outgoing quantity from origin
+
+        const idArticulo = parseInt(mov.IdArticulo);
+        const valUnitario = mov.ValorUnitario ? parseFloat(mov.ValorUnitario) : 0;
+        const obs = mov.Observaciones || null;
+        const movFecha = mov.FechaMovimiento ? new Date(mov.FechaMovimiento) : fechaInsert;
+
+        await conn.execute(
+          `INSERT INTO Dynamic_Kardex
+           (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+            \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+            Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
+           VALUES (?, ?, 'TRANSFERENCIA', ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), ?, NULL)`,
+          [
+            idKardex,
+            isNaN(movFecha.getTime()) ? fechaInsert : movFecha,
+            regional,
+            group.operacionOrigen,
+            group.operacionDestino,
+            mov.Categoria || null,
+            idArticulo,
+            qty,
+            valUnitario,
+            usuario,
+            obs,
+            idKardexPendiente
+          ]
+        );
+      }
+    }
+
+    // Process Non-transfer movements
+    for (const mov of nonTransferMovs) {
       const idKardex = randomUUID().replace(/-/g, '').toLowerCase();
       const tipo = mov.TipoMovimiento;
       let qty = parseInt(mov.Cantidad);
-      if (isNaN(qty)) {
-        throw new Error(`Cantidad inválida para artículo con ID ${mov.IdArticulo}`);
-      }
-
-      if (tipo === 'TRANSFERENCIA') {
-        qty = -Math.abs(qty);
-      }
+      if (isNaN(qty)) throw new Error(`Cantidad inválida para artículo con ID ${mov.IdArticulo}`);
 
       const regional = mov.Regional || null;
       const operacion = mov.Operacion;
-      const opDestino = (tipo === 'TRANSFERENCIA') ? (mov.OperacionDestino || null) : null;
       const categoria = mov.Categoria || null;
       const idArticulo = parseInt(mov.IdArticulo);
       const valUnitario = mov.ValorUnitario ? parseFloat(mov.ValorUnitario) : 0;
@@ -1544,23 +1943,20 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
       const fechaMov = mov.FechaMovimiento || null;
 
       let fechaInsert = fechaMov ? new Date(fechaMov) : new Date();
-      if (isNaN(fechaInsert.getTime())) {
-        fechaInsert = new Date();
-      }
+      if (isNaN(fechaInsert.getTime())) fechaInsert = new Date();
 
       await conn.execute(
         `INSERT INTO Dynamic_Kardex
          (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
           \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
-          Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW())`,
+          Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
+         VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), NULL, NULL)`,
         [
           idKardex,
           fechaInsert,
           tipo,
           regional,
           operacion,
-          opDestino,
           categoria,
           idArticulo,
           qty,
@@ -1569,15 +1965,6 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
           obs
         ]
       );
-
-      if (tipo === 'TRANSFERENCIA') {
-        await conn.execute(
-          `INSERT INTO Kardex_Pendiente
-           (IdKardexOriginal, Procesado, Procesando, Novedad)
-           VALUES (?, 0, 0, '')`,
-          [idKardex]
-        );
-      }
     }
 
     await conn.commit();
@@ -1591,7 +1978,7 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
   }
 });
 
-// GET /api/kardex-pendiente - pending transfers view
+// GET /api/kardex-pendiente - pending transfers view grouped by transfer order
 router.get('/api/kardex-pendiente', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -1599,7 +1986,7 @@ router.get('/api/kardex-pendiente', async (req, res) => {
       return res.status(400).json({ error: 'usuario requerido' });
     }
 
-    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
@@ -1607,77 +1994,145 @@ router.get('/api/kardex-pendiente', async (req, res) => {
     const securityConds = ['kp.Procesado = 0'];
     const securityParams = [];
 
-    if (acceso.filtroCategorias) {
-      const ph = acceso.filtroCategorias.map(() => '?').join(',');
-      securityConds.push(`k.Categoria IN (${ph})`);
-      securityParams.push(...acceso.filtroCategorias);
-    }
-
     if (!acceso.sinFiltro) {
       if (!acceso.operacionesFiltro.length) {
         return res.json({ results: [] });
       }
       const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      securityConds.push(`k.OperaciónDestino IN (${ph})`);
-      securityParams.push(...acceso.operacionesFiltro);
+      securityConds.push(`(kp.OperacionDestino IN (${ph}) OR (kp.OperacionDestino IS NULL AND k.\`OperaciónDestino\` IN (${ph})))`);
+      securityParams.push(...acceso.operacionesFiltro, ...acceso.operacionesFiltro);
+    }
+
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      securityConds.push(`(k.Categoria IN (${ph}) OR k.Categoria IS NULL)`);
+      securityParams.push(...acceso.filtroCategorias);
     }
 
     const query = `
-      SELECT kp.IdKardexOriginal, kp.Procesado, kp.Procesando, kp.Novedad,
-             k.FechaMovimiento, k.Regional, k.\`Operación\` AS OperacionOrigen, k.OperaciónDestino,
-             k.Cantidad, k.UsuarioRegistro, k.Observaciones, k.ValorUnitario,
-             a.Articulo, a.Imagen, a.Categoria
+      SELECT 
+        kp.Id AS IdPedido,
+        kp.IdKardexOriginal,
+        kp.Procesado,
+        kp.Procesando,
+        kp.OperacionOrigen,
+        kp.OperacionDestino,
+        kp.Regional,
+        kp.FechaDespacho,
+        kp.UsuarioDespacha,
+        kp.Estado,
+        kp.Observaciones AS ObservacionesPedido,
+        kp.NovedadGeneral,
+        k.IdKardex,
+        k.IdArticulo,
+        k.FechaMovimiento,
+        k.Regional AS RegionalKardex,
+        k.\`Operación\` AS OpOrigenKardex,
+        k.\`OperaciónDestino\` AS OpDestinoKardex,
+        ABS(k.Cantidad) AS Cantidad,
+        k.ValorUnitario,
+        k.UsuarioRegistro,
+        k.Observaciones AS ObservacionesItem,
+        k.Novedad AS NovedadItem,
+        a.Articulo,
+        a.Imagen,
+        a.Categoria,
+        a.Talla,
+        a.Referencia
       FROM Kardex_Pendiente kp
-      JOIN Dynamic_Kardex k ON k.IdKardex = kp.IdKardexOriginal
+      LEFT JOIN Dynamic_Kardex k ON (k.Kpendiente = kp.Id OR (kp.IdKardexOriginal IS NOT NULL AND k.IdKardex = kp.IdKardexOriginal))
       LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
       WHERE ${securityConds.join(' AND ')}
-      ORDER BY k.FechaMovimiento DESC
+      ORDER BY kp.FechaDespacho DESC, k.FechaMovimiento DESC
     `;
 
     const [rows] = await pool.execute(query, securityParams);
-    res.json({ results: rows });
+
+    // Group rows into Orders
+    const ordersMap = new Map();
+
+    for (const row of rows) {
+      const orderId = row.IdPedido || row.IdKardexOriginal;
+      if (!ordersMap.has(orderId)) {
+        ordersMap.set(orderId, {
+          Id: orderId,
+          IdKardexOriginal: row.IdKardexOriginal,
+          Procesado: row.Procesado,
+          Procesando: row.Procesando,
+          OperacionOrigen: row.OperacionOrigen || row.OpOrigenKardex || '—',
+          OperacionDestino: row.OperacionDestino || row.OpDestinoKardex || '—',
+          Regional: row.Regional || row.RegionalKardex || '—',
+          FechaDespacho: row.FechaDespacho || row.FechaMovimiento,
+          UsuarioDespacha: row.UsuarioDespacha || row.UsuarioRegistro || '—',
+          Estado: row.Estado || 'PENDIENTE',
+          Observaciones: row.ObservacionesPedido || row.ObservacionesItem || '',
+          NovedadGeneral: row.NovedadGeneral || '',
+          items: []
+        });
+      }
+
+      if (row.IdKardex || row.IdArticulo) {
+        ordersMap.get(orderId).items.push({
+          IdKardex: row.IdKardex || row.IdKardexOriginal,
+          IdArticulo: row.IdArticulo,
+          Articulo: row.Articulo || 'Artículo sin nombre',
+          Imagen: row.Imagen || null,
+          Categoria: row.Categoria || 'General',
+          Talla: row.Talla || '—',
+          Referencia: row.Referencia || '—',
+          Cantidad: row.Cantidad || 0,
+          ValorUnitario: row.ValorUnitario || 0,
+          UsuarioRegistro: row.UsuarioRegistro,
+          Observaciones: row.ObservacionesItem || '',
+          Novedad: row.NovedadItem || ''
+        });
+      }
+    }
+
+    const results = Array.from(ordersMap.values()).map(order => {
+      const totalUnidades = order.items.reduce((sum, item) => sum + (Number(item.Cantidad) || 0), 0);
+      return {
+        ...order,
+        totalArticulos: order.items.length,
+        totalUnidades
+      };
+    });
+
+    res.json({ results });
   } catch (err) {
     console.error('[inventario] GET /api/kardex-pendiente error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// PATCH /api/kardex-pendiente/:id/novedad - register transfer novelty
+// PATCH /api/kardex-pendiente/:id/novedad - register transfer novelty (order or item level)
 router.patch('/api/kardex-pendiente/:id/novedad', async (req, res) => {
   try {
     const { id } = req.params;
-    const { usuario, novedad } = req.body;
+    const { usuario, novedad, idKardex } = req.body;
 
     if (!usuario) {
       return res.status(400).json({ error: 'usuario requerido' });
     }
 
-    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    const [[registro]] = await pool.execute(
-      `SELECT k.\`OperaciónDestino\` AS OperacionDestino, k.Categoria
-       FROM Kardex_Pendiente kp
-       JOIN Dynamic_Kardex k ON k.IdKardex = kp.IdKardexOriginal
-       WHERE kp.IdKardexOriginal = ?`,
-      [id]
-    );
-    if (!registro) {
-      return res.status(404).json({ error: 'Registro pendiente no encontrado' });
+    if (idKardex) {
+      // Update item novelty in Dynamic_Kardex
+      await pool.execute(
+        'UPDATE Dynamic_Kardex SET Novedad = ? WHERE IdKardex = ?',
+        [novedad || '', idKardex]
+      );
+    } else {
+      // Update general novelty on Kardex_Pendiente
+      await pool.execute(
+        'UPDATE Kardex_Pendiente SET NovedadGeneral = ? WHERE Id = ? OR IdKardexOriginal = ?',
+        [novedad || '', id, id]
+      );
     }
-    if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(registro.OperacionDestino)) {
-      return res.status(403).json({ error: 'Usuario no autorizado para este registro' });
-    }
-    if (acceso.filtroCategorias && !acceso.filtroCategorias.includes(registro.Categoria)) {
-      return res.status(403).json({ error: 'Usuario no autorizado para este registro' });
-    }
-
-    await pool.execute(
-      'UPDATE Kardex_Pendiente SET Novedad = ? WHERE IdKardexOriginal = ?',
-      [novedad || '', id]
-    );
 
     res.json({ ok: true, message: 'Novedad registrada exitosamente.' });
   } catch (err) {
@@ -1686,94 +2141,692 @@ router.patch('/api/kardex-pendiente/:id/novedad', async (req, res) => {
   }
 });
 
-// POST /api/kardex-pendiente/recibir-masivo - massive transfer receive
-router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
+// POST /api/kardex-pendiente/recibir-orden - receive a transfer order with custom quantities, return diff to origin, signature and generate verification acta
+router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { usuario, ids } = req.body;
-    if (!usuario) {
-      return res.status(400).json({ error: 'usuario requerido' });
-    }
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: 'Debe seleccionar al menos un registro' });
+    const {
+      usuario,
+      idPedido,
+      cantidadesRecibidas, // { [idKardex]: number }
+      novedadesItems, // { [idKardex]: "novedad..." }
+      observacionesGenerales,
+      firmaBase64,
+      useRecentSignature
+    } = req.body;
+
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!idPedido) return res.status(400).json({ error: 'idPedido requerido' });
+
+    const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    // Consultar información del receptor (Maestro_Usuarios y Maestro_Segmentación)
+    const [uRows] = await conn.execute(
+      'SELECT Colaborador, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+      [usuario]
+    );
+    if (!uRows.length) return res.status(404).json({ error: 'Usuario receptor no encontrado' });
+
+    const colaboradorReceptor = uRows[0].Colaborador || usuario;
+    let identificacionReceptor = usuario;
+    try {
+      const [segRows] = await conn.execute(
+        'SELECT `Identificación` FROM `Maestro_Segmentación` WHERE TRIM(Trabajador) = TRIM(?) LIMIT 1',
+        [colaboradorReceptor]
+      );
+      if (segRows.length && segRows[0].Identificación) {
+        identificacionReceptor = segRows[0].Identificación;
+      } else if (colaboradorReceptor.includes('**')) {
+        identificacionReceptor = colaboradorReceptor.split('**')[0].trim();
+      }
+    } catch (errSeg) {
+      console.warn('[inventario] Error consultando identificación en Maestro_Segmentación:', errSeg.message);
     }
 
-    const acceso = await computarAccesoInventario(usuario, 'Inventario');
-    if (!acceso) {
-      return res.status(403).json({ error: 'Usuario no autorizado' });
+    // Manejo de firma
+    let signatureUrl = null;
+    let signatureBase64 = null;
+
+    if (firmaBase64 && firmaBase64.startsWith('data:image')) {
+      signatureUrl = await subirFirma(identificacionReceptor, firmaBase64);
+      signatureBase64 = firmaBase64;
+    } else if (useRecentSignature) {
+      signatureUrl = await obtenerUrlFirmaReciente(identificacionReceptor);
+      signatureBase64 = await obtenerFirmaBase64Reciente(identificacionReceptor);
+    }
+
+    if (!signatureUrl || !signatureBase64) {
+      return res.status(400).json({ error: 'Se requiere la firma digital del responsable que recibe.' });
     }
 
     await conn.beginTransaction();
 
-    for (const idOriginal of ids) {
-      const [[pendiente]] = await conn.execute(
-        'SELECT * FROM Kardex_Pendiente WHERE IdKardexOriginal = ? LIMIT 1 FOR UPDATE',
-        [idOriginal]
+    // 1. Obtener pedido pendiente y bloquear fila
+    const [[order]] = await conn.execute(
+      'SELECT * FROM Kardex_Pendiente WHERE (Id = ? OR IdKardexOriginal = ?) LIMIT 1 FOR UPDATE',
+      [idPedido, idPedido]
+    );
+
+    if (!order) {
+      throw new Error(`El pedido de transferencia ${idPedido} no existe.`);
+    }
+    if (order.Procesado) {
+      throw new Error(`El pedido ${idPedido} ya fue recibido previamente.`);
+    }
+
+    // 2. Obtener los ítems transferidos
+    const [items] = await conn.execute(
+      `SELECT k.*, a.Articulo, a.Imagen, a.Categoria AS CategoriaArticulo, a.Talla, a.Referencia
+       FROM Dynamic_Kardex k
+       LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
+       WHERE (k.Kpendiente = ? OR (k.IdKardex = ? AND k.TipoMovimiento = 'TRANSFERENCIA'))
+         AND k.Cantidad < 0
+       FOR UPDATE`,
+      [order.Id, order.IdKardexOriginal || order.Id]
+    );
+
+    if (!items.length) {
+      throw new Error(`No se encontraron artículos vinculados al pedido ${idPedido}.`);
+    }
+
+    const operacionDestino = order.OperacionDestino || items[0].OperaciónDestino;
+    if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacionDestino)) {
+      throw new Error(`No estás autorizado para recibir en la operación destino: ${operacionDestino}`);
+    }
+
+    // Regional de destino
+    const [[destOp]] = await conn.execute(
+      'SELECT DISTINCT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+      [operacionDestino]
+    );
+    const destRegional = destOp?.REGIONAL || order.Regional || items[0].Regional;
+
+    // Regional de origen (para devoluciones por faltantes)
+    let origRegional = order.Regional || items[0].Regional;
+    if (order.OperacionOrigen) {
+      const [[origOp]] = await conn.execute(
+        'SELECT DISTINCT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+        [order.OperacionOrigen]
       );
-      if (!pendiente || pendiente.Procesado) {
-        throw new Error(`El registro ${idOriginal} ya fue procesado o no existe`);
+      if (origOp?.REGIONAL) origRegional = origOp.REGIONAL;
+    }
+
+    // 3. Procesar cada ítem: entrada a destino y devolución automática a origen si hay diferencia
+    const itemsParaActa = [];
+
+    for (const item of items) {
+      const novedadItem = (novedadesItems && novedadesItems[item.IdKardex]) 
+        ? String(novedadesItems[item.IdKardex]).trim() 
+        : (item.Novedad || '');
+
+      if (novedadItem) {
+        await conn.execute(
+          'UPDATE Dynamic_Kardex SET Novedad = ? WHERE IdKardex = ?',
+          [novedadItem, item.IdKardex]
+        );
       }
 
-      const [[originalKardex]] = await conn.execute(
-        'SELECT * FROM Dynamic_Kardex WHERE IdKardex = ? LIMIT 1 FOR UPDATE',
-        [idOriginal]
-      );
-      if (!originalKardex) {
-        throw new Error(`Registro original ${idOriginal} no encontrado`);
+      const cantDespachada = Math.abs(item.Cantidad);
+      let cantRecibida = cantDespachada;
+      if (cantidadesRecibidas && cantidadesRecibidas[item.IdKardex] !== undefined) {
+        const parsed = parseInt(cantidadesRecibidas[item.IdKardex]);
+        if (!isNaN(parsed) && parsed >= 0) {
+          cantRecibida = Math.min(cantDespachada, parsed);
+        }
+      }
+      const cantDevuelta = cantDespachada - cantRecibida;
+
+      // Inserción en Destino (solo si cantRecibida > 0)
+      if (cantRecibida > 0) {
+        const newIdKardex = randomUUID().replace(/-/g, '').toLowerCase();
+        const obsItem = novedadItem ? `RECEPCION TRANSFERENCIA - NOVEDAD: ${novedadItem}` : 'GENERADO POR EL SISTEMA - RECEPCION TRANSFERENCIA';
+
+        await conn.execute(
+          `INSERT INTO Dynamic_Kardex
+           (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+            \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+            Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
+           VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), ?, ?)`,
+          [
+            newIdKardex,
+            destRegional,
+            operacionDestino,
+            item.Categoria || item.CategoriaArticulo || 'General',
+            item.IdArticulo,
+            cantRecibida,
+            item.ValorUnitario || 0,
+            usuario,
+            obsItem,
+            order.Id,
+            novedadItem || null
+          ]
+        );
       }
 
-      if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(originalKardex.OperaciónDestino)) {
-        throw new Error(`No autorizado para recibir el registro ${idOriginal}`);
+      // Devolución automática al origen si hubo faltante (cantDevuelta > 0)
+      if (cantDevuelta > 0) {
+        const idKardexDev = randomUUID().replace(/-/g, '').toLowerCase();
+        const obsDev = `DEVOLUCION AUTOMATICA POR NOVEDAD EN TRANSFERENCIA ${order.Id}${novedadItem ? ': ' + novedadItem : ''}`;
+        const novedadDev = novedadItem ? `Devolución por novedad: ${novedadItem}` : `Devolución automática por faltante (${cantDevuelta} unds)`;
+
+        await conn.execute(
+          `INSERT INTO Dynamic_Kardex
+           (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+            \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+            Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
+           VALUES (?, NOW(), 'TRANSFERENCIA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), ?, ?)`,
+          [
+            idKardexDev,
+            origRegional,
+            order.OperacionOrigen,
+            item.Categoria || item.CategoriaArticulo || 'General',
+            item.IdArticulo,
+            cantDevuelta, // Entrada positiva al origen
+            item.ValorUnitario || 0,
+            usuario,
+            obsDev,
+            order.Id,
+            novedadDev
+          ]
+        );
       }
-      if (acceso.filtroCategorias && !acceso.filtroCategorias.includes(originalKardex.Categoria)) {
-        throw new Error(`No autorizado para recibir el registro ${idOriginal}`);
+
+      itemsParaActa.push({
+        ...item,
+        CantidadDespachada: cantDespachada,
+        CantidadRecibida: cantRecibida,
+        CantidadDevuelta: cantDevuelta,
+        Novedad: novedadItem
+      });
+    }
+
+    // 4. Actualizar Kardex_Pendiente
+    await conn.execute(
+      `UPDATE Kardex_Pendiente
+       SET Estado = 'RECIBIDO',
+           Procesado = 1,
+           UsuarioRecibe = ?,
+           FechaRecibido = NOW(),
+           NovedadGeneral = ?,
+           Firma_Url = ?
+       WHERE Id = ?`,
+      [
+        usuario,
+        observacionesGenerales || null,
+        signatureUrl,
+        order.Id
+      ]
+    );
+
+    // 5. Generar PDF "Acta de Ingreso y verificación de inventario" y subir a Storage
+    const orderParaActa = {
+      ...order,
+      OperacionDestino: operacionDestino,
+      Regional: destRegional
+    };
+
+    const { pdfUrl } = await generarYGuardarActaRecepcionTransferencia({
+      order: orderParaActa,
+      items: itemsParaActa,
+      usuarioReceptor: usuario,
+      colaboradorReceptor,
+      identificacionReceptor,
+      signatureBase64,
+      observacionesGenerales
+    });
+
+    // Guardar Url_Acta en Kardex_Pendiente
+    await conn.execute(
+      'UPDATE Kardex_Pendiente SET Url_Acta = ? WHERE Id = ?',
+      [pdfUrl, order.Id]
+    );
+
+    await conn.commit();
+    res.json({
+      success: true,
+      message: 'Transferencia recibida exitosamente y Acta de Ingreso generada.',
+      pdfUrl
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[inventario] POST /api/kardex-pendiente/recibir-orden error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// POST /api/kardex-pendiente/recibir-masivo - massive reception of multiple transfer orders
+router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const {
+      usuario,
+      ids,
+      cantidadesRecibidas,
+      novedadesItems,
+      observacionesGenerales,
+      firmaBase64,
+      useRecentSignature
+    } = req.body;
+
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Debe seleccionar al menos un pedido para recibir' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    // Consultar información del receptor (Maestro_Usuarios y Maestro_Segmentación)
+    const [uRows] = await conn.execute(
+      'SELECT Colaborador, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+      [usuario]
+    );
+    if (!uRows.length) return res.status(404).json({ error: 'Usuario receptor no encontrado' });
+
+    const colaboradorReceptor = uRows[0].Colaborador || usuario;
+    let identificacionReceptor = usuario;
+    try {
+      const [segRows] = await conn.execute(
+        'SELECT `Identificación` FROM `Maestro_Segmentación` WHERE TRIM(Trabajador) = TRIM(?) LIMIT 1',
+        [colaboradorReceptor]
+      );
+      if (segRows.length && segRows[0].Identificación) {
+        identificacionReceptor = segRows[0].Identificación;
+      } else if (colaboradorReceptor.includes('**')) {
+        identificacionReceptor = colaboradorReceptor.split('**')[0].trim();
+      }
+    } catch (errSeg) {
+      console.warn('[inventario] Error consultando identificación en Maestro_Segmentación:', errSeg.message);
+    }
+
+    // Manejo de firma
+    let signatureUrl = null;
+    let signatureBase64 = null;
+
+    if (firmaBase64 && firmaBase64.startsWith('data:image')) {
+      signatureUrl = await subirFirma(identificacionReceptor, firmaBase64);
+      signatureBase64 = firmaBase64;
+    } else if (useRecentSignature) {
+      signatureUrl = await obtenerUrlFirmaReciente(identificacionReceptor);
+      signatureBase64 = await obtenerFirmaBase64Reciente(identificacionReceptor);
+    }
+
+    if (!signatureUrl || !signatureBase64) {
+      return res.status(400).json({ error: 'Se requiere la firma digital del responsable que recibe.' });
+    }
+
+    await conn.beginTransaction();
+
+    const pdfUrlsGeneradas = [];
+
+    for (const idPedido of ids) {
+      const [[order]] = await conn.execute(
+        'SELECT * FROM Kardex_Pendiente WHERE (Id = ? OR IdKardexOriginal = ?) LIMIT 1 FOR UPDATE',
+        [idPedido, idPedido]
+      );
+
+      if (!order || order.Procesado) continue;
+
+      const [items] = await conn.execute(
+        `SELECT k.*, a.Articulo, a.Imagen, a.Categoria AS CategoriaArticulo, a.Talla, a.Referencia
+         FROM Dynamic_Kardex k
+         LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
+         WHERE (k.Kpendiente = ? OR (k.IdKardex = ? AND k.TipoMovimiento = 'TRANSFERENCIA'))
+           AND k.Cantidad < 0
+         FOR UPDATE`,
+        [order.Id, order.IdKardexOriginal || order.Id]
+      );
+
+      if (!items.length) continue;
+
+      const operacionDestino = order.OperacionDestino || items[0].OperaciónDestino;
+      if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacionDestino)) {
+        continue;
       }
 
       const [[destOp]] = await conn.execute(
         'SELECT DISTINCT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
-        [originalKardex.OperaciónDestino]
+        [operacionDestino]
       );
-      const destRegional = destOp?.REGIONAL || originalKardex.Regional;
+      const destRegional = destOp?.REGIONAL || order.Regional || items[0].Regional;
 
-      const newIdKardex = randomUUID().replace(/-/g, '').toLowerCase();
+      // Regional de origen (para devoluciones)
+      let origRegional = order.Regional || items[0].Regional;
+      if (order.OperacionOrigen) {
+        const [[origOp]] = await conn.execute(
+          'SELECT DISTINCT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+          [order.OperacionOrigen]
+        );
+        if (origOp?.REGIONAL) origRegional = origOp.REGIONAL;
+      }
+
+      const itemsParaActa = [];
+
+      for (const item of items) {
+        const novedadItem = (novedadesItems && novedadesItems[item.IdKardex]) 
+          ? String(novedadesItems[item.IdKardex]).trim() 
+          : (item.Novedad || '');
+
+        if (novedadItem) {
+          await conn.execute(
+            'UPDATE Dynamic_Kardex SET Novedad = ? WHERE IdKardex = ?',
+            [novedadItem, item.IdKardex]
+          );
+        }
+
+        const cantDespachada = Math.abs(item.Cantidad);
+        let cantRecibida = cantDespachada;
+        if (cantidadesRecibidas && cantidadesRecibidas[item.IdKardex] !== undefined) {
+          const parsed = parseInt(cantidadesRecibidas[item.IdKardex]);
+          if (!isNaN(parsed) && parsed >= 0) {
+            cantRecibida = Math.min(cantDespachada, parsed);
+          }
+        }
+        const cantDevuelta = cantDespachada - cantRecibida;
+
+        // Inserción en Destino (si cantRecibida > 0)
+        if (cantRecibida > 0) {
+          const newIdKardex = randomUUID().replace(/-/g, '').toLowerCase();
+          const obsItem = novedadItem ? `RECEPCION TRANSFERENCIA - NOVEDAD: ${novedadItem}` : 'GENERADO POR EL SISTEMA - RECEPCION TRANSFERENCIA';
+
+          await conn.execute(
+            `INSERT INTO Dynamic_Kardex
+             (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+              \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+              Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
+             VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), ?, ?)`,
+            [
+              newIdKardex,
+              destRegional,
+              operacionDestino,
+              item.Categoria || item.CategoriaArticulo || 'General',
+              item.IdArticulo,
+              cantRecibida,
+              item.ValorUnitario || 0,
+              usuario,
+              obsItem,
+              order.Id,
+              novedadItem || null
+            ]
+          );
+        }
+
+        // Devolución automática al origen si hubo faltante (cantDevuelta > 0)
+        if (cantDevuelta > 0) {
+          const idKardexDev = randomUUID().replace(/-/g, '').toLowerCase();
+          const obsDev = `DEVOLUCION AUTOMATICA POR NOVEDAD EN TRANSFERENCIA ${order.Id}${novedadItem ? ': ' + novedadItem : ''}`;
+          const novedadDev = novedadItem ? `Devolución por novedad: ${novedadItem}` : `Devolución automática por faltante (${cantDevuelta} unds)`;
+
+          await conn.execute(
+            `INSERT INTO Dynamic_Kardex
+             (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+              \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+              Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
+             VALUES (?, NOW(), 'TRANSFERENCIA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), ?, ?)`,
+            [
+              idKardexDev,
+              origRegional,
+              order.OperacionOrigen,
+              item.Categoria || item.CategoriaArticulo || 'General',
+              item.IdArticulo,
+              cantDevuelta,
+              item.ValorUnitario || 0,
+              usuario,
+              obsDev,
+              order.Id,
+              novedadDev
+            ]
+          );
+        }
+
+        itemsParaActa.push({
+          ...item,
+          CantidadDespachada: cantDespachada,
+          CantidadRecibida: cantRecibida,
+          CantidadDevuelta: cantDevuelta,
+          Novedad: novedadItem
+        });
+      }
 
       await conn.execute(
-        `INSERT INTO Dynamic_Kardex
-         (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
-          \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
-          Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro)
-         VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW())`,
+        `UPDATE Kardex_Pendiente
+         SET Estado = 'RECIBIDO',
+             Procesado = 1,
+             UsuarioRecibe = ?,
+             FechaRecibido = NOW(),
+             NovedadGeneral = ?,
+             Firma_Url = ?
+         WHERE Id = ?`,
         [
-          newIdKardex,
-          destRegional,
-          originalKardex.OperaciónDestino,
-          originalKardex.Categoria,
-          originalKardex.IdArticulo,
-          Math.abs(originalKardex.Cantidad),
-          originalKardex.ValorUnitario || 0,
           usuario,
-          'GENERADO POR EL SISTEMA - RECEPCION TRANSFERENCIA'
+          observacionesGenerales || null,
+          signatureUrl,
+          order.Id
         ]
       );
 
+      const orderParaActa = {
+        ...order,
+        OperacionDestino: operacionDestino,
+        Regional: destRegional
+      };
+
+      const { pdfUrl } = await generarYGuardarActaRecepcionTransferencia({
+        order: orderParaActa,
+        items: itemsParaActa,
+        usuarioReceptor: usuario,
+        colaboradorReceptor,
+        identificacionReceptor,
+        signatureBase64,
+        observacionesGenerales
+      });
+
       await conn.execute(
-        'UPDATE Kardex_Pendiente SET Procesado = 1 WHERE IdKardexOriginal = ?',
-        [idOriginal]
+        'UPDATE Kardex_Pendiente SET Url_Acta = ? WHERE Id = ?',
+        [pdfUrl, order.Id]
       );
-      await conn.execute(
-        'DELETE FROM Kardex_Pendiente WHERE IdKardexOriginal = ?',
-        [idOriginal]
-      );
+
+      pdfUrlsGeneradas.push({ idPedido: order.Id, pdfUrl });
     }
 
     await conn.commit();
-    res.json({ message: 'Registros recibidos y agregados al Kardex exitosamente.' });
+    res.json({
+      success: true,
+      message: `${pdfUrlsGeneradas.length} pedidos de transferencia recibidos exitosamente y Actas generadas.`,
+      actas: pdfUrlsGeneradas
+    });
   } catch (err) {
     await conn.rollback();
     console.error('[inventario] POST /api/kardex-pendiente/recibir-masivo error:', err);
     res.status(500).json({ error: err.message });
   } finally {
     conn.release();
+  }
+});
+
+// GET /api/kardex-pendiente/historial - received transfers history
+router.get('/api/kardex-pendiente/historial', async (req, res) => {
+  try {
+    const { usuario, regional, operacion, fechaInicio, fechaFin, search } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const conds = ['kp.Procesado = 1'];
+    const params = [];
+
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.length) {
+        return res.json({ results: [] });
+      }
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      conds.push(`(kp.OperacionDestino IN (${ph}) OR (kp.OperacionDestino IS NULL AND k.\`OperaciónDestino\` IN (${ph})))`);
+      params.push(...acceso.operacionesFiltro, ...acceso.operacionesFiltro);
+    }
+
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      conds.push(`(k.Categoria IN (${ph}) OR k.Categoria IS NULL)`);
+      params.push(...acceso.filtroCategorias);
+    }
+
+    if (regional) {
+      conds.push('kp.Regional = ?');
+      params.push(regional);
+    }
+
+    if (operacion) {
+      conds.push('kp.OperacionDestino = ?');
+      params.push(operacion);
+    }
+
+    if (fechaInicio) {
+      conds.push('DATE(kp.FechaRecibido) >= ?');
+      params.push(fechaInicio);
+    }
+
+    if (fechaFin) {
+      conds.push('DATE(kp.FechaRecibido) <= ?');
+      params.push(fechaFin);
+    }
+
+    const query = `
+      SELECT 
+        kp.Id AS IdPedido,
+        kp.IdKardexOriginal,
+        kp.Procesado,
+        kp.OperacionOrigen,
+        kp.OperacionDestino,
+        kp.Regional,
+        kp.FechaDespacho,
+        kp.UsuarioDespacha,
+        kp.UsuarioRecibe,
+        kp.FechaRecibido,
+        kp.Estado,
+        kp.Observaciones AS ObservacionesPedido,
+        kp.NovedadGeneral,
+        kp.Url_Acta,
+        kp.Firma_Url,
+        k.IdKardex,
+        k.IdArticulo,
+        k.TipoMovimiento,
+        k.Regional AS RegionalKardex,
+        k.\`Operación\` AS OpKardex,
+        k.Cantidad,
+        k.ValorUnitario,
+        k.UsuarioRegistro,
+        k.Observaciones AS ObservacionesItem,
+        k.Novedad AS NovedadItem,
+        a.Articulo,
+        a.Imagen,
+        a.Categoria,
+        a.Talla,
+        a.Referencia
+      FROM Kardex_Pendiente kp
+      LEFT JOIN Dynamic_Kardex k ON (k.Kpendiente = kp.Id OR (kp.IdKardexOriginal IS NOT NULL AND k.IdKardex = kp.IdKardexOriginal))
+      LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
+      WHERE ${conds.join(' AND ')}
+      ORDER BY kp.FechaRecibido DESC, kp.FechaDespacho DESC
+    `;
+
+    const [rows] = await pool.execute(query, params);
+
+    const ordersMap = new Map();
+
+    for (const row of rows) {
+      const orderId = row.IdPedido || row.IdKardexOriginal;
+      if (!ordersMap.has(orderId)) {
+        ordersMap.set(orderId, {
+          Id: orderId,
+          IdKardexOriginal: row.IdKardexOriginal,
+          Procesado: row.Procesado,
+          OperacionOrigen: row.OperacionOrigen || '—',
+          OperacionDestino: row.OperacionDestino || '—',
+          Regional: row.Regional || row.RegionalKardex || '—',
+          FechaDespacho: row.FechaDespacho,
+          FechaRecibido: row.FechaRecibido,
+          UsuarioDespacha: row.UsuarioDespacha || '—',
+          UsuarioRecibe: row.UsuarioRecibe || '—',
+          Estado: row.Estado || 'RECIBIDO',
+          Observaciones: row.ObservacionesPedido || '',
+          NovedadGeneral: row.NovedadGeneral || '',
+          Url_Acta: row.Url_Acta || null,
+          Firma_Url: row.Firma_Url || null,
+          itemsDespachados: [],
+          itemsRecibidos: [],
+          itemsDevueltos: []
+        });
+      }
+
+      const ord = ordersMap.get(orderId);
+      if (row.IdKardex || row.IdArticulo) {
+        const itemObj = {
+          IdKardex: row.IdKardex,
+          IdArticulo: row.IdArticulo,
+          Articulo: row.Articulo || 'Artículo sin nombre',
+          Imagen: row.Imagen || null,
+          Categoria: row.Categoria || 'General',
+          Talla: row.Talla || '—',
+          Referencia: row.Referencia || '—',
+          Cantidad: Number(row.Cantidad) || 0,
+          TipoMovimiento: row.TipoMovimiento,
+          Operacion: row.OpKardex,
+          Observaciones: row.ObservacionesItem || '',
+          Novedad: row.NovedadItem || ''
+        };
+
+        if (row.Cantidad < 0) {
+          ord.itemsDespachados.push(itemObj);
+        } else if (row.TipoMovimiento === 'ENTRADA') {
+          ord.itemsRecibidos.push(itemObj);
+        } else if (row.TipoMovimiento === 'TRANSFERENCIA' && row.OpKardex === ord.OperacionOrigen) {
+          ord.itemsDevueltos.push(itemObj);
+        }
+      }
+    }
+
+    let results = Array.from(ordersMap.values()).map(order => {
+      const totalEnviadas = order.itemsDespachados.reduce((s, it) => s + Math.abs(it.Cantidad), 0);
+      const totalRecibidas = order.itemsRecibidos.reduce((s, it) => s + Math.abs(it.Cantidad), 0);
+      const totalDevueltas = order.itemsDevueltos.reduce((s, it) => s + Math.abs(it.Cantidad), 0);
+      const totalArticulos = order.itemsDespachados.length || order.itemsRecibidos.length;
+
+      return {
+        ...order,
+        totalArticulos,
+        totalEnviadas,
+        totalRecibidas,
+        totalDevueltas
+      };
+    });
+
+    if (search && search.trim()) {
+      const s = search.trim().toLowerCase();
+      results = results.filter(o => 
+        (o.Id || '').toLowerCase().includes(s) ||
+        (o.OperacionOrigen || '').toLowerCase().includes(s) ||
+        (o.OperacionDestino || '').toLowerCase().includes(s) ||
+        (o.UsuarioRecibe || '').toLowerCase().includes(s) ||
+        (o.UsuarioDespacha || '').toLowerCase().includes(s) ||
+        (o.Observaciones || '').toLowerCase().includes(s) ||
+        (o.NovedadGeneral || '').toLowerCase().includes(s) ||
+        o.itemsDespachados.some(it => (it.Articulo || '').toLowerCase().includes(s)) ||
+        o.itemsRecibidos.some(it => (it.Articulo || '').toLowerCase().includes(s))
+      );
+    }
+
+    res.json({ results, total: results.length });
+  } catch (err) {
+    console.error('[inventario] GET /api/kardex-pendiente/historial error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
