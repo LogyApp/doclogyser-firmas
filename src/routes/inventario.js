@@ -1902,13 +1902,14 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
         const valUnitario = mov.ValorUnitario ? parseFloat(mov.ValorUnitario) : 0;
         const obs = mov.Observaciones || null;
         const movFecha = mov.FechaMovimiento ? new Date(mov.FechaMovimiento) : fechaInsert;
+        const usrAsignado = mov.UsuarioAsignado ? String(mov.UsuarioAsignado).trim() : null;
 
         await conn.execute(
           `INSERT INTO Dynamic_Kardex
            (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
             \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
             Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
-           VALUES (?, ?, 'TRANSFERENCIA', ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), ?, NULL)`,
+           VALUES (?, ?, 'TRANSFERENCIA', ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NOW(), ?, NULL)`,
           [
             idKardex,
             isNaN(movFecha.getTime()) ? fechaInsert : movFecha,
@@ -1918,6 +1919,7 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
             mov.Categoria || null,
             idArticulo,
             qty,
+            usrAsignado,
             valUnitario,
             usuario,
             obs,
@@ -1941,6 +1943,7 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
       const valUnitario = mov.ValorUnitario ? parseFloat(mov.ValorUnitario) : 0;
       const obs = mov.Observaciones || null;
       const fechaMov = mov.FechaMovimiento || null;
+      const usrAsignado = mov.UsuarioAsignado ? String(mov.UsuarioAsignado).trim() : null;
 
       let fechaInsert = fechaMov ? new Date(fechaMov) : new Date();
       if (isNaN(fechaInsert.getTime())) fechaInsert = new Date();
@@ -1950,7 +1953,7 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
          (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
           \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
           Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
-         VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), NULL, NULL)`,
+         VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL, ?, ?, ?, NOW(), NULL, NULL)`,
         [
           idKardex,
           fechaInsert,
@@ -1960,6 +1963,7 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
           categoria,
           idArticulo,
           qty,
+          usrAsignado,
           valUnitario,
           usuario,
           obs
@@ -2281,13 +2285,14 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
       if (cantRecibida > 0) {
         const newIdKardex = randomUUID().replace(/-/g, '').toLowerCase();
         const obsItem = novedadItem ? `RECEPCION TRANSFERENCIA - NOVEDAD: ${novedadItem}` : 'GENERADO POR EL SISTEMA - RECEPCION TRANSFERENCIA';
+        const usrAsignado = item.UsuarioAsignado ? String(item.UsuarioAsignado).trim() : null;
 
         await conn.execute(
           `INSERT INTO Dynamic_Kardex
            (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
             \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
             Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
-           VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), ?, ?)`,
+           VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, ?, NULL, ?, ?, ?, NOW(), ?, ?)`,
           [
             newIdKardex,
             destRegional,
@@ -2295,6 +2300,7 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
             item.Categoria || item.CategoriaArticulo || 'General',
             item.IdArticulo,
             cantRecibida,
+            usrAsignado,
             item.ValorUnitario || 0,
             usuario,
             obsItem,
@@ -2531,13 +2537,14 @@ router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
         if (cantRecibida > 0) {
           const newIdKardex = randomUUID().replace(/-/g, '').toLowerCase();
           const obsItem = novedadItem ? `RECEPCION TRANSFERENCIA - NOVEDAD: ${novedadItem}` : 'GENERADO POR EL SISTEMA - RECEPCION TRANSFERENCIA';
+          const usrAsignado = item.UsuarioAsignado ? String(item.UsuarioAsignado).trim() : null;
 
           await conn.execute(
             `INSERT INTO Dynamic_Kardex
              (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
               \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
               Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
-             VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), ?, ?)`,
+             VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, ?, NULL, ?, ?, ?, NOW(), ?, ?)`,
             [
               newIdKardex,
               destRegional,
@@ -2545,6 +2552,7 @@ router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
               item.Categoria || item.CategoriaArticulo || 'General',
               item.IdArticulo,
               cantRecibida,
+              usrAsignado,
               item.ValorUnitario || 0,
               usuario,
               obsItem,

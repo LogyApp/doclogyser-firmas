@@ -2125,6 +2125,7 @@
           <table class="history-table">
             <thead>
               <tr>
+                <th style="width: 130px; text-align: center;">Acta PDF</th>
                 <th style="width: 140px;">Fecha Confirmación</th>
                 <th style="width: 150px;">Regional</th>
                 <th style="width: 180px;">Operación</th>
@@ -2132,7 +2133,6 @@
                 <th style="width: 130px;">Período (Mes)</th>
                 <th style="width: 180px;">Responsable</th>
                 <th>Observaciones</th>
-                <th style="width: 130px; text-align: center;">Acta PDF</th>
               </tr>
             </thead>
             <tbody id="history-table-body">
@@ -2201,7 +2201,10 @@
             <h2 style="font-size: 1.1rem; color: var(--primary); margin: 0; font-weight: 700;">Transferencias Pendientes por Recibir</h2>
             <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Verifica físicamente los elementos recibidos, registra novedades o faltantes y valida la entrega mediante firma digital.</p>
           </div>
-          <div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="pendiente-btn-agregar-kardex" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
+              <span>➕</span> Agregar Kardex
+            </button>
             <button id="pendiente-btn-recibir-masivo" class="btn" style="background-color: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;">
               <span>✔️</span> Recibir Masivo (<span id="pendiente-selected-count">0</span>)
             </button>
@@ -2312,6 +2315,7 @@
           <table class="history-table">
             <thead>
               <tr>
+                <th style="width: 120px; text-align: center;">Acta PDF</th>
                 <th style="width: 140px;">No. Transferencia</th>
                 <th style="width: 130px;">Fecha Recepción</th>
                 <th style="width: 110px;">Regional</th>
@@ -2319,7 +2323,6 @@
                 <th style="width: 160px; text-align: center;">Artículos / Unidades</th>
                 <th style="width: 140px;">Recibido Por</th>
                 <th>Novedades / Observaciones</th>
-                <th style="width: 120px; text-align: center;">Acta PDF</th>
               </tr>
             </thead>
             <tbody id="historial-ingresos-table-body">
@@ -3615,10 +3618,15 @@
           <div>
             <span class="badge badge-estado" id="dotley-badge-total" style="background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
           </div>
-          <button type="button" id="dotley-btn-correo-masivo" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
-            Enviar Correo Masivo
-          </button>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button type="button" id="dotley-btn-enviar-dotacion" class="btn-primary" style="display: none; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: #16a34a; color: white; cursor: pointer;">
+              <span>📦</span> Enviar Dotación de Ley
+            </button>
+            <button type="button" id="dotley-btn-correo-masivo" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+              Enviar Correo Masivo
+            </button>
+          </div>
         </div>
 
         <!-- Filters Card -->
@@ -3722,6 +3730,44 @@
         <button type="button" id="dotley-masivo-btn-cancel" style="padding: 8px 20px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: white; font-weight: 600; font-size: 0.85rem;">Cancelar</button>
         <button type="button" id="dotley-masivo-btn-enviar" disabled style="padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
           <span>📧</span> Enviar Correos
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Generar Transferencia de Dotación de Ley -->
+  <div id="dotley-enviar-dotacion-modal" class="modal" style="display: none; align-items: center; justify-content: center; z-index: 1010; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5);">
+    <div style="max-width: 500px; width: 90%; margin: auto; background: white; color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column;">
+      <div class="modal-header" style="background: #f8fafc; color: var(--text); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <div>
+          <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #16a34a;">📦 Enviar Dotación de Ley a Kardex</h3>
+          <p style="margin: 2px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Genera automáticamente las filas de transferencia en el Editor de Grid</p>
+        </div>
+        <span id="dotley-enviar-dotacion-modal-close" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+      <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        <p style="font-size: 0.8rem; color: #334155; line-height: 1.4; margin: 0; background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 12px; border-radius: 6px;">
+          Se mapearán los artículos de <strong>BUZO</strong> y <strong>PANTALÓN</strong> según la <em>Lógica de Abastecimiento</em> y las tallas de cada colaborador para transferir 2 unidades de cada uno desde <strong>Administración (Antioquia)</strong> hacia su respectiva Operación destino.
+        </p>
+
+        <div class="filter-group">
+          <label for="dotley-gen-regional" style="font-weight: 700; font-size: 0.8rem; color: var(--text-dark); margin-bottom: 4px; display: block;">1. Regional Destino <span style="color: #dc2626;">*</span></label>
+          <select id="dotley-gen-regional" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: white;">
+            <option value="">Seleccione Regional...</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="dotley-gen-operacion" style="font-weight: 700; font-size: 0.8rem; color: var(--text-dark); margin-bottom: 4px; display: block;">2. Operación (Opcional)</label>
+          <select id="dotley-gen-operacion" disabled style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #f1f5f9;">
+            <option value="">Todas las operaciones de la Regional</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer" style="background: #f8fafc; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border);">
+        <button type="button" id="dotley-gen-btn-cancel" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Cancelar</button>
+        <button type="button" id="dotley-gen-btn-generar" style="padding: 8px 18px; border: none; border-radius: 6px; background: #16a34a; color: white; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+          <span>🚀</span> Generar en Editor de Grid
         </button>
       </div>
     </div>
@@ -4094,6 +4140,10 @@
               <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Cantidad *</label>
               <input type="number" id="fk-single-cantidad" placeholder="0" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; text-align:right;">
             </div>
+            <div class="field" id="fk-single-usuario-asignado-wrap" style="display:none;">
+              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Usuario Asignado</label>
+              <input type="text" id="fk-single-usuario-asignado" placeholder="Identificación del colaborador" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
+            </div>
             <div class="field" style="grid-column: 1 / -1;">
               <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Observaciones</label>
               <input type="text" id="fk-single-observaciones" placeholder="Detalle" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px;">
@@ -4130,6 +4180,7 @@
                     <th style="padding: 10px; font-weight: 600; width: 90px;">Stock Actual</th>
                     <th style="padding: 10px; font-weight: 600; width: 80px;">Cant *</th>
                     <th style="padding: 10px; font-weight: 600;">Observaciones</th>
+                    <th class="col-usuario-asignado-th" style="padding: 10px; font-weight: 600; width: 140px; display: none;">Usuario Asignado</th>
                     <th style="padding: 10px; font-weight: 600; width: 50px; text-align: center;"></th>
                   </tr>
                 </thead>
@@ -4146,7 +4197,7 @@
           <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; color: var(--text);">Pegar datos tabulados (TSV / Copiado directo de Excel):</label>
           <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
             Copia el rango de datos en tu hoja de Excel y pégalo en el cuadro de abajo. Las columnas se mapearán automáticamente en el siguiente orden:<br>
-            <strong>TipoMovimiento *</strong> | <strong>Artículo *</strong> | <strong>Operación *</strong> | <strong>Operación Destino</strong> | <strong>Cantidad *</strong> | <strong>Observaciones</strong>
+            <strong>TipoMovimiento *</strong> | <strong>Artículo *</strong> | <strong>Operación *</strong> | <strong>Operación Destino</strong> | <strong>Cantidad *</strong> | <strong>Observaciones</strong> | <strong>Usuario Asignado</strong>
             <br><span style="color: var(--primary); font-weight: 600;">* Nota: TipoMovimiento solo acepta ENTRADA, AJUSTE y TRANSFERENCIA para excel. Operación Destino es obligatorio si el Tipo es TRANSFERENCIA.</span>
           </p>
           <textarea id="formkardex-paste-area" placeholder="Pega tus datos aquí..." style="width: 100%; height: 160px; padding: 12px; border: 1.5px dashed var(--border); border-radius: 8px; outline: none; font-size: 0.8rem; font-family: monospace; resize: none; background: #fafbfe; transition: border-color 0.2s;"></textarea>
@@ -6476,6 +6527,11 @@
           });
 
           tr.innerHTML = `
+            <td style="text-align: center;">
+              <a href="${row.pdfUrl}" target="_blank" class="pdf-link-btn">
+                📄 PDF Acta
+              </a>
+            </td>
             <td>${dateStr}</td>
             <td style="font-weight: 500; font-size: 0.8rem;">${row.regional || '—'}</td>
             <td style="font-weight: 600; color: var(--primary); font-size: 0.8rem;">${row.operacion}</td>
@@ -6483,11 +6539,6 @@
             <td style="font-weight: 500;">${row.mes}</td>
             <td>${row.usuarioNombre || row.usuario}</td>
             <td style="font-style: italic; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.observaciones || ''}">${row.observaciones || '—'}</td>
-            <td style="text-align: center;">
-              <a href="${row.pdfUrl}" target="_blank" class="pdf-link-btn">
-                📄 PDF Acta
-              </a>
-            </td>
           `;
           
           tbody.appendChild(tr);
@@ -10442,6 +10493,8 @@
       const stockInput = document.getElementById('fk-single-stock');
       const fechaInput = document.getElementById('fk-single-fecha');
       const tipoSel = document.getElementById('fk-single-tipo');
+      const usrAsignadoWrap = document.getElementById('fk-single-usuario-asignado-wrap');
+      const usrAsignadoInput = document.getElementById('fk-single-usuario-asignado');
 
       if (regSel) regSel.innerHTML = '<option value="">Seleccione</option>' + kardexLookups.regionales.map(r => `<option value="${r}">${r}</option>`).join('');
       if (catSel) catSel.innerHTML = '<option value="">Seleccione</option>' + kardexLookups.categorias.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -10451,6 +10504,10 @@
       if (artList) artList.style.display = 'none';
       if (stockInput) stockInput.value = '0';
       if (tipoSel) tipoSel.value = 'AJUSTE';
+      if (usrAsignadoInput) usrAsignadoInput.value = '';
+      if (usrAsignadoWrap) {
+        usrAsignadoWrap.style.display = ['Sistema', 'Inventario'].includes(CONFIG.rol) ? 'block' : 'none';
+      }
 
       const now = new Date();
       const pad = n => String(n).padStart(2, '0');
@@ -10592,6 +10649,7 @@
       const idArticuloRaw = document.getElementById('fk-single-articulo').value;
       const cantidadRaw = document.getElementById('fk-single-cantidad').value;
       const observaciones = document.getElementById('fk-single-observaciones').value.trim();
+      const usuarioAsignado = document.getElementById('fk-single-usuario-asignado') ? document.getElementById('fk-single-usuario-asignado').value.trim() : '';
 
       if (!fecha) { alert('Debe seleccionar la Fecha Movimiento.'); return; }
       if (!tipo) { alert('Debe seleccionar el Tipo Movimiento.'); return; }
@@ -10621,6 +10679,7 @@
         Cantidad: cantidad,
         ValorUnitario: matchedArt ? (matchedArt.Costo || 0) : 0,
         Observaciones: observaciones,
+        UsuarioAsignado: usuarioAsignado,
         StockActual: parseInt(document.getElementById('fk-single-stock').value) || 0
       });
       updateFormKardexGridCount();
@@ -10630,6 +10689,7 @@
       document.getElementById('fk-single-articulo').value = '';
       document.getElementById('fk-single-articulo-search').value = '';
       document.getElementById('fk-single-stock').value = '0';
+      if (document.getElementById('fk-single-usuario-asignado')) document.getElementById('fk-single-usuario-asignado').value = '';
       document.getElementById('fk-single-articulo-search').focus();
 
       mostrarFeedbackAgregado('formkardex-btn-add-single', 'Movimiento agregado');
@@ -10719,6 +10779,7 @@
         }
 
         const observaciones = clean(5);
+        const usuarioAsignado = clean(6);
 
         parsed.push({
           FechaMovimiento: nowStr,
@@ -10730,7 +10791,8 @@
           IdArticulo: matchArt.Id,
           Cantidad: cantidad,
           ValorUnitario: matchArt.Costo || 0,
-          Observaciones: observaciones
+          Observaciones: observaciones,
+          UsuarioAsignado: usuarioAsignado
         });
       }
 
@@ -10759,7 +10821,8 @@
         IdArticulo: '',
         Cantidad: 0,
         ValorUnitario: 0,
-        Observaciones: ''
+        Observaciones: '',
+        UsuarioAsignado: ''
       });
       updateFormKardexGridCount();
       renderFormKardexGrid();
@@ -10796,8 +10859,12 @@
 
       tbody.innerHTML = '';
 
+      const isPrivilegedUser = ['Sistema', 'Inventario'].includes(CONFIG.rol);
+      const thUser = document.querySelector('.col-usuario-asignado-th');
+      if (thUser) thUser.style.display = isPrivilegedUser ? '' : 'none';
+
       if (bulkKardexList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">La grilla está vacía. Agrega una fila o pega datos de Excel.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 40px; font-weight: 500;">La grilla está vacía. Agrega una fila o pega datos de Excel.</td></tr>';
         return;
       }
 
@@ -10896,6 +10963,9 @@
           <td style="padding: 6px 10px;">
             <input type="text" class="grid-cell-input obs-input" value="${row.Observaciones || ''}" placeholder="Detalle" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem;">
           </td>
+          <td class="col-usuario-asignado-td" style="padding: 6px 10px; ${isPrivilegedUser ? '' : 'display: none;'}">
+            <input type="text" class="grid-cell-input usuario-asignado-input" value="${row.UsuarioAsignado || ''}" placeholder="Identificación" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem;">
+          </td>
           <td style="padding: 6px 10px; text-align: center;">
             <button type="button" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #dc2626;" onclick="deleteFormKardexGridRow(${idx})" title="Quitar fila">❌</button>
           </td>
@@ -10910,6 +10980,7 @@
         const artInput = tr.querySelector('.articulo-input');
         const qtyInput = tr.querySelector('.cantidad-input');
         const obsInput = tr.querySelector('.obs-input');
+        const usrInput = tr.querySelector('.usuario-asignado-input');
 
         dateInput.addEventListener('input', () => { row.FechaMovimiento = dateInput.value; });
         
@@ -10992,6 +11063,12 @@
         obsInput.addEventListener('input', () => {
           row.Observaciones = obsInput.value;
         });
+
+        if (usrInput) {
+          usrInput.addEventListener('input', () => {
+            row.UsuarioAsignado = usrInput.value.trim();
+          });
+        }
 
         updateRowStockActual(row, idx, tr);
 
@@ -11322,6 +11399,13 @@
             }
             const selectedOrders = allPendientes.filter(o => selectedPendientesIds.has(o.Id));
             openRecibirTransferenciaModal(selectedOrders);
+          });
+        }
+
+        const btnAgregarKardexPend = document.getElementById('pendiente-btn-agregar-kardex');
+        if (btnAgregarKardexPend) {
+          btnAgregarKardexPend.addEventListener('click', () => {
+            openFormKardexModal();
           });
         }
 
@@ -12200,6 +12284,7 @@
 
         html += `
           <tr>
+            <td style="text-align: center;">${pdfButtonHtml}</td>
             <td>
               <div style="font-weight: 700; color: #1e3c72; font-size: 0.85rem;">${ord.Id}</div>
               <span style="display: inline-block; background: #dcfce7; color: #15803d; font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 10px;">RECIBIDO</span>
@@ -12218,7 +12303,6 @@
               <div style="font-size: 0.7rem; color: #64748b;">Desp: ${ord.UsuarioDespacha}</div>
             </td>
             <td style="font-size: 0.8rem;">${novedadStr}</td>
-            <td style="text-align: center;">${pdfButtonHtml}</td>
           </tr>
         `;
       });
@@ -14225,7 +14309,7 @@
       const form = document.getElementById('logica-abastecimiento-form');
 
       if (btnNueva) {
-        btnNueva.addEventListener('click', openLogicaModal);
+        btnNueva.addEventListener('click', () => openLogicaModal(null));
       }
       if (modalClose) {
         modalClose.addEventListener('click', () => { if (modal) modal.style.display = 'none'; });
@@ -14400,6 +14484,11 @@
     }
 
     async function openLogicaModal(item = null) {
+      // Si fue invocado directamente desde un evento DOM (click), descartar el objeto Event
+      if (item && (typeof item !== 'object' || item instanceof Event || ('target' in item && 'currentTarget' in item))) {
+        item = null;
+      }
+
       const modal = document.getElementById('logica-form-modal');
       const form = document.getElementById('logica-abastecimiento-form');
       const titleEl = document.getElementById('logica-modal-title');
@@ -14434,15 +14523,18 @@
 
       await loadLogicaModalOptions();
 
-      if (item) {
+      const rawId = item ? (item.Id !== undefined ? item.Id : (item.id !== undefined ? item.id : item.ID)) : null;
+      const validId = (rawId !== null && rawId !== undefined && !isNaN(Number(rawId)) && Number(rawId) > 0) ? Number(rawId) : null;
+
+      if (validId && item) {
         if (titleEl) titleEl.innerHTML = '<span>✏️</span> Editar Lógica de Abastecimiento';
         if (submitBtn) submitBtn.innerHTML = '<span>💾</span> Actualizar Lógica';
-        if (hiddenId) hiddenId.value = item.Id;
+        if (hiddenId) hiddenId.value = String(validId);
 
         const opSelect = document.getElementById('logica-form-operacion');
         const cgSelect = document.getElementById('logica-form-cargo');
-        if (opSelect) opSelect.value = item.Operacion;
-        if (cgSelect) cgSelect.value = item.Cargo;
+        if (opSelect) opSelect.value = item.Operacion || '';
+        if (cgSelect) cgSelect.value = item.Cargo || '';
 
         const catVal = String(item.Categoria || '').trim();
         document.getElementById('logica-form-categoria').value = catVal;
@@ -14456,15 +14548,16 @@
         });
 
         await loadLogicaClasificaciones(catVal);
-        if (clasifSelect) clasifSelect.value = item.Clasificacion;
+        if (clasifSelect) clasifSelect.value = item.Clasificacion || '';
 
         await loadLogicaElementos(catVal, item.Clasificacion);
-        if (elemSelect) elemSelect.value = item.Elemento;
+        if (elemSelect) elemSelect.value = item.Elemento || '';
       } else {
         if (titleEl) titleEl.innerHTML = '<span>➕</span> Nueva Lógica de Abastecimiento';
         if (submitBtn) submitBtn.innerHTML = '<span>💾</span> Guardar Lógica';
         if (hiddenId) hiddenId.value = '';
-        document.getElementById('logica-form-categoria').value = '';
+        const catInput = document.getElementById('logica-form-categoria');
+        if (catInput) catInput.value = '';
       }
 
       if (modal) modal.style.display = 'flex';
@@ -14473,7 +14566,7 @@
     window.initLogicaAbastecimiento = initLogicaAbastecimiento;
 
     window.editLogicaItem = function(id) {
-      const item = allLogicaData.find(x => Number(x.Id) === Number(id));
+      const item = allLogicaData.find(x => Number(x.Id || x.id || x.ID) === Number(id));
       if (!item) {
         alert('No se encontró el registro seleccionado.');
         return;
@@ -14483,7 +14576,10 @@
 
     async function submitLogicaForm(e) {
       e.preventDefault();
-      const id = document.getElementById('logica-form-id') ? document.getElementById('logica-form-id').value : '';
+      const hiddenInput = document.getElementById('logica-form-id');
+      const rawId = hiddenInput ? hiddenInput.value.trim() : '';
+      const id = (rawId && rawId !== 'undefined' && rawId !== 'null' && !isNaN(Number(rawId)) && Number(rawId) > 0) ? Number(rawId) : null;
+
       const operacion = document.getElementById('logica-form-operacion').value;
       const cargo = document.getElementById('logica-form-cargo').value;
       const categoria = document.getElementById('logica-form-categoria').value;
@@ -14955,8 +15051,145 @@
         btnEnviarMasivo.addEventListener('click', enviarCorreoMasivoDotacionLey);
       }
 
+      // Botón y Modal: Enviar Dotación de Ley a Kardex (Solo Sistema e Inventario)
+      const btnEnviarDotacion = document.getElementById('dotley-btn-enviar-dotacion');
+      const genDotacionModal = document.getElementById('dotley-enviar-dotacion-modal');
+      const btnCerrarGen = document.getElementById('dotley-enviar-dotacion-modal-close');
+      const btnCancelGen = document.getElementById('dotley-gen-btn-cancel');
+      const btnGenerarGen = document.getElementById('dotley-gen-btn-generar');
+      const genRegSel = document.getElementById('dotley-gen-regional');
+
+      if (btnEnviarDotacion) {
+        if (['Sistema', 'Inventario'].includes(CONFIG.rol)) {
+          btnEnviarDotacion.style.display = 'inline-flex';
+          btnEnviarDotacion.addEventListener('click', () => {
+            populateDotleyGenRegional();
+            if (genDotacionModal) genDotacionModal.style.display = 'flex';
+          });
+        } else {
+          btnEnviarDotacion.style.display = 'none';
+        }
+      }
+
+      if (btnCerrarGen) btnCerrarGen.addEventListener('click', () => { if (genDotacionModal) genDotacionModal.style.display = 'none'; });
+      if (btnCancelGen) btnCancelGen.addEventListener('click', () => { if (genDotacionModal) genDotacionModal.style.display = 'none'; });
+
+      if (genRegSel) {
+        genRegSel.addEventListener('change', () => {
+          populateDotleyGenOperacion(genRegSel.value);
+        });
+      }
+
+      if (btnGenerarGen) {
+        btnGenerarGen.addEventListener('click', generarFilasDotacionLeyKardex);
+      }
+
       await loadDotleyResumen();
       loadDotleyTrabajadores();
+    }
+
+    function populateDotleyGenRegional() {
+      const regSel = document.getElementById('dotley-gen-regional');
+      const opSel = document.getElementById('dotley-gen-operacion');
+      if (!regSel) return;
+      regSel.innerHTML = '<option value="">Seleccione Regional...</option>' +
+        Object.keys(dotleyOpsPorRegional).sort().map(r => `<option value="${r}">${r}</option>`).join('');
+      regSel.value = '';
+      if (opSel) {
+        opSel.innerHTML = '<option value="">Todas las operaciones de la Regional</option>';
+        opSel.disabled = true;
+        opSel.style.background = '#f1f5f9';
+      }
+    }
+
+    function populateDotleyGenOperacion(regional) {
+      const opSel = document.getElementById('dotley-gen-operacion');
+      if (!opSel) return;
+      if (!regional || !dotleyOpsPorRegional[regional]) {
+        opSel.innerHTML = '<option value="">Todas las operaciones de la Regional</option>';
+        opSel.disabled = true;
+        opSel.style.background = '#f1f5f9';
+        return;
+      }
+      const ops = Array.from(dotleyOpsPorRegional[regional]).sort();
+      opSel.innerHTML = '<option value="">Todas las operaciones de la Regional</option>' + ops.map(op => `<option value="${op}">${op}</option>`).join('');
+      opSel.disabled = false;
+      opSel.style.background = 'white';
+    }
+
+    async function generarFilasDotacionLeyKardex() {
+      const regional = document.getElementById('dotley-gen-regional')?.value;
+      const operacion = document.getElementById('dotley-gen-operacion')?.value;
+
+      if (!regional) {
+        alert('Debe seleccionar al menos la Regional Destino.');
+        return;
+      }
+
+      const btnGen = document.getElementById('dotley-gen-btn-generar');
+      const origHtml = btnGen.innerHTML;
+      btnGen.disabled = true;
+      btnGen.innerHTML = '<span>⏳</span> Generando filas...';
+
+      try {
+        const res = await fetch('/dotacionley/api/generar-filas-kardex', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            regional,
+            operacion
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al generar filas de dotación');
+
+        if (!data.filas || data.filas.length === 0) {
+          alert('No se generaron filas para el ámbito seleccionado.');
+          return;
+        }
+
+        // Close gen modal
+        const genDotacionModal = document.getElementById('dotley-enviar-dotacion-modal');
+        if (genDotacionModal) genDotacionModal.style.display = 'none';
+
+        // Load kardex lookups if needed
+        if (!isKardexLookupsLoaded) {
+          const lRes = await fetch(`/inventario/api/kardex-lookups?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+          if (lRes.ok) {
+            kardexLookups = await lRes.json();
+            isKardexLookupsLoaded = true;
+          }
+        }
+
+        // Set rows into bulkKardexList
+        bulkKardexList = data.filas;
+
+        // Open Kardex modal and switch to Grid Editor tab
+        const formKardexModal = document.getElementById('formkardex-modal');
+        if (formKardexModal) formKardexModal.style.display = 'flex';
+        switchFormKardexTab('manual');
+        updateFormKardexGridCount();
+        renderFormKardexGrid();
+
+        let alertMsg = `✅ Se generaron ${data.totalFilas} filas de transferencia en el Editor de Grid (${data.totalColaboradores} colaboradores).`;
+        if (data.sinReglaCount > 0) {
+          alertMsg += `\n⚠️ ${data.sinReglaCount} elementos no tienen regla definida en Lógica de Abastecimiento.`;
+        }
+        if (data.sinArticuloCount > 0) {
+          alertMsg += `\n⚠️ ${data.sinArticuloCount} filas no encontraron un artículo coincidente en el catálogo.`;
+        }
+        alertMsg += `\nRevisa y completa los campos necesarios en la grilla antes de hacer clic en "Guardar Movimientos".`;
+        alert(alertMsg);
+
+      } catch (err) {
+        console.error(err);
+        alert(err.message);
+      } finally {
+        btnGen.disabled = false;
+        btnGen.innerHTML = origHtml;
+      }
     }
 
     function populateDotleyMasivoRegional() {

@@ -1036,7 +1036,12 @@ router.post('/api/logica-abastecimiento', async (req, res) => {
 // ── PUT /api/logica-abastecimiento/:id (Editar regla) ──
 router.put('/api/logica-abastecimiento/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const rawId = req.params.id;
+    const ruleId = parseInt(rawId, 10);
+    if (isNaN(ruleId) || ruleId <= 0) {
+      return res.status(400).json({ error: 'ID de regla de abastecimiento inválido.' });
+    }
+
     const { usuario, operacion, cargo, categoria, clasificacion, elemento } = req.body;
     const acceso = await validarAccesoLogica(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado para editar reglas de abastecimiento' });
@@ -1049,7 +1054,7 @@ router.put('/api/logica-abastecimiento/:id', async (req, res) => {
       `UPDATE Maestro_Dotacion_Cargos 
        SET Operacion = ?, Cargo = ?, Categoria = ?, Clasificacion = ?, Elemento = ?, Usuario = ?
        WHERE Id = ?`,
-      [operacion.trim(), cargo.trim(), categoria.trim(), clasificacion.trim(), elemento.trim(), acceso.usuarioNombre || usuario, id]
+      [operacion.trim(), cargo.trim(), categoria.trim(), clasificacion.trim(), elemento.trim(), acceso.usuarioNombre || usuario, ruleId]
     );
 
     if (result.affectedRows === 0) {
@@ -1066,12 +1071,20 @@ router.put('/api/logica-abastecimiento/:id', async (req, res) => {
 // ── DELETE /api/logica-abastecimiento/:id (Eliminar regla) ──
 router.delete('/api/logica-abastecimiento/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const rawId = req.params.id;
+    const ruleId = parseInt(rawId, 10);
+    if (isNaN(ruleId) || ruleId <= 0) {
+      return res.status(400).json({ error: 'ID de regla de abastecimiento inválido.' });
+    }
+
     const usuario = req.query.usuario || (req.body && req.body.usuario);
     const acceso = await validarAccesoLogica(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado para eliminar reglas de abastecimiento' });
 
-    await pool.execute('DELETE FROM Maestro_Dotacion_Cargos WHERE Id = ?', [id]);
+    const [result] = await pool.execute('DELETE FROM Maestro_Dotacion_Cargos WHERE Id = ?', [ruleId]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Regla no encontrada' });
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('[actas] DELETE /api/logica-abastecimiento/:id:', err);
