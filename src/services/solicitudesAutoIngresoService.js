@@ -175,7 +175,7 @@ async function verificarSolicitudesNuevosIngresos() {
           await conn.execute(
             `INSERT INTO Dynamic_Solicitudes_Items
              (IdElemento, IdSolicitud, IdArticulo, Cantidad, CantidadDespachada, IdKardex, Nota, Fecha_Registro, Usuario, usuario_actualiza)
-             VALUES (?, ?, ?, ?, NULL, NULL, ?, NOW(), 'Sistema', NULL)`,
+             VALUES (?, ?, ?, ?, 0, NULL, ?, NOW(), 'Sistema', NULL)`,
             [idElem, idSolDot, it.idArticulo, it.cantidad, it.nota]
           );
         }
@@ -268,7 +268,7 @@ async function verificarSolicitudesNuevosIngresos() {
           await conn.execute(
             `INSERT INTO Dynamic_Solicitudes_Items
              (IdElemento, IdSolicitud, IdArticulo, Cantidad, CantidadDespachada, IdKardex, Nota, Fecha_Registro, Usuario, usuario_actualiza)
-             VALUES (?, ?, ?, ?, NULL, NULL, ?, NOW(), 'Sistema', NULL)`,
+             VALUES (?, ?, ?, ?, 0, NULL, ?, NOW(), 'Sistema', NULL)`,
             [idElem, idSolEpp, it.idArticulo, it.cantidad, it.nota]
           );
         }
