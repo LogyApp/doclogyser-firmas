@@ -4,7 +4,7 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 const pool = require('../services/db');
 const { obtenerFirmaBase64Reciente, obtenerUrlFirmaReciente, subirFirma, subirPDFConfirmacionInventario, storage } = require('../services/storage');
-const { notificarConfirmacionInventario } = require('../services/email');
+const { notificarConfirmacionInventario, notificarTransferenciaDespachada, notificarTransferenciaRecibida } = require('../services/email');
 const { generarPDF } = require('../services/renderer');
 const { computarAccesoInventario, agruparOperacionesPorRegional } = require('../services/accesoInventario');
 const multer = require('multer');
@@ -21,6 +21,33 @@ const ROLES_SIN_FILTRO = [
 const ROLES_REGIONAL = ['AuxiliarR', 'CoordinadorR'];
 const ROLES_MODALIDAD = ['AnaSst'];
 const ROLES_EXCLUIDOS = ['Generalista', 'Selección Centro', 'Selección', 'Contratación'];
+
+// Resuelve los correos de Auxiliar/Coordinador/AuxiliarR/CoordinadorR responsables de una
+// Operación destino (para notificaciones de transferencia de Kardex). Si no hay nadie asignado
+// puntualmente a esa Operación, cae a AuxiliarR/CoordinadorR de la Regional (misma lógica que
+// obtenerCcEmails en logysignScheduler.js).
+async function resolverDestinatariosTransferencia(operacionDestino, regionalDestino) {
+  const emails = [];
+  try {
+    if (operacionDestino) {
+      const [opRows] = await pool.execute(
+        'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador", "AuxiliarR", "CoordinadorR") AND Email IS NOT NULL AND Email != ""',
+        [operacionDestino]
+      );
+      opRows.forEach(r => emails.push(r.Email));
+    }
+    if (!emails.length && regionalDestino) {
+      const [regRows] = await pool.execute(
+        'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR") AND Email IS NOT NULL AND Email != ""',
+        [regionalDestino]
+      );
+      regRows.forEach(r => emails.push(r.Email));
+    }
+  } catch (err) {
+    console.error('[inventario] Error resolviendo destinatarios de transferencia:', err.message);
+  }
+  return [...new Set(emails.filter(Boolean).map(e => e.trim()))];
+}
 
 // Servir la interfaz HTML
 router.get('/', async (req, res) => {
@@ -529,9 +556,11 @@ router.post('/api/confirmar', async (req, res) => {
     } else if (catUpper === 'HERRAMIENTA' || catUpper === 'HERRAMIENTAS') {
       emailRecipients.push('controlcuentas@logyser.com');
     } else if (catUpper === 'DOTACION' || catUpper === 'DOTACIÓN') {
-      emailRecipients.push('controlcuentas@logyser.com', 'auxiliarcompras@logyser.com', 'logyserinventarios@gmail.com');
+      emailRecipients.push('controlcuentas@logyser.com', 'auxiliarcompras@logyser.com');
     } else if (catUpper === 'EPP') {
-      emailRecipients.push('sstadmon@logyser.com');
+      emailRecipients.push('sstadmon@logyser.com', 'analistasst@logyser.com');
+    } else if (catUpper === 'PAPELERIA' || catUpper === 'PAPELERÍA') {
+      emailRecipients.push('controlcuentas@logyser.com');
     }
 
     if (catUpper !== 'EPP') {
@@ -1833,11 +1862,19 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
       return res.status(400).json({ error: 'Debe enviar al menos un movimiento' });
     }
 
+    const [uRowsDespacha] = await conn.execute(
+      'SELECT Colaborador, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+      [usuario]
+    );
+    const usuarioColaborador = uRowsDespacha.length ? (uRowsDespacha[0].Colaborador || usuario) : usuario;
+    const usuarioEmailDespacha = uRowsDespacha.length ? uRowsDespacha[0].Email : null;
+
     await conn.beginTransaction();
 
     // Group transfers by Operacion (Origen) + OperacionDestino
     const transferGroups = new Map();
     const nonTransferMovs = [];
+    const transferenciasParaNotificar = [];
 
     for (const mov of movimientos) {
       if (mov.TipoMovimiento === 'TRANSFERENCIA') {
@@ -1927,6 +1964,14 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
           ]
         );
       }
+
+      const categorias = [...new Set(group.items.map(mov => mov.Categoria).filter(Boolean))].join(', ') || 'General';
+      transferenciasParaNotificar.push({
+        operacionOrigen: group.operacionOrigen,
+        operacionDestino: group.operacionDestino,
+        regional,
+        categorias
+      });
     }
 
     // Process Non-transfer movements
@@ -1973,6 +2018,23 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
 
     await conn.commit();
     res.json({ message: 'Movimientos guardados exitosamente.' });
+
+    // Notificar despacho de cada transferencia (en segundo plano, ya con la transacción confirmada)
+    for (const t of transferenciasParaNotificar) {
+      resolverDestinatariosTransferencia(t.operacionDestino, t.regional)
+        .then(rolesEmails => {
+          const destinatarios = [...new Set([usuarioEmailDespacha, ...rolesEmails].filter(Boolean))];
+          if (!destinatarios.length) return;
+          return notificarTransferenciaDespachada({
+            operacionOrigen: t.operacionOrigen,
+            operacionDestino: t.operacionDestino,
+            categoria: t.categorias,
+            usuarioNombre: usuarioColaborador,
+            destinatarios
+          });
+        })
+        .catch(mailErr => console.error('[inventario] Error enviando correo de transferencia despachada:', mailErr));
+    }
   } catch (err) {
     await conn.rollback();
     console.error('[inventario] POST /api/kardex/guardar-masivo error:', err);
@@ -2394,6 +2456,23 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
       message: 'Transferencia recibida exitosamente y Acta de Ingreso generada.',
       pdfUrl
     });
+
+    // Notificar al usuario que despachó que su transferencia ya fue recibida (en segundo plano)
+    const categoriaRecibida = [...new Set(itemsParaActa.map(it => it.Categoria || it.CategoriaArticulo).filter(Boolean))].join(', ') || 'General';
+    pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [order.UsuarioDespacha])
+      .then(([rows]) => {
+        const emailDespacha = rows.length ? rows[0].Email : null;
+        if (!emailDespacha) return;
+        return notificarTransferenciaRecibida({
+          operacionOrigen: order.OperacionOrigen,
+          operacionDestino,
+          categoria: categoriaRecibida,
+          colaboradorReceptor,
+          pdfUrl,
+          emailUsuarioDespacha: emailDespacha
+        });
+      })
+      .catch(mailErr => console.error('[inventario] Error enviando correo de transferencia recibida:', mailErr));
   } catch (err) {
     await conn.rollback();
     console.error('[inventario] POST /api/kardex-pendiente/recibir-orden error:', err);
@@ -2637,7 +2716,15 @@ router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
         [pdfUrl, order.Id]
       );
 
-      pdfUrlsGeneradas.push({ idPedido: order.Id, pdfUrl });
+      const categoriaRecibida = [...new Set(itemsParaActa.map(it => it.Categoria || it.CategoriaArticulo).filter(Boolean))].join(', ') || 'General';
+      pdfUrlsGeneradas.push({
+        idPedido: order.Id,
+        pdfUrl,
+        operacionOrigen: order.OperacionOrigen,
+        operacionDestino,
+        categoria: categoriaRecibida,
+        usuarioDespacha: order.UsuarioDespacha
+      });
     }
 
     await conn.commit();
@@ -2646,6 +2733,24 @@ router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
       message: `${pdfUrlsGeneradas.length} pedidos de transferencia recibidos exitosamente y Actas generadas.`,
       actas: pdfUrlsGeneradas
     });
+
+    // Notificar a cada usuario que despachó que su transferencia ya fue recibida (en segundo plano)
+    for (const t of pdfUrlsGeneradas) {
+      pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [t.usuarioDespacha])
+        .then(([rows]) => {
+          const emailDespacha = rows.length ? rows[0].Email : null;
+          if (!emailDespacha) return;
+          return notificarTransferenciaRecibida({
+            operacionOrigen: t.operacionOrigen,
+            operacionDestino: t.operacionDestino,
+            categoria: t.categoria,
+            colaboradorReceptor,
+            pdfUrl: t.pdfUrl,
+            emailUsuarioDespacha: emailDespacha
+          });
+        })
+        .catch(mailErr => console.error('[inventario] Error enviando correo de transferencia recibida:', mailErr));
+    }
   } catch (err) {
     await conn.rollback();
     console.error('[inventario] POST /api/kardex-pendiente/recibir-masivo error:', err);

@@ -1065,4 +1065,26 @@ router.delete('/api/solicitud/:id', async (req, res) => {
   }
 });
 
+// ═════ API: POST /api/procesar-ingresos-automaticos ═════
+// Permite ejecutar o forzar la creación de solicitudes automáticas para nuevos ingresos
+const { verificarSolicitudesNuevosIngresos } = require('../services/solicitudesAutoIngresoService');
+router.post('/api/procesar-ingresos-automaticos', async (req, res) => {
+  try {
+    const { usuario } = req.body;
+    if (usuario) {
+      const acceso = await computarAccesoSolicitud(usuario);
+      if (!acceso) {
+        return res.status(403).json({ error: 'No autorizado' });
+      }
+    }
+
+    const resultado = await verificarSolicitudesNuevosIngresos();
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[solicitudes] POST /api/procesar-ingresos-automaticos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
+

@@ -162,3 +162,9 @@ iniciarProgramadorFormaPago();
 // Programador de envíos de correos de Logysign en la fecha/hora seleccionada
 const { iniciarProgramadorEnvios } = require('./src/services/logysignScheduler');
 iniciarProgramadorEnvios();
+
+// Generador automático de solicitudes iniciales de Dotación y EPP en BORRADOR para nuevos ingresos
+const { verificarSolicitudesNuevosIngresos } = require('./src/services/solicitudesAutoIngresoService');
+verificarSolicitudesNuevosIngresos(); // verificación inicial al arrancar
+setInterval(verificarSolicitudesNuevosIngresos, 2 * 60 * 1000); // cada 2 minutos
+
