@@ -36,6 +36,10 @@ async function obtenerIngresosPendientes() {
          AND mv.\`Observaciones Vinculación\` NOT LIKE '%[NOTIF_%'
          )
        )
+       -- Condición clave: Solo procesar registros que ya tengan Cargo asignado (no nulo ni vacío).
+       -- Si el registro se crea inicialmente sin Cargo, no se procesa; se procesará automáticamente cuando se edite y se le asigne un Cargo.
+       AND mv.Cargo IS NOT NULL
+       AND TRIM(mv.Cargo) != ''
        -- Condición temporal: Solo procesar ingresos de Regional ANTIOQUIA
        AND UPPER(TRIM(COALESCE(mv.Regional, ''))) = 'ANTIOQUIA'
      ORDER BY mv.\`Fecha de Ingreso\` DESC`
@@ -78,7 +82,13 @@ async function verificarSolicitudesNuevosIngresos() {
         const identificacion = String(vin.identificacion || '').trim();
         const operacion = vin.operacion || '';
         const regional = vin.Regional || '';
-        const cargo = vin.Cargo || '';
+        const cargo = String(vin.Cargo || '').trim();
+
+        // Validar que tenga Cargo asignado
+        if (!cargo) {
+          conn.release();
+          continue;
+        }
 
         // Condición temporal: Solo procesar registros de Regional Antioquia
         if (norm(regional) !== 'ANTIOQUIA') {

@@ -539,7 +539,7 @@
 
   function rolesPermitidosPorCategoria(categoria) {
     const cat = normalizarCategoria(categoria);
-    if (cat === 'EPP') return ['AdmSst', 'LiderSst', 'Sistema', 'Cuentas'];
+    if (cat === 'EPP') return ['AdmSst', 'LiderSst', 'Inventario', 'Sistema', 'Cuentas'];
     if (cat === 'DOTACION') return ['Inventario', 'Cuentas', 'Sistema'];
     if (cat === 'TECNOLOGIA') return ['Control', 'Cuentas', 'Sistema'];
     return ['Sistema', 'Cuentas'];
@@ -1445,6 +1445,15 @@
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'No se pudo cambiar el estado');
+
+      if (estadoDestino === 'APROBADA' && data.esAutomatico && data.actaPrellenada) {
+        sessionStorage.setItem('actaPrellenada', JSON.stringify(data.actaPrellenada));
+        mostrarToast('Solicitud aprobada. Redirigiendo a Actas de Entrega...', 'success');
+        setTimeout(() => {
+          window.location.href = '/inventario?tab=actas';
+        }, 1000);
+        return;
+      }
 
       mostrarToast(`Estado actualizado a ${estadoDestino}`, 'success');
       await verDetalle(solicitudActual.IdSolicitud);

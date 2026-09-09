@@ -46,6 +46,9 @@
       background: #f8fafc;
       border-color: #cbd5e1;
     }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
     .kardex-admin-only {
       display: none !important;
@@ -2919,6 +2922,7 @@
 
                 <form id="acta-form-datos">
                   <input type="hidden" id="acta-id-field">
+                  <input type="hidden" id="acta-solicitud-id-field">
 
                   <div class="field" style="margin-bottom: 12px;">
                     <label class="lbl" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px;">Categoría <span style="color:red;">*</span></label>
@@ -4068,7 +4072,13 @@
 
   <!-- Modal: formkardex - Carga Masiva y Múltiple de Movimientos de Kardex -->
   <div id="formkardex-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 5vh; z-index: 1010;">
-    <div style="max-width: 1200px; width: 95%; margin: auto; background: white; color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column; max-height: 90vh;">
+    <div style="position: relative; max-width: 1200px; width: 95%; margin: auto; background: white; color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column; max-height: 90vh;">
+      <!-- Loading Overlay: Procesando filas para el Grid -->
+      <div id="formkardex-loading-overlay" style="display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.92); z-index: 100; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+        <div style="width: 44px; height: 44px; border: 4px solid #e2e8f0; border-top-color: #16a34a; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 14px;"></div>
+        <div style="font-weight: 700; font-size: 1.05rem; color: #16a34a;">Procesando filas para el editor...</div>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 5px;">Por favor espera un momento mientras se renderizan los movimientos.</div>
+      </div>
       <div class="modal-header" style="background: #f8fafc; color: var(--text); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); flex-shrink: 0;">
         <div>
           <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--primary);">Módulo de Kardex: Carga Múltiple</h3>
@@ -4887,6 +4897,7 @@
         if (contentTabActas) contentTabActas.style.display = 'none';
         if (contentTabDotacionLey) contentTabDotacionLey.style.display = 'none';
       };
+      window.desactivarTodasLasPestañas = desactivarTodasLasPestañas;
 
       if (tabBtnInventario) {
         tabBtnInventario.addEventListener('click', () => {
@@ -9948,7 +9959,7 @@
         if (rol === 'Sistema') {
           esAprobador = true;
         } else if (catUpper === 'EPP') {
-          esAprobador = ['AdmSst', 'LiderSst'].includes(rol);
+          esAprobador = ['AdmSst', 'LiderSst', 'Inventario'].includes(rol);
         } else if (catUpper !== 'TECNOLOGIA') {
           esAprobador = ['Inventario', 'Cuentas'].includes(rol);
         }
@@ -10190,8 +10201,12 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error al actualizar flujo de la solicitud');
 
-        alert(`Estado actualizado a ${estadoDestino} correctamente.`);
-        loadSolicitudDetail(solicitudActual.IdSolicitud);
+        if (estadoDestino === 'APROBADA' && data.esAutomatico && data.actaPrellenada) {
+          cargarActaDesdeSolicitud(data.actaPrellenada);
+        } else {
+          alert(`Estado actualizado a ${estadoDestino} correctamente.`);
+          loadSolicitudDetail(solicitudActual.IdSolicitud);
+        }
 
       } catch (err) {
         console.error(err);
@@ -11008,6 +11023,9 @@
       renderFormKardexGrid();
     }
 
+    const kardexStockCache = {};
+    const kardexStockPromiseCache = {};
+
     async function updateRowStockActual(row, idx, tr) {
       if (!row.IdArticulo || !row.Operacion) {
         row.StockActual = 0;
@@ -11016,12 +11034,24 @@
         return;
       }
 
+      const cacheKey = `${row.IdArticulo}_${row.Operacion.trim().toLowerCase()}`;
+      if (kardexStockCache[cacheKey] !== undefined) {
+        row.StockActual = kardexStockCache[cacheKey];
+        const stockInput = tr.querySelector('.stock-input');
+        if (stockInput) stockInput.value = row.StockActual;
+        return;
+      }
+
       try {
-        const res = await fetch(`/inventario/api/articulos/stock/${row.IdArticulo}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
+        if (!kardexStockPromiseCache[row.IdArticulo]) {
+          kardexStockPromiseCache[row.IdArticulo] = fetch(`/inventario/api/articulos/stock/${row.IdArticulo}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`)
+            .then(res => res.ok ? res.json() : [])
+            .catch(() => []);
+        }
+        const data = await kardexStockPromiseCache[row.IdArticulo];
         const matched = data.find(item => item.operacion.trim().toLowerCase() === row.Operacion.trim().toLowerCase());
         const stockVal = matched ? matched.stock : 0;
+        kardexStockCache[cacheKey] = stockVal;
         row.StockActual = stockVal;
         const stockInput = tr.querySelector('.stock-input');
         if (stockInput) stockInput.value = stockVal;
@@ -11048,63 +11078,55 @@
         return;
       }
 
+      // Pre-calcular y cachear strings de opciones HTML para máxima velocidad de renderizado
+      const regionalOptionsHtml = (kardexLookups.regionales || []).map(r => `<option value="${r}"></option>`).join('');
+      const allowedTypes = ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA'];
+      const tipoOptionsHtml = allowedTypes.map(t => `<option value="${t}"></option>`).join('');
+      const categoriaOptionsHtml = (kardexLookups.categorias || []).map(c => `<option value="${c}"></option>`).join('');
+
+      const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+      const destPool = kardexLookups.operacionesTodas || kardexLookups.operaciones || [];
+
+      const opByRegionalCache = {};
+      const destOpCache = {};
+      const artByCatCache = {};
+
+      const getOperacionOptionsHtml = (reg) => {
+        if (!reg) return '';
+        if (opByRegionalCache[reg] !== undefined) return opByRegionalCache[reg];
+        const matchedOps = (kardexLookups.operaciones || []).filter(o => o.regional === reg);
+        opByRegionalCache[reg] = matchedOps.map(o => `<option value="${o.operacion}"></option>`).join('');
+        return opByRegionalCache[reg];
+      };
+
+      const getDestOpOptionsHtml = (reg) => {
+        const key = isPrivileged ? '__all__' : (reg || '__none__');
+        if (destOpCache[key] !== undefined) return destOpCache[key];
+        let allowed = isPrivileged
+          ? destPool
+          : destPool.filter(o => o.regional === reg || o.operacion === 'ADMINISTRACION');
+        destOpCache[key] = allowed.map(o => `<option value="${o.operacion}"></option>`).join('');
+        return destOpCache[key];
+      };
+
+      const getArticuloOptionsHtml = (cat) => {
+        if (!cat) return '';
+        if (artByCatCache[cat] !== undefined) return artByCatCache[cat];
+        const matchedArts = (kardexLookups.articulos || []).filter(a => a.Categoria === cat);
+        artByCatCache[cat] = matchedArts.map(a => `<option value="${a.Articulo}"></option>`).join('');
+        return artByCatCache[cat];
+      };
+
+      const frag = document.createDocumentFragment();
+
       bulkKardexList.forEach((row, idx) => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
 
-        // 1. Regional Options
-        let regionalOptionsHtml = '';
-        kardexLookups.regionales.forEach(r => {
-          regionalOptionsHtml += `<option value="${r}"></option>`;
-        });
-
-        // 2. Operación Options
-        let operacionOptionsHtml = '';
-        if (row.Regional) {
-          const matchedOps = kardexLookups.operaciones.filter(o => o.regional === row.Regional);
-          matchedOps.forEach(o => {
-            operacionOptionsHtml += `<option value="${o.operacion}"></option>`;
-          });
-        }
-
-        // 3. Operación Destino Options
-        let destOpOptionsHtml = '';
-        const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
-        const destPool = kardexLookups.operacionesTodas || kardexLookups.operaciones;
-        let allowedDestOps = [];
-        if (isPrivileged) {
-          allowedDestOps = destPool;
-        } else {
-          allowedDestOps = destPool.filter(o => o.regional === row.Regional || o.operacion === 'ADMINISTRACION');
-        }
-        allowedDestOps.forEach(o => {
-          destOpOptionsHtml += `<option value="${o.operacion}"></option>`;
-        });
-
         const isTransfer = (row.TipoMovimiento === 'TRANSFERENCIA');
-
-        // 4. Categoría Options
-        let categoriaOptionsHtml = '';
-        kardexLookups.categorias.forEach(c => {
-          categoriaOptionsHtml += `<option value="${c}"></option>`;
-        });
-
-        // 5. Artículo Options
-        let articuloOptionsHtml = '';
-        if (row.Categoria) {
-          const matchedArts = kardexLookups.articulos.filter(a => a.Categoria === row.Categoria);
-          matchedArts.forEach(a => {
-            articuloOptionsHtml += `<option value="${a.Articulo}"></option>`;
-          });
-        }
-
-        // 6. Tipo Options — solo se permiten estos 3 movimientos desde el editor de grid
-        const allowedTypes = ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA'];
-
-        let tipoOptionsHtml = '';
-        allowedTypes.forEach(t => {
-          tipoOptionsHtml += `<option value="${t}"></option>`;
-        });
+        const operacionOptionsHtml = getOperacionOptionsHtml(row.Regional);
+        const destOpOptionsHtml = getDestOpOptionsHtml(row.Regional);
+        const articuloOptionsHtml = getArticuloOptionsHtml(row.Categoria);
 
         tr.innerHTML = `
           <td style="padding: 6px 10px;">
@@ -11252,8 +11274,10 @@
 
         updateRowStockActual(row, idx, tr);
 
-        tbody.appendChild(tr);
+        frag.appendChild(tr);
       });
+
+      tbody.appendChild(frag);
     }
 
     window.deleteFormKardexGridRow = function(idx) {
@@ -13288,6 +13312,18 @@
         });
       }
 
+      const prefillStr = sessionStorage.getItem('actaPrellenada');
+      if (prefillStr) {
+        sessionStorage.removeItem('actaPrellenada');
+        try {
+          const prefillData = JSON.parse(prefillStr);
+          cargarActaDesdeSolicitud(prefillData);
+          return;
+        } catch (e) {
+          console.error('Error cargando acta prellenada:', e);
+        }
+      }
+
       fetchActasList();
     }
 
@@ -14037,6 +14073,8 @@
       if (form) form.reset();
 
       document.getElementById('acta-id-field').value = '';
+      const solIdField = document.getElementById('acta-solicitud-id-field');
+      if (solIdField) solIdField.value = '';
       document.getElementById('acta-form-title').textContent = 'Nueva Acta de Entrega';
       document.getElementById('acta-form-trabajador-id').value = '';
 
@@ -14080,6 +14118,120 @@
       document.getElementById('acta-btn-anular').style.display = 'none';
 
       renderActaFormItems();
+    }
+
+    function cargarActaDesdeSolicitud(data) {
+      if (!data) return;
+
+      // 1. Activar pestaña de Actas de Entrega
+      if (typeof window.desactivarTodasLasPestañas === 'function') {
+        window.desactivarTodasLasPestañas();
+      } else {
+        document.querySelectorAll('.wrapper').forEach(w => w.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      }
+      const tabBtnActas = document.getElementById('tab-btn-actas');
+      const contentTabActas = document.getElementById('content-tab-actas');
+      if (tabBtnActas) tabBtnActas.classList.add('active');
+      if (contentTabActas) contentTabActas.style.display = 'block';
+
+      if (!isActasInitialized) {
+        initActas();
+      }
+
+      // 2. Abrir formulario de Acta
+      mostrarActaVista('formulario');
+
+      // 3. Prellenar datos
+      document.getElementById('acta-id-field').value = '';
+      const solIdField = document.getElementById('acta-solicitud-id-field');
+      if (solIdField) solIdField.value = data.idSolicitud || '';
+
+      const formTitle = document.getElementById('acta-form-title');
+      if (formTitle) formTitle.textContent = 'Nueva Acta de Entrega (desde Solicitud)';
+
+      // Categoría (DOTACIÓN / EPP)
+      if (typeof selectActaCategoryButton === 'function') {
+        selectActaCategoryButton(data.categoria || '');
+      }
+
+      // Trabajador
+      const trabajadorIdInput = document.getElementById('acta-form-trabajador-id');
+      if (trabajadorIdInput) trabajadorIdInput.value = data.identificacion || '';
+
+      const searchInput = document.getElementById('acta-form-trabajador-search');
+      if (searchInput) {
+        const partes = String(data.trabajador || '').split(' ** ');
+        const nombreCorto = partes.length > 1 ? partes[1].trim() : data.trabajador;
+        searchInput.value = nombreCorto || data.identificacion || '';
+      }
+
+      // Contacto
+      const emailInput = document.getElementById('acta-form-email');
+      if (emailInput) emailInput.value = data.email || '';
+
+      const celularInput = document.getElementById('acta-form-celular');
+      if (celularInput) celularInput.value = data.celular || '';
+
+      // Regional y Operación (determinadas por la vinculación del colaborador)
+      const formReg = document.getElementById('acta-form-regional');
+      if (formReg) {
+        formReg.innerHTML = data.regional
+          ? `<option value="${data.regional}">${data.regional}</option>`
+          : '<option value="">Sin regional</option>';
+        formReg.value = data.regional || '';
+        formReg.disabled = true;
+      }
+
+      const opSel = document.getElementById('acta-form-operacion');
+      if (opSel) {
+        opSel.innerHTML = data.operacion
+          ? `<option value="${data.operacion}">${data.operacion}</option>`
+          : '<option value="">Sin operación</option>';
+        opSel.value = data.operacion || '';
+        opSel.disabled = true;
+      }
+
+      // Fecha de entrega (fecha actual de Colombia)
+      const fechaInput = document.getElementById('acta-form-fecha-entrega');
+      if (fechaInput && data.fechaEntrega) {
+        fechaInput.value = data.fechaEntrega;
+      }
+
+      // Observaciones
+      const obsInput = document.getElementById('acta-form-observaciones');
+      if (obsInput) {
+        obsInput.value = data.observaciones || `Acta generada mediante solicitud ${data.idSolicitud || ''}`;
+      }
+
+      // Artículos aprobados
+      selectedActaItems = (data.items || []).map(it => ({
+        IdArticulo: it.IdArticulo,
+        Articulo: it.Articulo,
+        Referencia: it.Referencia || '',
+        Talla: it.Talla || '',
+        Imagen: it.Imagen || '',
+        Cantidad: it.Cantidad || 1,
+        Nota: it.Nota || ''
+      }));
+
+      actaItemsEditable = true;
+      renderActaFormItems();
+
+      // Botón guardar disponible
+      const btnGuardar = document.getElementById('acta-btn-guardar');
+      if (btnGuardar) {
+        btnGuardar.style.display = 'inline-flex';
+        btnGuardar.textContent = '💾 Guardar Acta';
+      }
+
+      setTimeout(() => {
+        alert(
+          '✅ ¡Solicitud aprobada con éxito!\n\n' +
+          'Se han cargado automáticamente los datos y artículos en el formulario de Acta de Entrega.\n' +
+          'Por favor revisa la información y haz clic en "💾 Guardar Acta" cuando desees generar el acta y notificar al trabajador.'
+        );
+      }, 100);
     }
 
     async function loadActaDetail(id) {
@@ -14233,6 +14385,8 @@
       formData.append('email', email || '');
       formData.append('celular', celular || '');
       formData.append('usuario', CONFIG.usuarioId);
+      const idSolicitudVinculada = document.getElementById('acta-solicitud-id-field')?.value;
+      if (idSolicitudVinculada) formData.append('idSolicitud', idSolicitudVinculada);
       formData.append('items', JSON.stringify(selectedActaItems.map(it => ({
         IdArticulo: it.IdArticulo,
         Cantidad: it.Cantidad,
@@ -15385,12 +15539,19 @@
         // Set rows into bulkKardexList
         bulkKardexList = data.filas;
 
-        // Open Kardex modal and switch to Grid Editor tab
+        // Open Kardex modal, switch to manual tab and show loading overlay
         const formKardexModal = document.getElementById('formkardex-modal');
+        const loadingOverlay = document.getElementById('formkardex-loading-overlay');
         if (formKardexModal) formKardexModal.style.display = 'flex';
         switchFormKardexTab('manual');
         updateFormKardexGridCount();
+        if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
+        // Yield execution to allow browser to render "Procesando..." overlay
+        await new Promise(resolve => setTimeout(resolve, 50));
+
         renderFormKardexGrid();
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
 
         let alertMsg = `✅ Se generaron ${data.totalFilas} filas de transferencia en el Editor de Grid (${data.totalColaboradores} colaboradores).`;
         if (data.sinReglaCount > 0) {
@@ -15400,7 +15561,7 @@
           alertMsg += `\n⚠️ ${data.sinArticuloCount} filas no encontraron un artículo coincidente en el catálogo.`;
         }
         alertMsg += `\nRevisa y completa los campos necesarios en la grilla antes de hacer clic en "Guardar Movimientos".`;
-        alert(alertMsg);
+        setTimeout(() => alert(alertMsg), 60);
 
       } catch (err) {
         console.error(err);

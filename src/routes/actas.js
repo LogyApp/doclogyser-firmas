@@ -534,7 +534,7 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, 'Pendiente')`,
       [
         parseInt(identificacion),
-        idSolicitud ? parseInt(idSolicitud) : null,
+        idSolicitud ? String(idSolicitud).trim() : null,
         operacion,
         fechaEntrega || null,
         categoria,

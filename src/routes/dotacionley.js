@@ -312,6 +312,7 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
     const [articles] = await pool.execute("SELECT Id, Articulo, Categoria, ClaseArticulo, Elemento, Talla, Referencia, Costo FROM Dynamic_Articulos WHERE Categoria LIKE '%DOTAC%'");
 
     const norm = (s) => String(s || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const normElem = (s) => norm(s).replace(/\bLVM\b/g, 'LMV');
 
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -332,19 +333,47 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
       );
 
       if (buzoRule && w.Camiseta) {
+        const ruleElemNorm = normElem(buzoRule.Elemento);
+        const wNum = w.Numero ? String(w.Numero).trim() : '';
         let matchedArt = null;
-        if (w.Numero && String(w.Numero).trim() !== '') {
+
+        if (wNum) {
+          // 1. Coincidencia exacta: Elemento + Talla + Número
           matchedArt = articles.find(a => 
-            norm(a.Elemento) === norm(buzoRule.Elemento) && 
+            normElem(a.Elemento) === ruleElemNorm && 
             norm(a.Talla) === norm(w.Camiseta) && 
-            norm(a.Referencia) === norm(w.Numero)
+            norm(a.Referencia) === norm(wNum)
           );
-        }
-        if (!matchedArt) {
+
+          // 2. Coincidencia por buzo rotulado del colaborador (mismo número físico aunque varíe la talla registrada)
+          if (!matchedArt) {
+            matchedArt = articles.find(a => 
+              normElem(a.Elemento) === ruleElemNorm && 
+              norm(a.Referencia) === norm(wNum)
+            );
+          }
+
+          // 3. Si no existe buzo con su número, buscar buzo genérico SIN número (nunca asignar el número de otro)
+          if (!matchedArt) {
+            matchedArt = articles.find(a => 
+              normElem(a.Elemento) === ruleElemNorm && 
+              norm(a.Talla) === norm(w.Camiseta) && 
+              (!a.Referencia || String(a.Referencia).trim() === '')
+            );
+          }
+        } else {
+          // Trabajador sin número: asignar buzo genérico sin rotular
           matchedArt = articles.find(a => 
-            norm(a.Elemento) === norm(buzoRule.Elemento) && 
-            norm(a.Talla) === norm(w.Camiseta)
+            normElem(a.Elemento) === ruleElemNorm && 
+            norm(a.Talla) === norm(w.Camiseta) && 
+            (!a.Referencia || String(a.Referencia).trim() === '')
           );
+          if (!matchedArt) {
+            matchedArt = articles.find(a => 
+              normElem(a.Elemento) === ruleElemNorm && 
+              norm(a.Talla) === norm(w.Camiseta)
+            );
+          }
         }
 
         if (matchedArt) {
@@ -357,7 +386,7 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
             Categoria: 'DOTACIÓN',
             IdArticulo: matchedArt.Id,
             ArticuloName: matchedArt.Articulo,
-            Cantidad: 2,
+            Cantidad: 1,
             ValorUnitario: matchedArt.Costo || 0,
             Observaciones: 'Dotación de Ley',
             UsuarioAsignado: idColaborador
@@ -399,7 +428,7 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
             Categoria: 'DOTACIÓN',
             IdArticulo: matchedArt.Id,
             ArticuloName: matchedArt.Articulo,
-            Cantidad: 2,
+            Cantidad: 1,
             ValorUnitario: matchedArt.Costo || 0,
             Observaciones: 'Dotación de Ley',
             UsuarioAsignado: idColaborador

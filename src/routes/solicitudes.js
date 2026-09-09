@@ -32,7 +32,7 @@ function normalizarCategoria(categoria) {
 
 function rolesPermitidosPorCategoria(categoria) {
   const cat = normalizarCategoria(categoria);
-  if (cat === 'EPP') return ['AdmSst', 'LiderSst', 'Sistema'];
+  if (cat === 'EPP') return ['AdmSst', 'LiderSst', 'Inventario', 'Sistema'];
   if (cat === 'DOTACION') return ['Inventario', 'Cuentas', 'Sistema'];
   if (cat === 'TECNOLOGIA') return ['Control', 'Cuentas', 'Sistema'];
   return ['Sistema', 'Cuentas'];
@@ -660,7 +660,7 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
     if (usuarioRol === 'Sistema') {
       esAprobadorCat = true;
     } else if (catUpper === 'EPP') {
-      esAprobadorCat = ['AdmSst', 'LiderSst'].includes(usuarioRol);
+      esAprobadorCat = ['AdmSst', 'LiderSst', 'Inventario'].includes(usuarioRol);
     } else if (catUpper !== 'TECNOLOGIA') {
       esAprobadorCat = ['Inventario', 'Cuentas'].includes(usuarioRol);
     }
@@ -841,7 +841,7 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
 
     // Lock the row for update
     const [[solicitud]] = await conn.execute(
-      'SELECT Categoria, Estado, `Operación`, Regional, Observaciones FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
+      'SELECT Categoria, Estado, `Operación`, Regional, Observaciones, `Justificación` FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
       [id]
     );
     if (!solicitud) {
@@ -903,6 +903,9 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
       );
     }
 
+    let esAutomatico = false;
+    let actaPrellenada = null;
+
     // Si pasa a APROBADA o PARCIAL, creamos los registros en Kardex
     if (['APROBADA', 'PARCIAL'].includes(estado)) {
       // 1. Si es PARCIAL y se enviaron los items confirmados, actualizar CantidadDespachada
@@ -923,7 +926,7 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
       const obsFinal = (observaciones !== undefined && observaciones !== null && String(observaciones).trim() !== '')
         ? String(observaciones).trim()
         : String(solicitud.Observaciones || '').trim();
-      const esAutomatico = obsFinal.toUpperCase().startsWith('AUTOMATICO');
+      esAutomatico = obsFinal.toUpperCase().startsWith('AUTOMATICO');
 
       if (!esAutomatico) {
         // Verificar si ya se habían generado movimientos de Kardex para esta solicitud
@@ -1020,7 +1023,79 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
         }
       }
     }
-  }
+
+      // 3. Si es solicitud AUTOMATICA y fue APROBADA, estructurar datos para adelantar el Acta de Entrega
+      if (estado === 'APROBADA' && esAutomatico) {
+        const identificacionTrabajador = String(solicitud.Justificación || '').trim();
+
+        let vinTrabajador = null;
+        if (identificacionTrabajador) {
+          const [vRows] = await conn.execute(
+            `SELECT Trabajador, Regional, \`Operación\` AS operacion, Cargo
+             FROM \`Maestro_Vinculación\`
+             WHERE Identificación = ?
+             ORDER BY \`Fecha de Ingreso\` DESC
+             LIMIT 1`,
+            [identificacionTrabajador]
+          );
+          if (vRows.length > 0) {
+            vinTrabajador = vRows[0];
+          }
+        }
+
+        let segTrabajador = null;
+        if (identificacionTrabajador) {
+          const [sRows] = await conn.execute(
+            `SELECT Email, Celular
+             FROM \`Maestro_Segmentación\`
+             WHERE \`Identificación\` = ?
+             LIMIT 1`,
+            [identificacionTrabajador]
+          );
+          if (sRows.length > 0) {
+            segTrabajador = sRows[0];
+          }
+        }
+
+        const [itemsAprobados] = await conn.execute(
+          `SELECT i.IdArticulo, i.Cantidad, i.Nota,
+                  a.Articulo, a.Referencia, a.Talla, a.Imagen, a.Categoria
+           FROM Dynamic_Solicitudes_Items i
+           LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
+           WHERE i.IdSolicitud = ?`,
+          [id]
+        );
+
+        const fechaEntregaCol = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'America/Bogota',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(new Date());
+
+        actaPrellenada = {
+          idSolicitud: id,
+          identificacion: identificacionTrabajador,
+          trabajador: vinTrabajador ? vinTrabajador.Trabajador : (solicitud.Observaciones || ''),
+          email: segTrabajador ? (segTrabajador.Email || '') : '',
+          celular: segTrabajador ? (segTrabajador.Celular || '') : '',
+          regional: vinTrabajador ? vinTrabajador.Regional : (solicitud.Regional || ''),
+          operacion: vinTrabajador ? vinTrabajador.operacion : (solicitud['Operación'] || ''),
+          categoria: solicitud.Categoria || '',
+          observaciones: `Acta generada mediante solicitud ${id}`,
+          fechaEntrega: fechaEntregaCol,
+          items: itemsAprobados.map(it => ({
+            IdArticulo: it.IdArticulo,
+            Articulo: it.Articulo || `Artículo #${it.IdArticulo}`,
+            Referencia: it.Referencia || '',
+            Talla: it.Talla || '',
+            Imagen: it.Imagen || '',
+            Cantidad: it.Cantidad,
+            Nota: it.Nota || ''
+          }))
+        };
+      }
+    }
 
     await conn.commit();
 
@@ -1030,7 +1105,13 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
       console.error('Error enviando email:', e);
     }
 
-    res.json({ ok: true, idSolicitud: id, estado: estadoFinal });
+    res.json({
+      ok: true,
+      idSolicitud: id,
+      estado: estadoFinal,
+      esAutomatico,
+      actaPrellenada
+    });
   } catch (err) {
     await conn.rollback();
     console.error('[solicitudes] PATCH /api/solicitud/:id/estado error:', err);
