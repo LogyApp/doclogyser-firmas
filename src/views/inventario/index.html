@@ -4273,6 +4273,24 @@
             </select>
           </div>
         </div>
+        <!-- Filtros adicionales exclusivos de la Categoría Dotación (en cascada: Clasificación -> Elemento -> Talla -> Referencia) -->
+        <div id="sol-modal-dotacion-filters" style="display: none; gap: 12px; align-items: center; width: 100%; margin-top: 10px;">
+          <div style="flex: 1;">
+            <select id="sol-modal-elemento-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
+              <option value="">Todos los elementos</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <select id="sol-modal-talla-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
+              <option value="">Todas las tallas</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <select id="sol-modal-referencia-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
+              <option value="">Todas las referencias</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <!-- Scrollable list of articles -->
@@ -4310,6 +4328,24 @@
           <div style="flex: 1;">
             <select id="acta-modal-clase-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todas las clasificaciones</option>
+            </select>
+          </div>
+        </div>
+        <!-- Filtros adicionales exclusivos de la Categoría Dotación (en cascada: Clasificación -> Elemento -> Talla -> Referencia) -->
+        <div id="acta-modal-dotacion-filters" style="display: none; gap: 12px; align-items: center; width: 100%; margin-top: 10px;">
+          <div style="flex: 1;">
+            <select id="acta-modal-elemento-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
+              <option value="">Todos los elementos</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <select id="acta-modal-talla-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
+              <option value="">Todas las tallas</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <select id="acta-modal-referencia-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
+              <option value="">Todas las referencias</option>
             </select>
           </div>
         </div>
@@ -8863,7 +8899,9 @@
               classSelect.appendChild(opt);
             });
           }
-          
+
+          poblarFiltrosDotacion('sol', cat);
+
           if (artModal) artModal.style.display = 'flex';
           renderModalArticlesList();
           updateModalSelectedCount();
@@ -8890,6 +8928,30 @@
       const modalClaseFilter = document.getElementById('sol-modal-clase-filter');
       if (modalClaseFilter) {
         modalClaseFilter.addEventListener('change', () => {
+          actualizarCascadaDotacion('sol', document.getElementById('sol-form-categoria').value);
+          renderModalArticlesList();
+        });
+      }
+
+      const modalElementoFilter = document.getElementById('sol-modal-elemento-filter');
+      if (modalElementoFilter) {
+        modalElementoFilter.addEventListener('change', () => {
+          actualizarCascadaDotacion('sol', document.getElementById('sol-form-categoria').value);
+          renderModalArticlesList();
+        });
+      }
+
+      const modalTallaFilter = document.getElementById('sol-modal-talla-filter');
+      if (modalTallaFilter) {
+        modalTallaFilter.addEventListener('change', () => {
+          actualizarCascadaDotacion('sol', document.getElementById('sol-form-categoria').value);
+          renderModalArticlesList();
+        });
+      }
+
+      const modalReferenciaFilter = document.getElementById('sol-modal-referencia-filter');
+      if (modalReferenciaFilter) {
+        modalReferenciaFilter.addEventListener('change', () => {
           renderModalArticlesList();
         });
       }
@@ -9379,19 +9441,132 @@
       });
     }
 
+    // ── Filtros en cascada (Elemento / Talla / Referencia) exclusivos de Categoría Dotación ──
+    // Compartidos entre el modal de Solicitudes ('sol') y el de Actas de Entrega ('acta').
+    const CATEGORIAS_DOTACION = ['DOTACION', 'DOTACIÓN'];
+    const REFERENCIA_VACIA = '__VACIO__';
+
+    function esCategoriaDotacion(cat) {
+      return CATEGORIAS_DOTACION.includes((cat || '').toUpperCase().trim());
+    }
+
+    // Muestra/oculta la fila de filtros de Dotación al abrir el modal y la deja lista para la cascada.
+    function poblarFiltrosDotacion(prefix, cat) {
+      const wrap = document.getElementById(`${prefix}-modal-dotacion-filters`);
+      const elementoSelect = document.getElementById(`${prefix}-modal-elemento-filter`);
+      const tallaSelect = document.getElementById(`${prefix}-modal-talla-filter`);
+      const referenciaSelect = document.getElementById(`${prefix}-modal-referencia-filter`);
+      if (!wrap || !elementoSelect || !tallaSelect || !referenciaSelect) return;
+
+      elementoSelect.innerHTML = '<option value="">Todos los elementos</option>';
+      tallaSelect.innerHTML = '<option value="">Todas las tallas</option>';
+      referenciaSelect.innerHTML = '<option value="">Todas las referencias</option>';
+
+      if (!esCategoriaDotacion(cat)) {
+        wrap.style.display = 'none';
+        return;
+      }
+
+      wrap.style.display = 'flex';
+      actualizarCascadaDotacion(prefix, cat);
+    }
+
+    // Recalcula, en cascada, las opciones de Elemento -> Talla -> Referencia según Categoría +
+    // Clasificación + lo que ya esté elegido, conservando la selección previa si sigue siendo válida.
+    function actualizarCascadaDotacion(prefix, cat) {
+      const claseSelect = document.getElementById(`${prefix}-modal-clase-filter`);
+      const elementoSelect = document.getElementById(`${prefix}-modal-elemento-filter`);
+      const tallaSelect = document.getElementById(`${prefix}-modal-talla-filter`);
+      const referenciaSelect = document.getElementById(`${prefix}-modal-referencia-filter`);
+      if (!claseSelect || !elementoSelect || !tallaSelect || !referenciaSelect) return;
+
+      const clase = (claseSelect.value || '').toUpperCase().trim();
+
+      // Elemento: depende de Categoría + Clasificación
+      const elementoActual = elementoSelect.value;
+      const elementosDisponibles = Array.from(new Set(
+        allSolicitudesArticulos
+          .filter(a => a.Categoria === cat && (!clase || (a.ClaseArticulo && a.ClaseArticulo.toUpperCase().trim() === clase)) && a.Elemento)
+          .map(a => a.Elemento.trim())
+      )).sort();
+      elementoSelect.innerHTML = '<option value="">Todos los elementos</option>';
+      elementosDisponibles.forEach(el => {
+        const opt = document.createElement('option');
+        opt.value = el;
+        opt.textContent = el;
+        elementoSelect.appendChild(opt);
+      });
+      elementoSelect.value = elementosDisponibles.includes(elementoActual) ? elementoActual : '';
+      const elementoFinal = elementoSelect.value;
+
+      // Talla: depende de Categoría + Clasificación + Elemento
+      const tallaActual = tallaSelect.value;
+      const tallasDisponibles = Array.from(new Set(
+        allSolicitudesArticulos
+          .filter(a => a.Categoria === cat && (!clase || (a.ClaseArticulo && a.ClaseArticulo.toUpperCase().trim() === clase)) && (!elementoFinal || (a.Elemento && a.Elemento.trim() === elementoFinal)) && a.Talla)
+          .map(a => a.Talla.trim())
+      )).sort();
+      tallaSelect.innerHTML = '<option value="">Todas las tallas</option>';
+      tallasDisponibles.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        tallaSelect.appendChild(opt);
+      });
+      tallaSelect.value = tallasDisponibles.includes(tallaActual) ? tallaActual : '';
+      const tallaFinal = tallaSelect.value;
+
+      // Referencia: depende de Categoría + Clasificación + Elemento + Talla (incluye opción "Vacío")
+      const referenciaActual = referenciaSelect.value;
+      const articulosParaReferencia = allSolicitudesArticulos.filter(a =>
+        a.Categoria === cat &&
+        (!clase || (a.ClaseArticulo && a.ClaseArticulo.toUpperCase().trim() === clase)) &&
+        (!elementoFinal || (a.Elemento && a.Elemento.trim() === elementoFinal)) &&
+        (!tallaFinal || (a.Talla || '').trim() === tallaFinal)
+      );
+      const hayVacios = articulosParaReferencia.some(a => !a.Referencia || !a.Referencia.trim());
+      const referenciasDisponibles = Array.from(new Set(
+        articulosParaReferencia.filter(a => a.Referencia && a.Referencia.trim()).map(a => a.Referencia.trim())
+      )).sort();
+      referenciaSelect.innerHTML = '<option value="">Todas las referencias</option>';
+      if (hayVacios) {
+        const opt = document.createElement('option');
+        opt.value = REFERENCIA_VACIA;
+        opt.textContent = 'Sin Referencia';
+        referenciaSelect.appendChild(opt);
+      }
+      referenciasDisponibles.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        referenciaSelect.appendChild(opt);
+      });
+      if (referenciaActual === REFERENCIA_VACIA && hayVacios) {
+        referenciaSelect.value = REFERENCIA_VACIA;
+      } else {
+        referenciaSelect.value = referenciasDisponibles.includes(referenciaActual) ? referenciaActual : '';
+      }
+    }
+
     function renderModalArticlesList() {
       const cat = document.getElementById('sol-form-categoria').value;
       const searchVal = (document.getElementById('sol-modal-art-search').value || '').toLowerCase().trim();
       const claseFilter = (document.getElementById('sol-modal-clase-filter').value || '').toUpperCase().trim();
+      const elementoFilter = document.getElementById('sol-modal-elemento-filter') ? document.getElementById('sol-modal-elemento-filter').value : '';
+      const tallaFilter = document.getElementById('sol-modal-talla-filter') ? document.getElementById('sol-modal-talla-filter').value : '';
+      const referenciaFilter = document.getElementById('sol-modal-referencia-filter') ? document.getElementById('sol-modal-referencia-filter').value : '';
       const listContainer = document.getElementById('sol-modal-articles-list');
       if (!listContainer) return;
       
       listContainer.innerHTML = '';
       
-      const filtered = allSolicitudesArticulos.filter(a => 
-        a.Categoria === cat && 
+      const filtered = allSolicitudesArticulos.filter(a =>
+        a.Categoria === cat &&
         (a.Articulo.toLowerCase().includes(searchVal) || (a.Referencia && a.Referencia.toLowerCase().includes(searchVal))) &&
-        (!claseFilter || (a.ClaseArticulo && a.ClaseArticulo.toUpperCase().trim() === claseFilter))
+        (!claseFilter || (a.ClaseArticulo && a.ClaseArticulo.toUpperCase().trim() === claseFilter)) &&
+        (!elementoFilter || (a.Elemento && a.Elemento.trim() === elementoFilter)) &&
+        (!tallaFilter || (a.Talla || '').trim() === tallaFilter) &&
+        (!referenciaFilter || (referenciaFilter === REFERENCIA_VACIA ? (!a.Referencia || !a.Referencia.trim()) : (a.Referencia || '').trim() === referenciaFilter))
       );
 
       if (filtered.length === 0) {
@@ -9417,12 +9592,17 @@
           ? `<img src="${art.Imagen}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:8px; flex-shrink:0;">`
           : `<div style="width:40px; height:40px; background:#f0f0f0; border-radius:4px; margin-right:8px; flex-shrink:0;"></div>`;
 
+        const tallaRefLine = [
+          art.Talla ? `Talla: ${art.Talla}` : '',
+          art.Referencia ? `REF. ${art.Referencia}` : ''
+        ].filter(Boolean).join(' · ');
+
         itemRow.innerHTML = `
           <div style="display: flex; align-items: center; flex: 1 1 180px; min-width: 0;">
             ${imgHtml}
             <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${art.Articulo}</div>
-              ${art.Talla ? `<div style="font-size: 0.75rem; color: var(--text-muted);">Talla: ${art.Talla}</div>` : ''}
+              <div style="font-weight: 600; font-size: 0.85rem; text-align: justify;">${art.Elemento || art.Articulo}</div>
+              ${tallaRefLine ? `<div style="font-size: 0.75rem; color: var(--text-muted);">${tallaRefLine}</div>` : ''}
             </div>
           </div>
           <div style="display: flex; gap: 8px; align-items: center; flex: 1 1 200px;">
@@ -12930,6 +13110,8 @@
             });
           }
 
+          poblarFiltrosDotacion('acta', cat);
+
           // Cargar stock disponible por artículo (Operación + respaldo de Operación_Principal)
           actaStockMap = {};
           actaStockAplica = false;
@@ -12965,7 +13147,33 @@
 
       if (modalActaArtSearch) modalActaArtSearch.addEventListener('input', () => renderModalActaArticlesList());
       const modalActaClaseFilter = document.getElementById('acta-modal-clase-filter');
-      if (modalActaClaseFilter) modalActaClaseFilter.addEventListener('change', () => renderModalActaArticlesList());
+      if (modalActaClaseFilter) {
+        modalActaClaseFilter.addEventListener('change', () => {
+          actualizarCascadaDotacion('acta', document.getElementById('acta-form-categoria').value);
+          renderModalActaArticlesList();
+        });
+      }
+
+      const modalActaElementoFilter = document.getElementById('acta-modal-elemento-filter');
+      if (modalActaElementoFilter) {
+        modalActaElementoFilter.addEventListener('change', () => {
+          actualizarCascadaDotacion('acta', document.getElementById('acta-form-categoria').value);
+          renderModalActaArticlesList();
+        });
+      }
+
+      const modalActaTallaFilter = document.getElementById('acta-modal-talla-filter');
+      if (modalActaTallaFilter) {
+        modalActaTallaFilter.addEventListener('change', () => {
+          actualizarCascadaDotacion('acta', document.getElementById('acta-form-categoria').value);
+          renderModalActaArticlesList();
+        });
+      }
+
+      const modalActaReferenciaFilter = document.getElementById('acta-modal-referencia-filter');
+      if (modalActaReferenciaFilter) {
+        modalActaReferenciaFilter.addEventListener('change', () => renderModalActaArticlesList());
+      }
 
       // Tab navigation buttons
       const btnNuevaActa = document.getElementById('acta-btn-nueva');
@@ -13496,6 +13704,9 @@
       const cat = document.getElementById('acta-form-categoria').value;
       const searchVal = (document.getElementById('acta-modal-art-search').value || '').toLowerCase().trim();
       const claseFilter = (document.getElementById('acta-modal-clase-filter').value || '').toUpperCase().trim();
+      const elementoFilter = document.getElementById('acta-modal-elemento-filter') ? document.getElementById('acta-modal-elemento-filter').value : '';
+      const tallaFilter = document.getElementById('acta-modal-talla-filter') ? document.getElementById('acta-modal-talla-filter').value : '';
+      const referenciaFilter = document.getElementById('acta-modal-referencia-filter') ? document.getElementById('acta-modal-referencia-filter').value : '';
       const listContainer = document.getElementById('acta-modal-articles-list');
       if (!listContainer) return;
 
@@ -13504,7 +13715,10 @@
       const filtered = allSolicitudesArticulos.filter(a =>
         a.Categoria === cat &&
         (a.Articulo.toLowerCase().includes(searchVal) || (a.Referencia && a.Referencia.toLowerCase().includes(searchVal))) &&
-        (!claseFilter || (a.ClaseArticulo && a.ClaseArticulo.toUpperCase().trim() === claseFilter))
+        (!claseFilter || (a.ClaseArticulo && a.ClaseArticulo.toUpperCase().trim() === claseFilter)) &&
+        (!elementoFilter || (a.Elemento && a.Elemento.trim() === elementoFilter)) &&
+        (!tallaFilter || (a.Talla || '').trim() === tallaFilter) &&
+        (!referenciaFilter || (referenciaFilter === REFERENCIA_VACIA ? (!a.Referencia || !a.Referencia.trim()) : (a.Referencia || '').trim() === referenciaFilter))
       );
 
       if (filtered.length === 0) {
@@ -13536,12 +13750,17 @@
           ? `<div class="disponible-info" style="font-size: 0.72rem; color: ${disponible > 0 ? '#15803d' : '#b91c1c'}; font-weight: 600;">Disponible: ${disponible}</div>`
           : '';
 
+        const tallaRefLineActa = [
+          art.Talla ? `Talla: ${art.Talla}` : '',
+          art.Referencia ? `REF. ${art.Referencia}` : ''
+        ].filter(Boolean).join(' · ');
+
         itemRow.innerHTML = `
           <div style="display: flex; align-items: center; flex: 1 1 180px; min-width: 0;">
             ${imgHtml}
             <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${art.Articulo}</div>
-              ${art.Talla ? `<div style="font-size: 0.75rem; color: var(--text-muted);">Talla: ${art.Talla}</div>` : ''}
+              <div style="font-weight: 600; font-size: 0.85rem; text-align: justify;">${art.Elemento || art.Articulo}</div>
+              ${tallaRefLineActa ? `<div style="font-size: 0.75rem; color: var(--text-muted);">${tallaRefLineActa}</div>` : ''}
               ${disponibleHtml}
             </div>
           </div>

@@ -316,7 +316,7 @@ router.get('/api/usuarios-buscar', async (req, res) => {
 router.get('/api/articulos', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT Id, Articulo, Categoria, Referencia, Talla, Imagen, ClaseArticulo FROM Dynamic_Articulos ORDER BY Articulo'
+      'SELECT Id, Articulo, Elemento, Categoria, Referencia, Talla, Imagen, ClaseArticulo FROM Dynamic_Articulos ORDER BY Articulo'
     );
 
     res.json(rows);
