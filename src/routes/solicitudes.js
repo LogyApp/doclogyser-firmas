@@ -1010,10 +1010,11 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
             );
 
             // C. Crear registro en Kardex_Pendiente con Procesado = 0
+            const idKardexPendiente = `SOL-${Date.now()}-${randomUUID().slice(0, 6)}`.toUpperCase();
             await conn.execute(
-              `INSERT INTO Kardex_Pendiente (IdKardexOriginal, Procesado, Procesando, Novedad)
-               VALUES (?, 0, 0, '')`,
-              [idKardexTransferencia]
+              `INSERT INTO Kardex_Pendiente (Id, IdKardexOriginal, Procesado, Procesando, Novedad)
+               VALUES (?, ?, 0, 0, '')`,
+              [idKardexPendiente, idKardexTransferencia]
             );
           }
         }
