@@ -841,7 +841,7 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
 
     // Lock the row for update
     const [[solicitud]] = await conn.execute(
-      'SELECT Categoria, Estado, `Operación`, Regional FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
+      'SELECT Categoria, Estado, `Operación`, Regional, Observaciones FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
       [id]
     );
     if (!solicitud) {
@@ -919,14 +919,21 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
         }
       }
 
-      // 2. Verificar si ya se habían generado movimientos de Kardex para esta solicitud
-      // (Para prevenir doble procesamiento)
-      const [[hasKardex]] = await conn.execute(
-        'SELECT IdKardex FROM Dynamic_Solicitudes_Items WHERE IdSolicitud = ? AND IdKardex IS NOT NULL LIMIT 1',
-        [id]
-      );
+      // 2. Si Observaciones empieza con AUTOMATICO, no debe modificar el Kardex
+      const obsFinal = (observaciones !== undefined && observaciones !== null && String(observaciones).trim() !== '')
+        ? String(observaciones).trim()
+        : String(solicitud.Observaciones || '').trim();
+      const esAutomatico = obsFinal.toUpperCase().startsWith('AUTOMATICO');
 
-      if (!hasKardex) {
+      if (!esAutomatico) {
+        // Verificar si ya se habían generado movimientos de Kardex para esta solicitud
+        // (Para prevenir doble procesamiento)
+        const [[hasKardex]] = await conn.execute(
+          'SELECT IdKardex FROM Dynamic_Solicitudes_Items WHERE IdSolicitud = ? AND IdKardex IS NOT NULL LIMIT 1',
+          [id]
+        );
+
+        if (!hasKardex) {
         // Obtener los artículos asociados de la solicitud con su Costo
         const [solItems] = await conn.execute(
           `SELECT i.IdArticulo, i.Cantidad, i.CantidadDespachada, a.Categoria, a.Costo
@@ -1012,6 +1019,7 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
         }
       }
     }
+  }
 
     await conn.commit();
 

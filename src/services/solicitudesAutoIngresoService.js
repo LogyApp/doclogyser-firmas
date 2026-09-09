@@ -1,8 +1,6 @@
 const { randomUUID } = require('crypto');
 const pool = require('./db');
 
-const MARCA = '[SOL_INI]';
-
 function norm(str) {
   return String(str || '')
     .normalize('NFD')
@@ -25,12 +23,22 @@ async function obtenerIngresosPendientes() {
             mv.\`Fecha de Ingreso\`          AS fechaIngreso,
             mv.\`Observaciones Vinculación\` AS observaciones
      FROM \`Maestro_Vinculación\` mv
-     WHERE (
+     LEFT JOIN \`Dynamic_AutoIngreso_Procesados\` p ON p.IdVinculacion = mv.\`Id Vinculación\`
+     WHERE p.IdVinculacion IS NULL
+       -- Excluir trabajadores retirados o con marcas de notificación de retiro
+       AND (mv.Estado IS NULL OR mv.Estado != 'Retirado')
+       AND mv.\`Fecha de Retiro\` IS NULL
+       AND (
             mv.\`Observaciones Vinculación\` IS NULL
-         OR mv.\`Observaciones Vinculación\` NOT LIKE ?
-     )
-     ORDER BY mv.\`Fecha de Ingreso\` DESC`,
-    [`%${MARCA}%`]
+         OR (
+             mv.\`Observaciones Vinculación\` NOT LIKE '%[RN]%'
+         AND mv.\`Observaciones Vinculación\` NOT LIKE '%Retiro notificado%'
+         AND mv.\`Observaciones Vinculación\` NOT LIKE '%[NOTIF_%'
+         )
+       )
+       -- Condición temporal: Solo procesar ingresos de Regional ANTIOQUIA
+       AND UPPER(TRIM(COALESCE(mv.Regional, ''))) = 'ANTIOQUIA'
+     ORDER BY mv.\`Fecha de Ingreso\` DESC`
   );
   return rows;
 }
@@ -71,6 +79,12 @@ async function verificarSolicitudesNuevosIngresos() {
         const operacion = vin.operacion || '';
         const regional = vin.Regional || '';
         const cargo = vin.Cargo || '';
+
+        // Condición temporal: Solo procesar registros de Regional Antioquia
+        if (norm(regional) !== 'ANTIOQUIA') {
+          conn.release();
+          continue;
+        }
 
         // 2. Obtener tallas del colaborador desde Maestro_Segmentación
         let seg = {};
@@ -157,15 +171,16 @@ async function verificarSolicitudesNuevosIngresos() {
 
         // Insertar solicitud de DOTACIÓN
         const idSolDot = randomUUID();
+        const obsDotacion = `AUTOMATICO: Dotación Inicial ${String(vin.Trabajador || '').trim()}`.trim();
         await conn.execute(
           `INSERT INTO Dynamic_Solicitudes
            (IdSolicitud, FechaSolicitud, Estado, \`Operación\`, Regional, Prioridad, Categoria,
             \`Justificación\`, Imagen_Cotización, Monto_Estimado, AprobadoPor, FechaAprobacion,
             foto_guia, Observaciones, Usuario, Fecha_Actualización, usuario_actualiza, Aclaraciones)
            VALUES (?, NOW(), 'BORRADOR', ?, ?, 'BAJA', 'DOTACIÓN',
-            'Dotación para nuevo ingreso de personal', NULL, NULL, NULL, NULL,
-            NULL, 'Dotación Inicial', 'Sistema', NULL, NULL, NULL)`,
-          [idSolDot, operacion, regional]
+            ?, NULL, NULL, NULL, NULL,
+            NULL, ?, 'Sistema', NULL, NULL, NULL)`,
+          [idSolDot, operacion, regional, identificacion, obsDotacion]
         );
         solicitudesCreadasCount++;
 
@@ -250,15 +265,16 @@ async function verificarSolicitudesNuevosIngresos() {
 
         // Insertar solicitud de EPP
         const idSolEpp = randomUUID();
+        const obsEpp = `AUTOMATICO: EPP Inicial ${String(vin.Trabajador || '').trim()}`.trim();
         await conn.execute(
           `INSERT INTO Dynamic_Solicitudes
            (IdSolicitud, FechaSolicitud, Estado, \`Operación\`, Regional, Prioridad, Categoria,
             \`Justificación\`, Imagen_Cotización, Monto_Estimado, AprobadoPor, FechaAprobacion,
             foto_guia, Observaciones, Usuario, Fecha_Actualización, usuario_actualiza, Aclaraciones)
            VALUES (?, NOW(), 'BORRADOR', ?, ?, 'BAJA', 'EPP',
-            'Epp para nuevo ingreso de personal', NULL, NULL, NULL, NULL,
-            NULL, 'EPP Inicial', 'Sistema', NULL, NULL, NULL)`,
-          [idSolEpp, operacion, regional]
+            ?, NULL, NULL, NULL, NULL,
+            NULL, ?, 'Sistema', NULL, NULL, NULL)`,
+          [idSolEpp, operacion, regional, identificacion, obsEpp]
         );
         solicitudesCreadasCount++;
 
@@ -273,12 +289,13 @@ async function verificarSolicitudesNuevosIngresos() {
           );
         }
 
-        // 3. Marcar registro de Maestro_Vinculación como procesado
+        // 3. Marcar registro como procesado en la tabla dedicada (sin riesgo de truncamiento,
+        // a diferencia de escribir una marca de texto en Observaciones Vinculación, columna
+        // compartida con otros procesos que también la mutan: [NI], [RN], [NOTIF_...]).
         await conn.execute(
-          `UPDATE \`Maestro_Vinculación\`
-           SET \`Observaciones Vinculación\` = LEFT(CONCAT(COALESCE(\`Observaciones Vinculación\`, ''), ?), 200)
-           WHERE \`Id Vinculación\` = ?`,
-          [` ${MARCA}`, vin.id]
+          `INSERT INTO \`Dynamic_AutoIngreso_Procesados\` (IdVinculacion, IdSolicitudDotacion, IdSolicitudEpp, FechaProcesado)
+           VALUES (?, ?, ?, NOW())`,
+          [vin.id, idSolDot, idSolEpp]
         );
 
         await conn.commit();

@@ -44,9 +44,58 @@ const FOOTER = `
 
 function formatFecha(val) {
   if (!val) return '';
-  const s = typeof val === 'string' ? val : val.toISOString();
-  const [y, m, d] = s.slice(0, 10).split('-');
-  return `${d}/${m}/${y}`;
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return '';
+    try {
+      return val.toLocaleDateString('es-CO', {
+        timeZone: 'America/Bogota',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      const pad = n => String(n).padStart(2, '0');
+      const d = pad(val.getDate());
+      const m = pad(val.getMonth() + 1);
+      const y = val.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
+  }
+
+  const s = String(val).trim();
+  if (!s) return '';
+
+  const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(isoMatch[3])}/${pad(isoMatch[2])}/${isoMatch[1]}`;
+  }
+
+  const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmyMatch) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(dmyMatch[1])}/${pad(dmyMatch[2])}/${dmyMatch[3]}`;
+  }
+
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    try {
+      return parsed.toLocaleDateString('es-CO', {
+        timeZone: 'America/Bogota',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      const pad = n => String(n).padStart(2, '0');
+      const d = pad(parsed.getDate());
+      const m = pad(parsed.getMonth() + 1);
+      const y = parsed.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
+  }
+
+  return s;
 }
 
 function buildCC(emailUsuario) {
@@ -1023,7 +1072,7 @@ async function notificarSolicitudCambioEstado({
           </tr>
           ${fechaSolicitud ? `<tr>
             <td style="padding:9px 12px;color:#888">Fecha solicitud</td>
-            <td style="padding:9px 12px">${formatFecha(String(fechaSolicitud).slice(0, 10))}</td>
+            <td style="padding:9px 12px">${formatFecha(fechaSolicitud)}</td>
           </tr>` : ''}
           ${quienCambio && quienCambio !== usuarioSolicitante ? `<tr style="background:#f8f9fb">
             <td style="padding:9px 12px;color:#888">Gestionado por</td>

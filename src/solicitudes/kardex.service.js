@@ -25,11 +25,24 @@ async function despacharSolicitud(idSolicitud, usuario) {
     // FOR UPDATE bloquea la fila: impide que dos requests simultáneos
     // al mismo endpoint dupliquen movimientos en Dynamic_Kardex.
     const [[sol]] = await conn.execute(
-      'SELECT `Operación`, Regional, Estado FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
+      'SELECT `Operación`, Regional, Estado, Observaciones FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
       [idSolicitud]
     );
     if (!sol) throw new Error('Solicitud no encontrada');
     if (sol.Estado !== 'APROBADA') throw new Error(`Estado inválido para despacho: ${sol.Estado}`);
+
+    const isAutomatico = String(sol.Observaciones || '').trim().toUpperCase().startsWith('AUTOMATICO');
+    if (isAutomatico) {
+      // Si la solicitud es automática, no altera el inventario/Kardex
+      await conn.execute(
+        `UPDATE Dynamic_Solicitudes
+         SET Estado = 'DESPACHADA', Usuario = ?, \`Fecha_Actualización\` = NOW()
+         WHERE IdSolicitud = ?`,
+        [usuario, idSolicitud]
+      );
+      await conn.commit();
+      return { ok: true, idSolicitud, estado: 'DESPACHADA' };
+    }
 
     const [items] = await conn.execute(
       `SELECT i.IdArticulo, i.Cantidad, a.Categoria, a.Costo
@@ -110,7 +123,7 @@ async function despacharSolicitud(idSolicitud, usuario) {
 
 /**
  * Completa una solicitud aprobada:
- *  1. Registra cada ítem en Dynamic_Kardex como ENTRADA (cantidad positiva).
+ *  1. Registra cada ítem en Dynamic_Kardex como ENTRADA (cantidad positiva) si no es AUTOMATICO.
  *  2. UPDATE Dynamic_Solicitudes: Estado = 'COMPLETADA'
  *
  * Todo ocurre en la misma transacción: si cualquier paso falla se hace rollback.
@@ -124,7 +137,7 @@ async function completarSolicitud(idSolicitud, usuario) {
   await conn.beginTransaction();
   try {
     const [[sol]] = await conn.execute(
-      'SELECT `Operación`, Regional, Estado FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
+      'SELECT `Operación`, Regional, Estado, Observaciones FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
       [idSolicitud]
     );
     if (!sol) throw new Error('Solicitud no encontrada');
@@ -132,34 +145,37 @@ async function completarSolicitud(idSolicitud, usuario) {
       throw new Error(`Estado inválido para completar: ${sol.Estado}`);
     }
 
-    const [items] = await conn.execute(
-      `SELECT i.IdArticulo, i.Cantidad, a.Categoria, a.Costo
-       FROM Dynamic_Solicitudes_Items i
-       LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
-       WHERE i.IdSolicitud = ?`,
-      [idSolicitud]
-    );
-    if (!items.length) throw new Error('La solicitud no tiene ítems para completar');
-
-    for (const item of items) {
-      const idKardex = randomUUID().replace(/-/g, '').toLowerCase();
-
-      await conn.execute(
-        `INSERT INTO Dynamic_Kardex
-         (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
-          \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, ValorUnitario, UsuarioRegistro)
-         VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, ?, ?)`,
-        [
-          idKardex,
-          sol.Regional,
-          sol['Operación'],
-          item.Categoria,
-          item.IdArticulo,
-          item.Cantidad,
-          item.Costo || 0,
-          usuario
-        ]
+    const isAutomatico = String(sol.Observaciones || '').trim().toUpperCase().startsWith('AUTOMATICO');
+    if (!isAutomatico) {
+      const [items] = await conn.execute(
+        `SELECT i.IdArticulo, i.Cantidad, a.Categoria, a.Costo
+         FROM Dynamic_Solicitudes_Items i
+         LEFT JOIN Dynamic_Articulos a ON a.Id = i.IdArticulo
+         WHERE i.IdSolicitud = ?`,
+        [idSolicitud]
       );
+      if (!items.length) throw new Error('La solicitud no tiene ítems para completar');
+
+      for (const item of items) {
+        const idKardex = randomUUID().replace(/-/g, '').toLowerCase();
+
+        await conn.execute(
+          `INSERT INTO Dynamic_Kardex
+           (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+            \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, ValorUnitario, UsuarioRegistro)
+           VALUES (?, NOW(), 'ENTRADA', ?, ?, NULL, ?, ?, ?, ?, ?)`,
+          [
+            idKardex,
+            sol.Regional,
+            sol['Operación'],
+            item.Categoria,
+            item.IdArticulo,
+            item.Cantidad,
+            item.Costo || 0,
+            usuario
+          ]
+        );
+      }
     }
 
     await conn.execute(
