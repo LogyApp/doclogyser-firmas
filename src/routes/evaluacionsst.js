@@ -685,7 +685,24 @@ router.post('/api/responder/:id', async (req, res) => {
     const { p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, firma } = req.body;
 
     if (!firma) {
-      return res.status(400).json({ error: 'La firma es obligatoria' });
+      return res.status(400).json({ error: 'La firma es obligatoria.' });
+    }
+
+    // Validar obligatoriedad de todas las 13 preguntas
+    const requiredQuestions = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11', 'p12', 'p13'];
+    for (const q of requiredQuestions) {
+      if (!req.body[q] || (typeof req.body[q] === 'string' && !req.body[q].trim())) {
+        return res.status(400).json({ error: `La pregunta ${q.toUpperCase()} es obligatoria. Debe responder todas las 13 preguntas.` });
+      }
+    }
+
+    try {
+      const p9Parsed = typeof p9 === 'string' ? JSON.parse(p9) : p9;
+      if (!Array.isArray(p9Parsed) || p9Parsed.length === 0) {
+        return res.status(400).json({ error: 'Debe seleccionar al menos un riesgo en la Pregunta 9.' });
+      }
+    } catch {
+      return res.status(400).json({ error: 'Formato inválido para la Pregunta 9.' });
     }
 
     const [evRows] = await pool.execute(

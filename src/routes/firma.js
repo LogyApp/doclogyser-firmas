@@ -167,12 +167,24 @@ router.post('/:proceso/:id', async (req, res) => {
       [firma_base64, urlFirma, id]
     );
 
+    const nowBogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+    const dd = String(nowBogota.getDate()).padStart(2, '0');
+    const mm = String(nowBogota.getMonth() + 1).padStart(2, '0');
+    const yyyy = nowBogota.getFullYear();
+    const hh = String(nowBogota.getHours()).padStart(2, '0');
+    const min = String(nowBogota.getMinutes()).padStart(2, '0');
+    const fechaFirmaTexto = `Firmado: ${dd}/${mm}/${yyyy} ${hh}:${min}`;
+
+    const firmaTrabajadorHtml = `
+      <div style="display:inline-block;text-align:center;">
+        <img src="${firma_base64}" style="max-width:220px;max-height:90px;display:block;margin:0 auto;" alt="Firma trabajador"/>
+        <div style="font-size:7pt;color:#555;margin-top:2px;font-family:Arial,sans-serif;">${fechaFirmaTexto}</div>
+      </div>
+    `;
+
     let htmlPdf = plantilla.contenido_html || '';
     htmlPdf = htmlPdf
-      .replace(
-        '{{firma_trabajador}}',
-        `<img src="${firma_base64}" style="max-width:220px;max-height:90px;display:block;" alt="Firma trabajador"/>`
-      )
+      .replace('{{firma_trabajador}}', firmaTrabajadorHtml)
       .replace(
         '{{firma_representante}}',
         `<img src="${URL_FIRMA_REPRESENTANTE}" style="max-width:220px;max-height:90px;display:block;" alt="Firma representante"/>`

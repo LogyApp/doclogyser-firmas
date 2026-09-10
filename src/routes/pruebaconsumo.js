@@ -222,9 +222,8 @@ router.get('/firmar', async (req, res) => {
       return res.status(400).send('<h2>Este consentimiento ya ha sido firmado o completado anteriormente.</h2>');
     }
 
-    if (consent.token_expira && new Date(consent.token_expira) < new Date()) {
-      return res.status(400).send('<h2>Este enlace de firma ha expirado (plazo de 48 horas superado).</h2>');
-    }
+    // Se retira el bloqueo de 48 horas para que el documento pueda ser firmado por el trabajador
+    // y permanezca en estado Sin firmar (pendiente) hasta su firma.
 
     const tieneFirmaGcs = await obtenerFirmaBase64Reciente(consent.identificacion).catch(() => null);
     const config = JSON.stringify({

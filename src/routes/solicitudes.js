@@ -81,12 +81,16 @@ async function _enviarEmailEstado(idSolicitud, estadoAnterior, estadoNuevo, quie
     );
 
     let quienCambioNombre = quienCambioId;
-    if (quienCambioId && quienCambioId !== sol.Usuario) {
+    let quienCambioEmail = null;
+    if (quienCambioId) {
       const [[whoRow]] = await pool.execute(
-        'SELECT Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+        'SELECT Nombre, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
         [quienCambioId]
       );
-      if (whoRow) quienCambioNombre = whoRow.Nombre || quienCambioId;
+      if (whoRow) {
+        quienCambioEmail = whoRow.Email || null;
+        if (quienCambioId !== sol.Usuario) quienCambioNombre = whoRow.Nombre || quienCambioId;
+      }
     }
 
     let emailsAprobadores = aprobadoresRows.map(r => r.Email).filter(Boolean);
@@ -95,6 +99,23 @@ async function _enviarEmailEstado(idSolicitud, estadoAnterior, estadoNuevo, quie
         const em = email.trim().toLowerCase();
         return em !== 'gerenciaoperaciones@logyser.com' && em !== 'directorrh@logyser.com';
       });
+    }
+
+    let emailSolicitante = solicitanteRow?.Email || null;
+
+    // Solicitudes generadas automáticamente desde Maestro_Vinculación (Observaciones inicia con
+    // "AUTOMATICO"): al pasar a PENDIENTE o APROBADA, notificar únicamente a auxiliarcompras@,
+    // admin@ y al correo de quien hizo el cambio — no a los aprobadores por rol ni al solicitante.
+    const esSolicitudAutomatica = String(sol.Observaciones || '').trim().toUpperCase().startsWith('AUTOMATICO');
+    if (esSolicitudAutomatica && ['PENDIENTE', 'APROBADA'].includes(estadoNuevo)) {
+      const emailsEspeciales = ['auxiliarcompras@logyser.com', 'admin@logyser.com', quienCambioEmail].filter(Boolean);
+      if (estadoNuevo === 'PENDIENTE') {
+        emailsAprobadores = emailsEspeciales;
+        emailSolicitante = null;
+      } else {
+        emailsAprobadores = [];
+        emailSolicitante = emailsEspeciales.join(', ');
+      }
     }
 
     await notificarSolicitudCambioEstado({
@@ -107,7 +128,7 @@ async function _enviarEmailEstado(idSolicitud, estadoAnterior, estadoNuevo, quie
       estadoAnterior,
       fechaSolicitud: sol.FechaSolicitud,
       usuarioSolicitante: solicitanteRow?.Nombre || sol.Usuario,
-      emailSolicitante: solicitanteRow?.Email || null,
+      emailSolicitante,
       emailsAprobadores,
       items,
       observaciones: sol.Observaciones,
@@ -822,8 +843,7 @@ router.get('/api/solicitud/:id', async (req, res) => {
 router.patch('/api/solicitud/:id/estado', async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { id } = req.params;
-    const { estado, usuario, observaciones, aclaraciones } = req.body;
+    const { estado, usuario, observaciones, aclaraciones, items, justificacion } = req.body;
 
     if (!estado || !usuario) {
       return res.status(400).json({ error: 'estado y usuario requeridos' });
@@ -841,7 +861,7 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
 
     // Lock the row for update
     const [[solicitud]] = await conn.execute(
-      'SELECT Categoria, Estado, `Operación`, Regional, Observaciones, `Justificación` FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
+      'SELECT Categoria, Estado, `Operación`, Regional, Observaciones, `Justificación`, Usuario FROM Dynamic_Solicitudes WHERE IdSolicitud = ? LIMIT 1 FOR UPDATE',
       [id]
     );
     if (!solicitud) {
@@ -875,11 +895,13 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
       fechaAprobacionVal = now;
       await conn.execute(
         `UPDATE Dynamic_Solicitudes
-         SET Estado = ?, usuario_actualiza = ?, AprobadoPor = ?, Observaciones = COALESCE(?, Observaciones),
+         SET Estado = ?, usuario_actualiza = ?, AprobadoPor = ?,
+             Observaciones = COALESCE(?, Observaciones),
+             Justificación = COALESCE(?, Justificación),
              FechaAprobacion = ?, \`Fecha_Actualización\` = NOW(),
              Aclaraciones = NULL
          WHERE IdSolicitud = ?`,
-        [estado, usuario, usuario, observaciones || null, fechaAprobacionVal, id]
+        [estado, usuario, usuario, observaciones || null, justificacion || null, fechaAprobacionVal, id]
       );
     } else if (['RECHAZADA', 'VALIDAR'].includes(estado)) {
       if (!aclaraciones || !aclaraciones.trim()) {
@@ -908,9 +930,23 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
 
     // Si pasa a APROBADA o PARCIAL, creamos los registros en Kardex
     if (['APROBADA', 'PARCIAL'].includes(estado)) {
-      // 1. Si es PARCIAL y se enviaron los items confirmados, actualizar CantidadDespachada
-      if (estado === 'PARCIAL' && Array.isArray(req.body.items)) {
-        for (const item of req.body.items) {
+      // 1. Si es APROBADA y se enviaron los items modificados/confirmados, actualizar Dynamic_Solicitudes_Items
+      if (estado === 'APROBADA' && Array.isArray(items) && items.length > 0) {
+        await conn.execute('DELETE FROM Dynamic_Solicitudes_Items WHERE IdSolicitud = ?', [id]);
+        for (const it of items) {
+          const artId = it.IdArticulo || it.idArticulo;
+          const qty = parseInt(it.Cantidad || it.cantidad || 0);
+          const note = it.Nota || it.nota || null;
+          if (!artId || qty <= 0) continue;
+          const idElemento = randomUUID().replace(/-/g, '');
+          await conn.execute(
+            `INSERT INTO Dynamic_Solicitudes_Items (IdElemento, IdSolicitud, IdArticulo, Cantidad, Nota, Usuario, usuario_actualiza)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [idElemento, id, artId, qty, note, solicitud.Usuario, usuario]
+          );
+        }
+      } else if (estado === 'PARCIAL' && Array.isArray(items)) {
+        for (const item of items) {
           const artId = item.IdArticulo || item.idArticulo;
           const qtyDesp = parseInt(item.CantidadDespachada || item.cantidadDespachada || 0);
           await conn.execute(
@@ -1026,7 +1062,7 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
 
       // 3. Si es solicitud AUTOMATICA y fue APROBADA, estructurar datos para adelantar el Acta de Entrega
       if (estado === 'APROBADA' && esAutomatico) {
-        const identificacionTrabajador = String(solicitud.Justificación || '').trim();
+        const identificacionTrabajador = String(justificacion || solicitud.Justificación || '').trim();
 
         let vinTrabajador = null;
         if (identificacionTrabajador) {

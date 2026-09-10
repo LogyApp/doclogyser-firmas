@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Evaluaciones de Inducción/Capacitación SST — LOG&SER</title>
+  <title>Evaluaciones de Inducción y Reinducción — LOG&SER</title>
   <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -208,7 +208,7 @@
     <!-- Header -->
     <div class="header-card">
       <div class="title-box">
-        <div class="page-title">Evaluaciones de Inducción - Capacitación SST</div>
+        <div class="page-title">Evaluaciones de Inducción y Reinducción</div>
         <div class="page-sub">Panel de administración y control de evaluaciones legales del Sistema de Gestión SST</div>
         <div class="badge-row">
           <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
@@ -447,7 +447,7 @@
       let waLinkHtml = '—';
       if (!item.url_doc) {
         const urlFirmaLink = `${window.location.origin}/evaluacionsst/responder?item=${item.id_evaluacion}`;
-        const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaLink}`);
+        const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción y Reinducción: ${urlFirmaLink}`);
         let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
         if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
         waLinkHtml = `<a href="https://wa.me/${cel}?text=${msgWaText}" target="_blank" onclick="event.stopPropagation();" class="btn btn-primary btn-small" style="background:#25d366; border: none; color:#fff; font-weight: bold; text-decoration: none; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;"><span style="font-size:0.9rem;">💬</span> WhatsApp</a>`;
@@ -732,7 +732,7 @@
       if (!item.url_doc && esCreadorOSistema) {
         // Enlace de firma del trabajador
         const urlFirmaLink = `${window.location.origin}/evaluacionsst/responder?item=${item.id_evaluacion}`;
-        const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción/Capacitación SST: ${urlFirmaLink}`);
+        const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder y firmar tu Evaluación de Inducción y Reinducción: ${urlFirmaLink}`);
         
         // Construir link de WhatsApp con número si existe
         let cel = String(item.celular_trabajador || '').replace(/\D/g, '');

@@ -1435,6 +1435,8 @@
       };
       if (payloadItems) {
         bodyPayload.items = payloadItems;
+      } else if (estadoDestino === 'APROBADA' && Array.isArray(solicitudActual.items)) {
+        bodyPayload.items = solicitudActual.items;
       }
 
       const res = await fetch(`${API_BASE}/solicitud/${solicitudActual.IdSolicitud}/estado`, {

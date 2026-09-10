@@ -90,6 +90,7 @@
     .bwa  { background: #e7f9ee; color: #128C7E; font-weight: 700; }
     .bem  { background: #eef3ff; color: #1a5fa8; font-weight: 700; }
     .bprev { background: #f5f0ff; color: #6c3fc5; font-weight: 700; text-decoration: none; }
+    .bnf   { background: #e67e22; color: #fff; font-weight: 700; }
 
     /* Modal */
     .backdrop {
@@ -548,6 +549,34 @@
       if (d.ok) location.reload();
       else alert('Error: ' + d.error);
     } catch { overlay(false); alert('Error de conexión'); }
+  }
+
+  async function marcarNoFirma(id) {
+    const anotacion = prompt(
+      "Ingrese el texto de la anotación de soporte que saldrá en la firma (por ejemplo: 'El trabajador no firma, se soporta por correo electrónico'):",
+      "El trabajador no firma,\\nse soporta por correo electrónico"
+    );
+    if (anotacion === null) return;
+
+    overlay(true);
+    try {
+      const r = await fetch(`/admin/traslados/${id}/no-firma?Usuario=${usuarioParam}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anotacion })
+      });
+      const d = await r.json();
+      overlay(false);
+      if (d.ok) {
+        alert('✅ Documento de soporte generado exitosamente.');
+        location.reload();
+      } else {
+        alert('Error: ' + (d.error || 'No se pudo generar el documento'));
+      }
+    } catch {
+      overlay(false);
+      alert('Error de conexión al generar documento de soporte');
+    }
   }
 </script>
 </body>

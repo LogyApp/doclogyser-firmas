@@ -58,6 +58,8 @@ function formatTimestamp() {
 }
 
 async function verificarCPCExpirados() {
+  // Desactivado: El documento debe ser firmado por el trabajador y quedar en Sin firmar (pendiente)
+  return;
   try {
     const [rows] = await pool.execute(
       `SELECT * FROM \`Dynamic_pruebaconsumo\`

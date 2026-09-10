@@ -373,7 +373,7 @@ router.post('/api/confirmar', async (req, res) => {
 
     // 5. Consultar los artículos activos para el PDF
     const [items] = await pool.execute(
-      `SELECT Articulo, Talla, Referencia, \`Stock Disponible\` AS StockDisponible
+      `SELECT Articulo, Talla, Referencia, Imagen, \`Stock Disponible\` AS StockDisponible
        FROM Vista_Inventario
        WHERE Operacion = ? AND Categoria = ?`,
       [operacion, categoria]
@@ -393,9 +393,13 @@ router.post('/api/confirmar', async (req, res) => {
     let itemsRowsHtml = '';
     if (items.length > 0) {
       items.forEach((item, idx) => {
+        const imgHtml = item.Imagen
+          ? `<img src="${item.Imagen}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;" alt="">`
+          : `<span style="font-size: 1.2rem;">📦</span>`;
         itemsRowsHtml += `
           <tr>
             <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${idx + 1}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${imgHtml}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${item.Articulo || '—'}</td>
             <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${item.Referencia || 'S/N'}</td>
             <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${item.StockDisponible || 0}</td>
@@ -405,7 +409,7 @@ router.post('/api/confirmar', async (req, res) => {
     } else {
       itemsRowsHtml = `
         <tr>
-          <td colspan="4" style="border: 1px solid #ddd; padding: 12px; text-align: center; color: #777;">
+          <td colspan="5" style="border: 1px solid #ddd; padding: 12px; text-align: center; color: #777;">
             No se encontraron artículos en stock para este inventario.
           </td>
         </tr>
@@ -437,8 +441,9 @@ router.post('/api/confirmar', async (req, res) => {
         <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 40px;">
           <thead>
             <tr style="background-color: #e2e8f0;">
-              <th style="border: 1px solid #ddd; padding: 8px; width: 10%; text-align: center;">ÍTEM</th>
-              <th style="border: 1px solid #ddd; padding: 8px; width: 55%; text-align: left;">DESCRIPCIÓN DEL ARTÍCULO</th>
+              <th style="border: 1px solid #ddd; padding: 8px; width: 8%; text-align: center;">ÍTEM</th>
+              <th style="border: 1px solid #ddd; padding: 8px; width: 10%; text-align: center;">IMAGEN</th>
+              <th style="border: 1px solid #ddd; padding: 8px; width: 47%; text-align: left;">DESCRIPCIÓN DEL ARTÍCULO</th>
               <th style="border: 1px solid #ddd; padding: 8px; width: 20%; text-align: center;">SERIAL / IDENTIFICADOR</th>
               <th style="border: 1px solid #ddd; padding: 8px; width: 15%; text-align: center;">CANTIDAD</th>
             </tr>
@@ -819,7 +824,9 @@ router.get('/api/kardex/datos', async (req, res) => {
         a.Imagen,
         k.Cantidad,
         k.UsuarioAsignado,
-        s.Trabajador AS TrabajadorAsignado,
+        (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v
+         WHERE v.\`Identificación\` = k.UsuarioAsignado
+         ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) AS TrabajadorAsignado,
         k.Acta,
         da.Url_Acta AS UrlActa,
         k.ValorUnitario,
@@ -828,10 +835,9 @@ router.get('/api/kardex/datos', async (req, res) => {
         k.FechaRegistro
       FROM Dynamic_Kardex k
       LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
-      LEFT JOIN Maestro_Segmentación s ON k.UsuarioAsignado = s.Identificación
       LEFT JOIN Dynamic_Actas da ON da.IdActa = k.Acta
       ${listFilter.where}
-      ORDER BY k.FechaMovimiento DESC, k.FechaRegistro DESC
+      ORDER BY k.FechaRegistro DESC
       LIMIT 500
     `;
     // Prepare parallel queries for list, faceted counts, and consolidated stats
@@ -949,6 +955,9 @@ router.get('/api/kardex/articulo/:id', async (req, res) => {
         k.Categoria,
         k.Cantidad,
         k.UsuarioAsignado,
+        (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v
+         WHERE v.\`Identificación\` = k.UsuarioAsignado
+         ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) AS TrabajadorAsignado,
         k.Acta,
         da.Url_Acta AS UrlActa,
         k.ValorUnitario,
@@ -1093,21 +1102,21 @@ router.get('/api/articulos/datos', async (req, res) => {
     // Restringir categorías si aplica (Acceso 4, 5, 6)
     if (acceso.filtroCategorias) {
       const ph = acceso.filtroCategorias.map(() => '?').join(',');
-      conds.push(`Categoria IN (${ph})`);
+      conds.push(`a.Categoria IN (${ph})`);
       params.push(...acceso.filtroCategorias);
     }
 
     // Filters
     if (categoria) {
-      conds.push('Categoria = ?');
+      conds.push('a.Categoria = ?');
       params.push(categoria);
     }
     if (clasificacion) {
-      conds.push('ClaseArticulo = ?');
+      conds.push('a.ClaseArticulo = ?');
       params.push(clasificacion);
     }
     if (search) {
-      conds.push('(Articulo LIKE ? OR Referencia LIKE ? OR Elemento LIKE ? OR CAST(Id AS CHAR) LIKE ?)');
+      conds.push('(a.Articulo LIKE ? OR a.Referencia LIKE ? OR a.Elemento LIKE ? OR CAST(a.Id AS CHAR) LIKE ?)');
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
@@ -1121,15 +1130,19 @@ router.get('/api/articulos/datos', async (req, res) => {
         Talla,
         Referencia,
         Articulo,
-        Categoria,
+        a.Categoria,
         Proveedor,
         Costo,
         \`Fecha Registro\` AS fechaRegistro,
         Usuario,
         ClaseArticulo,
         Placa,
-        (SELECT IFNULL(SUM(k.Cantidad), 0) FROM Dynamic_Kardex k WHERE k.IdArticulo = a.Id) AS Stock
+        cci.Condicion,
+        (SELECT IFNULL(SUM(k.Cantidad), 0) FROM Dynamic_Kardex k WHERE k.IdArticulo = a.Id) AS Stock,
+        (SELECT COUNT(*) FROM Dynamic_Kardex k WHERE k.IdArticulo = a.Id) AS KardexCount,
+        (SELECT COUNT(DISTINCT i.IdActa) FROM Dynamic_Actas_Items i WHERE i.IdArticulo = a.Id) AS ActasCount
       FROM Dynamic_Articulos a
+      LEFT JOIN Config_Categoria_Inventario cci ON cci.Categoria = a.Categoria
       ${where}
       ORDER BY Id DESC
       LIMIT 500
@@ -1203,6 +1216,19 @@ router.post('/api/articulos/guardar', upload.single('imagenArchivo'), async (req
       return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración o con Rol AuxiliarR/Auxiliar pueden gestionar artículos.' });
     }
 
+    // Placa solo aplica cuando la Condicion de la Categoria es 'Recuperable' (Config_Categoria_Inventario).
+    // Se ignora cualquier valor recibido para otras condiciones, para que no sea bypasseable desde la API.
+    let placaFinal = placa || null;
+    if (placaFinal) {
+      const [[catRow]] = await pool.execute(
+        'SELECT Condicion FROM Config_Categoria_Inventario WHERE Categoria = ? LIMIT 1',
+        [categoria || null]
+      );
+      if (!catRow || catRow.Condicion !== 'Recuperable') {
+        placaFinal = null;
+      }
+    }
+
     let publicUrl = imagen || null;
 
     if (id && req.file) {
@@ -1244,7 +1270,7 @@ router.post('/api/articulos/guardar', upload.single('imagenArchivo'), async (req
         proveedor || null,
         costo ? parseFloat(costo) : null,
         cleanClase,
-        placa || null,
+        placaFinal,
         parseInt(id)
       ];
       await pool.execute(query, params);
@@ -1266,7 +1292,7 @@ router.post('/api/articulos/guardar', upload.single('imagenArchivo'), async (req
         costo ? parseFloat(costo) : null,
         acceso.usuarioNombre,
         cleanClase,
-        placa || null
+        placaFinal
       ];
       await pool.execute(query, params);
       res.json({ success: true, message: 'Artículo creado exitosamente.' });
@@ -1403,6 +1429,40 @@ router.get('/api/articulos/stock/:id', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[inventario] GET /api/articulos/stock error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5b. GET /api/articulos/:id/actas - Actas de Entrega que han usado este artículo (Dynamic_Actas_Items)
+router.get('/api/articulos/:id/actas', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario es requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'ArtÍculos');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const query = `
+      SELECT DISTINCT da.IdActa, da.operacion AS Operacion, da.Fecha_Entrega AS FechaEntrega, da.Url_Acta AS UrlActa,
+        da.identificacion AS Identificacion,
+        COALESCE(
+          (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v WHERE v.\`Identificación\` = da.identificacion ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1),
+          (SELECT s.Trabajador FROM \`Maestro_Segmentación\` s WHERE s.\`Identificación\` = da.identificacion LIMIT 1)
+        ) AS Trabajador
+      FROM Dynamic_Actas_Items i
+      JOIN Dynamic_Actas da ON da.IdActa = i.IdActa
+      WHERE i.IdArticulo = ?
+      ORDER BY da.Fecha_Entrega DESC
+    `;
+    const [rows] = await pool.execute(query, [parseInt(id) || 0]);
+    res.json(rows);
+  } catch (err) {
+    console.error('[inventario] GET /api/articulos/:id/actas error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1646,49 +1706,93 @@ async function generarYGuardarActaRecepcionTransferencia({
     console.warn('[inventario] Error consultando despachador:', errDisp.message);
   }
 
-  // Filas de la tabla de artículos
+  // Agrupar los artículos por UsuarioAsignado (el colaborador al que quedó asignado cada uno),
+  // dando prioridad a esa columna sobre el orden plano de llegada. Sin asignación -> grupo aparte.
+  const SIN_ASIGNAR_KEY = '__SIN_ASIGNAR__';
+  const gruposMap = new Map();
+  items.forEach(item => {
+    const key = (item.UsuarioAsignado && String(item.UsuarioAsignado).trim()) || SIN_ASIGNAR_KEY;
+    if (!gruposMap.has(key)) gruposMap.set(key, []);
+    gruposMap.get(key).push(item);
+  });
+
+  // Resolver el nombre del trabajador por cada Identificación asignada (Maestro_Vinculación,
+  // misma vinculación-más-reciente-gana que se usa en el resto del módulo).
+  const nombresAsignados = {};
+  for (const key of gruposMap.keys()) {
+    if (key === SIN_ASIGNAR_KEY) continue;
+    try {
+      const [[vRow]] = await pool.execute(
+        'SELECT Trabajador FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+        [key]
+      );
+      nombresAsignados[key] = (vRow && vRow.Trabajador) || key;
+    } catch (errNom) {
+      console.warn('[inventario] Error resolviendo nombre de asignado:', errNom.message);
+      nombresAsignados[key] = key;
+    }
+  }
+
+  const gruposOrdenados = Array.from(gruposMap.keys()).sort((a, b) => {
+    if (a === SIN_ASIGNAR_KEY) return 1;
+    if (b === SIN_ASIGNAR_KEY) return -1;
+    return String(nombresAsignados[a] || a).localeCompare(String(nombresAsignados[b] || b));
+  });
+
+  // Filas de la tabla de artículos, agrupadas por trabajador asignado
   let itemsRowsHtml = '';
   let totalUnidadesEnviadas = 0;
   let totalUnidadesRecibidas = 0;
   let totalUnidadesDevueltas = 0;
+  let itemCounter = 0;
 
-  items.forEach((item, idx) => {
-    const cantEnviada = item.CantidadDespachada !== undefined ? Number(item.CantidadDespachada) : Math.abs(Number(item.Cantidad) || 0);
-    const cantRecibida = item.CantidadRecibida !== undefined ? Number(item.CantidadRecibida) : cantEnviada;
-    const cantDevuelta = item.CantidadDevuelta !== undefined ? Number(item.CantidadDevuelta) : Math.max(0, cantEnviada - cantRecibida);
-
-    totalUnidadesEnviadas += cantEnviada;
-    totalUnidadesRecibidas += cantRecibida;
-    totalUnidadesDevueltas += cantDevuelta;
-
-    const novedadItem = item.Novedad 
-      ? `<span style="color: #c2410c; font-weight: bold;">⚠️ ${item.Novedad}</span>` 
-      : (cantDevuelta > 0 ? `<span style="color: #dc2626; font-weight: bold;">⚠️ Incompleto (-${cantDevuelta})</span>` : '<span style="color: #16a34a;">Conforme</span>');
-      
-    const imgHtml = item.Imagen 
-      ? `<img src="${item.Imagen}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;" alt="">` 
-      : `<span style="font-size: 1.2rem;">📦</span>`;
-
-    const devueltoHtml = cantDevuelta > 0 
-      ? `<span style="color: #dc2626; font-weight: bold;">-${cantDevuelta} (Retornado)</span>` 
-      : `<span style="color: #64748b;">0</span>`;
-
+  gruposOrdenados.forEach(key => {
+    const grupoLabel = key === SIN_ASIGNAR_KEY ? 'Sin trabajador asignado' : (nombresAsignados[key] || key);
     itemsRowsHtml += `
-      <tr>
-        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${idx + 1}</td>
-        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${imgHtml}</td>
-        <td style="border: 1px solid #ddd; padding: 6px; vertical-align: middle;">
-          <strong>${item.Articulo || 'Artículo'}</strong>
-          ${item.Referencia && item.Referencia !== '—' ? `<br><span style="font-size: 8pt; color: #666;">Ref: ${item.Referencia}</span>` : ''}
-          ${item.Talla && item.Talla !== '—' ? `<br><span style="font-size: 8pt; color: #666;">Talla: ${item.Talla}</span>` : ''}
-        </td>
-        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${item.Categoria || item.CategoriaArticulo || 'General'}</td>
-        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-weight: bold;">${cantEnviada}</td>
-        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-weight: bold; color: ${cantDevuelta > 0 ? '#ea580c' : '#16a34a'};">${cantRecibida}</td>
-        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-size: 8.5pt;">${devueltoHtml}</td>
-        <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-size: 8.5pt;">${novedadItem}</td>
+      <tr style="background-color: #dbeafe;">
+        <td colspan="8" style="border: 1px solid #ddd; padding: 6px 8px; font-weight: bold; color: #1e3c72; font-size: 8.5pt;">👤 ${grupoLabel}</td>
       </tr>
     `;
+
+    gruposMap.get(key).forEach(item => {
+      itemCounter++;
+      const cantEnviada = item.CantidadDespachada !== undefined ? Number(item.CantidadDespachada) : Math.abs(Number(item.Cantidad) || 0);
+      const cantRecibida = item.CantidadRecibida !== undefined ? Number(item.CantidadRecibida) : cantEnviada;
+      const cantDevuelta = item.CantidadDevuelta !== undefined ? Number(item.CantidadDevuelta) : Math.max(0, cantEnviada - cantRecibida);
+
+      totalUnidadesEnviadas += cantEnviada;
+      totalUnidadesRecibidas += cantRecibida;
+      totalUnidadesDevueltas += cantDevuelta;
+
+      const novedadItem = item.Novedad
+        ? `<span style="color: #c2410c; font-weight: bold;">⚠️ ${item.Novedad}</span>`
+        : (cantDevuelta > 0 ? `<span style="color: #dc2626; font-weight: bold;">⚠️ Incompleto (-${cantDevuelta})</span>` : '<span style="color: #16a34a;">Conforme</span>');
+
+      const imgHtml = item.Imagen
+        ? `<img src="${item.Imagen}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;" alt="">`
+        : `<span style="font-size: 1.2rem;">📦</span>`;
+
+      const devueltoHtml = cantDevuelta > 0
+        ? `<span style="color: #dc2626; font-weight: bold;">-${cantDevuelta} (Retornado)</span>`
+        : `<span style="color: #64748b;">0</span>`;
+
+      itemsRowsHtml += `
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${itemCounter}</td>
+          <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${imgHtml}</td>
+          <td style="border: 1px solid #ddd; padding: 6px; vertical-align: middle;">
+            <strong>${item.Articulo || 'Artículo'}</strong>
+            ${item.Referencia && item.Referencia !== '—' ? `<br><span style="font-size: 8pt; color: #666;">Ref: ${item.Referencia}</span>` : ''}
+            ${item.Talla && item.Talla !== '—' ? `<br><span style="font-size: 8pt; color: #666;">Talla: ${item.Talla}</span>` : ''}
+          </td>
+          <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle;">${item.Categoria || item.CategoriaArticulo || 'General'}</td>
+          <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-weight: bold;">${cantEnviada}</td>
+          <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-weight: bold; color: ${cantDevuelta > 0 ? '#ea580c' : '#16a34a'};">${cantRecibida}</td>
+          <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-size: 8.5pt;">${devueltoHtml}</td>
+          <td style="border: 1px solid #ddd; padding: 6px; text-align: center; vertical-align: middle; font-size: 8.5pt;">${novedadItem}</td>
+        </tr>
+      `;
+    });
   });
 
   const htmlContent = `

@@ -2683,7 +2683,7 @@
                   <div class="btns-grupo" style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
                     <button type="submit" class="btn btn-crear" id="sol-btn-guardar-borrador" style="background:#10b981; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer;">💾 Guardar Borrador</button>
                     <button type="button" class="btn btn-primary" id="sol-btn-presentar" style="background:var(--primary); color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">📤 Presentar Solicitud</button>
-                    <button type="button" class="btn btn-danger" id="sol-btn-cancelar-sol" style="background:#dc2626; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">❌ Anular Solicitud</button>
+                    <button type="button" class="btn btn-danger" id="sol-btn-cancelar-sol" style="background:#dc2626; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">❌ Cancelar Solicitud</button>
                   </div>
                 </form>
               </div>
@@ -4237,7 +4237,7 @@
         <!-- Subtab: Stock Disponible -->
         <div id="articulo-stock-subtab-content-stock">
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">Distribución del stock físico disponible calculado de acuerdo al Kardex:</p>
-          <div class="kardex-table-container" style="max-height: 40vh; margin-top: 0; border: 1px solid var(--border); border-radius: 6px; overflow: auto;">
+          <div class="kardex-table-container" style="max-height: 40vh; margin-top: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
             <table class="history-table" style="table-layout: auto; width: 100%;">
               <thead>
                 <tr style="background: #f1f5f9;">
@@ -4262,7 +4262,7 @@
 
         <!-- Subtab: Actas Relacionadas -->
         <div id="articulo-stock-subtab-content-actas" style="display: none;">
-          <div class="kardex-table-container" style="max-height: 50vh; margin-top: 0; border: 1px solid var(--border); border-radius: 6px; overflow: auto;">
+          <div class="kardex-table-container" style="max-height: 50vh; margin-top: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
             <table class="history-table" style="table-layout: auto; width: 100%;">
               <thead>
                 <tr style="background: #f1f5f9;">
@@ -4299,29 +4299,29 @@
         <p style="font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; padding: 10px 14px; border-radius: 6px; margin: 0 0 12px 0; font-weight: 600; line-height: 1.4;">
           ⚠️ Ingresa Cantidad y Nota en cada artículo que quieras incluir. Solo se agregarán los que tengan cantidad mayor a 0.
         </p>
-        <div style="display: flex; gap: 12px; align-items: center; width: 100%; flex-wrap: wrap;">
-          <div style="flex: 2; min-width: 180px;">
+        <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
+          <div style="flex: 2;">
             <input type="text" id="sol-modal-art-search" placeholder="Filtrar por nombre o referencia..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box;">
           </div>
-          <div style="flex: 1; min-width: 140px;">
+          <div style="flex: 1;">
             <select id="sol-modal-clase-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todas las clasificaciones</option>
             </select>
           </div>
         </div>
         <!-- Filtros adicionales exclusivos de la Categoría Dotación (en cascada: Clasificación -> Elemento -> Talla -> Referencia) -->
-        <div id="sol-modal-dotacion-filters" style="display: none; gap: 12px; align-items: center; width: 100%; margin-top: 10px; flex-wrap: wrap;">
-          <div style="flex: 1; min-width: 140px;">
+        <div id="sol-modal-dotacion-filters" style="display: none; gap: 12px; align-items: center; width: 100%; margin-top: 10px;">
+          <div style="flex: 1;">
             <select id="sol-modal-elemento-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todos los elementos</option>
             </select>
           </div>
-          <div style="flex: 1; min-width: 140px;">
+          <div style="flex: 1;">
             <select id="sol-modal-talla-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todas las tallas</option>
             </select>
           </div>
-          <div style="flex: 1; min-width: 140px;">
+          <div style="flex: 1;">
             <select id="sol-modal-referencia-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todas las referencias</option>
             </select>
@@ -4357,29 +4357,29 @@
         <p style="font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; padding: 10px 14px; border-radius: 6px; margin: 0 0 12px 0; font-weight: 600; line-height: 1.4;">
           ⚠️ Ingresa Cantidad y Nota en cada artículo que quieras incluir. Solo se agregarán los que tengan cantidad mayor a 0.
         </p>
-        <div style="display: flex; gap: 12px; align-items: center; width: 100%; flex-wrap: wrap;">
-          <div style="flex: 2; min-width: 180px;">
+        <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
+          <div style="flex: 2;">
             <input type="text" id="acta-modal-art-search" placeholder="Filtrar por nombre o referencia..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box;">
           </div>
-          <div style="flex: 1; min-width: 140px;">
+          <div style="flex: 1;">
             <select id="acta-modal-clase-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todas las clasificaciones</option>
             </select>
           </div>
         </div>
         <!-- Filtros adicionales exclusivos de la Categoría Dotación (en cascada: Clasificación -> Elemento -> Talla -> Referencia) -->
-        <div id="acta-modal-dotacion-filters" style="display: none; gap: 12px; align-items: center; width: 100%; margin-top: 10px; flex-wrap: wrap;">
-          <div style="flex: 1; min-width: 140px;">
+        <div id="acta-modal-dotacion-filters" style="display: none; gap: 12px; align-items: center; width: 100%; margin-top: 10px;">
+          <div style="flex: 1;">
             <select id="acta-modal-elemento-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todos los elementos</option>
             </select>
           </div>
-          <div style="flex: 1; min-width: 140px;">
+          <div style="flex: 1;">
             <select id="acta-modal-talla-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todas las tallas</option>
             </select>
           </div>
-          <div style="flex: 1; min-width: 140px;">
+          <div style="flex: 1;">
             <select id="acta-modal-referencia-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.85rem; box-sizing: border-box; background: white;">
               <option value="">Todas las referencias</option>
             </select>
@@ -4541,7 +4541,7 @@
 
   <!-- Config script injected from backend -->
   <script>
-    const CONFIG = __CONFIG__;
+    const CONFIG = {"usuarioId":"test-user","usuarioNombre":"Usuario Prueba","rol":"Sistema","regional":"ANTIOQUIA","dispositivo":"","operacion":"Administracion","secciones":["Inventario","Actas","Kardex","ArtÍculos","Solicitudes","DotacionLey","pendienteRecibir"],"seccionAcceso":{},"sinFiltro":true,"operacionesFiltro":[],"opsPorRegional":{"ANTIOQUIA":["Administracion","Bodega Central"]},"filtroCategorias":null,"regionalesFiltro":["ANTIOQUIA"]};
   </script>
 
   <!-- Interactive script -->
@@ -4758,17 +4758,6 @@
       modalClose.addEventListener('click', () => {
         imageModal.style.display = 'none';
       });
-
-      // Modal de detalle de Artículo (Stock/Kardex/Actas) — se abre desde Inventario, Kardex y
-      // Artículos, así que estos listeners de cierre deben registrarse una sola vez de forma
-      // global (no dentro de initArticulos, que solo corre si se visita esa pestaña).
-      const stockModal = document.getElementById('articulo-stock-modal');
-      const btnCloseStock = document.getElementById('articulo-stock-modal-btn-close');
-      const btnCloseStockHeader = document.getElementById('articulo-stock-modal-close');
-      if (stockModal) {
-        if (btnCloseStock) btnCloseStock.addEventListener('click', () => stockModal.style.display = 'none');
-        if (btnCloseStockHeader) btnCloseStockHeader.addEventListener('click', () => stockModal.style.display = 'none');
-      }
 
       function closeActiveModals() {
         const modalIds = [
@@ -6081,7 +6070,7 @@
     function updateConfCategoriasDropdown() {
       confCategoria.innerHTML = '<option value="">Seleccione categoría</option>';
       
-      const categories = ['ACTIVO FIJO', 'DOTACIÓN', 'HERRAMIENTA', 'EPP', 'PAPELERIA', 'TECNOLOGIA'];
+      const categories = ['ACTIVO FIJO', 'DOTACION', 'HERRAMIENTA', 'EPP', 'PAPELERIA', 'TECNOLOGIA'];
       categories.forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat;
@@ -8004,6 +7993,13 @@
         form.addEventListener('submit', submitArticleForm);
       }
 
+      // Stock modal close clicks
+      const stockModal = document.getElementById('articulo-stock-modal');
+      const btnCloseStock = document.getElementById('articulo-stock-modal-btn-close');
+      const btnCloseStockHeader = document.getElementById('articulo-stock-modal-close');
+      if (btnCloseStock) btnCloseStock.addEventListener('click', () => stockModal.style.display = 'none');
+      if (btnCloseStockHeader) btnCloseStockHeader.addEventListener('click', () => stockModal.style.display = 'none');
+
       // Select All checkbox for bulk delete
       const selectAll = document.getElementById('articulos-select-all');
       if (selectAll) {
@@ -9120,11 +9116,11 @@
         });
       }
 
-      // Anular Solicitud button click (etiqueta UI; el proceso interno sigue siendo estado CANCELADA)
+      // Cancelar Solicitud button click
       const btnCancelSol = document.getElementById('sol-btn-cancelar-sol');
       if (btnCancelSol) {
         btnCancelSol.addEventListener('click', async () => {
-          if (!solicitudActual || !confirm('¿Estás seguro de que deseas anular definitivamente esta solicitud?')) return;
+          if (!solicitudActual || !confirm('¿Estás seguro de que deseas cancelar definitivamente esta solicitud?')) return;
           try {
             const res = await fetch(`/solicitudes/api/solicitud/${solicitudActual.IdSolicitud}/estado`, {
               method: 'PATCH',
@@ -9135,8 +9131,8 @@
               })
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Error al anular la solicitud');
-            alert('Solicitud anulada correctamente.');
+            if (!res.ok) throw new Error(data.error || 'Error al cancelar la solicitud');
+            alert('Solicitud cancelada correctamente.');
             mostrarSolicitudVista('listado');
           } catch (err) {
             alert(err.message);
@@ -11954,16 +11950,16 @@
         card.innerHTML = `
           <!-- Header de la Transferencia (clic despliega/oculta los artículos) -->
           <div class="pendiente-order-header" style="cursor: pointer; background: #f8fafc; padding: 14px 18px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; align-items: flex-start; gap: 12px;">
-              <input type="checkbox" class="pendiente-order-check" value="${order.Id}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 17px; height: 17px; margin-top: 2px;">
-              <span id="${chevronId}" class="filtros-chevron" style="font-size: 1rem; margin-top: 2px;">▸</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <input type="checkbox" class="pendiente-order-check" value="${order.Id}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 17px; height: 17px;">
+              <span id="${chevronId}" class="filtros-chevron" style="font-size: 1rem;">▸</span>
               <div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                   <span style="font-weight: 700; color: #1e3c72; font-size: 0.95rem; letter-spacing: 0.5px;">📋 ${order.Id}</span>
                   <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">${order.Regional || 'Regional'}</span>
                   <span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">⏳ En Tránsito</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 0.8rem; color: #475569; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 0.8rem; color: #475569;">
                   <span><strong>Origen:</strong> ${order.OperacionOrigen || '—'}</span>
                   <span style="color: #94a3b8;">➔</span>
                   <span><strong style="color: var(--primary);">Destino:</strong> ${order.OperacionDestino || '—'}</span>

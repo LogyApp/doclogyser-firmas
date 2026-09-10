@@ -4,8 +4,11 @@ const path = require('path');
 const pool = require('../services/db');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
 const { generarToken } = require('../services/token');
-const { notificarFirmaTrabajador } = require('../services/email');
+const { notificarFirmaTrabajador, notificarDocumentoGenerado } = require('../services/email');
 const { obtenerCorreosOperacionDestino } = require('../services/traslados');
+const { v4: uuidv4 } = require('uuid');
+const { generarPDF } = require('../services/renderer');
+const { subirPDF } = require('../services/storage');
 
 const router = express.Router();
 
@@ -181,12 +184,14 @@ function acciones(row, puedeValidar, puedePrevisualizar, usuarioId) {
   const btnAnular  = puedeValidar ? `<button class="ba ban" onclick="cambiar('${id}','anulado')">✗ Anular</button>` : '';
   const btnPreview = puedePrevisualizar ? `<a class="ba bprev" href="/admin/traslados/${id}/preview?Usuario=${usuarioEnc}" target="_blank">👁 Ver doc</a>` : '';
 
+  const btnNoFirma = puedeValidar ? `<button class="ba bnf" onclick="marcarNoFirma('${id}')" title="Generar documento con soporte (No Firma)">📋 No Firma</button>` : '';
+
   switch (row.estado_doc) {
-    case 'pendiente': return `${btnPreview}${btnEditar}${btnValidar}${btnRevisar}${btnAnular}`;
+    case 'pendiente': return `${btnPreview}${btnEditar}${btnValidar}${btnRevisar}${btnAnular}${btnNoFirma}`;
     case 'validado': {
       const btnWA = row.celular_trabajador
         ? `<button class="ba bwa" onclick="abrirWhatsApp('${id}')">📱 WhatsApp</button>` : '';
-      return `${btnWA}<button class="ba bv" onclick="enlace('${id}')">🔗 Enlace</button>${btnEditar}${btnRevisar}${btnAnular}`;
+      return `${btnWA}<button class="ba bv" onclick="enlace('${id}')">🔗 Enlace</button>${btnEditar}${btnRevisar}${btnAnular}${btnNoFirma}`;
     }
     case 'revisar':   return `${btnEditar}${btnValidar}${btnAnular}`;
     case 'firmado':
@@ -536,6 +541,202 @@ router.post('/traslados/:id/editar', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/traslados/:id/no-firma', async (req, res) => {
+  try {
+    const acceso = await computarAcceso(req.query.Usuario);
+    if (!acceso || !acceso.puedeValidar) {
+      return res.status(403).json({ ok: false, error: 'Sin autorización para validar o cerrar traslados' });
+    }
+
+    const { id } = req.params;
+    const { anotacion = 'El trabajador no firma,\nse soporta por correo electrónico' } = req.body;
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Registro de traslado no encontrado' });
+    const t = rows[0];
+
+    if (t.estado_doc === 'generado' && t.url_doc) {
+      return res.status(400).json({ ok: false, error: 'El documento ya fue generado anteriormente' });
+    }
+
+    const plantilla = await obtenerPlantilla('traslado');
+
+    const nowBogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+    const dd = String(nowBogota.getDate()).padStart(2, '0');
+    const mm = String(nowBogota.getMonth() + 1).padStart(2, '0');
+    const yyyy = nowBogota.getFullYear();
+    const hh = String(nowBogota.getHours()).padStart(2, '0');
+    const min = String(nowBogota.getMinutes()).padStart(2, '0');
+    const fechaSoporteTexto = `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+
+    const noFirmaHtml = `
+      <div style="border:1.5px dashed #c0392b;border-radius:4px;padding:8px 12px;color:#c0392b;font-size:8pt;font-weight:bold;line-height:1.4;display:inline-block;text-align:center;font-family:Arial,sans-serif;">
+        ${String(anotacion).replace(/\n/g, '<br>')}<br>
+        <span style="font-size:7pt;color:#555;font-weight:normal;">Fecha soporte: ${fechaSoporteTexto}</span>
+      </div>
+    `;
+
+    let htmlPdf = plantilla.contenido_html || '';
+    htmlPdf = htmlPdf
+      .replace('{{firma_trabajador}}', noFirmaHtml)
+      .replace(
+        '{{firma_representante}}',
+        `<img src="${URL_FIRMA_REPRESENTANTE_PREV}" style="max-width:220px;max-height:90px;display:block;" alt="Firma representante"/>`
+      );
+    const htmlFinal = reemplazarVariables(htmlPdf, preprocesarDatos(t));
+
+    const pdfBuffer = await generarPDF(htmlFinal);
+    const idTraslado = t['IdTraslado'] || id;
+    const urlDoc = await subirPDF(t['Identificación'], idTraslado, pdfBuffer);
+
+    await pool.execute(
+      `UPDATE \`${plantilla.tabla_datos}\`
+       SET url_doc = ?, estado_doc = 'generado', token_firma = NULL, token_expira = NULL,
+           firma_trabajador = NULL, url_firma = NULL
+       WHERE \`${plantilla.id_campo_fk}\` = ?`,
+      [urlDoc, id]
+    );
+
+    const [opRows] = await pool.execute(
+      'SELECT REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ?',
+      [t.operacion_destino]
+    );
+    const regional = opRows.length ? opRows[0].REGIONAL : null;
+
+    const [vinRows] = await pool.execute(
+      'SELECT Estado, `Fecha de Ingreso` FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [t['Identificación']]
+    );
+    const estado = vinRows.length ? vinRows[0].Estado : null;
+    const fechaIngreso = vinRows.length ? vinRows[0]['Fecha de Ingreso'] : null;
+
+    const newId = uuidv4();
+    const obsDoc = (anotacion || 'El trabajador no firma (soporte correo electrónico)').replace(/\n/g, ' ');
+    await pool.execute(
+      `INSERT INTO Maestro_docTrabajador
+       (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
+        TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
+        Justificacion_Solicitud, FechaRegistro, Usuario)
+       VALUES (?, 'PEND', ?, ?, ?, ?, ?, '50', 'TRAS', ?, ?, 'Ver', NULL, NULL, ?, ?)`,
+      [
+        newId,
+        regional,
+        t.operacion_destino,
+        t['Identificación'],
+        estado,
+        fechaIngreso,
+        urlDoc,
+        obsDoc,
+        t.Fecha_Registro,
+        t.Usuario,
+      ]
+    );
+
+    if (vinRows.length) {
+      await pool.execute(
+        `UPDATE \`Maestro_Vinculación\`
+         SET Operación = ?, Usuario = ?, \`Fecha Actualización\` = ?
+         WHERE Identificación = ?
+         ORDER BY \`Fecha de Ingreso\` DESC
+         LIMIT 1`,
+        [t.operacion_destino, t.Usuario, t.Fecha_Registro, t['Identificación']]
+      );
+    }
+
+    const fechaTrasladoStr = t.fecha_traslado
+      ? (typeof t.fecha_traslado === 'string' ? t.fecha_traslado : t.fecha_traslado.toISOString()).slice(0, 10)
+      : null;
+
+    if (fechaTrasladoStr) {
+      const diaTraslado = parseInt(fechaTrasladoStr.slice(8, 10), 10);
+
+      if (diaTraslado !== 1 && diaTraslado !== 16) {
+        const [areaRows] = await pool.execute(
+          'SELECT Area FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+          [t['Identificación']]
+        );
+        const area = areaRows.length ? areaRows[0].Area : null;
+
+        let fechaFinal = null;
+        const [mfRows] = await pool.execute(
+          'SELECT Quincena, Año FROM Maestro_Fechas WHERE Fecha = ? LIMIT 1',
+          [fechaTrasladoStr]
+        );
+        if (mfRows.length) {
+          const [cqRows] = await pool.execute(
+            'SELECT `Fecha Final` FROM Config_Quincenas WHERE Quincena = ? AND Año = ? LIMIT 1',
+            [mfRows[0].Quincena, mfRows[0].Año]
+          );
+          if (cqRows.length) fechaFinal = cqRows[0]['Fecha Final'];
+        }
+
+        await pool.execute(
+          `INSERT INTO Dynamic_Registro_Asistencia
+           (IdRegistro, Operación, Area, Evento, Novedad, \`Apoyo de Otra Operación\`,
+            Trabajador, Trabajador2, Día, \`Fecha Final\`,
+            \`Hora Entrada\`, \`Hora Salida\`, \`Operación a la que apoya\`,
+            Incapacidad, \`Cod Diagnostico\`, Diagnostico,
+            \`PDF Incapacidad\`, \`PDF Historia Clinica\`, \`PDF Soporte\`,
+            Origen, \`Fecha Registro\`, Usuario, Contador, Contador2, Disponible)
+           VALUES (?, ?, ?, 'Novedad', 'Traslado', 'NO',
+                   NULL, ?, ?, ?,
+                   NULL, NULL, NULL,
+                   NULL, NULL, NULL,
+                   NULL, NULL, ?,
+                   ?, ?, 'Sistema', NULL, NULL, 0)`,
+          [
+            uuidv4(),
+            t.operacion_origen,
+            area,
+            t.Trabajador,
+            fechaTrasladoStr,
+            fechaFinal,
+            urlDoc,
+            t.operacion_origen,
+            t.Fecha_Registro,
+          ]
+        );
+      }
+    }
+
+    const [uRows] = await pool.execute(
+      'SELECT Email FROM Maestro_Usuarios WHERE ID = ?', [t.Usuario]
+    );
+    const emailUsuario = (uRows[0] && uRows[0].Email) || '';
+
+    const [cargoRows] = await pool.execute(
+      'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
+      [t.Trabajador]
+    );
+    const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
+
+    const partesTrab = (t.Trabajador || '').split(' ** ');
+    const nombreTrabajador = partesTrab.length > 1 ? partesTrab[1].trim() : t.Trabajador;
+
+    const ccOperacionDestino = await obtenerCorreosOperacionDestino(t.operacion_destino);
+
+    notificarDocumentoGenerado({
+      nombreTrabajador,
+      operacionDestino:  t.operacion_destino,
+      direccionDestino:  t.direccion_destino || '',
+      fechaTraslado:     t.fecha_traslado,
+      horaTraslado:      t.hora_traslado || '',
+      urlDoc,
+      emailUsuario,
+      cargo,
+      ccExtra:           ccOperacionDestino,
+    }).catch(e => console.error('[admin] Error correo generado (no-firma):', e.message));
+
+    res.json({ ok: true, url_doc: urlDoc });
+  } catch (err) {
+    console.error('[admin] Error en no-firma traslado:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

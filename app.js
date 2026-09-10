@@ -145,10 +145,10 @@ const { verificarPZExpirados } = require('./src/services/pzExpiryNotifier');
 verificarPZExpirados(); // verificación inicial al arrancar
 setInterval(verificarPZExpirados, 10 * 60 * 1000); // cada 10 minutos
 
-// Generador automático de CPC (Prueba Consumo) cuando el token expira sin firma
-const { verificarCPCExpirados } = require('./src/services/cpcExpiryNotifier');
-verificarCPCExpirados(); // verificación inicial al arrancar
-setInterval(verificarCPCExpirados, 5 * 60 * 1000); // cada 5 minutos
+// Generador automático de CPC (Prueba Consumo) desactivado: el documento debe permanecer en Sin firmar (pendiente)
+// const { verificarCPCExpirados } = require('./src/services/cpcExpiryNotifier');
+// verificarCPCExpirados();
+// setInterval(verificarCPCExpirados, 5 * 60 * 1000);
 
 // Generador automático de EVSST (Evaluación SST) cuando el token expira sin firma
 const { verificarEVSSTExpirados } = require('./src/services/evsstExpiryNotifier');

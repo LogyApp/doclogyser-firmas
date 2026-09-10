@@ -87,6 +87,7 @@
 
     .err-msg { color: #ef4444; font-size: .76rem; margin-top: 4px; display: none; font-weight: 600; }
     .err-msg.visible { display: block; }
+    .card.card-error { border: 2px solid #ef4444 !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important; }
 
     /* Legal compromisos */
     .legal-text { font-size: .82rem; color: #475569; line-height: 1.6; text-align: justify; margin-bottom: 12px; }
@@ -356,7 +357,7 @@
         </div>
         <div class="err-msg" id="err-firma" style="margin-bottom: 12px;">Debe firmar el documento para poder enviarlo.</div>
 
-        <button type="button" class="btn-submit" id="btn-enviar" onclick="enviarRespuestas()">Enviar Evaluación de Inducción</button>
+        <button type="button" class="btn-submit" id="btn-enviar" onclick="enviarRespuestas()">Enviar Evaluación de Inducción y Reinducción</button>
       </div>
     </div>
 
@@ -408,8 +409,10 @@
         if (radio.checked) {
           label.classList.add('selected');
         }
-        // Hide error message
+        // Hide error message and remove card-error
         document.getElementById(`err-${name}`).classList.remove('visible');
+        const card = document.getElementById(`card-${name}`);
+        if (card) card.classList.remove('card-error');
       });
     });
 
@@ -419,6 +422,8 @@
       chk.addEventListener('change', () => {
         label.classList.toggle('selected', chk.checked);
         document.getElementById('err-p9').classList.remove('visible');
+        const card = document.getElementById('card-p9');
+        if (card) card.classList.remove('card-error');
       });
     });
 
@@ -432,6 +437,8 @@
         }
       });
       document.getElementById('err-p1').classList.remove('visible');
+      const card = document.getElementById('card-p1');
+      if (card) card.classList.remove('card-error');
     }
 
     // Canvas drawing logic
@@ -513,46 +520,61 @@
 
     // Submitting responses
     async function enviarRespuestas() {
-      let valid = true;
+      // Limpiar estilos de error previos
+      document.querySelectorAll('.card.card-error').forEach(c => c.classList.remove('card-error'));
+      document.querySelectorAll('.err-msg').forEach(m => m.classList.remove('visible'));
 
-      // Validate Q1
+      let missingCount = 0;
+      let firstMissingCard = null;
+
+      // 1. Validar Pregunta 1
       if (!q1Answer) {
+        missingCount++;
         document.getElementById('err-p1').classList.add('visible');
-        document.getElementById('card-p1').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        valid = false;
-        return;
+        const cardP1 = document.getElementById('card-p1');
+        cardP1.classList.add('card-error');
+        if (!firstMissingCard) firstMissingCard = cardP1;
       }
 
-      // Validate Radios (Q2 to Q8, Q10 to Q13)
+      // 2. Validar Radios (P2 a P8, P10 a P13)
       const radioQs = ['p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p10', 'p11', 'p12', 'p13'];
       for (const q of radioQs) {
         const checked = document.querySelector(`input[name="${q}"]:checked`);
         if (!checked) {
+          missingCount++;
           document.getElementById(`err-${q}`).classList.add('visible');
-          document.getElementById(`card-${q}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
-          valid = false;
-          return;
+          const cardQ = document.getElementById(`card-${q}`);
+          cardQ.classList.add('card-error');
+          if (!firstMissingCard) firstMissingCard = cardQ;
         }
       }
 
-      // Validate Checkboxes (Q9)
+      // 3. Validar Casillas (P9)
       const q9Selected = document.querySelectorAll('input[name="p9"]:checked');
       if (q9Selected.length === 0) {
+        missingCount++;
         document.getElementById('err-p9').classList.add('visible');
-        document.getElementById('card-p9').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        valid = false;
+        const cardP9 = document.getElementById('card-p9');
+        cardP9.classList.add('card-error');
+        if (!firstMissingCard) firstMissingCard = cardP9;
+      }
+
+      // Si falta alguna de las 13 preguntas, detener de inmediato
+      if (missingCount > 0) {
+        if (firstMissingCard) {
+          firstMissingCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        alert('⚠️ Faltan preguntas por responder.\n\nDebes responder todas las 13 preguntas antes de poder firmar y enviar la evaluación.');
         return;
       }
 
-      // Validate Signature
+      // 4. Validar Firma Digital
       if (!hasSigned) {
         document.getElementById('err-firma').classList.add('visible');
         document.querySelector('.canvas-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        valid = false;
+        alert('⚠️ Debes registrar tu firma digital en el recuadro para poder enviar la evaluación.');
         return;
       }
-
-      if (!valid) return;
 
       // Extract answers
       const p9Answers = Array.from(q9Selected).map(c => c.value);
