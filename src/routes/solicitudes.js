@@ -843,6 +843,7 @@ router.get('/api/solicitud/:id', async (req, res) => {
 router.patch('/api/solicitud/:id/estado', async (req, res) => {
   const conn = await pool.getConnection();
   try {
+    const { id } = req.params;
     const { estado, usuario, observaciones, aclaraciones, items, justificacion } = req.body;
 
     if (!estado || !usuario) {

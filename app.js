@@ -168,3 +168,9 @@ const { verificarSolicitudesNuevosIngresos } = require('./src/services/solicitud
 verificarSolicitudesNuevosIngresos(); // verificación inicial al arrancar
 setInterval(verificarSolicitudesNuevosIngresos, 2 * 60 * 1000); // cada 2 minutos
 
+// Generador automático de actas de entrega cuando expira el plazo de 48 horas sin firma del trabajador
+const { verificarActasExpiradas } = require('./src/services/actasExpiryNotifier');
+verificarActasExpiradas(); // verificación inicial al arrancar
+setInterval(verificarActasExpiradas, 5 * 60 * 1000); // cada 5 minutos
+
+

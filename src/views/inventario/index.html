@@ -3028,6 +3028,7 @@
                   <div class="btns-grupo" style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
                     <button type="submit" class="btn btn-crear" id="acta-btn-guardar" style="background:#10b981; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer;">💾 Guardar Acta</button>
                     <button type="button" class="btn btn-primary" id="acta-btn-enlace" style="background:var(--primary); color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">🔗 Generar Enlace de Firma</button>
+                    <button type="button" class="btn" id="acta-btn-generar-pdf" style="background:#2563eb; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">📄 Generar PDF</button>
                     <button type="button" class="btn btn-danger" id="acta-btn-anular" style="background:#dc2626; color:white; padding:8px 16px; border:none; border-radius:6px; font-weight:600; cursor:pointer; display:none;">🚫 Anular Acta</button>
                   </div>
                 </form>
@@ -13400,6 +13401,40 @@
         btnAnularActa.addEventListener('click', () => anularActaActual());
       }
 
+      // Generar PDF directo
+      const btnGenerarPdfForm = document.getElementById('acta-btn-generar-pdf');
+      if (btnGenerarPdfForm) {
+        btnGenerarPdfForm.addEventListener('click', async () => {
+          if (!actaActual) return;
+          if (!confirm(`¿Confirmas que deseas generar el PDF del Acta #${actaActual.IdActa}?`)) return;
+
+          const originalText = btnGenerarPdfForm.innerHTML;
+          btnGenerarPdfForm.disabled = true;
+          btnGenerarPdfForm.innerHTML = '⏳ Generando PDF...';
+
+          try {
+            const res = await fetch(`/actas/api/acta/${actaActual.IdActa}/generar-pdf-directo`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ usuario: CONFIG.usuarioId })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Error al generar el PDF del Acta');
+
+            alert('PDF generado exitosamente.');
+            await loadActaDetail(actaActual.IdActa);
+            if (typeof fetchActasList === 'function') {
+              fetchActasList();
+            }
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            btnGenerarPdfForm.disabled = false;
+            btnGenerarPdfForm.innerHTML = originalText;
+          }
+        });
+      }
+
       // Generar enlace de firma
       const btnEnlaceActa = document.getElementById('acta-btn-enlace');
       if (btnEnlaceActa) {
@@ -13826,11 +13861,24 @@
         const partes = String(a.Trabajador || '').split(' ** ');
         const nombreCorto = partes.length > 1 ? partes[1].trim() : (a.Trabajador || (a.identificacion ? `Doc: ${a.identificacion}` : '—'));
 
+        const rolUsuario = String((typeof CONFIG !== 'undefined' && CONFIG.rol) || '').trim().toLowerCase();
+        const puedeRegenerar = ['sistema', 'inventario'].includes(rolUsuario);
+
         let accionesHtml = '<span style="color: var(--text-muted);">—</span>';
-        if (stateUpper === 'FIRMADA' && a.Url_Acta) {
-          accionesHtml = `<a href="${a.Url_Acta}" target="_blank" onclick="event.stopPropagation()" title="Ver PDF del Acta" style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; color: var(--primary); border-radius:6px;">
+        if (stateUpper === 'FIRMADA') {
+          const btnVerPdf = a.Url_Acta ? `
+            <a href="${a.Url_Acta}" target="_blank" onclick="event.stopPropagation()" title="Ver PDF del Acta" style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; color: var(--primary); border-radius:6px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-            </a>`;
+            </a>` : '';
+
+          const btnRegenerar = puedeRegenerar ? `
+            <button type="button" onclick="event.stopPropagation(); accionRegenerarPDFActa(${a.IdActa}, this)" title="Regenerar PDF" style="background: none; border: none; cursor: pointer; color: #d97706; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>` : '';
+
+          if (btnVerPdf || btnRegenerar) {
+            accionesHtml = `<div style="display: flex; gap: 2px; justify-content: center; align-items: center;">${btnVerPdf}${btnRegenerar}</div>`;
+          }
         } else if (stateUpper === 'PENDIENTE') {
           accionesHtml = `
             <div style="display: flex; gap: 2px; justify-content: center; align-items: center;">
@@ -14294,6 +14342,8 @@
       btnGuardarReset.textContent = '💾 Guardar Acta';
       document.getElementById('acta-btn-enlace').style.display = 'none';
       document.getElementById('acta-btn-anular').style.display = 'none';
+      const btnGenPdfReset = document.getElementById('acta-btn-generar-pdf');
+      if (btnGenPdfReset) btnGenPdfReset.style.display = 'none';
 
       renderActaFormItems();
     }
@@ -14485,6 +14535,7 @@
         const btnGuardar = document.getElementById('acta-btn-guardar');
         const btnEnlace = document.getElementById('acta-btn-enlace');
         const btnAnular = document.getElementById('acta-btn-anular');
+        const btnGenerarPdf = document.getElementById('acta-btn-generar-pdf');
 
         if (estadoInfo) estadoInfo.style.display = 'block';
         if (estadoBadge) {
@@ -14513,6 +14564,14 @@
             if (docWrap) docWrap.style.display = 'block';
             const link = document.getElementById('acta-link-doc-firmado');
             if (link) link.href = actaActual.Url_Acta;
+          }
+        }
+
+        if (btnGenerarPdf) {
+          if (!actaActual.Url_Acta && actaActual.Estado !== 'Anulada') {
+            btnGenerarPdf.style.display = 'inline-flex';
+          } else {
+            btnGenerarPdf.style.display = 'none';
           }
         }
       } catch (err) {
@@ -14720,6 +14779,45 @@
         }
       } catch (err) {
         alert(err.message);
+      }
+    };
+
+    window.accionRegenerarPDFActa = async function(idActa, btn) {
+      if (!confirm(`¿Confirmas que deseas regenerar el PDF del Acta #${idActa}?`)) return;
+
+      const originalHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>';
+      }
+
+      try {
+        const res = await fetch(`/actas/api/acta/${idActa}/regenerar-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al regenerar el PDF del Acta');
+
+        // Actualizar el objeto local en allActas si existe
+        if (typeof allActas !== 'undefined' && Array.isArray(allActas)) {
+          const item = allActas.find(x => x.IdActa === idActa || x.IdActa === Number(idActa));
+          if (item) {
+            item.Url_Acta = data.url_acta;
+          }
+        }
+
+        alert(`PDF del Acta #${idActa} regenerado exitosamente.`);
+        if (typeof renderActasTableRows === 'function') {
+          renderActasTableRows();
+        }
+      } catch (err) {
+        alert(err.message);
+        if (btn) {
+          btn.innerHTML = originalHtml;
+          btn.disabled = false;
+        }
       }
     };
 

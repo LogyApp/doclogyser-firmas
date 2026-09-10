@@ -1,5 +1,8 @@
 const { v4: uuidv4 } = require('uuid');
 const pool = require('./db');
+const { obtenerPlantilla, reemplazarVariables } = require('./plantilla');
+const { generarPDFDesdeHTML } = require('./renderer');
+const { subirPDFActa, obtenerUrlFirmaReciente } = require('./storage');
 
 const DIACRITICOS = new RegExp('[' + String.fromCharCode(768) + '-' + String.fromCharCode(879) + ']', 'g');
 
@@ -364,6 +367,125 @@ async function revertirKardexActa({ conn, acta, usuarioAnula }) {
   }
 }
 
+// Regenera el PDF de un Acta firmada, lo sube al bucket talenthub_central
+// y registra el documento en Maestro_docTrabajador de forma idempotente.
+async function regenerarPDFActa(idActa, { force = false } = {}) {
+  const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [idActa]);
+  if (!acta) {
+    throw new Error(`Acta #${idActa} no encontrada`);
+  }
+
+  if (acta.Estado !== 'Firmada') {
+    throw new Error(`El acta #${idActa} no está en estado 'Firmada' (Estado actual: ${acta.Estado})`);
+  }
+
+  // Idempotencia: si ya tiene Url_Acta válida y no se fuerza, no volver a renderizar/subir
+  if (!force && acta.Url_Acta && acta.Url_Acta.trim() !== '') {
+    const [[docExistente]] = await pool.execute(
+      'SELECT id FROM Maestro_docTrabajador WHERE Doc = ? LIMIT 1',
+      [acta.Url_Acta]
+    );
+    if (!docExistente) {
+      const { tipoDocumento, prefijo } = await resolverTipoDocumentoActa(acta.Categoria);
+      await registrarDocumentoTrabajadorActa({ acta, tipoDocumento, prefijo, urlActa: acta.Url_Acta });
+    }
+    return { idActa, urlActa: acta.Url_Acta, skipped: true };
+  }
+
+  const plantilla = await obtenerPlantilla('acta_entrega');
+  const fallbackFirma = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/Sin%20firma.png';
+  const urlFirma = acta.Url_Firma || fallbackFirma;
+  const firmaHtml = `<img src="${urlFirma}" style="max-height:90px;max-width:280px;" alt="Firma trabajador"/>`;
+
+  const { datos } = await construirDatosPlantilla(idActa, { firmaHtml });
+  const htmlFinal = reemplazarVariables(plantilla.contenido_html || '', datos);
+
+  const pdfBuffer = await generarPDFDesdeHTML(htmlFinal);
+
+  const { tipoDocumento, prefijo } = await resolverTipoDocumentoActa(acta.Categoria);
+  const urlActa = await subirPDFActa(acta.identificacion, prefijo, idActa, pdfBuffer);
+
+  await pool.execute(
+    'UPDATE Dynamic_Actas SET Url_Acta = ? WHERE IdActa = ?',
+    [urlActa, idActa]
+  );
+
+  // Registrar en Maestro_docTrabajador de forma idempotente
+  const [[docExistente]] = await pool.execute(
+    'SELECT id FROM Maestro_docTrabajador WHERE Doc = ? LIMIT 1',
+    [urlActa]
+  );
+  if (!docExistente) {
+    await registrarDocumentoTrabajadorActa({ acta, tipoDocumento, prefijo, urlActa });
+  }
+
+  return { idActa, urlActa, skipped: false };
+}
+
+// Genera el PDF de un Acta según las reglas de evidencia/firma directa:
+// a. Si tiene foto de evidencia, busca la firma más reciente en el bucket por identificación
+//    y la guarda en Url_Firma de Dynamic_Actas para generar el PDF con esa firma.
+// b. Si no tiene foto de evidencia, genera el PDF con la nota "No firma, soportador por correo electronico"
+//    en la sección de la firma, y guarda la URL corporativa de Sin firma.png.
+// c. Funciona aunque el token no haya vencido (no aplica si ya tiene Url_Acta generada).
+async function generarPDFDirectoActa(idActa) {
+  const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [idActa]);
+  if (!acta) {
+    throw new Error(`Acta #${idActa} no encontrada`);
+  }
+
+  if (acta.Estado === 'Anulada') {
+    throw new Error(`El acta #${idActa} está anulada`);
+  }
+
+  if (acta.Url_Acta && acta.Url_Acta.trim() !== '') {
+    throw new Error(`El acta #${idActa} ya tiene un PDF generado: ${acta.Url_Acta}`);
+  }
+
+  const plantilla = await obtenerPlantilla('acta_entrega');
+  const fallbackFirma = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/Sin%20firma.png';
+
+  let urlFirmaParaGuardar = null;
+  let firmaHtml = '';
+
+  const tieneEvidencia = Boolean(acta.Url_Evidencia && acta.Url_Evidencia.trim() !== '');
+
+  if (tieneEvidencia) {
+    const firmaReciente = await obtenerUrlFirmaReciente(acta.identificacion).catch(() => null);
+    urlFirmaParaGuardar = firmaReciente || fallbackFirma;
+    firmaHtml = `<img src="${urlFirmaParaGuardar}" style="max-height:90px;max-width:280px;" alt="Firma trabajador"/>`;
+  } else {
+    urlFirmaParaGuardar = fallbackFirma;
+    firmaHtml = `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:.78rem;display:inline-block;width:260px;text-align:center;line-height:1.4;margin-bottom:4px">No firma, soportador por correo electronico</div>`;
+  }
+
+  const { datos } = await construirDatosPlantilla(idActa, { firmaHtml });
+  const htmlFinal = reemplazarVariables(plantilla.contenido_html || '', datos);
+
+  const pdfBuffer = await generarPDFDesdeHTML(htmlFinal);
+
+  const { tipoDocumento, prefijo } = await resolverTipoDocumentoActa(acta.Categoria);
+  const urlActa = await subirPDFActa(acta.identificacion, prefijo, idActa, pdfBuffer);
+
+  await pool.execute(
+    `UPDATE Dynamic_Actas
+     SET Estado = 'Firmada', Url_Firma = ?, Url_Acta = ?, token_firma = NULL, token_expira = NULL
+     WHERE IdActa = ?`,
+    [urlFirmaParaGuardar, urlActa, idActa]
+  );
+
+  // Registrar en Maestro_docTrabajador si no existe ya
+  const [[docExistente]] = await pool.execute(
+    'SELECT id FROM Maestro_docTrabajador WHERE Doc = ? LIMIT 1',
+    [urlActa]
+  );
+  if (!docExistente) {
+    await registrarDocumentoTrabajadorActa({ acta, tipoDocumento, prefijo, urlActa });
+  }
+
+  return { idActa, urlActa, tieneEvidencia, urlFirma: urlFirmaParaGuardar };
+}
+
 module.exports = {
   normalizarCategoria,
   resolverTipoDocumentoActa,
@@ -374,4 +496,6 @@ module.exports = {
   resolverCondicionCategoria,
   registrarKardexActa,
   revertirKardexActa,
+  regenerarPDFActa,
+  generarPDFDirectoActa,
 };

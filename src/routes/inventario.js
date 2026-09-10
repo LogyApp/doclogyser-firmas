@@ -113,7 +113,7 @@ router.get('/api/datos', async (req, res) => {
     const fOp = operacion ? { cond: '`Operacion` = ?', param: operacion } : null;
     const fCls = clasificacion ? { cond: '`Clasificación` = ?', param: clasificacion } : null;
     const fCat = categoria ? { cond: '`Categoria` = ?', param: categoria } : null;
-    const fSearch = search ? { cond: '(`Articulo` LIKE ? OR `Referencia` LIKE ?)', param: `%${search}%` } : null;
+    const fSearch = search ? { cond: '(LOWER(`Articulo`) LIKE LOWER(?) OR LOWER(`Referencia`) LIKE LOWER(?))', param: `%${search}%` } : null;
 
     // Helper to join filters safely
     const buildWhere = (filtersList) => {
@@ -1116,7 +1116,7 @@ router.get('/api/articulos/datos', async (req, res) => {
       params.push(clasificacion);
     }
     if (search) {
-      conds.push('(a.Articulo LIKE ? OR a.Referencia LIKE ? OR a.Elemento LIKE ? OR CAST(a.Id AS CHAR) LIKE ?)');
+      conds.push('(LOWER(a.Articulo) LIKE LOWER(?) OR LOWER(a.Referencia) LIKE LOWER(?) OR LOWER(a.Elemento) LIKE LOWER(?) OR CAST(a.Id AS CHAR) LIKE ?)');
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
@@ -1153,14 +1153,14 @@ router.get('/api/articulos/datos', async (req, res) => {
     const condsCat = [];
     const paramsCat = [];
     if (clasificacion) { condsCat.push('ClaseArticulo = ?'); paramsCat.push(clasificacion); }
-    if (search) { condsCat.push('(Articulo LIKE ? OR Referencia LIKE ? OR Elemento LIKE ?)'); paramsCat.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (search) { condsCat.push('(LOWER(Articulo) LIKE LOWER(?) OR LOWER(Referencia) LIKE LOWER(?) OR LOWER(Elemento) LIKE LOWER(?) OR CAST(Id AS CHAR) LIKE ?)'); paramsCat.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
     const whereCat = condsCat.length ? `WHERE ${condsCat.join(' AND ')}` : '';
 
     // ClaseArticulo count
     const condsCls = [];
     const paramsCls = [];
     if (categoria) { condsCls.push('Categoria = ?'); paramsCls.push(categoria); }
-    if (search) { condsCls.push('(Articulo LIKE ? OR Referencia LIKE ? OR Elemento LIKE ?)'); paramsCls.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (search) { condsCls.push('(LOWER(Articulo) LIKE LOWER(?) OR LOWER(Referencia) LIKE LOWER(?) OR LOWER(Elemento) LIKE LOWER(?) OR CAST(Id AS CHAR) LIKE ?)'); paramsCls.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
     const whereCls = condsCls.length ? `WHERE ${condsCls.join(' AND ')}` : '';
 
     const [

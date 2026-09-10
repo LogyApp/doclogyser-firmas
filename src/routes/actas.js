@@ -10,6 +10,8 @@ const {
   registrarKardexActa,
   revertirKardexActa,
   construirDatosPlantilla,
+  regenerarPDFActa,
+  generarPDFDirectoActa,
 } = require('../services/actas');
 const { notificarActaFirma } = require('../services/email');
 
@@ -795,6 +797,59 @@ router.post('/api/acta/:id/correo', async (req, res) => {
     res.json({ ok: true, enviado: true });
   } catch (err) {
     console.error('[actas] POST /api/acta/:id/correo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/acta/:id/regenerar-pdf (Regenera PDF de Acta Firmada, exclusivo Sistema / Inventario) ═════
+router.post('/api/acta/:id/regenerar-pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.body?.usuario || req.query?.usuario;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const [uRows] = await pool.execute(
+      'SELECT ID, Nombre, Rol FROM Maestro_Usuarios WHERE ID = ?',
+      [usuario]
+    );
+    if (!uRows.length) {
+      return res.status(403).json({ error: 'Usuario no encontrado' });
+    }
+
+    const rol = (uRows[0].Rol || '').trim().toLowerCase();
+    const ROLES_PERMITIDOS = ['sistema', 'inventario'];
+    if (!ROLES_PERMITIDOS.includes(rol)) {
+      return res.status(403).json({ error: 'No autorizado: Solo usuarios con rol Sistema o Inventario pueden regenerar actas' });
+    }
+
+    const result = await regenerarPDFActa(id, { force: true });
+    res.json({ ok: true, url_acta: result.urlActa, mensaje: 'PDF regenerado exitosamente' });
+  } catch (err) {
+    console.error(`[actas] POST /api/acta/${req.params.id}/regenerar-pdf:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/acta/:id/generar-pdf-directo (Genera PDF desde el formulario/detalle del acta) ═════
+router.post('/api/acta/:id/generar-pdf-directo', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.body?.usuario || req.query?.usuario;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoActas(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado para gestionar actas' });
+    }
+
+    const result = await generarPDFDirectoActa(id);
+    res.json({ ok: true, url_acta: result.urlActa, mensaje: 'PDF generado exitosamente' });
+  } catch (err) {
+    console.error(`[actas] POST /api/acta/${req.params.id}/generar-pdf-directo:`, err);
     res.status(500).json({ error: err.message });
   }
 });
