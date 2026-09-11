@@ -1029,7 +1029,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
     // Lógica de Reingreso
     const [existeEnSocio] = await connection.query('SELECT Identificación FROM Maestro_Segmentación WHERE Identificación = ?', [a.identificacion]);
     const mensajeFinal = existeEnSocio.length > 0 
-        ? 'El aspirante ya se encuentra en la Sociodemográfica, se reorganizarán los datos' 
+        ? 'Este es un reingreso, se insertará un nuevo registro, se recomienda validar en cuanto el sistema termine el proceso' 
         : 'Información enviada con éxito a la Sociodemográfica';
 
     // 4. INSERT/UPDATE Maestro_Segmentación (Auditoría con nombreUsuario)

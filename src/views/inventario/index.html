@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --primary: #1e3c72;
@@ -258,6 +259,25 @@
     .nav-item.disabled:hover {
       background: transparent;
       color: rgba(255, 255, 255, 0.65);
+    }
+
+    #btn-actualizar-global:hover {
+      background: rgba(255, 255, 255, 0.14) !important;
+      color: #ffffff !important;
+    }
+
+    #btn-actualizar-global:disabled {
+      opacity: 0.65;
+      cursor: default;
+    }
+
+    #btn-actualizar-global-icon.spinning {
+      animation: btnActualizarSpin 0.7s linear infinite;
+    }
+
+    @keyframes btnActualizarSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     .nav-item.disabled:hover .nav-icon {
@@ -1817,6 +1837,11 @@
         flex: 0 0 auto;
         min-width: 130px;
       }
+
+      #btn-actualizar-global {
+        margin: 0 16px 12px 16px !important;
+        justify-content: center;
+      }
       
       .filters-card {
         padding: 16px;
@@ -1866,9 +1891,645 @@
       }
 
       /* Botones de formulario que suelen ir en fila: permitir envolver siempre */
-      .btns-grupo {
-        flex-wrap: wrap !important;
+
+      /* ── Dashboard / Reportes de Inventario: móvil ── */
+      #rep-header-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
       }
+
+      #rep-header-actions .rep-last-updated {
+        width: 100%;
+        justify-content: center;
+        order: -1;
+        margin-right: 0;
+      }
+
+      #btn-rep-exportar-excel, #btn-rep-refrescar {
+        flex: 1;
+        justify-content: center;
+        white-space: nowrap;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
+
+      .rep-filters-box {
+        padding: 14px;
+      }
+
+      .rep-filters-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .rep-filters-inputs {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .rep-select-group {
+        min-width: 100%;
+      }
+
+      #btn-rep-limpiar {
+        width: 100%;
+      }
+
+      .rep-metric-align {
+        width: 100%;
+        align-items: stretch !important;
+      }
+
+      .rep-metric-switch {
+        width: 100%;
+      }
+
+      .rep-metric-btn {
+        flex: 1;
+        font-size: 0.7rem;
+        padding: 8px 4px;
+      }
+
+      .rep-kpi-card {
+        padding: 14px;
+      }
+
+      .rep-charts-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .rep-chart-canvas-wrap {
+        height: 240px;
+      }
+
+      .rep-chart-header {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .rep-table-card {
+        padding: 14px;
+      }
+
+      #rep-table-search, #modal-rep-search {
+        width: 100% !important;
+      }
+
+      .rep-table th, .rep-table td {
+        padding: 8px 10px;
+        font-size: 0.76rem;
+      }
+
+      .rep-modal-footer {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .rep-modal-footer button {
+        flex: 1;
+        justify-content: center;
+      }
+    }
+
+    /* ── Dashboard / Reportes de Inventario ── */
+    .rep-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .rep-kpis-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .rep-kpi-card {
+      position: relative;
+      overflow: hidden;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 18px 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .rep-kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+    }
+
+    .rep-kpi-card.kpi-blue::before { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .rep-kpi-card.kpi-green::before { background: linear-gradient(90deg, #16a34a, #4ade80); }
+    .rep-kpi-card.kpi-purple::before { background: linear-gradient(90deg, #9333ea, #c084fc); }
+    .rep-kpi-card.kpi-amber::before { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .rep-kpi-card.kpi-indigo::before { background: var(--primary-gradient); }
+
+    .rep-kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .rep-kpi-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      background: #f1f5f9;
+      flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+
+    .rep-kpi-card:hover .rep-kpi-icon {
+      transform: scale(1.06);
+    }
+
+    .rep-kpi-card.kpi-blue .rep-kpi-icon { background: #e0f2fe; color: #0284c7; }
+    .rep-kpi-card.kpi-green .rep-kpi-icon { background: #dcfce7; color: #16a34a; }
+    .rep-kpi-card.kpi-purple .rep-kpi-icon { background: #f3e8ff; color: #9333ea; }
+    .rep-kpi-card.kpi-amber .rep-kpi-icon { background: #fef3c7; color: #d97706; }
+    .rep-kpi-card.kpi-indigo .rep-kpi-icon { background: #e0e7ff; color: #4338ca; }
+
+    .rep-kpi-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .rep-kpi-val {
+      font-size: 1.42rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rep-kpi-lbl {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    .rep-kpi-sub {
+      font-size: 0.7rem;
+      color: #64748b;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Eyebrow / kicker de sección ── */
+    .rep-section-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 4px 0 -6px 2px;
+    }
+
+    .rep-section-eyebrow::before {
+      content: '';
+      width: 14px;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--primary-gradient);
+      flex-shrink: 0;
+    }
+
+    /* ── Barra de filtros activos ── */
+    .rep-active-filters {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 4px 2px;
+      animation: repFadeIn 0.2s ease-out;
+    }
+
+    .rep-active-filters-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+
+    .rep-active-filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #eef2ff;
+      color: #3730a3;
+      border: 1px solid #c7d2fe;
+      padding: 4px 6px 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .rep-active-filter-chip button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(55, 48, 163, 0.12);
+      color: #3730a3;
+      font-size: 0.7rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .rep-active-filter-chip button:hover {
+      background: #3730a3;
+      color: white;
+    }
+
+    .rep-active-filters-clear-all {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 4px 2px;
+    }
+
+    .rep-active-filters-clear-all:hover {
+      color: var(--primary);
+    }
+
+    @keyframes repFadeIn {
+      from { opacity: 0; transform: translateY(-3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .rep-last-updated {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+
+    .rep-last-updated .rep-live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #16a34a;
+      box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5);
+      animation: repPulse 2s infinite;
+    }
+
+    @keyframes repPulse {
+      0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); }
+      70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+    }
+
+    .rep-pct-bar-track {
+      flex: 1;
+      height: 6px;
+      background: #eef2f7;
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 50px;
+    }
+
+    .rep-pct-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--primary-gradient);
+      transition: width 0.4s ease;
+    }
+
+    .rep-filters-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .rep-filters-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .rep-filters-inputs {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .rep-select-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 180px;
+    }
+
+    .rep-select-group label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .rep-select-group select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      font-size: 0.85rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .rep-select-group select:focus {
+      border-color: var(--primary);
+    }
+
+    .rep-metric-switch {
+      display: inline-flex;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .rep-metric-btn {
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .rep-metric-btn.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .rep-chips-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .rep-chip {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: #f8fafc;
+      color: #64748b;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .rep-chip:hover {
+      background: #e2e8f0;
+      color: var(--text);
+    }
+
+    .rep-chip.active {
+      background: #1e3c72;
+      color: white;
+      border-color: #1e3c72;
+    }
+
+    .rep-charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+      gap: 20px;
+    }
+
+    .rep-chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .rep-chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .rep-chart-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .rep-chart-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .rep-chart-canvas-wrap {
+      position: relative;
+      height: 310px;
+      width: 100%;
+    }
+
+    .rep-table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-top: 4px;
+    }
+
+    .rep-table-container {
+      max-height: 480px;
+      overflow-y: auto;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
+    .rep-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      text-align: left;
+    }
+
+    .rep-table th {
+      background-color: #f8fafc;
+      font-weight: 600;
+      color: var(--primary);
+      text-transform: uppercase;
+      font-size: 0.74rem;
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      padding: 10px 14px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .rep-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .rep-table tbody tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .rep-badge-op {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .rep-btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--primary);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .rep-btn-action:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* Modal de detalle de artículos de operación */
+    .rep-modal-wrap {
+      display: none;
+      position: fixed;
+      z-index: 1050;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .rep-modal-inner {
+      background: white;
+      border-radius: 14px;
+      width: 95%;
+      max-width: 1080px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .rep-modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+    }
+
+    .rep-modal-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .rep-modal-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
     }
   </style>
 </head>
@@ -1886,7 +2547,11 @@
       </div>
     </div>
     <ul class="nav-list" id="tabs-container">
-      <li class="nav-item active" id="tab-btn-inventario">
+      <li class="nav-item active" id="tab-btn-reportes">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Dashboard / Reportes</span>
+      </li>
+      <li class="nav-item" id="tab-btn-inventario">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
         <span>Inventario</span>
       </li>
@@ -1915,9 +2580,14 @@
         <span>Dotación de Ley</span>
       </li>
     </ul>
+
+    <button type="button" id="btn-actualizar-global" title="Actualiza los datos de la vista actual sin recargar la página ni perder los filtros aplicados" style="margin: 8px 16px 20px 16px; margin-top: auto; padding: 11px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;">
+      <span id="btn-actualizar-global-icon" style="display: inline-block; font-size: 1rem;">🔄</span>
+      <span id="btn-actualizar-global-label">Actualizar</span>
+    </button>
   </div>
 
-  <div class="wrapper" id="content-tab-inventario">
+  <div class="wrapper" id="content-tab-inventario" style="display: none;">
     <!-- Header -->
     <header>
       <div class="logo-container">
@@ -1949,6 +2619,9 @@
       <div style="display: flex; gap: 12px;">
         <button class="tab-btn active" id="tab-btn-consulta">Consulta de Inventario</button>
         <button class="tab-btn" id="tab-btn-historial">Historial de Confirmaciones</button>
+        <button class="tab-btn" id="tab-btn-ir-reportes" style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 600;">
+          <span>📊</span> Dashboard Operaciones
+        </button>
       </div>
 
       <!-- Right Side: Mini Stats Info Box -->
@@ -3859,7 +4532,7 @@
               <input type="hidden" id="edit-articulo-image-current-url">
               
               <div id="edit-articulo-image-preview-container" style="display: none; align-items: center; gap: 8px;">
-                <img id="edit-articulo-image-preview" src="" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border);">
+                <img id="edit-articulo-image-preview" src="" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: zoom-in;" onclick="if (this.src) openImageZoom(this.src, (document.getElementById('edit-articulo-elemento') || {}).value || 'Imagen del artículo')">
                 <span id="edit-articulo-image-preview-filename" style="font-size: 0.72rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
                 <button type="button" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 0.75rem; font-weight: 600; padding: 0;" onclick="removeEditArticuloImage()">Eliminar</button>
               </div>
@@ -4217,8 +4890,13 @@
   <div id="articulo-stock-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 8vh;">
     <div style="max-width: 620px; width: 95%; margin: auto; background: white; color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column; max-height: 84vh;">
       <div class="modal-header" style="background: #f8fafc; color: var(--text); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); flex-shrink: 0;">
-        <h3 id="articulo-stock-modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--primary); line-height: 1.4; word-break: break-word; padding-right: 12px;">Visualización de Stock por Regional y Operación</h3>
-        <span id="articulo-stock-modal-close" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+        <h3 id="articulo-stock-modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--primary); line-height: 1.4; word-break: break-word; padding-right: 12px; flex: 1;">Visualización de Stock por Regional y Operación</h3>
+        <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0;">
+          <button type="button" id="articulo-stock-modal-btn-editar" onclick="editarArticuloDesdeStockModal()" style="padding: 6px 12px; border: 1px solid var(--primary); border-radius: 6px; cursor: pointer; background: white; color: var(--primary); font-weight: 600; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;">
+            <span>✏️</span> Editar Artículo
+          </button>
+          <span id="articulo-stock-modal-close" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+        </div>
       </div>
 
       <!-- Subtabs -->
@@ -4540,6 +5218,289 @@
     </div>
   </div>
 
+  <!-- Pestaña: Dashboard / Reportes de Inventario por Operación -->
+  <div class="wrapper" id="content-tab-reportes">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER LOGO">
+        <div class="header-titles">
+          <h1>Dashboard de Inventario por Operación</h1>
+          <p>Análisis dinámico, métricas ejecutivas y distribución de existencias en operaciones</p>
+        </div>
+      </div>
+
+      <div id="rep-header-actions" style="display: flex; gap: 10px; align-items: center; margin-left: auto; margin-right: 16px;">
+        <span class="rep-last-updated" id="rep-last-updated"><span class="rep-live-dot"></span>Actualizando...</span>
+        <button id="btn-rep-exportar-excel" class="rep-btn-action" style="background: #16a34a; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600;">
+          <span>📥</span> Exportar a Excel
+        </button>
+        <button id="btn-rep-refrescar" class="rep-btn-action" style="background: #f1f5f9; color: var(--text); border: 1px solid var(--border); padding: 8px 14px; border-radius: 8px; font-weight: 600;">
+          <span>🔄</span> Actualizar
+        </button>
+      </div>
+
+      <div class="user-profile">
+        <div class="user-avatar" id="rep-user-avatar">US</div>
+        <div class="user-details">
+          <span class="user-name" id="rep-profile-name">Usuario</span>
+          <span class="user-role" id="rep-profile-role">Consultor</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="rep-container">
+      <!-- Filtros dinámicos -->
+      <div class="rep-filters-box">
+        <div class="rep-filters-row">
+          <div class="rep-filters-inputs">
+            <div class="rep-select-group">
+              <label for="rep-filter-regional">Regional</label>
+              <select id="rep-filter-regional">
+                <option value="">Todas las regionales</option>
+              </select>
+            </div>
+            <div class="rep-select-group">
+              <label for="rep-filter-operacion">Operación</label>
+              <select id="rep-filter-operacion">
+                <option value="">Todas las operaciones</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: flex-end;">
+              <button id="btn-rep-limpiar" class="rep-btn-action" style="height: 38px;">
+                <span>🧹</span> Limpiar
+              </button>
+            </div>
+          </div>
+
+          <!-- Segmented control: Unidades vs Valorización -->
+          <div class="rep-metric-align" style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Métrica Visual</label>
+            <div class="rep-metric-switch">
+              <button id="rep-metric-stock" class="rep-metric-btn active">📦 Unidades (Stock)</button>
+              <button id="rep-metric-valor" class="rep-metric-btn">💰 Valorización ($ COP)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Categorías (Chips rápidos) -->
+        <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--border); padding-top: 12px;">
+          <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Filtrar por Categoría</label>
+          <div class="rep-chips-row" id="rep-category-chips">
+            <button class="rep-chip active" data-cat="">Todas las Categorías</button>
+            <button class="rep-chip" data-cat="DOTACIÓN">Dotación</button>
+            <button class="rep-chip" data-cat="EPP">EPP</button>
+            <button class="rep-chip" data-cat="TECNOLOGIA">Tecnología</button>
+            <button class="rep-chip" data-cat="ACTIVO FIJO">Activo Fijo</button>
+            <button class="rep-chip" data-cat="PAPELERIA">Papelería</button>
+            <button class="rep-chip" data-cat="HERRAMIENTA">Herramientas</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtros activos (chips removibles) -->
+      <div class="rep-active-filters" id="rep-active-filters-bar" style="display: none;">
+        <span class="rep-active-filters-label">Filtros activos:</span>
+        <div id="rep-active-filters-chips" style="display: contents;"></div>
+        <button type="button" class="rep-active-filters-clear-all" id="rep-active-filters-clear-all">Limpiar todo</button>
+      </div>
+
+      <!-- KPIs Ejecutivos -->
+      <div class="rep-section-eyebrow">Resumen Ejecutivo</div>
+      <div class="rep-kpis-grid">
+        <div class="rep-kpi-card kpi-blue">
+          <div class="rep-kpi-icon">📦</div>
+          <div class="rep-kpi-info">
+            <span class="rep-kpi-val" id="rep-kpi-stock">0</span>
+            <span class="rep-kpi-lbl">Unidades en Stock</span>
+            <span class="rep-kpi-sub" id="rep-kpi-stock-sub">Existencias físicas</span>
+          </div>
+        </div>
+
+        <div class="rep-kpi-card kpi-green">
+          <div class="rep-kpi-icon">💰</div>
+          <div class="rep-kpi-info">
+            <span class="rep-kpi-val" id="rep-kpi-valor">$0</span>
+            <span class="rep-kpi-lbl">Valorización Total</span>
+            <span class="rep-kpi-sub">Pesos Colombianos (COP)</span>
+          </div>
+        </div>
+
+        <div class="rep-kpi-card kpi-purple">
+          <div class="rep-kpi-icon">🏢</div>
+          <div class="rep-kpi-info">
+            <span class="rep-kpi-val" id="rep-kpi-operaciones">0</span>
+            <span class="rep-kpi-lbl">Operaciones con Stock</span>
+            <span class="rep-kpi-sub" id="rep-kpi-ops-sub">De 36 operaciones activas</span>
+          </div>
+        </div>
+
+        <div class="rep-kpi-card kpi-amber">
+          <div class="rep-kpi-icon">🏷️</div>
+          <div class="rep-kpi-info">
+            <span class="rep-kpi-val" id="rep-kpi-articulos">0</span>
+            <span class="rep-kpi-lbl">Referencias Únicas</span>
+            <span class="rep-kpi-sub">Artículos distintos</span>
+          </div>
+        </div>
+
+        <div class="rep-kpi-card kpi-indigo">
+          <div class="rep-kpi-icon">🏆</div>
+          <div class="rep-kpi-info">
+            <span class="rep-kpi-val" id="rep-kpi-top-op" style="font-size: 1.1rem;">-</span>
+            <span class="rep-kpi-lbl">Operación Líder</span>
+            <span class="rep-kpi-sub" id="rep-kpi-top-op-sub">Mayor inventario</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fila 1 de Gráficos: Top Artículos y Top Operaciones -->
+      <div class="rep-section-eyebrow">Análisis Visual</div>
+      <div class="rep-charts-grid">
+        <div class="rep-chart-card">
+          <div class="rep-chart-header">
+            <span class="rep-chart-title">
+              <span>📦</span> Top 10 Artículos con Mayor Existencia
+            </span>
+            <span class="rep-chart-badge">Unidades Físicas</span>
+          </div>
+          <div class="rep-chart-canvas-wrap">
+            <canvas id="chart-top-articulos"></canvas>
+          </div>
+        </div>
+
+        <div class="rep-chart-card">
+          <div class="rep-chart-header">
+            <span class="rep-chart-title">
+              <span>📊</span> Top Operaciones con Mayor Inventario
+            </span>
+            <span class="rep-chart-badge" id="badge-metric-ops">Por Unidades</span>
+          </div>
+          <div class="rep-chart-canvas-wrap">
+            <canvas id="chart-top-operaciones"></canvas>
+          </div>
+          <small style="margin-top: 8px; font-size: 0.72rem; color: #94a3b8; text-align: center;">💡 Haz clic en una barra para filtrar directamente la tabla hacia esa operación</small>
+        </div>
+      </div>
+
+      <!-- Fila 2 de Gráficos: Comparativo Regional y Categorías -->
+      <div class="rep-charts-grid">
+        <div class="rep-chart-card">
+          <div class="rep-chart-header">
+            <span class="rep-chart-title">
+              <span>🗺️</span> Comparativo por Regional
+            </span>
+            <span class="rep-chart-badge" id="badge-metric-reg">Por Unidades</span>
+          </div>
+          <div class="rep-chart-canvas-wrap">
+            <canvas id="chart-regionales"></canvas>
+          </div>
+        </div>
+
+        <div class="rep-chart-card">
+          <div class="rep-chart-header">
+            <span class="rep-chart-title">
+              <span>🍩</span> Distribución por Categoría
+            </span>
+            <span class="rep-chart-badge" id="badge-metric-cat">Por Unidades</span>
+          </div>
+          <div class="rep-chart-canvas-wrap">
+            <canvas id="chart-categorias"></canvas>
+          </div>
+          <small style="margin-top: 8px; font-size: 0.72rem; color: #94a3b8; text-align: center;">💡 Haz clic en una porción o leyenda para alternar la categoría</small>
+        </div>
+      </div>
+
+      <!-- Tabla Consolidada por Operación -->
+      <div class="rep-section-eyebrow">Detalle Operativo</div>
+      <div class="rep-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin: 0;">Consolidado de Inventario por Operación</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 2px 0 0 0;">Explora el detalle artículo por artículo de cada operación haciendo clic en "Ver Artículos".</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="text" id="rep-table-search" placeholder="Buscar operación o regional..." style="padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.82rem; width: 240px; outline: none;">
+          </div>
+        </div>
+
+        <div class="rep-table-container">
+          <table class="rep-table">
+            <thead>
+              <tr>
+                <th style="width: 140px;">Regional</th>
+                <th>Operación</th>
+                <th style="text-align: center; width: 130px;">Referencias</th>
+                <th style="text-align: right; width: 140px;">Stock Disponible</th>
+                <th style="text-align: right; width: 160px;">Valor Total ($)</th>
+                <th style="text-align: left; width: 150px;">% Inventario</th>
+                <th style="text-align: center; width: 130px;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="rep-table-body">
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);"><div class="loader" style="width: 32px; height: 32px; margin: 6px auto 12px;"></div>Cargando reporte de inventario...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalle de Artículos por Operación -->
+  <div class="rep-modal-wrap" id="modal-rep-detalle">
+    <div class="rep-modal-inner">
+      <div class="rep-modal-header">
+        <div>
+          <h3 id="modal-rep-title" style="font-size: 1.15rem; font-weight: 700; color: var(--primary); margin: 0;">Detalle de Inventario</h3>
+          <span id="modal-rep-subtitle" style="font-size: 0.82rem; color: var(--text-muted);">Operación</span>
+        </div>
+        <button onclick="closeRepDetalleModal()" style="border: none; background: transparent; font-size: 1.5rem; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
+      </div>
+
+      <div class="rep-modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; gap: 16px; font-size: 0.85rem; font-weight: 600; color: var(--text);">
+            <span>Artículos: <span id="modal-rep-total-items" style="color: var(--primary);">0</span></span>
+            <span>Stock Total: <span id="modal-rep-total-stock" style="color: #16a34a;">0</span></span>
+            <span>Valor Total: <span id="modal-rep-total-valor" style="color: #0284c7;">$0</span></span>
+          </div>
+          <input type="text" id="modal-rep-search" placeholder="Filtrar artículo o referencia..." style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; width: 220px; outline: none;">
+        </div>
+
+        <div style="max-height: 55vh; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 8px;">
+          <table class="rep-table">
+            <thead>
+              <tr>
+                <th style="width: 50px; text-align: center;">Img</th>
+                <th>Artículo</th>
+                <th style="width: 100px;">Talla</th>
+                <th style="width: 120px;">Categoría</th>
+                <th style="text-align: right; width: 110px;">Stock</th>
+                <th style="text-align: right; width: 130px;">Valor Total</th>
+              </tr>
+            </thead>
+            <tbody id="modal-rep-tbody">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando artículos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rep-modal-footer">
+        <button id="modal-rep-btn-export" class="rep-btn-action" style="background: #16a34a; color: white; border: none; padding: 7px 14px; border-radius: 6px;">
+          <span>📥</span> Exportar Artículos de esta Operación
+        </button>
+        <button onclick="closeRepDetalleModal()" class="rep-btn-action" style="padding: 7px 16px; border-radius: 6px;">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Config script injected from backend -->
   <script>
     const CONFIG = __CONFIG__;
@@ -4802,12 +5763,17 @@
         }
       });
 
-      // Universal backdrop click listener for all modals
-      document.addEventListener('click', (e) => {
-        if (e.target && (e.target.classList.contains('modal') || e.target.classList.contains('conf-modal'))) {
-          e.target.style.display = 'none';
-        }
-      });
+      // Nota: se removió intencionalmente el cierre de modales al hacer clic fuera de ellos
+      // (backdrop click) — varios usuarios perdían el progreso de formularios largos al hacer
+      // clic accidentalmente por fuera. Ahora todos los modales solo cierran desde su botón/×
+      // de cierre explícito, o con la tecla Escape (ver closeActiveModals arriba).
+
+      // Botón "Actualizar" global de la barra lateral: refresca los datos de la pestaña/subpestaña
+      // visible actualmente, sin navegar ni recargar la página, preservando filtros aplicados.
+      const btnActualizarGlobal = document.getElementById('btn-actualizar-global');
+      if (btnActualizarGlobal) {
+        btnActualizarGlobal.addEventListener('click', () => refrescarVistaActual());
+      }
 
       // 4. Tab switching event listeners (Inventario)
       tabBtnConsulta.addEventListener('click', () => {
@@ -4841,11 +5807,6 @@
 
       confModalClose.addEventListener('click', () => { confModal.style.display = 'none'; });
       btnConfCancel.addEventListener('click', () => { confModal.style.display = 'none'; });
-      confModal.addEventListener('click', (e) => {
-        if (e.target === confModal) {
-          confModal.style.display = 'none';
-        }
-      });
 
       // 6. Signature Actions listeners
       btnDrawNewSig.addEventListener('click', () => {
@@ -4890,6 +5851,7 @@
 
       // 9. Sidebar Tab Switching
       const tabBtnInventario = document.getElementById('tab-btn-inventario');
+      const tabBtnReportes = document.getElementById('tab-btn-reportes');
       const tabBtnPendienteRecibirMain = document.getElementById('tab-btn-pendiente-recibir-main');
       const tabBtnKardex = document.getElementById('tab-btn-kardex');
       const tabBtnArticulos = document.getElementById('tab-btn-articulos');
@@ -4898,6 +5860,7 @@
       const tabBtnDotacionLey = document.getElementById('tab-btn-dotacionley');
 
       const contentTabInventario = document.getElementById('content-tab-inventario');
+      const contentTabReportes = document.getElementById('content-tab-reportes');
       const contentTabPendienteRecibir = document.getElementById('content-tab-pendiente-recibir');
       const contentTabKardex = document.getElementById('content-tab-kardex');
       const contentTabArticulos = document.getElementById('content-tab-articulos');
@@ -4907,6 +5870,7 @@
 
       const desactivarTodasLasPestañas = () => {
         if (tabBtnInventario) tabBtnInventario.classList.remove('active');
+        if (tabBtnReportes) tabBtnReportes.classList.remove('active');
         if (tabBtnPendienteRecibirMain) tabBtnPendienteRecibirMain.classList.remove('active');
         if (tabBtnKardex) tabBtnKardex.classList.remove('active');
         if (tabBtnArticulos) tabBtnArticulos.classList.remove('active');
@@ -4915,6 +5879,7 @@
         if (tabBtnDotacionLey) tabBtnDotacionLey.classList.remove('active');
 
         if (contentTabInventario) contentTabInventario.style.display = 'none';
+        if (contentTabReportes) contentTabReportes.style.display = 'none';
         if (contentTabPendienteRecibir) contentTabPendienteRecibir.style.display = 'none';
         if (contentTabKardex) contentTabKardex.style.display = 'none';
         if (contentTabArticulos) contentTabArticulos.style.display = 'none';
@@ -4929,6 +5894,23 @@
           desactivarTodasLasPestañas();
           tabBtnInventario.classList.add('active');
           if (contentTabInventario) contentTabInventario.style.display = 'block';
+          fetchData();
+        });
+      }
+
+      if (tabBtnReportes) {
+        tabBtnReportes.addEventListener('click', () => {
+          desactivarTodasLasPestañas();
+          tabBtnReportes.classList.add('active');
+          if (contentTabReportes) contentTabReportes.style.display = 'block';
+          initReportesInventario();
+        });
+      }
+
+      const tabBtnIrReportes = document.getElementById('tab-btn-ir-reportes');
+      if (tabBtnIrReportes) {
+        tabBtnIrReportes.addEventListener('click', () => {
+          if (tabBtnReportes) tabBtnReportes.click();
         });
       }
 
@@ -5028,10 +6010,10 @@
       // Initial Fetch or direct routing
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab') || window.location.hash.replace('#', '');
-      let tabLower = tabParam ? tabParam.toLowerCase() : '';
+      let tabLower = tabParam ? tabParam.toLowerCase() : 'reportes';
 
       // Validate requested tab against allowed sections. If not allowed, pick first allowed section
-      if (tabLower === 'inventario' || tabLower === '') {
+      if (tabLower === 'inventario') {
         if (!allowedSecciones.includes('Inventario')) {
           if (allowedSecciones.includes('pendienteRecibir')) tabLower = 'pendienterecibir';
           else if (allowedSecciones.includes('Kardex')) tabLower = 'kardex';
@@ -5124,11 +6106,80 @@
         } else {
           fetchData();
         }
+      } else if (tabLower === 'reportes' || tabLower === 'dashboard' || tabLower === 'indicadores') {
+        if (tabBtnReportes) {
+          tabBtnReportes.click();
+        } else if (tabBtnInventario && allowedSecciones.includes('Inventario')) {
+          tabBtnInventario.click();
+        } else {
+          fetchData();
+        }
       } else {
         if (tabBtnInventario && allowedSecciones.includes('Inventario')) {
           tabBtnInventario.click();
+        } else {
+          fetchData();
         }
-        fetchData();
+      }
+    }
+
+    // Refresca los datos de la pestaña/subpestaña actualmente visible, sin cambiar de vista,
+    // sin recargar la página y sin tocar los filtros aplicados por el usuario. Cada pestaña ya
+    // había sido inicializada al hacer clic en ella (por construcción, solo puede estar visible
+    // una pestaña que ya se visitó), así que es seguro volver a invocar directamente su función
+    // de fetch existente.
+    async function refrescarVistaActual() {
+      const btn = document.getElementById('btn-actualizar-global');
+      const icon = document.getElementById('btn-actualizar-global-icon');
+      const label = document.getElementById('btn-actualizar-global-label');
+      if (btn) btn.disabled = true;
+      if (icon) icon.classList.add('spinning');
+
+      const refrescos = {
+        'content-tab-inventario': () => {
+          if (tabContentHistorial && tabContentHistorial.classList.contains('active')) {
+            return fetchConfirmacionesHistorial();
+          }
+          return fetchData();
+        },
+        'content-tab-reportes': () => fetchReportesData(),
+        'content-tab-pendiente-recibir': () => {
+          const histContent = document.getElementById('subtab-content-historial-ingresos');
+          if (histContent && histContent.classList.contains('active')) {
+            return fetchHistorialIngresos();
+          }
+          return fetchPendientesList();
+        },
+        'content-tab-actas': () => {
+          const logicaContent = document.getElementById('actas-subtab-content-logica');
+          if (logicaContent && logicaContent.style.display === 'block') {
+            return fetchLogicaAbastecimiento();
+          }
+          return fetchActasList(currentActasPage);
+        },
+        'content-tab-solicitudes': () => fetchSolicitudesList(),
+        'content-tab-kardex': () => fetchKardexData(),
+        'content-tab-articulos': () => fetchArticlesData(),
+        'content-tab-dotacionley': () => loadDotleyTrabajadores()
+      };
+
+      const activeId = Object.keys(refrescos).find(id => {
+        const el = document.getElementById(id);
+        return el && el.style.display !== 'none';
+      });
+
+      try {
+        if (activeId) await refrescos[activeId]();
+      } catch (err) {
+        console.error('[refrescarVistaActual]', err);
+      } finally {
+        if (icon) icon.classList.remove('spinning');
+        if (btn) btn.disabled = false;
+        if (label) {
+          const original = label.textContent;
+          label.textContent = 'Actualizado ✓';
+          setTimeout(() => { label.textContent = original; }, 1200);
+        }
       }
     }
 
@@ -8647,6 +9698,39 @@
       }
     }
 
+    // Botón "Editar Artículo" del modal de Stock/Kardex/Actas. Este modal se abre desde Inventario,
+    // Kardex y Artículos, así que `currentArticuloStockItem` puede traer solo campos parciales
+    // (filas de Vista_Inventario / Dynamic_Kardex). Se vuelve a consultar el registro completo del
+    // artículo por Id antes de abrir el formulario de edición para no pisar con vacíos campos como
+    // Clasificación/Proveedor/Costo/Placa al guardar.
+    async function editarArticuloDesdeStockModal() {
+      if (!currentArticuloStockItem || !currentArticuloStockItem.Id) return;
+      const idArt = currentArticuloStockItem.Id;
+      const btn = document.getElementById('articulo-stock-modal-btn-editar');
+      const origHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> Cargando...'; }
+
+      try {
+        await loadDbCategories();
+
+        const res = await fetch(`/inventario/api/articulos/datos?usuario=${encodeURIComponent(CONFIG.usuarioId)}&search=${encodeURIComponent(idArt)}`);
+        if (!res.ok) throw new Error('No se pudo cargar la información del artículo');
+        const data = await res.json();
+        const full = (data.results || []).find(r => String(r.Id) === String(idArt));
+        if (!full) throw new Error('No se encontró el artículo.');
+
+        if (full.Categoria) articulosCondicionPorCategoria[full.Categoria] = full.Condicion;
+
+        document.getElementById('articulo-stock-modal').style.display = 'none';
+        openArticleFormModal(full);
+      } catch (err) {
+        console.error(err);
+        alert('Error al abrir la edición del artículo: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
+      }
+    }
+
     function cambiarSubtabArticuloStock(tab) {
       ['stock', 'kardex', 'actas'].forEach(t => {
         const btn = document.getElementById(`articulo-stock-subtab-btn-${t}`);
@@ -8672,6 +9756,8 @@
         renderArticuloActasRelacionadas(currentArticuloStockItem.Id);
       }
     }
+    window.editarArticuloDesdeStockModal = editarArticuloDesdeStockModal;
+    window.cambiarSubtabArticuloStock = cambiarSubtabArticuloStock;
 
     async function renderArticuloActasRelacionadas(idArticulo) {
       const tbody = document.getElementById('articulo-stock-modal-actas-body');
@@ -12893,6 +13979,7 @@
         imageModal.style.display = 'block';
       }
     };
+    window.openImageModal = window.openImageZoom;
 
     window.handleElementoImageUpload = async function(input) {
       const file = input.files[0];
@@ -16255,6 +17342,891 @@
         btn.disabled = false;
       }
     };
+
+    // ══════════════════════════════════════════════════════════════════════
+    // MÓDULO: DASHBOARD Y REPORTES DINÁMICOS DE INVENTARIO POR OPERACIÓN
+    // ══════════════════════════════════════════════════════════════════════
+    let repIsInitialized = false;
+    let repReportData = null;
+    let repCurrentMetric = 'stock'; // 'stock' | 'valor'
+    let repSelectedCategory = '';
+    let repSelectedRegional = '';
+    let repSelectedOperacion = '';
+    let repSearchTerm = '';
+    let repDetalleCurrentItems = [];
+    let repLastFetchTime = null;
+
+    // Instancias de Chart.js
+    let chartTopOpsInstance = null;
+    let chartCatsInstance = null;
+    let chartRegsInstance = null;
+    let chartTopArtsInstance = null;
+
+    const repFormatCOP = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
+    const repFormatNum = (val) => new Intl.NumberFormat('es-CO').format(val || 0);
+
+    // Paleta categórica alineada a la identidad de marca (navy + acentos), usada por el gráfico
+    // de dona. Empieza en el navy institucional y se extiende con tonos armónicos.
+    const REP_PALETTE = ['#1e3c72', '#0ea5e9', '#16a34a', '#f59e0b', '#8b5cf6', '#e11d48', '#64748b'];
+
+    // Genera un degradado vertical para el relleno de barras de Chart.js (más "moderno" que un
+    // color plano). `ctx` es el contexto del callback backgroundColor de un dataset de barras.
+    function repBarGradient(ctx, colorTop, colorBottom) {
+      const chartArea = ctx.chart.chartArea;
+      if (!chartArea) return colorTop; // primer render, antes de que el área esté calculada
+      const isHorizontal = ctx.chart.options.indexAxis === 'y';
+      const gradient = isHorizontal
+        ? ctx.chart.ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
+        : ctx.chart.ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+      if (isHorizontal) {
+        gradient.addColorStop(0, colorBottom);
+        gradient.addColorStop(1, colorTop);
+      } else {
+        gradient.addColorStop(0, colorTop);
+        gradient.addColorStop(1, colorBottom);
+      }
+      return gradient;
+    }
+
+    function repRelativeTime(date) {
+      const diffSec = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+      if (diffSec < 10) return 'justo ahora';
+      if (diffSec < 60) return `hace ${diffSec} s`;
+      const diffMin = Math.round(diffSec / 60);
+      if (diffMin < 60) return `hace ${diffMin} min`;
+      const diffHr = Math.round(diffMin / 60);
+      return `hace ${diffHr} h`;
+    }
+
+    // Repuebla el select de Operación según la Regional seleccionada (o todas si no hay ninguna).
+    // Vive a nivel de módulo (no anidada en initReportesInventario) para poder reutilizarla desde
+    // la barra de filtros activos al quitar el chip de Regional.
+    function updateRepOperacionesDropdown() {
+      const repFilterOp = document.getElementById('rep-filter-operacion');
+      if (!repFilterOp) return;
+      repFilterOp.innerHTML = '<option value="">Todas las operaciones</option>';
+      repSelectedOperacion = '';
+
+      let opsDisponibles = [];
+      if (repSelectedRegional && CONFIG.opsPorRegional[repSelectedRegional]) {
+        opsDisponibles = CONFIG.opsPorRegional[repSelectedRegional];
+      } else {
+        Object.values(CONFIG.opsPorRegional).forEach(ops => {
+          opsDisponibles.push(...ops);
+        });
+        opsDisponibles = [...new Set(opsDisponibles)];
+      }
+      opsDisponibles.sort().forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        repFilterOp.appendChild(opt);
+      });
+    }
+
+    // Barra de chips de filtros activos (arriba de los KPIs) — refleja el estado actual de los
+    // filtros y permite quitarlos individualmente sin tener que ir a cada control.
+    function updateActiveFiltersBar() {
+      const bar = document.getElementById('rep-active-filters-bar');
+      const chipsWrap = document.getElementById('rep-active-filters-chips');
+      if (!bar || !chipsWrap) return;
+
+      const filtros = [];
+      if (repSelectedRegional) filtros.push({ key: 'regional', label: `Regional: ${repSelectedRegional}` });
+      if (repSelectedOperacion) filtros.push({ key: 'operacion', label: `Operación: ${repSelectedOperacion}` });
+      if (repSelectedCategory) filtros.push({ key: 'categoria', label: `Categoría: ${repSelectedCategory}` });
+      if (repSearchTerm) filtros.push({ key: 'busqueda', label: `Búsqueda: "${repSearchTerm}"` });
+
+      if (!filtros.length) {
+        bar.style.display = 'none';
+        chipsWrap.innerHTML = '';
+        return;
+      }
+
+      bar.style.display = 'flex';
+      chipsWrap.innerHTML = filtros.map(f => `
+        <span class="rep-active-filter-chip" data-filter-key="${f.key}">
+          ${f.label}
+          <button type="button" data-remove="${f.key}" title="Quitar filtro">✕</button>
+        </span>
+      `).join('');
+
+      chipsWrap.querySelectorAll('button[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => removeRepActiveFilter(btn.dataset.remove));
+      });
+    }
+
+    function limpiarTodosLosFiltrosRep() {
+      const repFilterReg = document.getElementById('rep-filter-regional');
+      const repFilterOp = document.getElementById('rep-filter-operacion');
+      if (repFilterReg && CONFIG.regionalesFiltro.length > 1) {
+        repFilterReg.value = '';
+        repSelectedRegional = '';
+      }
+      if (repFilterOp) {
+        repFilterOp.value = '';
+        repSelectedOperacion = '';
+      }
+      document.querySelectorAll('#rep-category-chips .rep-chip').forEach(c => c.classList.remove('active'));
+      const firstChip = document.querySelector('#rep-category-chips .rep-chip[data-cat=""]');
+      if (firstChip) firstChip.classList.add('active');
+      repSelectedCategory = '';
+      const searchInput = document.getElementById('rep-table-search');
+      if (searchInput) searchInput.value = '';
+      repSearchTerm = '';
+      updateRepOperacionesDropdown();
+      fetchReportesData();
+    }
+
+    function removeRepActiveFilter(key) {
+      if (key === 'regional') {
+        const sel = document.getElementById('rep-filter-regional');
+        if (sel && CONFIG.regionalesFiltro.length > 1) {
+          sel.value = '';
+          repSelectedRegional = '';
+        }
+        updateRepOperacionesDropdown();
+      } else if (key === 'operacion') {
+        const sel = document.getElementById('rep-filter-operacion');
+        if (sel) sel.value = '';
+        repSelectedOperacion = '';
+      } else if (key === 'categoria') {
+        const chips = document.querySelectorAll('#rep-category-chips .rep-chip');
+        chips.forEach(c => c.classList.remove('active'));
+        const allChip = document.querySelector('#rep-category-chips .rep-chip[data-cat=""]');
+        if (allChip) allChip.classList.add('active');
+        repSelectedCategory = '';
+      } else if (key === 'busqueda') {
+        const input = document.getElementById('rep-table-search');
+        if (input) input.value = '';
+        repSearchTerm = '';
+        if (repReportData && repReportData.porOperacion) renderReportesTable(repReportData.porOperacion);
+        updateActiveFiltersBar();
+        return; // la búsqueda es local a la tabla, no requiere refetch al backend
+      }
+      fetchReportesData();
+    }
+
+    function initReportesInventario() {
+      // 1. User profile in header
+      const repProfileName = document.getElementById('rep-profile-name');
+      const repProfileRole = document.getElementById('rep-profile-role');
+      const repUserAvatar = document.getElementById('rep-user-avatar');
+      if (repProfileName) repProfileName.textContent = CONFIG.usuarioNombre;
+      if (repProfileRole) repProfileRole.textContent = `${CONFIG.rol} ${CONFIG.operacion ? `(${CONFIG.operacion})` : ''}`;
+      if (repUserAvatar) {
+        const initials = CONFIG.usuarioNombre.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+        repUserAvatar.textContent = initials || 'US';
+      }
+
+      if (repIsInitialized) {
+        // Redibujar gráficos si la ventana cambió de tamaño
+        if (chartTopOpsInstance) chartTopOpsInstance.resize();
+        if (chartCatsInstance) chartCatsInstance.resize();
+        if (chartRegsInstance) chartRegsInstance.resize();
+        if (chartTopArtsInstance) chartTopArtsInstance.resize();
+        return;
+      }
+      repIsInitialized = true;
+
+      // 2. Poblar selector de Regionales
+      const repFilterReg = document.getElementById('rep-filter-regional');
+      const repFilterOp = document.getElementById('rep-filter-operacion');
+
+      if (repFilterReg) {
+        repFilterReg.innerHTML = '';
+        const optAll = document.createElement('option');
+        optAll.value = '';
+        optAll.textContent = CONFIG.sinFiltro ? 'Todas las regionales' : 'Seleccione Regional';
+        repFilterReg.appendChild(optAll);
+
+        CONFIG.regionalesFiltro.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r;
+          opt.textContent = r;
+          repFilterReg.appendChild(opt);
+        });
+
+        if (CONFIG.regionalesFiltro.length === 1) {
+          repFilterReg.value = CONFIG.regionalesFiltro[0];
+          repSelectedRegional = CONFIG.regionalesFiltro[0];
+          updateRepOperacionesDropdown();
+        }
+
+        repFilterReg.addEventListener('change', () => {
+          repSelectedRegional = repFilterReg.value;
+          updateRepOperacionesDropdown();
+          fetchReportesData();
+        });
+      }
+
+      if (repFilterOp) {
+        updateRepOperacionesDropdown();
+        repFilterOp.addEventListener('change', () => {
+          repSelectedOperacion = repFilterOp.value;
+          fetchReportesData();
+        });
+      }
+
+      // 3. Category Chips
+      const repCatChips = document.querySelectorAll('#rep-category-chips .rep-chip');
+      repCatChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          repCatChips.forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          repSelectedCategory = chip.dataset.cat || '';
+          fetchReportesData();
+        });
+      });
+
+      // 4. Metric Switch (Unidades vs Valor)
+      const btnMetricStock = document.getElementById('rep-metric-stock');
+      const btnMetricValor = document.getElementById('rep-metric-valor');
+      const badgeOps = document.getElementById('badge-metric-ops');
+      const badgeCat = document.getElementById('badge-metric-cat');
+      const badgeReg = document.getElementById('badge-metric-reg');
+
+      if (btnMetricStock && btnMetricValor) {
+        btnMetricStock.addEventListener('click', () => {
+          if (repCurrentMetric === 'stock') return;
+          repCurrentMetric = 'stock';
+          btnMetricStock.classList.add('active');
+          btnMetricValor.classList.remove('active');
+          if (badgeOps) badgeOps.textContent = 'Por Unidades';
+          if (badgeCat) badgeCat.textContent = 'Por Unidades';
+          if (badgeReg) badgeReg.textContent = 'Por Unidades';
+          if (repReportData) {
+            renderReportesKPIs(repReportData.kpis);
+            renderReportesCharts(repReportData);
+            renderReportesTable(repReportData.porOperacion);
+          }
+        });
+
+        btnMetricValor.addEventListener('click', () => {
+          if (repCurrentMetric === 'valor') return;
+          repCurrentMetric = 'valor';
+          btnMetricValor.classList.add('active');
+          btnMetricStock.classList.remove('active');
+          if (badgeOps) badgeOps.textContent = 'Por Valor ($ COP)';
+          if (badgeCat) badgeCat.textContent = 'Por Valor ($ COP)';
+          if (badgeReg) badgeReg.textContent = 'Por Valor ($ COP)';
+          if (repReportData) {
+            renderReportesKPIs(repReportData.kpis);
+            renderReportesCharts(repReportData);
+            renderReportesTable(repReportData.porOperacion);
+          }
+        });
+      }
+
+      // 5. Botones de acción y filtros
+      const btnRepLimpiar = document.getElementById('btn-rep-limpiar');
+      if (btnRepLimpiar) {
+        btnRepLimpiar.addEventListener('click', limpiarTodosLosFiltrosRep);
+      }
+
+      const btnRepLimpiarTodoChips = document.getElementById('rep-active-filters-clear-all');
+      if (btnRepLimpiarTodoChips) {
+        btnRepLimpiarTodoChips.addEventListener('click', limpiarTodosLosFiltrosRep);
+      }
+
+      const btnRepRefrescar = document.getElementById('btn-rep-refrescar');
+      if (btnRepRefrescar) {
+        btnRepRefrescar.addEventListener('click', fetchReportesData);
+      }
+
+      const btnRepExportExcel = document.getElementById('btn-rep-exportar-excel');
+      if (btnRepExportExcel) {
+        btnRepExportExcel.addEventListener('click', exportarReporteGeneralExcel);
+      }
+
+      // 6. Buscador de tabla consolidada
+      const repTableSearch = document.getElementById('rep-table-search');
+      if (repTableSearch) {
+        repTableSearch.addEventListener('input', (e) => {
+          repSearchTerm = (e.target.value || '').toLowerCase().trim();
+          if (repReportData && repReportData.porOperacion) {
+            renderReportesTable(repReportData.porOperacion);
+          }
+          updateActiveFiltersBar();
+        });
+      }
+
+      // 7. Buscador del modal de artículos
+      const modalRepSearch = document.getElementById('modal-rep-search');
+      if (modalRepSearch) {
+        modalRepSearch.addEventListener('input', (e) => {
+          const q = (e.target.value || '').toLowerCase().trim();
+          const filtered = repDetalleCurrentItems.filter(it => 
+            (it.Articulo && it.Articulo.toLowerCase().includes(q)) ||
+            (it.Referencia && it.Referencia.toLowerCase().includes(q)) ||
+            (it.Categoria && it.Categoria.toLowerCase().includes(q)) ||
+            (it.Talla && it.Talla.toLowerCase().includes(q))
+          );
+          renderModalArticlesRows(filtered);
+        });
+      }
+
+      // 8. Exportar modal de artículos
+      const modalBtnExport = document.getElementById('modal-rep-btn-export');
+      if (modalBtnExport) {
+        modalBtnExport.addEventListener('click', exportarDetalleOperacionExcel);
+      }
+
+      // Carga inicial
+      fetchReportesData();
+    }
+
+    async function fetchReportesData() {
+      const tbody = document.getElementById('rep-table-body');
+      const lastUpdatedEl = document.getElementById('rep-last-updated');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#64748b;"><div class="loader" style="width:30px; height:30px; margin:10px auto;"></div>Actualizando datos del reporte...</td></tr>';
+      }
+      if (lastUpdatedEl) lastUpdatedEl.innerHTML = '<span class="rep-live-dot"></span>Actualizando...';
+
+      try {
+        const params = new URLSearchParams({ usuario: CONFIG.usuarioId });
+        if (repSelectedRegional) params.append('regional', repSelectedRegional);
+        if (repSelectedOperacion) params.append('operacion', repSelectedOperacion);
+        if (repSelectedCategory) params.append('categoria', repSelectedCategory);
+
+        const res = await fetch(`/inventario/api/reportes/resumen-operaciones?${params.toString()}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Error al obtener datos del reporte');
+        }
+
+        const data = await res.json();
+        repReportData = data;
+
+        renderReportesKPIs(data.kpis);
+        renderReportesCharts(data);
+        renderReportesTable(data.porOperacion);
+        updateActiveFiltersBar();
+
+        repLastFetchTime = new Date();
+        if (lastUpdatedEl) lastUpdatedEl.innerHTML = `<span class="rep-live-dot"></span>Actualizado ${repRelativeTime(repLastFetchTime)}`;
+
+      } catch (err) {
+        console.error('[reportes] Error cargando datos:', err);
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#dc2626;">Error: ${err.message}</td></tr>`;
+        }
+        if (lastUpdatedEl) lastUpdatedEl.innerHTML = '<span class="rep-live-dot" style="background:#dc2626;"></span>Error al actualizar';
+      }
+    }
+
+    function renderReportesKPIs(kpis) {
+      if (!kpis) return;
+      const kpiStock = document.getElementById('rep-kpi-stock');
+      const kpiValor = document.getElementById('rep-kpi-valor');
+      const kpiOps = document.getElementById('rep-kpi-operaciones');
+      const kpiArts = document.getElementById('rep-kpi-articulos');
+      const kpiTopOp = document.getElementById('rep-kpi-top-op');
+      const kpiTopOpSub = document.getElementById('rep-kpi-top-op-sub');
+
+      if (kpiStock) { kpiStock.textContent = `${repFormatNum(kpis.totalStock)} uds`; kpiStock.title = kpiStock.textContent; }
+      if (kpiValor) { kpiValor.textContent = repFormatCOP(kpis.totalValor); kpiValor.title = kpiValor.textContent; }
+      if (kpiOps) kpiOps.textContent = repFormatNum(kpis.totalOperaciones);
+      if (kpiArts) kpiArts.textContent = repFormatNum(kpis.totalArticulos);
+
+      if (kpiTopOp) {
+        if (kpis.topOperacion) {
+          kpiTopOp.textContent = kpis.topOperacion.Operacion;
+          kpiTopOp.title = `${kpis.topOperacion.Operacion} (${kpis.topOperacion.Regional})`;
+          if (kpiTopOpSub) {
+            kpiTopOpSub.textContent = repCurrentMetric === 'stock'
+              ? `${repFormatNum(kpis.topOperacion.totalStock)} uds disponibles`
+              : repFormatCOP(kpis.topOperacion.totalValor);
+          }
+        } else {
+          kpiTopOp.textContent = 'N/A';
+          if (kpiTopOpSub) kpiTopOpSub.textContent = 'Sin operaciones';
+        }
+      }
+    }
+
+    function renderReportesCharts(data) {
+      if (typeof Chart === 'undefined') {
+        console.warn('[reportes] Chart.js no disponible');
+        return;
+      }
+
+      // ── Gráfico 1: Top Operaciones (Horizontal Bar) ──
+      const ctxOps = document.getElementById('chart-top-operaciones')?.getContext('2d');
+      if (ctxOps) {
+        if (chartTopOpsInstance) chartTopOpsInstance.destroy();
+
+        const sortedOps = [...(data.porOperacion || [])]
+          .sort((a, b) => (repCurrentMetric === 'stock' ? b.totalStock - a.totalStock : b.totalValor - a.totalValor))
+          .slice(0, 10);
+
+        const labels = sortedOps.map(o => o.Operacion);
+        const values = sortedOps.map(o => (repCurrentMetric === 'stock' ? o.totalStock : o.totalValor));
+
+        chartTopOpsInstance = new Chart(ctxOps, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: repCurrentMetric === 'stock' ? 'Unidades en Stock' : 'Valor Total ($ COP)',
+              data: values,
+              backgroundColor: (ctx) => repBarGradient(ctx, '#2563eb', '#93c5fd'),
+              borderRadius: 6,
+              hoverBackgroundColor: '#1d4ed8'
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const val = ctx.parsed.x;
+                    return repCurrentMetric === 'stock' ? ` ${repFormatNum(val)} unidades` : ` ${repFormatCOP(val)}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: '#f1f5f9' },
+                ticks: {
+                  callback: (v) => (repCurrentMetric === 'stock' ? repFormatNum(v) : '$' + (v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : repFormatNum(v)))
+                }
+              },
+              y: {
+                grid: { display: false },
+                ticks: { font: { size: 11, family: 'Outfit' } }
+              }
+            },
+            onClick: (evt, elements) => {
+              if (elements.length > 0) {
+                const index = elements[0].index;
+                const selectedOpName = labels[index];
+                const opSelect = document.getElementById('rep-filter-operacion');
+                if (opSelect) {
+                  opSelect.value = selectedOpName;
+                  repSelectedOperacion = selectedOpName;
+                  fetchReportesData();
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // ── Gráfico 2: Composición por Categoría (Doughnut) ──
+      const ctxCats = document.getElementById('chart-categorias')?.getContext('2d');
+      if (ctxCats) {
+        if (chartCatsInstance) chartCatsInstance.destroy();
+
+        const catData = data.porCategoria || [];
+        const catLabels = catData.map(c => c.Categoria);
+        const catValues = catData.map(c => (repCurrentMetric === 'stock' ? c.totalStock : c.totalValor));
+        const colors = REP_PALETTE;
+
+        chartCatsInstance = new Chart(ctxCats, {
+          type: 'doughnut',
+          data: {
+            labels: catLabels,
+            datasets: [{
+              data: catValues,
+              backgroundColor: colors.slice(0, catLabels.length),
+              borderWidth: 2,
+              borderColor: '#ffffff',
+              hoverOffset: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: { boxWidth: 12, padding: 12, font: { family: 'Outfit', size: 11 } }
+              },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const val = ctx.parsed;
+                    const total = ctx.dataset.data.reduce((acc, curr) => acc + curr, 0);
+                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                    const valStr = repCurrentMetric === 'stock' ? `${repFormatNum(val)} uds` : repFormatCOP(val);
+                    return ` ${ctx.label}: ${valStr} (${pct}%)`;
+                  }
+                }
+              }
+            },
+            onClick: (evt, elements) => {
+              if (elements.length > 0) {
+                const index = elements[0].index;
+                const clickedCat = catLabels[index];
+                const chips = document.querySelectorAll('#rep-category-chips .rep-chip');
+                chips.forEach(c => {
+                  if (c.dataset.cat === clickedCat) {
+                    c.click();
+                  }
+                });
+              }
+            }
+          }
+        });
+      }
+
+      // ── Gráfico 3: Comparativo por Regional (Vertical Bar) ──
+      const ctxRegs = document.getElementById('chart-regionales')?.getContext('2d');
+      if (ctxRegs) {
+        if (chartRegsInstance) chartRegsInstance.destroy();
+
+        const sortedRegs = [...(data.porRegional || [])]
+          .sort((a, b) => (repCurrentMetric === 'stock' ? b.totalStock - a.totalStock : b.totalValor - a.totalValor));
+
+        const regLabels = sortedRegs.map(r => r.Regional);
+        const regValues = sortedRegs.map(r => (repCurrentMetric === 'stock' ? r.totalStock : r.totalValor));
+
+        chartRegsInstance = new Chart(ctxRegs, {
+          type: 'bar',
+          data: {
+            labels: regLabels,
+            datasets: [{
+              label: repCurrentMetric === 'stock' ? 'Unidades en Stock' : 'Valor Total ($ COP)',
+              data: regValues,
+              backgroundColor: (ctx) => repBarGradient(ctx, '#0284c7', '#7dd3fc'),
+              borderRadius: 6,
+              hoverBackgroundColor: '#0369a1'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const val = ctx.parsed.y;
+                    return repCurrentMetric === 'stock' ? ` ${repFormatNum(val)} unidades` : ` ${repFormatCOP(val)}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { font: { size: 10, family: 'Outfit' }, maxRotation: 45, minRotation: 20 }
+              },
+              y: {
+                grid: { color: '#f1f5f9' },
+                ticks: {
+                  callback: (v) => (repCurrentMetric === 'stock' ? repFormatNum(v) : '$' + (v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : repFormatNum(v)))
+                }
+              }
+            },
+            onClick: (evt, elements) => {
+              if (elements.length > 0) {
+                const index = elements[0].index;
+                const clickedReg = regLabels[index];
+                const regSelect = document.getElementById('rep-filter-regional');
+                if (regSelect) {
+                  regSelect.value = clickedReg;
+                  repSelectedRegional = clickedReg;
+                  const opSelect = document.getElementById('rep-filter-operacion');
+                  if (opSelect) {
+                    opSelect.innerHTML = '<option value="">Todas las operaciones</option>';
+                    if (CONFIG.opsPorRegional[clickedReg]) {
+                      CONFIG.opsPorRegional[clickedReg].forEach(op => {
+                        const opt = document.createElement('option');
+                        opt.value = op;
+                        opt.textContent = op;
+                        opSelect.appendChild(opt);
+                      });
+                    }
+                  }
+                  fetchReportesData();
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // ── Gráfico 4: Top 10 Artículos con Mayor Existencia (Horizontal Bar) ──
+      const ctxArts = document.getElementById('chart-top-articulos')?.getContext('2d');
+      if (ctxArts) {
+        if (chartTopArtsInstance) chartTopArtsInstance.destroy();
+
+        const topArts = (data.topArticulos || []).slice(0, 10);
+        const artLabels = topArts.map(a => (a.Articulo && a.Articulo.length > 28 ? a.Articulo.substring(0, 28) + '…' : a.Articulo));
+        const artValues = topArts.map(a => a.totalStock);
+
+        chartTopArtsInstance = new Chart(ctxArts, {
+          type: 'bar',
+          data: {
+            labels: artLabels,
+            datasets: [{
+              label: 'Unidades Físicas',
+              data: artValues,
+              backgroundColor: (ctx) => repBarGradient(ctx, '#059669', '#6ee7b7'),
+              borderRadius: 6,
+              hoverBackgroundColor: '#047857'
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: (items) => {
+                    const idx = items[0].dataIndex;
+                    return topArts[idx].Articulo;
+                  },
+                  label: (ctx) => {
+                    const idx = ctx.dataIndex;
+                    const item = topArts[idx];
+                    return [
+                      ` Stock: ${repFormatNum(item.totalStock)} unidades`,
+                      ` Categoría: ${item.Categoria}`,
+                      item.Referencia ? ` Referencia: ${item.Referencia}` : ''
+                    ].filter(Boolean);
+                  }
+                }
+              }
+            },
+            scales: {
+              x: { grid: { color: '#f1f5f9' }, ticks: { callback: (v) => repFormatNum(v) } },
+              y: { grid: { display: false }, ticks: { font: { size: 10, family: 'Outfit' } } }
+            }
+          }
+        });
+      }
+    }
+
+    function renderReportesTable(opsList) {
+      const tbody = document.getElementById('rep-table-body');
+      if (!tbody) return;
+
+      if (!opsList || !opsList.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#64748b;">No se encontraron operaciones con los filtros aplicados.</td></tr>';
+        return;
+      }
+
+      // Filtrar por término de búsqueda si existe
+      let list = opsList;
+      if (repSearchTerm) {
+        list = list.filter(o => 
+          (o.Operacion && o.Operacion.toLowerCase().includes(repSearchTerm)) ||
+          (o.Regional && o.Regional.toLowerCase().includes(repSearchTerm))
+        );
+      }
+
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#64748b;">Sin coincidencias para "${repSearchTerm}".</td></tr>`;
+        return;
+      }
+
+      const totalStockOverall = repReportData?.kpis?.totalStock || 1;
+      const totalValorOverall = repReportData?.kpis?.totalValor || 1;
+
+      let html = '';
+      list.forEach(op => {
+        const pct = repCurrentMetric === 'stock'
+          ? (totalStockOverall > 0 ? ((op.totalStock / totalStockOverall) * 100).toFixed(1) : '0.0')
+          : (totalValorOverall > 0 ? ((op.totalValor / totalValorOverall) * 100).toFixed(1) : '0.0');
+
+        html += `
+          <tr>
+            <td><span class="rep-badge-op">${op.Regional}</span></td>
+            <td><strong style="color: var(--text);">${op.Operacion}</strong></td>
+            <td style="text-align: center; color: #475569;">${repFormatNum(op.articulosCount)}</td>
+            <td style="text-align: right; font-weight: 700; color: #1e3c72;">${repFormatNum(op.totalStock)}</td>
+            <td style="text-align: right; font-weight: 600; color: #16a34a;">${repFormatCOP(op.totalValor)}</td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="rep-pct-bar-track"><div class="rep-pct-bar-fill" style="width: ${Math.min(100, pct)}%;"></div></div>
+                <span style="font-size: 0.75rem; font-weight: 700; color: #334155; min-width: 38px; text-align: right;">${pct}%</span>
+              </div>
+            </td>
+            <td style="text-align: center;">
+              <button class="rep-btn-action" onclick="verDetalleOperacion('${op.Operacion.replace(/'/g, "\\'")}')">
+                <span>👁️</span> Artículos
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // Modal de artículos de una operación puntual
+    window.verDetalleOperacion = async function(operacionNombre) {
+      const modal = document.getElementById('modal-rep-detalle');
+      const title = document.getElementById('modal-rep-title');
+      const subtitle = document.getElementById('modal-rep-subtitle');
+      const tbody = document.getElementById('modal-rep-tbody');
+      const totalItems = document.getElementById('modal-rep-total-items');
+      const totalStock = document.getElementById('modal-rep-total-stock');
+      const totalValor = document.getElementById('modal-rep-total-valor');
+      const searchInput = document.getElementById('modal-rep-search');
+
+      if (!modal) return;
+      modal.style.display = 'flex';
+      if (title) title.textContent = `Detalle de Artículos: ${operacionNombre}`;
+      if (subtitle) subtitle.textContent = repSelectedCategory ? `Filtrado por categoría: ${repSelectedCategory}` : 'Inventario físico completo de la operación';
+      if (searchInput) searchInput.value = '';
+
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#64748b;"><div class="loader" style="width:28px; height:28px; margin:10px auto;"></div>Consultando artículos en tiempo real...</td></tr>';
+      }
+
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          operacion: operacionNombre
+        });
+        if (repSelectedCategory) params.append('categoria', repSelectedCategory);
+
+        const res = await fetch(`/inventario/api/reportes/detalle-operacion?${params.toString()}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Error al obtener detalle de la operación');
+        }
+
+        const data = await res.json();
+        repDetalleCurrentItems = data.items || [];
+
+        let sumStock = 0;
+        let sumValor = 0;
+        repDetalleCurrentItems.forEach(it => {
+          sumStock += Number(it.StockDisponible || 0);
+          sumValor += Number(it.ValorStock || 0);
+        });
+
+        if (totalItems) totalItems.textContent = repFormatNum(repDetalleCurrentItems.length);
+        if (totalStock) totalStock.textContent = `${repFormatNum(sumStock)} uds`;
+        if (totalValor) totalValor.textContent = repFormatCOP(sumValor);
+
+        renderModalArticlesRows(repDetalleCurrentItems);
+
+      } catch (err) {
+        console.error('[reportes] Error en verDetalleOperacion:', err);
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:#dc2626;">Error: ${err.message}</td></tr>`;
+        }
+      }
+    };
+
+    function renderModalArticlesRows(items) {
+      const tbody = document.getElementById('modal-rep-tbody');
+      if (!tbody) return;
+
+      if (!items || !items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:#64748b;">No se encontraron artículos con el filtro indicado.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      items.forEach(it => {
+        const imgUrl = it.Imagen || 'https://storage.googleapis.com/logyser-recibo-public/logo.png';
+        html += `
+          <tr>
+            <td style="text-align: center;">
+              <img src="${imgUrl}" alt="Img" style="width: 36px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); cursor: zoom-in;" onclick="openImageModal('${imgUrl}', '${(it.Articulo || '').replace(/'/g, "\\'")}')">
+            </td>
+            <td>
+              <div style="font-weight: 600; color: var(--text); font-size: 0.82rem;">${it.Articulo}</div>
+              ${it.Referencia ? `<div style="font-size: 0.72rem; color: #64748b;">Ref: ${it.Referencia}</div>` : ''}
+            </td>
+            <td><span style="font-size: 0.78rem; font-weight: 600; color: #334155;">${it.Talla || '-'}</span></td>
+            <td><span class="rep-badge-op" style="background:#e0f2fe; color:#0369a1;">${it.Categoria || 'General'}</span></td>
+            <td style="text-align: right; font-weight: 700; color: #1e3c72;">${repFormatNum(it.StockDisponible)}</td>
+            <td style="text-align: right; font-weight: 600; color: #16a34a;">${repFormatCOP(it.ValorStock)}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    window.closeRepDetalleModal = function() {
+      const modal = document.getElementById('modal-rep-detalle');
+      if (modal) modal.style.display = 'none';
+      repDetalleCurrentItems = [];
+    };
+
+    // Exportación a Excel / CSV consolidado general
+    function exportarReporteGeneralExcel() {
+      if (!repReportData || !repReportData.porOperacion || !repReportData.porOperacion.length) {
+        alert('No hay datos disponibles para exportar.');
+        return;
+      }
+
+      const totalStockOverall = repReportData.kpis.totalStock || 1;
+      const headers = ['Regional', 'Operacion', 'Articulos Unicos', 'Stock Disponible (Uds)', 'Valor Total (COP)', 'Porcentaje'];
+      const rows = repReportData.porOperacion.map(op => {
+        const pct = totalStockOverall > 0 ? ((op.totalStock / totalStockOverall) * 100).toFixed(2) + '%' : '0%';
+        return [
+          `"${(op.Regional || '').replace(/"/g, '""')}"`,
+          `"${(op.Operacion || '').replace(/"/g, '""')}"`,
+          op.articulosCount,
+          op.totalStock,
+          op.totalValor,
+          `"${pct}"`
+        ].join(';');
+      });
+
+      const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fecha = new Date().toISOString().slice(0, 10);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Reporte_Inventario_Operaciones_${fecha}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Exportación a Excel / CSV de artículos de la operación en modal
+    function exportarDetalleOperacionExcel() {
+      if (!repDetalleCurrentItems || !repDetalleCurrentItems.length) {
+        alert('No hay artículos para exportar en esta operación.');
+        return;
+      }
+
+      const headers = ['Regional', 'Operacion', 'IdArticulo', 'Articulo', 'Referencia', 'Talla', 'Categoria', 'Clasificacion', 'Stock Disponible', 'Valor Stock (COP)'];
+      const rows = repDetalleCurrentItems.map(it => [
+        `"${(it.Regional || '').replace(/"/g, '""')}"`,
+        `"${(it.Operacion || '').replace(/"/g, '""')}"`,
+        it.IdArticulo,
+        `"${(it.Articulo || '').replace(/"/g, '""')}"`,
+        `"${(it.Referencia || '').replace(/"/g, '""')}"`,
+        `"${(it.Talla || '').replace(/"/g, '""')}"`,
+        `"${(it.Categoria || '').replace(/"/g, '""')}"`,
+        `"${(it.Clasificacion || '').replace(/"/g, '""')}"`,
+        it.StockDisponible,
+        it.ValorStock
+      ].join(';'));
+
+      const opName = repDetalleCurrentItems[0]?.Operacion || 'Operacion';
+      const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fecha = new Date().toISOString().slice(0, 10);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Detalle_Inventario_${opName.replace(/[^a-zA-Z0-9]/g, '_')}_${fecha}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
 
     // Run on startup
     window.addEventListener('DOMContentLoaded', init);

@@ -187,16 +187,19 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
 // API: Listado de tipos de documentos (Vista Documentos)
 router.get('/api/documentos', async (req, res) => {
   try {
-    const { usuario, buscarTrabajador } = req.query;
+    const { usuario, buscarTrabajador, tipoDoc, tipoRegistro } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
+    const filtroTipo = tipoDoc || tipoRegistro;
+
     let sql = '';
     const params = [];
 
     if (buscarTrabajador) {
+      const whereTipo = filtroTipo ? 'WHERE c.tipo_doc = ?' : '';
       sql = `
         SELECT 
           c.Id,
@@ -214,10 +217,13 @@ router.get('/api/documentos', async (req, res) => {
           WHERE s.Trabajador COLLATE utf8mb4_general_ci LIKE ?
           GROUP BY TipoDocumento
         ) t ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        ${whereTipo}
         ORDER BY c.Clasificacion ASC, c.Documento ASC
       `;
       params.push(`%${buscarTrabajador}%`);
+      if (filtroTipo) params.push(filtroTipo);
     } else {
+      const whereTipo = filtroTipo ? 'WHERE c.tipo_doc = ?' : '';
       sql = `
         SELECT 
           c.Id,
@@ -233,8 +239,10 @@ router.get('/api/documentos', async (req, res) => {
           FROM Maestro_docTrabajador
           GROUP BY TipoDocumento
         ) t ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        ${whereTipo}
         ORDER BY c.Clasificacion ASC, c.Documento ASC
       `;
+      if (filtroTipo) params.push(filtroTipo);
     }
 
     const [rows] = await pool.execute(sql, params);
@@ -250,7 +258,12 @@ router.get('/api/documentos', async (req, res) => {
       return allowedActive || allowedRetired || allowedGeneral;
     });
 
-    res.json(filtered);
+    let finalRows = filtered;
+    if (filtroTipo) {
+      finalRows = finalRows.filter(r => (r.tipo_doc || 'Trabajador').toLowerCase() === filtroTipo.toLowerCase());
+    }
+
+    res.json(finalRows);
   } catch (err) {
     console.error('[cloud-docs] GET /api/documentos:', err);
     res.status(500).json({ error: err.message });
@@ -345,6 +358,8 @@ router.get('/api/documento/:id/registros', async (req, res) => {
           t.Solicitud,
           t.Justificacion_Solicitud,
           t.Visualizar,
+          t.Mes,
+          t.\`Año\` AS Anio,
           'General' AS tipo_registro
         FROM Maestro_docEmpresa t
         ${whereClause}
@@ -494,7 +509,9 @@ router.get('/api/todo', async (req, res) => {
         t.Url,
         t.Solicitud,
         t.Justificacion_Solicitud,
-        t.Visualizar
+        t.Visualizar,
+        NULL AS Mes,
+        NULL AS Anio
       FROM Maestro_docTrabajador t
       LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
       LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación
@@ -519,7 +536,9 @@ router.get('/api/todo', async (req, res) => {
         e.Url,
         e.Solicitud,
         e.Justificacion_Solicitud,
-        e.Visualizar
+        e.Visualizar,
+        e.Mes,
+        e.\`Año\` AS Anio
       FROM Maestro_docEmpresa e
       LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(e.TipoDocumento AS UNSIGNED)
       ${whereGen}
@@ -891,6 +910,43 @@ router.get('/api/conteos', async (req, res) => {
         opParams
       );
       opRows.forEach(o => { if (o.Operación) response.operaciones[o.Operación] = o.total; });
+
+      // 3. Tipos de Registro (Trabajador vs General)
+      const p = acceso.permisos;
+      let docSql = `SELECT Id, tipo_doc FROM Config_Doc_Trabajador`;
+      const docParams = [];
+      if (buscar) {
+        docSql = `
+          SELECT c.Id, c.tipo_doc
+          FROM Config_Doc_Trabajador c
+          INNER JOIN (
+            SELECT TipoDocumento
+            FROM Maestro_docTrabajador t
+            LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
+            WHERE s.Trabajador COLLATE utf8mb4_general_ci LIKE ?
+            GROUP BY TipoDocumento
+          ) t ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
+        `;
+        docParams.push(`%${buscar}%`);
+      }
+      const [docRows] = await pool.execute(docSql, docParams);
+      let trabCount = 0;
+      let genCount = 0;
+      docRows.forEach(r => {
+        const id = String(r.Id);
+        const allowedActive = p.doc_activo === 'Todo' || (Array.isArray(p.doc_activo) && p.doc_activo.includes(id));
+        const allowedRetired = p.doc_retirado === 'Todo' || (Array.isArray(p.doc_retirado) && p.doc_retirado.includes(id));
+        const allowedGeneral = p.doc_general === 'Todo' || (Array.isArray(p.doc_general) && p.doc_general.includes(id));
+        if (allowedActive || allowedRetired || allowedGeneral) {
+          if (r.tipo_doc === 'General') {
+            genCount++;
+          } else {
+            trabCount++;
+          }
+        }
+      });
+      response.tiposRegistro['Trabajador'] = trabCount;
+      response.tiposRegistro['General'] = genCount;
     }
 
     else if (activeTab === 'todo') {

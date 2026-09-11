@@ -675,7 +675,7 @@
           </select>
         </div>
         <div class="field" id="filter-registro-wrapper" style="display: none;">
-          <label for="filter-registro">Tipo de Registro</label>
+          <label for="filter-registro" id="label-registro">Tipo de Registro</label>
           <select id="filter-registro" onchange="filtrar()">
             <option value="">— Todos —</option>
             <option value="Trabajador">Trabajador</option>
@@ -1482,7 +1482,7 @@
         } else if (tab === 'documento') {
           docSelectWrapper.style.display = 'none';
           estadoWrapper.style.display = 'none';
-          registroWrapper.style.display = 'none';
+          registroWrapper.style.display = 'flex';
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
           solEstadoWrapper.style.display = 'none';
           labelBuscar.innerText = 'Buscar Trabajador';
@@ -1514,6 +1514,11 @@
           if (todoValidacionWrapper) todoValidacionWrapper.style.display = 'none';
           solEstadoWrapper.style.display = 'none';
           labelBuscar.innerText = 'Buscar Trabajador';
+        }
+
+        const labelRegistro = document.getElementById('label-registro');
+        if (labelRegistro) {
+          labelRegistro.innerText = tab === 'documento' ? 'Tipo Doc' : 'Tipo de Registro';
         }
       }
 
@@ -1583,6 +1588,7 @@
           url = `/cloud-docs/api/trabajadores?${queryParams}`;
         } else if (activeTab === 'documento') {
           if (buscar) queryParams.set('buscarTrabajador', buscar);
+          if (tipoRegistro) queryParams.set('tipoDoc', tipoRegistro);
           url = `/cloud-docs/api/documentos?${queryParams}`;
         } else if (activeTab === 'solicitudes') {
           if (buscar) queryParams.set('buscar', buscar);
@@ -1714,16 +1720,16 @@
         `;
       }
 
-      // 4. Tipo de Registro (Trabajador/General)
-      if (activeTab === 'todo') {
+      // 4. Tipo de Registro / Tipo Doc (Trabajador/General)
+      if (activeTab === 'todo' || activeTab === 'documento') {
         const totalTrab = counts.tiposRegistro['Trabajador'] || 0;
         const totalGen = counts.tiposRegistro['General'] || 0;
+        const labelGen = activeTab === 'documento' ? 'General' : 'General (Empresa)';
         selRegistro.innerHTML = `
           <option value="">— Todos —</option>
           <option value="Trabajador" ${registroVal === 'Trabajador' ? 'selected' : ''}>Trabajador (${totalTrab})</option>
-          <option value="General" ${registroVal === 'General' ? 'selected' : ''}>General (Empresa) (${totalGen})</option>
+          <option value="General" ${registroVal === 'General' ? 'selected' : ''}>${labelGen} (${totalGen})</option>
         `;
-
       }
 
       // 4.5. Validación (OK/PEND/ERROR)

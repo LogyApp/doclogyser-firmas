@@ -89,10 +89,10 @@ router.get('/api/buscar-trabajadores', async (req, res) => {
   }
 });
 
-// API: Obtener tipos de documentos por tipo_doc
+// API: Obtener tipos de documentos por tipo_doc (con área y nombre de área opcionalmente filtrados)
 router.get('/api/tipos-documentos', async (req, res) => {
   try {
-    const { tipo_doc, usuario } = req.query;
+    const { tipo_doc, usuario, area } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoCloudDocs(pool, usuario);
@@ -100,14 +100,59 @@ router.get('/api/tipos-documentos', async (req, res) => {
 
     if (!tipo_doc) return res.status(400).json({ error: 'tipo_doc requerido' });
 
+    let sql = `
+      SELECT 
+        d.Id, 
+        d.Documento, 
+        d.Prefijo, 
+        d.Clasificacion, 
+        d.area,
+        ca.AREA AS area_nombre
+      FROM Config_Doc_Trabajador d
+      LEFT JOIN Config_Area ca ON ca.ID = d.area
+      WHERE d.tipo_doc = ?
+    `;
+    const params = [tipo_doc];
+
+    if (area) {
+      sql += ' AND d.area = ?';
+      params.push(area);
+    }
+
+    sql += ' ORDER BY d.Clasificacion, d.Documento ASC';
+
+    const [rows] = await pool.execute(sql, params);
+
+    res.json(rows);
+  } catch (err) {
+    console.error('[formcloud-docs] tipos-documentos error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Obtener áreas únicas asociadas a documentos del tipo_doc
+router.get('/api/areas', async (req, res) => {
+  try {
+    const { tipo_doc = 'General', usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoCloudDocs(pool, usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
     const [rows] = await pool.execute(
-      'SELECT Id, Documento, Prefijo, Clasificacion FROM Config_Doc_Trabajador WHERE tipo_doc = ? ORDER BY Clasificacion, Documento ASC',
+      `SELECT DISTINCT 
+         d.area AS id,
+         ca.AREA AS area
+       FROM Config_Doc_Trabajador d
+       INNER JOIN Config_Area ca ON ca.ID = d.area
+       WHERE d.tipo_doc = ? AND d.area IS NOT NULL
+       ORDER BY ca.AREA ASC`,
       [tipo_doc]
     );
 
     res.json(rows);
   } catch (err) {
-    console.error('[formcloud-docs] tipos-documentos error:', err);
+    console.error('[formcloud-docs] areas error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -205,7 +250,7 @@ router.post('/api/config-doc/crear', async (req, res) => {
 // API: Subir documento y guardar registro
 router.post('/api/subir', upload.single('documento'), async (req, res) => {
   try {
-    const { tipo_doc, tipo_documento_id, observaciones, usuario, identificacion, regional, operacion } = req.body;
+    const { tipo_doc, tipo_documento_id, observaciones, usuario, identificacion, regional, operacion, mes, ano, anio } = req.body;
 
     if (!tipo_doc || !tipo_documento_id || !usuario || !req.file) {
       return res.status(400).json({ error: 'Parámetros o archivo faltantes' });
@@ -266,6 +311,22 @@ router.post('/api/subir', upload.single('documento'), async (req, res) => {
         return res.status(400).json({ error: 'Regional y Operación requeridas para documentos generales' });
       }
 
+      const valorMes = mes ? String(mes).trim() : '';
+      const valorAno = (ano || anio) ? String(ano || anio).trim() : '';
+
+      if (!valorMes || !valorAno) {
+        return res.status(400).json({ error: 'Mes y Año del periodo son requeridos' });
+      }
+
+      const MESES_VALIDOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      if (!MESES_VALIDOS.includes(valorMes)) {
+        return res.status(400).json({ error: 'Mes no válido. Debe ser de Enero a Diciembre con nombre propio' });
+      }
+
+      if (!/^2\d{3}$/.test(valorAno)) {
+        return res.status(400).json({ error: 'El Año debe ser de 4 dígitos y comenzar con 2 (ej. 2026)' });
+      }
+
       // Subir a GCS (general prefix)
       const fileUrl = await subirArchivoCloudDocs(
         null,
@@ -281,7 +342,9 @@ router.post('/api/subir', upload.single('documento'), async (req, res) => {
         regional,
         operacion,
         usuario: acceso.usuarioNombre,
-        observaciones,
+        observaciones: observaciones ? String(observaciones).trim() : null,
+        mes: valorMes,
+        ano: valorAno,
         url: fileUrl,
       });
     }

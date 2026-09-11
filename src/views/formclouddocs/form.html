@@ -814,25 +814,65 @@
           </div>
           <div class="field">
             <label for="select-operacion">Operación<span class="req">*</span></label>
-            <select id="select-operacion">
+            <select id="select-operacion" onchange="validarFormulario()">
               <option value="">— Selecciona la Operación —</option>
             </select>
           </div>
         </div>
 
+        <div class="section-title">Periodo del Documento</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div class="field">
+            <label for="select-periodo-mes">Mes<span class="req">*</span></label>
+            <select id="select-periodo-mes" onchange="validarFormulario()">
+              <option value="">— Selecciona el Mes —</option>
+              <option value="Enero">Enero</option>
+              <option value="Febrero">Febrero</option>
+              <option value="Marzo">Marzo</option>
+              <option value="Abril">Abril</option>
+              <option value="Mayo">Mayo</option>
+              <option value="Junio">Junio</option>
+              <option value="Julio">Julio</option>
+              <option value="Agosto">Agosto</option>
+              <option value="Septiembre">Septiembre</option>
+              <option value="Octubre">Octubre</option>
+              <option value="Noviembre">Noviembre</option>
+              <option value="Diciembre">Diciembre</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="input-periodo-ano">Año<span class="req">*</span></label>
+            <input type="text" id="input-periodo-ano" maxlength="4" placeholder="Ej. 2026" oninput="validarAnoInput(this); validarFormulario();">
+            <div class="field-hint" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">Año de 4 dígitos que empieza con 2</div>
+          </div>
+        </div>
+
         <div class="section-title">Detalles del Documento</div>
 
-        <div class="field">
-          <div style="display: flex; align-items: center; margin-bottom: 6px;">
-            <label for="select-tipo-doc-id" style="margin-bottom: 0;">Tipo de Documento<span class="req">*</span></label>
-            <a href="javascript:void(0)" id="btn-nuevo-tipo-doc" onclick="abrirModalNuevoTipoDoc()" style="display: none; font-size: 0.82rem; font-weight: 700; color: var(--accent); text-decoration: none; margin-left: auto; cursor: pointer; align-items: center; gap: 4px;">
-              <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
-              Nuevo
-            </a>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div class="field">
+            <label for="select-area-general">Área<span class="req">*</span></label>
+            <select id="select-area-general" onchange="onAreaGeneralChange()">
+              <option value="">— Selecciona el Área —</option>
+            </select>
           </div>
-          <select id="select-tipo-doc-id">
-            <option value="">— Selecciona el tipo de archivo —</option>
-          </select>
+          <div class="field">
+            <div style="display: flex; align-items: center; margin-bottom: 6px;">
+              <label for="select-tipo-doc-id" style="margin-bottom: 0;">Tipo de Documento<span class="req">*</span></label>
+              <a href="javascript:void(0)" id="btn-nuevo-tipo-doc" onclick="abrirModalNuevoTipoDoc()" style="display: none; font-size: 0.82rem; font-weight: 700; color: var(--accent); text-decoration: none; margin-left: auto; cursor: pointer; align-items: center; gap: 4px;">
+                <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                Nuevo
+              </a>
+            </div>
+            <select id="select-tipo-doc-id" onchange="validarFormulario()">
+              <option value="">— Primero selecciona el Área —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="input-observaciones-general">Observaciones / Referencia</label>
+          <textarea id="input-observaciones-general" rows="2" maxlength="512" placeholder="Anotaciones o referencia del documento..." style="width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px; font-family: inherit; font-size: 0.88rem; resize: vertical;"></textarea>
         </div>
 
         <div class="field">
@@ -984,6 +1024,17 @@
       // Initial load of document types
       cargarTiposDocumentos();
 
+      const MESES_NOMBRES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const selMes = document.getElementById('select-periodo-mes');
+      if (selMes && !selMes.value) {
+        selMes.value = MESES_NOMBRES[new Date().getMonth()];
+      }
+
+      const inputAno = document.getElementById('input-periodo-ano');
+      if (inputAno && !inputAno.value) {
+        inputAno.value = new Date().getFullYear();
+      }
+
       if (CONFIG.prefillIdentificacion) {
         preseleccionarTrabajadorPorIdentificacion(CONFIG.prefillIdentificacion);
       }
@@ -1047,6 +1098,15 @@
         secTrabajador.style.display = 'none';
         secGeneral.style.display = 'flex';
         workerPanel.style.display = 'none';
+
+        const selMes = document.getElementById('select-periodo-mes');
+        if (selMes && !selMes.value) {
+          selMes.value = MESES_NOMBRES[new Date().getMonth()];
+        }
+        const inpAno = document.getElementById('input-periodo-ano');
+        if (inpAno && !inpAno.value) {
+          inpAno.value = new Date().getFullYear();
+        }
       }
 
       // Reload document types matching selection
@@ -1072,10 +1132,24 @@
       return habilitado;
     }
 
-    // Fetch and populate document types list
-    async function cargarTiposDocumentos() {
-      const select = document.getElementById('select-tipo-doc-id');
-      select.innerHTML = '<option value="">Cargando tipos de documentos...</option>';
+    let generalDocTypesList = [];
+
+    // Helper para validar año: solo 4 dígitos y que empiece con 2
+    window.validarAnoInput = function(input) {
+      let val = input.value.replace(/\D/g, '').slice(0, 4);
+      if (val.length > 0 && val[0] !== '2') {
+        val = '';
+      }
+      input.value = val;
+    };
+
+    // Handler para cambio de Área en sección General
+    window.onAreaGeneralChange = function() {
+      const areaSelect = document.getElementById('select-area-general');
+      const tipoDocSelect = document.getElementById('select-tipo-doc-id');
+      const chosenAreaId = areaSelect ? areaSelect.value : '';
+
+      tipoDocSelect.innerHTML = '';
 
       const isAllowedNew = verificarPermisoNuevoTipoDoc();
       const btnNuevo = document.getElementById('btn-nuevo-tipo-doc');
@@ -1083,36 +1157,133 @@
         btnNuevo.style.display = isAllowedNew ? 'inline-flex' : 'none';
       }
 
-      try {
-        const res = await fetch(`/formcloud-docs/api/tipos-documentos?tipo_doc=${activeTipoDoc}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
-        const rows = await res.json();
-        
-        select.innerHTML = '<option value="">— Selecciona el tipo de archivo —</option>';
-        
-        if (isAllowedNew) {
-          const optNew = document.createElement('option');
-          optNew.value = 'NUEVO_TIPO_DOC';
-          optNew.textContent = '✏️ + Nuevo (Crear Tipo Documento)';
-          optNew.style.fontWeight = 'bold';
-          optNew.style.color = 'var(--accent)';
-          select.appendChild(optNew);
-        }
-
-        if (res.ok && Array.isArray(rows)) {
-          rows.forEach(r => {
-            const option = document.createElement('option');
-            option.value = r.Id;
-            option.textContent = `${r.Prefijo} - ${r.Documento}`;
-            select.appendChild(option);
-          });
-        } else {
-          showToast('Error al obtener lista de documentos', 'error');
-        }
-      } catch (err) {
-        console.error(err);
-        select.innerHTML = '<option value="">— Error de carga —</option>';
+      if (!chosenAreaId) {
+        tipoDocSelect.innerHTML = '<option value="">— Primero selecciona el Área —</option>';
+        validarFormulario();
+        return;
       }
-      
+
+      tipoDocSelect.innerHTML = '<option value="">— Selecciona el tipo de archivo —</option>';
+
+      if (isAllowedNew) {
+        const optNew = document.createElement('option');
+        optNew.value = 'NUEVO_TIPO_DOC';
+        optNew.textContent = '✏️ + Nuevo (Crear Tipo Documento)';
+        optNew.style.fontWeight = 'bold';
+        optNew.style.color = 'var(--accent)';
+        tipoDocSelect.appendChild(optNew);
+      }
+
+      const filtered = generalDocTypesList.filter(d => String(d.area) === String(chosenAreaId));
+      if (filtered.length === 0) {
+        const optNone = document.createElement('option');
+        optNone.value = '';
+        optNone.textContent = '— No hay tipos de documento para esta área —';
+        optNone.disabled = true;
+        tipoDocSelect.appendChild(optNone);
+      } else {
+        filtered.forEach(r => {
+          const option = document.createElement('option');
+          option.value = r.Id;
+          option.textContent = `${r.Prefijo} - ${r.Documento}`;
+          tipoDocSelect.appendChild(option);
+        });
+      }
+
+      validarFormulario();
+    };
+
+    // Fetch and populate document types list
+    async function cargarTiposDocumentos() {
+      const select = document.getElementById('select-tipo-doc-id');
+      const areaSelect = document.getElementById('select-area-general');
+      const isAllowedNew = verificarPermisoNuevoTipoDoc();
+      const btnNuevo = document.getElementById('btn-nuevo-tipo-doc');
+      if (btnNuevo) {
+        btnNuevo.style.display = isAllowedNew ? 'inline-flex' : 'none';
+      }
+
+      if (activeTipoDoc === 'General') {
+        if (select) select.innerHTML = '<option value="">Cargando tipos de documentos...</option>';
+        if (areaSelect) areaSelect.innerHTML = '<option value="">Cargando áreas...</option>';
+
+        try {
+          const res = await fetch(`/formcloud-docs/api/tipos-documentos?tipo_doc=General&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+          const rows = await res.json();
+
+          if (res.ok && Array.isArray(rows)) {
+            generalDocTypesList = rows;
+
+            // Extraer áreas únicas de Config_Doc_Trabajador mapeadas a Config_Area
+            const areaMap = new Map();
+            rows.forEach(r => {
+              if (r.area && r.area_nombre) {
+                areaMap.set(String(r.area), r.area_nombre);
+              }
+            });
+
+            if (areaSelect) {
+              const curArea = areaSelect.value;
+              areaSelect.innerHTML = '<option value="">— Selecciona el Área —</option>';
+              Array.from(areaMap.entries())
+                .sort((a, b) => a[1].localeCompare(b[1]))
+                .forEach(([id, nombre]) => {
+                  const opt = document.createElement('option');
+                  opt.value = id;
+                  opt.textContent = nombre;
+                  areaSelect.appendChild(opt);
+                });
+
+              if (curArea && areaMap.has(curArea)) {
+                areaSelect.value = curArea;
+              }
+            }
+
+            onAreaGeneralChange();
+          } else {
+            showToast('Error al obtener lista de documentos', 'error');
+            if (select) select.innerHTML = '<option value="">— Error de carga —</option>';
+          }
+        } catch (err) {
+          console.error(err);
+          if (select) select.innerHTML = '<option value="">— Error de carga —</option>';
+        }
+      } else {
+        // Trabajador
+        if (select) select.innerHTML = '<option value="">Cargando tipos de documentos...</option>';
+        try {
+          const res = await fetch(`/formcloud-docs/api/tipos-documentos?tipo_doc=Trabajador&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+          const rows = await res.json();
+          
+          if (select) {
+            select.innerHTML = '<option value="">— Selecciona el tipo de archivo —</option>';
+            
+            if (isAllowedNew) {
+              const optNew = document.createElement('option');
+              optNew.value = 'NUEVO_TIPO_DOC';
+              optNew.textContent = '✏️ + Nuevo (Crear Tipo Documento)';
+              optNew.style.fontWeight = 'bold';
+              optNew.style.color = 'var(--accent)';
+              select.appendChild(optNew);
+            }
+
+            if (res.ok && Array.isArray(rows)) {
+              rows.forEach(r => {
+                const option = document.createElement('option');
+                option.value = r.Id;
+                option.textContent = `${r.Prefijo} - ${r.Documento}`;
+                select.appendChild(option);
+              });
+            } else {
+              showToast('Error al obtener lista de documentos', 'error');
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          if (select) select.innerHTML = '<option value="">— Error de carga —</option>';
+        }
+      }
+
       select.onchange = () => {
         if (select.value === 'NUEVO_TIPO_DOC') {
           select.value = '';
@@ -1236,6 +1407,13 @@
         cerrarModalNuevoTipoDoc();
         
         await cargarTiposDocumentos();
+        if (activeTipoDoc === 'General') {
+          const areaSelect = document.getElementById('select-area-general');
+          if (areaSelect) {
+            areaSelect.value = String(area);
+            onAreaGeneralChange();
+          }
+        }
         document.getElementById('select-tipo-doc-id').value = data.id;
         validarFormulario();
       } catch (err) {
@@ -1610,19 +1788,21 @@
       // Validate destination specific choices
       if (activeTipoDoc === 'Trabajador') {
         if (!selectedWorker) isFormValid = false;
+        const queued = Object.values(workerDocsState).filter(doc => doc.file && !doc.uploaded).length;
+        if (queued === 0) isFormValid = false;
       } else {
         const reg = document.getElementById('select-regional').value;
         const op = document.getElementById('select-operacion').value;
-        if (!reg || !op) isFormValid = false;
-      }
-
-      if (activeTipoDoc === 'General') {
+        const mes = document.getElementById('select-periodo-mes').value;
+        const ano = document.getElementById('input-periodo-ano').value.trim();
+        const area = document.getElementById('select-area-general').value;
         const docType = document.getElementById('select-tipo-doc-id').value;
         const hasFile = !!selectedFile;
-        if (!docType || !hasFile) isFormValid = false;
-      } else {
-        const queued = Object.values(workerDocsState).filter(doc => doc.file && !doc.uploaded).length;
-        if (!selectedWorker || queued === 0) isFormValid = false;
+        const esAnoValido = /^2\d{3}$/.test(ano);
+
+        if (!reg || !op || !mes || !esAnoValido || !area || !docType || !hasFile) {
+          isFormValid = false;
+        }
       }
 
       // Toggle submit button state
@@ -1645,7 +1825,9 @@
       const formData = new FormData();
       formData.append('tipo_doc', activeTipoDoc);
       formData.append('tipo_documento_id', document.getElementById('select-tipo-doc-id').value);
-      formData.append('observaciones', '');
+      formData.append('observaciones', document.getElementById('input-observaciones-general').value.trim());
+      formData.append('mes', document.getElementById('select-periodo-mes').value);
+      formData.append('ano', document.getElementById('input-periodo-ano').value.trim());
       formData.append('usuario', CONFIG.usuarioId);
       formData.append('documento', selectedFile);
 
@@ -1762,6 +1944,16 @@
       document.getElementById('input-file').value = '';
       document.getElementById('file-drop-zone').style.display = 'block';
       document.getElementById('file-preview-zone').style.display = 'none';
+
+      // Reset General section fields
+      const selMes = document.getElementById('select-periodo-mes');
+      if (selMes) selMes.value = MESES_NOMBRES[new Date().getMonth()];
+      const inpAno = document.getElementById('input-periodo-ano');
+      if (inpAno) inpAno.value = new Date().getFullYear();
+      const selArea = document.getElementById('select-area-general');
+      if (selArea) selArea.value = '';
+      const inpObs = document.getElementById('input-observaciones-general');
+      if (inpObs) inpObs.value = '';
       
       // Hide worker details
       document.getElementById('worker-details-block').style.display = 'none';

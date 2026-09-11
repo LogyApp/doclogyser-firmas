@@ -687,7 +687,7 @@
       { key: 'fecha', label: 'Fecha de Registro', width: 180 }
     ];
 
-    if (CONFIG.usuarioRol === 'Sistema') {
+    if (['Sistema', 'Contratación', 'Archivo', 'Asistencial'].includes(CONFIG.usuarioRol)) {
       columns.push({ key: 'creador', label: 'Creado por', width: 150 });
     }
 

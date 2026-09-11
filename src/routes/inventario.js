@@ -3118,4 +3118,253 @@ router.post('/api/inventario/ajustar', async (req, res) => {
   }
 });
 
+// ── Endpoints de Reportes / Dashboard de Inventario ──
+
+// GET /api/reportes/resumen-operaciones
+router.get('/api/reportes/resumen-operaciones', async (req, res) => {
+  try {
+    const { usuario, regional, operacion, categoria } = req.query;
+    if (!usuario) {
+      return res.status(400).json({ error: 'usuario requerido' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const securityConds = [];
+    const securityParams = [];
+
+    // Restricción por categorías si aplica (Acceso 4, 5, 6)
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      securityConds.push(`\`Categoria\` IN (${ph})`);
+      securityParams.push(...acceso.filtroCategorias);
+    }
+
+    // Restricción por rol de operaciones
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro || !acceso.operacionesFiltro.length) {
+        return res.json({
+          kpis: { totalStock: 0, totalValor: 0, totalOperaciones: 0, totalArticulos: 0, topOperacion: null },
+          porOperacion: [],
+          porCategoria: [],
+          porRegional: [],
+          topArticulos: []
+        });
+      }
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      securityConds.push(`\`Operacion\` IN (${ph})`);
+      securityParams.push(...acceso.operacionesFiltro);
+    }
+
+    // Filtros dinámicos recibidos por query
+    if (regional && regional.trim() !== '') {
+      securityConds.push('`Regional` = ?');
+      securityParams.push(regional.trim());
+    }
+    if (operacion && operacion.trim() !== '') {
+      securityConds.push('`Operacion` = ?');
+      securityParams.push(operacion.trim());
+    }
+    if (categoria && categoria.trim() !== '' && categoria.trim().toUpperCase() !== 'TODAS') {
+      securityConds.push('`Categoria` = ?');
+      securityParams.push(categoria.trim());
+    }
+
+    const whereClause = securityConds.length ? `WHERE ${securityConds.join(' AND ')}` : '';
+
+    // Ejecutar consultas en paralelo
+    const [kpisRows, porOperacion, porCategoria, porRegional, topArticulos] = await Promise.all([
+      // 1. KPIs Generales
+      pool.execute(`
+        SELECT 
+          COUNT(DISTINCT \`Operacion\`) AS totalOperaciones,
+          COUNT(DISTINCT \`IdArticulo\`) AS totalArticulos,
+          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
+          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
+        FROM Vista_Inventario
+        ${whereClause}
+      `, securityParams).then(([r]) => r),
+
+      // 2. Resumen por Operación
+      pool.execute(`
+        SELECT 
+          IFNULL(\`Regional\`, 'SIN REGIONAL') AS Regional,
+          \`Operacion\`,
+          COUNT(DISTINCT \`IdArticulo\`) AS articulosCount,
+          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
+          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
+        FROM Vista_Inventario
+        ${whereClause}
+        GROUP BY \`Regional\`, \`Operacion\`
+        ORDER BY totalStock DESC
+      `, securityParams).then(([r]) => r),
+
+      // 3. Resumen por Categoría
+      pool.execute(`
+        SELECT 
+          IFNULL(\`Categoria\`, 'OTRO') AS Categoria,
+          COUNT(DISTINCT \`IdArticulo\`) AS articulosCount,
+          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
+          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
+        FROM Vista_Inventario
+        ${whereClause}
+        GROUP BY \`Categoria\`
+        ORDER BY totalStock DESC
+      `, securityParams).then(([r]) => r),
+
+      // 4. Resumen por Regional
+      pool.execute(`
+        SELECT 
+          IFNULL(\`Regional\`, 'SIN REGIONAL') AS Regional,
+          COUNT(DISTINCT \`Operacion\`) AS totalOperaciones,
+          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
+          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
+        FROM Vista_Inventario
+        ${whereClause}
+        GROUP BY \`Regional\`
+        ORDER BY totalStock DESC
+      `, securityParams).then(([r]) => r),
+
+      // 5. Top 10 Artículos con mayor stock
+      pool.execute(`
+        SELECT 
+          \`IdArticulo\`,
+          \`Articulo\`,
+          \`Referencia\`,
+          \`Categoria\`,
+          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
+          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
+        FROM Vista_Inventario
+        ${whereClause}
+        GROUP BY \`IdArticulo\`, \`Articulo\`, \`Referencia\`, \`Categoria\`
+        ORDER BY totalStock DESC
+        LIMIT 10
+      `, securityParams).then(([r]) => r)
+    ]);
+
+    const kpiData = kpisRows[0] || { totalOperaciones: 0, totalArticulos: 0, totalStock: 0, totalValor: 0 };
+    const topOp = porOperacion.length ? porOperacion[0] : null;
+
+    res.json({
+      kpis: {
+        totalOperaciones: Number(kpiData.totalOperaciones || 0),
+        totalArticulos: Number(kpiData.totalArticulos || 0),
+        totalStock: Number(kpiData.totalStock || 0),
+        totalValor: Number(kpiData.totalValor || 0),
+        topOperacion: topOp ? {
+          Operacion: topOp.Operacion,
+          Regional: topOp.Regional,
+          totalStock: Number(topOp.totalStock || 0),
+          totalValor: Number(topOp.totalValor || 0)
+        } : null
+      },
+      porOperacion: porOperacion.map(r => ({
+        Regional: r.Regional,
+        Operacion: r.Operacion,
+        articulosCount: Number(r.articulosCount || 0),
+        totalStock: Number(r.totalStock || 0),
+        totalValor: Number(r.totalValor || 0)
+      })),
+      porCategoria: porCategoria.map(r => ({
+        Categoria: r.Categoria,
+        articulosCount: Number(r.articulosCount || 0),
+        totalStock: Number(r.totalStock || 0),
+        totalValor: Number(r.totalValor || 0)
+      })),
+      porRegional: porRegional.map(r => ({
+        Regional: r.Regional,
+        totalOperaciones: Number(r.totalOperaciones || 0),
+        totalStock: Number(r.totalStock || 0),
+        totalValor: Number(r.totalValor || 0)
+      })),
+      topArticulos: topArticulos.map(r => ({
+        IdArticulo: r.IdArticulo,
+        Articulo: r.Articulo,
+        Referencia: r.Referencia,
+        Categoria: r.Categoria,
+        totalStock: Number(r.totalStock || 0),
+        totalValor: Number(r.totalValor || 0)
+      }))
+    });
+
+  } catch (err) {
+    console.error('[inventario] Error en /api/reportes/resumen-operaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/reportes/detalle-operacion
+router.get('/api/reportes/detalle-operacion', async (req, res) => {
+  try {
+    const { usuario, operacion, categoria } = req.query;
+    if (!usuario || !operacion) {
+      return res.status(400).json({ error: 'usuario y operacion son requeridos' });
+    }
+
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const securityConds = ['`Operacion` = ?'];
+    const securityParams = [operacion.trim()];
+
+    // Restricción por categorías si aplica
+    if (acceso.filtroCategorias) {
+      const ph = acceso.filtroCategorias.map(() => '?').join(',');
+      securityConds.push(`\`Categoria\` IN (${ph})`);
+      securityParams.push(...acceso.filtroCategorias);
+    }
+
+    // Restricción por rol de operaciones
+    if (!acceso.sinFiltro) {
+      if (!acceso.operacionesFiltro.includes(operacion.trim())) {
+        return res.status(403).json({ error: 'No tienes permisos para ver esta operación' });
+      }
+    }
+
+    if (categoria && categoria.trim() !== '' && categoria.trim().toUpperCase() !== 'TODAS') {
+      securityConds.push('`Categoria` = ?');
+      securityParams.push(categoria.trim());
+    }
+
+    const [items] = await pool.execute(`
+      SELECT 
+        \`Regional\`,
+        \`Operacion\`,
+        \`IdArticulo\`,
+        \`Articulo\`,
+        \`Talla\`,
+        \`Referencia\`,
+        \`Clasificación\` AS Clasificacion,
+        \`Categoria\`,
+        IFNULL(\`Stock Disponible\`, 0) AS StockDisponible,
+        IFNULL(\`Valor Stock\`, 0) AS ValorStock,
+        \`Imagen\`,
+        \`Placa\`
+      FROM Vista_Inventario
+      WHERE ${securityConds.join(' AND ')}
+      ORDER BY Categoria, Articulo
+    `, securityParams);
+
+    res.json({
+      operacion,
+      totalArticulos: items.length,
+      items: items.map(it => ({
+        ...it,
+        StockDisponible: Number(it.StockDisponible || 0),
+        ValorStock: Number(it.ValorStock || 0)
+      }))
+    });
+
+  } catch (err) {
+    console.error('[inventario] Error en /api/reportes/detalle-operacion:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
+

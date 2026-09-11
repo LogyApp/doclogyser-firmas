@@ -57,6 +57,10 @@ router.get('/api/registros', async (req, res) => {
     }
 
     const rol = uRows[0].Rol || '';
+    // Roles con visibilidad ampliada: ven los documentos de "Documentos de Ingreso"
+    // (cualquiera que sea su número de clasificación, de ahí el LIKE por contenido en vez
+    // de comparar por Id) más los que ellos mismos hayan creado, sin importar clasificación.
+    const ROLES_VISIBILIDAD_INGRESO = ['Contratación', 'Archivo', 'Asistencial'];
     let query = '';
     let params = [];
 
@@ -72,6 +76,22 @@ router.get('/api/registros', async (req, res) => {
         LEFT JOIN Dynamic_descuentonomina dn ON dl.id_descuento_auto = dn.id_descuento
         ORDER BY dl.fecha_registro DESC
       `;
+    } else if (ROLES_VISIBILIDAD_INGRESO.includes(rol)) {
+      // Contratación / Archivo / Asistencial: ven los documentos cuya Clasificación
+      // (Config_Doc_Trabajador.Clasificacion, vía id_config_doc) contiene "Documentos de
+      // Ingreso", más los que ellos mismos crearon aunque no sean de esa clasificación.
+      query = `
+        SELECT dl.*, cdt.Documento AS nombre_documento, mu.Nombre AS nombre_creador, s.Celular AS celular_trabajador,
+               dn.id_descuento AS auto_id_descuento, dn.token_firma AS auto_token_firma, dn.url_doc AS auto_url_doc
+        FROM Dynamic_Logysign dl
+        LEFT JOIN Config_Doc_Trabajador cdt ON dl.id_config_doc = cdt.Id
+        LEFT JOIN Maestro_Usuarios mu ON dl.usuario_creador = mu.ID
+        LEFT JOIN Maestro_Segmentación s ON dl.identificacion = s.Identificación
+        LEFT JOIN Dynamic_descuentonomina dn ON dl.id_descuento_auto = dn.id_descuento
+        WHERE cdt.Clasificacion LIKE ? OR dl.usuario_creador = ?
+        ORDER BY dl.fecha_registro DESC
+      `;
+      params = ['%Documentos de Ingreso%', usuario];
     } else {
       // Otros usuarios ven solo sus propios registros
       query = `
