@@ -304,7 +304,7 @@ router.post('/api/actualizar-contacto', async (req, res) => {
   }
 });
 
-// API: Eliminar registro (Solo para rol de Sistema si no está firmado)
+// API: Eliminar registro (Permitido para usuarios si no está firmado)
 router.delete('/api/eliminar/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -314,11 +314,11 @@ router.delete('/api/eliminar/:id', async (req, res) => {
     }
 
     const [uRows] = await pool.execute(
-      'SELECT Rol FROM Maestro_Usuarios WHERE ID = ?',
+      'SELECT ID FROM Maestro_Usuarios WHERE ID = ?',
       [usuario]
     );
-    if (!uRows.length || uRows[0].Rol !== 'Sistema') {
-      return res.status(403).json({ error: 'No autorizado. Solo el rol Sistema puede eliminar registros.' });
+    if (!uRows.length) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
     // Verificar si el registro ya fue firmado

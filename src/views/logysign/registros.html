@@ -1415,8 +1415,8 @@
         `;
       }
 
-      // Delete action: Only for role 'Sistema' if not signed (estado !== 'FIRMADO')
-      if (CONFIG.usuarioRol === 'Sistema' && item.estado !== 'FIRMADO') {
+      // Delete action: Available for users if not signed (estado !== 'FIRMADO')
+      if (item.estado !== 'FIRMADO') {
         optsHtml += `
           <button class="btn" onclick="eliminarRegistro('${item.id}')" style="width: 100%; margin-top: 8px; background: #dc2626; border-color: #dc2626; color: #fff;">✕ Eliminar Registro</button>
         `;
