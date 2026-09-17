@@ -445,6 +445,50 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
           });
         }
       }
+
+      // Parte 3: BOTAS (Solo requerida para la Regional ANTIOQUIA)
+      const esAntioquia = norm(w.Regional || regional) === 'ANTIOQUIA';
+      if (esAntioquia) {
+        const botasRule = rules.find(r =>
+          norm(r.Operacion) === norm(w.Operacion) &&
+          norm(r.Cargo) === norm(w.Cargo) &&
+          norm(r.Clasificacion) === 'BOTAS'
+        );
+
+        if (botasRule && w.Botas) {
+          const matchedArt = articles.find(a =>
+            norm(a.Elemento) === norm(botasRule.Elemento) &&
+            norm(a.Talla) === norm(w.Botas)
+          );
+
+          if (matchedArt) {
+            generatedRows.push({
+              FechaMovimiento: nowStr,
+              TipoMovimiento: 'TRANSFERENCIA',
+              Regional: 'ANTIOQUIA',
+              Operacion: 'Administracion',
+              OperacionDestino: opDestino,
+              Categoria: 'DOTACIÓN',
+              IdArticulo: matchedArt.Id,
+              ArticuloName: matchedArt.Articulo,
+              Cantidad: 1,
+              ValorUnitario: matchedArt.Costo || 0,
+              Observaciones: 'Dotación de Ley',
+              UsuarioAsignado: idColaborador
+            });
+          } else {
+            unmapped.push({
+              identificacion: idColaborador,
+              trabajador: w.Trabajador,
+              operacion: opDestino,
+              cargo: w.Cargo,
+              tipo: 'BOTAS',
+              elemento: botasRule.Elemento,
+              talla: w.Botas
+            });
+          }
+        }
+      }
     }
 
     res.json({

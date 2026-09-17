@@ -266,7 +266,10 @@
           <div class="badge badge-estado" id="badge-total">Total: 0</div>
         </div>
       </div>
-      <button class="btn btn-crear" onclick="mostrarVista('formulario')">➕ Nueva Solicitud</button>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button class="btn btn-secondary" id="btn-sincronizar-ingresos" onclick="sincronizarIngresosAutomaticos()" title="Sincronizar solicitudes automáticas para nuevos ingresos de Maestro_Vinculación">🔄 Sincronizar Nuevos Ingresos</button>
+        <button class="btn btn-crear" onclick="mostrarVista('formulario')">➕ Nueva Solicitud</button>
+      </div>
     </div>
 
     <div class="card card-purple">
@@ -717,6 +720,42 @@
       mostrarToast('Error cargando solicitudes', 'error');
     } finally {
       loading.style.display = 'none';
+    }
+  }
+
+  // Sincroniza manualmente las solicitudes automáticas de nuevos ingresos
+  async function sincronizarIngresosAutomaticos() {
+    const btn = document.getElementById('btn-sincronizar-ingresos');
+    if (!btn || btn.disabled) return;
+
+    const textoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Sincronizando...';
+
+    try {
+      const res = await fetch(`${API_BASE}/procesar-ingresos-automaticos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: usuarioId })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al procesar ingresos');
+      }
+
+      if (data.procesados > 0) {
+        mostrarToast(`✅ ${data.procesados} ingreso(s) procesado(s), ${data.solicitudesCreadas} solicitud(es) creada(s)`, 'success');
+        await cargarSolicitudes();
+      } else {
+        mostrarToast('ℹ️ No hay nuevos ingresos pendientes por procesar', 'info');
+      }
+    } catch (err) {
+      console.error('[sincronizarIngresosAutomaticos] Error:', err);
+      mostrarToast(err.message || 'Error al sincronizar ingresos', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = textoOriginal;
     }
   }
 

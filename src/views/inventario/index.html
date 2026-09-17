@@ -3174,9 +3174,14 @@
               <div>
                 <span class="badge badge-estado" id="sol-badge-total" style="background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
               </div>
-              <button class="btn-primary" id="sol-btn-nueva" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
-                <span>➕</span> Nueva Solicitud
-              </button>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button id="sol-btn-sincronizar-ingresos" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: 1px solid var(--border); background: white; color: var(--text); cursor: pointer; transition: all 0.2s;" title="Sincronizar solicitudes automáticas para nuevos ingresos de Maestro_Vinculación">
+                  <span>🔄</span> Sincronizar Nuevos Ingresos
+                </button>
+                <button class="btn-primary" id="sol-btn-nueva" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
+                  <span>➕</span> Nueva Solicitud
+                </button>
+              </div>
             </div>
 
             <!-- Filters Card -->
@@ -10179,6 +10184,42 @@
       if (btnNueva) {
         btnNueva.addEventListener('click', () => {
           mostrarSolicitudVista('formulario');
+        });
+      }
+
+      const btnSyncIngresos = document.getElementById('sol-btn-sincronizar-ingresos');
+      if (btnSyncIngresos) {
+        btnSyncIngresos.addEventListener('click', async () => {
+          if (btnSyncIngresos.disabled) return;
+          const originalText = btnSyncIngresos.innerHTML;
+          btnSyncIngresos.disabled = true;
+          btnSyncIngresos.innerHTML = '<span>⏳</span> Sincronizando...';
+
+          try {
+            const res = await fetch('/solicitudes/api/procesar-ingresos-automaticos', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ usuario: CONFIG.usuarioId })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || 'Error al procesar ingresos');
+            }
+
+            if (data.procesados > 0) {
+              alert(`¡Sincronización exitosa!\n\nSe procesaron ${data.procesados} nuevo(s) ingreso(s) y se crearon ${data.solicitudesCreadas} solicitud(es) en estado PENDIENTE.`);
+              await fetchSolicitudesList();
+            } else {
+              alert('No hay nuevos ingresos pendientes por procesar.');
+            }
+          } catch (err) {
+            console.error('[sincronizarIngresos] Error:', err);
+            alert(`Error al sincronizar ingresos: ${err.message}`);
+          } finally {
+            btnSyncIngresos.disabled = false;
+            btnSyncIngresos.innerHTML = originalText;
+          }
         });
       }
 

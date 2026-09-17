@@ -49,7 +49,7 @@ async function obtenerIngresosPendientes() {
 
 /**
  * Procesa todos los nuevos ingresos de Maestro_Vinculación:
- * Genera dos solicitudes en estado BORRADOR (DOTACIÓN y EPP) con sus respectivos ítems
+ * Genera las solicitudes en estado PENDIENTE (DOTACIÓN y EPP) con sus respectivos ítems
  * de acuerdo a las reglas de Maestro_Dotacion_Cargos y Dynamic_Articulos.
  */
 async function verificarSolicitudesNuevosIngresos() {
@@ -100,7 +100,7 @@ async function verificarSolicitudesNuevosIngresos() {
         let seg = {};
         if (identificacion) {
           const [segRows] = await conn.execute(
-            'SELECT Camiseta, Numero, Pantalon, Botas FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+            'SELECT Camiseta, Pantalon, Botas FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
             [identificacion]
           );
           if (segRows.length > 0) {
@@ -108,200 +108,135 @@ async function verificarSolicitudesNuevosIngresos() {
           }
         }
 
-        // =============================================================
-        // REGISTRO 1: Dynamic_Solicitudes (DOTACIÓN)
-        // =============================================================
-        const itemsDotacion = [];
-
-        // Fila 1: BUZO (Cant: 2)
-        const buzoRule = rules.find(r =>
+        // 3. Filtrar reglas configuradas en Maestro_Dotacion_Cargos para este binomio (Operación, Cargo)
+        const cargoRules = rules.filter(r =>
           norm(r.Operacion) === norm(operacion) &&
-          norm(r.Cargo) === norm(cargo) &&
-          norm(r.Clasificacion) === 'BUZO'
+          norm(r.Cargo) === norm(cargo)
         );
-        if (buzoRule) {
-          const tallaCamiseta = seg.Camiseta || '';
-          const matchBuzo = articles.find(a =>
-            norm(a.Elemento) === norm(buzoRule.Elemento) &&
-            norm(a.Talla) === norm(tallaCamiseta) &&
-            (!a.Referencia || String(a.Referencia).trim() === '')
-          );
-          if (matchBuzo) {
-            itemsDotacion.push({
-              idArticulo: matchBuzo.Id,
-              cantidad: 2,
+
+        if (cargoRules.length === 0) {
+          console.log(`[solicitudesAutoIngreso] Sin reglas en Maestro_Dotacion_Cargos para Op="${operacion}", Cargo="${cargo}"`);
+        }
+
+        // Agrupar items a generar por Categoría ('DOTACIÓN', 'EPP', etc.)
+        const itemsPorCategoria = {};
+
+        for (const rule of cargoRules) {
+          const catNorm = norm(rule.Categoria);
+          // Normalizar categoría de destino (DOTACIÓN o EPP)
+          const categoriaDestino = catNorm.includes('EPP') ? 'EPP' : 'DOTACIÓN';
+
+          const clasifNorm = norm(rule.Clasificacion);
+          const elemNorm = norm(rule.Elemento);
+
+          // Determinar talla según la clasificación
+          let tallaRequerida = null;
+          if (['BUZO', 'POLO', 'CAMISETA', 'CAMISA', 'CHALECO', 'CHAQUETA'].includes(clasifNorm)) {
+            tallaRequerida = norm(seg.Camiseta || '');
+          } else if (['PANTALON', 'PANTALON', 'JEAN', 'BERMUDA'].includes(clasifNorm)) {
+            tallaRequerida = norm(seg.Pantalon || '');
+          } else if (['BOTAS', 'BOTA', 'CALZADO', 'ZAPATO', 'ZAPATOS'].includes(clasifNorm)) {
+            tallaRequerida = norm(seg.Botas || '');
+          }
+
+          // Cantidad por defecto según la clasificación
+          const cantidad = (['BUZO', 'POLO', 'CAMISETA', 'CAMISA', 'PANTALON', 'GORRO'].includes(clasifNorm)) ? 2 : 1;
+
+          // Buscar artículo correspondiente en Dynamic_Articulos
+          let matchArt = null;
+
+          if (tallaRequerida !== null) {
+            // Prenda/calzado con talla: si tiene talla requerida, buscar por elemento + talla
+            if (tallaRequerida) {
+              // 1. Preferir artículo genérico (sin referencia rotulada)
+              matchArt = articles.find(a =>
+                norm(a.Elemento) === elemNorm &&
+                norm(a.Talla) === tallaRequerida &&
+                (!a.Referencia || String(a.Referencia).trim() === '')
+              );
+              // 2. Si no hay sin referencia, cualquier artículo con esa talla y elemento
+              if (!matchArt) {
+                matchArt = articles.find(a =>
+                  norm(a.Elemento) === elemNorm &&
+                  norm(a.Talla) === tallaRequerida
+                );
+              }
+            } else {
+              // El colaborador no tiene registrada la talla: buscar artículo base por elemento sin referencia
+              matchArt = articles.find(a =>
+                norm(a.Elemento) === elemNorm &&
+                (!a.Referencia || String(a.Referencia).trim() === '')
+              ) || articles.find(a => norm(a.Elemento) === elemNorm);
+            }
+          } else if (clasifNorm === 'GUANTES') {
+            // Guantes: priorizar talla 9 / 9.0 si está disponible
+            matchArt = articles.find(a =>
+              norm(a.Elemento) === elemNorm &&
+              (norm(a.Talla) === '9' || norm(a.Talla) === '9.0')
+            ) || articles.find(a => norm(a.Elemento) === elemNorm);
+          } else {
+            // Resto de elementos / EPP: buscar por Elemento (preferir sin referencia rotulada)
+            matchArt = articles.find(a =>
+              norm(a.Elemento) === elemNorm &&
+              (!a.Referencia || String(a.Referencia).trim() === '')
+            ) || articles.find(a => norm(a.Elemento) === elemNorm);
+          }
+
+          if (matchArt) {
+            if (!itemsPorCategoria[categoriaDestino]) {
+              itemsPorCategoria[categoriaDestino] = [];
+            }
+            itemsPorCategoria[categoriaDestino].push({
+              idArticulo: matchArt.Id,
+              cantidad,
               nota: 'Dotación inicial'
             });
+          } else {
+            console.warn(`[solicitudesAutoIngreso] No se encontró artículo para regla: ${rule.Elemento} (${rule.Clasificacion}) Talla="${tallaRequerida || ''}"`);
           }
         }
 
-        // Fila 2: PANTALON (Cant: 2)
-        const pantRule = rules.find(r =>
-          norm(r.Operacion) === norm(operacion) &&
-          norm(r.Cargo) === norm(cargo) &&
-          norm(r.Clasificacion) === 'PANTALON'
-        );
-        if (pantRule) {
-          const tallaPantalon = seg.Pantalon || seg.Camiseta || '';
-          const matchPant = articles.find(a =>
-            norm(a.Elemento) === norm(pantRule.Elemento) &&
-            norm(a.Talla) === norm(tallaPantalon) &&
-            (!a.Referencia || String(a.Referencia).trim() === '')
-          );
-          if (matchPant) {
-            itemsDotacion.push({
-              idArticulo: matchPant.Id,
-              cantidad: 2,
-              nota: 'Dotación inicial'
-            });
-          }
-        }
+        let idSolDot = null;
+        let idSolEpp = null;
 
-        // Fila 3: BOTAS (Cant: 1)
-        const botasRule = rules.find(r =>
-          norm(r.Operacion) === norm(operacion) &&
-          norm(r.Cargo) === norm(cargo) &&
-          norm(r.Clasificacion) === 'BOTAS'
-        );
-        if (botasRule) {
-          const tallaBotas = seg.Botas || seg.Camiseta || '';
-          const matchBotas = articles.find(a =>
-            norm(a.Elemento) === norm(botasRule.Elemento) &&
-            norm(a.Talla) === norm(tallaBotas) &&
-            (!a.Referencia || String(a.Referencia).trim() === '')
-          );
-          if (matchBotas) {
-            itemsDotacion.push({
-              idArticulo: matchBotas.Id,
-              cantidad: 1,
-              nota: 'Dotación inicial'
-            });
-          }
-        }
+        // Crear solicitudes en Dynamic_Solicitudes para cada categoría que contenga ítems
+        for (const [categoria, items] of Object.entries(itemsPorCategoria)) {
+          if (!items || items.length === 0) continue;
 
-        // Insertar solicitud de DOTACIÓN
-        const idSolDot = randomUUID();
-        const obsDotacion = `AUTOMATICO: Dotación Inicial ${String(vin.Trabajador || '').trim()}`.trim();
-        await conn.execute(
-          `INSERT INTO Dynamic_Solicitudes
-           (IdSolicitud, FechaSolicitud, Estado, \`Operación\`, Regional, Prioridad, Categoria,
-            \`Justificación\`, Imagen_Cotización, Monto_Estimado, AprobadoPor, FechaAprobacion,
-            foto_guia, Observaciones, Usuario, Fecha_Actualización, usuario_actualiza, Aclaraciones)
-           VALUES (?, NOW(), 'BORRADOR', ?, ?, 'BAJA', 'DOTACIÓN',
-            ?, NULL, NULL, NULL, NULL,
-            NULL, ?, 'Sistema', NULL, NULL, NULL)`,
-          [idSolDot, operacion, regional, identificacion, obsDotacion]
-        );
-        solicitudesCreadasCount++;
+          const idSol = randomUUID();
+          const obs = `AUTOMATICO: ${categoria === 'EPP' ? 'EPP' : 'Dotación'} Inicial ${String(vin.Trabajador || '').trim()}`.trim();
 
-        // Insertar items de DOTACIÓN correspondientes
-        for (const it of itemsDotacion) {
-          const idElem = randomUUID().replace(/-/g, '');
           await conn.execute(
-            `INSERT INTO Dynamic_Solicitudes_Items
-             (IdElemento, IdSolicitud, IdArticulo, Cantidad, CantidadDespachada, IdKardex, Nota, Fecha_Registro, Usuario, usuario_actualiza)
-             VALUES (?, ?, ?, ?, 0, NULL, ?, NOW(), 'Sistema', NULL)`,
-            [idElem, idSolDot, it.idArticulo, it.cantidad, it.nota]
+            `INSERT INTO Dynamic_Solicitudes
+             (IdSolicitud, FechaSolicitud, Estado, \`Operación\`, Regional, Prioridad, Categoria,
+              \`Justificación\`, Imagen_Cotización, Monto_Estimado, AprobadoPor, FechaAprobacion,
+              foto_guia, Observaciones, Usuario, Fecha_Actualización, usuario_actualiza, Aclaraciones)
+             VALUES (?, NOW(), 'PENDIENTE', ?, ?, 'BAJA', ?,
+              ?, NULL, NULL, NULL, NULL,
+              NULL, ?, 'Sistema', NULL, NULL, NULL)`,
+            [idSol, operacion, regional, categoria, identificacion, obs]
           );
-        }
+          solicitudesCreadasCount++;
 
-        // =============================================================
-        // REGISTRO 2: Dynamic_Solicitudes (EPP)
-        // =============================================================
-        const itemsEpp = [];
-
-        // Fila 1: PORTACARNET (Cant: 1)
-        const portaRule = rules.find(r =>
-          norm(r.Operacion) === norm(operacion) &&
-          norm(r.Cargo) === norm(cargo) &&
-          norm(r.Clasificacion) === 'PORTACARNET'
-        );
-        if (portaRule) {
-          const matchPorta = articles.find(a =>
-            norm(a.Elemento) === norm(portaRule.Elemento)
-          );
-          if (matchPorta) {
-            itemsEpp.push({
-              idArticulo: matchPorta.Id,
-              cantidad: 1,
-              nota: 'Dotación inicial'
-            });
+          if (categoria === 'EPP') {
+            idSolEpp = idSol;
+          } else {
+            idSolDot = idSol;
           }
-        }
 
-        // Fila 2: GUANTES (Cant: 1, Talla 9)
-        const guantesRule = rules.find(r =>
-          norm(r.Operacion) === norm(operacion) &&
-          norm(r.Cargo) === norm(cargo) &&
-          norm(r.Clasificacion) === 'GUANTES'
-        );
-        if (guantesRule) {
-          let matchGuantes = articles.find(a =>
-            norm(a.Elemento) === norm(guantesRule.Elemento) &&
-            (norm(a.Talla) === '9' || norm(a.Talla) === '9.0')
-          );
-          if (!matchGuantes) {
-            matchGuantes = articles.find(a =>
-              norm(a.Elemento) === norm(guantesRule.Elemento)
+          // Insertar items correspondientes
+          for (const it of items) {
+            const idElem = randomUUID().replace(/-/g, '');
+            await conn.execute(
+              `INSERT INTO Dynamic_Solicitudes_Items
+               (IdElemento, IdSolicitud, IdArticulo, Cantidad, CantidadDespachada, IdKardex, Nota, Fecha_Registro, Usuario, usuario_actualiza)
+               VALUES (?, ?, ?, ?, 0, NULL, ?, NOW(), 'Sistema', NULL)`,
+              [idElem, idSol, it.idArticulo, it.cantidad, it.nota]
             );
           }
-          if (matchGuantes) {
-            itemsEpp.push({
-              idArticulo: matchGuantes.Id,
-              cantidad: 1,
-              nota: 'Dotación inicial'
-            });
-          }
         }
 
-        // Fila 3: GORRO (Cant: 2)
-        const gorroRule = rules.find(r =>
-          norm(r.Operacion) === norm(operacion) &&
-          norm(r.Cargo) === norm(cargo) &&
-          norm(r.Clasificacion) === 'GORRO'
-        );
-        if (gorroRule) {
-          const matchGorro = articles.find(a =>
-            norm(a.Elemento) === norm(gorroRule.Elemento)
-          );
-          if (matchGorro) {
-            itemsEpp.push({
-              idArticulo: matchGorro.Id,
-              cantidad: 2,
-              nota: 'Dotación inicial'
-            });
-          }
-        }
-
-        // Insertar solicitud de EPP
-        const idSolEpp = randomUUID();
-        const obsEpp = `AUTOMATICO: EPP Inicial ${String(vin.Trabajador || '').trim()}`.trim();
-        await conn.execute(
-          `INSERT INTO Dynamic_Solicitudes
-           (IdSolicitud, FechaSolicitud, Estado, \`Operación\`, Regional, Prioridad, Categoria,
-            \`Justificación\`, Imagen_Cotización, Monto_Estimado, AprobadoPor, FechaAprobacion,
-            foto_guia, Observaciones, Usuario, Fecha_Actualización, usuario_actualiza, Aclaraciones)
-           VALUES (?, NOW(), 'BORRADOR', ?, ?, 'BAJA', 'EPP',
-            ?, NULL, NULL, NULL, NULL,
-            NULL, ?, 'Sistema', NULL, NULL, NULL)`,
-          [idSolEpp, operacion, regional, identificacion, obsEpp]
-        );
-        solicitudesCreadasCount++;
-
-        // Insertar items de EPP correspondientes
-        for (const it of itemsEpp) {
-          const idElem = randomUUID().replace(/-/g, '');
-          await conn.execute(
-            `INSERT INTO Dynamic_Solicitudes_Items
-             (IdElemento, IdSolicitud, IdArticulo, Cantidad, CantidadDespachada, IdKardex, Nota, Fecha_Registro, Usuario, usuario_actualiza)
-             VALUES (?, ?, ?, ?, 0, NULL, ?, NOW(), 'Sistema', NULL)`,
-            [idElem, idSolEpp, it.idArticulo, it.cantidad, it.nota]
-          );
-        }
-
-        // 3. Marcar registro como procesado en la tabla dedicada (sin riesgo de truncamiento,
-        // a diferencia de escribir una marca de texto en Observaciones Vinculación, columna
-        // compartida con otros procesos que también la mutan: [NI], [RN], [NOTIF_...]).
+        // 4. Marcar registro como procesado en la tabla dedicada
         await conn.execute(
           `INSERT INTO \`Dynamic_AutoIngreso_Procesados\` (IdVinculacion, IdSolicitudDotacion, IdSolicitudEpp, FechaProcesado)
            VALUES (?, ?, ?, NOW())`,
@@ -310,7 +245,8 @@ async function verificarSolicitudesNuevosIngresos() {
 
         await conn.commit();
         procesadosCount++;
-        console.log(`[solicitudesAutoIngreso] OK id=${vin.id} trabajador="${vin.Trabajador}" -> Dotación items=${itemsDotacion.length}, EPP items=${itemsEpp.length}`);
+        const totalItems = Object.values(itemsPorCategoria).reduce((acc, itms) => acc + itms.length, 0);
+        console.log(`[solicitudesAutoIngreso] OK id=${vin.id} trabajador="${vin.Trabajador}" -> Dotación=${idSolDot ? 'SI' : 'NO'}, EPP=${idSolEpp ? 'SI' : 'NO'} (Total items: ${totalItems})`);
 
       } catch (err) {
         await conn.rollback();
