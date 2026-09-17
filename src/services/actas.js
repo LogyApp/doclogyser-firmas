@@ -486,6 +486,14 @@ async function generarPDFDirectoActa(idActa) {
   return { idActa, urlActa, tieneEvidencia, urlFirma: urlFirmaParaGuardar };
 }
 
+async function obtenerContactoTrabajador(identificacion) {
+  const [[row]] = await pool.execute(
+    'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE Identificación = ? LIMIT 1',
+    [identificacion]
+  );
+  return { email: (row && row.Email) || '', celular: (row && row.Celular) || '' };
+}
+
 module.exports = {
   normalizarCategoria,
   resolverTipoDocumentoActa,
@@ -498,4 +506,5 @@ module.exports = {
   revertirKardexActa,
   regenerarPDFActa,
   generarPDFDirectoActa,
+  obtenerContactoTrabajador,
 };

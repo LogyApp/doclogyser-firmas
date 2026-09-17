@@ -151,7 +151,11 @@ async function verificarEnviosProgramados() {
       }
     }
   } catch (err) {
-    console.error('[logysignScheduler] Error checking scheduled email delivery:', err);
+    if (err.code === 'ETIMEDOUT' || err.code === 'ECONNRESET' || err.code === 'PROTOCOL_CONNECTION_LOST') {
+      console.warn(`[logysignScheduler] Conexión a BD temporalmente no disponible (${err.code}). Se reintentará en el próximo ciclo.`);
+    } else {
+      console.error('[logysignScheduler] Error checking scheduled email delivery:', err);
+    }
   }
 }
 

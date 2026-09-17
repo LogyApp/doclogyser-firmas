@@ -2881,9 +2881,6 @@
             <button id="pendiente-btn-agregar-kardex" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
               <span>➕</span> Agregar Kardex
             </button>
-            <button id="pendiente-btn-recibir-masivo" class="btn" style="background-color: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;">
-              <span>✔️</span> Recibir Masivo (<span id="pendiente-selected-count">0</span>)
-            </button>
           </div>
         </div>
 
@@ -2907,12 +2904,8 @@
           </div>
         </div>
 
-        <!-- Barra de selección masiva y controles -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
-          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #475569;">
-            <input type="checkbox" id="pendiente-select-all" style="cursor: pointer; width: 16px; height: 16px;">
-            <label for="pendiente-select-all" style="cursor: pointer; font-weight: 600;">Seleccionar todos los pedidos</label>
-          </div>
+        <!-- Barra de estado y conteo de pedidos -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; padding: 0 4px;">
           <div id="pendiente-orders-stats" style="font-size: 0.8rem; color: #64748b; font-weight: 500;">
             Mostrando <span id="pendiente-total-orders" style="font-weight: 700; color: var(--primary);">0</span> pedidos en tránsito
           </div>
@@ -4119,7 +4112,7 @@
 
   <!-- Modal Recepción de Transferencia con Firma -->
   <div id="recibir-transferencia-modal" class="conf-modal" style="display: none; z-index: 3050;">
-    <div class="conf-modal-content" style="max-width: 680px; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="conf-modal-content" style="max-width: 850px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
       <div class="conf-modal-header" style="background: #1e3c72; color: white; padding: 16px 20px;">
         <h2 style="color: white; margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
           <span>📦</span> Acta de Ingreso y Verificación de Inventario
@@ -4135,9 +4128,9 @@
         <!-- Lista de artículos a verificar -->
         <div style="margin-bottom: 16px;">
           <label style="font-weight: 700; font-size: 0.82rem; color: #1e293b; display: block; margin-bottom: 6px;">
-            Artículos a Recibir y Novedades Físicas:
+            Artículos a Recibir y Generación de Actas de Entrega:
           </label>
-          <div id="recibir-modal-items-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: white;">
+          <div id="recibir-modal-items-container" style="max-height: 280px; overflow-y: auto; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: white;">
             <!-- Filas dinámicas -->
           </div>
         </div>
@@ -4838,7 +4831,7 @@
           
           <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
             <div style="max-height: 40vh; overflow-y: auto; overflow-x: auto;">
-              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem; min-width: 1300px;" id="formkardex-grid-table">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem; min-width: 1500px;" id="formkardex-grid-table">
                 <thead>
                   <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10;">
                     <th style="padding: 10px; font-weight: 600; width: 160px;">Fecha Movimiento *</th>
@@ -4850,7 +4843,7 @@
                     <th style="padding: 10px; font-weight: 600; width: 220px;">Artículo *</th>
                     <th style="padding: 10px; font-weight: 600; width: 90px;">Stock Actual</th>
                     <th style="padding: 10px; font-weight: 600; width: 80px;">Cant *</th>
-                    <th style="padding: 10px; font-weight: 600;">Observaciones</th>
+                    <th style="padding: 10px; font-weight: 600; width: 180px;">Observaciones</th>
                     <th class="col-usuario-asignado-th" style="padding: 10px; font-weight: 600; width: 140px; display: none;">Usuario Asignado</th>
                     <th style="padding: 10px; font-weight: 600; width: 50px; text-align: center;"></th>
                   </tr>
@@ -12448,7 +12441,7 @@
           <td style="padding: 6px 10px;">
             <input type="number" class="grid-cell-input cantidad-input" value="${row.Cantidad || ''}" placeholder="0" required style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; text-align: right;">
           </td>
-          <td style="padding: 6px 10px;">
+          <td style="padding: 6px 10px; width: 180px; min-width: 180px;">
             <input type="text" class="grid-cell-input obs-input" value="${row.Observaciones || ''}" placeholder="Detalle" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem;">
           </td>
           <td class="col-usuario-asignado-td" style="padding: 6px 10px; ${isPrivilegedUser ? '' : 'display: none;'}">
@@ -13058,6 +13051,9 @@
                 ${item.Referencia && item.Referencia !== '—' ? `<span style="display: block; font-size: 0.72rem; color: #64748b; font-weight: normal;">Ref: ${item.Referencia}</span>` : ''}
                 ${item.Talla && item.Talla !== '—' ? `<span style="display: block; font-size: 0.72rem; color: #64748b; font-weight: normal;">Talla: ${item.Talla}</span>` : ''}
               </td>
+              <td style="padding: 8px 12px; font-size: 0.8rem;">
+                ${item.Trabajador ? `<span style="font-weight: 600; color: #1e3c72;">👤 ${item.Trabajador}</span>` : (item.UsuarioAsignado ? `<span style="color: #64748b;">C.C. ${item.UsuarioAsignado}</span>` : `<span style="color: #94a3b8; font-style: italic;">Sin asignar</span>`)}
+              </td>
               <td style="padding: 8px 12px; text-align: center;">
                 <span style="font-size: 0.75rem; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-weight: 600;">${item.Categoria || 'General'}</span>
               </td>
@@ -13065,12 +13061,7 @@
                 ${item.Cantidad}
               </td>
               <td style="padding: 8px 12px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                  <div>${noveltyBadge}</div>
-                  <button type="button" class="btn" style="background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600;" onclick="marcarNovedadItem('${order.Id}', '${item.IdKardex}', '${(item.Novedad || '').replace(/'/g, "\\'")}')">
-                    ✏️ Novedad
-                  </button>
-                </div>
+                <div>${noveltyBadge}</div>
               </td>
             </tr>
           `;
@@ -13083,8 +13074,7 @@
           <!-- Header de la Transferencia (clic despliega/oculta los artículos) -->
           <div class="pendiente-order-header" style="cursor: pointer; background: #f8fafc; padding: 14px 18px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: flex-start; gap: 12px;">
-              <input type="checkbox" class="pendiente-order-check" value="${order.Id}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 17px; height: 17px; margin-top: 2px;">
-              <span id="${chevronId}" class="filtros-chevron" style="font-size: 1rem; margin-top: 2px;">▸</span>
+              <span id="${chevronId}" class="filtros-chevron" style="font-size: 1.1rem; margin-top: 2px; color: var(--primary);">▸</span>
               <div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                   <span style="font-weight: 700; color: #1e3c72; font-size: 0.95rem; letter-spacing: 0.5px;">📋 ${order.Id}</span>
@@ -13123,9 +13113,10 @@
                   <th style="padding: 8px 12px; width: 40px; text-align: center;">#</th>
                   <th style="padding: 8px 12px; width: 50px; text-align: center;">Img</th>
                   <th style="padding: 8px 12px;">Artículo</th>
+                  <th style="padding: 8px 12px;">Trabajador</th>
                   <th style="padding: 8px 12px; text-align: center; width: 140px;">Categoría</th>
                   <th style="padding: 8px 12px; text-align: center; width: 90px;">Cantidad</th>
-                  <th style="padding: 8px 12px; width: 280px;">Novedad en Físico</th>
+                  <th style="padding: 8px 12px; width: 220px;">Novedad en Físico</th>
                 </tr>
               </thead>
               <tbody>
@@ -13134,19 +13125,6 @@
             </table>
           </div>
         `;
-
-        const check = card.querySelector('.pendiente-order-check');
-        check.addEventListener('click', (e) => e.stopPropagation());
-        check.addEventListener('change', () => {
-          if (check.checked) {
-            selectedPendientesIds.add(order.Id);
-          } else {
-            selectedPendientesIds.delete(order.Id);
-            const selectAllCheckbox = document.getElementById('pendiente-select-all');
-            if (selectAllCheckbox) selectAllCheckbox.checked = false;
-          }
-          updatePendientesSelectedCount();
-        });
 
         const btnRecibir = card.querySelector('.pendiente-btn-recibir');
         btnRecibir.addEventListener('click', (e) => {
@@ -13367,16 +13345,21 @@
         `;
       }
 
-      // Build Items Table with Editable Cantidad Recibida
-      let itemsListHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">';
+      // Build Items Table with Editable Cantidad Recibida, Trabajador y Selector de Acta
+      let itemsListHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 650px;">';
       itemsListHtml += `
         <thead>
           <tr style="background: #f1f5f9; color: #475569; border-bottom: 1px solid #e2e8f0; font-size: 0.72rem; text-transform: uppercase;">
+            <th style="padding: 6px 8px; width: 44px; text-align: center;" title="Marcar para generar Acta de Entrega">
+              <input type="checkbox" id="recibir-select-all-actas" checked style="cursor: pointer; width: 15px; height: 15px;" title="Seleccionar/Deseleccionar todas las actas">
+              <div style="font-size: 0.62rem; color: #64748b; font-weight: 700; margin-top: 1px;">Acta</div>
+            </th>
             <th style="padding: 6px 8px; width: 36px; text-align: center;">Img</th>
             <th style="padding: 6px 8px; text-align: left;">Artículo</th>
-            <th style="padding: 6px 8px; text-align: center; width: 60px;">Enviado</th>
-            <th style="padding: 6px 8px; text-align: center; width: 80px;">Recibido</th>
-            <th style="padding: 6px 8px; text-align: left; width: 200px;">Novedad / Obs</th>
+            <th style="padding: 6px 8px; text-align: left; min-width: 170px;">Trabajador</th>
+            <th style="padding: 6px 8px; text-align: center; width: 55px;">Enviado</th>
+            <th style="padding: 6px 8px; text-align: center; width: 75px;">Recibido</th>
+            <th style="padding: 6px 8px; text-align: left; width: 170px;">Novedad / Obs</th>
           </tr>
         </thead>
         <tbody>
@@ -13388,19 +13371,34 @@
             ? `<img src="${it.Imagen}" alt="" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;">` 
             : `<span style="font-size: 1.1rem;">📦</span>`;
           
+          const hasWorker = it.UsuarioAsignado && String(it.UsuarioAsignado).trim() !== '';
+          const checkActaHtml = hasWorker
+            ? `<input type="checkbox" class="recibir-item-acta-check" data-id-kardex="${it.IdKardex}" checked style="cursor: pointer; width: 16px; height: 16px;" title="Generar acta de entrega a este trabajador">`
+            : `<span style="color: #cbd5e1; font-size: 0.85rem;" title="Sin identificación asignada">—</span>`;
+
+          const workerDisplay = it.Trabajador
+            ? `<strong style="color: #1e293b;">${it.Trabajador}</strong>`
+            : (hasWorker ? `<span style="color: #475569; font-weight: 600;">C.C. ${it.UsuarioAsignado}</span>` : `<span style="color: #94a3b8; font-style: italic;">Sin asignar</span>`);
+
           itemsListHtml += `
             <tr style="border-bottom: 1px solid #f8fafc;" class="recibir-item-row" data-id-kardex="${it.IdKardex}">
+              <td style="padding: 6px 8px; text-align: center;">${checkActaHtml}</td>
               <td style="padding: 6px 8px; text-align: center;">${imgHtml}</td>
               <td style="padding: 6px 8px; font-weight: 600; color: #1e293b;">
                 ${it.Articulo || '—'}
+                ${it.Referencia && it.Referencia !== '—' ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Ref: ${it.Referencia}</span>` : ''}
+                ${it.Talla && it.Talla !== '—' ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Talla: ${it.Talla}</span>` : ''}
                 ${orders.length > 1 ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Ped: ${o.Id} (${o.OperacionDestino})</span>` : ''}
+              </td>
+              <td style="padding: 6px 8px; font-size: 0.78rem;">
+                ${workerDisplay}
               </td>
               <td style="padding: 6px 8px; text-align: center; font-weight: 700; color: #64748b;">${it.Cantidad}</td>
               <td style="padding: 6px 8px; text-align: center;">
-                <input type="number" class="recibir-item-cant-input" data-id-kardex="${it.IdKardex}" data-max="${it.Cantidad}" min="0" max="${it.Cantidad}" value="${it.Cantidad}" style="width: 60px; text-align: center; font-weight: 700; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.82rem; color: #1e3c72; outline: none;">
+                <input type="number" class="recibir-item-cant-input" data-id-kardex="${it.IdKardex}" data-max="${it.Cantidad}" min="0" max="${it.Cantidad}" value="${it.Cantidad}" style="width: 55px; text-align: center; font-weight: 700; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.82rem; color: #1e3c72; outline: none;">
               </td>
               <td style="padding: 6px 8px;">
-                <input type="text" class="recibir-item-novedad-input" data-id-kardex="${it.IdKardex}" value="${it.Novedad || ''}" placeholder="Escribe novedad si hay faltante..." style="width: 100%; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem;">
+                <input type="text" class="recibir-item-novedad-input" data-id-kardex="${it.IdKardex}" value="${it.Novedad || ''}" placeholder="Escribe novedad si hay..." style="width: 100%; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem;">
                 <div class="recibir-item-diff-note" id="diff-note-${it.IdKardex}" style="font-size: 0.7rem; color: #dc2626; display: none; margin-top: 2px; font-weight: 600;"></div>
               </td>
             </tr>
@@ -13410,6 +13408,15 @@
 
       itemsListHtml += '</tbody></table>';
       itemsDiv.innerHTML = itemsListHtml;
+
+      // Listener para seleccionar/deseleccionar todas las actas
+      const selectAllActas = itemsDiv.querySelector('#recibir-select-all-actas');
+      if (selectAllActas) {
+        selectAllActas.addEventListener('change', () => {
+          const actasBoxes = itemsDiv.querySelectorAll('.recibir-item-acta-check');
+          actasBoxes.forEach(b => b.checked = selectAllActas.checked);
+        });
+      }
 
       // Add live change listeners on Cantidad inputs
       const cantInputs = itemsDiv.querySelectorAll('.recibir-item-cant-input');
@@ -13540,6 +13547,50 @@
 
       const observacionesGenerales = obsInput ? obsInput.value.trim() : '';
 
+      // Collect actas selections
+      const actasIdsKardex = [];
+      const actasChecks = document.querySelectorAll('.recibir-item-acta-check:checked');
+      actasChecks.forEach(ch => {
+        const idK = ch.getAttribute('data-id-kardex');
+        const cant = cantidadesRecibidas[idK] !== undefined ? cantidadesRecibidas[idK] : 1;
+        if (idK && cant > 0) {
+          actasIdsKardex.push(idK);
+        }
+      });
+
+      // Si hay actas seleccionadas, agrupar por colaborador y solicitar confirmación
+      if (actasIdsKardex.length > 0) {
+        const actasIdsSet = new Set(actasIdsKardex);
+        const mapResumenActas = new Map();
+
+        currentReceivingOrders.forEach(o => {
+          (o.items || []).forEach(it => {
+            if (actasIdsSet.has(String(it.IdKardex)) && it.UsuarioAsignado) {
+              const workerKey = String(it.UsuarioAsignado).trim();
+              const workerLabel = it.Trabajador ? it.Trabajador : `Cédula ${workerKey}`;
+              if (!mapResumenActas.has(workerKey)) {
+                mapResumenActas.set(workerKey, { label: workerLabel, items: [] });
+              }
+              const cantRec = cantidadesRecibidas[it.IdKardex] !== undefined ? cantidadesRecibidas[it.IdKardex] : it.Cantidad;
+              mapResumenActas.get(workerKey).items.push(`${it.Articulo} (${cantRec} und)`);
+            }
+          });
+        });
+
+        if (mapResumenActas.size > 0) {
+          let msgConfirm = `📦 Confirmación de Recepción y Generación de Actas:\n\n`;
+          msgConfirm += `Al recibir este pedido se ingresarán las cantidades a la sede destino y se generarán ${mapResumenActas.size} acta(s) de entrega de dotación para los siguientes colaboradores:\n\n`;
+          for (const [wId, info] of mapResumenActas.entries()) {
+            msgConfirm += `• ${info.label}:\n   - ${info.items.join('\n   - ')}\n`;
+          }
+          msgConfirm += `\nLos elementos entregados se descontarán automáticamente del Kardex.\n¿Deseas confirmar y continuar?`;
+
+          if (!confirm(msgConfirm)) {
+            return;
+          }
+        }
+      }
+
       const originalBtnHtml = btnConfirm.innerHTML;
       btnConfirm.disabled = true;
       btnConfirm.innerHTML = '<span>⏳</span> Procesando Acta y Firma...';
@@ -13558,7 +13609,8 @@
               novedadesItems,
               observacionesGenerales,
               firmaBase64,
-              useRecentSignature
+              useRecentSignature,
+              actasIdsKardex
             })
           });
           data = await res.json();
@@ -13584,13 +13636,20 @@
         closeRecibirTransferenciaModal();
 
         // Mostrar confirmación
+        let alertMsg = '';
+        if (data.actasGeneradas && data.actasGeneradas > 0) {
+          alertMsg += `✅ Transferencia recibida y ${data.actasGeneradas} acta(s) de entrega de dotación generada(s) con éxito.\nLos elementos fueron descontados del Kardex para cada colaborador.`;
+        } else {
+          alertMsg += `✅ Transferencia recibida con éxito.`;
+        }
         if (data.pdfUrl) {
-          alert(`Transferencia recibida con éxito.\nSe ha generado el Acta de Ingreso y verificación de inventario.`);
+          alertMsg += `\nSe ha generado el Acta de Ingreso y verificación de inventario entre sedes.`;
+          alert(alertMsg);
           window.open(data.pdfUrl, '_blank');
         } else if (data.actas && data.actas.length) {
           alert(`${data.actas.length} transferencias recibidas con éxito y Actas de Ingreso generadas.`);
         } else {
-          alert(data.message || 'Transferencia recibida con éxito.');
+          alert(alertMsg);
         }
 
         fetchPendientesList();

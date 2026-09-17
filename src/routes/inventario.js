@@ -4,9 +4,11 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 const pool = require('../services/db');
 const { obtenerFirmaBase64Reciente, obtenerUrlFirmaReciente, subirFirma, subirPDFConfirmacionInventario, storage } = require('../services/storage');
-const { notificarConfirmacionInventario, notificarTransferenciaDespachada, notificarTransferenciaRecibida } = require('../services/email');
+const { notificarConfirmacionInventario, notificarTransferenciaDespachada, notificarTransferenciaRecibida, notificarActaFirma } = require('../services/email');
 const { generarPDF } = require('../services/renderer');
 const { computarAccesoInventario, agruparOperacionesPorRegional } = require('../services/accesoInventario');
+const { registrarKardexActa, construirDatosPlantilla, obtenerContactoTrabajador } = require('../services/actas');
+const { generarToken } = require('../services/token');
 const multer = require('multer');
 
 const router = express.Router();
@@ -2204,6 +2206,8 @@ router.get('/api/kardex-pendiente', async (req, res) => {
         k.UsuarioRegistro,
         k.Observaciones AS ObservacionesItem,
         k.Novedad AS NovedadItem,
+        k.UsuarioAsignado,
+        mv.Trabajador AS NombreTrabajador,
         a.Articulo,
         a.Imagen,
         a.Categoria,
@@ -2212,6 +2216,7 @@ router.get('/api/kardex-pendiente', async (req, res) => {
       FROM Kardex_Pendiente kp
       LEFT JOIN Dynamic_Kardex k ON (k.Kpendiente = kp.Id OR (kp.IdKardexOriginal IS NOT NULL AND k.IdKardex = kp.IdKardexOriginal))
       LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
+      LEFT JOIN \`Maestro_Vinculación\` mv ON TRIM(mv.\`Identificación\`) = TRIM(k.UsuarioAsignado)
       WHERE ${securityConds.join(' AND ')}
       ORDER BY kp.FechaDespacho DESC, k.FechaMovimiento DESC
     `;
@@ -2253,6 +2258,8 @@ router.get('/api/kardex-pendiente', async (req, res) => {
           Cantidad: row.Cantidad || 0,
           ValorUnitario: row.ValorUnitario || 0,
           UsuarioRegistro: row.UsuarioRegistro,
+          UsuarioAsignado: row.UsuarioAsignado || null,
+          Trabajador: row.NombreTrabajador || null,
           Observaciones: row.ObservacionesItem || '',
           Novedad: row.NovedadItem || ''
         });
@@ -2322,7 +2329,8 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
       novedadesItems, // { [idKardex]: "novedad..." }
       observacionesGenerales,
       firmaBase64,
-      useRecentSignature
+      useRecentSignature,
+      actasIdsKardex // array con los IdKardex seleccionados para generar acta de entrega
     } = req.body;
 
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
@@ -2554,11 +2562,108 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
       [pdfUrl, order.Id]
     );
 
+    // 6. Generar Actas de Entrega de Dotación para los ítems seleccionados con UsuarioAsignado
+    const actasCreadas = [];
+    const actasIdsSet = new Set(Array.isArray(actasIdsKardex) ? actasIdsKardex.map(String) : []);
+
+    if (actasIdsSet.size > 0) {
+      // Filtrar ítems recibidos con cantidad > 0, que tengan UsuarioAsignado y estén seleccionados
+      const itemsSeleccionadosActa = itemsParaActa.filter(it =>
+        actasIdsSet.has(String(it.IdKardex)) &&
+        it.UsuarioAsignado &&
+        String(it.UsuarioAsignado).trim() !== '' &&
+        it.CantidadRecibida > 0
+      );
+
+      // Agrupar por UsuarioAsignado (identificación) y Categoria
+      const gruposPorTrabajador = new Map();
+      for (const it of itemsSeleccionadosActa) {
+        const workerId = String(it.UsuarioAsignado).trim();
+        const cat = it.Categoria || it.CategoriaArticulo || 'DOTACIÓN';
+        const key = `${workerId}|${cat}`;
+        if (!gruposPorTrabajador.has(key)) {
+          gruposPorTrabajador.set(key, {
+            workerId,
+            categoria: cat,
+            items: []
+          });
+        }
+        gruposPorTrabajador.get(key).items.push({
+          IdArticulo: it.IdArticulo,
+          Cantidad: it.CantidadRecibida,
+          Nota: it.Novedad || ''
+        });
+      }
+
+      // Crear cada acta en Dynamic_Actas y Dynamic_Actas_Items, y generar descuento en Kardex
+      for (const [key, grupo] of gruposPorTrabajador.entries()) {
+        const obsActa = observacionesGenerales
+          ? observacionesGenerales
+          : `Acta generada automáticamente desde recepción de transferencia ${order.Id}`;
+
+        const [resActa] = await conn.execute(
+          `INSERT INTO Dynamic_Actas
+           (identificacion, IdSolicitud, operacion, Fecha_Entrega, Categoria, Observaciones, Usuario, Estado)
+           VALUES (?, NULL, ?, NOW(), ?, ?, ?, 'Pendiente')`,
+          [
+            parseInt(grupo.workerId) || grupo.workerId,
+            operacionDestino,
+            grupo.categoria,
+            obsActa,
+            usuario
+          ]
+        );
+        const idActa = resActa.insertId;
+
+        for (const itemActa of grupo.items) {
+          await conn.execute(
+            'INSERT INTO Dynamic_Actas_Items (IdActa, IdArticulo, Cantidad, Nota, Usuario) VALUES (?, ?, ?, ?, ?)',
+            [idActa, itemActa.IdArticulo, itemActa.Cantidad, itemActa.Nota, usuario]
+          );
+        }
+
+        const [[actaRow]] = await conn.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [idActa]);
+        await registrarKardexActa({ conn, acta: actaRow, items: grupo.items });
+
+        actasCreadas.push({
+          idActa,
+          identificacion: grupo.workerId,
+          categoria: grupo.categoria
+        });
+      }
+    }
+
     await conn.commit();
+
+    // Notificar por correo y generar tokens a los colaboradores para firmar sus actas de entrega (en segundo plano)
+    if (actasCreadas.length > 0) {
+      (async () => {
+        for (const actaInfo of actasCreadas) {
+          try {
+            const token = await generarToken('Dynamic_Actas', 'IdActa', actaInfo.idActa);
+            const contacto = await obtenerContactoTrabajador(parseInt(actaInfo.identificacion) || actaInfo.identificacion);
+            if (contacto && contacto.email) {
+              const url = `${req.protocol}://${req.get('host')}/doclogyser/acta_entrega/${actaInfo.idActa}?token=${encodeURIComponent(token)}`;
+              const { datos } = await construirDatosPlantilla(actaInfo.idActa, {});
+              await notificarActaFirma({
+                email: contacto.email,
+                nombreTrabajador: datos.nombre_trabajador,
+                categoria: actaInfo.categoria,
+                urlFirma: url
+              });
+            }
+          } catch (actaErr) {
+            console.error(`[inventario] Error en flujo post-creación de acta #${actaInfo.idActa}:`, actaErr.message);
+          }
+        }
+      })();
+    }
+
     res.json({
       success: true,
-      message: 'Transferencia recibida exitosamente y Acta de Ingreso generada.',
-      pdfUrl
+      message: `Transferencia recibida exitosamente.${actasCreadas.length > 0 ? ` Se generaron ${actasCreadas.length} acta(s) de entrega de dotación.` : ''}`,
+      pdfUrl,
+      actasGeneradas: actasCreadas.length
     });
 
     // Notificar al usuario que despachó que su transferencia ya fue recibida (en segundo plano)
