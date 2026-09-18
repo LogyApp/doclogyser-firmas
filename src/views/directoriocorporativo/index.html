@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Directorio Corporativo - Logyser</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recibo-public/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #121721;
+      --card-dark: #1A2130;
+      --card-hover: #222C3F;
+      --border-dark: #2B364A;
+      --primary-accent: #E8762B;
+      --primary-hover: #F28C47;
+      --text-main: #F1F5F9;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --success: #10B981;
+      --blue-accent: #38BDF8;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header Superior */
+    .top-header {
+      background: #0D121B;
+      border-bottom: 1px solid var(--border-dark);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      height: 38px;
+      filter: brightness(0) invert(1);
+    }
+
+    .brand-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.3px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-header {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-header:hover {
+      background: var(--card-hover);
+      border-color: var(--primary-accent);
+      color: #fff;
+    }
+    .btn-header.accent {
+      background: var(--primary-accent);
+      border-color: var(--primary-accent);
+      color: #fff;
+    }
+    .btn-header.accent:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Contenedor Principal */
+    .main-container {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 20px 60px 20px;
+      flex: 1;
+    }
+
+    /* Barra de Herramientas y Buscador */
+    .controls-bar {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 280px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px 12px 42px;
+      background: #0F141F;
+      border: 1.5px solid var(--border-dark);
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 0.92rem;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary-accent);
+      box-shadow: 0 0 0 3px rgba(232, 118, 43, 0.2);
+    }
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 1rem;
+      pointer-events: none;
+    }
+
+    .view-toggles {
+      display: flex;
+      gap: 6px;
+      background: #0F141F;
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-dark);
+    }
+
+    .btn-toggle {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-toggle:hover { color: #fff; }
+    .btn-toggle.active {
+      background: var(--primary-accent);
+      color: #fff;
+    }
+
+    /* Métricas Rápidas */
+    .stats-strip {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .stat-chip {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius-sm);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+    }
+    .stat-number {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--primary-accent);
+    }
+
+    /* ════════ VISTA POR ÁREAS (Acordeón AppSheet) ════════ */
+    .area-group-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .area-item {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .area-item:hover {
+      border-color: #3B4861;
+    }
+
+    .area-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .area-header:hover {
+      background: var(--card-hover);
+    }
+
+    .area-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .area-name {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--primary-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-count {
+      background: #2E384D;
+      color: #E2E8F0;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+    }
+
+    .area-chevron {
+      color: var(--text-muted);
+      font-size: 1rem;
+      transition: transform 0.25s ease;
+    }
+    .area-item.open .area-chevron {
+      transform: rotate(90deg);
+      color: var(--primary-accent);
+    }
+
+    .area-body {
+      display: none;
+      padding: 0 20px 20px 20px;
+      border-top: 1px solid var(--border-dark);
+      background: rgba(15, 20, 31, 0.4);
+    }
+    .area-item.open .area-body {
+      display: block;
+    }
+
+    /* Regional Subgrupos */
+    .regional-section {
+      margin-top: 18px;
+    }
+
+    .regional-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px dashed var(--border-dark);
+      padding-bottom: 6px;
+    }
+
+    .colab-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 12px;
+    }
+
+    /* Tarjeta de Colaborador */
+    .colab-card {
+      background: var(--card-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .colab-card:hover {
+      background: var(--card-hover);
+      border-color: var(--primary-accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .colab-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.15);
+      flex-shrink: 0;
+      background: #0F141F;
+    }
+
+    .colab-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .colab-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .colab-cargo {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .colab-operacion {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #FACC15;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .colab-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .btn-action-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.06);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: all 0.15s;
+    }
+    .btn-action-icon:hover {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+    .btn-action-icon.email:hover { color: var(--blue-accent); }
+    .btn-action-icon.call:hover { color: #fff; }
+    .btn-action-icon.whatsapp:hover { color: #22C55E; }
+
+    /* ════════ VISTA CUADRÍCULA DIRECTA ════════ */
+    #view-grid {
+      display: none;
+    }
+
+    /* ════════ MODAL DETALLE DE COLABORADOR (Screenshot 3) ════════ */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-card {
+      background: #151C28;
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 820px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      animation: modalZoom 0.2s ease;
+    }
+    @keyframes modalZoom {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-breadcrumb {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-dark);
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0E131C;
+    }
+    .btn-close-modal {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .btn-close-modal:hover { color: #fff; }
+
+    .modal-body {
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 28px;
+    }
+    @media (max-width: 720px) {
+      .modal-body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Columna izquierda de perfil */
+    .modal-profile-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      border-right: 1px solid var(--border-dark);
+      padding-right: 28px;
+    }
+    @media (max-width: 720px) {
+      .modal-profile-col {
+        border-right: none;
+        border-bottom: 1px solid var(--border-dark);
+        padding-right: 0;
+        padding-bottom: 20px;
+      }
+    }
+
+    .modal-avatar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid var(--card-dark);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      margin-bottom: 16px;
+    }
+
+    .modal-name {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 4px;
+    }
+
+    .modal-cargo {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .modal-sede-badge {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #FACC15;
+      margin-bottom: 18px;
+    }
+
+    .modal-contact-btns {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+      width: 100%;
+    }
+    .btn-modal-action {
+      flex: 1;
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-modal-action.email { background: #0284C7; color: #fff; }
+    .btn-modal-action.email:hover { background: #0369A1; }
+    .btn-modal-action.whatsapp { background: #15803D; color: #fff; }
+    .btn-modal-action.whatsapp:hover { background: #166534; }
+
+    /* Columna derecha de datos */
+    .modal-details-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.88rem;
+    }
+    .detail-label {
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .detail-val {
+      color: #FFFFFF;
+      font-weight: 600;
+      text-align: right;
+      max-width: 60%;
+      word-break: break-word;
+    }
+    .detail-val.area-accent {
+      color: var(--primary-accent);
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .modal-footer-btn {
+      margin-top: 20px;
+      background: var(--primary-accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 12px 18px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .modal-footer-btn:hover { background: var(--primary-hover); }
+
+    /* Overlay de Carga */
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10, 14, 22, 0.8);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: #fff;
+      gap: 14px;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(255,255,255,0.15);
+      border-top-color: var(--primary-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      padding: 14px 20px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+      animation: slideIn 0.3s ease;
+    }
+    .toast-success { background: #059669; }
+    .toast-error { background: #DC2626; }
+    .toast-info { background: #1E293B; border: 1px solid var(--border-dark); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <!-- Barra Superior -->
+  <header class="top-header">
+    <div class="brand-wrap">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logyser" class="brand-logo">
+      <span class="brand-title">Directorio Logyser</span>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn-header" onclick="sincronizarVinculacion()" title="Sincronizar nuevos ingresos o cambios de contrato">
+        🔄 Sincronizar Vinculación
+      </button>
+      <a href="/firma-corporativa" class="btn-header accent">
+        ✍️ Generador de Firmas
+      </a>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="main-container">
+    
+    <!-- Barra de Búsqueda y Modos de Vista -->
+    <div class="controls-bar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="input-busqueda" class="search-input" placeholder="Buscar por Nombre, Cédula, Cargo, Sede o Correo..." autocomplete="off">
+      </div>
+
+      <div class="view-toggles">
+        <button type="button" class="btn-toggle active" id="btn-view-areas" onclick="cambiarModoVista('areas')">
+          📑 Por Departamentos
+        </button>
+        <button type="button" class="btn-toggle" id="btn-view-grid" onclick="cambiarModoVista('grid')">
+          🗂️ Cuadrícula
+        </button>
+      </div>
+    </div>
+
+    <!-- Tira de Estadísticas -->
+    <div class="stats-strip">
+      <div class="stat-chip">
+        <span class="stat-number" id="stat-total">0</span>
+        <span style="color: var(--text-muted);">Colaboradores</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-number" id="stat-areas">0</span>
+        <span style="color: var(--text-muted);">Áreas Corporativas</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-number" id="stat-regionales">0</span>
+        <span style="color: var(--text-muted);">Regionales</span>
+      </div>
+    </div>
+
+    <!-- MODO 1: Acordeón por Áreas / Departamentos (Diseño Screenshots 1 y 2) -->
+    <div id="view-areas" class="area-group-list">
+      <div style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando directorio...</div>
+    </div>
+
+    <!-- MODO 2: Cuadrícula Directa -->
+    <div id="view-grid">
+      <div class="colab-grid" id="grid-container"></div>
+    </div>
+
+  </main>
+
+  <!-- MODAL DETALLE DE COLABORADOR (Screenshot 3) -->
+  <div class="modal-overlay" id="modal-detalle" onclick="cerrarModalFuera(event)">
+    <div class="modal-card">
+      <div class="modal-breadcrumb">
+        <span>Inicio &gt; <span id="m-breadcrumb-id" style="color: #fff; font-weight: 700;">—</span></span>
+        <button class="btn-close-modal" onclick="cerrarModalDetalle()">✕</button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Columna Perfil -->
+        <div class="modal-profile-col">
+          <img id="m-avatar" src="" class="modal-avatar">
+          <div class="modal-name" id="m-nombre">—</div>
+          <div class="modal-cargo" id="m-cargo">—</div>
+          <div class="modal-sede-badge" id="m-operacion">—</div>
+
+          <div class="modal-contact-btns">
+            <a id="m-btn-email" href="#" class="btn-modal-action email">
+              ✉️ EMAIL
+            </a>
+            <a id="m-btn-whatsapp" href="#" target="_blank" class="btn-modal-action whatsapp">
+              💬 WHATSAPP
+            </a>
+          </div>
+        </div>
+
+        <!-- Columna Datos -->
+        <div class="modal-details-col">
+          <div class="detail-row">
+            <span class="detail-label">Regional:</span>
+            <span class="detail-val" id="m-regional">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Área:</span>
+            <span class="detail-val area-accent" id="m-area">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Dirección:</span>
+            <span class="detail-val" id="m-direccion">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Email:</span>
+            <span class="detail-val" id="m-email">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Celular:</span>
+            <span class="detail-val" id="m-celular">—</span>
+          </div>
+
+          <a id="m-link-firma" href="#" class="modal-footer-btn">
+            ✍️ Ver / Generar Firma Corporativa
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div id="loading-text" style="font-weight: 600; font-size: 1rem;">Cargando colaboradores...</div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    const DEFAULT_FOTO = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
+    let colaboradoresData = [];
+    let modoVistaActual = 'areas';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarDirectorio();
+
+      // Búsqueda en tiempo real
+      const input = document.getElementById('input-busqueda');
+      input.addEventListener('input', () => {
+        renderDirectorio();
+      });
+    });
+
+    function cambiarModoVista(modo) {
+      modoVistaActual = modo;
+      document.getElementById('btn-view-areas').classList.toggle('active', modo === 'areas');
+      document.getElementById('btn-view-grid').classList.toggle('active', modo === 'grid');
+
+      document.getElementById('view-areas').style.display = modo === 'areas' ? 'flex' : 'none';
+      document.getElementById('view-grid').style.display = modo === 'grid' ? 'block' : 'none';
+      renderDirectorio();
+    }
+
+    async function cargarDirectorio() {
+      showLoading('Cargando directorio corporativo...');
+      try {
+        const res = await fetch('/directorio-corporativo/api/colaboradores');
+        const data = await res.json();
+
+        if (data.ok) {
+          colaboradoresData = data.colaboradores || [];
+          document.getElementById('stat-total').innerText = data.total || colaboradoresData.length;
+          document.getElementById('stat-areas').innerText = Object.keys(data.estadisticas.porArea || {}).length;
+          document.getElementById('stat-regionales').innerText = Object.keys(data.estadisticas.porRegional || {}).length;
+
+          renderDirectorio();
+        } else {
+          showToast('Error al cargar datos del directorio.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión al cargar directorio.', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function renderDirectorio() {
+      const q = document.getElementById('input-busqueda').value.toLowerCase().trim();
+
+      // Filtrar
+      const filtrados = colaboradoresData.filter(c => {
+        if (!q) return true;
+        const nombre = (c.nombre || '').toLowerCase();
+        const cedula = String(c.identificacion || '');
+        const cargo = (c.cargo || '').toLowerCase();
+        const operacion = (c.operacion || '').toLowerCase();
+        const regional = (c.regional || '').toLowerCase();
+        const area = (c.area || '').toLowerCase();
+        const email = (c.email || '').toLowerCase();
+        const celular = (c.celular || '').toLowerCase();
+
+        return nombre.includes(q) ||
+               cedula.includes(q) ||
+               cargo.includes(q) ||
+               operacion.includes(q) ||
+               regional.includes(q) ||
+               area.includes(q) ||
+               email.includes(q) ||
+               celular.includes(q);
+      });
+
+      if (modoVistaActual === 'areas') {
+        renderVistaAreas(filtrados, !!q);
+      } else {
+        renderVistaGrid(filtrados);
+      }
+    }
+
+    // ════════ MODO 1: RENDER POR ÁREAS Y REGIONALES ════════
+    function renderVistaAreas(items, abrirTodos = false) {
+      const container = document.getElementById('view-areas');
+
+      if (!items.length) {
+        container.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);">No se encontraron colaboradores que coincidan con la búsqueda.</div>';
+        return;
+      }
+
+      // Agrupar por Área
+      const gruposArea = {};
+      items.forEach(c => {
+        const areaKey = (c.area || 'auxiliares_administrativos').toLowerCase();
+        if (!gruposArea[areaKey]) gruposArea[areaKey] = [];
+        gruposArea[areaKey].push(c);
+      });
+
+      // Ordenar áreas alfabéticamente
+      const areasOrdenadas = Object.keys(gruposArea).sort();
+
+      container.innerHTML = areasOrdenadas.map(areaKey => {
+        const colabs = gruposArea[areaKey];
+        const areaNombreFmt = areaKey.replace(/_/g, ' ').toUpperCase();
+
+        // Subagrupar por Regional
+        const gruposRegional = {};
+        colabs.forEach(c => {
+          const regKey = (c.regional || 'GENERAL').toUpperCase();
+          if (!gruposRegional[regKey]) gruposRegional[regKey] = [];
+          gruposRegional[regKey].push(c);
+        });
+
+        const regionalesOrdenadas = Object.keys(gruposRegional).sort();
+
+        const htmlRegionales = regionalesOrdenadas.map(regKey => {
+          const listEnReg = gruposRegional[regKey];
+          const cardsHtml = listEnReg.map(c => renderCardHtml(c)).join('');
+
+          return `
+            <div class="regional-section">
+              <div class="regional-title">
+                <span>📍 ${regKey}</span>
+                <span class="badge-count">${listEnReg.length}</span>
+              </div>
+              <div class="colab-grid">
+                ${cardsHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const isOpenClass = abrirTodos ? 'open' : '';
+
+        return `
+          <div class="area-item ${isOpenClass}" id="area-item-${areaKey}">
+            <div class="area-header" onclick="toggleArea('${areaKey}')">
+              <div class="area-title-wrap">
+                <span class="area-name">${areaNombreFmt}</span>
+                <span class="badge-count">${colabs.length}</span>
+              </div>
+              <span class="area-chevron">▶</span>
+            </div>
+            <div class="area-body">
+              ${htmlRegionales}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleArea(areaKey) {
+      const el = document.getElementById(`area-item-${areaKey}`);
+      if (el) el.classList.toggle('open');
+    }
+
+    // ════════ MODO 2: RENDER CUADRÍCULA DIRECTA ════════
+    function renderVistaGrid(items) {
+      const container = document.getElementById('grid-container');
+      if (!items.length) {
+        container.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted); grid-column: 1 / -1;">No se encontraron colaboradores.</div>';
+        return;
+      }
+
+      container.innerHTML = items.map(c => renderCardHtml(c)).join('');
+    }
+
+    // Render individual de una tarjeta
+    function renderCardHtml(c) {
+      const foto = c.foto_url || DEFAULT_FOTO;
+      const celularLimpio = String(c.celular || '').replace(/\D/g, '');
+      const telHref = celularLimpio ? `tel:${celularLimpio}` : '#';
+      const emailHref = c.email ? `mailto:${c.email}` : '#';
+      
+      let waNum = celularLimpio;
+      if (waNum.length === 10 && waNum.startsWith('3')) waNum = '57' + waNum;
+      const waHref = waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent('Hola, me comunico desde el Directorio Logyser.')}` : '#';
+
+      return `
+        <div class="colab-card" onclick="abrirDetalleColaborador('${c.identificacion}')">
+          <img src="${foto}" class="colab-avatar" loading="lazy">
+          <div class="colab-info">
+            <div class="colab-name" title="${c.nombre}">${c.nombre}</div>
+            <div class="colab-cargo" title="${c.cargo}">${c.cargo}</div>
+            <div class="colab-operacion" title="${c.operacion}">${c.operacion}</div>
+          </div>
+          <div class="colab-actions" onclick="event.stopPropagation()">
+            ${c.email ? `<a href="${emailHref}" class="btn-action-icon email" title="Enviar Correo">✉️</a>` : ''}
+            ${celularLimpio ? `<a href="${telHref}" class="btn-action-icon call" title="Llamar">📞</a>` : ''}
+            ${waNum ? `<a href="${waHref}" target="_blank" class="btn-action-icon whatsapp" title="Abrir WhatsApp">💬</a>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // ════════ MODAL DETALLE DE COLABORADOR (Screenshot 3) ════════
+    function abrirDetalleColaborador(identificacion) {
+      const c = colaboradoresData.find(x => String(x.identificacion) === String(identificacion));
+      if (!c) return;
+
+      document.getElementById('m-breadcrumb-id').innerText = c.identificacion;
+      document.getElementById('m-avatar').src = c.foto_url || DEFAULT_FOTO;
+      document.getElementById('m-nombre').innerText = c.nombre;
+      document.getElementById('m-cargo').innerText = c.cargo || 'Sin Cargo';
+      document.getElementById('m-operacion').innerText = c.operacion || 'Sede Principal';
+
+      document.getElementById('m-regional').innerText = c.regional || 'GENERAL';
+      document.getElementById('m-area').innerText = (c.area || 'auxiliares_administrativos').replace(/_/g, ' ');
+      document.getElementById('m-direccion').innerText = c.direccion || 'No especificada';
+      document.getElementById('m-email').innerText = c.email || 'No registrado';
+      document.getElementById('m-celular').innerText = c.celular || 'No registrado';
+
+      // Acciones rápidas
+      const celularLimpio = String(c.celular || '').replace(/\D/g, '');
+      let waNum = celularLimpio;
+      if (waNum.length === 10 && waNum.startsWith('3')) waNum = '57' + waNum;
+
+      const btnEmail = document.getElementById('m-btn-email');
+      if (c.email) {
+        btnEmail.href = `mailto:${c.email}`;
+        btnEmail.style.display = 'inline-flex';
+      } else {
+        btnEmail.style.display = 'none';
+      }
+
+      const btnWa = document.getElementById('m-btn-whatsapp');
+      if (waNum) {
+        btnWa.href = `https://wa.me/${waNum}?text=${encodeURIComponent('Hola ' + c.nombre + ', te contacto desde el Directorio Logyser.')}`;
+        btnWa.style.display = 'inline-flex';
+      } else {
+        btnWa.style.display = 'none';
+      }
+
+      // Enlace a firma corporativa
+      document.getElementById('m-link-firma').href = `/firma-corporativa?id=${c.identificacion}`;
+
+      document.getElementById('modal-detalle').style.display = 'flex';
+    }
+
+    function cerrarModalDetalle() {
+      document.getElementById('modal-detalle').style.display = 'none';
+    }
+
+    function cerrarModalFuera(e) {
+      if (e.target.id === 'modal-detalle') {
+        cerrarModalDetalle();
+      }
+    }
+
+    // ════════ SINCRONIZACIÓN BAJO DEMANDA ════════
+    async function sincronizarVinculacion() {
+      if (!confirm('¿Deseas sincronizar los colaboradores activos desde Maestro_Vinculación?\nSe agregarán nuevos contratos y se actualizarán cargos y sedes.')) {
+        return;
+      }
+
+      showLoading('Sincronizando con Maestro_Vinculación...');
+      try {
+        const res = await fetch('/directorio-corporativo/api/sincronizar', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.ok) {
+          showToast(`Sincronización completa: ${data.creados} creados, ${data.actualizados} actualizados.`);
+          cargarDirectorio();
+        } else {
+          showToast('Error al sincronizar datos: ' + (data.error || ''), 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión al sincronizar.', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ════════ HELPERS UI ════════
+    function showLoading(msg = 'Cargando...') {
+      document.getElementById('loading-text').innerText = msg;
+      document.getElementById('loading').style.display = 'flex';
+    }
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerText = msg;
+      container.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+  </script>
+</body>
+</html>

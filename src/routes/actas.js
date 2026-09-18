@@ -674,6 +674,35 @@ router.put('/api/acta/:id/items', async (req, res) => {
   }
 });
 
+// ═════ API: POST /api/acta/:id/evidencia (reemplaza la foto de evidencia de un Acta) ═════
+// Permitido si el Acta está Pendiente, o para cualquier Estado si el usuario tiene Rol = Sistema.
+router.post('/api/acta/:id/evidencia', upload.single('evidenciaFile'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!req.file) return res.status(400).json({ error: 'Debe adjuntar un archivo de evidencia' });
+
+    const acceso = await computarAccesoActas(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
+    if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+
+    if (acta.Estado !== 'Pendiente' && acceso.rol !== 'Sistema') {
+      return res.status(403).json({ error: 'Solo se puede reemplazar la evidencia de actas en estado Pendiente' });
+    }
+
+    const urlEvidencia = await subirEvidenciaActa(id, req.file.buffer, req.file.originalname, req.file.mimetype);
+    await pool.execute('UPDATE Dynamic_Actas SET Url_Evidencia = ? WHERE IdActa = ?', [urlEvidencia, id]);
+
+    res.json({ ok: true, urlEvidencia });
+  } catch (err) {
+    console.error('[actas] POST /api/acta/:id/evidencia:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: POST /api/acta/:id/anular ═════
 // Si la Categoria del Acta es Definitivo, revierte en el Kardex la salida de inventario que
 // se generó al crearla (ver revertirKardexActa).

@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Firma Corporativa - Logyser</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recibo-public/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1F2E3A;
+      --primary-dark: #121B24;
+      --accent: #E8762B;
+      --accent-hover: #D0641B;
+      --accent-light: #FFF4EC;
+      --text: #1E293B;
+      --text-muted: #64748B;
+      --bg: #F1F5F9;
+      --card-bg: #FFFFFF;
+      --border: #E2E8F0;
+      --success: #10B981;
+      --danger: #EF4444;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.12);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header Superior */
+    .top-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      height: 38px;
+      filter: brightness(0) invert(1);
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-nav {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-nav:hover {
+      background: rgba(255,255,255,0.22);
+      color: #fff;
+    }
+
+    /* Contenedor Principal */
+    .container {
+      max-width: 1100px;
+      width: 100%;
+      margin: 28px auto;
+      padding: 0 20px 40px 20px;
+      flex: 1;
+    }
+
+    .layout-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .layout-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 26px;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    /* Buscador */
+    .search-box {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .search-input-wrap {
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-text {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.92rem;
+      font-family: inherit;
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+    .input-text:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(232, 118, 43, 0.15);
+    }
+
+    .btn-search {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0 20px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-search:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Sugerencias dropdown */
+    .suggestions-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+      z-index: 50;
+      max-height: 240px;
+      overflow-y: auto;
+      margin-top: 4px;
+      display: none;
+    }
+    .suggestion-item {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      transition: background 0.15s;
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover { background: #f8fafc; }
+    .sugg-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .sugg-info { flex: 1; min-width: 0; }
+    .sugg-name { font-weight: 600; font-size: 0.85rem; color: var(--text); }
+    .sugg-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* Estado del Colaborador (Badge informativo) */
+    .colab-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .badge-success { background: #ECFDF5; color: #065F46; }
+    .badge-info { background: #EFF6FF; color: #1E40AF; }
+
+    /* Formulario */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .col-full { grid-column: 1 / -1; }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .form-label.required::after {
+      content: ' *';
+      color: var(--danger);
+    }
+
+    select.input-text {
+      cursor: pointer;
+      background-color: #fff;
+    }
+
+    /* Subida de Foto */
+    .photo-upload-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px;
+      background: #F8FAFC;
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-sm);
+      margin-top: 4px;
+    }
+    .current-photo {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
+    .photo-info {
+      flex: 1;
+    }
+    .photo-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .photo-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    /* Botón Guardar */
+    .btn-submit {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 14px 24px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 22px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(232, 118, 43, 0.3);
+    }
+    .btn-submit:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    .btn-submit:disabled {
+      background: #94A3B8;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Columna Derecha: Tabs y Previsualización */
+    .tabs-header {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--primary); }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Área de Previsualización HTML */
+    .preview-box {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 24px;
+      overflow-x: auto;
+      min-height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+    }
+
+    .copy-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .btn-copy-html {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 13px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .btn-copy-html:hover { background: #121B24; }
+
+    .help-banner {
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Previsualización PNG */
+    .png-preview-wrap {
+      text-align: center;
+    }
+    .png-preview-img {
+      max-width: 100%;
+      height: auto;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      background: #f8fafc;
+    }
+    .png-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .btn-secondary {
+      flex: 1;
+      background: #fff;
+      color: var(--primary);
+      border: 1.5px solid var(--border);
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: #fff;
+      gap: 14px;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      padding: 14px 20px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.3s ease;
+    }
+    .toast-success { background: #059669; }
+    .toast-error { background: #DC2626; }
+    .toast-info { background: var(--primary); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <!-- Barra Superior -->
+  <header class="top-header">
+    <div class="brand-wrap">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logyser" class="brand-logo">
+      <span class="brand-title">Generador de Firmas Corporativas</span>
+    </div>
+    <div class="header-actions">
+      <a href="/directorio-corporativo" class="btn-nav">
+        📖 Directorio Corporativo
+      </a>
+    </div>
+  </header>
+
+  <!-- Contenedor -->
+  <main class="container">
+    <div class="layout-grid">
+      
+      <!-- COLUMNA IZQUIERDA: Búsqueda y Formulario -->
+      <div>
+        <div class="card">
+          <div class="card-title">
+            <span>Datos del Colaborador</span>
+            <span style="font-size: 0.78rem; font-weight: 500; color: var(--text-muted);">Logyser S.A.S.</span>
+          </div>
+
+          <!-- Búsqueda por cédula -->
+          <div class="search-box">
+            <div class="search-input-wrap">
+              <input type="text" id="input-busqueda" class="input-text" placeholder="Ingrese C.C. o Nombre del colaborador..." autocomplete="off">
+              <button type="button" class="btn-search" id="btn-buscar" onclick="buscarColaborador()">
+                🔍 Buscar
+              </button>
+            </div>
+            <!-- Sugerencias desplegables -->
+            <div class="suggestions-list" id="suggestions-list"></div>
+          </div>
+
+          <!-- Banner de estado del colaborador -->
+          <div class="colab-status" id="colab-status" style="display: none;">
+            <span class="badge" id="badge-origen">Activo</span>
+            <span id="status-desc" style="color: var(--text); flex: 1;">Datos cargados correctamente.</span>
+          </div>
+
+          <!-- Formulario -->
+          <form id="form-firma" onsubmit="event.preventDefault(); guardarFirma();">
+            <div class="form-grid">
+              
+              <div class="form-group">
+                <label class="form-label required">Identificación (C.C.)</label>
+                <input type="number" id="identificacion" class="input-text" required placeholder="Ej: 1001415776">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Nombre para la Firma</label>
+                <input type="text" id="nombre" class="input-text" required placeholder="Ej: Juan Carlos Pérez">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Cargo</label>
+                <input type="text" id="cargo" class="input-text" required placeholder="Ej: Coordinador Logístico">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Área Corporativa</label>
+                <select id="area" class="input-text" required onchange="actualizarPrevisualizacion()">
+                  <option value="auxiliares_administrativos">Auxiliares Administrativos</option>
+                  <option value="coordinadores">Coordinadores</option>
+                  <option value="sst">Seguridad y Salud en el Trabajo (SST)</option>
+                  <option value="seleccion">Atracción y Selección</option>
+                  <option value="facturacion">Facturación</option>
+                  <option value="tecnologia">Tecnología y Sistemas</option>
+                  <option value="gerencias">Gerencias</option>
+                  <option value="nomina">Nómina</option>
+                  <option value="contabilidad">Contabilidad</option>
+                  <option value="inventario">Inventario</option>
+                  <option value="direccion">Dirección</option>
+                  <option value="tesoreria">Tesorería</option>
+                  <option value="documental">Gestión Documental</option>
+                  <option value="contratacion">Contratación</option>
+                  <option value="calidad">Calidad</option>
+                  <option value="cuentas">Cuentas Médicas / Administrativas</option>
+                  <option value="juridica">Jurídica</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Sede / Operación</label>
+                <input type="text" id="operacion" class="input-text" required placeholder="Ej: Cedi Vegas o Pepsico Guarne">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Regional</label>
+                <select id="regional" class="input-text" required>
+                  <option value="ANTIOQUIA">Antioquia</option>
+                  <option value="CENTRO">Centro</option>
+                  <option value="CARIBE">Caribe</option>
+                  <option value="SANTANDER">Santander</option>
+                  <option value="VALLE">Valle</option>
+                  <option value="RISARALDA">Risaralda</option>
+                  <option value="NORTE DE SANTANDER">Norte de Santander</option>
+                  <option value="GENERAL">General / Nacional</option>
+                </select>
+              </div>
+
+              <div class="form-group col-full">
+                <label class="form-label">Dirección física de la Sede</label>
+                <input type="text" id="direccion" class="input-text" placeholder="Ej: Calle 43 Sur # 127, Envigado, Antioquia">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Correo Corporativo</label>
+                <input type="email" id="email" class="input-text" required placeholder="nombre.apellido@logyser.com">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Teléfono / Celular</label>
+                <input type="text" id="celular" class="input-text" required placeholder="Ej: 3142317742">
+              </div>
+
+              <!-- Foto de Perfil -->
+              <div class="form-group col-full">
+                <label class="form-label">Fotografía de Perfil (Para agenda y firma)</label>
+                <div class="photo-upload-wrap">
+                  <img id="avatar-preview" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" class="current-photo">
+                  <div class="photo-info">
+                    <div class="photo-title">Foto del Colaborador</div>
+                    <div class="photo-hint">Formatos JPG o PNG (máx 10MB). Se recortará circularmente.</div>
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('input-foto').click()" style="padding: 6px 12px; font-size: 0.8rem;">
+                      📷 Seleccionar Foto
+                    </button>
+                    <input type="file" id="input-foto" accept="image/*" style="display: none;" onchange="manejarFotoSeleccionada(event)">
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Botón de Envío -->
+            <button type="submit" class="btn-submit" id="btn-guardar">
+              💾 GUARDAR Y GENERAR FIRMAS
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- COLUMNA DERECHA: Previsualizador y Descargas -->
+      <div>
+        <div class="card">
+          <!-- Pestañas de Formato -->
+          <div class="tabs-header">
+            <button type="button" class="tab-btn active" onclick="cambiarTab('html', this)">
+              ✉️ Firma HTML (Correo)
+            </button>
+            <button type="button" class="tab-btn" onclick="cambiarTab('png', this)">
+              🖼️ Firma Imagen PNG
+            </button>
+          </div>
+
+          <!-- Tab 1: Firma HTML (Para copiar a Gmail/Outlook) -->
+          <div id="tab-html" class="tab-content active">
+            <div class="preview-box">
+              <div id="signature-html-render"></div>
+            </div>
+
+            <div class="copy-actions">
+              <button type="button" class="btn-copy-html" onclick="copiarFirmaHTML()">
+                📋 COPIAR FIRMA PARA CORREO
+              </button>
+
+              <div class="help-banner">
+                💡 <strong>¿Cómo usarla?</strong><br>
+                1. Haz clic en <strong>"COPIAR FIRMA PARA CORREO"</strong>.<br>
+                2. Abre la configuración de tu correo (Gmail o Outlook) en la sección <em>Firma</em>.<br>
+                3. Pégala directamente con <strong>Ctrl + V</strong> y guarda los cambios.
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Firma PNG (Descarga e Imagen) -->
+          <div id="tab-png" class="tab-content">
+            <div class="png-preview-wrap">
+              <img id="img-png-preview" src="" alt="Firma PNG" class="png-preview-img" style="display: none;">
+              <div id="png-empty-state" style="padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem;">
+                ℹ️ Guarda los datos o haz clic en <strong>"Generar PNG"</strong> para previsualizar la firma gráfica de alta resolución.
+              </div>
+            </div>
+
+            <div class="png-actions" id="png-actions" style="display: none; margin-top: 18px;">
+              <a id="btn-descargar-png" href="#" download="firma_corporativa.png" class="btn-secondary">
+                ⬇️ Descargar PNG
+              </a>
+              <button type="button" class="btn-secondary" onclick="copiarEnlacePNG()">
+                🔗 Copiar Enlace
+              </button>
+            </div>
+
+            <button type="button" class="btn-submit" id="btn-generar-solo-png" style="margin-top: 16px; background: var(--primary);" onclick="solicitarGenerarPNG()">
+              ⚙️ Generar / Actualizar PNG
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Overlay de Carga -->
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <div id="loading-text" style="font-weight: 600; font-size: 1rem;">Procesando...</div>
+  </div>
+
+  <!-- Contenedor Toast -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    const LOGO_URL = 'https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png';
+    const DEFAULT_FOTO = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
+    let fotoSeleccionadaFile = null;
+    let urlFirmaPngGenerada = '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Escuchar parámetros URL (?id=...)
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramId = urlParams.get('id');
+      if (paramId) {
+        document.getElementById('input-busqueda').value = paramId;
+        buscarColaborador(paramId);
+      }
+
+      // Escuchar tipeo en el formulario para refrescar previsualización HTML en tiempo real
+      ['nombre', 'cargo', 'operacion', 'direccion', 'email', 'celular'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => actualizarPrevisualizacion());
+      });
+
+      // Búsqueda interactiva
+      const inputBusqueda = document.getElementById('input-busqueda');
+      let searchTimeout = null;
+      inputBusqueda.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const val = e.target.value.trim();
+        if (val.length < 2) {
+          ocultarSugerencias();
+          return;
+        }
+        searchTimeout = setTimeout(() => obtenerSugerencias(val), 250);
+      });
+
+      inputBusqueda.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          buscarColaborador();
+        }
+      });
+
+      // Inicializar preview vacío
+      actualizarPrevisualizacion();
+    });
+
+    function cambiarTab(tab, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`tab-${tab}`).classList.add('active');
+    }
+
+    // ════════ BÚSQUEDA Y AUTOCOMPLETADO ════════
+    async function obtenerSugerencias(q) {
+      try {
+        const res = await fetch(`/firma-corporativa/api/buscar-empleados?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (data.ok && data.sugeridos && data.sugeridos.length) {
+          mostrarSugerencias(data.sugeridos);
+        } else {
+          ocultarSugerencias();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function mostrarSugerencias(items) {
+      const container = document.getElementById('suggestions-list');
+      container.innerHTML = items.map(it => `
+        <div class="suggestion-item" onclick="seleccionarSugerencia('${it.identificacion}')">
+          <img src="${it.foto_url || DEFAULT_FOTO}" class="sugg-avatar">
+          <div class="sugg-info">
+            <div class="sugg-name">${it.nombre}</div>
+            <div class="sugg-sub">C.C. ${it.identificacion} • ${it.cargo || 'Sin cargo'} (${it.operacion || ''})</div>
+          </div>
+        </div>
+      `).join('');
+      container.style.display = 'block';
+    }
+
+    function ocultarSugerencias() {
+      document.getElementById('suggestions-list').style.display = 'none';
+    }
+
+    function seleccionarSugerencia(id) {
+      document.getElementById('input-busqueda').value = id;
+      ocultarSugerencias();
+      buscarColaborador(id);
+    }
+
+    async function buscarColaborador(idManual = null) {
+      ocultarSugerencias();
+      const id = idManual || document.getElementById('input-busqueda').value.trim();
+      if (!id) {
+        showToast('Por favor ingrese una cédula o nombre.', 'error');
+        return;
+      }
+
+      showLoading('Consultando colaborador...');
+      try {
+        const res = await fetch(`/firma-corporativa/api/empleado/${encodeURIComponent(id)}`);
+        const result = await res.json();
+
+        if (!result.ok || !result.data) {
+          showToast('No se encontró el colaborador en la base de datos.', 'error');
+          return;
+        }
+
+        const d = result.data;
+        document.getElementById('identificacion').value = d.identificacion || '';
+        document.getElementById('nombre').value = d.nombre || '';
+        document.getElementById('cargo').value = d.cargo || '';
+        document.getElementById('operacion').value = d.operacion || 'Sede Principal';
+        document.getElementById('regional').value = d.regional || 'ANTIOQUIA';
+        document.getElementById('area').value = d.area || 'auxiliares_administrativos';
+        document.getElementById('direccion').value = d.direccion || '';
+        document.getElementById('email').value = d.email || '';
+        document.getElementById('celular').value = d.celular || '';
+
+        const fotoActual = d.foto_url || DEFAULT_FOTO;
+        document.getElementById('avatar-preview').src = fotoActual;
+        fotoSeleccionadaFile = null;
+
+        // Badge informativo
+        const statusBox = document.getElementById('colab-status');
+        const badgeOrigen = document.getElementById('badge-origen');
+        const statusDesc = document.getElementById('status-desc');
+        statusBox.style.display = 'flex';
+
+        if (result.existeEnFirma) {
+          badgeOrigen.className = 'badge badge-success';
+          badgeOrigen.innerText = 'Registrado en Directorio';
+          statusDesc.innerText = 'Este colaborador ya cuenta con registro corporativo activo.';
+        } else {
+          badgeOrigen.className = 'badge badge-info';
+          badgeOrigen.innerText = 'Vinculación Activa';
+          statusDesc.innerText = 'Datos precargados desde el contrato de Maestro_Vinculación.';
+        }
+
+        // Cargar PNG si ya tiene
+        if (d.firma_url) {
+          urlFirmaPngGenerada = d.firma_url;
+          mostrarPreviewPNG(d.firma_url);
+        } else {
+          ocultarPreviewPNG();
+        }
+
+        actualizarPrevisualizacion();
+        showToast('Datos cargados exitosamente.');
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión al consultar empleado.', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ════════ MANEJO DE FOTO ════════
+    function manejarFotoSeleccionada(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('La foto no debe superar los 10 MB.', 'error');
+        return;
+      }
+
+      fotoSeleccionadaFile = file;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        document.getElementById('avatar-preview').src = event.target.result;
+        actualizarPrevisualizacion();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ════════ PREVISUALIZACIÓN HTML ════════
+    function actualizarPrevisualizacion() {
+      const nombre = document.getElementById('nombre').value.trim() || 'Nombre y Apellido';
+      const cargo = document.getElementById('cargo').value.trim() || 'Cargo Corporativo';
+      const operacion = document.getElementById('operacion').value.trim() || 'Sede Operación';
+      const direccion = document.getElementById('direccion').value.trim();
+      const email = document.getElementById('email').value.trim() || 'colaborador@logyser.com';
+      const celular = document.getElementById('celular').value.trim() || '3000000000';
+
+      const azulCorporativo = "#1A2E44";
+      const naranjaLogyser = "#E8762B";
+      const textStyle = `margin:0 0 3px 0;font-size:12px;color:${azulCorporativo};font-family:Arial,Helvetica,sans-serif;`;
+
+      const direccionHtml = direccion ? `<p style="${textStyle}">${direccion}</p>` : '';
+      const operacionHtml = operacion ? `<p style="${textStyle}"><strong>Sede:</strong> ${operacion}</p>` : '';
+
+      const htmlFirma = `
+<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;max-width:480px;width:100%;background-color:#FFFFFF;border-collapse:collapse;">
+  <tr>
+    <td style="padding:16px 20px 12px 20px;border:1px solid #DDE1E8;border-bottom:none;">
+      <p style="margin:0 0 2px 0;font-size:18px;font-weight:700;color:${azulCorporativo};font-family:Arial,Helvetica,sans-serif;">${nombre}</p>
+      <p style="margin:0 0 8px 0;font-size:13px;font-weight:600;color:${naranjaLogyser};font-family:Arial,Helvetica,sans-serif;">${cargo}</p>
+      
+      <p style="${textStyle}">
+        <span style="color:${azulCorporativo};">Email: </span>
+        <a href="mailto:${email}" style="color:#0066CC;text-decoration:none;font-weight:600;">${email}</a>
+      </p>
+      
+      <p style="${textStyle}">Celular: <span style="color:${azulCorporativo}; font-weight:600;">+57 ${celular}</span></p>
+      ${operacionHtml}
+      ${direccionHtml}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:6px 20px;border-left:1px solid #DDE1E8;border-right:1px solid #DDE1E8;border-bottom:none;text-align:left;">
+      <img src="${LOGO_URL}" alt="Logyser S.A.S." width="220" style="display:block;width:220px;height:auto;margin:0;">
+    </td>
+  </tr>
+  <tr>
+    <td style="background-color:#F8FAFC;padding:12px 20px;border:1px solid #DDE1E8;">
+      <p style="margin:0;color:#64748B;font-size:9px;line-height:1.4;font-family:Arial,Helvetica,sans-serif;text-align:justify;">
+        <strong style="color:#475569;">AVISO DE CONFIDENCIALIDAD:</strong> La información contenida en este correo es confidencial y para uso exclusivo del destinatario. Si usted ha recibido este mensaje por error, le solicitamos notificar al remitente y eliminarlo de inmediato.
+      </p>
+      <p style="margin:6px 0 0 0;color:#15803D;font-size:9px;font-family:Arial,Helvetica,sans-serif;">
+        🌱 <em>Por favor, cuida el medio ambiente antes de imprimir este mensaje.</em>
+      </p>
+    </td>
+  </tr>
+</table>`;
+
+      document.getElementById('signature-html-render').innerHTML = htmlFirma;
+    }
+
+    // ════════ COPIAR AL PORTAPAPELES ════════
+    async function copiarFirmaHTML() {
+      const container = document.getElementById('signature-html-render');
+      if (!container || !container.innerHTML.trim()) {
+        showToast('No hay firma para copiar.', 'error');
+        return;
+      }
+
+      const html = container.innerHTML;
+
+      try {
+        if (navigator.clipboard && window.ClipboardItem) {
+          const blob = new Blob([html], { type: 'text/html' });
+          const item = new ClipboardItem({ 'text/html': blob });
+          await navigator.clipboard.write([item]);
+          showToast('¡Firma copiada! Pégala directamente con Ctrl+V en Gmail o Outlook.');
+          return;
+        }
+      } catch (err) {
+        console.warn('Fallback clipboard:', err);
+      }
+
+      // Fallback DOM Selection
+      try {
+        const range = document.createRange();
+        range.selectNode(container);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        window.getSelection().removeAllRanges();
+        showToast('¡Firma copiada! Pégala directamente con Ctrl+V en tu correo.');
+      } catch (e) {
+        showToast('Selecciona la firma manualmente y presiona Ctrl + C.', 'info');
+      }
+    }
+
+    // ════════ GUARDAR FIRMA ════════
+    async function guardarFirma() {
+      const id = document.getElementById('identificacion').value.trim();
+      const nombre = document.getElementById('nombre').value.trim();
+      const cargo = document.getElementById('cargo').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const celular = document.getElementById('celular').value.trim();
+
+      if (!id || !nombre || !cargo || !email || !celular) {
+        showToast('Por favor completa los campos obligatorios.', 'error');
+        return;
+      }
+
+      showLoading('Guardando y generando firma oficial...');
+      try {
+        const formData = new FormData();
+        formData.append('identificacion', id);
+        formData.append('nombre', nombre);
+        formData.append('cargo', cargo);
+        formData.append('regional', document.getElementById('regional').value);
+        formData.append('operacion', document.getElementById('operacion').value.trim());
+        formData.append('area', document.getElementById('area').value);
+        formData.append('direccion', document.getElementById('direccion').value.trim());
+        formData.append('email', email);
+        formData.append('celular', celular);
+        formData.append('foto_url', document.getElementById('avatar-preview').src);
+
+        if (fotoSeleccionadaFile) {
+          formData.append('foto', fotoSeleccionadaFile);
+        }
+
+        const res = await fetch('/firma-corporativa/api/guardar', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          showToast('¡Firma corporativa guardada con éxito!');
+          if (data.foto_url) {
+            document.getElementById('avatar-preview').src = data.foto_url;
+            fotoSeleccionadaFile = null;
+          }
+          if (data.firma_url) {
+            urlFirmaPngGenerada = data.firma_url;
+            mostrarPreviewPNG(data.firma_url);
+          }
+        } else {
+          showToast(data.error || 'Error al guardar la firma.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión al guardar la firma.', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ════════ GENERAR PNG ON-DEMAND ════════
+    async function solicitarGenerarPNG() {
+      const id = document.getElementById('identificacion').value.trim();
+      const nombre = document.getElementById('nombre').value.trim();
+      if (!id || !nombre) {
+        showToast('Identificación y nombre requeridos.', 'error');
+        return;
+      }
+
+      showLoading('Generando imagen de alta resolución con Puppeteer...');
+      try {
+        const payload = {
+          identificacion: id,
+          nombre: nombre,
+          cargo: document.getElementById('cargo').value.trim(),
+          operacion: document.getElementById('operacion').value.trim(),
+          direccion: document.getElementById('direccion').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          celular: document.getElementById('celular').value.trim(),
+          area: document.getElementById('area').value,
+          foto_url: document.getElementById('avatar-preview').src
+        };
+
+        const res = await fetch('/firma-corporativa/api/generar-png', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.ok && data.finalUrl) {
+          urlFirmaPngGenerada = data.finalUrl;
+          mostrarPreviewPNG(data.finalUrl);
+          showToast('¡Imagen PNG generada correctamente!');
+        } else {
+          showToast(data.error || 'Error al generar PNG.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error al procesar la imagen PNG.', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function mostrarPreviewPNG(url) {
+      const img = document.getElementById('img-png-preview');
+      img.src = url + '?t=' + Date.now();
+      img.style.display = 'inline-block';
+      document.getElementById('png-empty-state').style.display = 'none';
+      document.getElementById('png-actions').style.display = 'flex';
+      document.getElementById('btn-descargar-png').href = url;
+    }
+
+    function ocultarPreviewPNG() {
+      document.getElementById('img-png-preview').style.display = 'none';
+      document.getElementById('png-empty-state').style.display = 'block';
+      document.getElementById('png-actions').style.display = 'none';
+    }
+
+    function copiarEnlacePNG() {
+      if (!urlFirmaPngGenerada) return;
+      navigator.clipboard.writeText(urlFirmaPngGenerada).then(() => {
+        showToast('Enlace de la imagen copiado al portapapeles.');
+      });
+    }
+
+    // ════════ HELPERS UI ════════
+    function showLoading(msg = 'Cargando...') {
+      document.getElementById('loading-text').innerText = msg;
+      document.getElementById('loading').style.display = 'flex';
+    }
+    function hideLoading() {
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerText = msg;
+      container.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+  </script>
+</body>
+</html>

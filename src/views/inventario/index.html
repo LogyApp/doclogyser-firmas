@@ -3948,6 +3948,12 @@
             </select>
           </div>
           <div class="filter-group">
+            <label for="kardex-filter-destino">Destino</label>
+            <select id="kardex-filter-destino">
+              <option value="">Todos los destinos</option>
+            </select>
+          </div>
+          <div class="filter-group">
             <label for="kardex-filter-movimiento">Tipo Movimiento</label>
             <select id="kardex-filter-movimiento">
               <option value="">Todos los movimientos</option>
@@ -4236,6 +4242,14 @@
               <input list="kardex-articles-list" id="edit-kardex-articulo-search" placeholder="Escriba para buscar artículo..." required style="width: 100%; height: 42px; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; font-size: 0.85rem; font-weight: 500; color: var(--text); background: white; outline: none; transition: all 0.2s;">
               <datalist id="kardex-articles-list"></datalist>
               <input type="hidden" id="edit-kardex-id-articulo">
+            </div>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <div class="filter-group">
+              <label for="edit-kardex-kpendiente">Kpendiente</label>
+              <input list="kardex-edit-kpendiente-list" id="edit-kardex-kpendiente" placeholder="Escriba para buscar un pedido pendiente (opcional)...">
+              <datalist id="kardex-edit-kpendiente-list"></datalist>
             </div>
           </div>
 
@@ -4766,17 +4780,12 @@
                 <option value="TRANSFERENCIA">TRANSFERENCIA</option>
               </select>
             </div>
-            <div class="field">
-              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Regional *</label>
-              <select id="fk-single-regional" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
-                <option value="">Seleccione</option>
-              </select>
-            </div>
+            <input type="hidden" id="fk-single-regional">
+            <input type="hidden" id="fk-single-categoria">
             <div class="field">
               <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Operación *</label>
-              <select id="fk-single-operacion" disabled style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
-                <option value="">Seleccione la Regional primero</option>
-              </select>
+              <input type="text" id="fk-single-operacion" list="fk-single-operacion-list" autocomplete="off" placeholder="Escriba para buscar la operación..." style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+              <datalist id="fk-single-operacion-list"></datalist>
             </div>
             <div class="field" id="fk-single-opdestino-wrap" style="display:none;">
               <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Operación Destino *</label>
@@ -4784,15 +4793,9 @@
                 <option value="">Seleccione</option>
               </select>
             </div>
-            <div class="field">
-              <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Categoría *</label>
-              <select id="fk-single-categoria" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
-                <option value="">Seleccione</option>
-              </select>
-            </div>
             <div class="field" style="position:relative;">
               <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Artículo *</label>
-              <input type="text" id="fk-single-articulo-search" disabled autocomplete="off" placeholder="Seleccione la Categoría primero" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
+              <input type="text" id="fk-single-articulo-search" autocomplete="off" placeholder="Escriba para buscar el artículo..." style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; background:white;">
               <input type="hidden" id="fk-single-articulo">
               <div id="fk-single-articulo-ac-list" class="ac-list" style="position:absolute; top:100%; left:0; right:0; background:white; border:1px solid var(--border); border-radius:6px; max-height:180px; overflow-y:auto; z-index:1000; display:none;"></div>
             </div>
@@ -4824,9 +4827,12 @@
         <div id="formkardex-tab-manual" style="display: block;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <div style="font-size: 0.8rem; color: var(--text-muted);">Edita las celdas directamente o agrega nuevos movimientos a la grilla de carga:</div>
-            <button type="button" id="formkardex-btn-add-row" style="padding: 5px 12px; border: 1px solid var(--primary); border-radius: 6px; background: white; color: var(--primary); font-weight: 600; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-              <span>➕</span> Agregar Fila Vacía
-            </button>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span id="formkardex-trabajadores-count" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">👤 Trabajadores relacionados: 0</span>
+              <button type="button" id="formkardex-btn-add-row" style="padding: 5px 12px; border: 1px solid var(--primary); border-radius: 6px; background: white; color: var(--primary); font-weight: 600; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                <span>➕</span> Agregar Fila Vacía
+              </button>
+            </div>
           </div>
           
           <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
@@ -4836,15 +4842,15 @@
                   <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10;">
                     <th style="padding: 10px; font-weight: 600; width: 160px;">Fecha Movimiento *</th>
                     <th style="padding: 10px; font-weight: 600; width: 130px;">Tipo *</th>
-                    <th style="padding: 10px; font-weight: 600; width: 140px;">Regional *</th>
                     <th style="padding: 10px; font-weight: 600; width: 150px;">Operación *</th>
                     <th style="padding: 10px; font-weight: 600; width: 150px;">Op Destino</th>
-                    <th style="padding: 10px; font-weight: 600; width: 140px;">Categoría *</th>
                     <th style="padding: 10px; font-weight: 600; width: 220px;">Artículo *</th>
+                    <th style="padding: 10px; font-weight: 600; width: 130px;">Talla / Referencia</th>
                     <th style="padding: 10px; font-weight: 600; width: 90px;">Stock Actual</th>
                     <th style="padding: 10px; font-weight: 600; width: 80px;">Cant *</th>
                     <th style="padding: 10px; font-weight: 600; width: 180px;">Observaciones</th>
                     <th class="col-usuario-asignado-th" style="padding: 10px; font-weight: 600; width: 140px; display: none;">Usuario Asignado</th>
+                    <th style="padding: 10px; font-weight: 600; width: 160px;">Trabajador</th>
                     <th style="padding: 10px; font-weight: 600; width: 50px; text-align: center;"></th>
                   </tr>
                 </thead>
@@ -4852,6 +4858,11 @@
                   <!-- Generated dynamically -->
                 </tbody>
               </table>
+              <!-- Datalists compartidos: Tipo, Operación y Artículo ya no dependen de la fila
+                   (Regional/Categoría se derivan), así que una sola copia sirve para toda la grilla. -->
+              <datalist id="formkardex-tipo-shared-list"></datalist>
+              <datalist id="formkardex-operacion-shared-list"></datalist>
+              <datalist id="formkardex-articulo-shared-list"></datalist>
             </div>
           </div>
         </div>
@@ -7781,6 +7792,7 @@
 
     const kardexFilterRegional = document.getElementById('kardex-filter-regional');
     const kardexFilterOperacion = document.getElementById('kardex-filter-operacion');
+    const kardexFilterDestino = document.getElementById('kardex-filter-destino');
     const kardexFilterCategoriaButtons = document.getElementById('kardex-filter-categoria-buttons');
     const kardexFilterMovimiento = document.getElementById('kardex-filter-movimiento');
     const kardexFilterSearch = document.getElementById('kardex-filter-search');
@@ -7850,6 +7862,10 @@
         }
       }
 
+      // 2b. Populate destination filter (todas las operaciones permitidas según el Rol,
+      // independiente de la Regional seleccionada en el filtro de origen)
+      updateKardexDestinoDropdown();
+
       // 3. Event listeners
       if (kardexFilterRegional) {
         kardexFilterRegional.addEventListener('change', () => {
@@ -7860,6 +7876,12 @@
 
       if (kardexFilterOperacion) {
         kardexFilterOperacion.addEventListener('change', () => {
+          fetchKardexData();
+        });
+      }
+
+      if (kardexFilterDestino) {
+        kardexFilterDestino.addEventListener('change', () => {
           fetchKardexData();
         });
       }
@@ -7880,6 +7902,7 @@
         kardexBtnLimpiar.addEventListener('click', () => {
           kardexFilterRegional.value = CONFIG.regionalesFiltro.length === 1 ? CONFIG.regionalesFiltro[0] : '';
           updateKardexOperacionesDropdown();
+          if (kardexFilterDestino) kardexFilterDestino.value = '';
           activeKardexCategory = '';
           if (kardexFilterMovimiento) kardexFilterMovimiento.value = '';
           if (kardexFilterSearch) kardexFilterSearch.value = '';
@@ -7941,46 +7964,9 @@
         btnBulkDelete.addEventListener('click', deleteBulkKardex);
       }
 
-      // Edit Modal Listeners
-      const btnCancelEdit = document.getElementById('edit-kardex-btn-cancel');
-      const btnCloseModal = document.getElementById('kardex-edit-modal-close');
-      const editModal = document.getElementById('kardex-edit-modal');
-      const editForm = document.getElementById('kardex-edit-form');
-
-      if (btnCancelEdit) {
-        btnCancelEdit.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
-      }
-      if (btnCloseModal) {
-        btnCloseModal.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
-      }
-      if (editForm) {
-        editForm.addEventListener('submit', submitEditKardexForm);
-      }
-
-      // Dynamic toggle for Operacion Destino
-      const editMovimiento = document.getElementById('edit-kardex-movimiento');
-      if (editMovimiento) {
-        editMovimiento.addEventListener('change', toggleOperacionDestino);
-      }
-
-      // Autocomplete search datalist selector resolver
-      const inputSearch = document.getElementById('edit-kardex-articulo-search');
-      if (inputSearch) {
-        inputSearch.addEventListener('input', () => {
-          const val = inputSearch.value;
-          const datalist = document.getElementById('kardex-articles-list');
-          if (!datalist) return;
-          const options = datalist.options;
-          let foundId = '';
-          for (let i = 0; i < options.length; i++) {
-            if (options[i].value === val) {
-              foundId = options[i].getAttribute('data-id');
-              break;
-            }
-          }
-          document.getElementById('edit-kardex-id-articulo').value = foundId;
-        });
-      }
+      // Edit Modal Listeners (se garantizan también al abrir el modal, por si el usuario
+      // nunca visitó la pestaña Kardex antes de editar desde "Pendiente por Recibir")
+      ensureKardexEditModalWired();
 
       // Autocomplete search filter resolver
       const filterArtSearch = document.getElementById('kardex-filter-articulo-search');
@@ -8032,43 +8018,69 @@
       if (!datalistEdit && !datalistFilter) return;
       if (datalistEdit && datalistEdit.options.length > 0) return;
       if (datalistFilter && datalistFilter.options.length > 0) return;
-      
-      let articles = allInventoryData;
-      if (!articles || !articles.length) {
-        try {
-          const res = await fetch(`/inventario/api/datos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
-          articles = await res.json();
-        } catch (err) {
-          console.error('Error al cargar la lista de artículos para datalists:', err);
-          return;
-        }
+
+      let articles;
+      try {
+        // Reutiliza el catálogo liviano de kardex-lookups (una sola consulta, cacheada por
+        // sesión) en vez del endpoint pesado /api/datos, para no bloquear la apertura del modal.
+        const lookups = await ensureKardexLookupsLoaded();
+        articles = lookups.articulos;
+      } catch (err) {
+        console.error('Error al cargar la lista de artículos para datalists:', err);
+        return;
       }
-      
+
       if (datalistEdit) datalistEdit.innerHTML = '';
       if (datalistFilter) datalistFilter.innerHTML = '';
-      
+
       articles.forEach(art => {
         if (datalistEdit) {
           const opt = document.createElement('option');
           opt.value = art.Articulo;
-          opt.setAttribute('data-id', art.IdArticulo);
+          opt.setAttribute('data-id', art.Id);
           datalistEdit.appendChild(opt);
         }
         if (datalistFilter) {
           const opt = document.createElement('option');
           opt.value = art.Articulo;
-          opt.setAttribute('data-id', art.IdArticulo);
+          opt.setAttribute('data-id', art.Id);
           datalistFilter.appendChild(opt);
         }
+      });
+    }
+
+    // Autocompletado del campo Kpendiente en el modal de edición de Kardex, poblado desde
+    // Kardex_Pendiente (Procesado = 0). Se cachea por sesión, igual que kardexLookups.
+    let kardexPendienteIdsLoaded = false;
+    let kardexPendienteIdsPromise = null;
+    async function populateKardexEditKpendiente() {
+      const datalist = document.getElementById('kardex-edit-kpendiente-list');
+      if (!datalist) return;
+      if (kardexPendienteIdsLoaded) return;
+      if (!kardexPendienteIdsPromise) {
+        kardexPendienteIdsPromise = fetch(`/inventario/api/kardex-pendiente-ids?usuario=${encodeURIComponent(CONFIG.usuarioId)}`)
+          .then(res => { if (!res.ok) throw new Error('Error al cargar Kpendiente'); return res.json(); })
+          .catch(err => { console.error(err); return []; });
+      }
+      const rows = await kardexPendienteIdsPromise;
+      kardexPendienteIdsLoaded = true;
+      datalist.innerHTML = '';
+      rows.forEach(row => {
+        const opt = document.createElement('option');
+        opt.value = row.Id;
+        opt.textContent = `${row.OperacionDestino || ''} · ${row.Regional || ''}`.trim();
+        datalist.appendChild(opt);
       });
     }
 
     function toggleOperacionDestino() {
       const editMovimiento = document.getElementById('edit-kardex-movimiento');
       const editOpDestino = document.getElementById('edit-kardex-operacion-destino');
+      const editKpendiente = document.getElementById('edit-kardex-kpendiente');
       if (!editMovimiento || !editOpDestino) return;
-      
-      if (editMovimiento.value === 'TRANSFERENCIA') {
+
+      const isTransfer = editMovimiento.value === 'TRANSFERENCIA';
+      if (isTransfer) {
         editOpDestino.disabled = false;
         editOpDestino.style.opacity = '1';
         editOpDestino.style.backgroundColor = 'white';
@@ -8077,6 +8089,70 @@
         editOpDestino.value = '';
         editOpDestino.style.opacity = '0.6';
         editOpDestino.style.backgroundColor = '#f1f5f9';
+      }
+
+      // Kpendiente solo aplica a movimientos de TRANSFERENCIA (es el pedido pendiente al que
+      // pertenece la salida).
+      if (editKpendiente) {
+        if (isTransfer) {
+          editKpendiente.disabled = false;
+          editKpendiente.style.opacity = '1';
+          editKpendiente.style.backgroundColor = 'white';
+        } else {
+          editKpendiente.disabled = true;
+          editKpendiente.value = '';
+          editKpendiente.style.opacity = '0.6';
+          editKpendiente.style.backgroundColor = '#f1f5f9';
+        }
+      }
+    }
+
+    // Conecta los botones/formulario del modal de edición de Kardex (Cerrar, Cancelar, Guardar,
+    // toggle de Tipo Movimiento, autocompletado de Artículo). Idempotente: puede llamarse tantas
+    // veces como haga falta (desde initKardex() y desde openEditKardexModal()), solo conecta una
+    // vez. Esto evita que el modal quede "mudo" si se abre desde otra pestaña (p.ej. "Pendiente
+    // por Recibir") sin haber visitado antes la pestaña Kardex.
+    let isKardexEditModalWired = false;
+    function ensureKardexEditModalWired() {
+      if (isKardexEditModalWired) return;
+      isKardexEditModalWired = true;
+
+      const btnCancelEdit = document.getElementById('edit-kardex-btn-cancel');
+      const btnCloseModal = document.getElementById('kardex-edit-modal-close');
+      const editModal = document.getElementById('kardex-edit-modal');
+      const editForm = document.getElementById('kardex-edit-form');
+
+      if (btnCancelEdit) {
+        btnCancelEdit.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
+      }
+      if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
+      }
+      if (editForm) {
+        editForm.addEventListener('submit', submitEditKardexForm);
+      }
+
+      const editMovimiento = document.getElementById('edit-kardex-movimiento');
+      if (editMovimiento) {
+        editMovimiento.addEventListener('change', toggleOperacionDestino);
+      }
+
+      const inputSearch = document.getElementById('edit-kardex-articulo-search');
+      if (inputSearch) {
+        inputSearch.addEventListener('input', () => {
+          const val = inputSearch.value;
+          const datalist = document.getElementById('kardex-articles-list');
+          if (!datalist) return;
+          const options = datalist.options;
+          let foundId = '';
+          for (let i = 0; i < options.length; i++) {
+            if (options[i].value === val) {
+              foundId = options[i].getAttribute('data-id');
+              break;
+            }
+          }
+          document.getElementById('edit-kardex-id-articulo').value = foundId;
+        });
       }
     }
 
@@ -8111,6 +8187,25 @@
       });
     }
 
+    function updateKardexDestinoDropdown() {
+      if (!kardexFilterDestino) return;
+      const current = kardexFilterDestino.value;
+      kardexFilterDestino.innerHTML = '<option value="">Todos los destinos</option>';
+
+      const allOps = new Set();
+      Object.values(CONFIG.opsPorRegional).forEach(list => {
+        list.forEach(op => allOps.add(op));
+      });
+
+      Array.from(allOps).sort().forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        kardexFilterDestino.appendChild(opt);
+      });
+      kardexFilterDestino.value = current;
+    }
+
     async function fetchKardexData() {
       if (kardexLoader) kardexLoader.style.display = 'block';
       if (kardexTableBody) kardexTableBody.innerHTML = '';
@@ -8119,14 +8214,16 @@
       try {
         const reg = kardexFilterRegional ? kardexFilterRegional.value : '';
         const op = kardexFilterOperacion ? kardexFilterOperacion.value : '';
+        const opDest = kardexFilterDestino ? kardexFilterDestino.value : '';
         const mov = kardexFilterMovimiento ? kardexFilterMovimiento.value : '';
         const idArt = document.getElementById('kardex-filter-id-articulo') ? document.getElementById('kardex-filter-id-articulo').value : '';
         const search = kardexFilterSearch ? kardexFilterSearch.value.trim() : '';
 
-        // Query the backend WITH regional, operacion, tipoMovimiento, idArticulo and search criteria
+        // Query the backend WITH regional, operacion, operacionDestino, tipoMovimiento, idArticulo and search criteria
         let url = `/inventario/api/kardex/datos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
         if (reg) url += `&regional=${encodeURIComponent(reg)}`;
         if (op) url += `&operacion=${encodeURIComponent(op)}`;
+        if (opDest) url += `&operacionDestino=${encodeURIComponent(opDest)}`;
         if (mov) url += `&tipoMovimiento=${encodeURIComponent(mov)}`;
         if (idArt) url += `&idArticulo=${encodeURIComponent(idArt)}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -8327,6 +8424,7 @@
       
       if (kardexFilterRegional && kardexFilterRegional.value) activeCount++;
       if (kardexFilterOperacion && kardexFilterOperacion.value) activeCount++;
+      if (kardexFilterDestino && kardexFilterDestino.value) activeCount++;
       if (activeKardexCategory) activeCount++;
       if (kardexFilterMovimiento && kardexFilterMovimiento.value) activeCount++;
       if (kardexFilterSearch && kardexFilterSearch.value.trim()) activeCount++;
@@ -8644,16 +8742,23 @@
       }
     }
 
-    async function openEditKardexModal(item) {
+    function openEditKardexModal(item) {
+      if (!['Sistema', 'Inventario'].includes(CONFIG.rol)) {
+        alert('Solo los roles Sistema e Inventario pueden editar registros de Kardex.');
+        return;
+      }
       const modal = document.getElementById('kardex-edit-modal');
       if (!modal) return;
-      
-      // Ensure articles are loaded
-      await populateKardexEditArticles();
-      
-      // Populate fields
+
+      // Se conectan los botones del modal (Cerrar/Cancelar/Guardar) por si nunca se ha visitado
+      // la pestaña Kardex, que es donde normalmente se conectan (p.ej. al editar desde "Pendiente
+      // por Recibir").
+      ensureKardexEditModalWired();
+
+      // Populate fields (todo síncrono, con los datos que ya trae la fila en memoria: el modal
+      // se muestra de inmediato, sin esperar a que carguen los datalists de Artículo/Kpendiente).
       document.getElementById('edit-kardex-id').value = item.IdKardex;
-      
+
       // Date formatting for datetime-local input (YYYY-MM-DDTHH:MM)
       const date = new Date(item.FechaMovimiento);
       const yyyy = date.getFullYear();
@@ -8662,44 +8767,31 @@
       const hh = String(date.getHours()).padStart(2, '0');
       const min = String(date.getMinutes()).padStart(2, '0');
       document.getElementById('edit-kardex-fecha').value = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-      
+
       document.getElementById('edit-kardex-movimiento').value = item.TipoMovimiento || 'ENTRADA';
       document.getElementById('edit-kardex-regional').value = item.Regional || '';
       document.getElementById('edit-kardex-operacion').value = item.Operacion || '';
       document.getElementById('edit-kardex-operacion-destino').value = item.OperacionDestino || '';
       document.getElementById('edit-kardex-categoria').value = item.Categoria || '';
-      // Resolve article name for search text input
-      const selectId = item.IdArticulo;
-      let foundText = '';
-      const datalist = document.getElementById('kardex-articles-list');
-      if (datalist) {
-        const options = datalist.options;
-        for (let i = 0; i < options.length; i++) {
-          if (options[i].getAttribute('data-id') == selectId) {
-            foundText = options[i].value;
-            break;
-          }
-        }
-      }
-      if (!foundText && allInventoryData && allInventoryData.length) {
-        const matched = allInventoryData.find(art => art.IdArticulo == selectId);
-        if (matched) {
-          foundText = matched.Articulo;
-        }
-      }
-      document.getElementById('edit-kardex-articulo-search').value = foundText;
-      document.getElementById('edit-kardex-id-articulo').value = selectId || '';
-      
+      // El nombre del artículo ya viene en la propia fila (item.Articulo), no depende del datalist.
+      document.getElementById('edit-kardex-articulo-search').value = item.Articulo || '';
+      document.getElementById('edit-kardex-id-articulo').value = item.IdArticulo || '';
+
       document.getElementById('edit-kardex-cantidad').value = item.Cantidad || 0;
       document.getElementById('edit-kardex-valor-unitario').value = item.ValorUnitario || 0;
       document.getElementById('edit-kardex-usuario-asignado').value = item.UsuarioAsignado || '';
       document.getElementById('edit-kardex-acta').value = item.Acta || '';
       document.getElementById('edit-kardex-observaciones').value = item.Observaciones || '';
-      
+      document.getElementById('edit-kardex-kpendiente').value = item.Kpendiente || '';
+
       // Update destination operation enable/disable state
       toggleOperacionDestino();
-      
+
       modal.style.display = 'block';
+
+      // Poblar los datalists (Artículo, Kpendiente) en segundo plano, sin bloquear la apertura.
+      populateKardexEditArticles().catch(err => console.error(err));
+      populateKardexEditKpendiente().catch(err => console.error(err));
     }
 
     async function submitEditKardexForm(e) {
@@ -8725,7 +8817,8 @@
         ValorUnitario: document.getElementById('edit-kardex-valor-unitario').value,
         UsuarioAsignado: document.getElementById('edit-kardex-usuario-asignado').value,
         Acta: document.getElementById('edit-kardex-acta').value,
-        Observaciones: document.getElementById('edit-kardex-observaciones').value
+        Observaciones: document.getElementById('edit-kardex-observaciones').value,
+        Kpendiente: document.getElementById('edit-kardex-kpendiente').value
       };
 
       const btnSubmit = document.querySelector('#kardex-edit-form button[type="submit"]');
@@ -8747,6 +8840,7 @@
           const modal = document.getElementById('kardex-edit-modal');
           if (modal) modal.style.display = 'none';
           fetchKardexData(); // Reload table
+          if (document.getElementById('pendiente-orders-container')) fetchPendientesList(); // Reload "Pendiente por Recibir" too, si aplica
         } else {
           alert(`Error al guardar cambios: ${result.error}`);
         }
@@ -11903,6 +11997,56 @@
       categorias: []
     };
     let isKardexLookupsLoaded = false;
+    let kardexLookupsPromise = null;
+
+    // Caché de nombres de Trabajador (Maestro_Vinculación) por cédula, para la columna
+    // informativa "Trabajador" del Editor de Grid. `undefined` = aún no consultado,
+    // `null` = consultado y sin coincidencia, string = nombre resuelto.
+    let trabajadorNombreCache = new Map();
+    let trabajadorFetchPending = new Set();
+    function scheduleTrabajadorLookup(cedulas) {
+      const toFetch = cedulas.filter(c => c && !trabajadorNombreCache.has(c) && !trabajadorFetchPending.has(c));
+      if (!toFetch.length) return;
+      toFetch.forEach(c => trabajadorFetchPending.add(c));
+      fetch('/inventario/api/vinculacion/nombres', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identificaciones: toFetch })
+      })
+        .then(res => res.ok ? res.json() : {})
+        .then(data => {
+          toFetch.forEach(c => {
+            trabajadorNombreCache.set(c, data[c] || null);
+            trabajadorFetchPending.delete(c);
+          });
+          renderFormKardexGrid();
+        })
+        .catch(err => {
+          console.error('Error resolviendo nombres de trabajadores:', err);
+          toFetch.forEach(c => trabajadorFetchPending.delete(c));
+        });
+    }
+
+    // Carga (una sola vez por sesión) los catálogos auxiliares de Kardex (artículos, operaciones,
+    // regionales, categorías). Si ya hay una carga en curso, todos los llamadores esperan la MISMA
+    // promesa en vez de disparar fetch duplicados (evita el doble fetch que ralentizaba el modal
+    // de edición de Kardex).
+    async function ensureKardexLookupsLoaded() {
+      if (isKardexLookupsLoaded) return kardexLookups;
+      if (kardexLookupsPromise) return kardexLookupsPromise;
+      kardexLookupsPromise = (async () => {
+        const res = await fetch(`/inventario/api/kardex-lookups?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) throw new Error('Error al cargar datos auxiliares de Kardex');
+        kardexLookups = await res.json();
+        isKardexLookupsLoaded = true;
+        return kardexLookups;
+      })();
+      try {
+        return await kardexLookupsPromise;
+      } finally {
+        kardexLookupsPromise = null;
+      }
+    }
 
     async function openFormKardexModal() {
       const modal = document.getElementById('formkardex-modal');
@@ -11911,18 +12055,13 @@
 
       bulkKardexList = [];
       if (pasteArea) pasteArea.value = '';
-      
-      if (!isKardexLookupsLoaded) {
-        try {
-          const res = await fetch(`/inventario/api/kardex-lookups?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
-          if (!res.ok) throw new Error('Error al cargar datos auxiliares de Kardex');
-          kardexLookups = await res.json();
-          isKardexLookupsLoaded = true;
-        } catch (e) {
-          console.error(e);
-          alert('No se pudieron cargar los catálogos auxiliares: ' + e.message);
-          return;
-        }
+
+      try {
+        await ensureKardexLookupsLoaded();
+      } catch (e) {
+        console.error(e);
+        alert('No se pudieron cargar los catálogos auxiliares: ' + e.message);
+        return;
       }
 
       switchFormKardexTab('single');
@@ -11958,9 +12097,10 @@
     }
 
     function populateFormKardexSingleForm() {
-      const regSel = document.getElementById('fk-single-regional');
-      const catSel = document.getElementById('fk-single-categoria');
-      const opSel = document.getElementById('fk-single-operacion');
+      const regHidden = document.getElementById('fk-single-regional');
+      const catHidden = document.getElementById('fk-single-categoria');
+      const opInput = document.getElementById('fk-single-operacion');
+      const opList = document.getElementById('fk-single-operacion-list');
       const artSearch = document.getElementById('fk-single-articulo-search');
       const artHidden = document.getElementById('fk-single-articulo');
       const artList = document.getElementById('fk-single-articulo-ac-list');
@@ -11970,10 +12110,13 @@
       const usrAsignadoWrap = document.getElementById('fk-single-usuario-asignado-wrap');
       const usrAsignadoInput = document.getElementById('fk-single-usuario-asignado');
 
-      if (regSel) regSel.innerHTML = '<option value="">Seleccione</option>' + kardexLookups.regionales.map(r => `<option value="${r}">${r}</option>`).join('');
-      if (catSel) catSel.innerHTML = '<option value="">Seleccione</option>' + kardexLookups.categorias.map(c => `<option value="${c}">${c}</option>`).join('');
-      if (opSel) { opSel.innerHTML = '<option value="">Seleccione la Regional primero</option>'; opSel.disabled = true; }
-      if (artSearch) { artSearch.value = ''; artSearch.disabled = true; artSearch.placeholder = 'Seleccione la Categoría primero'; }
+      // Regional y Categoría ya no se eligen manualmente: se derivan de la Operación y el
+      // Artículo elegidos (como al cargar desde Excel).
+      if (regHidden) regHidden.value = '';
+      if (catHidden) catHidden.value = '';
+      if (opInput) opInput.value = '';
+      if (opList) opList.innerHTML = kardexLookups.operaciones.map(o => `<option value="${o.operacion}"></option>`).join('');
+      if (artSearch) { artSearch.value = ''; artSearch.placeholder = 'Escriba para buscar el artículo...'; }
       if (artHidden) artHidden.value = '';
       if (artList) artList.style.display = 'none';
       if (stockInput) stockInput.value = '0';
@@ -12012,53 +12155,23 @@
       opDestSel.innerHTML = '<option value="">Seleccione</option>' + allowedDestOps.map(o => `<option value="${o.operacion}">${o.operacion}</option>`).join('');
     }
 
-    function onFkSingleRegionalChange() {
-      const regSel = document.getElementById('fk-single-regional');
-      const opSel = document.getElementById('fk-single-operacion');
-      if (!regSel || !opSel) return;
-      const regional = regSel.value;
-      if (!regional) {
-        opSel.innerHTML = '<option value="">Seleccione la Regional primero</option>';
-        opSel.disabled = true;
-      } else {
-        const ops = kardexLookups.operaciones.filter(o => o.regional === regional);
-        opSel.innerHTML = '<option value="">Seleccione</option>' + ops.map(o => `<option value="${o.operacion}">${o.operacion}</option>`).join('');
-        opSel.disabled = false;
-      }
+    function onFkSingleOperacionInput() {
+      const opInput = document.getElementById('fk-single-operacion');
+      const regHidden = document.getElementById('fk-single-regional');
+      if (!opInput || !regHidden) return;
+      // Como al cargar desde Excel: la Regional se deriva de la Operación elegida.
+      const matchedOp = kardexLookups.operaciones.find(o => o.operacion.toUpperCase() === opInput.value.trim().toUpperCase());
+      regHidden.value = matchedOp ? matchedOp.regional : '';
       updateFkSingleStock();
       if (document.getElementById('fk-single-tipo').value === 'TRANSFERENCIA') populateFkSingleOpDestino();
     }
 
-    function onFkSingleCategoriaChange() {
-      const catSel = document.getElementById('fk-single-categoria');
-      const artSearch = document.getElementById('fk-single-articulo-search');
-      const artHidden = document.getElementById('fk-single-articulo');
-      const artList = document.getElementById('fk-single-articulo-ac-list');
-      if (!catSel || !artSearch) return;
-      const categoria = catSel.value;
-      artSearch.value = '';
-      if (artHidden) artHidden.value = '';
-      if (artList) { artList.style.display = 'none'; artList.innerHTML = ''; }
-      if (!categoria) {
-        artSearch.placeholder = 'Seleccione la Categoría primero';
-        artSearch.disabled = true;
-      } else {
-        artSearch.placeholder = 'Escriba para buscar el artículo...';
-        artSearch.disabled = false;
-      }
-      updateFkSingleStock();
-    }
-
     function renderFkSingleArticuloResultados(q) {
-      const catSel = document.getElementById('fk-single-categoria');
       const artList = document.getElementById('fk-single-articulo-ac-list');
-      if (!catSel || !artList) return;
-      const categoria = catSel.value;
-      if (!categoria) return;
+      if (!artList) return;
 
       const query = (q || '').trim().toUpperCase();
       const arts = kardexLookups.articulos
-        .filter(a => a.Categoria === categoria)
         .filter(a => !query || a.Articulo.toUpperCase().includes(query))
         .slice(0, 50);
 
@@ -12077,6 +12190,8 @@
           div.addEventListener('click', () => {
             document.getElementById('fk-single-articulo-search').value = a.Articulo;
             document.getElementById('fk-single-articulo').value = a.Id;
+            // Como al cargar desde Excel: la Categoría se deriva del Artículo elegido.
+            document.getElementById('fk-single-categoria').value = a.Categoria || '';
             artList.style.display = 'none';
             updateFkSingleStock();
           });
@@ -12088,8 +12203,10 @@
 
     function onFkSingleArticuloSearchInput() {
       const artHidden = document.getElementById('fk-single-articulo');
+      const catHidden = document.getElementById('fk-single-categoria');
       const stockInput = document.getElementById('fk-single-stock');
       if (artHidden) artHidden.value = '';
+      if (catHidden) catHidden.value = '';
       if (stockInput) stockInput.value = '0';
       renderFkSingleArticuloResultados(document.getElementById('fk-single-articulo-search').value);
     }
@@ -12127,14 +12244,12 @@
 
       if (!fecha) { alert('Debe seleccionar la Fecha Movimiento.'); return; }
       if (!tipo) { alert('Debe seleccionar el Tipo Movimiento.'); return; }
-      if (!regional) { alert('Debe seleccionar la Regional.'); return; }
-      if (!operacion) { alert('Debe seleccionar la Operación.'); return; }
+      if (!operacion || !regional) { alert('Debe escribir y seleccionar una Operación válida de la lista sugerida.'); return; }
       if (tipo === 'TRANSFERENCIA') {
         if (!opDestino) { alert('Para movimientos de transferencia, la Operación Destino es obligatoria.'); return; }
         if (operacion === opDestino) { alert('La Operación Destino no puede ser igual a la Operación de Origen.'); return; }
       }
-      if (!categoria) { alert('Debe seleccionar la Categoría.'); return; }
-      if (!idArticuloRaw) { alert('Debe seleccionar el Artículo.'); return; }
+      if (!idArticuloRaw || !categoria) { alert('Debe seleccionar un Artículo válido de la lista sugerida.'); return; }
       const cantidad = parseInt(cantidadRaw) || 0;
       if (!cantidad) { alert('La Cantidad debe ser diferente de cero.'); return; }
       if (cantidad < 0 && tipo !== 'AJUSTE') { alert('Las cantidades negativas solo se permiten en movimientos de tipo AJUSTE.'); return; }
@@ -12172,10 +12287,16 @@
     function updateFormKardexGridCount() {
       const btnManual = document.getElementById('formkardex-tab-btn-manual');
       const btnGuardar = document.getElementById('formkardex-btn-guardar');
+      const trabajadoresCount = document.getElementById('formkardex-trabajadores-count');
       const size = bulkKardexList.length;
 
       if (btnManual) btnManual.textContent = `✍️ Editor de Grid (${size} fila${size !== 1 ? 's' : ''})`;
       if (btnGuardar) btnGuardar.textContent = `💾 Guardar Movimientos (${size})`;
+
+      if (trabajadoresCount) {
+        const unicos = new Set(bulkKardexList.map(r => (r.UsuarioAsignado || '').trim()).filter(Boolean));
+        trabajadoresCount.textContent = `👤 Trabajadores relacionados: ${unicos.size}`;
+      }
     }
 
     function processPastedKardexExcelData() {
@@ -12357,26 +12478,18 @@
         return;
       }
 
-      // Pre-calcular y cachear strings de opciones HTML para máxima velocidad de renderizado
-      const regionalOptionsHtml = (kardexLookups.regionales || []).map(r => `<option value="${r}"></option>`).join('');
+      // Pre-calcular y cachear strings de opciones HTML para máxima velocidad de renderizado.
+      // Operación y Artículo son ahora la selección primaria (Regional y Categoría se derivan
+      // automáticamente, como al cargar desde Excel), así que sus datalists muestran el catálogo
+      // completo en vez de filtrarse por una Regional/Categoría elegida antes.
       const allowedTypes = ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA'];
       const tipoOptionsHtml = allowedTypes.map(t => `<option value="${t}"></option>`).join('');
-      const categoriaOptionsHtml = (kardexLookups.categorias || []).map(c => `<option value="${c}"></option>`).join('');
+      const operacionOptionsHtml = (kardexLookups.operaciones || []).map(o => `<option value="${o.operacion}"></option>`).join('');
+      const articuloOptionsHtml = (kardexLookups.articulos || []).map(a => `<option value="${a.Articulo}"></option>`).join('');
 
       const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
       const destPool = kardexLookups.operacionesTodas || kardexLookups.operaciones || [];
-
-      const opByRegionalCache = {};
       const destOpCache = {};
-      const artByCatCache = {};
-
-      const getOperacionOptionsHtml = (reg) => {
-        if (!reg) return '';
-        if (opByRegionalCache[reg] !== undefined) return opByRegionalCache[reg];
-        const matchedOps = (kardexLookups.operaciones || []).filter(o => o.regional === reg);
-        opByRegionalCache[reg] = matchedOps.map(o => `<option value="${o.operacion}"></option>`).join('');
-        return opByRegionalCache[reg];
-      };
 
       const getDestOpOptionsHtml = (reg) => {
         const key = isPrivileged ? '__all__' : (reg || '__none__');
@@ -12388,13 +12501,18 @@
         return destOpCache[key];
       };
 
-      const getArticuloOptionsHtml = (cat) => {
-        if (!cat) return '';
-        if (artByCatCache[cat] !== undefined) return artByCatCache[cat];
-        const matchedArts = (kardexLookups.articulos || []).filter(a => a.Categoria === cat);
-        artByCatCache[cat] = matchedArts.map(a => `<option value="${a.Articulo}"></option>`).join('');
-        return artByCatCache[cat];
-      };
+      // Trabajador (informativo): dispara la resolución en lote de las cédulas nuevas de la grilla.
+      const cedulasEnGrid = [...new Set(bulkKardexList.map(r => (r.UsuarioAsignado || '').trim()).filter(Boolean))];
+      scheduleTrabajadorLookup(cedulasEnGrid);
+
+      // Tipo, Operación y Artículo son iguales para todas las filas (ya no dependen de la fila),
+      // así que se pueblan una sola vez en los datalists compartidos en vez de uno por fila.
+      const tipoSharedList = document.getElementById('formkardex-tipo-shared-list');
+      if (tipoSharedList) tipoSharedList.innerHTML = tipoOptionsHtml;
+      const operacionSharedList = document.getElementById('formkardex-operacion-shared-list');
+      if (operacionSharedList) operacionSharedList.innerHTML = operacionOptionsHtml;
+      const articuloSharedList = document.getElementById('formkardex-articulo-shared-list');
+      if (articuloSharedList) articuloSharedList.innerHTML = articuloOptionsHtml;
 
       const frag = document.createDocumentFragment();
 
@@ -12403,38 +12521,30 @@
         tr.style.borderBottom = '1px solid var(--border)';
 
         const isTransfer = (row.TipoMovimiento === 'TRANSFERENCIA');
-        const operacionOptionsHtml = getOperacionOptionsHtml(row.Regional);
         const destOpOptionsHtml = getDestOpOptionsHtml(row.Regional);
-        const articuloOptionsHtml = getArticuloOptionsHtml(row.Categoria);
+        const matchedArtRow = kardexLookups.articulos.find(a => a.Id == row.IdArticulo);
+        const tallaRefText = matchedArtRow ? ([matchedArtRow.Talla, matchedArtRow.Referencia].filter(Boolean).join(' / ') || '—') : '—';
+        const cedula = (row.UsuarioAsignado || '').trim();
+        const trabajadorText = cedula ? (trabajadorNombreCache.get(cedula) || '—') : '—';
 
         tr.innerHTML = `
           <td style="padding: 6px 10px;">
             <input type="datetime-local" class="grid-cell-input fecha-input" value="${row.FechaMovimiento || ''}" required style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem;">
           </td>
           <td style="padding: 6px 10px;">
-            <input type="text" class="grid-cell-input tipo-input" list="tipo-list-${idx}" value="${row.TipoMovimiento || ''}" placeholder="Tipo" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;">
-            <datalist id="tipo-list-${idx}">${tipoOptionsHtml}</datalist>
+            <input type="text" class="grid-cell-input tipo-input" list="formkardex-tipo-shared-list" value="${row.TipoMovimiento || ''}" placeholder="Tipo" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;">
           </td>
           <td style="padding: 6px 10px;">
-            <input type="text" class="grid-cell-input regional-input" list="regional-list-${idx}" value="${row.Regional || ''}" placeholder="Regional" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;">
-            <datalist id="regional-list-${idx}">${regionalOptionsHtml}</datalist>
-          </td>
-          <td style="padding: 6px 10px;">
-            <input type="text" class="grid-cell-input operacion-input" list="operacion-list-${idx}" value="${row.Operacion || ''}" placeholder="Operación" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;" ${!row.Regional ? 'disabled' : ''}>
-            <datalist id="operacion-list-${idx}">${operacionOptionsHtml}</datalist>
+            <input type="text" class="grid-cell-input operacion-input" list="formkardex-operacion-shared-list" value="${row.Operacion || ''}" placeholder="Operación" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;">
           </td>
           <td style="padding: 6px 10px;">
             <input type="text" class="grid-cell-input opdestino-input" list="opdestino-list-${idx}" value="${row.OperacionDestino || ''}" placeholder="Op Destino" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;" ${!isTransfer ? 'disabled' : ''}>
             <datalist id="opdestino-list-${idx}">${destOpOptionsHtml}</datalist>
           </td>
           <td style="padding: 6px 10px;">
-            <input type="text" class="grid-cell-input categoria-input" list="categoria-list-${idx}" value="${row.Categoria || ''}" placeholder="Categoría" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;">
-            <datalist id="categoria-list-${idx}">${categoriaOptionsHtml}</datalist>
+            <input type="text" class="grid-cell-input articulo-input" list="formkardex-articulo-shared-list" value="${row.ArticuloName || (matchedArtRow ? matchedArtRow.Articulo : '') || ''}" placeholder="Artículo" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;">
           </td>
-          <td style="padding: 6px 10px;">
-            <input type="text" class="grid-cell-input articulo-input" list="articulo-list-${idx}" value="${row.ArticuloName || (kardexLookups.articulos.find(a => a.Id == row.IdArticulo)?.Articulo) || ''}" placeholder="Artículo" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: white;" ${!row.Categoria ? 'disabled' : ''}>
-            <datalist id="articulo-list-${idx}">${articuloOptionsHtml}</datalist>
-          </td>
+          <td class="talla-ref-cell" style="padding: 6px 10px; font-size: 0.75rem; color: #475569;">${tallaRefText}</td>
           <td style="padding: 6px 10px;">
             <input type="number" class="grid-cell-input stock-input" value="${row.StockActual || 0}" readonly disabled style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; background: #e2e8f0; color: #475569; text-align: right; font-weight: 600;">
           </td>
@@ -12447,6 +12557,7 @@
           <td class="col-usuario-asignado-td" style="padding: 6px 10px; ${isPrivilegedUser ? '' : 'display: none;'}">
             <input type="text" class="grid-cell-input usuario-asignado-input" value="${row.UsuarioAsignado || ''}" placeholder="Identificación" style="width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem;">
           </td>
+          <td class="trabajador-cell" style="padding: 6px 10px; font-size: 0.75rem; color: #475569;">${trabajadorText}</td>
           <td style="padding: 6px 10px; text-align: center;">
             <button type="button" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #dc2626;" onclick="deleteFormKardexGridRow(${idx})" title="Quitar fila">❌</button>
           </td>
@@ -12454,17 +12565,15 @@
 
         const dateInput = tr.querySelector('.fecha-input');
         const tipoInput = tr.querySelector('.tipo-input');
-        const regInput = tr.querySelector('.regional-input');
         const opInput = tr.querySelector('.operacion-input');
         const opDestInput = tr.querySelector('.opdestino-input');
-        const catInput = tr.querySelector('.categoria-input');
         const artInput = tr.querySelector('.articulo-input');
         const qtyInput = tr.querySelector('.cantidad-input');
         const obsInput = tr.querySelector('.obs-input');
         const usrInput = tr.querySelector('.usuario-asignado-input');
 
         dateInput.addEventListener('input', () => { row.FechaMovimiento = dateInput.value; });
-        
+
         tipoInput.addEventListener('input', () => {
           const val = tipoInput.value.toUpperCase();
           const validTypes = ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA', 'BAJA', 'REPARACION'];
@@ -12477,23 +12586,14 @@
           }
         });
 
-        regInput.addEventListener('input', () => {
-          const val = regInput.value;
-          const matchedReg = kardexLookups.regionales.find(r => r.toUpperCase() === val.toUpperCase());
-          if (matchedReg) {
-            row.Regional = matchedReg;
-            row.Operacion = '';
-            row.OperacionDestino = '';
-            renderFormKardexGrid();
-          }
-        });
-
         opInput.addEventListener('input', () => {
           const val = opInput.value;
           const matchedOp = kardexLookups.operaciones.find(o => o.operacion.toUpperCase() === val.toUpperCase());
           if (matchedOp) {
+            // Como al cargar desde Excel: la Regional se deriva de la Operación elegida.
             row.Operacion = matchedOp.operacion;
-            updateRowStockActual(row, idx, tr);
+            row.Regional = matchedOp.regional;
+            renderFormKardexGrid();
           }
         });
 
@@ -12505,34 +12605,28 @@
           }
         });
 
-        catInput.addEventListener('input', () => {
-          const val = catInput.value;
-          const matchedCat = kardexLookups.categorias.find(c => c.toUpperCase() === val.toUpperCase());
-          if (matchedCat) {
-            row.Categoria = matchedCat;
-            row.IdArticulo = '';
-            row.ArticuloName = '';
-            row.ValorUnitario = 0;
+        artInput.addEventListener('input', () => {
+          const val = artInput.value;
+          const matchedArt = kardexLookups.articulos.find(a => a.Articulo.toUpperCase() === val.toUpperCase());
+          const tallaCell = tr.querySelector('.talla-ref-cell');
+          if (matchedArt) {
+            // Como al cargar desde Excel: la Categoría se deriva del Artículo elegido.
+            row.IdArticulo = matchedArt.Id;
+            row.ArticuloName = matchedArt.Articulo;
+            row.ValorUnitario = matchedArt.Costo || 0;
+            row.Categoria = matchedArt.Categoria;
             const isSp = ['TECNOLOGIA', 'HERRAMIENTA', 'ACTIVO FIJO'].includes(row.Categoria);
             if (!isSp && ['BAJA', 'REPARACION'].includes(row.TipoMovimiento)) {
               row.TipoMovimiento = 'ENTRADA';
             }
-            renderFormKardexGrid();
-          }
-        });
-
-        artInput.addEventListener('input', () => {
-          const val = artInput.value;
-          const matchedArt = kardexLookups.articulos.find(a => a.Articulo.toUpperCase() === val.toUpperCase());
-          if (matchedArt) {
-            row.IdArticulo = matchedArt.Id;
-            row.ArticuloName = matchedArt.Articulo;
-            row.ValorUnitario = matchedArt.Costo || 0;
+            if (tallaCell) tallaCell.textContent = [matchedArt.Talla, matchedArt.Referencia].filter(Boolean).join(' / ') || '—';
             updateRowStockActual(row, idx, tr);
           } else {
             row.IdArticulo = '';
             row.ArticuloName = '';
             row.ValorUnitario = 0;
+            row.Categoria = '';
+            if (tallaCell) tallaCell.textContent = '—';
             updateRowStockActual(row, idx, tr);
           }
         });
@@ -12548,6 +12642,17 @@
         if (usrInput) {
           usrInput.addEventListener('input', () => {
             row.UsuarioAsignado = usrInput.value.trim();
+          });
+          usrInput.addEventListener('change', () => {
+            const cedulaNueva = (row.UsuarioAsignado || '').trim();
+            updateFormKardexGridCount();
+            const trabCell = tr.querySelector('.trabajador-cell');
+            if (cedulaNueva) {
+              scheduleTrabajadorLookup([cedulaNueva]);
+              if (trabCell) trabCell.textContent = trabajadorNombreCache.get(cedulaNueva) || '…';
+            } else if (trabCell) {
+              trabCell.textContent = '—';
+            }
           });
         }
 
@@ -12581,12 +12686,8 @@
           alert(`Fila ${i + 1}: Debe seleccionar el Tipo Movimiento.`);
           return;
         }
-        if (!item.Regional) {
-          alert(`Fila ${i + 1}: Debe seleccionar la Regional.`);
-          return;
-        }
-        if (!item.Operacion) {
-          alert(`Fila ${i + 1}: Debe seleccionar la Operación.`);
+        if (!item.Operacion || !item.Regional) {
+          alert(`Fila ${i + 1}: Debe escribir y seleccionar una Operación válida de la lista sugerida.`);
           return;
         }
         if (item.TipoMovimiento === 'TRANSFERENCIA') {
@@ -12599,12 +12700,8 @@
             return;
           }
         }
-        if (!item.Categoria) {
-          alert(`Fila ${i + 1}: Debe seleccionar la Categoría.`);
-          return;
-        }
-        if (!item.IdArticulo) {
-          alert(`Fila ${i + 1}: Debe seleccionar el Artículo.`);
+        if (!item.IdArticulo || !item.Categoria) {
+          alert(`Fila ${i + 1}: Debe escribir y seleccionar un Artículo válido de la lista sugerida.`);
           return;
         }
         if (!item.Cantidad || item.Cantidad === 0) {
@@ -12768,8 +12865,7 @@
       const btnAddSingle = document.getElementById('formkardex-btn-add-single');
       const btnGuardar = document.getElementById('formkardex-btn-guardar');
       const btnInventarioAgregar = document.getElementById('inventario-btn-agregar-kardex');
-      const fkSingleRegional = document.getElementById('fk-single-regional');
-      const fkSingleCategoria = document.getElementById('fk-single-categoria');
+      const fkSingleOperacion = document.getElementById('fk-single-operacion');
       const fkSingleTipo = document.getElementById('fk-single-tipo');
       const fkSingleArticuloSearch = document.getElementById('fk-single-articulo-search');
       const fkSingleArticuloAcList = document.getElementById('fk-single-articulo-ac-list');
@@ -12785,8 +12881,7 @@
       if (btnAddSingle) btnAddSingle.addEventListener('click', agregarKardexSingle);
       if (btnGuardar) btnGuardar.addEventListener('click', saveFormKardex);
       if (btnInventarioAgregar) btnInventarioAgregar.addEventListener('click', openFormKardexModal);
-      if (fkSingleRegional) fkSingleRegional.addEventListener('change', onFkSingleRegionalChange);
-      if (fkSingleCategoria) fkSingleCategoria.addEventListener('change', onFkSingleCategoriaChange);
+      if (fkSingleOperacion) fkSingleOperacion.addEventListener('input', onFkSingleOperacionInput);
       if (fkSingleTipo) fkSingleTipo.addEventListener('change', toggleFkSingleOpDestino);
       if (fkSingleArticuloSearch) {
         fkSingleArticuloSearch.addEventListener('input', onFkSingleArticuloSearchInput);
@@ -12985,6 +13080,9 @@
       const selectAllCheckbox = document.getElementById('pendiente-select-all');
       if (selectAllCheckbox) selectAllCheckbox.checked = false;
 
+      const puedeGestionarPendiente = ['Sistema', 'Inventario'].includes(CONFIG.rol);
+      const puedeEliminarPendiente = puedeGestionarPendiente;
+
       const selOp = document.getElementById('pendiente-filter-operacion')?.value || '';
       const selCat = document.getElementById('pendiente-filter-categoria')?.value || '';
       const searchVal = (document.getElementById('pendiente-filter-search')?.value || '').trim().toLowerCase();
@@ -13063,6 +13161,9 @@
               <td style="padding: 8px 12px;">
                 <div>${noveltyBadge}</div>
               </td>
+              <td style="padding: 8px 12px; text-align: center;">
+                ${puedeGestionarPendiente ? `<button type="button" class="btn" onclick="window.editarKardexPendienteItem('${order.Id}', '${item.IdKardex}')" title="Editar registro de Kardex" style="background: none; border: none; font-size: 1rem; cursor: pointer;">✏️</button>` : ''}
+              </td>
             </tr>
           `;
         });
@@ -13077,14 +13178,12 @@
               <span id="${chevronId}" class="filtros-chevron" style="font-size: 1.1rem; margin-top: 2px; color: var(--primary);">▸</span>
               <div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <span style="font-weight: 700; color: #1e3c72; font-size: 0.95rem; letter-spacing: 0.5px;">📋 ${order.Id}</span>
+                  <span style="font-weight: 700; color: #1e3c72; font-size: 0.95rem; letter-spacing: 0.3px;">${order.OperacionOrigen || '—'} <span style="color: #94a3b8; font-weight: 500;">➔</span> <span style="color: var(--primary);">${order.OperacionDestino || '—'}</span></span>
                   <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">${order.Regional || 'Regional'}</span>
                   <span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700;">⏳ En Tránsito</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 0.8rem; color: #475569; flex-wrap: wrap;">
-                  <span><strong>Origen:</strong> ${order.OperacionOrigen || '—'}</span>
-                  <span style="color: #94a3b8;">➔</span>
-                  <span><strong style="color: var(--primary);">Destino:</strong> ${order.OperacionDestino || '—'}</span>
+                  <span>📋 ${order.Id}</span>
                   <span style="color: #cbd5e1;">|</span>
                   <span style="color: #64748b;">📅 ${dateStr}</span>
                   <span style="color: #cbd5e1;">|</span>
@@ -13099,6 +13198,10 @@
                 <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">${order.totalArticulos} artículos</div>
                 <div style="font-size: 0.75rem; color: #64748b;">${order.totalUnidades} unidades en total</div>
               </div>
+              ${puedeEliminarPendiente ? `
+              <button type="button" class="btn pendiente-btn-eliminar" ${order.totalArticulos > 0 ? 'disabled' : ''} title="${order.totalArticulos > 0 ? 'Solo se puede eliminar si el pedido no tiene artículos relacionados' : 'Eliminar pedido vacío'}" style="background: ${order.totalArticulos > 0 ? '#f1f5f9' : '#fef2f2'}; color: ${order.totalArticulos > 0 ? '#94a3b8' : '#dc2626'}; border: 1px solid ${order.totalArticulos > 0 ? '#e2e8f0' : '#fecaca'}; padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: ${order.totalArticulos > 0 ? 'not-allowed' : 'pointer'}; display: inline-flex; align-items: center; gap: 5px;">
+                <span>🗑️</span>
+              </button>` : ''}
               <button type="button" class="btn pendiente-btn-recibir" style="background: #22c55e; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                 <span>✔️</span> Recibir Pedido
               </button>
@@ -13117,6 +13220,7 @@
                   <th style="padding: 8px 12px; text-align: center; width: 140px;">Categoría</th>
                   <th style="padding: 8px 12px; text-align: center; width: 90px;">Cantidad</th>
                   <th style="padding: 8px 12px; width: 220px;">Novedad en Físico</th>
+                  <th style="padding: 8px 12px; width: 60px; text-align: center;"></th>
                 </tr>
               </thead>
               <tbody>
@@ -13131,6 +13235,14 @@
           e.stopPropagation();
           recibirUnicoPedido(order.Id);
         });
+
+        const btnEliminarPendiente = card.querySelector('.pendiente-btn-eliminar');
+        if (btnEliminarPendiente) {
+          btnEliminarPendiente.addEventListener('click', (e) => {
+            e.stopPropagation();
+            eliminarPedidoPendiente(order.Id);
+          });
+        }
 
         const header = card.querySelector('.pendiente-order-header');
         const itemsWrap = card.querySelector(`#${itemsContainerId}`);
@@ -13149,6 +13261,47 @@
       const countSpan = document.getElementById('pendiente-selected-count');
       if (countSpan) countSpan.textContent = selectedPendientesIds.size;
     }
+
+    async function eliminarPedidoPendiente(orderId) {
+      if (!confirm(`¿Confirma eliminar el pedido ${orderId}? Esta acción no se puede deshacer.`)) return;
+      try {
+        const res = await fetch(`/inventario/api/kardex-pendiente/${orderId}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al eliminar el pedido');
+        fetchPendientesList();
+      } catch (err) {
+        console.error(err);
+        alert(err.message);
+      }
+    }
+
+    window.editarKardexPendienteItem = function(orderId, idKardex) {
+      const order = allPendientes.find(o => String(o.Id) === String(orderId));
+      const item = order && (order.items || []).find(it => String(it.IdKardex) === String(idKardex));
+      if (!item) {
+        alert('No se encontró el registro de Kardex para editar.');
+        return;
+      }
+      openEditKardexModal({
+        IdKardex: item.IdKardex,
+        FechaMovimiento: item.FechaMovimiento,
+        TipoMovimiento: item.TipoMovimiento,
+        Regional: item.Regional,
+        Operacion: item.Operacion,
+        OperacionDestino: item.OperacionDestino,
+        Categoria: item.Categoria,
+        IdArticulo: item.IdArticulo,
+        Articulo: item.Articulo,
+        Cantidad: item.CantidadReal,
+        ValorUnitario: item.ValorUnitario,
+        UsuarioAsignado: item.UsuarioAsignado,
+        Acta: item.Acta,
+        Observaciones: item.Observaciones,
+        Kpendiente: item.Kpendiente
+      });
+    };
 
     window.marcarNovedadItem = async function(orderId, idKardex, currentNovedad) {
       const msg = prompt('Escribe el detalle de la novedad o discrepancia física para este artículo:', currentNovedad || '');
@@ -15706,10 +15859,12 @@
         actaItemsEditable = (actaActual.Estado === 'Pendiente') || (CONFIG.rol === 'Sistema');
         renderActaFormItems();
 
-        const fields = ['acta-form-fecha-entrega', 'acta-form-observaciones', 'acta-form-evidencia-file', 'acta-form-evidencia-camera', 'acta-form-trabajador-search', 'acta-form-regional', 'acta-form-operacion'];
+        const fields = ['acta-form-fecha-entrega', 'acta-form-observaciones', 'acta-form-trabajador-search', 'acta-form-regional', 'acta-form-operacion'];
         fields.forEach(f => { const el = document.getElementById(f); if (el) el.disabled = true; });
         document.querySelectorAll('#acta-form-categoria-buttons button').forEach(b => b.disabled = true);
-        actaEvidenciaSetDisabled(true);
+        // La foto de evidencia se puede reemplazar mientras el Acta siga Pendiente (o rol Sistema);
+        // una vez Firmada queda bloqueada, igual que los ítems.
+        actaEvidenciaSetDisabled(!actaItemsEditable);
 
         const addItemWrap = document.getElementById('acta-add-item-wrap');
         if (addItemWrap) addItemWrap.style.display = actaItemsEditable ? 'block' : 'none';
@@ -15844,6 +15999,16 @@
 
       mostrarActaLoading('Guardando cambios...', 'Ajustando los artículos y el Kardex de esta acta');
       try {
+        const evidenciaFile = document.getElementById('acta-form-evidencia-file')?.files[0];
+        if (evidenciaFile) {
+          const evidenciaData = new FormData();
+          evidenciaData.append('usuario', CONFIG.usuarioId);
+          evidenciaData.append('evidenciaFile', evidenciaFile);
+          const resEvid = await fetch(`/actas/api/acta/${idActa}/evidencia`, { method: 'POST', body: evidenciaData });
+          const dataEvid = await resEvid.json();
+          if (!resEvid.ok) throw new Error(dataEvid.error || 'Error al guardar la foto de evidencia');
+        }
+
         const res = await fetch(`/actas/api/acta/${idActa}/items`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -16996,13 +17161,7 @@
         if (genDotacionModal) genDotacionModal.style.display = 'none';
 
         // Load kardex lookups if needed
-        if (!isKardexLookupsLoaded) {
-          const lRes = await fetch(`/inventario/api/kardex-lookups?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
-          if (lRes.ok) {
-            kardexLookups = await lRes.json();
-            isKardexLookupsLoaded = true;
-          }
-        }
+        await ensureKardexLookupsLoaded().catch(err => console.error('Error cargando kardex-lookups:', err));
 
         // Set rows into bulkKardexList
         bulkKardexList = data.filas;

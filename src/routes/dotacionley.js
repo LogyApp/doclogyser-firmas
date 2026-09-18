@@ -446,9 +446,10 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
         }
       }
 
-      // Parte 3: BOTAS (Solo requerida para la Regional ANTIOQUIA)
-      const esAntioquia = norm(w.Regional || regional) === 'ANTIOQUIA';
-      if (esAntioquia) {
+      // Parte 3: BOTAS (Solo requerida para las Regionales ANTIOQUIA y CARIBE)
+      const regionalTrabajador = norm(w.Regional || regional);
+      const requiereBotas = ['ANTIOQUIA', 'CARIBE'].includes(regionalTrabajador);
+      if (requiereBotas) {
         const botasRule = rules.find(r =>
           norm(r.Operacion) === norm(w.Operacion) &&
           norm(r.Cargo) === norm(w.Cargo) &&

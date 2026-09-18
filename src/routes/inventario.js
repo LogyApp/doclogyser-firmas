@@ -751,7 +751,7 @@ router.get('/api/confirmaciones', async (req, res) => {
 
 router.get('/api/kardex/datos', async (req, res) => {
   try {
-    const { usuario, regional, operacion, categoria, tipoMovimiento, idArticulo, search } = req.query;
+    const { usuario, regional, operacion, operacionDestino, categoria, tipoMovimiento, idArticulo, search } = req.query;
     if (!usuario) {
       return res.status(400).json({ error: 'usuario es requerido' });
     }
@@ -784,6 +784,7 @@ router.get('/api/kardex/datos', async (req, res) => {
     // Build filter objects
     const fReg = regional ? { cond: 'k.`Regional` = ?', param: regional } : null;
     const fOp = operacion ? { cond: 'k.`Operación` = ?', param: operacion } : null;
+    const fOpDest = operacionDestino ? { cond: 'k.`OperaciónDestino` = ?', param: operacionDestino } : null;
     const fCat = categoria ? { cond: 'k.`Categoria` = ?', param: categoria } : null;
     const fMov = tipoMovimiento ? { cond: 'k.`TipoMovimiento` = ?', param: tipoMovimiento } : null;
     const fIdArt = idArticulo ? { cond: 'k.`IdArticulo` = ?', param: idArticulo } : null;
@@ -810,7 +811,7 @@ router.get('/api/kardex/datos', async (req, res) => {
     };
 
     // 1. Fetch filtered items (limit 500 rows for speed)
-    const listFilter = buildKardexWhere([fReg, fOp, fCat, fMov, fIdArt, fSearch]);
+    const listFilter = buildKardexWhere([fReg, fOp, fOpDest, fCat, fMov, fIdArt, fSearch]);
     const listQuery = `
       SELECT 
         k.IdKardex,
@@ -834,7 +835,8 @@ router.get('/api/kardex/datos', async (req, res) => {
         k.ValorUnitario,
         k.UsuarioRegistro,
         k.Observaciones,
-        k.FechaRegistro
+        k.FechaRegistro,
+        k.Kpendiente
       FROM Dynamic_Kardex k
       LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
       LEFT JOIN Dynamic_Actas da ON da.IdActa = k.Acta
@@ -843,10 +845,10 @@ router.get('/api/kardex/datos', async (req, res) => {
       LIMIT 500
     `;
     // Prepare parallel queries for list, faceted counts, and consolidated stats
-    const cReg = buildKardexWhere([fOp, fCat, fMov, fIdArt, fSearch]);
-    const cOp = buildKardexWhere([fReg, fCat, fMov, fIdArt, fSearch]);
-    const cCat = buildKardexWhere([fReg, fOp, fMov, fIdArt, fSearch]);
-    const cMov = buildKardexWhere([fReg, fOp, fCat, fIdArt, fSearch]);
+    const cReg = buildKardexWhere([fOp, fOpDest, fCat, fMov, fIdArt, fSearch]);
+    const cOp = buildKardexWhere([fReg, fOpDest, fCat, fMov, fIdArt, fSearch]);
+    const cCat = buildKardexWhere([fReg, fOp, fOpDest, fMov, fIdArt, fSearch]);
+    const cMov = buildKardexWhere([fReg, fOp, fOpDest, fCat, fIdArt, fSearch]);
 
     const statsQuery = `
       SELECT 
@@ -1024,7 +1026,8 @@ router.post('/api/kardex/editar', async (req, res) => {
       UsuarioAsignado,
       Acta,
       ValorUnitario,
-      Observaciones
+      Observaciones,
+      Kpendiente
     } = req.body;
 
     if (!usuario) {
@@ -1039,9 +1042,17 @@ router.post('/api/kardex/editar', async (req, res) => {
       return res.status(403).json({ error: 'No autorizado. Permisos exclusivos de Inventario o Sistema.' });
     }
 
+    const kpendienteVal = Kpendiente ? String(Kpendiente).trim() : null;
+    if (kpendienteVal) {
+      const [[kp]] = await pool.execute('SELECT Id FROM Kardex_Pendiente WHERE Id = ? LIMIT 1', [kpendienteVal]);
+      if (!kp) {
+        return res.status(400).json({ error: `Kpendiente "${kpendienteVal}" no existe en Kardex_Pendiente.` });
+      }
+    }
+
     const query = `
-      UPDATE Dynamic_Kardex 
-      SET 
+      UPDATE Dynamic_Kardex
+      SET
         FechaMovimiento = ?,
         TipoMovimiento = ?,
         Regional = ?,
@@ -1053,7 +1064,8 @@ router.post('/api/kardex/editar', async (req, res) => {
         UsuarioAsignado = ?,
         Acta = ?,
         ValorUnitario = ?,
-        Observaciones = ?
+        Observaciones = ?,
+        Kpendiente = ?
       WHERE IdKardex = ?
     `;
 
@@ -1070,6 +1082,7 @@ router.post('/api/kardex/editar', async (req, res) => {
       Acta || null,
       parseFloat(ValorUnitario) || 0,
       Observaciones || null,
+      kpendienteVal,
       IdKardex
     ];
 
@@ -1077,6 +1090,63 @@ router.post('/api/kardex/editar', async (req, res) => {
     res.json({ success: true, message: 'Registro de Kardex actualizado exitosamente.' });
   } catch (err) {
     console.error('[inventario] POST /api/kardex/editar error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/kardex-pendiente-ids - lista liviana de Ids de Kardex_Pendiente sin procesar,
+// para el autocompletado del campo Kpendiente en el modal de edición de Kardex.
+router.get('/api/kardex-pendiente-ids', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const [rows] = await pool.execute(
+      `SELECT Id, OperacionDestino, Regional
+       FROM Kardex_Pendiente
+       WHERE Procesado = 0
+       ORDER BY FechaDespacho DESC
+       LIMIT 300`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[inventario] GET /api/kardex-pendiente-ids error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/vinculacion/nombres - resuelve nombre de Trabajador para un lote de identificaciones
+// (usado por el Editor de Grid de Kardex para mostrar informativamente el "Trabajador" de cada fila).
+router.post('/api/vinculacion/nombres', async (req, res) => {
+  try {
+    const { identificaciones } = req.body;
+    if (!Array.isArray(identificaciones) || !identificaciones.length) {
+      return res.json({});
+    }
+    const limpias = [...new Set(identificaciones.map(id => String(id || '').trim()).filter(Boolean))].slice(0, 200);
+    if (!limpias.length) return res.json({});
+
+    const ph = limpias.map(() => '?').join(',');
+    const [rows] = await pool.execute(
+      `SELECT TRIM(\`Identificación\`) AS identificacion, Trabajador
+       FROM \`Maestro_Vinculación\`
+       WHERE TRIM(\`Identificación\`) IN (${ph})
+       ORDER BY \`Fecha de Ingreso\` DESC`,
+      limpias
+    );
+
+    const nombres = {};
+    for (const row of rows) {
+      if (!(row.identificacion in nombres)) {
+        nombres[row.identificacion] = row.Trabajador;
+      }
+    }
+    res.json(nombres);
+  } catch (err) {
+    console.error('[inventario] POST /api/vinculacion/nombres error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1634,7 +1704,7 @@ router.get('/api/kardex-lookups', async (req, res) => {
     const acceso = await computarAccesoInventario(usuario, 'Kardex');
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const [artRows] = await pool.execute('SELECT Id, Articulo, Categoria, Costo FROM Dynamic_Articulos ORDER BY Articulo');
+    const [artRows] = await pool.execute('SELECT Id, Articulo, Categoria, Costo, Talla, Referencia FROM Dynamic_Articulos ORDER BY Articulo');
     const [opRows] = await pool.execute("SELECT DISTINCT `OPERACIÓN` AS operacion, REGIONAL AS regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN`");
     const [regRows] = await pool.execute("SELECT DISTINCT Regional FROM Config_Regionales WHERE Operacion_Principal IS NOT NULL AND Operacion_Principal != '' ORDER BY Regional");
     const [catRows] = await pool.execute("SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE (Condicion != 'No aplica' OR Condicion IS NULL) AND Categoria IS NOT NULL ORDER BY Categoria");
@@ -2224,10 +2294,14 @@ router.get('/api/kardex-pendiente', async (req, res) => {
         k.IdKardex,
         k.IdArticulo,
         k.FechaMovimiento,
+        k.TipoMovimiento,
+        k.Acta,
+        k.Kpendiente,
         k.Regional AS RegionalKardex,
         k.\`Operación\` AS OpOrigenKardex,
         k.\`OperaciónDestino\` AS OpDestinoKardex,
         ABS(k.Cantidad) AS Cantidad,
+        k.Cantidad AS CantidadReal,
         k.ValorUnitario,
         k.UsuarioRegistro,
         k.Observaciones AS ObservacionesItem,
@@ -2287,7 +2361,17 @@ router.get('/api/kardex-pendiente', async (req, res) => {
           UsuarioAsignado: row.UsuarioAsignado || null,
           Trabajador: row.NombreTrabajador || null,
           Observaciones: row.ObservacionesItem || '',
-          Novedad: row.NovedadItem || ''
+          Novedad: row.NovedadItem || '',
+          // Campos adicionales para poder editar el registro de Dynamic_Kardex desde el
+          // mismo modal de edición que usa la pestaña Kardex.
+          FechaMovimiento: row.FechaMovimiento,
+          TipoMovimiento: row.TipoMovimiento,
+          Regional: row.RegionalKardex,
+          Operacion: row.OpOrigenKardex,
+          OperacionDestino: row.OpDestinoKardex,
+          CantidadReal: row.CantidadReal,
+          Acta: row.Acta || null,
+          Kpendiente: row.Kpendiente || null
         });
       }
     }
@@ -2304,6 +2388,39 @@ router.get('/api/kardex-pendiente', async (req, res) => {
     res.json({ results });
   } catch (err) {
     console.error('[inventario] GET /api/kardex-pendiente error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/kardex-pendiente/:id - elimina un pedido de Kardex_Pendiente (sólo Inventario o
+// Sistema), únicamente si no tiene ningún ítem relacionado en Dynamic_Kardex.
+router.delete('/api/kardex-pendiente/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso || !['Inventario', 'Sistema'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'No autorizado. Permisos exclusivos de Inventario o Sistema.' });
+    }
+
+    const [[kp]] = await pool.execute('SELECT Id, IdKardexOriginal FROM Kardex_Pendiente WHERE Id = ? LIMIT 1', [id]);
+    if (!kp) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+    const [[{ itemCount }]] = await pool.execute(
+      `SELECT COUNT(*) AS itemCount FROM Dynamic_Kardex
+       WHERE Kpendiente = ? OR (? IS NOT NULL AND IdKardex = ?)`,
+      [id, kp.IdKardexOriginal, kp.IdKardexOriginal]
+    );
+    if (itemCount > 0) {
+      return res.status(400).json({ error: 'No se puede eliminar: el pedido tiene artículos relacionados en el Kardex.' });
+    }
+
+    await pool.execute('DELETE FROM Kardex_Pendiente WHERE Id = ?', [id]);
+    res.json({ success: true, message: 'Pedido eliminado correctamente.' });
+  } catch (err) {
+    console.error('[inventario] DELETE /api/kardex-pendiente/:id error:', err);
     res.status(500).json({ error: err.message });
   }
 });

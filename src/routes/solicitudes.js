@@ -983,6 +983,22 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
           [id]
         );
 
+        const opDest = (solicitud['Operación'] || '').trim();
+        const opDestLower = opDest.toLowerCase();
+        const necesitaTransferencia = opDestLower !== 'administracion' && opDestLower !== 'administración';
+
+        // Cédula del colaborador destinatario (solo si Justificación trae una identificación
+        // válida, como en las solicitudes automáticas generadas desde Maestro_Vinculación;
+        // en solicitudes manuales Justificación suele ser un texto libre, no una cédula).
+        const identificacionCandidata = String(justificacion || solicitud.Justificación || '').trim();
+        const usuarioAsignadoKardex = /^\d{5,15}$/.test(identificacionCandidata) ? identificacionCandidata : null;
+
+        // Un único pedido pendiente para toda la solicitud (agrupa todos sus ítems),
+        // en vez de crear un Kardex_Pendiente separado por cada artículo. Se crea de forma
+        // perezosa, con el primer ítem que realmente se transfiera, para no dejar pedidos
+        // vacíos si ningún ítem termina con cantidad > 0.
+        let idKardexPendiente = null;
+
         for (const item of solItems) {
           let qty = 0;
           if (estado === 'APROBADA') {
@@ -1025,17 +1041,25 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
           );
 
           // B. Insertar TRANSFERENCIA (solo si la operación destino es diferente a Administracion/Administración)
-          const opDest = (solicitud['Operación'] || '').trim();
-          const opDestLower = opDest.toLowerCase();
-          if (opDestLower !== 'administracion' && opDestLower !== 'administración') {
+          if (necesitaTransferencia) {
+            if (!idKardexPendiente) {
+              idKardexPendiente = `SOL-${Date.now()}-${randomUUID().slice(0, 6)}`.toUpperCase();
+              await conn.execute(
+                `INSERT INTO Kardex_Pendiente
+                 (Id, IdKardexOriginal, Procesado, Procesando, Novedad, OperacionOrigen, OperacionDestino, Regional, FechaDespacho, UsuarioDespacha, Estado, Observaciones)
+                 VALUES (?, NULL, 0, 0, '', 'Administracion', ?, 'ANTIOQUIA', ?, ?, 'PENDIENTE', ?)`,
+                [idKardexPendiente, opDest, fechaAprobacionVal, usuario, `Destinado a la operación ${opDest}`]
+              );
+            }
+
             const idKardexTransferencia = randomUUID().replace(/-/g, '').toLowerCase();
 
             await conn.execute(
               `INSERT INTO Dynamic_Kardex
                (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
                 \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
-                Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro)
-               VALUES (?, ?, 'TRANSFERENCIA', 'ANTIOQUIA', 'Administracion', ?, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW())`,
+                Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente)
+               VALUES (?, ?, 'TRANSFERENCIA', 'ANTIOQUIA', 'Administracion', ?, ?, ?, ?, ?, NULL, ?, ?, ?, NOW(), ?)`,
               [
                 idKardexTransferencia,
                 fechaAprobacionVal,
@@ -1043,18 +1067,12 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
                 solicitud.Categoria || item.Categoria || null,
                 item.IdArticulo,
                 -qty, // Cantidad negativa para la salida de la transferencia
+                usuarioAsignadoKardex,
                 costo,
                 usuario,
-                `Destinado a la operación ${opDest}`
+                `Destinado a la operación ${opDest}`,
+                idKardexPendiente
               ]
-            );
-
-            // C. Crear registro en Kardex_Pendiente con Procesado = 0
-            const idKardexPendiente = `SOL-${Date.now()}-${randomUUID().slice(0, 6)}`.toUpperCase();
-            await conn.execute(
-              `INSERT INTO Kardex_Pendiente (Id, IdKardexOriginal, Procesado, Procesando, Novedad)
-               VALUES (?, ?, 0, 0, '')`,
-              [idKardexPendiente, idKardexTransferencia]
             );
           }
         }
