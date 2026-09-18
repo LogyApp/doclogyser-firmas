@@ -578,8 +578,13 @@
     });
 
     function volverPanel() {
-      window.location.href = `/evaluacionsst?usuario=${CONFIG.usuarioId}`;
+      if (window.parent && window.parent !== window && typeof window.parent.cerrarModalCrear === 'function') {
+        window.parent.cerrarModalCrear();
+      } else {
+        (window.top || window).location.href = `/sst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      }
     }
+    const volverAlListado = volverPanel;
 
     // UI Helpers
     function showLoading(text = 'Cargando...') {

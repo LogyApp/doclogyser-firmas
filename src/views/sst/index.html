@@ -1,0 +1,2916 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SST — Seguridad y Salud en el Trabajo | LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #064e3b;
+      --primary-gradient: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+      --primary-dark: #022c22;
+      --primary-light: #047857;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --accent-soft: rgba(16, 185, 129, 0.12);
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --border-dark: #cbd5e1;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 12px 20px -3px rgba(6, 78, 59, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SIDEBAR FIJO (280px) EXACTAMENTE COMO EN INVENTARIO
+    ══════════════════════════════════════════════════════════ */
+    .sidebar {
+      width: 280px;
+      background: var(--primary);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 100;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 4px 0 20px rgba(6, 78, 59, 0.2);
+      transition: transform 0.3s ease;
+    }
+
+    /* Cabecera con 2 Logos idéntico a Inventario */
+    .sidebar-brand {
+      padding: 24px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      flex-shrink: 0;
+    }
+
+    .brand-lockup img.brand-logo-app {
+      display: block;
+      object-fit: contain;
+      height: 30px;
+    }
+
+    .brand-divider {
+      width: 80%;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .brand-logo-company-crop {
+      width: 133px;
+      height: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -64px;
+      top: -65px;
+      width: 268px;
+      height: 178px;
+      max-width: none;
+    }
+
+    /* Usuario conectado */
+    .sidebar-user {
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-meta {
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.65);
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    /* Navegación del Sidebar */
+    .nav-list {
+      list-style: none;
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      color: rgba(255, 255, 255, 0.75);
+      font-weight: 500;
+      font-size: 0.92rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+      user-select: none;
+    }
+
+    .nav-icon {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: rgba(255, 255, 255, 0.6);
+      transition: var(--transition);
+    }
+
+    .nav-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .nav-item:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .nav-item:hover .nav-icon {
+      color: #ffffff;
+      transform: scale(1.08);
+    }
+
+    .nav-item.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.14);
+      font-weight: 600;
+    }
+
+    .nav-item.active .nav-icon {
+      color: var(--accent);
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 15%;
+      height: 70%;
+      width: 4px;
+      background-color: var(--accent);
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* Botón Actualizar Global idéntico a Inventario */
+    #btn-actualizar-global {
+      margin: 8px 16px 12px 16px;
+      margin-top: auto;
+      padding: 11px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.2s;
+    }
+    #btn-actualizar-global:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .sidebar-footer {
+      padding: 10px 16px 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .footer-link {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.8rem;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      transition: var(--transition);
+    }
+
+    .footer-link:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       CONTENEDOR PRINCIPAL
+    ══════════════════════════════════════════════════════════ */
+    .main-wrapper {
+      margin-left: 280px;
+      flex: 1;
+      min-width: 0;
+      padding: 24px 30px;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+
+    /* Header móvil */
+    .mobile-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .mobile-menu-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 4px;
+    }
+
+    .mobile-title {
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mobile-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 95;
+    }
+
+    /* Header de cada pestaña */
+    .tab-header {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      border-left: 5px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .tab-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .tab-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tab-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .tab-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Botones */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-decoration: none;
+      transition: var(--transition);
+      outline: none;
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+    }
+    .btn-accent:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary { background: var(--primary); color: #ffffff; }
+    .btn-primary:hover { background: var(--primary-light); }
+    .btn-secondary { background: #f1f5f9; color: #334155; border-color: var(--border-dark); }
+    .btn-secondary:hover { background: #e2e8f0; color: #0f172a; }
+    .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; }
+
+    /* ══════════════════════════════════════════════════════════
+       FILTROS PLEGABLES CON CONTEO DE FILTROS ACTIVOS
+    ══════════════════════════════════════════════════════════ */
+    .card-filters {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+    }
+
+    .filtros-toggle {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .filtros-toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .filtros-badge {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+    }
+
+    .filtros-chevron {
+      display: inline-block;
+      transition: transform 0.2s ease;
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+
+    .filtros-chevron.open {
+      transform: rotate(90deg);
+    }
+
+    .filtros-body {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      align-items: flex-end;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.88rem;
+      color: var(--text);
+      background: #ffffff;
+      transition: var(--transition);
+      font-family: inherit;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       TABLAS Y LISTADO PRINCIPAL
+    ══════════════════════════════════════════════════════════ */
+    .view-layout {
+      display: flex;
+      gap: 20px;
+      flex-direction: column;
+    }
+
+    .view-layout.detail-active {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+    }
+
+    .view-layout > * { min-width: 0; }
+
+    .table-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      max-height: calc(100vh - 290px);
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+      min-width: 780px;
+    }
+
+    table.data-table th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 12px 14px;
+      border-bottom: 2px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      text-transform: uppercase;
+      font-size: 0.74rem;
+      letter-spacing: 0.5px;
+    }
+
+    table.data-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    table.data-table tbody tr {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    table.data-table tbody tr:hover {
+      background: #f1f5f9;
+    }
+
+    table.data-table tbody tr.selected {
+      background: #ecfdf5;
+      border-left: 3px solid var(--accent);
+    }
+
+    /* Badges de estado */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-danger  { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-info    { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .badge-gray    { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+    /* ══════════════════════════════════════════════════════════
+       PANEL DE DETALLE LATERAL
+    ══════════════════════════════════════════════════════════ */
+    .detail-card {
+      display: none;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--accent);
+      padding: 20px;
+      position: sticky;
+      top: 24px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+      align-self: flex-start;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+
+    .detail-close {
+      background: none;
+      border: none;
+      font-size: 1.3rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 4px 8px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+
+    .detail-close:hover {
+      background: #f1f5f9;
+      color: var(--text);
+    }
+
+    .detail-body {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .detail-section {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+
+    .detail-section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.84rem;
+      padding: 4px 0;
+      border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
+    }
+
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row span.label { color: var(--text-muted); font-weight: 500; }
+    .detail-row span.value { font-weight: 600; color: var(--text); text-align: right; }
+
+    .detail-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    /* Subpestañas (Capacitación) */
+    .subtabs-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 2px;
+    }
+
+    .subtab-btn {
+      padding: 8px 18px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -4px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .subtab-btn:hover { color: var(--primary); }
+    .subtab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       MODAL INTEGRADO PARA CREACIÓN DE REGISTROS
+    ══════════════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 16px;
+    }
+
+    .modal-content.modal-form-large {
+      background: #ffffff;
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 900px;
+      height: 90vh;
+      box-shadow: 0 25px 35px -5px rgba(0, 0, 0, 0.25);
+      border-top: 5px solid var(--accent);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 4px;
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--danger); }
+
+    .modal-iframe-body {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    .modal-iframe-body iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* Loading & Toast */
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 255, 255, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 3000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #fff;
+      box-shadow: var(--shadow-lg);
+      animation: slideIn 0.25s ease-out;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast.success { background: #16a34a; }
+    .toast.error   { background: #dc2626; }
+    .toast.info    { background: #0284c7; }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       RESPONSIVE (< 900px)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      .mobile-header { display: flex; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-backdrop.open { display: block; }
+      .main-wrapper {
+        margin-left: 0;
+        padding: 16px;
+        height: auto;
+        min-height: calc(100vh - 56px);
+      }
+      .view-layout.detail-active { grid-template-columns: 1fr; }
+      .detail-card {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 1100;
+        border-radius: 0;
+        max-height: 100vh;
+        margin: 0;
+        padding: 20px;
+      }
+      .filters-grid { grid-template-columns: 1fr; }
+      .modal-content.modal-form-large { height: 95vh; max-width: 98%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Backdrop móvil -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Header móvil -->
+  <header class="mobile-header">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">☰</button>
+    <div class="mobile-title">
+      <span>🛡️ SST — Seguridad y Salud</span>
+    </div>
+    <span id="mobile-user-badge" style="font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;"></span>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SIDEBAR IZQUIERDO CON LOGOS Y NAVEGACIÓN
+  ══════════════════════════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <!-- Doble logo idéntico a Inventario -->
+    <div class="sidebar-brand">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+    </div>
+
+    <!-- Usuario conectado -->
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebar-user-avatar">U</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebar-user-name">Cargando...</div>
+        <div class="user-meta">
+          <span id="sidebar-user-role">—</span>
+          <span>•</span>
+          <span id="sidebar-user-reg">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de Navegación (Pestañas en Orden AppSheet) -->
+    <ul class="nav-list">
+      <!-- 1. Evaluación SST -->
+      <li class="nav-item active" data-tab="evaluacion" onclick="switchTab('evaluacion')">
+        <div class="nav-icon" title="Evaluación SST">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+          </svg>
+        </div>
+        <span>Evaluación SST</span>
+      </li>
+
+      <!-- 2. Capacitación SST -->
+      <li class="nav-item" data-tab="capacitacion" onclick="switchTab('capacitacion')">
+        <div class="nav-icon" title="Capacitación SST">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2a4 4 0 0 0-4 4v1H7a1 1 0 0 0-1 1v1h12V8a1 1 0 0 0-1-1h-1V6a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v1h-4V6a2 2 0 0 1 2-2zm-4 8v2a4 4 0 0 0 8 0v-2H8zm-3 5a3 3 0 0 0-3 3v2h18v-2a3 3 0 0 0-3-3H5z"/>
+          </svg>
+        </div>
+        <span>Capacitación SST</span>
+      </li>
+
+      <!-- 3. Prueba de Consumo -->
+      <li class="nav-item" data-tab="pruebaconsumo" onclick="switchTab('pruebaconsumo')">
+        <div class="nav-icon" title="Prueba de Consumo">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/>
+          </svg>
+        </div>
+        <span>Prueba de Consumo</span>
+      </li>
+
+      <!-- 4. Participación -->
+      <li class="nav-item" data-tab="participacion" onclick="switchTab('participacion')">
+        <div class="nav-icon" title="Participación">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18 11c0-.67 0-1.33-.21-1.95L21 7.27V5.5l-4.5 2.25C15.17 6.64 13.68 6 12 6c-3.87 0-7 3.13-7 7 0 2.38 1.19 4.47 3 5.74V22h4v-3.08c.63.05 1.3.08 2 .08 3.87 0 7-3.13 7-7zm-4 4.5V13h-2v2.5H9.5V11H12V8.5h2V11h2.5v2H14v2.5h-2z"/>
+          </svg>
+        </div>
+        <span>Participación</span>
+      </li>
+
+      <!-- 5. Compromiso SST -->
+      <li class="nav-item" data-tab="compromiso" onclick="switchTab('compromiso')">
+        <div class="nav-icon" title="Compromiso SST">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14 6l-3.58 3.59c-.39.39-1.02.39-1.41 0L7.59 8.17 6.17 9.59l2.83 2.83c1.17 1.17 3.07 1.17 4.24 0L16.83 8.83 14 6zm7.71 4.29l-3.59-3.59a1 1 0 0 0-1.41 0L15.3 8.12l2.83 2.83 1.17-1.17a1 1 0 0 0 0-1.41zM10.59 14.59L9.17 16l3.59 3.59c.39.39 1.02.39 1.41 0l3.59-3.59-1.41-1.41-2.88 2.88-2.88-2.88zM2.29 13.71l3.59 3.59a1 1 0 0 0 1.41 0l1.41-1.41-2.83-2.83-2.17 2.17a1 1 0 0 0 0 1.41z"/>
+          </svg>
+        </div>
+        <span>Compromiso SST</span>
+      </li>
+    </ul>
+
+    <!-- Botón Actualizar Global idéntico a Inventario -->
+    <button type="button" id="btn-actualizar-global" onclick="actualizarVistaActual()" title="Actualiza los datos de la vista actual">
+      <span id="btn-actualizar-global-icon">🔄</span>
+      <span id="btn-actualizar-global-label">Actualizar</span>
+    </button>
+
+    <!-- Enlaces directos a otros módulos -->
+    <div class="sidebar-footer">
+      <a href="#" id="link-inventario" class="footer-link" title="Ir al módulo de Inventario">
+        <span>📦</span> Ir a Inventario
+      </a>
+      <a href="#" id="link-clouddocs" class="footer-link" title="Ir a Cloud Docs">
+        <span>☁️</span> Ir a Cloud Docs
+      </a>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MAIN CONTENT: 5 PESTAÑAS INTEGRALES
+  ══════════════════════════════════════════════════════════ -->
+  <main class="main-wrapper">
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 1: EVALUACIÓN SST
+    ────────────────────────────────────────────────────────── -->
+    <section class="tab-pane" id="pane-evaluacion">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title">
+            <span>📋 Evaluación SST</span>
+            <span class="badge badge-info" id="badge-total-ev">0 Registros</span>
+          </h1>
+          <p class="tab-subtitle">Inducción y Reinducción — Evaluaciones de conocimiento y seguridad</p>
+        </div>
+        <div class="tab-actions">
+          <button class="btn btn-accent" onclick="abrirModalCrear('evaluacion')">
+            <span>➕</span> Crear Evaluación
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Plegables con Conteo de Filtros Activos -->
+      <div class="card-filters">
+        <div class="filtros-toggle" onclick="toggleFiltros('ev')">
+          <span class="filtros-toggle-left">
+            Filtros de Búsqueda
+            <span class="filtros-badge" id="filtros-badge-ev">0</span>
+          </span>
+          <span class="filtros-chevron" id="filtros-chevron-ev">▸</span>
+        </div>
+        <div class="filtros-body" id="filtros-body-ev" style="display: none;">
+          <div class="filters-grid">
+            <div class="form-group">
+              <label class="form-label">Trabajador</label>
+              <input type="text" class="form-control" id="filtro-ev-trabajador" placeholder="Nombre o C.C..." oninput="filtrarDebounce('ev')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Regional</label>
+              <select class="form-control" id="filtro-ev-regional" onchange="onRegionalChange('ev')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Operación</label>
+              <select class="form-control" id="filtro-ev-operacion" onchange="filtrarAutomatico('ev')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Resultado</label>
+              <select class="form-control" id="filtro-ev-resultado" onchange="filtrarAutomatico('ev')">
+                <option value="">Todos</option>
+                <option value="APROBADO">Aprobados</option>
+                <option value="NO APROBADO">No Aprobados</option>
+                <option value="PENDIENTE">Pendientes</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Desde</label>
+              <input type="date" class="form-control" id="filtro-ev-desde" onchange="filtrarAutomatico('ev')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Hasta</label>
+              <input type="date" class="form-control" id="filtro-ev-hasta" onchange="filtrarAutomatico('ev')">
+            </div>
+            <div class="form-group">
+              <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros('ev')" style="height: 38px;">Limpiar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla y Detalle -->
+      <div class="view-layout" id="layout-ev">
+        <div class="table-card">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Notificar</th>
+                  <th>Documento PDF</th>
+                  <th>Fecha</th>
+                  <th>Trabajador</th>
+                  <th>Tipo</th>
+                  <th>Puntaje</th>
+                  <th>Resultado</th>
+                  <th>Firma Trabajador</th>
+                  <th>Evaluador</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-ev">
+                <tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando evaluaciones...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detalle Lateral -->
+        <div class="detail-card" id="detail-ev">
+          <div class="detail-header">
+            <div class="detail-title" id="detail-ev-title">Detalle de Evaluación</div>
+            <button class="detail-close" onclick="cerrarDetalle('ev')">&times;</button>
+          </div>
+          <div class="detail-body" id="detail-ev-body"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 2: CAPACITACIÓN SST
+    ────────────────────────────────────────────────────────── -->
+    <section class="tab-pane" id="pane-capacitacion" style="display: none;">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title">
+            <span>👷 Capacitación SST</span>
+            <span class="badge badge-info" id="badge-total-cap">0 Registros</span>
+          </h1>
+          <p class="tab-subtitle">Evaluaciones de capacitaciones y banco de temas</p>
+        </div>
+        <div class="tab-actions">
+          <button class="btn btn-accent" onclick="abrirModalCrear('capacitacion')">
+            <span>➕</span> Nueva Capacitación
+          </button>
+        </div>
+      </div>
+
+      <!-- Subpestañas Capacitación -->
+      <div class="subtabs-bar">
+        <button class="subtab-btn active" id="subtab-btn-cap-evals" onclick="switchCapSubtab('evals')">
+          Evaluaciones Realizadas
+        </button>
+        <button class="subtab-btn" id="subtab-btn-cap-temas" onclick="switchCapSubtab('temas')">
+          Administración de Temas
+        </button>
+      </div>
+
+      <!-- Sub-vista 1: Evaluaciones -->
+      <div id="cap-subview-evals">
+        <!-- Filtros Plegables con Conteo -->
+        <div class="card-filters">
+          <div class="filtros-toggle" onclick="toggleFiltros('cap')">
+            <span class="filtros-toggle-left">
+              Filtros de Búsqueda
+              <span class="filtros-badge" id="filtros-badge-cap">0</span>
+            </span>
+            <span class="filtros-chevron" id="filtros-chevron-cap">▸</span>
+          </div>
+          <div class="filtros-body" id="filtros-body-cap" style="display: none;">
+            <div class="filters-grid">
+              <div class="form-group">
+                <label class="form-label">Trabajador</label>
+                <input type="text" class="form-control" id="filtro-cap-trabajador" placeholder="Nombre o C.C..." oninput="filtrarDebounce('cap')">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Regional</label>
+                <select class="form-control" id="filtro-cap-regional" onchange="onRegionalChange('cap')">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Operación</label>
+                <select class="form-control" id="filtro-cap-operacion" onchange="filtrarAutomatico('cap')">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Resultado</label>
+                <select class="form-control" id="filtro-cap-resultado" onchange="filtrarAutomatico('cap')">
+                  <option value="">Todos</option>
+                  <option value="APROBADO">Aprobados</option>
+                  <option value="NO APROBADO">No Aprobados</option>
+                  <option value="PENDIENTE">Pendientes</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha Desde</label>
+                <input type="date" class="form-control" id="filtro-cap-desde" onchange="filtrarAutomatico('cap')">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha Hasta</label>
+                <input type="date" class="form-control" id="filtro-cap-hasta" onchange="filtrarAutomatico('cap')">
+              </div>
+              <div class="form-group">
+                <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros('cap')" style="height: 38px;">Limpiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla y Detalle -->
+        <div class="view-layout" id="layout-cap">
+          <div class="table-card">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Notificar</th>
+                    <th>Documento PDF</th>
+                    <th>Fecha</th>
+                    <th>Trabajador</th>
+                    <th>Tema</th>
+                    <th>Puntaje</th>
+                    <th>Resultado</th>
+                    <th>Evaluador</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-cap">
+                  <tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando capacitaciones...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Detalle Lateral -->
+          <div class="detail-card" id="detail-cap">
+            <div class="detail-header">
+              <div class="detail-title" id="detail-cap-title">Detalle de Capacitación</div>
+              <button class="detail-close" onclick="cerrarDetalle('cap')">&times;</button>
+            </div>
+            <div class="detail-body" id="detail-cap-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-vista 2: Temas -->
+      <div id="cap-subview-temas" style="display: none;">
+        <div class="table-card" style="padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 1.1rem; color: var(--primary);">Banco de Temas y Preguntas de Capacitación</h3>
+            <a href="#" id="link-admin-cap-full" target="_blank" class="btn btn-secondary btn-sm">Abrir Administrador Completo ↗</a>
+          </div>
+          <div id="cap-temas-container">
+            <p style="color: var(--text-muted);">Cargando banco de preguntas activas...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 3: PRUEBA DE CONSUMO
+    ────────────────────────────────────────────────────────── -->
+    <section class="tab-pane" id="pane-pruebaconsumo" style="display: none;">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title">
+            <span>🚫 Prueba de Consumo</span>
+            <span class="badge badge-info" id="badge-total-pc">0 Registros</span>
+          </h1>
+          <p class="tab-subtitle">Consentimientos informados y pruebas de alcohol y drogas</p>
+        </div>
+        <div class="tab-actions">
+          <button class="btn btn-accent" onclick="abrirModalCrear('pruebaconsumo')">
+            <span>➕</span> Nueva Prueba de Consumo
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Plegables con Conteo -->
+      <div class="card-filters">
+        <div class="filtros-toggle" onclick="toggleFiltros('pc')">
+          <span class="filtros-toggle-left">
+            Filtros de Búsqueda
+            <span class="filtros-badge" id="filtros-badge-pc">0</span>
+          </span>
+          <span class="filtros-chevron" id="filtros-chevron-pc">▸</span>
+        </div>
+        <div class="filtros-body" id="filtros-body-pc" style="display: none;">
+          <div class="filters-grid">
+            <div class="form-group">
+              <label class="form-label">Trabajador</label>
+              <input type="text" class="form-control" id="filtro-pc-trabajador" placeholder="Nombre o C.C..." oninput="filtrarDebounce('pc')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Regional</label>
+              <select class="form-control" id="filtro-pc-regional" onchange="onRegionalChange('pc')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Operación</label>
+              <select class="form-control" id="filtro-pc-operacion" onchange="filtrarAutomatico('pc')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado de Firma</label>
+              <select class="form-control" id="filtro-pc-estado" onchange="filtrarAutomatico('pc')">
+                <option value="">Todos</option>
+                <option value="FIRMADO">Firmados</option>
+                <option value="PENDIENTE">Sin firmar (Pendientes)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Desde</label>
+              <input type="date" class="form-control" id="filtro-pc-desde" onchange="filtrarAutomatico('pc')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Hasta</label>
+              <input type="date" class="form-control" id="filtro-pc-hasta" onchange="filtrarAutomatico('pc')">
+            </div>
+            <div class="form-group">
+              <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros('pc')" style="height: 38px;">Limpiar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla y Detalle -->
+      <div class="view-layout" id="layout-pc">
+        <div class="table-card">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Notificar</th>
+                  <th>Documento PDF</th>
+                  <th>Fecha</th>
+                  <th>Trabajador</th>
+                  <th>Cliente</th>
+                  <th>Ciudad</th>
+                  <th>Registrado Por</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-pc">
+                <tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando pruebas de consumo...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detalle Lateral -->
+        <div class="detail-card" id="detail-pc">
+          <div class="detail-header">
+            <div class="detail-title" id="detail-pc-title">Detalle de Prueba de Consumo</div>
+            <button class="detail-close" onclick="cerrarDetalle('pc')">&times;</button>
+          </div>
+          <div class="detail-body" id="detail-pc-body"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 4: PARTICIPACIÓN (ASISTENCIA)
+    ────────────────────────────────────────────────────────── -->
+    <section class="tab-pane" id="pane-participacion" style="display: none;">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title">
+            <span>📢 Participación (Formatos de Asistencia)</span>
+            <span class="badge badge-info" id="badge-total-part">0 Registros</span>
+          </h1>
+          <p class="tab-subtitle">Registro y control de firmas de asistentes en capacitaciones y charlas</p>
+        </div>
+        <div class="tab-actions">
+          <button class="btn btn-accent" onclick="abrirModalCrear('participacion')">
+            <span>➕</span> Nueva Asistencia
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Plegables con Conteo -->
+      <div class="card-filters">
+        <div class="filtros-toggle" onclick="toggleFiltros('part')">
+          <span class="filtros-toggle-left">
+            Filtros de Búsqueda
+            <span class="filtros-badge" id="filtros-badge-part">0</span>
+          </span>
+          <span class="filtros-chevron" id="filtros-chevron-part">▸</span>
+        </div>
+        <div class="filtros-body" id="filtros-body-part" style="display: none;">
+          <div class="filters-grid">
+            <div class="form-group">
+              <label class="form-label">Tema o Responsable</label>
+              <input type="text" class="form-control" id="filtro-part-search" placeholder="Tema o nombre..." oninput="filtrarDebounce('part')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Desde</label>
+              <input type="date" class="form-control" id="filtro-part-desde" onchange="filtrarAutomatico('part')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Hasta</label>
+              <input type="date" class="form-control" id="filtro-part-hasta" onchange="filtrarAutomatico('part')">
+            </div>
+            <div class="form-group">
+              <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros('part')" style="height: 38px;">Limpiar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla y Detalle -->
+      <div class="view-layout" id="layout-part">
+        <div class="table-card">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Documento PDF</th>
+                  <th>Acciones</th>
+                  <th>Fecha</th>
+                  <th>Tema</th>
+                  <th>Lugar</th>
+                  <th>Responsable</th>
+                  <th>Duración</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-part">
+                <tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando registros de asistencia...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detalle Lateral -->
+        <div class="detail-card" id="detail-part">
+          <div class="detail-header">
+            <div class="detail-title" id="detail-part-title">Detalle de Asistencia</div>
+            <button class="detail-close" onclick="cerrarDetalle('part')">&times;</button>
+          </div>
+          <div class="detail-body" id="detail-part-body"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 5: COMPROMISO SST
+    ────────────────────────────────────────────────────────── -->
+    <section class="tab-pane" id="pane-compromiso" style="display: none;">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title">
+            <span>🤝 Compromiso SST</span>
+            <span class="badge badge-info" id="badge-total-csst">0 Registros</span>
+          </h1>
+          <p class="tab-subtitle">Normas de seguridad laboral y compromisos con flujo de triple firma</p>
+        </div>
+        <div class="tab-actions">
+          <button class="btn btn-accent" onclick="abrirModalCrear('compromiso')">
+            <span>➕</span> Nuevo Compromiso
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Plegables con Conteo -->
+      <div class="card-filters">
+        <div class="filtros-toggle" onclick="toggleFiltros('csst')">
+          <span class="filtros-toggle-left">
+            Filtros de Búsqueda
+            <span class="filtros-badge" id="filtros-badge-csst">0</span>
+          </span>
+          <span class="filtros-chevron" id="filtros-chevron-csst">▸</span>
+        </div>
+        <div class="filtros-body" id="filtros-body-csst" style="display: none;">
+          <div class="filters-grid">
+            <div class="form-group">
+              <label class="form-label">Trabajador</label>
+              <input type="text" class="form-control" id="filtro-csst-trabajador" placeholder="Nombre o C.C..." oninput="filtrarDebounce('csst')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Regional</label>
+              <select class="form-control" id="filtro-csst-regional" onchange="onRegionalChange('csst')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Operación</label>
+              <select class="form-control" id="filtro-csst-operacion" onchange="filtrarAutomatico('csst')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado Firmas</label>
+              <select class="form-control" id="filtro-csst-estado" onchange="filtrarAutomatico('csst')">
+                <option value="">Todos</option>
+                <option value="COMPLETADO">Completados</option>
+                <option value="PEND_LIDER">Pendiente Líder SST</option>
+                <option value="PEND_TRAB">Pendiente Trabajador</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Desde</label>
+              <input type="date" class="form-control" id="filtro-csst-desde" onchange="filtrarAutomatico('csst')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Hasta</label>
+              <input type="date" class="form-control" id="filtro-csst-hasta" onchange="filtrarAutomatico('csst')">
+            </div>
+            <div class="form-group">
+              <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros('csst')" style="height: 38px;">Limpiar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla y Detalle -->
+      <div class="view-layout" id="layout-csst">
+        <div class="table-card">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Notificar</th>
+                  <th>Documento PDF</th>
+                  <th>Fecha de Registro</th>
+                  <th>Trabajador</th>
+                  <th>Analista SST</th>
+                  <th>Estado Firmas</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-csst">
+                <tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando compromisos SST...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detalle Lateral -->
+        <div class="detail-card" id="detail-csst">
+          <div class="detail-header">
+            <div class="detail-title" id="detail-csst-title">Detalle de Compromiso</div>
+            <button class="detail-close" onclick="cerrarDetalle('csst')">&times;</button>
+          </div>
+          <div class="detail-body" id="detail-csst-body"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL INTEGRADO PARA CREACIÓN DE REGISTROS
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-crear-container">
+    <div class="modal-content modal-form-large">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-crear-title">
+          <span>➕</span> <span id="modal-crear-label">Nuevo Registro</span>
+        </div>
+        <button class="modal-close" onclick="cerrarModalCrear()" title="Cerrar">&times;</button>
+      </div>
+      <div class="modal-iframe-body">
+        <iframe id="iframe-crear" src="about:blank" title="Formulario de Creación"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div id="loading-text" style="font-weight: 600; color: var(--primary);">Cargando datos...</div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Inyección de configuración desde el backend -->
+  <script>
+    const CONFIG = __CONFIG__;
+  </script>
+
+  <!-- Lógica Integral de la Interfaz SST -->
+  <script>
+    let currentTab = 'evaluacion';
+    let dataStore = {
+      ev: [],
+      cap: [],
+      pc: [],
+      part: [],
+      csst: []
+    };
+
+    let countsStore = {
+      ev: { regionales: {}, operaciones: {} },
+      cap: { regionales: {}, operaciones: {} },
+      pc: { regionales: {}, operaciones: {} },
+      part: {},
+      csst: { regionales: {}, operaciones: {} }
+    };
+
+    let selectedItems = {
+      ev: null,
+      cap: null,
+      pc: null,
+      part: null,
+      csst: null
+    };
+
+    let debounceTimers = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initSidebarUser();
+      initLinks();
+      switchTab('evaluacion');
+    });
+
+    function initSidebarUser() {
+      const uName = CONFIG.usuarioNombre || CONFIG.usuarioId;
+      document.getElementById('sidebar-user-name').innerText = uName;
+      document.getElementById('sidebar-user-avatar').innerText = uName.charAt(0).toUpperCase();
+      document.getElementById('sidebar-user-role').innerText = CONFIG.rol || 'SST';
+      document.getElementById('sidebar-user-reg').innerText = CONFIG.regional || 'Nacional';
+      
+      const mobBadge = document.getElementById('mobile-user-badge');
+      if (mobBadge) mobBadge.innerText = `${uName} (${CONFIG.rol || 'SST'})`;
+    }
+
+    function initLinks() {
+      document.getElementById('link-inventario').href = `/inventario?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      document.getElementById('link-clouddocs').href = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      const linkAdminCap = document.getElementById('link-admin-cap-full');
+      if (linkAdminCap) {
+        linkAdminCap.href = `/admin/capacitacionsst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      }
+    }
+
+    // ═════ UTILIDADES DE FORMATO Y AUTORIZACIÓN ═════
+    function limpiarNombreTrabajador(str) {
+      if (!str) return '—';
+      let s = String(str).trim();
+      if (s.includes('**')) {
+        s = s.split('**').pop().trim();
+      }
+      return s || '—';
+    }
+
+    function puedeEliminarRegistro(item, modulo) {
+      if (!item) return false;
+      // Solo se puede eliminar si NO está firmado
+      if (item.url_doc) return false;
+      if (modulo !== 'part' && item.firma_trabajador) return false;
+      if (modulo === 'csst' && (item.firma_analista || item.firma_lidersst)) return false;
+
+      // Rol de Sistema puede eliminar
+      if (CONFIG.rol === 'Sistema') return true;
+
+      // Demás roles solo si el formulario fue realizado por su propio usuario
+      const creador = String(item.usuario || '').trim().toLowerCase();
+      const usuId = String(CONFIG.usuarioId || '').trim().toLowerCase();
+      const usuNombre = String(CONFIG.usuarioNombre || '').trim().toLowerCase();
+      return !!creador && (creador === usuId || creador === usuNombre);
+    }
+
+    async function confirmarEliminarRegistro(modulo, id) {
+      if (!confirm('¿Está seguro de que desea eliminar permanentemente este registro? Esta acción no se puede deshacer.')) return;
+      showLoading('Eliminando registro...');
+      try {
+        let url = '';
+        if (modulo === 'ev') url = `/evaluacionsst/api/evaluacion/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        else if (modulo === 'cap') url = `/capacitacionsst/api/capacitacion/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        else if (modulo === 'pc') url = `/pruebaconsumo/api/prueba/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        else if (modulo === 'part') url = `/participacion/api/asistencia/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        else if (modulo === 'csst') url = `/compromisosst/api/compromiso/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+
+        const res = await fetch(url, { method: 'DELETE' });
+        const data = await res.json();
+        if (res.ok && (data.ok || data.success)) {
+          showToast('Registro eliminado exitosamente', 'success');
+          cerrarDetalle(modulo);
+          cargarDatos(modulo);
+        } else {
+          showToast(data.error || 'No se pudo eliminar el registro', 'error');
+        }
+      } catch (e) {
+        showToast('Error de red al eliminar registro', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function regenerarEnlace(modulo, id) {
+      showLoading('Regenerando enlace de firma...');
+      try {
+        let url = '';
+        let body = {};
+        if (modulo === 'ev') {
+          url = '/evaluacionsst/api/reenviar-firma';
+          body = { id_evaluacion: id, canal: 'link' };
+        } else if (modulo === 'cap') {
+          url = '/capacitacionsst/api/reenviar-firma';
+          body = { id_capacitacion: id, canal: 'link' };
+        } else if (modulo === 'pc') {
+          url = `/pruebaconsumo/api/prueba/${id}/regenerar-token`;
+          body = {};
+        } else if (modulo === 'csst') {
+          url = `/compromisosst/api/compromiso/${id}/regenerar-token`;
+          body = {};
+        }
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok && data.ok && data.urlFirma) {
+          const item = dataStore[modulo].find(x => {
+            const itemId = x.id_evaluacion || x.id_capacitacion || x.idprueba || x.idcsst;
+            return String(itemId) === String(id);
+          });
+          if (item && data.token) {
+            if (modulo === 'ev' || modulo === 'cap' || modulo === 'pc') item.token_firma = data.token;
+            if (modulo === 'csst') item.token_trabajador = data.token;
+          }
+          copiarPortapapeles(data.urlFirma);
+          showToast('Enlace regenerado y copiado al portapapeles exitosamente', 'success');
+          if (modulo === 'ev') abrirDetalleEvaluacion(id);
+          else if (modulo === 'cap') abrirDetalleCapacitacion(id);
+          else if (modulo === 'pc') abrirDetallePrueba(id);
+          else if (modulo === 'csst') abrirDetalleCompromiso(id);
+        } else {
+          showToast(data.error || 'No se pudo regenerar el enlace', 'error');
+        }
+      } catch (e) {
+        showToast('Error de red al regenerar enlace', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ═════ NAVEGACIÓN ENTRE PESTAÑAS ═════
+    function switchTab(tabId) {
+      currentTab = tabId;
+
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.toggle('active', item.getAttribute('data-tab') === tabId);
+      });
+
+      document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.style.display = 'none';
+      });
+      const activePane = document.getElementById(`pane-${tabId}`);
+      if (activePane) activePane.style.display = 'block';
+
+      if (window.innerWidth <= 900) {
+        toggleMobileSidebar(false);
+      }
+
+      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
+      if (!dataStore[key].length) {
+        cargarDatos(key);
+      }
+    }
+
+    function toggleMobileSidebar(forceState) {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('mobile-backdrop');
+      const shouldOpen = forceState !== undefined ? forceState : !sb.classList.contains('open');
+      sb.classList.toggle('open', shouldOpen);
+      bd.classList.toggle('open', shouldOpen);
+    }
+
+    function switchCapSubtab(subtab) {
+      const isEvals = (subtab === 'evals');
+      document.getElementById('subtab-btn-cap-evals').classList.toggle('active', isEvals);
+      document.getElementById('subtab-btn-cap-temas').classList.toggle('active', !isEvals);
+      document.getElementById('cap-subview-evals').style.display = isEvals ? 'block' : 'none';
+      document.getElementById('cap-subview-temas').style.display = isEvals ? 'none' : 'block';
+
+      if (!isEvals) cargarTemasCapacitacion();
+    }
+
+    function actualizarVistaActual() {
+      const icon = document.getElementById('btn-actualizar-global-icon');
+      if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+
+      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : 'csst';
+      cargarDatos(key).finally(() => {
+        if (icon) icon.style.animation = 'none';
+      });
+    }
+
+    // ═════ FILTROS PLEGABLES Y CONTEOS ═════
+    function toggleFiltros(modKey) {
+      const body = document.getElementById(`filtros-body-${modKey}`);
+      const chevron = document.getElementById(`filtros-chevron-${modKey}`);
+      if (!body) return;
+      
+      const isOpen = body.style.display === 'block';
+      body.style.display = isOpen ? 'none' : 'block';
+      if (chevron) {
+        chevron.classList.toggle('open', !isOpen);
+      }
+    }
+
+    function actualizarBadgeFiltros(modKey) {
+      const badge = document.getElementById(`filtros-badge-${modKey}`);
+      if (!badge) return;
+
+      let count = 0;
+      if (modKey === 'part') {
+        if (document.getElementById('filtro-part-search').value.trim()) count++;
+        if (document.getElementById('filtro-part-desde').value) count++;
+        if (document.getElementById('filtro-part-hasta').value) count++;
+      } else {
+        const trab = document.getElementById(`filtro-${modKey}-trabajador`);
+        const reg = document.getElementById(`filtro-${modKey}-regional`);
+        const op = document.getElementById(`filtro-${modKey}-operacion`);
+        const est = document.getElementById(`filtro-${modKey}-${modKey === 'ev' || modKey === 'cap' ? 'resultado' : 'estado'}`);
+        const fd = document.getElementById(`filtro-${modKey}-desde`);
+        const fh = document.getElementById(`filtro-${modKey}-hasta`);
+
+        if (trab && trab.value.trim()) count++;
+        if (reg && reg.value) count++;
+        if (op && op.value) count++;
+        if (est && est.value) count++;
+        if (fd && fd.value) count++;
+        if (fh && fh.value) count++;
+      }
+
+      badge.innerText = count;
+      badge.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+
+    function onRegionalChange(modKey) {
+      const selReg = document.getElementById(`filtro-${modKey}-regional`).value;
+      const selOp = document.getElementById(`filtro-${modKey}-operacion`);
+      if (!selOp) return;
+
+      selOp.innerHTML = '<option value="">Todas</option>';
+      const ops = selReg ? (CONFIG.opsPorRegional[selReg] || []) : (CONFIG.operacionesFiltro || []);
+      const opCounts = (countsStore[modKey] && countsStore[modKey].operaciones) || {};
+
+      ops.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        const cnt = opCounts[op] || 0;
+        opt.textContent = `${op} (${cnt})`;
+        selOp.appendChild(opt);
+      });
+
+      filtrarAutomatico(modKey);
+    }
+
+    function filtrarDebounce(modKey) {
+      clearTimeout(debounceTimers[modKey]);
+      debounceTimers[modKey] = setTimeout(() => {
+        filtrarAutomatico(modKey);
+      }, 350);
+    }
+
+    function filtrarAutomatico(modKey) {
+      actualizarBadgeFiltros(modKey);
+      cargarDatos(modKey);
+    }
+
+    function limpiarFiltros(modKey) {
+      if (modKey === 'part') {
+        document.getElementById('filtro-part-search').value = '';
+        document.getElementById('filtro-part-desde').value = '';
+        document.getElementById('filtro-part-hasta').value = '';
+      } else {
+        const trab = document.getElementById(`filtro-${modKey}-trabajador`);
+        const reg = document.getElementById(`filtro-${modKey}-regional`);
+        const op = document.getElementById(`filtro-${modKey}-operacion`);
+        const est = document.getElementById(`filtro-${modKey}-${modKey === 'ev' || modKey === 'cap' ? 'resultado' : 'estado'}`);
+        const fd = document.getElementById(`filtro-${modKey}-desde`);
+        const fh = document.getElementById(`filtro-${modKey}-hasta`);
+
+        if (trab) trab.value = '';
+        if (reg) reg.value = '';
+        if (op) op.value = '';
+        if (est) est.value = '';
+        if (fd) fd.value = '';
+        if (fh) fh.value = '';
+      }
+
+      actualizarBadgeFiltros(modKey);
+      cargarDatos(modKey);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CARGA DE DATOS Y CONTEOS PARA CADA MÓDULO
+    // ══════════════════════════════════════════════════════════
+    async function cargarDatos(modKey) {
+      showLoading('Cargando registros...');
+      try {
+        if (modKey === 'ev') await cargarEvaluaciones();
+        if (modKey === 'cap') await cargarCapacitaciones();
+        if (modKey === 'pc') await cargarPruebas();
+        if (modKey === 'part') await cargarParticipaciones();
+        if (modKey === 'csst') await cargarCompromisos();
+      } catch (err) {
+        console.error(`Error cargando datos de ${modKey}:`, err);
+        showToast('Error al cargar datos', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // 1. EVALUACIÓN SST
+    async function cargarEvaluaciones() {
+      const tr = document.getElementById('filtro-ev-trabajador').value.trim();
+      const reg = document.getElementById('filtro-ev-regional').value;
+      const op = document.getElementById('filtro-ev-operacion').value;
+      const resVal = document.getElementById('filtro-ev-resultado').value;
+      const fd = document.getElementById('filtro-ev-desde').value;
+      const fh = document.getElementById('filtro-ev-hasta').value;
+
+      const params = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        trabajador: tr,
+        regional: reg,
+        operacion: op,
+        fechaDesde: fd,
+        fechaHasta: fh
+      });
+
+      const [rData, rCounts] = await Promise.all([
+        fetch(`/evaluacionsst/api/evaluaciones?${params.toString()}`),
+        fetch(`/evaluacionsst/api/conteos-filtros?${params.toString()}&resultado=${encodeURIComponent(resVal)}`)
+      ]);
+
+      const [evals, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      dataStore.ev = evals;
+      countsStore.ev = counts;
+
+      // Actualizar select de regionales con conteos
+      actualizarSelectConteos('ev', counts);
+
+      // Filtrado por resultado
+      let filtrados = evals;
+      if (resVal) {
+        filtrados = evals.filter(item => {
+          const itemRes = item.url_doc ? (item.resultado === 'APROBADO' ? 'APROBADO' : 'NO APROBADO') : 'PENDIENTE';
+          return itemRes === resVal;
+        });
+      }
+
+      renderTablaEvaluaciones(filtrados);
+    }
+
+    function renderTablaEvaluaciones(items) {
+      const tbody = document.getElementById('tbody-ev');
+      document.getElementById('badge-total-ev').innerText = `${items.length} Registros`;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron evaluaciones registradas.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const fechaFmt = it.fecha ? it.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+        const nombreTrabajador = limpiarNombreTrabajador(it.nombre_trabajador || it.Trabajador);
+        const cedula = it.identificacion || '—';
+        const evaluador = it.nombre_evaluador || it.usuario || '—';
+
+        const resultBadge = it.url_doc
+          ? (it.resultado === 'APROBADO'
+              ? '<span class="badge badge-success">✓ Aprobado</span>'
+              : '<span class="badge badge-danger">✗ No Aprobado</span>')
+          : '<span class="badge badge-warning">⏱ Pendiente</span>';
+
+        const firmaBadge = it.url_doc
+          ? '<span class="badge badge-success">Firmado</span>'
+          : '<span class="badge badge-warning">Pendiente</span>';
+
+        let waBtn = '—';
+        if (!it.url_doc) {
+          const urlFirma = `${window.location.origin}/evaluacionsst/responder?item=${it.id_evaluacion}`;
+          const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Inducción/Reinducción SST: ${urlFirma}`);
+          let cel = String(it.celular_trabajador || '').replace(/\D/g, '');
+          if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+        }
+
+        const pdfLink = it.url_doc
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+
+        return `
+          <tr onclick="abrirDetalleEvaluacion('${it.id_evaluacion}')" id="row-ev-${it.id_evaluacion}">
+            <td>${waBtn}</td>
+            <td>${pdfLink}</td>
+            <td><strong>${fechaFmt}</strong></td>
+            <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cedula}</small></td>
+            <td>${it.tipo || 'Inducción'}</td>
+            <td><strong>${it.puntaje !== null && it.puntaje !== undefined ? it.puntaje + ' / 13' : '—'}</strong></td>
+            <td>${resultBadge}</td>
+            <td>${firmaBadge}</td>
+            <td>${evaluador}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function abrirDetalleEvaluacion(id) {
+      const item = dataStore.ev.find(x => String(x.id_evaluacion) === String(id));
+      if (!item) return;
+
+      selectedItems.ev = item;
+      document.querySelectorAll('#tbody-ev tr').forEach(r => r.classList.remove('selected'));
+      const row = document.getElementById(`row-ev-${id}`);
+      if (row) row.classList.add('selected');
+
+      const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+      const nombre = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
+      const cedula = item.identificacion || '—';
+
+      const urlFirma = `${window.location.origin}/evaluacionsst/responder?item=${item.id_evaluacion}`;
+      const msgWa = encodeURIComponent(`Hola ${nombre}, por favor ingresa al siguiente enlace para responder tu Evaluación de Inducción/Reinducción SST: ${urlFirma}`);
+      let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+      if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+      const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWa}` : `https://wa.me/?text=${msgWa}`;
+
+      let actionsHtml = '';
+      if (!item.url_doc) {
+        actionsHtml = `
+          <div class="detail-actions">
+            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366;">
+              📲 Enviar por WhatsApp
+            </a>
+            <button class="btn btn-secondary btn-sm" onclick="copiarPortapapeles('${urlFirma}')">
+              📋 Copiar Enlace de Evaluación
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="regenerarEnlace('ev', '${item.id_evaluacion}')">
+              🔄 Regenerar Enlace
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="reenviarFirmaEvaluacion('${item.id_evaluacion}')">
+              ✉️ Reenviar Notificación por Correo
+            </button>
+            ${puedeEliminarRegistro(item, 'ev') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('ev', '${item.id_evaluacion}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        actionsHtml = `
+          <div class="detail-actions">
+            <a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">
+              📄 Abrir Evaluación Firmada (PDF)
+            </a>
+          </div>
+        `;
+      }
+
+      const bodyHtml = `
+        <div class="detail-section">
+          <div class="detail-section-title">Colaborador</div>
+          <div class="detail-row"><span class="label">Trabajador:</span><span class="value">${nombre}</span></div>
+          <div class="detail-row"><span class="label">Identificación:</span><span class="value">${cedula}</span></div>
+          <div class="detail-row"><span class="label">Cargo:</span><span class="value">${item.Cargo || item.cargo || '—'}</span></div>
+          <div class="detail-row"><span class="label">Operación:</span><span class="value">${item.operacion || '—'}</span></div>
+          <div class="detail-row"><span class="label">Regional:</span><span class="value">${item.Regional || item.regional || '—'}</span></div>
+          <div class="detail-row"><span class="label">Celular:</span><span class="value">${item.celular_trabajador || '—'}</span></div>
+          <div class="detail-row"><span class="label">Correo:</span><span class="value">${item.email_trabajador || '—'}</span></div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Evaluación</div>
+          <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
+          <div class="detail-row"><span class="label">Tipo:</span><span class="value">${item.tipo || 'Inducción'}</span></div>
+          <div class="detail-row"><span class="label">Puntaje:</span><span class="value" style="color:var(--accent-hover);">${item.puntaje !== null && item.puntaje !== undefined ? item.puntaje + ' / 13' : 'Pendiente respuesta'}</span></div>
+          <div class="detail-row"><span class="label">Resultado:</span><span class="value">${item.url_doc ? item.resultado : 'Pendiente de firma'}</span></div>
+          <div class="detail-row"><span class="label">Evaluador:</span><span class="value">${item.nombre_evaluador || item.usuario || '—'}</span></div>
+        </div>
+
+        ${actionsHtml}
+      `;
+
+      document.getElementById('detail-ev-title').innerText = `Evaluación #${item.id_evaluacion}`;
+      document.getElementById('detail-ev-body').innerHTML = bodyHtml;
+      document.getElementById('layout-ev').classList.add('detail-active');
+      document.getElementById('detail-ev').style.display = 'block';
+    }
+
+    async function reenviarFirmaEvaluacion(id) {
+      showLoading('Reenviando correo...');
+      try {
+        const res = await fetch('/evaluacionsst/api/reenviar-firma', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_evaluacion: id, canal: 'email' })
+        });
+        const data = await res.json();
+        if (data.ok) showToast('Correo de notificación reenviado exitosamente', 'success');
+        else showToast(data.error || 'No se pudo enviar', 'error');
+      } catch (e) {
+        showToast('Error de red', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // 2. CAPACITACIÓN SST
+    async function cargarCapacitaciones() {
+      const tr = document.getElementById('filtro-cap-trabajador').value.trim();
+      const reg = document.getElementById('filtro-cap-regional').value;
+      const op = document.getElementById('filtro-cap-operacion').value;
+      const resVal = document.getElementById('filtro-cap-resultado').value;
+      const fd = document.getElementById('filtro-cap-desde').value;
+      const fh = document.getElementById('filtro-cap-hasta').value;
+
+      const params = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        trabajador: tr,
+        regional: reg,
+        operacion: op,
+        fechaDesde: fd,
+        fechaHasta: fh
+      });
+
+      const [rData, rCounts] = await Promise.all([
+        fetch(`/capacitacionsst/api/capacitaciones?${params.toString()}`),
+        fetch(`/capacitacionsst/api/conteos-filtros?${params.toString()}&resultado=${encodeURIComponent(resVal)}`)
+      ]);
+
+      const [caps, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      dataStore.cap = caps;
+      countsStore.cap = counts;
+
+      actualizarSelectConteos('cap', counts);
+
+      let filtrados = caps;
+      if (resVal) {
+        filtrados = caps.filter(item => {
+          const itemRes = item.url_doc ? (item.resultado === 'APROBADO' ? 'APROBADO' : 'NO APROBADO') : 'PENDIENTE';
+          return itemRes === resVal;
+        });
+      }
+
+      renderTablaCapacitaciones(filtrados);
+    }
+
+    function renderTablaCapacitaciones(items) {
+      const tbody = document.getElementById('tbody-cap');
+      document.getElementById('badge-total-cap').innerText = `${items.length} Registros`;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron capacitaciones registradas.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const fechaFmt = it.fecha ? it.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+        const nombreTrabajador = limpiarNombreTrabajador(it.nombre_trabajador || it.Trabajador);
+        const cedula = it.identificacion || '—';
+        const evaluador = it.nombre_evaluador || it.usuario || '—';
+
+        const resultBadge = it.url_doc
+          ? (it.resultado === 'APROBADO'
+              ? '<span class="badge badge-success">✓ Aprobado</span>'
+              : '<span class="badge badge-danger">✗ No Aprobado</span>')
+          : '<span class="badge badge-warning">⏱ Pendiente</span>';
+
+        let waBtn = '—';
+        if (!it.url_doc) {
+          const urlFirma = `${window.location.origin}/capacitacionsst/responder?item=${it.id_capacitacion}`;
+          const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST (${it.tema}): ${urlFirma}`);
+          let cel = String(it.celular_trabajador || '').replace(/\D/g, '');
+          if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+        }
+
+        const pdfLink = it.url_doc
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+
+        return `
+          <tr onclick="abrirDetalleCapacitacion('${it.id_capacitacion}')" id="row-cap-${it.id_capacitacion}">
+            <td>${waBtn}</td>
+            <td>${pdfLink}</td>
+            <td><strong>${fechaFmt}</strong></td>
+            <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cedula}</small></td>
+            <td><strong style="color:var(--primary);">${it.tema || '—'}</strong></td>
+            <td><strong>${it.puntaje !== null && it.puntaje !== undefined ? it.puntaje + ' / 100' : '—'}</strong></td>
+            <td>${resultBadge}</td>
+            <td>${evaluador}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function abrirDetalleCapacitacion(id) {
+      const item = dataStore.cap.find(x => String(x.id_capacitacion) === String(id));
+      if (!item) return;
+
+      selectedItems.cap = item;
+      document.querySelectorAll('#tbody-cap tr').forEach(r => r.classList.remove('selected'));
+      const row = document.getElementById(`row-cap-${id}`);
+      if (row) row.classList.add('selected');
+
+      const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+      const nombre = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
+      const cedula = item.identificacion || '—';
+
+      const urlFirma = `${window.location.origin}/capacitacionsst/responder?item=${item.id_capacitacion}`;
+      const msgWa = encodeURIComponent(`Hola ${nombre}, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST (${item.tema}): ${urlFirma}`);
+      let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+      if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+      const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWa}` : `https://wa.me/?text=${msgWa}`;
+
+      let actionsHtml = '';
+      if (!item.url_doc) {
+        actionsHtml = `
+          <div class="detail-actions">
+            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366;">
+              📲 Enviar por WhatsApp
+            </a>
+            <button class="btn btn-secondary btn-sm" onclick="copiarPortapapeles('${urlFirma}')">
+              📋 Copiar Enlace de Evaluación
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="regenerarEnlace('cap', '${item.id_capacitacion}')">
+              🔄 Regenerar Enlace
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="reenviarFirmaCapacitacion('${item.id_capacitacion}')">
+              ✉️ Reenviar Notificación por Correo
+            </button>
+            ${puedeEliminarRegistro(item, 'cap') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('cap', '${item.id_capacitacion}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        actionsHtml = `
+          <div class="detail-actions">
+            <a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">
+              📄 Abrir Evaluación Firmada (PDF)
+            </a>
+          </div>
+        `;
+      }
+
+      const bodyHtml = `
+        <div class="detail-section">
+          <div class="detail-section-title">Colaborador</div>
+          <div class="detail-row"><span class="label">Trabajador:</span><span class="value">${nombre}</span></div>
+          <div class="detail-row"><span class="label">Identificación:</span><span class="value">${cedula}</span></div>
+          <div class="detail-row"><span class="label">Cargo:</span><span class="value">${item.Cargo || item.cargo || '—'}</span></div>
+          <div class="detail-row"><span class="label">Operación:</span><span class="value">${item.operacion || '—'}</span></div>
+          <div class="detail-row"><span class="label">Regional:</span><span class="value">${item.Regional || item.regional || '—'}</span></div>
+          <div class="detail-row"><span class="label">Celular:</span><span class="value">${item.celular_trabajador || '—'}</span></div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Detalles de Capacitación</div>
+          <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--primary);">${item.tema || '—'}</span></div>
+          <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
+          <div class="detail-row"><span class="label">Puntaje:</span><span class="value" style="color:var(--accent-hover);">${item.puntaje !== null && item.puntaje !== undefined ? item.puntaje + ' / 100' : 'Pendiente respuesta'}</span></div>
+          <div class="detail-row"><span class="label">Resultado:</span><span class="value">${item.url_doc ? item.resultado : 'Pendiente de firma'}</span></div>
+          <div class="detail-row"><span class="label">Evaluador:</span><span class="value">${item.nombre_evaluador || item.usuario || '—'}</span></div>
+        </div>
+
+        ${actionsHtml}
+      `;
+
+      document.getElementById('detail-cap-title').innerText = `Capacitación #${item.id_capacitacion}`;
+      document.getElementById('detail-cap-body').innerHTML = bodyHtml;
+      document.getElementById('layout-cap').classList.add('detail-active');
+      document.getElementById('detail-cap').style.display = 'block';
+    }
+
+    async function reenviarFirmaCapacitacion(id) {
+      showLoading('Reenviando correo...');
+      try {
+        const res = await fetch('/capacitacionsst/api/reenviar-firma', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_capacitacion: id })
+        });
+        const data = await res.json();
+        if (data.ok) showToast('Correo reenviado exitosamente', 'success');
+        else showToast(data.error || 'No se pudo reenviar', 'error');
+      } catch (e) {
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function cargarTemasCapacitacion() {
+      const container = document.getElementById('cap-temas-container');
+      container.innerHTML = '<p style="color:var(--text-muted);">Cargando banco de preguntas activas...</p>';
+      try {
+        const res = await fetch(`/capacitacionsst/api/plantilla?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const temas = await res.json();
+        if (!temas.length) {
+          container.innerHTML = '<p style="color:var(--text-muted);">No hay preguntas registradas actualmente.</p>';
+          return;
+        }
+
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${temas.map((t, idx) => `
+              <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:12px 16px;">
+                <div style="font-weight:700; color:var(--primary); font-size:0.95rem;">${idx + 1}. ${t.pregunta}</div>
+                <div style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">${t.descripcion_pregunta || ''}</div>
+                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                  ${(t.opciones || []).map(o => `
+                    <span style="font-size:0.75rem; padding:3px 8px; border-radius:4px; border:1px solid ${o.es_correcta ? '#10b981' : '#cbd5e1'}; background:${o.es_correcta ? '#ecfdf5' : '#fff'}; color:${o.es_correcta ? '#065f46' : '#475569'}; font-weight:${o.es_correcta ? '700' : '400'};">
+                      ${o.opcion} ${o.es_correcta ? '✓' : ''}
+                    </span>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } catch (e) {
+        container.innerHTML = '<p style="color:var(--danger);">Error al cargar temas de capacitación.</p>';
+      }
+    }
+
+    // 3. PRUEBA DE CONSUMO
+    async function cargarPruebas() {
+      const tr = document.getElementById('filtro-pc-trabajador').value.trim();
+      const reg = document.getElementById('filtro-pc-regional').value;
+      const op = document.getElementById('filtro-pc-operacion').value;
+      const est = document.getElementById('filtro-pc-estado').value;
+      const fd = document.getElementById('filtro-pc-desde').value;
+      const fh = document.getElementById('filtro-pc-hasta').value;
+
+      const params = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        trabajador: tr,
+        regional: reg,
+        operacion: op,
+        fechaDesde: fd,
+        fechaHasta: fh
+      });
+
+      const [rData, rCounts] = await Promise.all([
+        fetch(`/pruebaconsumo/api/pruebas?${params.toString()}`),
+        fetch(`/pruebaconsumo/api/conteos-filtros?${params.toString()}&estado=${encodeURIComponent(est)}`)
+      ]);
+
+      const [pruebas, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      dataStore.pc = pruebas;
+      countsStore.pc = counts;
+
+      actualizarSelectConteos('pc', counts);
+
+      let filtrados = pruebas;
+      if (est) {
+        filtrados = pruebas.filter(item => {
+          const isFirmado = !!item.url_doc;
+          return est === 'FIRMADO' ? isFirmado : !isFirmado;
+        });
+      }
+
+      renderTablaPruebas(filtrados);
+    }
+
+    function renderTablaPruebas(items) {
+      const tbody = document.getElementById('tbody-pc');
+      document.getElementById('badge-total-pc').innerText = `${items.length} Registros`;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron consentimientos de prueba.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const fechaFmt = it.fecha ? it.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+        const nombreTrabajador = limpiarNombreTrabajador(it.nombre_trabajador || it.Trabajador);
+        const cedula = it.identificacion || '—';
+        const registradoPor = it.nombre_creador || it.usuario || '—';
+
+        let waBtn = '—';
+        if (!it.url_doc) {
+          const urlFirma = `${window.location.origin}/pruebaconsumo/firmar?item=${it.idprueba}`;
+          const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Consentimiento de Prueba de Consumo: ${urlFirma}`);
+          let cel = String(it.celular_trabajador || '').replace(/\D/g, '');
+          if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+        }
+
+        const pdfLink = it.url_doc
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+
+        return `
+          <tr onclick="abrirDetallePrueba('${it.idprueba}')" id="row-pc-${it.idprueba}">
+            <td>${waBtn}</td>
+            <td>${pdfLink}</td>
+            <td><strong>${fechaFmt}</strong></td>
+            <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cedula}</small></td>
+            <td>${it.cliente || '—'}</td>
+            <td>${it.ciudad || '—'}</td>
+            <td>${registradoPor}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function abrirDetallePrueba(id) {
+      const item = dataStore.pc.find(x => String(x.idprueba) === String(id));
+      if (!item) return;
+
+      selectedItems.pc = item;
+      document.querySelectorAll('#tbody-pc tr').forEach(r => r.classList.remove('selected'));
+      const row = document.getElementById(`row-pc-${id}`);
+      if (row) row.classList.add('selected');
+
+      const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+      const nombre = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
+      const cedula = item.identificacion || '—';
+
+      const urlFirma = `${window.location.origin}/pruebaconsumo/firmar?item=${item.idprueba}`;
+      const msgWa = encodeURIComponent(`Hola ${nombre}, por favor ingresa al siguiente enlace para firmar tu Consentimiento Informado de Prueba de Consumo: ${urlFirma}`);
+      let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+      if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+      const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWa}` : `https://wa.me/?text=${msgWa}`;
+
+      let actionsHtml = '';
+      if (!item.url_doc) {
+        actionsHtml = `
+          <div class="detail-actions">
+            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366;">
+              📲 Enviar por WhatsApp
+            </a>
+            <button class="btn btn-secondary btn-sm" onclick="copiarPortapapeles('${urlFirma}')">
+              📋 Copiar Enlace de Firma
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="regenerarEnlace('pc', '${item.idprueba}')">
+              🔄 Regenerar Enlace
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="enviarEnlacePrueba('${item.idprueba}')">
+              ✉️ Enviar Notificación por Correo
+            </button>
+            ${puedeEliminarRegistro(item, 'pc') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('pc', '${item.idprueba}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        actionsHtml = `
+          <div class="detail-actions">
+            <a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">
+              📄 Abrir Consentimiento Firmado (PDF)
+            </a>
+          </div>
+        `;
+      }
+
+      const bodyHtml = `
+        <div class="detail-section">
+          <div class="detail-section-title">Colaborador</div>
+          <div class="detail-row"><span class="label">Trabajador:</span><span class="value">${nombre}</span></div>
+          <div class="detail-row"><span class="label">Identificación:</span><span class="value">${cedula}</span></div>
+          <div class="detail-row"><span class="label">Cargo:</span><span class="value">${item.cargo || '—'}</span></div>
+          <div class="detail-row"><span class="label">Operación:</span><span class="value">${item.operacion || '—'}</span></div>
+          <div class="detail-row"><span class="label">Regional:</span><span class="value">${item.regional || '—'}</span></div>
+          <div class="detail-row"><span class="label">Celular:</span><span class="value">${item.celular_trabajador || '—'}</span></div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Consentimiento</div>
+          <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
+          <div class="detail-row"><span class="label">Cliente:</span><span class="value">${item.cliente || '—'}</span></div>
+          <div class="detail-row"><span class="label">Ciudad:</span><span class="value">${item.ciudad || '—'}</span></div>
+          <div class="detail-row"><span class="label">Registrado por:</span><span class="value">${item.usuario || '—'}</span></div>
+        </div>
+
+        ${actionsHtml}
+      `;
+
+      document.getElementById('detail-pc-title').innerText = `Prueba #${item.idprueba}`;
+      document.getElementById('detail-pc-body').innerHTML = bodyHtml;
+      document.getElementById('layout-pc').classList.add('detail-active');
+      document.getElementById('detail-pc').style.display = 'block';
+    }
+
+    async function enviarEnlacePrueba(id) {
+      showLoading('Enviando enlace por correo...');
+      try {
+        const res = await fetch(`/pruebaconsumo/api/prueba/${id}/enviar-enlace`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.ok) showToast('Enlace enviado correctamente', 'success');
+        else showToast(data.error || 'No se pudo enviar', 'error');
+      } catch (e) {
+        showToast('Error de red', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // 4. PARTICIPACIÓN (ASISTENCIA)
+    async function cargarParticipaciones() {
+      const q = document.getElementById('filtro-part-search').value.toLowerCase().trim();
+      const desde = document.getElementById('filtro-part-desde').value;
+      const hasta = document.getElementById('filtro-part-hasta').value;
+
+      const res = await fetch(`/participacion/api/asistencias?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+      const participaciones = await res.json();
+      dataStore.part = participaciones;
+
+      const filtrados = participaciones.filter(item => {
+        const matchQ = !q || (item.tema || '').toLowerCase().includes(q) || (item.nombre_responsable || '').toLowerCase().includes(q) || (item.lugar || '').toLowerCase().includes(q);
+        let matchFecha = true;
+        if (desde && item.fecha && item.fecha < desde) matchFecha = false;
+        if (hasta && item.fecha && item.fecha > hasta) matchFecha = false;
+        return matchQ && matchFecha;
+      });
+
+      renderTablaParticipaciones(filtrados);
+    }
+
+    function renderTablaParticipaciones(items) {
+      const tbody = document.getElementById('tbody-part');
+      document.getElementById('badge-total-part').innerText = `${items.length} Registros`;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron formatos de asistencia.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const fechaFmt = it.fecha ? it.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+        const duracionFmt = it.duracion ? it.duracion.slice(0, 5) : '—';
+        let resp = it.nombre_responsable || it.responsable || '—';
+        if (resp.includes(' ** ')) resp = resp.split(' ** ')[1];
+
+        const btnPdf = it.url_doc
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">Ver PDF ↗</a>`
+          : `<button class="btn btn-secondary btn-sm" disabled style="opacity:0.5;">Pendiente</button>`;
+
+        return `
+          <tr onclick="abrirDetalleParticipacion('${it.id_asistencia}')" id="row-part-${it.id_asistencia}">
+            <td>${btnPdf}</td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); abrirDetalleParticipacion('${it.id_asistencia}')">Ver Asistentes</button>
+            </td>
+            <td><strong>${fechaFmt}</strong></td>
+            <td><strong style="color:var(--primary);">${it.tema || '—'}</strong></td>
+            <td>${it.lugar || '—'}</td>
+            <td>${resp}</td>
+            <td>${duracionFmt}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function abrirDetalleParticipacion(id) {
+      showLoading('Cargando detalle de asistentes...');
+      try {
+        const res = await fetch(`/participacion/api/asistencia/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const item = await res.json();
+        selectedItems.part = item;
+
+        document.querySelectorAll('#tbody-part tr').forEach(r => r.classList.remove('selected'));
+        const row = document.getElementById(`row-part-${id}`);
+        if (row) row.classList.add('selected');
+
+        const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+        const asistentes = item.asistentes || item.items || [];
+
+        let astListHtml = asistentes.length ? asistentes.map((a, idx) => {
+          const nombreA = limpiarNombreTrabajador(a.nombre_trabajador || a.Trabajador);
+          const cedulaA = a.identificacion || a.Identificación || '—';
+          const cargoA = a.cargo || a.Cargo || '—';
+          const estaFirmado = !!a.firma_asistente || a.estado_firma === 'ACEPTADA' || !!a.firmaBase64;
+          return `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border);">
+            <div>
+              <div style="font-weight:600; font-size:0.85rem;">${idx + 1}. ${nombreA}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">C.C. ${cedulaA} • ${cargoA}</div>
+            </div>
+            <div>
+              ${estaFirmado 
+                ? '<span class="badge badge-success">✓ Firmado</span>' 
+                : `<a href="/participacion/firmar?id_asistencia=${item.id_asistencia}&cedula=${cedulaA}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:0.7rem; padding:2px 8px;">Firmar ↗</a>`}
+            </div>
+          </div>
+        `;
+        }).join('') : '<p style="color:var(--text-muted); font-size:0.85rem;">No hay asistentes agregados.</p>';
+
+        const bodyHtml = `
+          <div class="detail-section">
+            <div class="detail-section-title">Datos de la Sesión</div>
+            <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--primary);">${item.tema || '—'}</span></div>
+            <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
+            <div class="detail-row"><span class="label">Horario:</span><span class="value">${item.hora_inicial || '—'} a ${item.hora_final || '—'}</span></div>
+            <div class="detail-row"><span class="label">Lugar:</span><span class="value">${item.lugar || '—'}</span></div>
+            <div class="detail-row"><span class="label">Responsable:</span><span class="value">${item.nombre_responsable || item.usuario || '—'}</span></div>
+            <div class="detail-row"><span class="label">Objetivo:</span><span class="value">${item.objetivo || '—'}</span></div>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-section-title">Asistentes (${asistentes.length})</div>
+            <div style="max-height:220px; overflow-y:auto;">
+              ${astListHtml}
+            </div>
+          </div>
+
+          <div class="detail-actions">
+            ${item.url_doc 
+              ? `<a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">📄 Ver Acta PDF de Asistencia</a>`
+              : `<button class="btn btn-primary btn-sm" onclick="generarPDFParticipacion('${item.id_asistencia}')">⚙️ Generar / Actualizar PDF</button>`}
+            ${puedeEliminarRegistro(item, 'part') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${item.id_asistencia}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
+          </div>
+        `;
+
+        document.getElementById('detail-part-title').innerText = `Asistencia #${item.id_asistencia}`;
+        document.getElementById('detail-part-body').innerHTML = bodyHtml;
+        document.getElementById('layout-part').classList.add('detail-active');
+        document.getElementById('detail-part').style.display = 'block';
+      } catch (e) {
+        showToast('Error al abrir detalle de asistencia', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function generarPDFParticipacion(id) {
+      showLoading('Generando documento PDF...');
+      try {
+        const res = await fetch(`/participacion/api/asistencia/${id}/generar-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force: true })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('PDF generado correctamente', 'success');
+          abrirDetalleParticipacion(id);
+          cargarParticipaciones();
+        } else {
+          showToast(data.error || 'No se pudo generar el PDF', 'error');
+        }
+      } catch (e) {
+        showToast('Error al generar PDF', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // 5. COMPROMISO SST
+    async function cargarCompromisos() {
+      const tr = document.getElementById('filtro-csst-trabajador').value.trim();
+      const reg = document.getElementById('filtro-csst-regional').value;
+      const op = document.getElementById('filtro-csst-operacion').value;
+      const est = document.getElementById('filtro-csst-estado').value;
+      const fd = document.getElementById('filtro-csst-desde').value;
+      const fh = document.getElementById('filtro-csst-hasta').value;
+
+      const params = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        trabajador: tr,
+        regional: reg,
+        operacion: op,
+        fechaDesde: fd,
+        fechaHasta: fh
+      });
+
+      const [rData, rCounts] = await Promise.all([
+        fetch(`/compromisosst/api/compromisos?${params.toString()}`),
+        fetch(`/compromisosst/api/conteos-filtros?${params.toString()}&estado=${encodeURIComponent(est)}`)
+      ]);
+
+      const [compromisos, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      dataStore.csst = compromisos;
+      countsStore.csst = counts;
+
+      actualizarSelectConteos('csst', counts);
+
+      let filtrados = compromisos;
+      if (est) {
+        filtrados = compromisos.filter(item => {
+          if (est === 'COMPLETADO') return !!item.url_doc;
+          if (est === 'PEND_LIDER') return !item.url_doc && !!item.firma_analista && !item.firma_lidersst;
+          if (est === 'PEND_TRAB') return !item.url_doc && !item.firma_trabajador;
+          return true;
+        });
+      }
+
+      renderTablaCompromisos(filtrados);
+    }
+
+    function renderTablaCompromisos(items) {
+      const tbody = document.getElementById('tbody-csst');
+      document.getElementById('badge-total-csst').innerText = `${items.length} Registros`;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron compromisos SST.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const fechaFmt = it.fecha_registro ? it.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '—';
+        const nombreTrabajador = limpiarNombreTrabajador(it.nombre_trabajador || it.Trabajador);
+        const cedula = it.identificaciontrabajador || '—';
+
+        const bTrab = it.firma_trabajador ? '<span class="badge badge-success">✓ Firmó</span>' : '<span class="badge badge-warning">Pendiente</span>';
+        const bLider = it.firma_lidersst ? '<span class="badge badge-success">✓ Firmó</span>' : '<span class="badge badge-gray">Pendiente</span>';
+
+        let waBtn = '—';
+        if (!it.firma_trabajador) {
+          const urlFirma = `${window.location.origin}/compromisosst/firmar-trabajador?item=${it.idcsst}&token=${it.token_trabajador}`;
+          const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Seguridad SST: ${urlFirma}`);
+          let cel = String(it.celular_trabajador || it.celular || '').replace(/\D/g, '');
+          if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+        }
+
+        const pdfLink = it.url_doc
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+
+        return `
+          <tr onclick="abrirDetalleCompromiso('${it.idcsst}')" id="row-csst-${it.idcsst}">
+            <td>${waBtn}</td>
+            <td>${pdfLink}</td>
+            <td><strong>${fechaFmt}</strong></td>
+            <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cedula}</small></td>
+            <td>${it.nombre_analista || '—'}</td>
+            <td>${bTrab} / ${bLider}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function abrirDetalleCompromiso(id) {
+      const item = dataStore.csst.find(x => String(x.idcsst) === String(id));
+      if (!item) return;
+
+      selectedItems.csst = item;
+      document.querySelectorAll('#tbody-csst tr').forEach(r => r.classList.remove('selected'));
+      const row = document.getElementById(`row-csst-${id}`);
+      if (row) row.classList.add('selected');
+
+      const fechaFmt = item.fecha_registro ? item.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '—';
+      const nombre = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
+      const cedula = item.identificaciontrabajador || '—';
+
+      const urlFirma = `${window.location.origin}/compromisosst/firmar-trabajador?item=${item.idcsst}&token=${item.token_trabajador}`;
+      const msgWa = encodeURIComponent(`Hola ${nombre}, por favor ingresa al siguiente enlace para firmar tu Compromiso de Seguridad SST: ${urlFirma}`);
+      let cel = String(item.celular_trabajador || item.celular || '').replace(/\D/g, '');
+      if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+      const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWa}` : `https://wa.me/?text=${msgWa}`;
+
+      let actionsHtml = '';
+      if (!item.url_doc) {
+        actionsHtml = `
+          <div class="detail-actions">
+            ${!item.firma_trabajador ? `
+              <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366;">
+                📲 Enviar por WhatsApp al Trabajador
+              </a>
+              <button class="btn btn-secondary btn-sm" onclick="copiarPortapapeles('${urlFirma}')">
+                📋 Copiar Enlace de Firma
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="regenerarEnlace('csst', '${item.idcsst}')">
+                🔄 Regenerar Enlace
+              </button>
+            ` : ''}
+
+            ${(CONFIG.rol === 'LiderSst' || CONFIG.rol === 'AdmSst' || CONFIG.rol === 'Sistema') && !item.firma_lidersst ? `
+              <a href="/compromisosst/firmar-lider?item=${item.idcsst}" target="_blank" class="btn btn-primary btn-sm">
+                ✍️ Firmar como Líder SST
+              </a>
+            ` : ''}
+
+            ${puedeEliminarRegistro(item, 'csst') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('csst', '${item.idcsst}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        actionsHtml = `
+          <div class="detail-actions">
+            <a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">
+              📄 Abrir Compromiso Firmado (PDF)
+            </a>
+          </div>
+        `;
+      }
+
+      const bodyHtml = `
+        <div class="detail-section">
+          <div class="detail-section-title">Colaborador</div>
+          <div class="detail-row"><span class="label">Trabajador:</span><span class="value">${nombre}</span></div>
+          <div class="detail-row"><span class="label">Identificación:</span><span class="value">${cedula}</span></div>
+          <div class="detail-row"><span class="label">Cargo:</span><span class="value">${item.cargo_trabajador || '—'}</span></div>
+          <div class="detail-row"><span class="label">Operación:</span><span class="value">${item.operacion || '—'}</span></div>
+          <div class="detail-row"><span class="label">Regional:</span><span class="value">${item.regional || '—'}</span></div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Estado de Firmas</div>
+          <div class="detail-row"><span class="label">Fecha Registro:</span><span class="value">${fechaFmt}</span></div>
+          <div class="detail-row"><span class="label">Firma Trabajador:</span><span class="value">${item.firma_trabajador ? '✓ Firmado' : '⏳ Pendiente'}</span></div>
+          <div class="detail-row"><span class="label">Firma Analista:</span><span class="value">${item.firma_analista ? '✓ Firmado' : '⏳ Pendiente'}</span></div>
+          <div class="detail-row"><span class="label">Firma Líder SST:</span><span class="value">${item.firma_lidersst ? '✓ Firmado' : '⏳ Pendiente'}</span></div>
+        </div>
+
+        ${actionsHtml}
+      `;
+
+      document.getElementById('detail-csst-title').innerText = `Compromiso #${item.idcsst}`;
+      document.getElementById('detail-csst-body').innerHTML = bodyHtml;
+      document.getElementById('layout-csst').classList.add('detail-active');
+      document.getElementById('detail-csst').style.display = 'block';
+    }
+
+    // Helper para actualizar options de Regional y Operación con conteos
+    function actualizarSelectConteos(modKey, counts) {
+      const filtroReg = document.getElementById(`filtro-${modKey}-regional`);
+      const filtroOp = document.getElementById(`filtro-${modKey}-operacion`);
+      if (!filtroReg || !filtroOp) return;
+
+      const curReg = filtroReg.value;
+      filtroReg.innerHTML = '<option value="">Todas</option>';
+      CONFIG.regionalesFiltro.forEach(r => {
+        const cnt = (counts.regionales && counts.regionales[r]) || 0;
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = `${r} (${cnt})`;
+        if (r === curReg) opt.selected = true;
+        filtroReg.appendChild(opt);
+      });
+
+      const curOp = filtroOp.value;
+      filtroOp.innerHTML = '<option value="">Todas</option>';
+      const ops = curReg ? (CONFIG.opsPorRegional[curReg] || []) : (CONFIG.operacionesFiltro || []);
+      ops.forEach(op => {
+        const cnt = (counts.operaciones && counts.operaciones[op]) || 0;
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = `${op} (${cnt})`;
+        if (op === curOp) opt.selected = true;
+        filtroOp.appendChild(opt);
+      });
+    }
+
+    function cerrarDetalle(modKey) {
+      document.getElementById(`layout-${modKey}`).classList.remove('detail-active');
+      document.getElementById(`detail-${modKey}`).style.display = 'none';
+      selectedItems[modKey] = null;
+      document.querySelectorAll(`#tbody-${modKey} tr`).forEach(tr => tr.classList.remove('selected'));
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // MODAL INTEGRADO PARA CREACIÓN DE REGISTROS
+    // ══════════════════════════════════════════════════════════
+    function abrirModalCrear(tipo) {
+      const titles = {
+        evaluacion: 'Programar Nueva Evaluación SST (Inducción / Reinducción)',
+        capacitacion: 'Programar Nueva Evaluación de Capacitación SST',
+        pruebaconsumo: 'Nuevo Consentimiento Informado de Prueba de Consumo',
+        participacion: 'Nuevo Registro de Participación / Formato de Asistencia',
+        compromiso: 'Nuevo Compromiso de Seguridad y Salud en el Trabajo'
+      };
+
+      const urls = {
+        evaluacion: `/formevaluacionsst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`,
+        capacitacion: `/formcapacitacionsst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`,
+        pruebaconsumo: `/formpruebaconsumo?usuario=${encodeURIComponent(CONFIG.usuarioId)}`,
+        participacion: `/formparticipacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}`,
+        compromiso: `/formcompromisosst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`
+      };
+
+      document.getElementById('modal-crear-label').innerText = titles[tipo] || 'Nuevo Registro';
+      document.getElementById('iframe-crear').src = urls[tipo] || 'about:blank';
+      document.getElementById('modal-crear-container').style.display = 'flex';
+    }
+
+    function cerrarModalCrear() {
+      document.getElementById('modal-crear-container').style.display = 'none';
+      document.getElementById('iframe-crear').src = 'about:blank';
+      // Recargar la pestaña activa para mostrar cualquier nuevo registro
+      actualizarVistaActual();
+    }
+
+    // Helpers UI
+    function showLoading(msg = 'Cargando datos...') {
+      document.getElementById('loading-text').innerText = msg;
+      document.getElementById('loading-overlay').style.display = 'flex';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerText = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 250);
+      }, 3500);
+    }
+
+    function copiarPortapapeles(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Enlace copiado al portapapeles', 'success');
+      }).catch(() => {
+        showToast('No se pudo copiar automáticamente', 'error');
+      });
+    }
+  </script>
+</body>
+</html>

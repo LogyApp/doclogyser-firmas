@@ -502,7 +502,13 @@ router.get('/api/evaluaciones', async (req, res) => {
     `;
 
     const [rows] = await pool.execute(query, params);
-    res.json(rows);
+    const cleanedRows = rows.map(r => {
+      if (r.nombre_trabajador && r.nombre_trabajador.includes('**')) {
+        r.nombre_trabajador = r.nombre_trabajador.split('**').pop().trim();
+      }
+      return r;
+    });
+    res.json(cleanedRows);
   } catch (err) {
     console.error('[evaluacionsst] GET /api/evaluaciones:', err);
     res.status(500).json([]);
@@ -878,8 +884,34 @@ router.delete('/api/evaluacion/:id', async (req, res) => {
     }
 
     const acceso = await computarAccesoEVSST(usuario);
-    if (!acceso || !['AdmSst', 'LiderSst', 'Sistema'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'No autorizado para eliminar registros de evaluación' });
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado' });
+    }
+
+    // 1. Verificar si existe la evaluación y su estado de firma
+    const [rows] = await pool.execute(
+      'SELECT usuario, url_doc, firma_trabajador FROM Maestro_evaluacionsst WHERE id_evaluacion = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Evaluación no encontrada' });
+    }
+    const ev = rows[0];
+
+    // 2. Solo se puede eliminar si NO está firmado
+    if (ev.url_doc || ev.firma_trabajador) {
+      return res.status(400).json({ error: 'No se puede eliminar un registro que ya ha sido firmado o completado.' });
+    }
+
+    // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
+    const esSistema = acceso.rol === 'Sistema';
+    const creador = String(ev.usuario || '').trim().toLowerCase();
+    const usuSolicitante = String(usuario).trim().toLowerCase();
+    const nombreSolicitante = String(acceso.nombre || '').trim().toLowerCase();
+    const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
+
+    if (!esSistema && !esPropio) {
+      return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
     }
 
     await pool.execute('DELETE FROM Maestro_evaluacionsst WHERE id_evaluacion = ?', [id]);

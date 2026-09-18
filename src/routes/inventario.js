@@ -2047,6 +2047,32 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
         const movFecha = mov.FechaMovimiento ? new Date(mov.FechaMovimiento) : fechaInsert;
         const usrAsignado = mov.UsuarioAsignado ? String(mov.UsuarioAsignado).trim() : null;
 
+        // Dotación de Ley se despacha desde Administración sin stock físico previo:
+        // se registra automáticamente la ENTRADA equivalente para que el trigger de
+        // stock (trig_check_kardex_stock_after_insert) no rechace la salida por negativo.
+        if (obs === 'Dotación de Ley') {
+          const idKardexEntradaAuto = randomUUID().replace(/-/g, '').toLowerCase();
+          await conn.execute(
+            `INSERT INTO Dynamic_Kardex
+             (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,
+              \`OperaciónDestino\`, Categoria, IdArticulo, Cantidad, UsuarioAsignado,
+              Acta, ValorUnitario, UsuarioRegistro, Observaciones, FechaRegistro, Kpendiente, Novedad)
+             VALUES (?, ?, 'ENTRADA', ?, ?, NULL, ?, ?, ?, NULL, NULL, ?, ?, ?, NOW(), NULL, NULL)`,
+            [
+              idKardexEntradaAuto,
+              isNaN(movFecha.getTime()) ? fechaInsert : movFecha,
+              regional,
+              group.operacionOrigen,
+              mov.Categoria || null,
+              idArticulo,
+              Math.abs(qty),
+              valUnitario,
+              usuario,
+              'Ingreso automático para despacho de Dotación de Ley'
+            ]
+          );
+        }
+
         await conn.execute(
           `INSERT INTO Dynamic_Kardex
            (IdKardex, FechaMovimiento, TipoMovimiento, Regional, \`Operación\`,

@@ -37,6 +37,7 @@ const formclouddocsRoutes            = require('./src/routes/formclouddocs');
 const bloqueodatosRoutes             = require('./src/routes/bloqueodatos');
 const formvalidarcapRoutes           = require('./src/routes/formvalidarcap');
 const descuentonominaRoutes          = require('./src/routes/descuentonomina');
+const sstRoutes                      = require('./src/routes/sst');
 
 const app = express();
 
@@ -91,6 +92,7 @@ app.use('/formbloqueodatos', bloqueodatosRoutes);
 app.use('/formvalidarcap', formvalidarcapRoutes);
 app.use('/descuentonomina', descuentonominaRoutes);
 app.use('/formdescuentonomina', descuentonominaRoutes);
+app.use('/sst', sstRoutes);
 
 
 

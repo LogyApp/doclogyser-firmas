@@ -531,7 +531,13 @@ router.get('/api/capacitaciones', async (req, res) => {
     `;
 
     const [rows] = await pool.execute(query, params);
-    res.json(rows);
+    const cleanedRows = rows.map(r => {
+      if (r.nombre_trabajador && r.nombre_trabajador.includes('**')) {
+        r.nombre_trabajador = r.nombre_trabajador.split('**').pop().trim();
+      }
+      return r;
+    });
+    res.json(cleanedRows);
   } catch (err) {
     console.error('[capacitacionsst] GET /api/capacitaciones:', err);
     res.status(500).json([]);
@@ -985,10 +991,37 @@ router.delete('/api/capacitacion/:id', async (req, res) => {
     }
 
     const acceso = await computarAccesoCAPSST(usuario);
-    if (!acceso || !['AdmSst', 'LiderSst', 'Sistema'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'No autorizado para eliminar registros de capacitación.' });
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado' });
     }
 
+    // 1. Verificar si existe la capacitación y su estado de firma
+    const [rows] = await pool.execute(
+      'SELECT usuario, url_doc, firma_trabajador FROM Maestro_capacitacionsst WHERE id_capacitacion = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Capacitación no encontrada' });
+    }
+    const cap = rows[0];
+
+    // 2. Solo se puede eliminar si NO está firmado
+    if (cap.url_doc || cap.firma_trabajador) {
+      return res.status(400).json({ error: 'No se puede eliminar un registro que ya ha sido firmado o completado.' });
+    }
+
+    // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
+    const esSistema = acceso.rol === 'Sistema';
+    const creador = String(cap.usuario || '').trim().toLowerCase();
+    const usuSolicitante = String(usuario).trim().toLowerCase();
+    const nombreSolicitante = String(acceso.nombre || '').trim().toLowerCase();
+    const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
+
+    if (!esSistema && !esPropio) {
+      return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
+    }
+
+    await pool.execute('DELETE FROM Maestro_capacitacionsst_items WHERE id_capacitacion = ?', [id]);
     await pool.execute('DELETE FROM Maestro_capacitacionsst WHERE id_capacitacion = ?', [id]);
     res.json({ ok: true, id_capacitacion: id });
   } catch (err) {

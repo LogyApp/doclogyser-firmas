@@ -342,6 +342,14 @@
   });
 
   // Helper Toast
+  function volverAlListado() {
+    if (window.parent && window.parent !== window && typeof window.parent.cerrarModalCrear === 'function') {
+      window.parent.cerrarModalCrear();
+    } else {
+      (window.top || window).location.href = `/sst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+    }
+  }
+
   function showToast(msg, type = 'success') {
     const container = document.getElementById('toast-container');
     const t = document.createElement('div');
@@ -358,10 +366,6 @@
 
   function hideLoading() {
     loading.classList.remove('active');
-  }
-
-  function volverAlListado() {
-    window.location.href = `/participacion?usuario=${CONFIG.usuarioId}`;
   }
 
   function poblarFormDropdowns() {

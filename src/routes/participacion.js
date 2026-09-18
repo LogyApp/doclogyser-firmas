@@ -688,7 +688,7 @@ router.get('/api/asistencia/:id', async (req, res) => {
       [id]
     );
 
-    res.json({ ...asistencia, items: itemsConFirmaStatus, evidencias });
+    res.json({ ...asistencia, items: itemsConFirmaStatus, asistentes: itemsConFirmaStatus, evidencias });
   } catch (err) {
     console.error('[participacion] GET /api/asistencia/:id:', err);
     res.status(500).json({ error: err.message });
@@ -873,18 +873,32 @@ router.delete('/api/asistencia/:id', async (req, res) => {
     }
 
     const acceso = await computarAccesoParticipacion(usuario);
-    const ALLOWED_ROLES = ['Sistema', 'AdmSst', 'LiderSst'];
-    if (!acceso || !ALLOWED_ROLES.includes(acceso.rol)) {
-      return res.status(403).json({ error: 'Usuario no autorizado para eliminar registros.' });
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado.' });
     }
 
-    // Check if pdf is already generated
+    // Check if record exists, has PDF, or belongs to user
     const [asistRows] = await conn.execute(
-      'SELECT url_doc FROM Dynamic_formato_asistencia WHERE id_asistencia = ? LIMIT 1',
+      'SELECT usuario, url_doc FROM Dynamic_formato_asistencia WHERE id_asistencia = ? LIMIT 1',
       [id]
     );
-    if (asistRows.length && asistRows[0].url_doc) {
+    if (!asistRows.length) {
+      return res.status(404).json({ error: 'Registro de asistencia no encontrado.' });
+    }
+    const asist = asistRows[0];
+
+    if (asist.url_doc) {
       return res.status(400).json({ error: 'No se puede eliminar un registro con documento PDF generado.' });
+    }
+
+    const esSistema = acceso.rol === 'Sistema';
+    const creador = String(asist.usuario || '').trim().toLowerCase();
+    const usuSolicitante = String(usuario).trim().toLowerCase();
+    const nombreSolicitante = String(acceso.nombre || '').trim().toLowerCase();
+    const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
+
+    if (!esSistema && !esPropio) {
+      return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
     }
 
     await conn.beginTransaction();

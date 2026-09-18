@@ -11,10 +11,27 @@ const transporter = nodemailer.createTransport({
   auth:   authConfig,
 });
 
+// NOTIFICACIONES POR CORREO ACTIVAS
+const NOTIFICACIONES_EMAIL_DESACTIVADAS = false;
+
 // Interceptor global para limpiar la identificación del trabajador (ej. "12345678 ** NOMBRE")
 // de los asuntos y cuerpos de los correos electrónicos antes de ser enviados.
 const originalSendMail = transporter.sendMail.bind(transporter);
 transporter.sendMail = function (mailOptions, callback) {
+  if (NOTIFICACIONES_EMAIL_DESACTIVADAS) {
+    const destino = mailOptions ? (mailOptions.to || mailOptions.envelope?.to) : 'desconocido';
+    const asunto = mailOptions ? mailOptions.subject : '';
+    console.log(`[email] [PRUEBAS] Notificaciones desactivadas temporalmente. Envío omitido hacia: "${destino}" | Asunto: "${asunto}"`);
+    const mockResult = {
+      messageId: `mock-test-disabled-${Date.now()}`,
+      response: '250 Mock email delivery disabled for testing'
+    };
+    if (typeof callback === 'function') {
+      return callback(null, mockResult);
+    }
+    return Promise.resolve(mockResult);
+  }
+
   if (mailOptions) {
     const cleanRegex = /\b\d{5,15}\s+\*\*\s+([^<\r\n]+)\b/g;
     if (typeof mailOptions.subject === 'string') {

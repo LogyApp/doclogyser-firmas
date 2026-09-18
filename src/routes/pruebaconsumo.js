@@ -483,9 +483,21 @@ router.get('/api/pruebas', async (req, res) => {
         a.usuario,
         a.fecha_registro,
         a.token_firma,
+        v.Regional AS regional,
+        v.\`Operación\` AS operacion,
+        u.Nombre AS nombre_creador,
         seg.Celular AS celular_trabajador
        FROM Dynamic_pruebaconsumo a
-       LEFT JOIN \`Maestro_Vinculación\` v ON a.identificacion = v.Identificación AND v.Estado = 'Activo'
+       LEFT JOIN (
+         SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
+         FROM Maestro_Vinculación t1
+         INNER JOIN (
+           SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
+           FROM Maestro_Vinculación
+           GROUP BY Identificación
+         ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
+       ) v ON a.identificacion = v.Identificación
+       LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        LEFT JOIN \`Maestro_Segmentación\` seg ON a.identificacion = seg.Identificación
        ${where}
        ORDER BY a.fecha_registro DESC
@@ -506,10 +518,20 @@ router.get('/api/prueba/:id', async (req, res) => {
     const { id } = req.params;
 
     const [[prueba]] = await pool.execute(
-      `SELECT a.*, u.Nombre AS nombre_creador, seg.Celular AS celular_trabajador
+      `SELECT a.*, u.Nombre AS nombre_creador, seg.Celular AS celular_trabajador,
+              v.Regional AS regional, v.\`Operación\` AS operacion
        FROM Dynamic_pruebaconsumo a
        LEFT JOIN Maestro_Usuarios u ON a.usuario = u.ID
        LEFT JOIN Maestro_Segmentación seg ON a.identificacion = seg.Identificación
+       LEFT JOIN (
+         SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
+         FROM Maestro_Vinculación t1
+         INNER JOIN (
+           SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
+           FROM Maestro_Vinculación
+           GROUP BY Identificación
+         ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
+       ) v ON a.identificacion = v.Identificación
        WHERE a.idprueba = ?`,
       [id]
     );
@@ -1021,8 +1043,34 @@ router.delete('/api/prueba/:id', async (req, res) => {
     }
 
     const acceso = await computarAccesoCPC(usuario);
-    if (!acceso || !['AdmSst', 'LiderSst', 'Sistema'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'No autorizado para eliminar registros de prueba de consumo' });
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado' });
+    }
+
+    // 1. Verificar si existe la prueba y su estado de firma
+    const [rows] = await pool.execute(
+      'SELECT usuario, url_doc, firma_trabajador FROM Dynamic_pruebaconsumo WHERE idprueba = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Consentimiento no encontrado' });
+    }
+    const pc = rows[0];
+
+    // 2. Solo se puede eliminar si NO está firmado
+    if (pc.url_doc || pc.firma_trabajador) {
+      return res.status(400).json({ error: 'No se puede eliminar un registro que ya ha sido firmado o completado.' });
+    }
+
+    // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
+    const esSistema = acceso.rol === 'Sistema';
+    const creador = String(pc.usuario || '').trim().toLowerCase();
+    const usuSolicitante = String(usuario).trim().toLowerCase();
+    const nombreSolicitante = String(acceso.nombre || '').trim().toLowerCase();
+    const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
+
+    if (!esSistema && !esPropio) {
+      return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
     }
 
     await pool.execute('DELETE FROM Dynamic_pruebaconsumo WHERE idprueba = ?', [id]);

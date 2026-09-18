@@ -468,10 +468,6 @@
       });
     });
  
-    function volverPanel() {
-      window.location.href = `/capacitacionsst?usuario=${CONFIG.usuarioId}`;
-    }
- 
     // Enviar Formulario
     document.getElementById('form-capsst').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -608,6 +604,15 @@
         console.error('Error al copiar enlace:', err);
       });
     }
+
+    function volverPanel() {
+      if (window.parent && window.parent !== window && typeof window.parent.cerrarModalCrear === 'function') {
+        window.parent.cerrarModalCrear();
+      } else {
+        (window.top || window).location.href = `/sst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      }
+    }
+    const volverAlListado = volverPanel;
   </script>
 </body>
 </html>

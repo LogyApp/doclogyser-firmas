@@ -1410,6 +1410,37 @@ router.post('/api/compromiso/:id/enviar-enlace', async (req, res) => {
   }
 });
 
+// ═════ API: POST /api/compromiso/:id/regenerar-token ═════
+router.post('/api/compromiso/:id/regenerar-token', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.execute('SELECT * FROM Dynamic_compromisosst WHERE idcsst = ? LIMIT 1', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Compromiso no encontrado' });
+    const c = rows[0];
+
+    if (c.url_doc || c.firma_trabajador) {
+      return res.status(400).json({ error: 'El compromiso ya fue firmado por el trabajador o completado.' });
+    }
+
+    const tokenTrab = crypto.randomBytes(32).toString('hex');
+    const tokenTrabExp = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+
+    await pool.execute(
+      'UPDATE Dynamic_compromisosst SET token_trabajador = ?, token_trabajador_expira = ? WHERE idcsst = ?',
+      [tokenTrab, tokenTrabExp, id]
+    );
+
+    const protocol = req.secure ? 'https' : 'http';
+    const host = req.get('host');
+    const urlFirma = `${protocol}://${host}/compromisosst/firmar-trabajador?item=${id}&token=${tokenTrab}`;
+
+    res.json({ ok: true, urlFirma, token: tokenTrab, token_expira: tokenTrabExp });
+  } catch (err) {
+    console.error('[compromisosst] POST /api/compromiso/:id/regenerar-token:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: DELETE /api/compromiso/:id ═════
 router.delete('/api/compromiso/:id', async (req, res) => {
   try {
@@ -1421,8 +1452,34 @@ router.delete('/api/compromiso/:id', async (req, res) => {
     }
 
     const acceso = await computarAccesoCSST(usuario);
-    if (!acceso || !['AdmSst', 'LiderSst', 'Sistema'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'No autorizado para eliminar registros de compromiso' });
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado' });
+    }
+
+    // 1. Verificar si existe el compromiso y su estado de firma
+    const [rows] = await pool.execute(
+      'SELECT usuario, url_doc, firma_trabajador, firma_analista, firma_lidersst FROM Dynamic_compromisosst WHERE idcsst = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Compromiso no encontrado' });
+    }
+    const c = rows[0];
+
+    // 2. Solo se puede eliminar si NO está firmado
+    if (c.url_doc || c.firma_trabajador || c.firma_analista || c.firma_lidersst) {
+      return res.status(400).json({ error: 'No se puede eliminar un compromiso que ya cuenta con firmas o documento generado.' });
+    }
+
+    // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
+    const esSistema = acceso.rol === 'Sistema';
+    const creador = String(c.usuario || '').trim().toLowerCase();
+    const usuSolicitante = String(usuario).trim().toLowerCase();
+    const nombreSolicitante = String(acceso.nombre || '').trim().toLowerCase();
+    const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
+
+    if (!esSistema && !esPropio) {
+      return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
     }
 
     await pool.execute('DELETE FROM Dynamic_compromisosst WHERE idcsst = ?', [id]);

@@ -298,7 +298,7 @@
       </div>
 
       <div class="btn-group-success">
-        <a id="btn-volver" href="#" class="btn-success-action btn-pri">Volver al Listado</a>
+        <a id="btn-volver" href="javascript:void(0)" onclick="volverAlListado()" class="btn-success-action btn-pri">Volver al Listado</a>
       </div>
     </div>
   </div>
@@ -313,6 +313,14 @@
     const loading = document.getElementById('loading');
     const loadingText = document.getElementById('loading-text');
 
+    function volverAlListado() {
+      if (window.parent && window.parent !== window && typeof window.parent.cerrarModalCrear === 'function') {
+        window.parent.cerrarModalCrear();
+      } else {
+        (window.top || window).location.href = `/sst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      }
+    }
+
     function showLoading(text = 'Cargando...') {
       loadingText.innerText = text;
       loading.style.display = 'flex';
@@ -325,7 +333,6 @@
     document.getElementById('user-badge').innerText = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
     document.getElementById('input-ciudad').value = CONFIG.ciudad || '';
     document.getElementById('input-fecha').value = new Date().toISOString().slice(0, 10);
-    document.getElementById('btn-volver').href = `/pruebaconsumo?usuario=${CONFIG.usuarioId}`;
 
     // Llenar Regionales
     const regSelect = document.getElementById('select-regional');
@@ -527,7 +534,7 @@
 
     // Enviar formulario
     document.getElementById('btn-cancelar-form').addEventListener('click', () => {
-      window.location.href = `/pruebaconsumo?usuario=${CONFIG.usuarioId}`;
+      volverAlListado();
     });
 
     // Copiar enlace helper
