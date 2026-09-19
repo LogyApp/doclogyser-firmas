@@ -10,26 +10,34 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #121721;
-      --card-dark: #1A2130;
-      --card-hover: #222C3F;
-      --border-dark: #2B364A;
-      --primary-accent: #E8762B;
-      --primary-hover: #F28C47;
-      --text-main: #F1F5F9;
-      --text-muted: #94A3B8;
-      --text-dim: #64748B;
+      --bg-main: #F1F5F9;
+      --card-bg: #FFFFFF;
+      --card-hover: #F8FAFC;
+      --border-color: #E2E8F0;
+      --border-dark: #CBD5E1;
+      --primary-accent: #2563EB;
+      --primary-hover: #1D4ED8;
+      --primary-light: #EFF6FF;
+      --secondary-orange: #EA580C;
+      --secondary-orange-light: #FFF7ED;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --text-dim: #94A3B8;
       --success: #10B981;
-      --blue-accent: #38BDF8;
+      --danger: #EF4444;
+      --blue-accent: #0284C7;
+      --blue-outlook: #0078D4;
+      --green-whatsapp: #25D366;
       --radius: 12px;
       --radius-sm: 8px;
-      --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      --shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: var(--bg-dark);
+      background-color: var(--bg-main);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
@@ -38,49 +46,137 @@
 
     /* Header Superior */
     .top-header {
-      background: #0D121B;
-      border-bottom: 1px solid var(--border-dark);
-      padding: 14px 24px;
+      background: #1E293B;
+      border-bottom: 1px solid #334155;
+      padding: 12px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       position: sticky;
       top: 0;
       z-index: 100;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      gap: 16px;
     }
 
     .brand-wrap {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
 
-    .brand-logo {
-      height: 38px;
-      filter: brightness(0) invert(1);
+    /* Brand Lockup horizontal idéntico a Inventario / SST */
+    .brand-lockup-horizontal {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 0;
+    }
+    .brand-logo-app {
+      display: block;
+      height: 28px;
+      object-fit: contain;
+    }
+    .brand-divider-vert {
+      width: 1.5px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .brand-logo-company-crop {
+      width: 130px;
+      height: 32px;
+      overflow: hidden;
+      position: relative;
+    }
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -63px;
+      top: -64px;
+      width: 260px;
+      height: 172px;
+      max-width: none;
     }
 
-    .brand-title {
-      font-size: 1.2rem;
+    .header-titles {
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      padding-left: 14px;
+    }
+    .header-main-title {
+      font-size: 1.15rem;
       font-weight: 800;
       color: #FFFFFF;
       letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+    .header-sub-title {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 500;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* User Badge */
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+    }
+    .user-pill-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--secondary-orange);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.72rem;
+    }
+    .user-pill-name {
+      font-weight: 600;
+      color: #fff;
+      max-width: 160px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .user-pill-rol {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(232, 118, 43, 0.25);
+      color: #FFB380;
+      border: 1px solid rgba(232, 118, 43, 0.4);
+    }
+    .user-pill-rol.sistema {
+      background: rgba(139, 92, 246, 0.35);
+      color: #DDD6FE;
+      border-color: rgba(139, 92, 246, 0.5);
     }
 
     .btn-header {
-      background: var(--card-dark);
-      border: 1px solid var(--border-dark);
-      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #FFFFFF;
       padding: 8px 14px;
       border-radius: var(--radius-sm);
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       font-weight: 600;
       text-decoration: none;
       display: inline-flex;
@@ -90,8 +186,8 @@
       transition: all 0.2s;
     }
     .btn-header:hover {
-      background: var(--card-hover);
-      border-color: var(--primary-accent);
+      background: rgba(255, 255, 255, 0.22);
+      border-color: rgba(255, 255, 255, 0.4);
       color: #fff;
     }
     .btn-header.accent {
@@ -105,7 +201,7 @@
 
     /* Contenedor Principal */
     .main-container {
-      max-width: 1200px;
+      max-width: 1240px;
       width: 100%;
       margin: 0 auto;
       padding: 24px 20px 60px 20px;
@@ -114,8 +210,8 @@
 
     /* Barra de Herramientas y Buscador */
     .controls-bar {
-      background: var(--card-dark);
-      border: 1px solid var(--border-dark);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius);
       padding: 16px 20px;
       margin-bottom: 24px;
@@ -136,18 +232,19 @@
     .search-input {
       width: 100%;
       padding: 12px 16px 12px 42px;
-      background: #0F141F;
-      border: 1.5px solid var(--border-dark);
+      background: #F8FAFC;
+      border: 1.5px solid var(--border-color);
       border-radius: var(--radius-sm);
-      color: #fff;
+      color: var(--text-main);
       font-size: 0.92rem;
       font-family: inherit;
       transition: all 0.2s;
     }
     .search-input:focus {
       outline: none;
+      background: #FFFFFF;
       border-color: var(--primary-accent);
-      box-shadow: 0 0 0 3px rgba(232, 118, 43, 0.2);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
     .search-icon {
       position: absolute;
@@ -162,10 +259,10 @@
     .view-toggles {
       display: flex;
       gap: 6px;
-      background: #0F141F;
+      background: #F1F5F9;
       padding: 4px;
       border-radius: var(--radius-sm);
-      border: 1px solid var(--border-dark);
+      border: 1px solid var(--border-color);
     }
 
     .btn-toggle {
@@ -182,7 +279,7 @@
       gap: 6px;
       transition: all 0.2s;
     }
-    .btn-toggle:hover { color: #fff; }
+    .btn-toggle:hover { color: var(--text-main); background: rgba(0,0,0,0.04); }
     .btn-toggle.active {
       background: var(--primary-accent);
       color: #fff;
@@ -196,14 +293,15 @@
       flex-wrap: wrap;
     }
     .stat-chip {
-      background: var(--card-dark);
-      border: 1px solid var(--border-dark);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
       padding: 10px 18px;
       display: flex;
       align-items: center;
       gap: 10px;
       font-size: 0.85rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
     .stat-number {
       font-size: 1.15rem;
@@ -211,22 +309,24 @@
       color: var(--primary-accent);
     }
 
-    /* ════════ VISTA POR ÁREAS (Acordeón AppSheet) ════════ */
+    /* ════════ VISTA POR ÁREAS (Acordeón) ════════ */
     .area-group-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
     }
 
     .area-item {
-      background: var(--card-dark);
-      border: 1px solid var(--border-dark);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
       overflow: hidden;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .area-item:hover {
-      border-color: #3B4861;
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }
 
     .area-header {
@@ -237,9 +337,10 @@
       cursor: pointer;
       user-select: none;
       transition: background 0.15s;
+      background: var(--card-bg);
     }
     .area-header:hover {
-      background: var(--card-hover);
+      background: #F8FAFC;
     }
 
     .area-title-wrap {
@@ -257,8 +358,8 @@
     }
 
     .badge-count {
-      background: #2E384D;
-      color: #E2E8F0;
+      background: #E2E8F0;
+      color: #334155;
       font-size: 0.75rem;
       font-weight: 700;
       padding: 3px 10px;
@@ -267,7 +368,7 @@
 
     .area-chevron {
       color: var(--text-muted);
-      font-size: 1rem;
+      font-size: 0.95rem;
       transition: transform 0.25s ease;
     }
     .area-item.open .area-chevron {
@@ -278,8 +379,8 @@
     .area-body {
       display: none;
       padding: 0 20px 20px 20px;
-      border-top: 1px solid var(--border-dark);
-      background: rgba(15, 20, 31, 0.4);
+      border-top: 1px solid var(--border-color);
+      background: #FAFCFF;
     }
     .area-item.open .area-body {
       display: block;
@@ -293,14 +394,14 @@
     .regional-title {
       font-size: 0.82rem;
       font-weight: 700;
-      color: #FFFFFF;
+      color: #1E293B;
       letter-spacing: 0.8px;
       text-transform: uppercase;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
       gap: 8px;
-      border-bottom: 1px dashed var(--border-dark);
+      border-bottom: 1px dashed var(--border-color);
       padding-bottom: 6px;
     }
 
@@ -312,8 +413,8 @@
 
     /* Tarjeta de Colaborador */
     .colab-card {
-      background: var(--card-dark);
-      border: 1px solid var(--border-dark);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
       padding: 14px;
       display: flex;
@@ -322,12 +423,13 @@
       cursor: pointer;
       transition: all 0.2s;
       position: relative;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
     .colab-card:hover {
-      background: var(--card-hover);
+      background: #FFFFFF;
       border-color: var(--primary-accent);
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
     }
 
     .colab-avatar {
@@ -335,9 +437,9 @@
       height: 52px;
       border-radius: 50%;
       object-fit: cover;
-      border: 2px solid rgba(255,255,255,0.15);
+      border: 2px solid #E2E8F0;
       flex-shrink: 0;
-      background: #0F141F;
+      background: #F1F5F9;
     }
 
     .colab-info {
@@ -348,7 +450,7 @@
     .colab-name {
       font-size: 0.9rem;
       font-weight: 700;
-      color: #FFFFFF;
+      color: #0F172A;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -365,8 +467,8 @@
 
     .colab-operacion {
       font-size: 0.74rem;
-      font-weight: 600;
-      color: #FACC15;
+      font-weight: 700;
+      color: #0284C7;
       margin-top: 2px;
       white-space: nowrap;
       overflow: hidden;
@@ -381,37 +483,285 @@
     }
 
     .btn-action-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      background: rgba(255,255,255,0.06);
-      color: var(--text-muted);
+      width: 34px;
+      height: 34px;
+      border-radius: 7px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       text-decoration: none;
-      font-size: 0.9rem;
-      transition: all 0.15s;
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s ease;
+      color: #ffffff;
+      flex-shrink: 0;
     }
-    .btn-action-icon:hover {
-      background: rgba(255,255,255,0.15);
+    .btn-action-icon svg {
+      width: 17px;
+      height: 17px;
+    }
+    .btn-action-icon.outlook {
+      background: var(--blue-outlook);
+      box-shadow: 0 2px 6px rgba(0, 120, 212, 0.25);
+    }
+    .btn-action-icon.outlook:hover {
+      background: #005a9e;
+      transform: scale(1.08);
+    }
+    .btn-action-icon.whatsapp {
+      background: var(--green-whatsapp);
+      box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+    }
+    .btn-action-icon.whatsapp:hover {
+      background: #1da851;
+      transform: scale(1.08);
+    }
+    .btn-action-icon.call {
+      background: #3B82F6;
+      box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+    }
+    .btn-action-icon.call:hover {
+      background: #2563EB;
+      transform: scale(1.08);
+    }
+
+    .colab-editable-badge {
+      position: absolute;
+      top: -6px;
+      right: 10px;
+      background: var(--secondary-orange);
       color: #fff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 1px 6px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
-    .btn-action-icon.email:hover { color: var(--blue-accent); }
-    .btn-action-icon.call:hover { color: #fff; }
-    .btn-action-icon.whatsapp:hover { color: #22C55E; }
 
     /* ════════ VISTA CUADRÍCULA DIRECTA ════════ */
     #view-grid {
       display: none;
     }
 
-    /* ════════ MODAL DETALLE DE COLABORADOR (Screenshot 3) ════════ */
+    /* ════════ MODO 3: REGISTROS / TABLA (Rol Sistema) ════════ */
+    #view-table {
+      display: none;
+    }
+
+    .table-panel-header {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .table-panel-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0F172A;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow-y: auto;
+      overflow-x: auto;
+      max-height: calc(100vh - 270px);
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      text-align: left;
+      font-size: 0.86rem;
+      min-width: 1100px;
+      table-layout: fixed;
+    }
+
+    table.data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    table.data-table th {
+      background: #F8FAFC;
+      color: #334155;
+      font-weight: 700;
+      padding: 11px 12px;
+      border-bottom: 2px solid var(--border-dark);
+      border-right: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.4px;
+      user-select: none;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    table.data-table th.sortable {
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    table.data-table th.sortable:hover {
+      background: #EFF6FF;
+      color: var(--primary-accent);
+    }
+    .th-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .sort-icon {
+      font-size: 0.75rem;
+      color: #94A3B8;
+      transition: color 0.15s;
+    }
+    th.sorted .sort-icon {
+      color: var(--primary-accent);
+      font-weight: 800;
+    }
+    .col-resizer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      cursor: col-resize;
+      user-select: none;
+      height: 100%;
+      z-index: 30;
+    }
+    .col-resizer:hover, .col-resizer.resizing {
+      background: var(--primary-accent);
+      opacity: 0.7;
+    }
+
+    table.data-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      border-right: 1px solid #F1F5F9;
+      color: var(--text-main);
+      background: #FFFFFF;
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    table.data-table tbody tr {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    table.data-table tbody tr:hover td {
+      background: #F8FAFC;
+    }
+
+    .table-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid #E2E8F0;
+      background: #F1F5F9;
+    }
+
+    .colab-name-cell {
+      font-weight: 700;
+      color: #0F172A;
+      line-height: 1.2;
+    }
+    .colab-id-cell {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .badge-area {
+      display: inline-flex;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      background: rgba(232, 118, 43, 0.1);
+      color: var(--primary-accent);
+      border: 1px solid rgba(232, 118, 43, 0.25);
+    }
+    .badge-regional {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: #F1F5F9;
+      color: #475569;
+      border: 1px solid var(--border-color);
+    }
+
+    .table-row-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-row-action {
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      color: #334155;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .btn-row-action:hover {
+      background: #E2E8F0;
+      color: #0F172A;
+      transform: translateY(-1px);
+    }
+    .btn-row-action.delete {
+      background: #FEF2F2;
+      border-color: #FECACA;
+      color: #EF4444;
+    }
+    .btn-row-action.delete:hover {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+      transform: translateY(-1px) scale(1.05);
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+    }
+
+    /* ════════ MODALES ════════ */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(5px);
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
       z-index: 1000;
       display: none;
       align-items: center;
@@ -420,131 +770,132 @@
     }
 
     .modal-card {
-      background: #151C28;
-      border: 1px solid var(--border-dark);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius);
       width: 100%;
       max-width: 820px;
-      overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
       animation: modalZoom 0.2s ease;
-    }
-    @keyframes modalZoom {
-      from { transform: scale(0.95); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
     }
 
     .modal-breadcrumb {
       padding: 14px 20px;
-      border-bottom: 1px solid var(--border-dark);
+      border-bottom: 1px solid var(--border-color);
       font-size: 0.82rem;
       color: var(--text-muted);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #0E131C;
+      background: #F8FAFC;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
     .btn-close-modal {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       cursor: pointer;
       line-height: 1;
     }
-    .btn-close-modal:hover { color: #fff; }
+    .btn-close-modal:hover { color: #0F172A; }
 
     .modal-body {
-      padding: 28px;
+      padding: 26px;
       display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 28px;
+      grid-template-columns: 310px 1fr;
+      gap: 26px;
     }
-    @media (max-width: 720px) {
+    @media (max-width: 740px) {
       .modal-body {
         grid-template-columns: 1fr;
       }
     }
 
-    /* Columna izquierda de perfil */
     .modal-profile-col {
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
-      border-right: 1px solid var(--border-dark);
-      padding-right: 28px;
+      border-right: 1px solid var(--border-color);
+      padding-right: 26px;
     }
-    @media (max-width: 720px) {
+    @media (max-width: 740px) {
       .modal-profile-col {
         border-right: none;
-        border-bottom: 1px solid var(--border-dark);
+        border-bottom: 1px solid var(--border-color);
         padding-right: 0;
         padding-bottom: 20px;
       }
     }
 
     .modal-avatar {
-      width: 150px;
-      height: 150px;
+      width: 144px;
+      height: 144px;
       border-radius: 50%;
       object-fit: cover;
-      border: 4px solid var(--card-dark);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      margin-bottom: 16px;
+      border: 4px solid #F1F5F9;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      margin-bottom: 14px;
+      background: #E2E8F0;
     }
 
     .modal-name {
       font-size: 1.15rem;
       font-weight: 800;
-      color: #FFFFFF;
+      color: #0F172A;
       margin-bottom: 4px;
     }
 
     .modal-cargo {
       font-size: 0.85rem;
       color: var(--text-muted);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .modal-sede-badge {
       font-size: 0.82rem;
       font-weight: 700;
-      color: #FACC15;
+      color: #0284C7;
       margin-bottom: 18px;
     }
 
     .modal-contact-btns {
       display: flex;
       gap: 10px;
-      margin-top: auto;
       width: 100%;
+      margin-top: auto;
     }
     .btn-modal-action {
       flex: 1;
       padding: 10px;
       border-radius: var(--radius-sm);
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       font-weight: 700;
       text-decoration: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 8px;
       border: none;
       cursor: pointer;
       transition: all 0.2s;
+      color: #fff;
     }
-    .btn-modal-action.email { background: #0284C7; color: #fff; }
-    .btn-modal-action.email:hover { background: #0369A1; }
-    .btn-modal-action.whatsapp { background: #15803D; color: #fff; }
-    .btn-modal-action.whatsapp:hover { background: #166534; }
+    .btn-modal-action svg { width: 17px; height: 17px; }
+    .btn-modal-action.outlook { background: var(--blue-outlook); }
+    .btn-modal-action.outlook:hover { background: #005a9e; }
+    .btn-modal-action.whatsapp { background: var(--green-whatsapp); }
+    .btn-modal-action.whatsapp:hover { background: #1da851; }
 
-    /* Columna derecha de datos */
     .modal-details-col {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
 
     .detail-row {
@@ -552,16 +903,15 @@
       justify-content: space-between;
       align-items: center;
       padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid #F1F5F9;
       font-size: 0.88rem;
     }
     .detail-label {
       color: var(--text-muted);
       font-weight: 600;
-      text-transform: capitalize;
     }
     .detail-val {
-      color: #FFFFFF;
+      color: #0F172A;
       font-weight: 600;
       text-align: right;
       max-width: 60%;
@@ -573,13 +923,20 @@
       text-transform: uppercase;
     }
 
-    .modal-footer-btn {
-      margin-top: 20px;
+    .modal-actions-bar {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    .btn-modal-primary {
+      flex: 1;
+      min-width: 180px;
       background: var(--primary-accent);
       color: #fff;
       border: none;
       border-radius: var(--radius-sm);
-      padding: 12px 18px;
+      padding: 11px 16px;
       font-size: 0.88rem;
       font-weight: 700;
       text-decoration: none;
@@ -587,15 +944,130 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      cursor: pointer;
       transition: background 0.2s;
     }
-    .modal-footer-btn:hover { background: var(--primary-hover); }
+    .btn-modal-primary:hover { background: var(--primary-hover); }
+    .btn-modal-danger {
+      background: #FEE2E2;
+      border: 1px solid #FECACA;
+      color: #DC2626;
+      padding: 11px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-modal-danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
 
-    /* Overlay de Carga */
+    /* ════════ MODAL FORMULARIO DE EDICIÓN / CREACIÓN ════════ */
+    .modal-form-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 760px;
+      max-height: 94vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: modalZoom 0.2s ease;
+    }
+
+    .form-banner-info {
+      background: #EFF6FF;
+      border-left: 4px solid #3B82F6;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+      color: #1E40AF;
+      border-radius: 4px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .form-input, .form-select {
+      background: #FFFFFF;
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: #0F172A;
+      font-family: inherit;
+      font-size: 0.88rem;
+      transition: all 0.2s;
+    }
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--primary-accent);
+      box-shadow: 0 0 0 3px rgba(232, 118, 43, 0.15);
+    }
+    .form-input:disabled, .form-select:disabled {
+      background: #F1F5F9;
+      color: var(--text-dim);
+      cursor: not-allowed;
+      border-color: var(--border-color);
+    }
+
+    .photo-upload-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #F8FAFC;
+      border: 1.5px dashed var(--border-dark);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+    .photo-preview {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--primary-accent);
+      flex-shrink: 0;
+      background: #E2E8F0;
+    }
+
+    .modal-form-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Loading Overlay */
     .loading-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(10, 14, 22, 0.8);
+      background: rgba(15, 23, 42, 0.7);
       backdrop-filter: blur(4px);
       z-index: 9999;
       display: none;
@@ -608,7 +1080,7 @@
     .spinner {
       width: 44px;
       height: 44px;
-      border: 4px solid rgba(255,255,255,0.15);
+      border: 4px solid rgba(255,255,255,0.2);
       border-top-color: var(--primary-accent);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
@@ -631,12 +1103,12 @@
       color: #fff;
       font-size: 0.88rem;
       font-weight: 600;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
       animation: slideIn 0.3s ease;
     }
     .toast-success { background: #059669; }
     .toast-error { background: #DC2626; }
-    .toast-info { background: #1E293B; border: 1px solid var(--border-dark); }
+    .toast-info { background: #1E293B; border: 1px solid var(--border-color); }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   </style>
 </head>
@@ -645,14 +1117,41 @@
   <!-- Barra Superior -->
   <header class="top-header">
     <div class="brand-wrap">
-      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logyser" class="brand-logo">
-      <span class="brand-title">Directorio Logyser</span>
+      <div class="brand-lockup-horizontal">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider-vert"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20Logyser.png" alt="Logyser">
+        </div>
+      </div>
+      <div class="header-titles">
+        <span class="header-main-title">Directorio Corporativo</span>
+        <span class="header-sub-title">Contactos, Áreas &amp; Sedes</span>
+      </div>
     </div>
+
     <div class="header-actions">
-      <button type="button" class="btn-header" onclick="sincronizarVinculacion()" title="Sincronizar nuevos ingresos o cambios de contrato">
+      <!-- Badge de Usuario Conectado -->
+      <div id="user-pill-container" style="display: none;">
+        <div class="user-pill">
+          <div class="user-pill-avatar" id="user-avatar-initial">U</div>
+          <span class="user-pill-name" id="user-display-name">—</span>
+          <span class="user-pill-rol" id="user-display-rol">—</span>
+        </div>
+      </div>
+
+      <!-- Botón Agregar (Solo Rol Sistema) -->
+      <button type="button" class="btn-header accent" id="btn-header-add" style="display: none;" onclick="abrirModalNuevoColaborador()">
+        ＋ Agregar Colaborador
+      </button>
+
+      <!-- Botón Sincronizar (Solo Rol Sistema) -->
+      <button type="button" class="btn-header" id="btn-header-sync" style="display: none;" onclick="sincronizarVinculacion()" title="Sincronizar colaboradores activos desde Maestro_Vinculación">
         🔄 Sincronizar Vinculación
       </button>
-      <a href="/firma-corporativa" class="btn-header accent">
+
+      <!-- Enlace a Generador de Firmas -->
+      <a href="/firma-corporativa" id="btn-nav-firma" class="btn-header">
         ✍️ Generador de Firmas
       </a>
     </div>
@@ -660,20 +1159,24 @@
 
   <!-- Contenedor Principal -->
   <main class="main-container">
-    
+
     <!-- Barra de Búsqueda y Modos de Vista -->
     <div class="controls-bar">
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input type="text" id="input-busqueda" class="search-input" placeholder="Buscar por Nombre, Cédula, Cargo, Sede o Correo..." autocomplete="off">
+        <input type="text" id="input-busqueda" class="search-input" placeholder="Buscar por Nombre, Cédula, Cargo, Regional, Sede o Correo..." autocomplete="off">
       </div>
 
       <div class="view-toggles">
         <button type="button" class="btn-toggle active" id="btn-view-areas" onclick="cambiarModoVista('areas')">
-          📑 Por Departamentos
+          📑 Departamentos
         </button>
         <button type="button" class="btn-toggle" id="btn-view-grid" onclick="cambiarModoVista('grid')">
           🗂️ Cuadrícula
+        </button>
+        <!-- Tercera opción exclusiva para Rol Sistema -->
+        <button type="button" class="btn-toggle" id="btn-view-table" style="display: none;" onclick="cambiarModoVista('table')">
+          📋 Registros / Tabla
         </button>
       </div>
     </div>
@@ -694,40 +1197,126 @@
       </div>
     </div>
 
-    <!-- MODO 1: Acordeón por Áreas / Departamentos (Diseño Screenshots 1 y 2) -->
+    <!-- MODO 1: Acordeón por Áreas / Departamentos -->
     <div id="view-areas" class="area-group-list">
-      <div style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando directorio...</div>
+      <div style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando colaboradores...</div>
     </div>
 
     <!-- MODO 2: Cuadrícula Directa -->
-    <div id="view-grid">
+    <div id="view-grid" style="display: none;">
       <div class="colab-grid" id="grid-container"></div>
+    </div>
+
+    <!-- MODO 3: Registros / Tabla (Exclusivo Sistema) -->
+    <div id="view-table">
+      <div class="table-panel-header">
+        <div class="table-panel-title">
+          <span>📋 Base de Datos de Firmas Corporativas</span>
+          <span class="badge-count" id="table-record-count">0 registros</span>
+        </div>
+        <button type="button" class="btn-header accent" onclick="abrirModalNuevoColaborador()">
+          ＋ Nuevo Registro
+        </button>
+      </div>
+      <div class="table-container">
+        <table class="data-table" id="colaboradores-table">
+          <thead>
+            <tr>
+              <th style="width: 60px; min-width: 50px; text-align: center;">
+                <div class="th-content" style="justify-content: center;">Foto</div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable" onclick="toggleOrdenColumna('colaborador')" id="th-colaborador" style="width: 230px; min-width: 140px;">
+                <div class="th-content">
+                  <span>Colaborador / Cédula</span>
+                  <span class="sort-icon" id="sort-icon-colaborador">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable" onclick="toggleOrdenColumna('cargo')" id="th-cargo" style="width: 190px; min-width: 120px;">
+                <div class="th-content">
+                  <span>Cargo</span>
+                  <span class="sort-icon" id="sort-icon-cargo">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable" onclick="toggleOrdenColumna('regional')" id="th-regional" style="width: 120px; min-width: 90px;">
+                <div class="th-content">
+                  <span>Regional</span>
+                  <span class="sort-icon" id="sort-icon-regional">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable" onclick="toggleOrdenColumna('operacion')" id="th-operacion" style="width: 160px; min-width: 110px;">
+                <div class="th-content">
+                  <span>Operación / Sede</span>
+                  <span class="sort-icon" id="sort-icon-operacion">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable" onclick="toggleOrdenColumna('area')" id="th-area" style="width: 160px; min-width: 110px;">
+                <div class="th-content">
+                  <span>Área</span>
+                  <span class="sort-icon" id="sort-icon-area">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable" onclick="toggleOrdenColumna('contacto')" id="th-contacto" style="width: 130px; min-width: 100px;">
+                <div class="th-content">
+                  <span>Contacto</span>
+                  <span class="sort-icon" id="sort-icon-contacto">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable" onclick="toggleOrdenColumna('usuario')" id="th-usuario" style="width: 120px; min-width: 100px;">
+                <div class="th-content">
+                  <span>Último Registro</span>
+                  <span class="sort-icon" id="sort-icon-usuario">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th style="text-align: center; width: 145px; min-width: 140px;" id="th-acciones">
+                <div class="th-content" style="justify-content: center;">Acciones</div>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 30px; color: var(--text-muted);">Cargando registros...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </main>
 
   <!-- MODAL DETALLE DE COLABORADOR (Screenshot 3) -->
-  <div class="modal-overlay" id="modal-detalle" onclick="cerrarModalFuera(event)">
+  <div class="modal-overlay" id="modal-detalle" onclick="cerrarModalFuera(event, 'modal-detalle')">
     <div class="modal-card">
       <div class="modal-breadcrumb">
-        <span>Inicio &gt; <span id="m-breadcrumb-id" style="color: #fff; font-weight: 700;">—</span></span>
+        <span>Inicio &gt; <span id="m-breadcrumb-id" style="color: #0F172A; font-weight: 700;">—</span></span>
         <button class="btn-close-modal" onclick="cerrarModalDetalle()">✕</button>
       </div>
       
       <div class="modal-body">
         <!-- Columna Perfil -->
         <div class="modal-profile-col">
-          <img id="m-avatar" src="" class="modal-avatar">
+          <img id="m-avatar" src="" class="modal-avatar" alt="Foto">
           <div class="modal-name" id="m-nombre">—</div>
           <div class="modal-cargo" id="m-cargo">—</div>
           <div class="modal-sede-badge" id="m-operacion">—</div>
 
           <div class="modal-contact-btns">
-            <a id="m-btn-email" href="#" class="btn-modal-action email">
-              ✉️ EMAIL
+            <!-- Outlook -->
+            <a id="m-btn-outlook" href="#" class="btn-modal-action outlook" title="Enviar correo con Outlook">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 6c0-1.1-.9-2-2-2H9v5l13-3V6zm-9 6.8L22 9.5v8.5c0 1.1-.9 2-2 2H9v-5.2l4-2zM7.5 7H2c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1h5.5c.83 0 1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-1.2 7.2c-.3.4-.8.6-1.3.6-.6 0-1.1-.2-1.4-.7-.3-.5-.5-1.1-.5-1.9 0-.8.2-1.4.5-1.9.3-.5.8-.7 1.4-.7.6 0 1 .2 1.3.6.3.4.5.9.5 1.5v.7h-2.3c0 .5.1.8.3 1.1.2.3.5.4.8.4.4 0 .8-.2.9-.6l.3.4zm-1.8-2.6h1.4c0-.3-.1-.6-.2-.8-.1-.2-.3-.3-.6-.3-.2 0-.4.1-.5.3-.1.2-.1.5-.1.8z"/></svg>
+              Outlook
             </a>
-            <a id="m-btn-whatsapp" href="#" target="_blank" class="btn-modal-action whatsapp">
-              💬 WHATSAPP
+            <!-- WhatsApp -->
+            <a id="m-btn-whatsapp" href="#" target="_blank" class="btn-modal-action whatsapp" title="Chatear por WhatsApp">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm5.79 14.07c-.24.68-1.39 1.3-1.94 1.38-.52.08-1.18.11-3.37-.8-2.62-1.09-4.3-3.75-4.43-3.92-.13-.18-1.05-1.4-1.05-2.67 0-1.27.66-1.89.9-2.15.24-.26.52-.33.7-.33.17 0 .35.01.5.01.16 0 .38-.06.59.45.22.53.75 1.83.82 1.97.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.42.5-.14.14-.28.3-.12.58.16.28.72 1.19 1.55 1.93 1.07.95 1.97 1.25 2.25 1.39.28.14.44.12.6-.07.17-.19.7-0.82.89-1.1.19-.28.38-.23.63-.14.26.09 1.63.77 1.91.91.28.14.47.21.54.33.07.12.07.68-.17 1.36z"/></svg>
+              WhatsApp
             </a>
           </div>
         </div>
@@ -754,11 +1343,163 @@
             <span class="detail-label">Celular:</span>
             <span class="detail-val" id="m-celular">—</span>
           </div>
+          <div class="detail-row" id="m-row-usuario" style="display: none;">
+            <span class="detail-label">Último Usuario:</span>
+            <span class="detail-val" id="m-usuario">—</span>
+          </div>
 
-          <a id="m-link-firma" href="#" class="modal-footer-btn">
-            ✍️ Ver / Generar Firma Corporativa
-          </a>
+          <div class="modal-actions-bar">
+            <!-- Botón Editar Perfil (si tiene permiso) -->
+            <button type="button" id="m-btn-editar" class="btn-modal-primary" style="display: none;" onclick="abrirEdicionDesdeDetalle()">
+              ✏️ Editar Información
+            </button>
+
+            <!-- Botón Eliminar (solo Rol Sistema) -->
+            <button type="button" id="m-btn-eliminar" class="btn-modal-danger" style="display: none;" onclick="eliminarDesdeDetalle()">
+              🗑️ Eliminar
+            </button>
+
+            <!-- Ver Firma Corporativa -->
+            <a id="m-link-firma" href="#" class="btn-cancel" style="flex: 1; text-align: center; justify-content: center;">
+              ✍️ Ver Firma Corporativa
+            </a>
+          </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FORMULARIO DE EDICIÓN / CREACIÓN -->
+  <div class="modal-overlay" id="modal-edicion" onclick="cerrarModalFuera(event, 'modal-edicion')">
+    <div class="modal-form-card">
+      <div class="modal-breadcrumb">
+        <span id="form-modal-title" style="color: #0F172A; font-weight: 700; font-size: 0.92rem;">✏️ Editar Colaborador</span>
+        <button class="btn-close-modal" onclick="cerrarModalEdicion()">✕</button>
+      </div>
+
+      <div style="padding: 24px;">
+        <div id="form-banner-colab" class="form-banner-info" style="display: none;">
+          ℹ️ <strong>Edición de Mi Perfil:</strong> Como colaborador puedes actualizar tu nombre, cargo, dirección, email, celular y tu fotografía corporativa.
+        </div>
+
+        <form id="colab-form" onsubmit="guardarColaborador(event)">
+          <input type="hidden" id="f-is-new" value="0">
+          <input type="hidden" id="f-foto-actual" value="">
+
+          <div class="form-grid">
+            <!-- Identificación -->
+            <div class="form-group">
+              <label class="form-label">Identificación (C.C.)</label>
+              <input type="text" id="f-identificacion" class="form-input" required placeholder="Ej: 1018231209">
+            </div>
+
+            <!-- Nombre -->
+            <div class="form-group">
+              <label class="form-label">Nombre Completo</label>
+              <input type="text" id="f-nombre" class="form-input" required placeholder="Ej: Juan Pérez">
+            </div>
+
+            <!-- Cargo -->
+            <div class="form-group">
+              <label class="form-label">Cargo</label>
+              <input type="text" id="f-cargo" class="form-input" required placeholder="Ej: Analista de Contratación">
+            </div>
+
+            <!-- Área Corporativa -->
+            <div class="form-group">
+              <label class="form-label">Área Corporativa</label>
+              <select id="f-area" class="form-select" required>
+                <option value="auxiliares_administrativos">Auxiliares Administrativos</option>
+                <option value="coordinadores">Coordinadores</option>
+                <option value="sst">Seguridad y Salud en el Trabajo (SST)</option>
+                <option value="seleccion">Atracción y Selección</option>
+                <option value="facturacion">Facturación</option>
+                <option value="tecnologia">Tecnología y Sistemas</option>
+                <option value="gerencias">Gerencias</option>
+                <option value="nomina">Nómina</option>
+                <option value="contabilidad">Contabilidad</option>
+                <option value="inventario">Inventario</option>
+                <option value="direccion">Dirección</option>
+                <option value="tesoreria">Tesesoría</option>
+                <option value="documental">Gestión Documental</option>
+                <option value="contratacion">Contratación</option>
+                <option value="calidad">Calidad</option>
+                <option value="cuentas">Cuentas Médicas / Administrativas</option>
+                <option value="juridica">Jurídica</option>
+              </select>
+            </div>
+
+            <!-- Regional -->
+            <div class="form-group">
+              <label class="form-label">Regional</label>
+              <select id="f-regional" class="form-select" required>
+                <option value="ANTIOQUIA">Antioquia</option>
+                <option value="CENTRO">Centro</option>
+                <option value="CARIBE">Caribe</option>
+                <option value="SANTANDER">Santander</option>
+                <option value="VALLE">Valle</option>
+                <option value="RISARALDA">Risaralda</option>
+                <option value="NORTE DE SANTANDER">Norte de Santander</option>
+                <option value="BOGOTA">Bogotá</option>
+                <option value="GENERAL">General / Nacional</option>
+              </select>
+            </div>
+
+            <!-- Operación / Sede -->
+            <div class="form-group">
+              <label class="form-label">Operación / Sede</label>
+              <input type="text" id="f-operacion" class="form-input" placeholder="Ej: Sede Principal, Centro Operativo...">
+            </div>
+
+            <!-- Dirección -->
+            <div class="form-group full-width">
+              <label class="form-label">Dirección Corporativa</label>
+              <input type="text" id="f-direccion" class="form-input" placeholder="Ej: CLL 10 SUR # 51A 14...">
+            </div>
+
+            <!-- Correo Electrónico -->
+            <div class="form-group">
+              <label class="form-label">Correo Electrónico</label>
+              <input type="email" id="f-email" class="form-input" placeholder="colaborador@logyser.com">
+            </div>
+
+            <!-- Celular -->
+            <div class="form-group">
+              <label class="form-label">Celular / Teléfono</label>
+              <input type="text" id="f-celular" class="form-input" placeholder="Ej: 3101234567">
+            </div>
+
+            <!-- Carga de Foto -->
+            <div class="form-group full-width">
+              <label class="form-label">Fotografía Corporativa</label>
+              <div class="photo-upload-wrap">
+                <img id="f-preview-img" src="" class="photo-preview" alt="Foto">
+                <div style="flex: 1;">
+                  <input type="file" id="f-foto-file" accept="image/*" class="form-input" style="padding: 6px; font-size: 0.82rem;" onchange="previewFotoSeleccionada(event)">
+                  <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
+                    Formato admitido: PNG, JPG o WEBP. Se guardará como <code>[Identificacion]&amp;yyyymmddhhmmss.ext</code> en el storage corporativo.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Checkbox regenerar PNG -->
+            <div class="form-group full-width" style="margin-top: 6px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #0F172A; cursor: pointer;">
+                <input type="checkbox" id="f-generar-png" checked style="width: 16px; height: 16px; accent-color: var(--primary-accent);">
+                <span>Generar automáticamente nueva imagen de firma corporativa PNG</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="modal-form-footer">
+            <button type="button" id="f-btn-eliminar" class="btn-modal-danger" style="display: none; margin-right: auto;" onclick="eliminarDesdeModalEdicion()">
+              🗑️ Eliminar Colaborador
+            </button>
+            <button type="button" class="btn-cancel" onclick="cerrarModalEdicion()">Cancelar</button>
+            <button type="submit" class="btn-modal-primary" style="flex: 0; min-width: 170px;">💾 Guardar Cambios</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -775,32 +1516,100 @@
   <script>
     const DEFAULT_FOTO = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
     let colaboradoresData = [];
+    let usuarioActual = null;
     let modoVistaActual = 'areas';
+    let colaboradorSeleccionado = null;
 
-    document.addEventListener('DOMContentLoaded', () => {
-      cargarDirectorio();
+    // Estado de ordenamiento de la tabla
+    let ordenColumna = 'colaborador';
+    let ordenDireccion = 'asc'; // 'asc' o 'desc'
 
-      // Búsqueda en tiempo real
+    function formatearOperacion(op) {
+      if (!op) return '';
+      const str = String(op).trim();
+      if (str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 'administracion') {
+        return 'Administración';
+      }
+      return str;
+    }
+
+    // SVG Icons
+    const ICON_OUTLOOK = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 6c0-1.1-.9-2-2-2H9v5l13-3V6zm-9 6.8L22 9.5v8.5c0 1.1-.9 2-2 2H9v-5.2l4-2zM7.5 7H2c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1h5.5c.83 0 1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-1.2 7.2c-.3.4-.8.6-1.3.6-.6 0-1.1-.2-1.4-.7-.3-.5-.5-1.1-.5-1.9 0-.8.2-1.4.5-1.9.3-.5.8-.7 1.4-.7.6 0 1 .2 1.3.6.3.4.5.9.5 1.5v.7h-2.3c0 .5.1.8.3 1.1.2.3.5.4.8.4.4 0 .8-.2.9-.6l.3.4zm-1.8-2.6h1.4c0-.3-.1-.6-.2-.8-.1-.2-.3-.3-.6-.3-.2 0-.4.1-.5.3-.1.2-.1.5-.1.8z"/></svg>`;
+    const ICON_WHATSAPP = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm5.79 14.07c-.24.68-1.39 1.3-1.94 1.38-.52.08-1.18.11-3.37-.8-2.62-1.09-4.3-3.75-4.43-3.92-.13-.18-1.05-1.4-1.05-2.67 0-1.27.66-1.89.9-2.15.24-.26.52-.33.7-.33.17 0 .35.01.5.01.16 0 .38-.06.59.45.22.53.75 1.83.82 1.97.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.17-.3.37-.42.5-.14.14-.28.3-.12.58.16.28.72 1.19 1.55 1.93 1.07.95 1.97 1.25 2.25 1.39.28.14.44.12.6-.07.17-.19.7-0.82.89-1.1.19-.28.38-.23.63-.14.26.09 1.63.77 1.91.91.28.14.47.21.54.33.07.12.07.68-.17 1.36z"/></svg>`;
+    const ICON_CALL = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.053 15.053 0 0 0 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>`;
+
+    // Obtener parámetro de usuario de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramUsuario = urlParams.get('usuario') || '';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Configurar enlace de firma conservando el usuario
+      const navFirma = document.getElementById('btn-nav-firma');
+      if (paramUsuario) {
+        navFirma.href = `/firma-corporativa?usuario=${encodeURIComponent(paramUsuario)}`;
+      }
+
+      inicializarRedimensionColumnas();
+      await inicializarUsuario();
+      await cargarDirectorio();
+
+      // Buscador reactivo
       const input = document.getElementById('input-busqueda');
       input.addEventListener('input', () => {
         renderDirectorio();
       });
     });
 
-    function cambiarModoVista(modo) {
-      modoVistaActual = modo;
-      document.getElementById('btn-view-areas').classList.toggle('active', modo === 'areas');
-      document.getElementById('btn-view-grid').classList.toggle('active', modo === 'grid');
+    // ════════ INICIALIZACIÓN DE USUARIO Y PERMISOS ════════
+    async function inicializarUsuario() {
+      if (!paramUsuario) return;
 
-      document.getElementById('view-areas').style.display = modo === 'areas' ? 'flex' : 'none';
-      document.getElementById('view-grid').style.display = modo === 'grid' ? 'block' : 'none';
-      renderDirectorio();
+      try {
+        const res = await fetch(`/directorio-corporativo/api/usuario-info?usuario=${encodeURIComponent(paramUsuario)}`);
+        const data = await res.json();
+
+        if (data.ok && data.usuario) {
+          usuarioActual = data.usuario;
+          mostrarUserPill(usuarioActual);
+
+          if (usuarioActual.esSistema) {
+            // Habilitar controles de Rol Sistema
+            document.getElementById('btn-header-add').style.display = 'inline-flex';
+            document.getElementById('btn-header-sync').style.display = 'inline-flex';
+            document.getElementById('btn-view-table').style.display = 'inline-flex';
+          }
+        }
+      } catch (err) {
+        console.warn('[directorio] Error al inicializar usuario:', err);
+      }
     }
 
+    function mostrarUserPill(user) {
+      const container = document.getElementById('user-pill-container');
+      const avatarEl = document.getElementById('user-avatar-initial');
+      const nameEl = document.getElementById('user-display-name');
+      const rolEl = document.getElementById('user-display-rol');
+
+      avatarEl.innerText = (user.nombre || 'U').charAt(0).toUpperCase();
+      nameEl.innerText = user.nombre || user.id;
+      rolEl.innerText = user.rol || 'Usuario';
+
+      if (user.esSistema) {
+        rolEl.classList.add('sistema');
+      }
+
+      container.style.display = 'flex';
+    }
+
+    // ════════ CARGA DE DATOS ════════
     async function cargarDirectorio() {
       showLoading('Cargando directorio corporativo...');
       try {
-        const res = await fetch('/directorio-corporativo/api/colaboradores');
+        const queryUrl = paramUsuario
+          ? `/directorio-corporativo/api/colaboradores?usuario=${encodeURIComponent(paramUsuario)}`
+          : '/directorio-corporativo/api/colaboradores';
+
+        const res = await fetch(queryUrl);
         const data = await res.json();
 
         if (data.ok) {
@@ -808,6 +1617,7 @@
           document.getElementById('stat-total').innerText = data.total || colaboradoresData.length;
           document.getElementById('stat-areas').innerText = Object.keys(data.estadisticas.porArea || {}).length;
           document.getElementById('stat-regionales').innerText = Object.keys(data.estadisticas.porRegional || {}).length;
+          document.getElementById('table-record-count').innerText = `${colaboradoresData.length} registros`;
 
           renderDirectorio();
         } else {
@@ -821,10 +1631,25 @@
       }
     }
 
+    // ════════ CAMBIO DE MODOS DE VISTA ════════
+    function cambiarModoVista(modo) {
+      modoVistaActual = modo;
+      document.getElementById('btn-view-areas').classList.toggle('active', modo === 'areas');
+      document.getElementById('btn-view-grid').classList.toggle('active', modo === 'grid');
+      const btnTable = document.getElementById('btn-view-table');
+      if (btnTable) btnTable.classList.toggle('active', modo === 'table');
+
+      document.getElementById('view-areas').style.display = modo === 'areas' ? 'flex' : 'none';
+      document.getElementById('view-grid').style.display = modo === 'grid' ? 'block' : 'none';
+      document.getElementById('view-table').style.display = modo === 'table' ? 'block' : 'none';
+
+      renderDirectorio();
+    }
+
+    // ════════ RENDER GENERAL ════════
     function renderDirectorio() {
       const q = document.getElementById('input-busqueda').value.toLowerCase().trim();
 
-      // Filtrar
       const filtrados = colaboradoresData.filter(c => {
         if (!q) return true;
         const nombre = (c.nombre || '').toLowerCase();
@@ -848,12 +1673,128 @@
 
       if (modoVistaActual === 'areas') {
         renderVistaAreas(filtrados, !!q);
-      } else {
+      } else if (modoVistaActual === 'grid') {
         renderVistaGrid(filtrados);
+      } else if (modoVistaActual === 'table') {
+        const ordenados = ordenarColaboradores(filtrados);
+        renderVistaTabla(ordenados);
       }
     }
 
-    // ════════ MODO 1: RENDER POR ÁREAS Y REGIONALES ════════
+    // ════════ ORDENAMIENTO Y REDIMENSIONAMIENTO DE TABLA ════════
+    function toggleOrdenColumna(columna) {
+      if (ordenColumna === columna) {
+        ordenDireccion = (ordenDireccion === 'asc') ? 'desc' : 'asc';
+      } else {
+        ordenColumna = columna;
+        ordenDireccion = 'asc';
+      }
+      actualizarIconosOrden();
+      renderDirectorio();
+    }
+
+    function actualizarIconosOrden() {
+      const columnas = ['colaborador', 'cargo', 'regional', 'operacion', 'area', 'contacto', 'usuario'];
+      columnas.forEach(col => {
+        const th = document.getElementById(`th-${col}`);
+        const icon = document.getElementById(`sort-icon-${col}`);
+        if (!th || !icon) return;
+
+        if (ordenColumna === col) {
+          th.classList.add('sorted');
+          icon.innerText = (ordenDireccion === 'asc') ? '▲' : '▼';
+        } else {
+          th.classList.remove('sorted');
+          icon.innerText = '↕';
+        }
+      });
+    }
+
+    function ordenarColaboradores(items) {
+      return [...items].sort((a, b) => {
+        let valA = '';
+        let valB = '';
+
+        switch (ordenColumna) {
+          case 'colaborador':
+            valA = (a.nombre || '').trim();
+            valB = (b.nombre || '').trim();
+            break;
+          case 'cargo':
+            valA = (a.cargo || '').trim();
+            valB = (b.cargo || '').trim();
+            break;
+          case 'regional':
+            valA = (a.regional || '').trim();
+            valB = (b.regional || '').trim();
+            break;
+          case 'operacion':
+            valA = formatearOperacion(a.operacion || '').trim();
+            valB = formatearOperacion(b.operacion || '').trim();
+            break;
+          case 'area':
+            valA = (a.area || '').trim();
+            valB = (b.area || '').trim();
+            break;
+          case 'contacto':
+            valA = (a.email || a.celular || '').trim();
+            valB = (b.email || b.celular || '').trim();
+            break;
+          case 'usuario':
+            valA = (a.usuario || '').trim();
+            valB = (b.usuario || '').trim();
+            break;
+          default:
+            valA = (a.nombre || '').trim();
+            valB = (b.nombre || '').trim();
+        }
+
+        const cmp = valA.localeCompare(valB, 'es', { sensitivity: 'base', numeric: true });
+        return ordenDireccion === 'asc' ? cmp : -cmp;
+      });
+    }
+
+    function inicializarRedimensionColumnas() {
+      const table = document.getElementById('colaboradores-table');
+      if (!table) return;
+      const resizers = table.querySelectorAll('.col-resizer');
+
+      resizers.forEach(resizer => {
+        const th = resizer.parentElement;
+        let startX = 0;
+        let startWidth = 0;
+
+        const onMouseMove = (e) => {
+          const diff = e.pageX - startX;
+          const newWidth = Math.max(50, startWidth + diff);
+          th.style.width = newWidth + 'px';
+          th.style.minWidth = newWidth + 'px';
+        };
+
+        const onMouseUp = () => {
+          resizer.classList.remove('resizing');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        resizer.addEventListener('mousedown', (e) => {
+          e.stopPropagation(); // Evita que se active el ordenamiento al arrastrar el resizer
+          e.preventDefault();
+          startX = e.pageX;
+          startWidth = th.offsetWidth;
+          resizer.classList.add('resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    }
+
+    // ════════ MODO 1: DEPARTAMENTOS / ÁREAS ════════
     function renderVistaAreas(items, abrirTodos = false) {
       const container = document.getElementById('view-areas');
 
@@ -862,7 +1803,6 @@
         return;
       }
 
-      // Agrupar por Área
       const gruposArea = {};
       items.forEach(c => {
         const areaKey = (c.area || 'auxiliares_administrativos').toLowerCase();
@@ -870,14 +1810,12 @@
         gruposArea[areaKey].push(c);
       });
 
-      // Ordenar áreas alfabéticamente
       const areasOrdenadas = Object.keys(gruposArea).sort();
 
       container.innerHTML = areasOrdenadas.map(areaKey => {
         const colabs = gruposArea[areaKey];
         const areaNombreFmt = areaKey.replace(/_/g, ' ').toUpperCase();
 
-        // Subagrupar por Regional
         const gruposRegional = {};
         colabs.forEach(c => {
           const regKey = (c.regional || 'GENERAL').toUpperCase();
@@ -928,14 +1866,13 @@
       if (el) el.classList.toggle('open');
     }
 
-    // ════════ MODO 2: RENDER CUADRÍCULA DIRECTA ════════
+    // ════════ MODO 2: CUADRÍCULA DIRECTA ════════
     function renderVistaGrid(items) {
       const container = document.getElementById('grid-container');
       if (!items.length) {
         container.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted); grid-column: 1 / -1;">No se encontraron colaboradores.</div>';
         return;
       }
-
       container.innerHTML = items.map(c => renderCardHtml(c)).join('');
     }
 
@@ -945,38 +1882,96 @@
       const celularLimpio = String(c.celular || '').replace(/\D/g, '');
       const telHref = celularLimpio ? `tel:${celularLimpio}` : '#';
       const emailHref = c.email ? `mailto:${c.email}` : '#';
-      
+
       let waNum = celularLimpio;
       if (waNum.length === 10 && waNum.startsWith('3')) waNum = '57' + waNum;
       const waHref = waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent('Hola, me comunico desde el Directorio Logyser.')}` : '#';
 
+      const badgeEditable = c.esPropio
+        ? `<div class="colab-editable-badge">Mi Perfil</div>`
+        : (usuarioActual && usuarioActual.esSistema ? `<div class="colab-editable-badge" style="background:#7C3AED;">Admin</div>` : '');
+
+      const opStr = formatearOperacion(c.operacion);
+
       return `
         <div class="colab-card" onclick="abrirDetalleColaborador('${c.identificacion}')">
-          <img src="${foto}" class="colab-avatar" loading="lazy">
+          ${badgeEditable}
+          <img src="${foto}" class="colab-avatar" loading="lazy" alt="Foto">
           <div class="colab-info">
             <div class="colab-name" title="${c.nombre}">${c.nombre}</div>
             <div class="colab-cargo" title="${c.cargo}">${c.cargo}</div>
-            <div class="colab-operacion" title="${c.operacion}">${c.operacion}</div>
+            <div class="colab-operacion" title="${opStr}">${opStr}</div>
           </div>
           <div class="colab-actions" onclick="event.stopPropagation()">
-            ${c.email ? `<a href="${emailHref}" class="btn-action-icon email" title="Enviar Correo">✉️</a>` : ''}
-            ${celularLimpio ? `<a href="${telHref}" class="btn-action-icon call" title="Llamar">📞</a>` : ''}
-            ${waNum ? `<a href="${waHref}" target="_blank" class="btn-action-icon whatsapp" title="Abrir WhatsApp">💬</a>` : ''}
+            ${c.email ? `<a href="${emailHref}" class="btn-action-icon outlook" title="Enviar Correo Outlook">${ICON_OUTLOOK}</a>` : ''}
+            ${celularLimpio ? `<a href="${telHref}" class="btn-action-icon call" title="Llamar">${ICON_CALL}</a>` : ''}
+            ${waNum ? `<a href="${waHref}" target="_blank" class="btn-action-icon whatsapp" title="Chat WhatsApp">${ICON_WHATSAPP}</a>` : ''}
           </div>
         </div>
       `;
     }
 
-    // ════════ MODAL DETALLE DE COLABORADOR (Screenshot 3) ════════
+    // ════════ MODO 3: REGISTROS / TABLA (Rol Sistema) ════════
+    function renderVistaTabla(items) {
+      const tbody = document.getElementById('table-body');
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-muted);">No hay colaboradores registrados con el criterio de búsqueda.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(c => {
+        const foto = c.foto_url || DEFAULT_FOTO;
+        const celularLimpio = String(c.celular || '').replace(/\D/g, '');
+        let waNum = celularLimpio;
+        if (waNum.length === 10 && waNum.startsWith('3')) waNum = '57' + waNum;
+        const areaStr = (c.area || 'auxiliares_administrativos').replace(/_/g, ' ');
+        const opStr = formatearOperacion(c.operacion) || '—';
+
+        return `
+          <tr onclick="abrirModalEdicionConId('${c.identificacion}')">
+            <td style="text-align: center;">
+              <img src="${foto}" class="table-avatar" loading="lazy" alt="Foto">
+            </td>
+            <td>
+              <div class="colab-name-cell" title="${c.nombre}">${c.nombre}</div>
+              <div class="colab-id-cell">CC: ${c.identificacion}</div>
+            </td>
+            <td title="${c.cargo || ''}">${c.cargo || '—'}</td>
+            <td><span class="badge-regional">${c.regional || 'GENERAL'}</span></td>
+            <td title="${opStr}">${opStr}</td>
+            <td><span class="badge-area">${areaStr}</span></td>
+            <td onclick="event.stopPropagation()">
+              <div style="display: flex; gap: 5px;">
+                ${c.email ? `<a href="mailto:${c.email}" class="btn-action-icon outlook" style="width:28px; height:28px;" title="${c.email}">${ICON_OUTLOOK}</a>` : ''}
+                ${celularLimpio ? `<a href="tel:${celularLimpio}" class="btn-action-icon call" style="width:28px; height:28px;" title="${celularLimpio}">${ICON_CALL}</a>` : ''}
+                ${waNum ? `<a href="https://wa.me/${waNum}" target="_blank" class="btn-action-icon whatsapp" style="width:28px; height:28px;" title="WhatsApp">${ICON_WHATSAPP}</a>` : ''}
+              </div>
+            </td>
+            <td style="font-size: 0.76rem; color: var(--text-muted);">${c.usuario || 'Sistema'}</td>
+            <td onclick="event.stopPropagation()" style="text-align: center; overflow: visible; width: 145px; min-width: 140px;">
+              <div class="table-row-actions">
+                <button type="button" class="btn-row-action" title="Editar Colaborador" onclick="abrirModalEdicionConId('${c.identificacion}')">✏️</button>
+                <a href="/firma-corporativa?id=${c.identificacion}${paramUsuario ? '&usuario=' + encodeURIComponent(paramUsuario) : ''}" class="btn-row-action" title="Ver Firma Corporativa">✍️</a>
+                <button type="button" class="btn-row-action delete" title="Eliminar Colaborador" onclick="confirmarEliminar('${c.identificacion}', '${c.nombre.replace(/'/g, "\\'")}')">🗑️</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ════════ MODAL 1: DETALLE DE COLABORADOR ════════
     function abrirDetalleColaborador(identificacion) {
       const c = colaboradoresData.find(x => String(x.identificacion) === String(identificacion));
       if (!c) return;
+
+      colaboradorSeleccionado = c;
 
       document.getElementById('m-breadcrumb-id').innerText = c.identificacion;
       document.getElementById('m-avatar').src = c.foto_url || DEFAULT_FOTO;
       document.getElementById('m-nombre').innerText = c.nombre;
       document.getElementById('m-cargo').innerText = c.cargo || 'Sin Cargo';
-      document.getElementById('m-operacion').innerText = c.operacion || 'Sede Principal';
+      document.getElementById('m-operacion').innerText = formatearOperacion(c.operacion) || 'Sede Principal';
 
       document.getElementById('m-regional').innerText = c.regional || 'GENERAL';
       document.getElementById('m-area').innerText = (c.area || 'auxiliares_administrativos').replace(/_/g, ' ');
@@ -984,20 +1979,29 @@
       document.getElementById('m-email').innerText = c.email || 'No registrado';
       document.getElementById('m-celular').innerText = c.celular || 'No registrado';
 
-      // Acciones rápidas
+      // Último usuario
+      const rowUsuario = document.getElementById('m-row-usuario');
+      if (c.usuario) {
+        document.getElementById('m-usuario').innerText = c.usuario;
+        rowUsuario.style.display = 'flex';
+      } else {
+        rowUsuario.style.display = 'none';
+      }
+
+      // Contactos
+      const btnOutlook = document.getElementById('m-btn-outlook');
+      if (c.email) {
+        btnOutlook.href = `mailto:${c.email}`;
+        btnOutlook.style.display = 'inline-flex';
+      } else {
+        btnOutlook.style.display = 'none';
+      }
+
+      const btnWa = document.getElementById('m-btn-whatsapp');
       const celularLimpio = String(c.celular || '').replace(/\D/g, '');
       let waNum = celularLimpio;
       if (waNum.length === 10 && waNum.startsWith('3')) waNum = '57' + waNum;
 
-      const btnEmail = document.getElementById('m-btn-email');
-      if (c.email) {
-        btnEmail.href = `mailto:${c.email}`;
-        btnEmail.style.display = 'inline-flex';
-      } else {
-        btnEmail.style.display = 'none';
-      }
-
-      const btnWa = document.getElementById('m-btn-whatsapp');
       if (waNum) {
         btnWa.href = `https://wa.me/${waNum}?text=${encodeURIComponent('Hola ' + c.nombre + ', te contacto desde el Directorio Logyser.')}`;
         btnWa.style.display = 'inline-flex';
@@ -1005,24 +2009,269 @@
         btnWa.style.display = 'none';
       }
 
-      // Enlace a firma corporativa
-      document.getElementById('m-link-firma').href = `/firma-corporativa?id=${c.identificacion}`;
+      // Botón Editar según permisos
+      const btnEditar = document.getElementById('m-btn-editar');
+      if (c.puedeEditar) {
+        btnEditar.style.display = 'inline-flex';
+        btnEditar.innerText = c.esPropio ? '✏️ Editar Mi Perfil' : '✏️ Editar Colaborador';
+      } else {
+        btnEditar.style.display = 'none';
+      }
+
+      // Botón Eliminar según permisos (Rol Sistema)
+      const btnEliminar = document.getElementById('m-btn-eliminar');
+      if (c.puedeEliminar || (usuarioActual && usuarioActual.esSistema)) {
+        btnEliminar.style.display = 'inline-flex';
+      } else {
+        btnEliminar.style.display = 'none';
+      }
+
+      // Enlace a firma corporativa con usuario
+      document.getElementById('m-link-firma').href = `/firma-corporativa?id=${c.identificacion}${paramUsuario ? '&usuario=' + encodeURIComponent(paramUsuario) : ''}`;
 
       document.getElementById('modal-detalle').style.display = 'flex';
     }
 
     function cerrarModalDetalle() {
       document.getElementById('modal-detalle').style.display = 'none';
+      colaboradorSeleccionado = null;
     }
 
-    function cerrarModalFuera(e) {
-      if (e.target.id === 'modal-detalle') {
-        cerrarModalDetalle();
+    function abrirEdicionDesdeDetalle() {
+      if (!colaboradorSeleccionado) return;
+      const c = colaboradorSeleccionado;
+      cerrarModalDetalle();
+      abrirModalEdicion(c);
+    }
+
+    function eliminarDesdeDetalle() {
+      if (!colaboradorSeleccionado) return;
+      const id = colaboradorSeleccionado.identificacion;
+      const nombre = colaboradorSeleccionado.nombre;
+      cerrarModalDetalle();
+      confirmarEliminar(id, nombre);
+    }
+
+    // ════════ MODAL 2: FORMULARIO DE EDICIÓN / CREACIÓN ════════
+    function abrirModalNuevoColaborador() {
+      if (!usuarioActual || !usuarioActual.esSistema) {
+        showToast('Solo el usuario con Rol de Sistema puede registrar nuevos colaboradores.', 'error');
+        return;
+      }
+
+      document.getElementById('form-modal-title').innerText = '＋ Agregar Nuevo Colaborador';
+      document.getElementById('f-is-new').value = '1';
+      document.getElementById('f-identificacion').value = '';
+      document.getElementById('f-identificacion').disabled = false;
+      document.getElementById('f-nombre').value = '';
+      document.getElementById('f-cargo').value = '';
+      document.getElementById('f-area').value = 'auxiliares_administrativos';
+      document.getElementById('f-area').disabled = false;
+      document.getElementById('f-regional').value = 'BOGOTA';
+      document.getElementById('f-regional').disabled = false;
+      document.getElementById('f-operacion').value = 'Sede Principal';
+      document.getElementById('f-operacion').disabled = false;
+      document.getElementById('f-direccion').value = '';
+      document.getElementById('f-email').value = '';
+      document.getElementById('f-celular').value = '';
+      document.getElementById('f-foto-actual').value = '';
+      document.getElementById('f-foto-file').value = '';
+      document.getElementById('f-preview-img').src = DEFAULT_FOTO;
+      document.getElementById('form-banner-colab').style.display = 'none';
+
+      // Ocultar botón eliminar al crear nuevo colaborador
+      const btnDelModal = document.getElementById('f-btn-eliminar');
+      if (btnDelModal) btnDelModal.style.display = 'none';
+
+      document.getElementById('modal-edicion').style.display = 'flex';
+    }
+
+    function abrirModalEdicionConId(identificacion) {
+      const c = colaboradoresData.find(x => String(x.identificacion) === String(identificacion));
+      if (!c) return;
+      abrirModalEdicion(c);
+    }
+
+    function abrirModalEdicion(c) {
+      const esSistema = usuarioActual && usuarioActual.esSistema;
+      const esPropio = c.esPropio;
+
+      if (!esSistema && !esPropio) {
+        showToast('No tienes permisos para editar este colaborador.', 'error');
+        return;
+      }
+
+      document.getElementById('form-modal-title').innerText = esPropio
+        ? '✏️ Editar Mi Información de Colaborador'
+        : `✏️ Editar Colaborador: ${c.nombre}`;
+
+      document.getElementById('f-is-new').value = '0';
+      document.getElementById('f-identificacion').value = c.identificacion;
+      document.getElementById('f-identificacion').disabled = true; // Cédula no modificable en edición
+      document.getElementById('f-nombre').value = c.nombre;
+      document.getElementById('f-cargo').value = c.cargo || '';
+      document.getElementById('f-regional').value = c.regional || '';
+      document.getElementById('f-operacion').value = formatearOperacion(c.operacion) || '';
+      document.getElementById('f-area').value = (c.area || 'auxiliares_administrativos').toLowerCase();
+      document.getElementById('f-direccion').value = c.direccion || '';
+      document.getElementById('f-email').value = c.email || '';
+      document.getElementById('f-celular').value = c.celular || '';
+      document.getElementById('f-foto-actual').value = c.foto_url || '';
+      document.getElementById('f-foto-file').value = '';
+      document.getElementById('f-preview-img').src = c.foto_url || DEFAULT_FOTO;
+
+      // Si es colaborador propio (no Sistema), deshabilitar campos de estructura corporativa
+      const bannerColab = document.getElementById('form-banner-colab');
+      if (!esSistema && esPropio) {
+        bannerColab.style.display = 'block';
+        document.getElementById('f-regional').disabled = true;
+        document.getElementById('f-operacion').disabled = true;
+        document.getElementById('f-area').disabled = true;
+      } else {
+        bannerColab.style.display = 'none';
+        document.getElementById('f-regional').disabled = false;
+        document.getElementById('f-operacion').disabled = false;
+        document.getElementById('f-area').disabled = false;
+      }
+
+      // Botón Eliminar en ventana emergente de edición
+      const btnDelModal = document.getElementById('f-btn-eliminar');
+      if (btnDelModal) {
+        if (esSistema || c.puedeEliminar) {
+          btnDelModal.style.display = 'inline-flex';
+          btnDelModal.setAttribute('data-id', c.identificacion);
+          btnDelModal.setAttribute('data-name', c.nombre);
+        } else {
+          btnDelModal.style.display = 'none';
+        }
+      }
+
+      document.getElementById('modal-edicion').style.display = 'flex';
+    }
+
+    function cerrarModalEdicion() {
+      document.getElementById('modal-edicion').style.display = 'none';
+    }
+
+    function eliminarDesdeModalEdicion() {
+      const btnDelModal = document.getElementById('f-btn-eliminar');
+      const id = (btnDelModal && btnDelModal.getAttribute('data-id')) || document.getElementById('f-identificacion').value.trim();
+      const nombre = (btnDelModal && btnDelModal.getAttribute('data-name')) || document.getElementById('f-nombre').value.trim();
+      if (!id) return;
+      cerrarModalEdicion();
+      confirmarEliminar(id, nombre);
+    }
+
+    function previewFotoSeleccionada(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          document.getElementById('f-preview-img').src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // ════════ GUARDAR COLABORADOR (SUBMIT) ════════
+    async function guardarColaborador(e) {
+      e.preventDefault();
+
+      if (!usuarioActual) {
+        showToast('Debes ingresar con un usuario válido en la URL (?usuario=ID).', 'error');
+        return;
+      }
+
+      const identificacion = document.getElementById('f-identificacion').value.trim();
+      const nombre = document.getElementById('f-nombre').value.trim();
+      if (!identificacion || !nombre) {
+        showToast('Identificación y Nombre son obligatorios.', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('usuario_id', usuarioActual.id);
+      formData.append('identificacion', identificacion);
+      formData.append('nombre', nombre);
+      formData.append('cargo', document.getElementById('f-cargo').value.trim());
+      formData.append('regional', document.getElementById('f-regional').value.trim());
+      formData.append('operacion', formatearOperacion(document.getElementById('f-operacion').value.trim()));
+      formData.append('area', document.getElementById('f-area').value);
+      formData.append('direccion', document.getElementById('f-direccion').value.trim());
+      formData.append('email', document.getElementById('f-email').value.trim());
+      formData.append('celular', document.getElementById('f-celular').value.trim());
+      formData.append('foto_url', document.getElementById('f-foto-actual').value);
+      formData.append('generarPng', document.getElementById('f-generar-png').checked ? 'true' : 'false');
+
+      const fotoFile = document.getElementById('f-foto-file').files[0];
+      if (fotoFile) {
+        formData.append('foto', fotoFile);
+      }
+
+      showLoading('Guardando colaborador y actualizando firma...');
+      try {
+        const res = await fetch('/directorio-corporativo/api/colaborador/guardar', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          showToast(data.mensaje || 'Colaborador guardado exitosamente.');
+          cerrarModalEdicion();
+          await cargarDirectorio();
+        } else {
+          showToast('Error: ' + (data.error || 'No se pudo guardar.'), 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión al guardar.', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ════════ ELIMINAR COLABORADOR (Rol Sistema) ════════
+    async function confirmarEliminar(identificacion, nombre) {
+      const idStr = String(identificacion || '').trim();
+      const nomStr = String(nombre || idStr).trim();
+      if (!idStr) return;
+
+      const userParam = (usuarioActual && usuarioActual.id) || paramUsuario || '';
+
+      if (!confirm(`¿Estás seguro de eliminar a "${nomStr}" (CC: ${idStr}) del Directorio Corporativo?\nEsta acción eliminará el registro de la base de datos de firmas.`)) {
+        return;
+      }
+
+      showLoading('Eliminando colaborador...');
+      try {
+        const queryUser = userParam ? `?usuario=${encodeURIComponent(userParam)}` : '';
+        const res = await fetch(`/directorio-corporativo/api/colaborador/${encodeURIComponent(idStr)}${queryUser}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          showToast(`Colaborador "${nomStr}" eliminado correctamente.`);
+          await cargarDirectorio();
+        } else {
+          showToast('Error al eliminar: ' + (data.error || 'No autorizado.'), 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión al eliminar.', 'error');
+      } finally {
+        hideLoading();
       }
     }
 
     // ════════ SINCRONIZACIÓN BAJO DEMANDA ════════
     async function sincronizarVinculacion() {
+      if (!usuarioActual || !usuarioActual.esSistema) {
+        showToast('Solo usuarios con Rol Sistema pueden sincronizar.', 'error');
+        return;
+      }
+
       if (!confirm('¿Deseas sincronizar los colaboradores activos desde Maestro_Vinculación?\nSe agregarán nuevos contratos y se actualizarán cargos y sedes.')) {
         return;
       }
@@ -1033,8 +2282,8 @@
         const data = await res.json();
 
         if (data.ok) {
-          showToast(`Sincronización completa: ${data.creados} creados, ${data.actualizados} actualizados.`);
-          cargarDirectorio();
+          showToast(`Sincronización completa: ${data.creados} nuevos, ${data.actualizados} actualizados.`);
+          await cargarDirectorio();
         } else {
           showToast('Error al sincronizar datos: ' + (data.error || ''), 'error');
         }
@@ -1043,6 +2292,12 @@
         showToast('Error de conexión al sincronizar.', 'error');
       } finally {
         hideLoading();
+      }
+    }
+
+    function cerrarModalFuera(e, modalId) {
+      if (e.target.id === modalId) {
+        document.getElementById(modalId).style.display = 'none';
       }
     }
 

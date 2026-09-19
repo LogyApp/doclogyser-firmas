@@ -52,7 +52,7 @@ router.get('/api/buscar-empleados', async (req, res) => {
 router.post('/api/guardar', upload.single('foto'), async (req, res) => {
   try {
     const generarPng = req.body.generarPng !== 'false';
-    const resultado = await guardarEmpleadoFirma(req.body, req.file, generarPng);
+    const resultado = await guardarEmpleadoFirma(req.body, req.file, generarPng, req.body.usuario);
     res.json({ ok: true, ...resultado });
   } catch (err) {
     console.error('[firmacorporativa] Error al guardar datos:', err);

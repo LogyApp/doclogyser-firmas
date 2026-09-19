@@ -55,18 +55,58 @@
     .brand-wrap {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
 
-    .brand-logo {
-      height: 38px;
-      filter: brightness(0) invert(1);
+    /* Brand Lockup horizontal idéntico a Inventario / SST */
+    .brand-lockup-horizontal {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 0;
+    }
+    .brand-logo-app {
+      display: block;
+      height: 28px;
+      object-fit: contain;
+    }
+    .brand-divider-vert {
+      width: 1.5px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .brand-logo-company-crop {
+      width: 130px;
+      height: 32px;
+      overflow: hidden;
+      position: relative;
+    }
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -63px;
+      top: -64px;
+      width: 260px;
+      height: 172px;
+      max-width: none;
     }
 
-    .brand-title {
+    .header-titles {
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      padding-left: 14px;
+    }
+    .header-main-title {
       font-size: 1.15rem;
-      font-weight: 700;
+      font-weight: 800;
+      color: #FFFFFF;
       letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+    .header-sub-title {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 500;
     }
 
     .header-actions {
@@ -507,11 +547,20 @@
   <!-- Barra Superior -->
   <header class="top-header">
     <div class="brand-wrap">
-      <img src="https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png" alt="Logyser" class="brand-logo">
-      <span class="brand-title">Generador de Firmas Corporativas</span>
+      <div class="brand-lockup-horizontal">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider-vert"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20Logyser.png" alt="Logyser">
+        </div>
+      </div>
+      <div class="header-titles">
+        <span class="header-main-title">Generador de Firmas Corporativas</span>
+        <span class="header-sub-title">Firma Oficial HTML &amp; PNG</span>
+      </div>
     </div>
     <div class="header-actions">
-      <a href="/directorio-corporativo" class="btn-nav">
+      <a href="/directorio-corporativo" id="btn-nav-directorio" class="btn-nav">
         📖 Directorio Corporativo
       </a>
     </div>
@@ -567,8 +616,8 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label required">Área Corporativa</label>
-                <select id="area" class="input-text" required onchange="actualizarPrevisualizacion()">
+                <label class="form-label required">Área Corporativa <span style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">(No editable)</span></label>
+                <select id="area" class="input-text" required onchange="actualizarPrevisualizacion()" style="pointer-events: none; background-color: #F1F5F9; color: #475569; cursor: not-allowed;" tabindex="-1">
                   <option value="auxiliares_administrativos">Auxiliares Administrativos</option>
                   <option value="coordinadores">Coordinadores</option>
                   <option value="sst">Seguridad y Salud en el Trabajo (SST)</option>
@@ -590,8 +639,8 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label required">Sede / Operación</label>
-                <input type="text" id="operacion" class="input-text" required placeholder="Ej: Cedi Vegas o Pepsico Guarne">
+                <label class="form-label required">Sede / Operación <span style="font-size: 0.72rem; font-weight: normal; color: var(--text-muted);">(No editable)</span></label>
+                <input type="text" id="operacion" class="input-text" required readonly style="background-color: #F1F5F9; color: #475569; cursor: not-allowed;" placeholder="Ej: Cedi Vegas o Pepsico Guarne">
               </div>
 
               <div class="form-group">
@@ -623,16 +672,21 @@
                 <input type="text" id="celular" class="input-text" required placeholder="Ej: 3142317742">
               </div>
 
-              <!-- Foto de Perfil -->
+              <!-- Foto de Perfil (Solo para Directorio Corporativo) -->
               <div class="form-group col-full">
-                <label class="form-label">Fotografía de Perfil (Para agenda y firma)</label>
-                <div class="photo-upload-wrap">
+                <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+                  <span>Fotografía de Perfil (Opcional)</span>
+                  <span style="font-size: 0.72rem; color: var(--accent); font-weight: 700; text-transform: none;">📖 Exclusivo para el Directorio Corporativo</span>
+                </label>
+                <div class="photo-upload-wrap" style="background: #F8FAFC; border: 1.5px dashed #CBD5E1;">
                   <img id="avatar-preview" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" class="current-photo">
                   <div class="photo-info">
-                    <div class="photo-title">Foto del Colaborador</div>
-                    <div class="photo-hint">Formatos JPG o PNG (máx 10MB). Se recortará circularmente.</div>
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('input-foto').click()" style="padding: 6px 12px; font-size: 0.8rem;">
-                      📷 Seleccionar Foto
+                    <div class="photo-title">Foto del Colaborador (Directorio)</div>
+                    <div class="photo-hint" style="line-height: 1.45; margin-top: 3px;">
+                      ℹ️ <strong>Nota:</strong> La firma de correo electrónico <u>no requiere ni incluye fotografía</u>. Esta imagen se utiliza exclusivamente en tu ficha de contacto del <strong>Directorio Corporativo</strong>.
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('input-foto').click()" style="padding: 6px 14px; font-size: 0.82rem; margin-top: 6px;">
+                      📷 Seleccionar / Actualizar Foto para Directorio
                     </button>
                     <input type="file" id="input-foto" accept="image/*" style="display: none;" onchange="manejarFotoSeleccionada(event)">
                   </div>
@@ -727,9 +781,14 @@
     let urlFirmaPngGenerada = '';
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Escuchar parámetros URL (?id=...)
+      // Escuchar parámetros URL (?id=... y ?usuario=...)
       const urlParams = new URLSearchParams(window.location.search);
       const paramId = urlParams.get('id');
+      const paramUsuario = urlParams.get('usuario');
+      if (paramUsuario) {
+        const linkDir = document.getElementById('btn-nav-directorio');
+        if (linkDir) linkDir.href = `/directorio-corporativo?usuario=${encodeURIComponent(paramUsuario)}`;
+      }
       if (paramId) {
         document.getElementById('input-busqueda').value = paramId;
         buscarColaborador(paramId);
@@ -787,6 +846,15 @@
       }
     }
 
+    function formatearOperacion(op) {
+      if (!op) return '';
+      const str = String(op).trim();
+      if (str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 'administracion') {
+        return 'Administración';
+      }
+      return str;
+    }
+
     function mostrarSugerencias(items) {
       const container = document.getElementById('suggestions-list');
       container.innerHTML = items.map(it => `
@@ -794,7 +862,7 @@
           <img src="${it.foto_url || DEFAULT_FOTO}" class="sugg-avatar">
           <div class="sugg-info">
             <div class="sugg-name">${it.nombre}</div>
-            <div class="sugg-sub">C.C. ${it.identificacion} • ${it.cargo || 'Sin cargo'} (${it.operacion || ''})</div>
+            <div class="sugg-sub">C.C. ${it.identificacion} • ${it.cargo || 'Sin cargo'} (${formatearOperacion(it.operacion || '')})</div>
           </div>
         </div>
       `).join('');
@@ -833,7 +901,7 @@
         document.getElementById('identificacion').value = d.identificacion || '';
         document.getElementById('nombre').value = d.nombre || '';
         document.getElementById('cargo').value = d.cargo || '';
-        document.getElementById('operacion').value = d.operacion || 'Sede Principal';
+        document.getElementById('operacion').value = formatearOperacion(d.operacion || 'Sede Principal');
         document.getElementById('regional').value = d.regional || 'ANTIOQUIA';
         document.getElementById('area').value = d.area || 'auxiliares_administrativos';
         document.getElementById('direccion').value = d.direccion || '';
@@ -901,7 +969,8 @@
     function actualizarPrevisualizacion() {
       const nombre = document.getElementById('nombre').value.trim() || 'Nombre y Apellido';
       const cargo = document.getElementById('cargo').value.trim() || 'Cargo Corporativo';
-      const operacion = document.getElementById('operacion').value.trim() || 'Sede Operación';
+      const operacionRaw = document.getElementById('operacion').value.trim();
+      const operacion = formatearOperacion(operacionRaw) || 'Sede Operación';
       const direccion = document.getElementById('direccion').value.trim();
       const email = document.getElementById('email').value.trim() || 'colaborador@logyser.com';
       const celular = document.getElementById('celular').value.trim() || '3000000000';
@@ -1006,7 +1075,7 @@
         formData.append('nombre', nombre);
         formData.append('cargo', cargo);
         formData.append('regional', document.getElementById('regional').value);
-        formData.append('operacion', document.getElementById('operacion').value.trim());
+        formData.append('operacion', formatearOperacion(document.getElementById('operacion').value.trim()));
         formData.append('area', document.getElementById('area').value);
         formData.append('direccion', document.getElementById('direccion').value.trim());
         formData.append('email', email);
@@ -1015,6 +1084,12 @@
 
         if (fotoSeleccionadaFile) {
           formData.append('foto', fotoSeleccionadaFile);
+        }
+
+        const urlParamsNow = new URLSearchParams(window.location.search);
+        const uParam = urlParamsNow.get('usuario');
+        if (uParam) {
+          formData.append('usuario', uParam);
         }
 
         const res = await fetch('/firma-corporativa/api/guardar', {

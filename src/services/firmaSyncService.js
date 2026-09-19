@@ -13,15 +13,42 @@ const CARGOS_EXCLUIDOS = [
 ];
 
 /**
- * Sube una fotografía de colaborador al bucket de recursos corporativos
+ * Formatea la fecha actual en yyyymmddhhmmss
  */
-async function subirFotoEmpleado(identificacion, buffer, mimetype = 'image/png') {
-  const extension = mimetype.includes('jpeg') || mimetype.includes('jpg') ? 'jpg' : 'png';
-  const nombreArchivo = `firmas-corporativas/fotos-empleados/${identificacion}_${Date.now()}.${extension}`;
+function formatearTimestampFoto(fecha = new Date()) {
+  const pad = n => String(n).padStart(2, '0');
+  const yyyy = fecha.getFullYear();
+  const mm = pad(fecha.getMonth() + 1);
+  const dd = pad(fecha.getDate());
+  const hh = pad(fecha.getHours());
+  const mi = pad(fecha.getMinutes());
+  const ss = pad(fecha.getSeconds());
+  return `${yyyy}${mm}${dd}${hh}${mi}${ss}`;
+}
+
+/**
+ * Sube una fotografía de colaborador al bucket de recursos corporativos
+ * Formato requerido: https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/[Identificacion]&yyyymmddhhmmss.extención
+ */
+async function subirFotoEmpleado(identificacion, buffer, mimetype = 'image/png', nombreOriginal = '') {
+  let extension = 'png';
+  if (nombreOriginal && nombreOriginal.includes('.')) {
+    const ext = nombreOriginal.split('.').pop().toLowerCase();
+    if (['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+      extension = ext === 'jpeg' ? 'jpg' : ext;
+    }
+  } else if (mimetype) {
+    if (mimetype.includes('jpeg') || mimetype.includes('jpg')) extension = 'jpg';
+    else if (mimetype.includes('webp')) extension = 'webp';
+    else extension = 'png';
+  }
+
+  const timestamp = formatearTimestampFoto();
+  const nombreArchivo = `firmas-corporativas/fotos-empleados/${identificacion}&${timestamp}.${extension}`;
   const file = storage.bucket(BUCKET_RECURSOS).file(nombreArchivo);
 
   await file.save(buffer, {
-    contentType: mimetype,
+    contentType: mimetype || (extension === 'png' ? 'image/png' : 'image/jpeg'),
     resumable: false,
     metadata: {
       cacheControl: 'public, max-age=86400'
@@ -329,7 +356,7 @@ async function buscarColaboradoresSugeridos(query) {
 /**
  * Guarda o actualiza los datos de un empleado en Maestro_firma_corporativa
  */
-async function guardarEmpleadoFirma(datos, archivoFoto = null, generarPngAutomatico = true) {
+async function guardarEmpleadoFirma(datos, archivoFoto = null, generarPngAutomatico = true, usuarioId = null) {
   const {
     identificacion,
     nombre,
@@ -346,10 +373,22 @@ async function guardarEmpleadoFirma(datos, archivoFoto = null, generarPngAutomat
     throw new Error('Identificación y Nombre son obligatorios.');
   }
 
+  let operacionLimpia = operacion || '';
+  if (operacionLimpia.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 'administracion') {
+    operacionLimpia = 'Administración';
+  }
+
+  const usuarioParaGuardar = usuarioId || datos.usuario || datos.usuario_id || null;
+
   // 1. Subir foto si viene archivo
   let fotoUrl = datos.foto_url || DEFAULT_FOTO;
   if (archivoFoto && archivoFoto.buffer) {
-    fotoUrl = await subirFotoEmpleado(identificacion, archivoFoto.buffer, archivoFoto.mimetype);
+    fotoUrl = await subirFotoEmpleado(
+      identificacion,
+      archivoFoto.buffer,
+      archivoFoto.mimetype,
+      archivoFoto.originalname
+    );
   }
 
   // 2. Formatear Trabajador
@@ -373,39 +412,43 @@ async function guardarEmpleadoFirma(datos, archivoFoto = null, generarPngAutomat
         email = ?,
         celular = ?,
         foto_url = ?,
-        Trabajador = COALESCE(Trabajador, ?)
+        Trabajador = COALESCE(Trabajador, ?),
+        usuario = COALESCE(?, usuario)
        WHERE Identificacion = ?`,
       [
         nombre,
         cargo || '',
         regional || '',
-        operacion || '',
+        operacionLimpia,
         area || 'auxiliares_administrativos',
         direccion || '',
         email || '',
         celular || '',
         fotoUrl,
         trabajadorStr,
+        usuarioParaGuardar,
         identificacion
       ]
     );
   } else {
     await pool.query(
       `INSERT INTO Maestro_firma_corporativa (
-        Identificacion, Trabajador, nombre, cargo, regional, operacion, area, direccion, email, celular, foto_url
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        Identificacion, Trabajador, nombre, cargo, regional, operacion,
+        area, direccion, email, celular, foto_url, usuario
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         identificacion,
         trabajadorStr,
         nombre,
         cargo || '',
         regional || '',
-        operacion || '',
+        operacionLimpia,
         area || 'auxiliares_administrativos',
         direccion || '',
         email || '',
         celular || '',
-        fotoUrl
+        fotoUrl,
+        usuarioParaGuardar
       ]
     );
   }
@@ -417,7 +460,7 @@ async function guardarEmpleadoFirma(datos, archivoFoto = null, generarPngAutomat
         identificacion,
         nombre,
         cargo,
-        operacion,
+        operacion: operacionLimpia,
         direccion,
         celular,
         email,
@@ -455,13 +498,20 @@ async function listarColaboradoresDirectorio() {
       COALESCE(NULLIF(nombre, ''), (CASE WHEN Trabajador LIKE '%**%' THEN SUBSTRING_INDEX(Trabajador, '**', -1) ELSE Trabajador END)) AS nombre,
       COALESCE(cargo, 'Sin Cargo') AS cargo,
       COALESCE(regional, 'GENERAL') AS regional,
-      COALESCE(operacion, 'Sede Principal') AS operacion,
+      COALESCE(
+        CASE
+          WHEN LOWER(operacion) IN ('administracion', 'administración') THEN 'Administración'
+          ELSE operacion
+        END,
+        'Sede Principal'
+      ) AS operacion,
       COALESCE(NULLIF(area, ''), 'auxiliares_administrativos') AS area,
       COALESCE(direccion, '') AS direccion,
       COALESCE(email, '') AS email,
       COALESCE(celular, '') AS celular,
       COALESCE(foto_url, '${DEFAULT_FOTO}') AS foto_url,
-      firma_url
+      firma_url,
+      usuario
     FROM Maestro_firma_corporativa
     WHERE Identificacion IS NOT NULL
     ORDER BY area ASC, regional ASC, nombre ASC
@@ -471,6 +521,65 @@ async function listarColaboradoresDirectorio() {
     ...r,
     nombre: String(r.nombre || '').trim()
   }));
+}
+
+/**
+ * Elimina un colaborador de Maestro_firma_corporativa (Exclusivo Rol Sistema)
+ */
+async function eliminarColaboradorFirma(identificacion) {
+  if (!identificacion) throw new Error('Identificación requerida para eliminar.');
+  const [result] = await pool.query(
+    'DELETE FROM Maestro_firma_corporativa WHERE Identificacion = ?',
+    [String(identificacion).trim()]
+  );
+  return { ok: true, eliminados: result.affectedRows };
+}
+
+/**
+ * Consulta información de usuario en Maestro_Usuarios
+ */
+async function obtenerUsuarioPorId(usuarioId) {
+  if (!usuarioId) return null;
+  const uid = String(usuarioId).trim();
+  const [rows] = await pool.query(
+    'SELECT ID, Nombre, Rol, Colaborador, Email, Cargo FROM Maestro_Usuarios WHERE ID = ? OR LOWER(Email) = ? LIMIT 1',
+    [uid, uid.toLowerCase()]
+  );
+  if (rows.length === 0) return null;
+  return rows[0];
+}
+
+/**
+ * Evalúa los permisos de edición / eliminación de un usuario sobre un registro de colaborador
+ */
+function verificarPermisosColaborador(usuario, colab) {
+  if (!usuario) {
+    return { puedeEditar: false, puedeEliminar: false, esSistema: false, esPropio: false };
+  }
+  const esSistema = (usuario.Rol === 'Sistema');
+  if (esSistema) {
+    return { puedeEditar: true, puedeEliminar: true, esSistema: true, esPropio: false };
+  }
+
+  const colabUserStr = String(usuario.Colaborador || '').trim().toLowerCase();
+  const trabajadorColab = String(colab.Trabajador || '').trim().toLowerCase();
+  const idColab = String(colab.Identificacion || colab.identificacion || '').trim();
+
+  let coincide = false;
+  if (colabUserStr && trabajadorColab && (colabUserStr === trabajadorColab)) {
+    coincide = true;
+  } else if (colabUserStr && idColab) {
+    if (colabUserStr.startsWith(idColab + ' **') || colabUserStr.startsWith(idColab + '**') || colabUserStr.startsWith(idColab + ' ')) {
+      coincide = true;
+    }
+  }
+
+  return {
+    puedeEditar: coincide,
+    puedeEliminar: false,
+    esSistema: false,
+    esPropio: coincide
+  };
 }
 
 /**
@@ -506,6 +615,11 @@ async function sincronizarConVinculacion() {
       [id]
     );
 
+    let opSync = v.operacion || '';
+    if (opSync.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 'administracion') {
+      opSync = 'Administración';
+    }
+
     if (existentes.length === 0) {
       // Insertar nuevo registro base
       const nombreLimpio = v.Trabajador ? v.Trabajador.replace(/^\d+\s*\*{1,2}\s*/, '').trim() : '';
@@ -521,7 +635,7 @@ async function sincronizarConVinculacion() {
         nombreLimpio,
         v.cargo,
         v.regional,
-        v.operacion,
+        opSync,
         areaDeducida,
         DEFAULT_FOTO
       ]);
@@ -529,14 +643,14 @@ async function sincronizarConVinculacion() {
     } else {
       // Actualizar cargo, regional u operacion si cambiaron en Vinculación
       const ex = existentes[0];
-      if (ex.cargo !== v.cargo || ex.regional !== v.regional || ex.operacion !== v.operacion) {
+      if (ex.cargo !== v.cargo || ex.regional !== v.regional || ex.operacion !== opSync) {
         await pool.query(`
           UPDATE Maestro_firma_corporativa SET
             cargo = ?,
             regional = ?,
             operacion = ?
           WHERE Identificacion = ?
-        `, [v.cargo, v.regional, v.operacion, id]);
+        `, [v.cargo, v.regional, opSync, id]);
         actualizados++;
       }
     }
@@ -585,6 +699,9 @@ module.exports = {
   buscarColaboradoresSugeridos,
   guardarEmpleadoFirma,
   listarColaboradoresDirectorio,
+  eliminarColaboradorFirma,
+  obtenerUsuarioPorId,
+  verificarPermisosColaborador,
   sincronizarConVinculacion,
   deducirAreaPorCargo,
   DEFAULT_FOTO,
