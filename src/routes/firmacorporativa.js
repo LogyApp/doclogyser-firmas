@@ -6,7 +6,8 @@ const {
   buscarColaboradoresSugeridos,
   guardarEmpleadoFirma,
   generarFirmaPNG,
-  subirFirmaGeneradaPNG
+  subirFirmaGeneradaPNG,
+  validarEmpleadoNoRetirado
 } = require('../services/firmaSyncService');
 
 const router = express.Router();
@@ -33,6 +34,9 @@ router.get('/api/empleado/:id', async (req, res) => {
     res.json({ ok: true, ...resultado });
   } catch (err) {
     console.error('[firmacorporativa] Error al consultar empleado:', err);
+    if (err.code === 'EMPLEADO_RETIRADO') {
+      return res.status(409).json({ ok: false, error: err.message, retirado: true });
+    }
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -56,6 +60,9 @@ router.post('/api/guardar', upload.single('foto'), async (req, res) => {
     res.json({ ok: true, ...resultado });
   } catch (err) {
     console.error('[firmacorporativa] Error al guardar datos:', err);
+    if (err.code === 'EMPLEADO_RETIRADO') {
+      return res.status(409).json({ ok: false, error: err.message, retirado: true });
+    }
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -68,12 +75,17 @@ router.post('/api/generar-png', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Identificación y nombre requeridos' });
     }
 
+    await validarEmpleadoNoRetirado(d.identificacion);
+
     const pngBuffer = await generarFirmaPNG(d);
     const finalUrl = await subirFirmaGeneradaPNG(d.identificacion, pngBuffer);
 
     res.json({ ok: true, finalUrl });
   } catch (err) {
     console.error('[firmacorporativa] Error al generar PNG:', err);
+    if (err.code === 'EMPLEADO_RETIRADO') {
+      return res.status(409).json({ ok: false, error: err.message, retirado: true });
+    }
     res.status(500).json({ ok: false, error: err.message });
   }
 });

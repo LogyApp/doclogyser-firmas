@@ -540,6 +540,74 @@
     .toast-error { background: #DC2626; }
     .toast-info { background: var(--primary); }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    @media (max-width: 640px) {
+      .top-header {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 10px 12px;
+        gap: 10px;
+      }
+      .brand-wrap {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .brand-lockup-horizontal { gap: 8px; }
+      .brand-logo-app { height: 24px; }
+      .brand-logo-company-crop { width: 104px; height: 28px; }
+      .header-titles {
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 8px 0 0;
+        width: 100%;
+      }
+      .header-main-title { font-size: 1rem; }
+      .header-actions { align-items: stretch; }
+      .btn-nav { justify-content: center; width: 100%; }
+
+      .container { margin: 16px auto; padding: 0 12px 28px; }
+      .card { padding: 16px; }
+      .card-title {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .search-input-wrap { flex-direction: column; }
+      .btn-search { justify-content: center; min-height: 44px; width: 100%; }
+      .colab-status { align-items: flex-start; flex-wrap: wrap; }
+      .form-grid { grid-template-columns: 1fr; }
+      .photo-upload-wrap {
+        align-items: center;
+        flex-direction: column;
+        text-align: center;
+      }
+      .photo-info { width: 100%; }
+      .photo-info .btn-secondary { width: 100%; }
+      .tabs-header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0;
+      }
+      .tab-btn {
+        justify-content: center;
+        padding: 11px 8px;
+        width: 100%;
+      }
+      .preview-box {
+        justify-content: flex-start;
+        padding: 12px;
+      }
+      #signature-html-render {
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: auto;
+      }
+      #signature-html-render table { max-width: 100% !important; }
+      .png-actions { flex-direction: column; }
+      .toast-container { left: 12px; right: 12px; top: 12px; }
+      .toast { font-size: 0.8rem; padding: 12px 14px; }
+    }
   </style>
 </head>
 <body>

@@ -1110,6 +1110,230 @@
     .toast-error { background: #DC2626; }
     .toast-info { background: #1E293B; border: 1px solid var(--border-color); }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ════════ ORGANIGRAMA ════════ */
+    .org-chart {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      overflow-x: auto;
+      padding: 8px 4px 28px;
+    }
+    .org-node {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .org-node::before {
+      content: '';
+      width: 2px;
+      height: 18px;
+      background: #CBD5E1;
+      position: absolute;
+      top: -18px;
+    }
+    .org-chart > .org-node::before { display: none; }
+    .org-node-title {
+      background: #1E293B;
+      color: #fff;
+      border-radius: var(--radius-sm);
+      padding: 11px 16px;
+      text-align: center;
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.35px;
+      box-shadow: var(--shadow);
+      max-width: 100%;
+    }
+    .org-node-title.board { background: #0F172A; }
+    .org-node-title.manager { background: var(--primary-accent); }
+    .org-node-title.branch { background: #7C3AED; }
+    .org-node-title.area { background: #0369A1; }
+    .org-node-title small {
+      display: block;
+      margin-top: 3px;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: none;
+    }
+    .org-children {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 18px;
+      width: 100%;
+      position: relative;
+      padding-top: 18px;
+    }
+    .org-children::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      border-top: 2px solid #CBD5E1;
+    }
+    .org-children > .org-node { width: min(290px, 100%); }
+    .org-children > .org-node::before { top: -18px; }
+    .org-people {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px;
+      width: min(760px, 100%);
+    }
+    .org-person {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--secondary-orange);
+      border-radius: var(--radius-sm);
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .org-person:hover { border-color: var(--primary-accent); }
+    .org-person img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .org-person-info { min-width: 0; }
+    .org-person-name,
+    .org-person-cargo {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .org-person-name { font-size: 0.78rem; font-weight: 800; color: var(--text-main); }
+    .org-person-cargo { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+    .org-empty { color: var(--text-muted); font-size: 0.75rem; font-style: italic; padding: 4px; }
+
+    @media (max-width: 640px) {
+      .top-header {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 10px 12px;
+        gap: 10px;
+      }
+      .brand-wrap {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .brand-lockup-horizontal { gap: 8px; }
+      .brand-logo-app { height: 24px; }
+      .brand-logo-company-crop { width: 104px; height: 28px; }
+      .header-titles {
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 8px 0 0;
+        width: 100%;
+      }
+      .header-main-title { font-size: 1rem; }
+      .header-actions {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .header-actions > *,
+      .header-actions .btn-header { width: 100%; }
+      .btn-header { justify-content: center; }
+
+      .main-container { padding: 14px 12px 40px; }
+      .controls-bar {
+        align-items: stretch;
+        padding: 12px;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .search-wrap { min-width: 0; width: 100%; }
+      .view-toggles { width: 100%; }
+      .btn-toggle {
+        flex: 1;
+        justify-content: center;
+        padding: 8px 5px;
+        font-size: 0.72rem;
+      }
+      .stats-strip { gap: 8px; margin-bottom: 16px; }
+      .stat-chip {
+        flex: 1 1 calc(50% - 8px);
+        padding: 9px 10px;
+        font-size: 0.74rem;
+      }
+      .stat-number { font-size: 1rem; }
+
+      .area-header { padding: 13px 14px; }
+      .area-title-wrap { min-width: 0; gap: 8px; }
+      .area-name { font-size: 0.8rem; overflow-wrap: anywhere; }
+      .area-body { padding: 0 12px 14px; }
+      .colab-grid { grid-template-columns: minmax(0, 1fr); }
+      .colab-card {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px;
+      }
+      .colab-info { min-width: calc(100% - 72px); }
+      .colab-actions {
+        flex-basis: 100%;
+        justify-content: flex-end;
+        margin-left: 0;
+      }
+
+      .table-panel-header { padding: 12px; }
+      .table-panel-title { font-size: 0.8rem; }
+      .table-panel-header .btn-header { width: 100%; justify-content: center; }
+      .table-container { max-height: calc(100vh - 300px); }
+
+      .modal-overlay { padding: 8px; }
+      .modal-breadcrumb { padding: 12px 14px; }
+      .modal-body { padding: 16px; gap: 16px; }
+      .detail-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .detail-val {
+        max-width: 100%;
+        text-align: left;
+      }
+      .modal-contact-btns,
+      .modal-actions-bar,
+      .modal-form-footer { flex-direction: column; }
+      .btn-modal-primary,
+      .btn-modal-danger,
+      .modal-contact-btns > *,
+      .modal-form-footer > * {
+        width: 100%;
+        min-width: 0;
+        margin-right: 0 !important;
+      }
+      .modal-form-card .modal-form-footer { align-items: stretch; }
+      .modal-form-card > div[style*="padding"] { padding: 16px !important; }
+      .photo-upload-wrap {
+        align-items: center;
+        flex-direction: column;
+      }
+      .photo-upload-wrap > div { width: 100%; }
+      .photo-upload-wrap .form-input { width: 100%; }
+      .org-chart { align-items: stretch; padding-left: 0; padding-right: 0; }
+      .org-children { flex-direction: column; align-items: center; }
+      .org-children::before { left: 50%; right: auto; height: 100%; border-top: 0; border-left: 2px solid #CBD5E1; }
+      .org-children > .org-node { width: 100%; }
+      .org-node-title { font-size: 0.75rem; }
+      .org-people { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -1174,6 +1398,9 @@
         <button type="button" class="btn-toggle" id="btn-view-grid" onclick="cambiarModoVista('grid')">
           🗂️ Cuadrícula
         </button>
+        <button type="button" class="btn-toggle" id="btn-view-org" onclick="cambiarModoVista('org')">
+          🌳 Organigrama
+        </button>
         <!-- Tercera opción exclusiva para Rol Sistema -->
         <button type="button" class="btn-toggle" id="btn-view-table" style="display: none;" onclick="cambiarModoVista('table')">
           📋 Registros / Tabla
@@ -1207,7 +1434,12 @@
       <div class="colab-grid" id="grid-container"></div>
     </div>
 
-    <!-- MODO 3: Registros / Tabla (Exclusivo Sistema) -->
+    <!-- MODO 3: Organigrama Corporativo -->
+    <div id="view-org" style="display: none;">
+      <div class="org-chart" id="org-chart-container"></div>
+    </div>
+
+    <!-- MODO 4: Registros / Tabla (Exclusivo Sistema) -->
     <div id="view-table">
       <div class="table-panel-header">
         <div class="table-panel-title">
@@ -1636,11 +1868,13 @@
       modoVistaActual = modo;
       document.getElementById('btn-view-areas').classList.toggle('active', modo === 'areas');
       document.getElementById('btn-view-grid').classList.toggle('active', modo === 'grid');
+      document.getElementById('btn-view-org').classList.toggle('active', modo === 'org');
       const btnTable = document.getElementById('btn-view-table');
       if (btnTable) btnTable.classList.toggle('active', modo === 'table');
 
       document.getElementById('view-areas').style.display = modo === 'areas' ? 'flex' : 'none';
       document.getElementById('view-grid').style.display = modo === 'grid' ? 'block' : 'none';
+      document.getElementById('view-org').style.display = modo === 'org' ? 'block' : 'none';
       document.getElementById('view-table').style.display = modo === 'table' ? 'block' : 'none';
 
       renderDirectorio();
@@ -1675,6 +1909,8 @@
         renderVistaAreas(filtrados, !!q);
       } else if (modoVistaActual === 'grid') {
         renderVistaGrid(filtrados);
+      } else if (modoVistaActual === 'org') {
+        renderVistaOrganigrama(filtrados);
       } else if (modoVistaActual === 'table') {
         const ordenados = ordenarColaboradores(filtrados);
         renderVistaTabla(ordenados);
@@ -1909,6 +2145,125 @@
           </div>
         </div>
       `;
+    }
+
+    function normalizarOrganigrama(valor) {
+      return String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .trim();
+    }
+
+    function escaparOrganigrama(valor) {
+      return String(valor || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function personasPorCargo(items, termino) {
+      const cargoBuscado = normalizarOrganigrama(termino);
+      return items.filter(c => normalizarOrganigrama(c.cargoVinculacion).includes(cargoBuscado));
+    }
+
+    function personasPorArea(items, area, cargosExcluidos = []) {
+      const areaBuscada = normalizarOrganigrama(area);
+      const excluidos = cargosExcluidos.map(normalizarOrganigrama);
+      return items.filter(c => {
+        const cargo = normalizarOrganigrama(c.cargoVinculacion);
+        return normalizarOrganigrama(c.area) === areaBuscada && !excluidos.some(excluido => cargo.includes(excluido));
+      });
+    }
+
+    function renderPersonasOrganigrama(items) {
+      if (!items.length) return '<div class="org-empty">Sin registros asociados</div>';
+
+      return `<div class="org-people">${items.map(c => `
+        <div class="org-person" onclick="abrirDetalleColaborador('${escaparOrganigrama(c.identificacion)}')">
+          <img src="${escaparOrganigrama(c.foto_url || DEFAULT_FOTO)}" loading="lazy" alt="Foto">
+          <div class="org-person-info">
+            <div class="org-person-name" title="${escaparOrganigrama(c.nombre)}">${escaparOrganigrama(c.nombre)}</div>
+            <div class="org-person-cargo" title="${escaparOrganigrama(c.cargoVinculacion || 'Cargo no disponible')}">${escaparOrganigrama(c.cargoVinculacion || 'Cargo no disponible')}</div>
+          </div>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    function renderNodoOrganigrama(titulo, items = [], hijos = [], clase = 'area', subtitulo = '') {
+      return `
+        <div class="org-node">
+          <div class="org-node-title ${clase}">${escaparOrganigrama(titulo)}${subtitulo ? `<small>${escaparOrganigrama(subtitulo)}</small>` : ''}</div>
+          ${renderPersonasOrganigrama(items)}
+          ${hijos.length ? `<div class="org-children">${hijos.join('')}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function renderVistaOrganigrama(items) {
+      const container = document.getElementById('org-chart-container');
+      if (!items.length) {
+        container.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted);">No se encontraron colaboradores para el organigrama.</div>';
+        return;
+      }
+
+      const gerentes = {
+        comercial: personasPorCargo(items, 'GERENTE COMERCIAL'),
+        financiero: personasPorCargo(items, 'GERENTE FINANCIERO'),
+        operaciones: personasPorCargo(items, 'GERENTE OPERACIONES'),
+        juridica: personasPorCargo(items, 'GERENTE JURIDICA')
+      };
+      const dth = personasPorCargo(items, 'DIRECTOR TALENTO HUMANO');
+      const subgerente = personasPorCargo(items, 'SUBGERENTE DE OPERACIONES');
+      const directorSst = personasPorCargo(items, 'DIRECTOR SST');
+
+      const talentoHumano = renderNodoOrganigrama('DIRECTOR TALENTO HUMANO', dth, [
+        renderNodoOrganigrama('Selección', personasPorArea(items, 'seleccion'), [], 'area'),
+        renderNodoOrganigrama('Contratación', personasPorArea(items, 'contratacion'), [], 'area'),
+        renderNodoOrganigrama('Documental', personasPorArea(items, 'documental'), [], 'area'),
+        renderNodoOrganigrama('Nómina', personasPorArea(items, 'nomina'), [], 'area')
+      ], 'branch');
+
+      const cuentas = renderNodoOrganigrama('Cuentas', personasPorArea(items, 'cuentas'), [
+        renderNodoOrganigrama('Inventario', personasPorArea(items, 'inventario'), [], 'area')
+      ], 'area');
+
+      const gerenteComercial = renderNodoOrganigrama('GERENTE COMERCIAL', gerentes.comercial, [
+        talentoHumano,
+        renderNodoOrganigrama('Tecnología', personasPorArea(items, 'tecnologia'), [], 'area'),
+        cuentas
+      ], 'manager');
+
+      const gerenteFinanciero = renderNodoOrganigrama('GERENTE FINANCIERO', gerentes.financiero, [
+        renderNodoOrganigrama('Facturación', personasPorArea(items, 'facturacion'), [], 'area', 'JEFE DE FACTURACION'),
+        renderNodoOrganigrama('Contabilidad', personasPorArea(items, 'contabilidad'), [
+          renderNodoOrganigrama('Tesorería', personasPorArea(items, 'tesoreria'), [], 'area', 'Supervisada por CONTADOR')
+        ], 'area', 'CONTADOR')
+      ], 'manager');
+
+      const sst = renderNodoOrganigrama('SST', directorSst, [
+        renderNodoOrganigrama('Equipo SST', personasPorArea(items, 'sst', ['DIRECTOR SST']), [], 'area', 'Analistas, auxiliares y aprendices')
+      ], 'area', 'DIRECTOR SST');
+
+      const gerenteOperaciones = renderNodoOrganigrama('GERENTE OPERACIONES', gerentes.operaciones, [
+        renderNodoOrganigrama('Calidad', personasPorArea(items, 'calidad'), [], 'area'),
+        sst,
+        renderNodoOrganigrama('SUBGERENTE DE OPERACIONES', subgerente, [
+          renderNodoOrganigrama('Coordinadores', personasPorArea(items, 'coordinadores'), [], 'area'),
+          renderNodoOrganigrama('Auxiliares Administrativos', personasPorArea(items, 'auxiliares_administrativos'), [], 'area')
+        ], 'branch')
+      ], 'manager');
+
+      container.innerHTML = `<div class="org-chart">
+        ${renderNodoOrganigrama('Junta Directiva', [], [
+          gerenteComercial,
+          gerenteFinanciero,
+          gerenteOperaciones,
+          renderNodoOrganigrama('GERENTE JURIDICA', gerentes.juridica, [], 'branch', 'Apoyo a la Junta Directiva')
+        ], 'board')}
+      </div>`;
     }
 
     // ════════ MODO 3: REGISTROS / TABLA (Rol Sistema) ════════

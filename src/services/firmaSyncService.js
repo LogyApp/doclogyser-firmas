@@ -219,6 +219,35 @@ async function generarFirmaPNG(datos) {
   }
 }
 
+async function obtenerUltimaVinculacion(identificacion) {
+  const idStr = String(identificacion || '').trim();
+  if (!idStr) return null;
+
+  const [rows] = await pool.query(
+    `SELECT Identificación AS identificacion, Estado AS estado
+     FROM \`Maestro_Vinculación\`
+     WHERE Identificación = ?
+     ORDER BY \`Fecha de Ingreso\` DESC
+     LIMIT 1`,
+    [idStr]
+  );
+
+  return rows[0] || null;
+}
+
+async function validarEmpleadoNoRetirado(identificacion) {
+  const vinculacion = await obtenerUltimaVinculacion(identificacion);
+  const estado = String(vinculacion?.estado || '').trim().toLowerCase();
+
+  if (estado === 'retirado') {
+    const error = new Error('El colaborador está retirado según su última vinculación y no puede generar una firma corporativa.');
+    error.code = 'EMPLEADO_RETIRADO';
+    throw error;
+  }
+
+  return vinculacion;
+}
+
 /**
  * Consulta un empleado para el generador de firmas.
  * 1. Busca en Maestro_firma_corporativa
@@ -227,6 +256,8 @@ async function generarFirmaPNG(datos) {
 async function buscarEmpleadoParaFirma(identificacion) {
   if (!identificacion) return null;
   const idStr = String(identificacion).trim();
+
+  await validarEmpleadoNoRetirado(idStr);
 
   // 1. Buscar en Maestro_firma_corporativa
   const [rowsFirma] = await pool.query(
@@ -373,6 +404,8 @@ async function guardarEmpleadoFirma(datos, archivoFoto = null, generarPngAutomat
     throw new Error('Identificación y Nombre son obligatorios.');
   }
 
+  await validarEmpleadoNoRetirado(identificacion);
+
   let operacionLimpia = operacion || '';
   if (operacionLimpia.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === 'administracion') {
     operacionLimpia = 'Administración';
@@ -493,28 +526,39 @@ async function guardarEmpleadoFirma(datos, archivoFoto = null, generarPngAutomat
 async function listarColaboradoresDirectorio() {
   const [rows] = await pool.query(`
     SELECT 
-      Identificacion AS identificacion,
-      Trabajador,
+      f.Identificacion AS identificacion,
+      f.Trabajador,
       COALESCE(NULLIF(nombre, ''), (CASE WHEN Trabajador LIKE '%**%' THEN SUBSTRING_INDEX(Trabajador, '**', -1) ELSE Trabajador END)) AS nombre,
-      COALESCE(cargo, 'Sin Cargo') AS cargo,
-      COALESCE(regional, 'GENERAL') AS regional,
+      COALESCE(f.cargo, 'Sin Cargo') AS cargo,
+      vinc.Cargo AS cargoVinculacion,
+      COALESCE(f.regional, 'GENERAL') AS regional,
       COALESCE(
         CASE
-          WHEN LOWER(operacion) IN ('administracion', 'administración') THEN 'Administración'
-          ELSE operacion
+          WHEN LOWER(f.operacion) IN ('administracion', 'administración') THEN 'Administración'
+          ELSE f.operacion
         END,
         'Sede Principal'
       ) AS operacion,
-      COALESCE(NULLIF(area, ''), 'auxiliares_administrativos') AS area,
-      COALESCE(direccion, '') AS direccion,
-      COALESCE(email, '') AS email,
-      COALESCE(celular, '') AS celular,
-      COALESCE(foto_url, '${DEFAULT_FOTO}') AS foto_url,
-      firma_url,
-      usuario
-    FROM Maestro_firma_corporativa
-    WHERE Identificacion IS NOT NULL
-    ORDER BY area ASC, regional ASC, nombre ASC
+      COALESCE(NULLIF(f.area, ''), 'auxiliares_administrativos') AS area,
+      COALESCE(f.direccion, '') AS direccion,
+      COALESCE(f.email, '') AS email,
+      COALESCE(f.celular, '') AS celular,
+      COALESCE(f.foto_url, '${DEFAULT_FOTO}') AS foto_url,
+      f.firma_url,
+      f.usuario
+    FROM Maestro_firma_corporativa f
+    LEFT JOIN (
+      SELECT v1.Identificación, v1.Cargo
+      FROM \`Maestro_Vinculación\` v1
+      INNER JOIN (
+        SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
+        FROM \`Maestro_Vinculación\`
+        GROUP BY Identificación
+      ) ult ON v1.Identificación = ult.Identificación
+           AND v1.\`Fecha de Ingreso\` = ult.MaxFecha
+    ) vinc ON vinc.Identificación = f.Identificacion
+    WHERE f.Identificacion IS NOT NULL
+    ORDER BY f.area ASC, f.regional ASC, nombre ASC
   `);
 
   return rows.map(r => ({
@@ -695,6 +739,7 @@ module.exports = {
   subirFotoEmpleado,
   subirFirmaGeneradaPNG,
   generarFirmaPNG,
+  validarEmpleadoNoRetirado,
   buscarEmpleadoParaFirma,
   buscarColaboradoresSugeridos,
   guardarEmpleadoFirma,
