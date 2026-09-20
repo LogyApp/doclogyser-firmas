@@ -539,11 +539,6 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
 
-    /* ════════ VISTA CUADRÍCULA DIRECTA ════════ */
-    #view-grid {
-      display: none;
-    }
-
     /* ════════ MODO 3: REGISTROS / TABLA (Rol Sistema) ════════ */
     #view-table {
       display: none;
@@ -1395,9 +1390,6 @@
         <button type="button" class="btn-toggle active" id="btn-view-areas" onclick="cambiarModoVista('areas')">
           📑 Departamentos
         </button>
-        <button type="button" class="btn-toggle" id="btn-view-grid" onclick="cambiarModoVista('grid')">
-          🗂️ Cuadrícula
-        </button>
         <button type="button" class="btn-toggle" id="btn-view-org" onclick="cambiarModoVista('org')">
           🌳 Organigrama
         </button>
@@ -1429,17 +1421,12 @@
       <div style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando colaboradores...</div>
     </div>
 
-    <!-- MODO 2: Cuadrícula Directa -->
-    <div id="view-grid" style="display: none;">
-      <div class="colab-grid" id="grid-container"></div>
-    </div>
-
-    <!-- MODO 3: Organigrama Corporativo -->
+    <!-- MODO 2: Organigrama Corporativo -->
     <div id="view-org" style="display: none;">
       <div class="org-chart" id="org-chart-container"></div>
     </div>
 
-    <!-- MODO 4: Registros / Tabla (Exclusivo Sistema) -->
+    <!-- MODO 3: Registros / Tabla (Exclusivo Sistema) -->
     <div id="view-table">
       <div class="table-panel-header">
         <div class="table-panel-title">
@@ -1867,13 +1854,11 @@
     function cambiarModoVista(modo) {
       modoVistaActual = modo;
       document.getElementById('btn-view-areas').classList.toggle('active', modo === 'areas');
-      document.getElementById('btn-view-grid').classList.toggle('active', modo === 'grid');
       document.getElementById('btn-view-org').classList.toggle('active', modo === 'org');
       const btnTable = document.getElementById('btn-view-table');
       if (btnTable) btnTable.classList.toggle('active', modo === 'table');
 
       document.getElementById('view-areas').style.display = modo === 'areas' ? 'flex' : 'none';
-      document.getElementById('view-grid').style.display = modo === 'grid' ? 'block' : 'none';
       document.getElementById('view-org').style.display = modo === 'org' ? 'block' : 'none';
       document.getElementById('view-table').style.display = modo === 'table' ? 'block' : 'none';
 
@@ -1907,8 +1892,6 @@
 
       if (modoVistaActual === 'areas') {
         renderVistaAreas(filtrados, !!q);
-      } else if (modoVistaActual === 'grid') {
-        renderVistaGrid(filtrados);
       } else if (modoVistaActual === 'org') {
         renderVistaOrganigrama(filtrados);
       } else if (modoVistaActual === 'table') {
@@ -2102,16 +2085,6 @@
       if (el) el.classList.toggle('open');
     }
 
-    // ════════ MODO 2: CUADRÍCULA DIRECTA ════════
-    function renderVistaGrid(items) {
-      const container = document.getElementById('grid-container');
-      if (!items.length) {
-        container.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-muted); grid-column: 1 / -1;">No se encontraron colaboradores.</div>';
-        return;
-      }
-      container.innerHTML = items.map(c => renderCardHtml(c)).join('');
-    }
-
     // Render individual de una tarjeta
     function renderCardHtml(c) {
       const foto = c.foto_url || DEFAULT_FOTO;
@@ -2231,12 +2204,14 @@
       ], 'area');
 
       const gerenteComercial = renderNodoOrganigrama('GERENTE COMERCIAL', gerentes.comercial, [
+        renderNodoOrganigrama('GERENTE JURIDICA', gerentes.juridica, [], 'branch', 'Apoyo a GERENTE COMERCIAL'),
         talentoHumano,
         renderNodoOrganigrama('Tecnología', personasPorArea(items, 'tecnologia'), [], 'area'),
         cuentas
       ], 'manager');
 
       const gerenteFinanciero = renderNodoOrganigrama('GERENTE FINANCIERO', gerentes.financiero, [
+        renderNodoOrganigrama('REVISOR FISCAL', personasPorCargo(items, 'REVISOR FISCAL'), [], 'branch', 'Apoyo a GERENTE FINANCIERO'),
         renderNodoOrganigrama('Facturación', personasPorArea(items, 'facturacion'), [], 'area', 'JEFE DE FACTURACION'),
         renderNodoOrganigrama('Contabilidad', personasPorArea(items, 'contabilidad'), [
           renderNodoOrganigrama('Tesorería', personasPorArea(items, 'tesoreria'), [], 'area', 'Supervisada por CONTADOR')
@@ -2260,8 +2235,7 @@
         ${renderNodoOrganigrama('Junta Directiva', [], [
           gerenteComercial,
           gerenteFinanciero,
-          gerenteOperaciones,
-          renderNodoOrganigrama('GERENTE JURIDICA', gerentes.juridica, [], 'branch', 'Apoyo a la Junta Directiva')
+          gerenteOperaciones
         ], 'board')}
       </div>`;
     }
