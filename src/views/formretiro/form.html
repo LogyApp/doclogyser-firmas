@@ -18,17 +18,34 @@
     }
     .card-titulo img { height: 56px; flex-shrink: 0; }
 
-    /* Toggle Estado */
-    .estado-toggle { display: flex; gap: 0; margin-top: 6px; }
-    .btn-estado {
-      flex: 1; padding: 11px 16px; border: 2px solid #ddd;
-      border-radius: 8px; background: #f5f6fa;
-      font-size: .93rem; font-weight: 600; cursor: pointer;
-      color: #888; transition: all .15s; user-select: none;
+    /* Toggle Estado — selector segmentado de 2 opciones */
+    .estado-toggle {
+      display: flex; gap: 4px; margin-top: 6px;
+      background: #eef0f5; padding: 4px; border-radius: 11px;
     }
-    .btn-estado.activo {
-      background: #fdf0f0; border-color: #c0392b;
-      color: #c0392b; box-shadow: 0 0 0 3px rgba(192,57,43,.1);
+    .btn-estado-opt {
+      flex: 1; padding: 11px 14px; border: none;
+      border-radius: 8px; background: transparent;
+      font-size: .9rem; font-weight: 700; cursor: pointer;
+      color: #8a8f9b; transition: all .18s; user-select: none;
+    }
+    .btn-estado-opt:hover:not(.sel) { color: #555; }
+    .btn-estado-opt.sel.activo-sel {
+      background: #fff; color: #2c3e50;
+      box-shadow: 0 1px 5px rgba(0,0,0,.14);
+    }
+    .btn-estado-opt.sel.retirado-sel {
+      background: #c0392b; color: #fff;
+      box-shadow: 0 2px 8px rgba(192,57,43,.4);
+    }
+    .hint-bloqueo {
+      margin-top: 8px; font-size: .8rem; color: #a15c00;
+      background: #fff6e6; border: 1px solid #ffe2ad;
+      border-radius: 7px; padding: 8px 10px;
+    }
+    #camposRetiro { transition: opacity .2s; }
+    #camposRetiro.bloqueado {
+      opacity: .45; pointer-events: none; filter: grayscale(.4);
     }
     .page-title { font-size: 1.25rem; font-weight: bold; color: #1a1a2e; }
     .page-sub   { font-size: .82rem; color: #999; margin-top: 3px; }
@@ -239,103 +256,87 @@
     <div class="card retiro">
       <div class="section-title">Datos del retiro</div>
 
-      <!-- Campo Estado: solo visible para roles distintos de Nómina/Sistema -->
+      <!-- Campo Estado: visible para todos los roles; obligatorio solo para roles distintos de Nómina/Sistema -->
       <div class="field" id="campoEstado" style="display:none">
-        <label>Estado del trabajador <span class="req">*</span></label>
-        <div class="estado-toggle">
-          <button type="button" class="btn-estado" id="btnRetirado" onclick="toggleEstado()">
-            &#10003; Confirmar como Retirado
-          </button>
+        <label>Estado del trabajador <span class="req" id="reqEstado">*</span></label>
+        <div class="estado-toggle" role="group" aria-label="Estado del trabajador">
+          <button type="button" class="btn-estado-opt" id="btnActivo" onclick="setEstado('Activo')">Activo</button>
+          <button type="button" class="btn-estado-opt" id="btnRetirado" onclick="setEstado('Retirado')">&#10003; Retirado</button>
         </div>
         <input type="hidden" id="estadoHidden" value="">
         <div class="err" id="errEstado">Confirme el estado "Retirado" para continuar</div>
-      </div>
-
-      <div class="two-col">
-        <div class="field">
-          <label for="fechaRetiro">Fecha de retiro <span class="req">*</span></label>
-          <input type="date" id="fechaRetiro">
-          <div class="err" id="errFecha">Seleccione la fecha de retiro</div>
-        </div>
-        <div class="field">
-          <label for="motivoRetiro">Motivo del retiro <span class="req">*</span></label>
-          <select id="motivoRetiro" onchange="evaluarCamposCondicionales()">
-            <option value="">— Seleccione motivo —</option>
-          </select>
-          <div class="err" id="errMotivo">Seleccione el motivo de retiro</div>
+        <div class="hint-bloqueo" id="hintBloqueo" style="display:none">
+          &#128274; Seleccione "Retirado" para habilitar los demás campos
         </div>
       </div>
 
-      <!-- Tipo de Renuncia (condicional) -->
-      <div id="divTipoRenuncia" style="display:none;border-top:1.5px solid #f5f5f5;margin-top:16px;padding-top:16px">
-        <div class="field">
-          <label>Tipo de renuncia <span class="req">*</span></label>
-          <div class="radio-wrap">
-            <label><input type="radio" name="tipoRenuncia" value="Verbal" onchange="evaluarCamposCondicionales()"> Verbal</label>
-            <label><input type="radio" name="tipoRenuncia" value="Escrita" onchange="evaluarCamposCondicionales()"> Escrita</label>
+      <div id="camposRetiro">
+        <div class="two-col">
+          <div class="field">
+            <label for="fechaRetiro">Fecha de retiro <span class="req">*</span></label>
+            <input type="date" id="fechaRetiro">
+            <div class="err" id="errFecha">Seleccione la fecha de retiro</div>
           </div>
-          <div class="err" id="errTipoRenuncia">Seleccione el tipo de renuncia</div>
+          <div class="field">
+            <label for="motivoRetiro">Motivo del retiro <span class="req">*</span></label>
+            <select id="motivoRetiro" onchange="evaluarCamposCondicionales()">
+              <option value="">— Seleccione motivo —</option>
+            </select>
+            <div class="err" id="errMotivo">Seleccione el motivo de retiro</div>
+          </div>
         </div>
 
-        <!-- Carta de Renuncia (solo si Escrita) -->
-        <div id="divCartaRenuncia" style="display:none">
-          <label style="color:#2980b9;font-size:.88rem;font-weight:600">
-            Carta de Renuncia <span style="font-weight:400;color:#888">(Opcional — puede adjuntarse después)</span>
+        <!-- Tipo de Renuncia (condicional) -->
+        <div id="divTipoRenuncia" style="display:none;border-top:1.5px solid #f5f5f5;margin-top:16px;padding-top:16px">
+          <div class="field">
+            <label>Tipo de renuncia <span class="req">*</span></label>
+            <div class="radio-wrap">
+              <label><input type="radio" name="tipoRenuncia" value="Verbal" onchange="evaluarCamposCondicionales()"> Verbal</label>
+              <label><input type="radio" name="tipoRenuncia" value="Escrita" onchange="evaluarCamposCondicionales()"> Escrita</label>
+            </div>
+            <div class="err" id="errTipoRenuncia">Seleccione el tipo de renuncia</div>
+          </div>
+
+          <!-- Carta de Renuncia (solo si Escrita) -->
+          <div id="divCartaRenuncia" style="display:none">
+            <label style="color:#2980b9;font-size:.88rem;font-weight:600">
+              Carta de Renuncia <span style="font-weight:400;color:#888">(Opcional — puede adjuntarse después)</span>
+            </label>
+            <div class="file-drop-area" id="dropTCR" style="margin-top:8px" onclick="document.getElementById('inputTCR').click()">
+              <div class="file-drop-inner">
+                <div class="file-drop-icon">&#128206;</div>
+                <div>Arrastre el PDF aquí o haga clic para seleccionar</div>
+                <div class="file-drop-hint">Solo archivos PDF</div>
+              </div>
+            </div>
+            <div id="previewTCR" class="file-preview" style="display:none">
+              <span>&#128196;</span>
+              <span class="file-preview-nombre" id="nombreTCR"></span>
+              <button type="button" class="file-btn-limpiar" onclick="limpiarArchivo('TCR')">Quitar</button>
+            </div>
+            <input type="file" id="inputTCR" accept="application/pdf" style="display:none">
+          </div>
+        </div>
+
+        <!-- Evaluación de Desempeño (solo para Terminación en Periodo de Prueba) -->
+        <div id="divEvaluacion" style="display:none;border-top:1.5px solid #f5f5f5;margin-top:16px;padding-top:16px">
+          <label style="color:#27ae60;font-size:.88rem;font-weight:600">
+            Evaluación de Desempeño <span style="font-weight:400;color:#888">(Opcional — puede adjuntarse después)</span>
           </label>
-          <div class="file-drop-area" id="dropTCR" style="margin-top:8px" onclick="document.getElementById('inputTCR').click()">
+          <div class="file-drop-area" id="dropED" style="margin-top:8px" onclick="document.getElementById('inputED').click()">
             <div class="file-drop-inner">
               <div class="file-drop-icon">&#128206;</div>
               <div>Arrastre el PDF aquí o haga clic para seleccionar</div>
               <div class="file-drop-hint">Solo archivos PDF</div>
             </div>
           </div>
-          <div id="previewTCR" class="file-preview" style="display:none">
+          <div id="previewED" class="file-preview" style="display:none">
             <span>&#128196;</span>
-            <span class="file-preview-nombre" id="nombreTCR"></span>
-            <button type="button" class="file-btn-limpiar" onclick="limpiarArchivo('TCR')">Quitar</button>
+            <span class="file-preview-nombre" id="nombreED"></span>
+            <button type="button" class="file-btn-limpiar" onclick="limpiarArchivo('ED')">Quitar</button>
           </div>
-          <input type="file" id="inputTCR" accept="application/pdf" style="display:none">
+          <input type="file" id="inputED" accept="application/pdf" style="display:none">
         </div>
-      </div>
-
-      <!-- Terminación de Contrato (para todos los motivos excepto Renuncia, No tomó cargo, Terminación por Muerte) -->
-      <div id="divTerminacionContrato" style="display:none;border-top:1.5px solid #f5f5f5;margin-top:16px;padding-top:16px">
-        <label style="color:#e67e22;font-size:.88rem;font-weight:600">
-          Terminación de Contrato <span style="font-weight:400;color:#888">(Opcional — puede adjuntarse después)</span>
-        </label>
-        <div class="file-drop-area" id="dropTCRT" style="margin-top:8px" onclick="document.getElementById('inputTCRT').click()">
-          <div class="file-drop-inner">
-            <div class="file-drop-icon">&#128206;</div>
-            <div>Arrastre el PDF aquí o haga clic para seleccionar</div>
-            <div class="file-drop-hint">Solo archivos PDF</div>
-          </div>
-        </div>
-        <div id="previewTCRT" class="file-preview" style="display:none">
-          <span>&#128196;</span>
-          <span class="file-preview-nombre" id="nombreTCRT"></span>
-          <button type="button" class="file-btn-limpiar" onclick="limpiarArchivo('TCRT')">Quitar</button>
-        </div>
-        <input type="file" id="inputTCRT" accept="application/pdf" style="display:none">
-      </div>
-
-      <!-- Evaluación de Desempeño (solo para Terminación en Periodo de Prueba) -->
-      <div id="divEvaluacion" style="display:none;border-top:1.5px solid #f5f5f5;margin-top:16px;padding-top:16px">
-        <label style="color:#27ae60;font-size:.88rem;font-weight:600">
-          Evaluación de Desempeño <span style="font-weight:400;color:#888">(Opcional — puede adjuntarse después)</span>
-        </label>
-        <div class="file-drop-area" id="dropED" style="margin-top:8px" onclick="document.getElementById('inputED').click()">
-          <div class="file-drop-inner">
-            <div class="file-drop-icon">&#128206;</div>
-            <div>Arrastre el PDF aquí o haga clic para seleccionar</div>
-            <div class="file-drop-hint">Solo archivos PDF</div>
-          </div>
-        </div>
-        <div id="previewED" class="file-preview" style="display:none">
-          <span>&#128196;</span>
-          <span class="file-preview-nombre" id="nombreED"></span>
-          <button type="button" class="file-btn-limpiar" onclick="limpiarArchivo('ED')">Quitar</button>
-        </div>
-        <input type="file" id="inputED" accept="application/pdf" style="display:none">
       </div>
     </div>
     <button type="button" class="btn-submit" id="btnEnviar" onclick="abrirModal()">Registrar retiro</button>
@@ -369,6 +370,9 @@
     <a id="btnGenerarDocs" href="#" class="btn-generar">
       &#128203; Generar documentos de retiro
     </a>
+    <div id="notaSinPermiso" style="display:none;font-size:.82rem;color:#888;text-align:center;padding:4px 8px 0">
+      La gestión de los documentos de este retiro está a cargo del área de Nómina.
+    </div>
   </div>
 
 </div>
@@ -396,11 +400,9 @@
   const {
     identificacion, usuario, usuarioNombre, rolUsuario,
     esNominaOSistema, puedeRegistrar, trabajador, cargo, fechaIngreso,
-    rawFechaIngreso, motivos, motivosCONED, motivosTCR,
-    yaRetirado, retiroInfo, urlGenerarDocs,
+    rawFechaIngreso, motivos, condicionesMotivo,
+    yaRetirado, retiroInfo, urlGenerarDocs, puedeGenerarDocs,
   } = _cfg;
-
-  const MOTIVOS_SIN_DOCS = ['No tomó cargo', 'Terminación por Muerte'];
 
   // ── Inicializar UI ─────────────────────────────────────────────────────────
   document.getElementById('dispTrabajador').value     = trabajador;
@@ -416,10 +418,11 @@
     selMotivo.appendChild(opt);
   });
 
-  // El campo Estado solo se renderiza para roles no-Nómina/Sistema
-  if (!esNominaOSistema) {
-    document.getElementById('campoEstado').style.display = 'block';
-  }
+  // El campo Estado es visible para todos los roles, pero solo es obligatorio
+  // para roles distintos de Nómina/Sistema (ver validación en abrirModal())
+  document.getElementById('campoEstado').style.display = 'block';
+  if (esNominaOSistema) document.getElementById('reqEstado').style.display = 'none';
+  setEstado('Activo');
 
   if (yaRetirado) {
     // Mostrar resumen post-registro
@@ -429,16 +432,16 @@
       fechaRetiro:   retiroInfo.fechaRetiro,
       motivoRetiro:  retiroInfo.motivoRetiro,
       tipoRenuncia:  retiroInfo.tipoRenuncia,
-      docTCR:        retiroInfo.docTCR,
+      docCR:         retiroInfo.docCR,
       docED:         retiroInfo.docED,
-    }, urlGenerarDocs, true);
+    }, urlGenerarDocs, true, puedeGenerarDocs);
   } else if (puedeRegistrar) {
     // Todos los roles pueden ver el formulario si el trabajador no está retirado
     document.getElementById('moduloRegistro').style.display = 'block';
   }
 
   // ── Mostrar sección de éxito ───────────────────────────────────────────────
-  function mostrarExito(data, urlGenerar, esRecarga) {
+  function mostrarExito(data, urlGenerar, esRecarga, puedeGenerar) {
     document.getElementById('moduloRegistro').style.display = 'none';
     document.getElementById('seccionExito').style.display   = 'block';
 
@@ -451,8 +454,8 @@
     // Chips de docs subidos en Paso 1
     const docsDiv = document.getElementById('resumenDocs');
     docsDiv.innerHTML = '';
-    if (data.docTCR && data.docTCR.validacion !== 'OK') {
-      docsDiv.innerHTML += `<span class="doc-chip">&#128196; TCR adjunto</span>`;
+    if (data.docCR && data.docCR.validacion !== 'OK') {
+      docsDiv.innerHTML += `<span class="doc-chip">&#128196; Carta de Renuncia adjunta</span>`;
     }
     if (data.docED && data.docED.validacion !== 'OK') {
       docsDiv.innerHTML += `<span class="doc-chip">&#128196; ED adjunto</span>`;
@@ -466,36 +469,56 @@
     } else {
       btn.style.display = 'none';
     }
+    document.getElementById('notaSinPermiso').style.display = (!urlGenerar && puedeGenerar === false) ? 'block' : 'none';
   }
 
-  // ── Toggle Estado (Retirado) ──────────────────────────────────────────────
-  function toggleEstado() {
-    const btn    = document.getElementById('btnRetirado');
-    const hidden = document.getElementById('estadoHidden');
-    const activo = btn.classList.toggle('activo');
-    hidden.value = activo ? 'Retirado' : '';
-    if (activo) document.getElementById('errEstado').classList.remove('visible');
+  // ── Selector Estado (Activo / Retirado) ────────────────────────────────────
+  function setEstado(valor) {
+    const btnActivo   = document.getElementById('btnActivo');
+    const btnRetirado = document.getElementById('btnRetirado');
+    const hidden      = document.getElementById('estadoHidden');
+    const esRetirado  = valor === 'Retirado';
+
+    hidden.value = esRetirado ? 'Retirado' : '';
+    btnActivo.classList.toggle('sel', !esRetirado);
+    btnActivo.classList.toggle('activo-sel', !esRetirado);
+    btnRetirado.classList.toggle('sel', esRetirado);
+    btnRetirado.classList.toggle('retirado-sel', esRetirado);
+
+    if (esRetirado) document.getElementById('errEstado').classList.remove('visible');
+    actualizarBloqueoCampos();
   }
 
-  // ── Campos condicionales ───────────────────────────────────────────────────
+  // ── Bloquear/desbloquear el resto del formulario ───────────────────────────
+  // Nómina y Sistema siempre pueden editar. Los demás roles solo pueden editar
+  // fecha/motivo/documentos una vez marcan "Retirado".
+  function actualizarBloqueoCampos() {
+    const retiradoMarcado = document.getElementById('estadoHidden').value === 'Retirado';
+    const puedeEditar = esNominaOSistema || retiradoMarcado;
+
+    document.getElementById('camposRetiro').classList.toggle('bloqueado', !puedeEditar);
+    document.getElementById('hintBloqueo').style.display = puedeEditar ? 'none' : 'block';
+    document.getElementById('fechaRetiro').disabled  = !puedeEditar;
+    document.getElementById('motivoRetiro').disabled = !puedeEditar;
+    document.querySelectorAll('input[name="tipoRenuncia"]').forEach(r => r.disabled = !puedeEditar);
+  }
+
+  // ── Campos condicionales (según Config_condicion_retiros) ──────────────────
   function evaluarCamposCondicionales() {
     const m = selMotivo.value;
+    const cond = condicionesMotivo[m];
     const tipoRen = document.querySelector('input[name="tipoRenuncia"]:checked')?.value;
 
     // Tipo de renuncia
-    document.getElementById('divTipoRenuncia').style.display = m === 'Renuncia' ? 'block' : 'none';
+    document.getElementById('divTipoRenuncia').style.display = cond?.RequiereTipoRenuncia ? 'block' : 'none';
 
-    // Carta de renuncia (solo si Escrita)
+    // Carta de renuncia (solo si Escrita) — la Terminación de Contrato ya no se
+    // carga aquí: se gestiona y firma desde el módulo Logysign (Módulo 3)
     document.getElementById('divCartaRenuncia').style.display =
-      (m === 'Renuncia' && tipoRen === 'Escrita') ? 'block' : 'none';
-
-    // Terminación de contrato
-    document.getElementById('divTerminacionContrato').style.display =
-      motivosTCR.includes(m) ? 'block' : 'none';
+      (cond?.RequiereTipoRenuncia && tipoRen === 'Escrita') ? 'block' : 'none';
 
     // Evaluación de desempeño
-    document.getElementById('divEvaluacion').style.display =
-      motivosCONED.includes(m) ? 'block' : 'none';
+    document.getElementById('divEvaluacion').style.display = cond?.TieneED ? 'block' : 'none';
   }
 
   // ── Manejo de archivos ─────────────────────────────────────────────────────
@@ -522,23 +545,22 @@
 
   function manejarArchivo(file, tipo) {
     if (file.type !== 'application/pdf') { alert('Solo se aceptan archivos PDF.'); return; }
-    const sfx = tipo === 'Carta' ? 'TCR' : tipo === 'Terminacion' ? 'TCRT' : 'ED';
+    const sfx = tipo === 'Carta' ? 'TCR' : 'ED';
     document.getElementById('drop' + sfx).style.display    = 'none';
     document.getElementById('preview' + sfx).style.display = 'flex';
     document.getElementById('nombre' + sfx).textContent    = file.name;
   }
 
   function limpiarArchivo(sfx) {
-    const inputId = sfx === 'TCR' ? 'inputTCR' : sfx === 'TCRT' ? 'inputTCRT' : 'inputED';
-    const dropId  = sfx === 'TCR' ? 'dropTCR'  : sfx === 'TCRT' ? 'dropTCRT'  : 'dropED';
+    const inputId = sfx === 'TCR' ? 'inputTCR' : 'inputED';
+    const dropId  = sfx === 'TCR' ? 'dropTCR'  : 'dropED';
     document.getElementById(inputId).value = '';
     document.getElementById(dropId).style.display    = 'block';
     document.getElementById('preview' + sfx).style.display = 'none';
   }
 
-  setupDrop('dropTCR',  'inputTCR',  'Carta');
-  setupDrop('dropTCRT', 'inputTCRT', 'Terminacion');
-  setupDrop('dropED',   'inputED',   'ED');
+  setupDrop('dropTCR', 'inputTCR', 'Carta');
+  setupDrop('dropED',  'inputED',  'ED');
 
   // ── Validar y abrir modal ──────────────────────────────────────────────────
   function abrirModal() {
@@ -579,7 +601,7 @@
     marcarErr('errMotivo', !selMotivo.value, 'Seleccione el motivo de retiro');
 
     const m = selMotivo.value;
-    if (m === 'Renuncia') {
+    if (condicionesMotivo[m]?.RequiereTipoRenuncia) {
       const tRn = document.querySelector('input[name="tipoRenuncia"]:checked')?.value;
       marcarErr('errTipoRenuncia', !tRn, 'Seleccione el tipo de renuncia');
     }
@@ -609,7 +631,8 @@
     document.getElementById('btnEnviar').disabled = true;
 
     const m    = selMotivo.value;
-    const tRn  = m === 'Renuncia' ? (document.querySelector('input[name="tipoRenuncia"]:checked')?.value || null) : null;
+    const cond = condicionesMotivo[m];
+    const tRn  = cond?.RequiereTipoRenuncia ? (document.querySelector('input[name="tipoRenuncia"]:checked')?.value || null) : null;
 
     // Leer archivos como base64
     async function leerBase64(inputId) {
@@ -624,15 +647,11 @@
       });
     }
 
-    let tcrB64 = null;
-    if (m === 'Renuncia' && tRn === 'Escrita') tcrB64 = await leerBase64('inputTCR');
-    else if (motivosTCR.includes(m))           tcrB64 = await leerBase64('inputTCRT');
-    const edB64 = motivosCONED.includes(m) ? await leerBase64('inputED') : null;
+    const crB64 = (cond?.RequiereTipoRenuncia && tRn === 'Escrita') ? await leerBase64('inputTCR') : null;
+    const edB64 = cond?.TieneED ? await leerBase64('inputED') : null;
 
-    // El campo estado solo lo envían roles no-Nómina/Sistema
-    const estadoEnvio = !esNominaOSistema
-      ? document.getElementById('estadoHidden').value
-      : undefined;
+    // El campo estado se envía siempre; el backend decide si lo aplica
+    const estadoEnvio = document.getElementById('estadoHidden').value;
 
     try {
       const resp = await fetch(window.location.pathname + '?usuario=' + encodeURIComponent(usuario), {
@@ -642,7 +661,7 @@
           fechaRetiro:  document.getElementById('fechaRetiro').value,
           motivoRetiro: m,
           tipoRenuncia: tRn,
-          tcrBase64:    tcrB64,
+          crBase64:     crB64,
           edBase64:     edB64,
           estado:       estadoEnvio,
         }),
@@ -657,9 +676,9 @@
           fechaRetiro:   data.fechaRetiro,
           motivoRetiro:  data.motivoRetiro,
           tipoRenuncia:  data.tipoRenuncia,
-          docTCR:        tcrB64 ? { validacion: 'PEND' } : null,
-          docED:         edB64  ? { validacion: 'PEND' } : null,
-        }, data.urlGenerarDocs, false);
+          docCR:         crB64 ? { validacion: 'PEND' } : null,
+          docED:         edB64 ? { validacion: 'PEND' } : null,
+        }, data.urlGenerarDocs, false, data.puedeGenerarDocs);
       } else {
         alert('Error: ' + (data.error || 'No se pudo registrar el retiro'));
         document.getElementById('btnEnviar').disabled = false;

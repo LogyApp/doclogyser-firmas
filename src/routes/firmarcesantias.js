@@ -10,6 +10,13 @@ function fechaHoraBogota() {
   return `${b.getFullYear()}-${p(b.getMonth()+1)}-${p(b.getDate())} ${p(b.getHours())}:${p(b.getMinutes())}:${p(b.getSeconds())}`;
 }
 
+// Sello visible bajo la firma, igual al que usa el módulo Logysign al firmar
+function fechaFirmaTexto() {
+  const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const p = n => String(n).padStart(2, '0');
+  return `Firmado: ${p(b.getDate())}/${p(b.getMonth()+1)}/${b.getFullYear()} ${p(b.getHours())}:${p(b.getMinutes())}`;
+}
+
 function toDateStr(val) {
   if (!val) return null;
   if (val instanceof Date) return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
@@ -194,7 +201,8 @@ router.post('/:idVinculacion', async (req, res) => {
     }
 
     const firmaTrabajadorHtml = urlFirmaTrab
-      ? `<img src="${urlFirmaTrab}" style="height:80px;display:block;margin-bottom:4px">`
+      ? `<img src="${urlFirmaTrab}" style="height:80px;display:block;margin-bottom:4px">
+         <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto()}</div>`
       : `<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>`;
 
     const responsable  = await resolverFirmaResponsable(vin.Usuario);

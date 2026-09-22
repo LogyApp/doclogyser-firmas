@@ -72,15 +72,20 @@ async function subirPDFExamenEgreso(identificacion, idVinculacion, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
-async function subirPDFCartaRenuncia(identificacion, idVinculacion, bufferPdf) {
-  const nombre = `${identificacion}/${identificacion}.TCR.${idVinculacion}.pdf`;
-  const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
-  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
-}
-
-async function subirPDFEvaluacionDesempeno(identificacion, idVinculacion, bufferPdf) {
-  const nombre = `${identificacion}/${identificacion}.ED.${idVinculacion}.pdf`;
+// Carta de Renuncia (55) y Evaluación de Desempeño (56): documentos cargados
+// manualmente desde formretiro. El prefijo se resuelve dinámicamente desde
+// Config_Doc_Trabajador (ver services/configRetiro.js) y el nombre lleva
+// fecha/hora de carga (Bogotá) en vez del idVinculacion.
+async function subirDocumentoRetiro(identificacion, prefijo, bufferPdf) {
+  const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const yy  = String(ahora.getFullYear()).slice(-2);
+  const mm  = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dd  = String(ahora.getDate()).padStart(2, '0');
+  const hh  = String(ahora.getHours()).padStart(2, '0');
+  const min = String(ahora.getMinutes()).padStart(2, '0');
+  const ss  = String(ahora.getSeconds()).padStart(2, '0');
+  const timestamp = `${yy}${mm}${dd}${hh}${min}${ss}`;
+  const nombre = `${identificacion}/${identificacion}.${prefijo}.${timestamp}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
   await file.save(bufferPdf, { contentType: 'application/pdf' });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
@@ -264,8 +269,7 @@ module.exports = {
   subirPDFRetiro,
   subirPDFAceptacionRenuncia,
   subirPDFExamenEgreso,
-  subirPDFCartaRenuncia,
-  subirPDFEvaluacionDesempeno,
+  subirDocumentoRetiro,
   subirPDFCesantias,
   subirPDFPazYSalvo,
   subirPDFCertificadoRetiro,

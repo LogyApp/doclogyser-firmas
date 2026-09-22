@@ -9,7 +9,7 @@ const { subirFirma, subirPDFPazYSalvo, obtenerUrlFirmaReciente } = require('../s
 const { validarTokenPZ } = require('../services/token');
 const { notificarPazYSalvoCompletado } = require('../services/email');
 const { resolverRutaFirmaArea } = require('../services/firmaPathResolver');
-const { generarFilasArticulosHTML, generarFirmasAreasHtml, estaCompleto, NOMBRES_AREA, EMAILS_AREA } = require('../services/pazYSalvoService');
+const { generarFilasArticulosHTML, generarFirmasAreasHtml, estaCompleto, NOMBRES_AREA, EMAILS_AREA, fechaFirmaTexto } = require('../services/pazYSalvoService');
 
 const router = express.Router();
 const FIRMA_HTML = path.join(__dirname, '../views/pazysalvoarea/firma.html');
@@ -46,9 +46,10 @@ function formatFechaCO(fecha) {
   return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function buildFirmaHtml(url) {
+function buildFirmaHtml(url, fecha) {
   return url
-    ? `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">`
+    ? `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">
+       <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(fecha)}</div>`
     : `<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>`;
 }
 
@@ -257,13 +258,13 @@ router.post('/:area/:idPz', async (req, res) => {
         operacion:               pzActual['Operación'] || '',
         fecha_retiro:            formatFechaCO(pzActual['Fecha de Retiro']),
         filas_articulos:         generarFilasArticulosHTML(articulos),
-        firma_trabajador_html:   buildFirmaHtml(pzActual.firma_trabajador_url),
-        firma_responsable_html:  buildFirmaHtml(pzActual.firma_responsable_url),
+        firma_trabajador_html:   buildFirmaHtml(pzActual.firma_trabajador_url, pzActual.fecha_firma_trabajador),
+        firma_responsable_html:  buildFirmaHtml(pzActual.firma_responsable_url, pzActual.fecha_firma_responsable),
         nombre_firmante:         pzActual.firma_responsable_nombre || '',
         cargo_firmante:          pzActual.firma_responsable_cargo || '',
         observaciones:           pzActual.observaciones || '',
         // Nómina siempre presente
-        firma_nomina_html:       buildFirmaHtml(pzActual.firma_nomina_url),
+        firma_nomina_html:       buildFirmaHtml(pzActual.firma_nomina_url, pzActual.fecha_firma_nomina),
         firma_nomina_nombre:     pzActual.firma_nomina_nombre || '',
         firma_nomina_cargo:      pzActual.firma_nomina_cargo || '',
       };

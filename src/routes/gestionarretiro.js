@@ -6,7 +6,7 @@ const { reconstruirToken, generarTokenCT, generarTokenAR, generarTokenEMOE, gene
 const { obtenerCondicionRetiro, obtenerEstadoLogysign, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro } = require('../services/configRetiro');
 
 const router   = express.Router();
-const DASHBOARD_HTML = path.join(__dirname, '../views/generarretiro/index.html');
+const DASHBOARD_HTML = path.join(__dirname, '../views/gestionarretiro/index.html');
 
 // CR = Carta de Renuncia (doc 55, cargada manualmente). TCR/TCRP = Terminación de Contrato
 // (docs 76/77), firmados por el módulo Logysign — solo aparecen aquí una vez FIRMADOS.
@@ -343,7 +343,6 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
     if (pz.estado === 'completado') return res.status(400).json({ ok: false, error: 'El PZ ya está completado' });
 
     const { EMAILS_AREA } = require('../services/pazYSalvoService');
-    const { notificarAreaPazYSalvo } = require('../services/email');
     const areasReq = JSON.parse(pz.areas_requeridas || '[]');
     const baseUrl  = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 
@@ -365,14 +364,9 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
       const tokenFinal = tok || await generarTokenPZ(idPz, campoToken, campoExpira);
       const urlFirma   = `${baseUrl}/pazysalvo-area/${encodeURIComponent(idPz)}?area=${area}&token=${encodeURIComponent(tokenFinal)}`;
       try {
-        await notificarAreaPazYSalvo({
-          area, destinatarios,
-          trabajador:    limpiarNombre(pz.Trabajador),
-          identificacion: String(pz['Identificación']),
-          cargo:         pz.Cargo || '',
-          operacion:     pz['Operación'] || '',
-          urlFirma,
-        });
+        // MÓDULO DE PRUEBA (gestionar-retiro): correo real deshabilitado a propósito
+        // mientras se valida este flujo en paralelo a generar-retiro.
+        console.log(`[gestionar-retiro] email de prueba omitido — reenvío PZ área "${area}" a`, destinatarios, urlFirma);
         reenviados++;
       } catch (e) { console.error(`[reenviar-pz ${area}]`, e.message); }
     }

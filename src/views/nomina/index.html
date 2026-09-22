@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nómina — LOG&amp;SER</title>
+<link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #0f766e;
+    --accent: #14b8a6;
+    --bg: #f4f7f6;
+    --card-bg: #fff;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --border: #e2e8f0;
+    --radius: 12px;
+    --retiro: #c0392b;
+    --retiro-bg: #fdf0f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', sans-serif; background-color: var(--bg); color: var(--text);
+    line-height: 1.5; display: flex; min-height: 100vh; overflow: hidden;
+  }
+
+  /* ── Sidebar (mismo layout que Inventario/SST) ─────────────────────────── */
+  .sidebar {
+    width: 280px; background: var(--primary); color: #fff;
+    display: flex; flex-direction: column; flex-shrink: 0; height: 100vh;
+    position: fixed; left: 0; top: 0; z-index: 100;
+    border-right: 1px solid rgba(255,255,255,.08);
+    box-shadow: 4px 0 15px rgba(0,11,89,.08);
+  }
+  .sidebar-brand {
+    padding: 24px 16px; border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex; justify-content: center; align-items: center;
+  }
+  .brand-lockup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 18px; flex-shrink: 0; }
+  .brand-lockup img.brand-logo-app { display: block; object-fit: contain; height: 30px; }
+  .brand-logo-company-crop { width: 133px; height: 34px; overflow: hidden; position: relative; }
+  .brand-logo-company-crop img { position: absolute; left: -64px; top: -65px; width: 268px; height: 178px; max-width: none; }
+  .brand-divider { width: 80%; height: 1.5px; background: rgba(255,255,255,.22); }
+
+  .nav-list { list-style: none; padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .nav-item {
+    position: relative; display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 8px; color: rgba(255,255,255,.65);
+    font-weight: 500; font-size: .9rem; text-decoration: none; cursor: pointer;
+    transition: all .18s cubic-bezier(.4,0,.2,1);
+  }
+  .nav-icon { width: 18px; height: 18px; stroke-width: 2px; color: rgba(255,255,255,.5); transition: all .18s cubic-bezier(.4,0,.2,1); flex-shrink: 0; }
+  .nav-item:hover { color: #fff; background: rgba(255,255,255,.06); }
+  .nav-item:hover .nav-icon { color: rgba(255,255,255,.85); }
+  .nav-item.active { color: #fff; background: rgba(255,255,255,.12); font-weight: 600; }
+  .nav-item.active .nav-icon { color: var(--accent); }
+  .nav-item.active::before {
+    content: ''; position: absolute; left: 0; top: 25%; height: 50%; width: 3px;
+    background-color: var(--accent); border-radius: 8px;
+  }
+  .nav-item.disabled { opacity: .5; cursor: not-allowed !important; }
+  .nav-item.disabled:hover { background: transparent; color: rgba(255,255,255,.65); }
+
+  .sidebar-user {
+    margin-top: auto; padding: 16px; border-top: 1px solid rgba(255,255,255,.08);
+    font-size: .78rem; color: rgba(255,255,255,.65);
+  }
+  .sidebar-user strong { display: block; color: #fff; font-size: .85rem; margin-bottom: 2px; }
+
+  /* ── Contenido ──────────────────────────────────────────────────────────── */
+  .wrapper { margin-left: 280px; flex: 1; min-width: 0; padding: 24px; height: 100vh; overflow-y: auto; }
+
+  .page-hd { margin-bottom: 16px; }
+  .page-title { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+  .page-sub { font-size: .84rem; color: var(--text-muted); margin-top: 2px; }
+
+  .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: 0 1px 6px rgba(0,0,0,.06); padding: 18px 20px; margin-bottom: 16px; }
+
+  /* Filtros plegables */
+  .filtros-toggle { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+  .filtros-toggle-left { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .95rem; color: var(--primary); }
+  .filtros-badge {
+    display: none; align-items: center; justify-content: center; background: var(--primary); color: #fff;
+    border-radius: 999px; font-size: .68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
+  }
+  .filtros-chevron { display: inline-block; transition: transform .2s ease; color: var(--primary); font-size: .95rem; }
+  .filtros-body { overflow: hidden; margin-top: 16px; }
+  .filtros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .filtro-field label { display: block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+  .filtro-field select, .filtro-field input {
+    width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: .88rem; background: #fff; color: var(--text);
+  }
+  .filtro-field select:focus, .filtro-field input:focus { outline: none; border-color: var(--primary); }
+  .btn-reset { margin-top: 14px; background: none; border: 1.5px solid var(--border); color: var(--text-muted); padding: 7px 14px; border-radius: 6px; font-size: .82rem; cursor: pointer; }
+  .btn-reset:hover { background: #f5f5f5; }
+
+  /* Tabla con encabezado fijo (igual patrón que Inventario/Kardex) */
+  .table-container { max-height: 68vh; overflow-y: auto; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+  table.retiros-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  table.retiros-table thead th {
+    background-color: #f8fafc; color: var(--primary); font-size: .76rem; text-transform: uppercase; letter-spacing: .4px;
+    font-weight: 700; text-align: left; padding: 10px 12px; position: sticky; top: 0; z-index: 10;
+    box-shadow: inset 0 -1px 0 var(--border); cursor: pointer; user-select: none;
+  }
+  table.retiros-table thead th.no-sort { cursor: default; }
+  table.retiros-table tbody td { padding: 9px 12px; font-size: .85rem; border-bottom: 1px solid #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  table.retiros-table tbody tr { cursor: pointer; transition: background .12s; }
+  table.retiros-table tbody tr:hover { background: #f0faf8; }
+  td.col-fecha-retiro { background: var(--retiro-bg); color: var(--retiro); font-weight: 700; }
+  .celda-fecha-hora { font-size: .75rem; color: var(--text-muted); }
+
+  .btn-retirar {
+    background: var(--retiro); color: #fff; border: none; padding: 6px 14px;
+    border-radius: 6px; font-size: .78rem; font-weight: 700; cursor: pointer;
+  }
+  .btn-retirar:hover { background: #a93226; }
+  .btn-tomo-cargo {
+    background: var(--primary); color: #fff; border: none; padding: 6px 14px;
+    border-radius: 6px; font-size: .78rem; font-weight: 700; cursor: pointer; margin-left: 6px;
+  }
+  .btn-tomo-cargo:hover { background: #0c5d56; }
+  .btn-tomo-cargo:disabled { background: #d1d5db; color: #6b7280; cursor: default; }
+  .celda-acciones { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; white-space: normal !important; }
+
+  .sort-indicator { font-size: .7rem; color: var(--text-muted); margin-left: 4px; }
+  .th-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; touch-action: none; z-index: 2; }
+  .th-resize::after { content: ''; display: block; position: absolute; right: 0; top: 20%; bottom: 20%; width: 2px; background: #d7e6e3; transition: background .2s; }
+  .th-resize:hover::after, .th-resize.resizing::after { background: var(--primary); }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: .9rem; }
+  .contador-resultados { font-size: .8rem; color: var(--text-muted); margin-bottom: 10px; }
+
+  /* Modal iframe (formretiro / gestionar-retiro) */
+  .modal-full-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; align-items: center; justify-content: center; padding: 18px; }
+  .modal-full-overlay.open { display: flex; }
+  .modal-full { background: #fff; border-radius: 10px; width: 100%; max-width: 780px; height: 94vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.3); }
+  .modal-full-header { background: var(--primary); color: #fff; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: .92rem; }
+  .modal-full-header button { background: rgba(255,255,255,.15); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; font-size: .82rem; cursor: pointer; }
+  .modal-full-header button:hover { background: rgba(255,255,255,.28); }
+  .modal-full iframe { flex: 1; border: none; width: 100%; }
+
+  /* Modal de ficha de Vinculación (formulario propio, no iframe) */
+  .modal-ficha-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg); }
+  .ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .ficha-field { margin-bottom: 4px; }
+  .ficha-field label { display: block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+  .ficha-field input[type="text"], .ficha-field input[type="date"], .ficha-field input[type="number"], .ficha-field select {
+    width: 100%; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: .9rem; background: #fff; color: var(--text);
+  }
+  .ficha-field input:disabled, .ficha-field select:disabled { background: #f1f5f9; color: var(--text-muted); cursor: not-allowed; }
+  .ficha-field input:focus, .ficha-field select:focus { outline: none; border-color: var(--primary); }
+
+  .btn-grupo { display: flex; gap: 6px; background: #eef0f5; padding: 4px; border-radius: 9px; }
+  .btn-grupo-opt {
+    flex: 1; padding: 9px 10px; border: none; border-radius: 7px; background: transparent;
+    font-size: .84rem; font-weight: 700; cursor: pointer; color: #6b7280; transition: all .18s;
+  }
+  .btn-grupo-opt.sel { background: var(--primary); color: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.15); }
+  .btn-grupo-opt:disabled { cursor: not-allowed; opacity: .6; }
+  .btn-grupo.deshabilitado { opacity: .6; }
+
+  .ficha-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: #fff; }
+  .btn-guardar-ficha { background: var(--primary); color: #fff; border: none; padding: 10px 22px; border-radius: 7px; font-size: .88rem; font-weight: 700; cursor: pointer; }
+  .btn-guardar-ficha:hover { background: #0c5d56; }
+  .btn-guardar-ficha:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  /* ── Móvil (mismo patrón que Inventario/SST) ─────────────────────────── */
+  .mobile-header {
+    display: none; align-items: center; justify-content: space-between;
+    background: var(--primary); color: #fff; padding: 12px 16px;
+    position: sticky; top: 0; z-index: 90; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  .mobile-menu-btn { background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; padding: 4px; }
+  .mobile-title { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 6px; }
+  .mobile-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 95; }
+  .mobile-backdrop.open { display: block; }
+
+  @media (max-width: 900px) {
+    body { flex-direction: column; overflow: visible; height: auto; }
+    .mobile-header { display: flex; }
+    .sidebar { transform: translateX(-100%); transition: transform .2s ease; }
+    .sidebar.open { transform: translateX(0); }
+    .wrapper { margin-left: 0; padding: 16px; height: auto; min-height: calc(100vh - 56px); overflow-y: visible; }
+    .filtros-grid { grid-template-columns: 1fr; }
+    .ficha-grid { grid-template-columns: 1fr; }
+    .modal-full-overlay { padding: 0; }
+    .modal-full { max-width: 100%; height: 100vh; border-radius: 0; }
+    .table-container { max-height: 60vh; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Backdrop móvil -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Header móvil -->
+  <header class="mobile-header">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
+    <div class="mobile-title"><span>&#128188; Nómina</span></div>
+    <span id="mobile-user-badge" style="font-size:.75rem;background:rgba(255,255,255,.2);padding:3px 8px;border-radius:4px"></span>
+  </header>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item" id="navActivos" onclick="switchTab('activos')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Activos</span>
+      </li>
+      <li class="nav-item" id="navRetiros" onclick="switchTab('retiros')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        <span>Retiros</span>
+      </li>
+      <li class="nav-item disabled" title="Próximamente">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        <span>Vacaciones</span>
+      </li>
+      <li class="nav-item disabled" title="Próximamente">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        <span>Permisos</span>
+      </li>
+      <li class="nav-item disabled" title="Próximamente">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Asistencia</span>
+      </li>
+    </ul>
+    <div class="sidebar-user" id="sidebarUser"></div>
+  </div>
+
+  <div class="wrapper">
+
+    <!-- ══════════════ Pestaña: Activos ══════════════ -->
+    <div id="panelActivos" style="display:none">
+      <div class="page-hd">
+        <div class="page-title">Nómina · Activos</div>
+        <div class="page-sub">Trabajadores activos — inicie el proceso de retiro desde aquí</div>
+      </div>
+
+      <div class="card">
+        <div class="filtros-toggle" id="actFiltrosToggle">
+          <span class="filtros-toggle-left">
+            &#128269; Filtros de Consulta
+            <span class="filtros-badge" id="actFiltrosBadge">0</span>
+          </span>
+          <span class="filtros-chevron" id="actFiltrosChevron">&#9656;</span>
+        </div>
+        <div class="filtros-body" id="actFiltrosBody" style="display:none">
+          <div class="filtros-grid">
+            <div class="filtro-field"><label>Regional</label><select id="actFilterRegional"></select></div>
+            <div class="filtro-field"><label>Operación</label><select id="actFilterOperacion"></select></div>
+            <div class="filtro-field"><label>Identificación</label><input type="text" id="actFilterIdentificacion" placeholder="Buscar por identificación..."></div>
+          </div>
+          <button type="button" class="btn-reset" onclick="resetFiltrosActivos()">&#8635; Limpiar filtros</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="contador-resultados" id="actContador"></div>
+        <div class="table-container">
+          <table class="retiros-table" id="activosTable">
+            <thead>
+              <tr>
+                <th style="width:130px" data-sort="IdVinculacion">Id Vinculación<span id="actSort-IdVinculacion" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="Regional">Regional<span id="actSort-Regional" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="Operacion">Operación<span id="actSort-Operacion" class="sort-indicator"></span></th>
+                <th style="width:200px" data-sort="Trabajador">Trabajador<span id="actSort-Trabajador" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="Cargo">Cargo<span id="actSort-Cargo" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="FechaIngreso">Fecha de Ingreso<span id="actSort-FechaIngreso" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="Usuario">Usuario<span id="actSort-Usuario" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="FechaActualizacion">Fecha Actualización<span id="actSort-FechaActualizacion" class="sort-indicator"></span></th>
+                <th style="width:110px" class="no-sort">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="activosBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="actEmptyState" style="display:none">No hay registros que coincidan con los filtros.</div>
+      </div>
+    </div>
+
+    <!-- ══════════════ Pestaña: Retiros ══════════════ -->
+    <div id="panelRetiros" style="display:none">
+      <div class="page-hd">
+        <div class="page-title">Nómina · Retiros</div>
+        <div class="page-sub">Trabajadores con proceso de retiro registrado</div>
+      </div>
+
+      <div class="card">
+        <div class="filtros-toggle" id="retFiltrosToggle">
+          <span class="filtros-toggle-left">
+            &#128269; Filtros de Consulta
+            <span class="filtros-badge" id="retFiltrosBadge">0</span>
+          </span>
+          <span class="filtros-chevron" id="retFiltrosChevron">&#9656;</span>
+        </div>
+        <div class="filtros-body" id="retFiltrosBody" style="display:none">
+          <div class="filtros-grid">
+            <div class="filtro-field"><label>Regional</label><select id="retFilterRegional"></select></div>
+            <div class="filtro-field"><label>Operación</label><select id="retFilterOperacion"></select></div>
+            <div class="filtro-field"><label>Identificación</label><input type="text" id="retFilterIdentificacion" placeholder="Buscar por identificación..."></div>
+          </div>
+          <button type="button" class="btn-reset" onclick="resetFiltrosRetiros()">&#8635; Limpiar filtros</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="contador-resultados" id="retContador"></div>
+        <div class="table-container">
+          <table class="retiros-table" id="retirosTable">
+            <thead>
+              <tr>
+                <th style="width:130px" data-sort="IdVinculacion">Id Vinculación<span id="retSort-IdVinculacion" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="Regional">Regional<span id="retSort-Regional" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="Operacion">Operación<span id="retSort-Operacion" class="sort-indicator"></span></th>
+                <th style="width:200px" data-sort="Trabajador">Trabajador<span id="retSort-Trabajador" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="Cargo">Cargo<span id="retSort-Cargo" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="FechaIngreso">Fecha de Ingreso<span id="retSort-FechaIngreso" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="FechaRetiro">Fecha de Retiro<span id="retSort-FechaRetiro" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="Usuario">Usuario<span id="retSort-Usuario" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="FechaActualizacion">Fecha Actualización<span id="retSort-FechaActualizacion" class="sort-indicator"></span></th>
+              </tr>
+            </thead>
+            <tbody id="retirosBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="retEmptyState" style="display:none">No hay registros que coincidan con los filtros.</div>
+      </div>
+    </div>
+
+  </div>
+
+<!-- Modal (formretiro / gestionar-retiro) -->
+<div class="modal-full-overlay" id="gestionModalOverlay">
+  <div class="modal-full">
+    <div class="modal-full-header">
+      <span id="modalTitulo">Retiro</span>
+      <button type="button" onclick="cerrarModalGestion()">&#10005; Cerrar</button>
+    </div>
+    <iframe id="gestionIframe" src="about:blank"></iframe>
+  </div>
+</div>
+
+<!-- Modal Ficha de Vinculación (formulario propio) -->
+<div class="modal-full-overlay" id="fichaModalOverlay">
+  <div class="modal-full" style="max-width:640px">
+    <div class="modal-full-header">
+      <span>Ficha del trabajador</span>
+      <button type="button" onclick="cerrarFichaVinculacion()">&#10005; Cerrar</button>
+    </div>
+    <div class="modal-ficha-body" id="fichaBody">
+      <div class="ficha-grid">
+        <div class="ficha-field"><label>Identificación</label><input type="text" id="ficha_identificacion" disabled></div>
+        <div class="ficha-field"><label>Trabajador</label><input type="text" id="ficha_trabajador" disabled></div>
+        <div class="ficha-field"><label>Estado</label><input type="text" id="ficha_estado" disabled></div>
+        <div class="ficha-field"><label>Cargo</label><input type="text" id="ficha_cargo"></div>
+        <div class="ficha-field"><label>Regional</label><input type="text" id="ficha_regional"></div>
+        <div class="ficha-field"><label>Operación</label><input type="text" id="ficha_operacion"></div>
+        <div class="ficha-field"><label>Área</label><select id="ficha_area"></select></div>
+        <div class="ficha-field"><label>Fecha de Ingreso</label><input type="date" id="ficha_fechaIngreso"></div>
+        <div class="ficha-field" id="campoSalario" style="display:none"><label>Salario</label><input type="number" id="ficha_salario"></div>
+      </div>
+
+      <div class="ficha-field" style="margin-top:14px">
+        <label>Tipo de Contrato</label>
+        <div class="btn-grupo" id="grupoTipoContrato"></div>
+      </div>
+      <div class="ficha-field" style="margin-top:14px">
+        <label>Grupo Nómina</label>
+        <div class="btn-grupo" id="grupoGrupoNomina"></div>
+      </div>
+      <div class="ficha-field" style="margin-top:14px">
+        <label>Productividad - Dtjo</label>
+        <div class="btn-grupo" id="grupoProductividad"></div>
+      </div>
+      <div class="ficha-field" style="margin-top:14px">
+        <label>Auxilio de Transporte</label>
+        <div class="btn-grupo" id="grupoAuxilioTransporte"></div>
+      </div>
+    </div>
+    <div class="ficha-footer">
+      <button type="button" class="btn-reset" onclick="cerrarFichaVinculacion()">Cancelar</button>
+      <button type="button" class="btn-guardar-ficha" id="btnGuardarFicha" onclick="guardarFicha()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const _cfg = __CONFIG__;
+  const { usuario, usuarioNombre, rol, puedeGenerarDocs, tabs } = _cfg;
+
+  document.getElementById('sidebarUser').innerHTML = `<strong>${usuarioNombre}</strong>${rol}`;
+  document.getElementById('mobile-user-badge').textContent = rol;
+
+  // ── Sidebar móvil (mismo patrón que Inventario/SST) ──────────────────────
+  function toggleMobileSidebar(forceState) {
+    const sb = document.getElementById('sidebar');
+    const bd = document.getElementById('mobile-backdrop');
+    const shouldOpen = forceState !== undefined ? forceState : !sb.classList.contains('open');
+    sb.classList.toggle('open', shouldOpen);
+    bd.classList.toggle('open', shouldOpen);
+  }
+
+  // ── Helpers compartidos ──────────────────────────────────────────────────
+  const DATE_COLS = ['FechaIngreso', 'FechaRetiro', 'FechaActualizacion'];
+
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+  function formatFechaCorta(val) {
+    if (!val) return '—';
+    const d = new Date(val);
+    if (isNaN(d)) return String(val).slice(0, 10);
+    return d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  function celdaFechaHora(val) {
+    if (!val) return '—';
+    const d = new Date(val);
+    if (isNaN(d)) return String(val);
+    const fecha = d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const hora  = d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `<div>${fecha}</div><div class="celda-fecha-hora">${hora} hs</div>`;
+  }
+
+  function makeTableResizable(table) {
+    if (!table) return;
+    const row = table.querySelector('thead tr');
+    const cols = row ? row.children : [];
+    if (!cols.length) return;
+
+    let totalWidth = 0;
+    for (let i = 0; i < cols.length; i++) {
+      const declared = parseInt(cols[i].style.width) || 0;
+      totalWidth += declared > 0 ? declared : 110;
+    }
+    table.style.minWidth = totalWidth + 'px';
+
+    for (let i = 0; i < cols.length; i++) {
+      const th = cols[i];
+      const existing = th.querySelector('.th-resize');
+      if (existing) existing.remove();
+
+      const handle = document.createElement('span');
+      handle.className = 'th-resize';
+      handle.title = 'Arrastra para cambiar el ancho';
+      th.style.position = 'sticky';
+      th.appendChild(handle);
+
+      let startX, startWidth;
+      handle.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startX = e.clientX;
+        startWidth = th.offsetWidth;
+        handle.classList.add('resizing');
+        try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+
+        const onPointerMove = (moveEvent) => {
+          const width = Math.max(50, startWidth + (moveEvent.clientX - startX));
+          th.style.width = width + 'px';
+          th.style.minWidth = width + 'px';
+        };
+        const onPointerUp = () => {
+          handle.classList.remove('resizing');
+          handle.removeEventListener('pointermove', onPointerMove);
+          handle.removeEventListener('pointerup', onPointerUp);
+          handle.removeEventListener('pointercancel', onPointerUp);
+        };
+        handle.addEventListener('pointermove', onPointerMove);
+        handle.addEventListener('pointerup', onPointerUp);
+        handle.addEventListener('pointercancel', onPointerUp);
+      });
+    }
+  }
+
+  // ── Modal genérico (formretiro / gestionar-retiro) ──────────────────────
+  let _tabActual = null;
+  function abrirModal(url, titulo) {
+    document.getElementById('modalTitulo').textContent = titulo;
+    document.getElementById('gestionIframe').src = url;
+    document.getElementById('gestionModalOverlay').classList.add('open');
+  }
+  function cerrarModalGestion() {
+    document.getElementById('gestionModalOverlay').classList.remove('open');
+    document.getElementById('gestionIframe').src = 'about:blank';
+    if (_tabActual === 'retiros') fetchDataRetiros();
+    else if (_tabActual === 'activos') fetchDataActivos();
+  }
+
+  // ── Cambio de pestaña ────────────────────────────────────────────────────
+  function switchTab(tab) {
+    _tabActual = tab;
+    document.getElementById('navRetiros').classList.toggle('active', tab === 'retiros');
+    document.getElementById('navActivos').classList.toggle('active', tab === 'activos');
+    document.getElementById('panelRetiros').style.display = tab === 'retiros' ? 'block' : 'none';
+    document.getElementById('panelActivos').style.display = tab === 'activos' ? 'block' : 'none';
+    if (tab === 'retiros' && !_retirosState.cargado) fetchDataRetiros();
+    if (tab === 'activos' && !_activosState.cargado) fetchDataActivos();
+    toggleMobileSidebar(false);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Pestaña RETIROS
+  // ═══════════════════════════════════════════════════════════════════════
+  const _retirosState = { allData: [], counts: { regionales: {}, operaciones: {} }, sortCol: 'FechaRetiro', sortOrder: 'desc', cargado: false };
+  const retFilterRegional      = document.getElementById('retFilterRegional');
+  const retFilterOperacion     = document.getElementById('retFilterOperacion');
+  const retFilterIdentificacion = document.getElementById('retFilterIdentificacion');
+
+  (function initFiltrosPlegables(prefix) {
+    const toggle  = document.getElementById(prefix + 'FiltrosToggle');
+    const body    = document.getElementById(prefix + 'FiltrosBody');
+    const chevron = document.getElementById(prefix + 'FiltrosChevron');
+    let abierto = false;
+    toggle.addEventListener('click', () => {
+      abierto = !abierto;
+      body.style.display = abierto ? 'block' : 'none';
+      chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+  })('ret');
+  (function initFiltrosPlegables(prefix) {
+    const toggle  = document.getElementById(prefix + 'FiltrosToggle');
+    const body    = document.getElementById(prefix + 'FiltrosBody');
+    const chevron = document.getElementById(prefix + 'FiltrosChevron');
+    let abierto = false;
+    toggle.addEventListener('click', () => {
+      abierto = !abierto;
+      body.style.display = abierto ? 'block' : 'none';
+      chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+  })('act');
+
+  function actualizarBadgeFiltrosRetiros() {
+    let n = 0;
+    if (retFilterRegional.value) n++;
+    if (retFilterOperacion.value) n++;
+    if (retFilterIdentificacion.value.trim()) n++;
+    const badge = document.getElementById('retFiltrosBadge');
+    badge.textContent = n;
+    badge.style.display = n ? 'flex' : 'none';
+  }
+  function resetFiltrosRetiros() {
+    retFilterRegional.value = '';
+    retFilterOperacion.value = '';
+    retFilterIdentificacion.value = '';
+    fetchDataRetiros();
+  }
+  function updateFilterOptionsWithCountsRetiros() {
+    const t = tabs.retiro;
+    const selectedReg = retFilterRegional.value;
+    const selectedOp  = retFilterOperacion.value;
+    const regCounts = _retirosState.counts.regionales || {};
+    const opCounts  = _retirosState.counts.operaciones || {};
+
+    retFilterRegional.innerHTML = '';
+    const totalReg = Object.values(regCounts).reduce((a, b) => Number(a) + Number(b), 0);
+    const optAllR = document.createElement('option');
+    optAllR.value = '';
+    optAllR.textContent = t.sinFiltro ? `Todas las regionales (${totalReg})` : 'Seleccione Regional';
+    retFilterRegional.appendChild(optAllR);
+    t.regionalesFiltro.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r; opt.textContent = `${r} (${regCounts[r] || 0})`;
+      if (r === selectedReg) opt.selected = true;
+      retFilterRegional.appendChild(opt);
+    });
+
+    retFilterOperacion.innerHTML = '';
+    let allowedOps = [];
+    if (selectedReg) allowedOps = t.opsPorRegional[selectedReg] || [];
+    else { const set = new Set(); Object.values(t.opsPorRegional).forEach(ops => ops.forEach(o => set.add(o))); allowedOps = Array.from(set).sort(); }
+    const totalOp = Object.values(opCounts).reduce((a, b) => Number(a) + Number(b), 0);
+    const optAllO = document.createElement('option');
+    optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${totalOp})`;
+    retFilterOperacion.appendChild(optAllO);
+    allowedOps.forEach(op => {
+      const opt = document.createElement('option');
+      opt.value = op; opt.textContent = `${op} (${opCounts[op] || 0})`;
+      if (op === selectedOp) opt.selected = true;
+      retFilterOperacion.appendChild(opt);
+    });
+  }
+
+  if (tabs.retiro) {
+    retFilterRegional.addEventListener('change', fetchDataRetiros);
+    retFilterOperacion.addEventListener('change', fetchDataRetiros);
+    let debounceRet = null;
+    retFilterIdentificacion.addEventListener('input', () => { clearTimeout(debounceRet); debounceRet = setTimeout(fetchDataRetiros, 350); });
+  }
+
+  async function fetchDataRetiros() {
+    actualizarBadgeFiltrosRetiros();
+    const params = new URLSearchParams({ usuario });
+    if (retFilterRegional.value) params.set('regional', retFilterRegional.value);
+    if (retFilterOperacion.value) params.set('operacion', retFilterOperacion.value);
+    if (retFilterIdentificacion.value.trim()) params.set('identificacion', retFilterIdentificacion.value.trim());
+    try {
+      const resp = await fetch('/nomina/api/retiros?' + params.toString());
+      const data = await resp.json();
+      if (!resp.ok) { alert('Error: ' + (data.error || 'No se pudo cargar la información')); return; }
+      _retirosState.allData = data.results || [];
+      _retirosState.counts  = data.counts || { regionales: {}, operaciones: {} };
+      _retirosState.cargado = true;
+      updateFilterOptionsWithCountsRetiros();
+      sortAndRenderRetiros();
+    } catch { alert('Error de conexión al cargar los retiros.'); }
+  }
+
+  function sortAndRenderRetiros() {
+    const col = _retirosState.sortCol;
+    if (col) {
+      const esFecha = DATE_COLS.includes(col);
+      _retirosState.allData.sort((a, b) => {
+        let valA = a[col], valB = b[col];
+        if (valA === undefined || valA === null) valA = '';
+        if (valB === undefined || valB === null) valB = '';
+        if (esFecha) {
+          const ta = valA ? new Date(valA).getTime() : 0, tb = valB ? new Date(valB).getTime() : 0;
+          return _retirosState.sortOrder === 'asc' ? ta - tb : tb - ta;
+        }
+        valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase();
+        if (valA < valB) return _retirosState.sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return _retirosState.sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    ['IdVinculacion','Regional','Operacion','Trabajador','Cargo','FechaIngreso','FechaRetiro','Usuario','FechaActualizacion'].forEach(k => {
+      const span = document.getElementById('retSort-' + k);
+      if (!span) return;
+      span.textContent = _retirosState.sortCol === k ? (_retirosState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+      if (_retirosState.sortCol === k) span.style.color = 'var(--primary)';
+    });
+    renderTableRetiros();
+  }
+
+  document.querySelectorAll('#retirosTable thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', (e) => {
+      if (e.target.classList.contains('th-resize')) return;
+      const col = th.getAttribute('data-sort');
+      if (_retirosState.sortCol === col) _retirosState.sortOrder = _retirosState.sortOrder === 'asc' ? 'desc' : 'asc';
+      else { _retirosState.sortCol = col; _retirosState.sortOrder = 'asc'; }
+      sortAndRenderRetiros();
+    });
+  });
+
+  function renderTableRetiros() {
+    const body = document.getElementById('retirosBody');
+    body.innerHTML = '';
+    document.getElementById('retContador').textContent = `${_retirosState.allData.length} registro(s)`;
+    document.getElementById('retEmptyState').style.display = _retirosState.allData.length ? 'none' : 'block';
+    _retirosState.allData.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(row.IdVinculacion)}</td>
+        <td>${esc(row.Regional)}</td>
+        <td>${esc(row.Operacion)}</td>
+        <td>${esc(row.Trabajador)}</td>
+        <td>${esc(row.Cargo)}</td>
+        <td>${formatFechaCorta(row.FechaIngreso)}</td>
+        <td class="col-fecha-retiro">${formatFechaCorta(row.FechaRetiro)}</td>
+        <td>${esc(row.Usuario)}</td>
+        <td>${celdaFechaHora(row.FechaActualizacion)}</td>
+      `;
+      tr.addEventListener('click', () => abrirFilaRetiro(row));
+      body.appendChild(tr);
+    });
+  }
+
+  // Solo se abre gestionar-retiro si el registro ya tiene documentos generados
+  // Y el usuario actual tiene permiso para gestionarlos (ver puedeGenerarDocumentosRetiro
+  // en el backend — Coordinador/Auxiliar de ANTIOQUIA no gestionan documentos).
+  function abrirFilaRetiro(row) {
+    if (row.tieneDocsGenerados && puedeGenerarDocs) {
+      abrirModal('/gestionar-retiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Gestión de Retiro');
+    } else {
+      abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Pestaña ACTIVOS
+  // ═══════════════════════════════════════════════════════════════════════
+  const _activosState = { allData: [], counts: { regionales: {}, operaciones: {} }, sortCol: 'Trabajador', sortOrder: 'asc', cargado: false };
+  const actFilterRegional      = document.getElementById('actFilterRegional');
+  const actFilterOperacion     = document.getElementById('actFilterOperacion');
+  const actFilterIdentificacion = document.getElementById('actFilterIdentificacion');
+
+  function actualizarBadgeFiltrosActivos() {
+    let n = 0;
+    if (actFilterRegional.value) n++;
+    if (actFilterOperacion.value) n++;
+    if (actFilterIdentificacion.value.trim()) n++;
+    const badge = document.getElementById('actFiltrosBadge');
+    badge.textContent = n;
+    badge.style.display = n ? 'flex' : 'none';
+  }
+  function resetFiltrosActivos() {
+    actFilterRegional.value = '';
+    actFilterOperacion.value = '';
+    actFilterIdentificacion.value = '';
+    fetchDataActivos();
+  }
+  function updateFilterOptionsWithCountsActivos() {
+    const t = tabs.activo;
+    const selectedReg = actFilterRegional.value;
+    const selectedOp  = actFilterOperacion.value;
+    const regCounts = _activosState.counts.regionales || {};
+    const opCounts  = _activosState.counts.operaciones || {};
+
+    actFilterRegional.innerHTML = '';
+    const totalReg = Object.values(regCounts).reduce((a, b) => Number(a) + Number(b), 0);
+    const optAllR = document.createElement('option');
+    optAllR.value = '';
+    optAllR.textContent = t.sinFiltro ? `Todas las regionales (${totalReg})` : 'Seleccione Regional';
+    actFilterRegional.appendChild(optAllR);
+    t.regionalesFiltro.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r; opt.textContent = `${r} (${regCounts[r] || 0})`;
+      if (r === selectedReg) opt.selected = true;
+      actFilterRegional.appendChild(opt);
+    });
+
+    actFilterOperacion.innerHTML = '';
+    let allowedOps = [];
+    if (selectedReg) allowedOps = t.opsPorRegional[selectedReg] || [];
+    else { const set = new Set(); Object.values(t.opsPorRegional).forEach(ops => ops.forEach(o => set.add(o))); allowedOps = Array.from(set).sort(); }
+    const totalOp = Object.values(opCounts).reduce((a, b) => Number(a) + Number(b), 0);
+    const optAllO = document.createElement('option');
+    optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${totalOp})`;
+    actFilterOperacion.appendChild(optAllO);
+    allowedOps.forEach(op => {
+      const opt = document.createElement('option');
+      opt.value = op; opt.textContent = `${op} (${opCounts[op] || 0})`;
+      if (op === selectedOp) opt.selected = true;
+      actFilterOperacion.appendChild(opt);
+    });
+  }
+
+  if (tabs.activo) {
+    actFilterRegional.addEventListener('change', fetchDataActivos);
+    actFilterOperacion.addEventListener('change', fetchDataActivos);
+    let debounceAct = null;
+    actFilterIdentificacion.addEventListener('input', () => { clearTimeout(debounceAct); debounceAct = setTimeout(fetchDataActivos, 350); });
+  }
+
+  async function fetchDataActivos() {
+    actualizarBadgeFiltrosActivos();
+    const params = new URLSearchParams({ usuario });
+    if (actFilterRegional.value) params.set('regional', actFilterRegional.value);
+    if (actFilterOperacion.value) params.set('operacion', actFilterOperacion.value);
+    if (actFilterIdentificacion.value.trim()) params.set('identificacion', actFilterIdentificacion.value.trim());
+    try {
+      const resp = await fetch('/nomina/api/activos?' + params.toString());
+      const data = await resp.json();
+      if (!resp.ok) { alert('Error: ' + (data.error || 'No se pudo cargar la información')); return; }
+      _activosState.allData = data.results || [];
+      _activosState.counts  = data.counts || { regionales: {}, operaciones: {} };
+      _activosState.cargado = true;
+      updateFilterOptionsWithCountsActivos();
+      sortAndRenderActivos();
+    } catch { alert('Error de conexión al cargar los activos.'); }
+  }
+
+  function sortAndRenderActivos() {
+    const col = _activosState.sortCol;
+    if (col) {
+      const esFecha = DATE_COLS.includes(col);
+      _activosState.allData.sort((a, b) => {
+        let valA = a[col], valB = b[col];
+        if (valA === undefined || valA === null) valA = '';
+        if (valB === undefined || valB === null) valB = '';
+        if (esFecha) {
+          const ta = valA ? new Date(valA).getTime() : 0, tb = valB ? new Date(valB).getTime() : 0;
+          return _activosState.sortOrder === 'asc' ? ta - tb : tb - ta;
+        }
+        valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase();
+        if (valA < valB) return _activosState.sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return _activosState.sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    ['IdVinculacion','Regional','Operacion','Trabajador','Cargo','FechaIngreso','Usuario','FechaActualizacion'].forEach(k => {
+      const span = document.getElementById('actSort-' + k);
+      if (!span) return;
+      span.textContent = _activosState.sortCol === k ? (_activosState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+      if (_activosState.sortCol === k) span.style.color = 'var(--primary)';
+    });
+    renderTableActivos();
+  }
+
+  document.querySelectorAll('#activosTable thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', (e) => {
+      if (e.target.classList.contains('th-resize')) return;
+      const col = th.getAttribute('data-sort');
+      if (_activosState.sortCol === col) _activosState.sortOrder = _activosState.sortOrder === 'asc' ? 'desc' : 'asc';
+      else { _activosState.sortCol = col; _activosState.sortOrder = 'asc'; }
+      sortAndRenderActivos();
+    });
+  });
+
+  function renderTableActivos() {
+    const body = document.getElementById('activosBody');
+    body.innerHTML = '';
+    document.getElementById('actContador').textContent = `${_activosState.allData.length} registro(s)`;
+    document.getElementById('actEmptyState').style.display = _activosState.allData.length ? 'none' : 'block';
+    _activosState.allData.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(row.IdVinculacion)}</td>
+        <td>${esc(row.Regional)}</td>
+        <td>${esc(row.Operacion)}</td>
+        <td>${esc(row.Trabajador)}</td>
+        <td>${esc(row.Cargo)}</td>
+        <td>${formatFechaCorta(row.FechaIngreso)}</td>
+        <td>${esc(row.Usuario)}</td>
+        <td>${celdaFechaHora(row.FechaActualizacion)}</td>
+        <td></td>
+      `;
+      const celdaAcciones = tr.lastElementChild;
+      celdaAcciones.className = 'celda-acciones';
+
+      const btnRetirar = document.createElement('button');
+      btnRetirar.type = 'button'; btnRetirar.className = 'btn-retirar'; btnRetirar.textContent = 'Retirar';
+      btnRetirar.onclick = (e) => {
+        e.stopPropagation();
+        abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+      };
+      celdaAcciones.appendChild(btnRetirar);
+
+      const btnTomoCargo = document.createElement('button');
+      btnTomoCargo.type = 'button'; btnTomoCargo.className = 'btn-tomo-cargo';
+      if (row.MotivoRetiro === 'SI') {
+        btnTomoCargo.textContent = '✓ Tomó cargo';
+        btnTomoCargo.disabled = true;
+      } else {
+        btnTomoCargo.textContent = 'Tomó Cargo';
+        btnTomoCargo.onclick = (e) => { e.stopPropagation(); confirmarTomoCargo(row.IdVinculacion, btnTomoCargo); };
+      }
+      celdaAcciones.appendChild(btnTomoCargo);
+
+      tr.addEventListener('click', () => abrirFichaVinculacion(row.IdVinculacion));
+      body.appendChild(tr);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Ficha de Vinculación (clic en fila de Activos)
+  // ═══════════════════════════════════════════════════════════════════════
+  async function confirmarTomoCargo(idVinculacion, btn) {
+    if (!confirm('¿Confirma que la persona sí tomó el cargo?')) return;
+    btn.disabled = true;
+    try {
+      const resp = await fetch('/nomina/api/tomo-cargo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idVinculacion, usuario }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) { alert('Error: ' + (data.error || 'No se pudo confirmar')); btn.disabled = false; return; }
+      fetchDataActivos();
+    } catch { alert('Error de conexión.'); btn.disabled = false; }
+  }
+
+  // Construye un selector segmentado de botones; devuelve el valor seleccionado vía closure.
+  function crearBotonGrupo(contenedorId, opciones, valorActual, editable) {
+    const cont = document.getElementById(contenedorId);
+    cont.innerHTML = '';
+    cont.classList.toggle('deshabilitado', !editable);
+    let seleccionado = valorActual || null;
+    const botones = {};
+    opciones.forEach(op => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn-grupo-opt';
+      b.textContent = op;
+      b.disabled = !editable;
+      if (op === valorActual) b.classList.add('sel');
+      b.onclick = () => {
+        if (!editable) return;
+        seleccionado = op;
+        Object.values(botones).forEach(bb => bb.classList.remove('sel'));
+        b.classList.add('sel');
+      };
+      botones[op] = b;
+      cont.appendChild(b);
+    });
+    return { get value() { return seleccionado; } };
+  }
+
+  let _fichaGrupos = null;
+  let _fichaIdActual = null;
+
+  async function abrirFichaVinculacion(idVinculacion) {
+    try {
+      const resp = await fetch('/nomina/api/vinculacion/' + encodeURIComponent(idVinculacion) + '?usuario=' + encodeURIComponent(usuario));
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) { alert('Error: ' + (data.error || 'No se pudo cargar la ficha')); return; }
+
+      _fichaIdActual = idVinculacion;
+      const r = data.registro;
+      const p = data.permisos;
+
+      document.getElementById('ficha_identificacion').value = r.identificacion || '';
+      document.getElementById('ficha_trabajador').value = r.trabajador || '';
+      document.getElementById('ficha_estado').value = r.estado || '';
+
+      const cargoEl = document.getElementById('ficha_cargo');
+      cargoEl.value = r.cargo || ''; cargoEl.disabled = !p.cargo;
+      const regionalEl = document.getElementById('ficha_regional');
+      regionalEl.value = r.regional || ''; regionalEl.disabled = !p.regional;
+      const operacionEl = document.getElementById('ficha_operacion');
+      operacionEl.value = r.operacion || ''; operacionEl.disabled = !p.operacion;
+      const fechaIngresoEl = document.getElementById('ficha_fechaIngreso');
+      fechaIngresoEl.value = r.fechaIngreso ? String(r.fechaIngreso).slice(0, 10) : ''; fechaIngresoEl.disabled = !p.fechaIngreso;
+
+      const areaEl = document.getElementById('ficha_area');
+      areaEl.innerHTML = '<option value="">— Seleccione —</option>';
+      (data.areaOpciones || []).forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id; opt.textContent = a.nombre;
+        if (String(a.id) === String(r.area)) opt.selected = true;
+        areaEl.appendChild(opt);
+      });
+      areaEl.disabled = !p.area;
+
+      document.getElementById('campoSalario').style.display = p.salarioVisible ? 'block' : 'none';
+      if (p.salarioVisible) {
+        const salarioEl = document.getElementById('ficha_salario');
+        salarioEl.value = r.salario || '';
+        salarioEl.disabled = !p.salarioEditable;
+      }
+
+      _fichaGrupos = {
+        tipoContrato:      crearBotonGrupo('grupoTipoContrato', ['Obra labor', 'Fijo', 'Indefinido'], r.tipoContrato, p.tipoContrato),
+        grupoNomina:       crearBotonGrupo('grupoGrupoNomina', ['Operativo', 'Administrativo', 'Aprendiz'], r.grupoNomina, p.grupoNomina),
+        productividadDtjo: crearBotonGrupo('grupoProductividad', ['SI', 'NO'], r.productividadDtjo, p.productividadDtjo),
+        auxilioTransporte: crearBotonGrupo('grupoAuxilioTransporte', ['SI', 'NO'], r.auxilioTransporte, p.auxilioTransporte),
+      };
+
+      document.getElementById('fichaModalOverlay').classList.add('open');
+    } catch { alert('Error de conexión al cargar la ficha.'); }
+  }
+
+  function cerrarFichaVinculacion() {
+    document.getElementById('fichaModalOverlay').classList.remove('open');
+  }
+
+  async function guardarFicha() {
+    const btn = document.getElementById('btnGuardarFicha');
+    btn.disabled = true;
+    try {
+      const body = {
+        usuario,
+        cargo:              document.getElementById('ficha_cargo').disabled ? undefined : document.getElementById('ficha_cargo').value,
+        regional:           document.getElementById('ficha_regional').disabled ? undefined : document.getElementById('ficha_regional').value,
+        operacion:          document.getElementById('ficha_operacion').disabled ? undefined : document.getElementById('ficha_operacion').value,
+        area:               document.getElementById('ficha_area').disabled ? undefined : document.getElementById('ficha_area').value,
+        fechaIngreso:       document.getElementById('ficha_fechaIngreso').disabled ? undefined : document.getElementById('ficha_fechaIngreso').value,
+        salario:            document.getElementById('ficha_salario').disabled ? undefined : document.getElementById('ficha_salario').value,
+        tipoContrato:       _fichaGrupos.tipoContrato.value,
+        grupoNomina:        _fichaGrupos.grupoNomina.value,
+        productividadDtjo:  _fichaGrupos.productividadDtjo.value,
+        auxilioTransporte:  _fichaGrupos.auxilioTransporte.value,
+      };
+      const resp = await fetch('/nomina/api/vinculacion/' + encodeURIComponent(_fichaIdActual), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) { alert('Error: ' + (data.error || 'No se pudo guardar')); btn.disabled = false; return; }
+      cerrarFichaVinculacion();
+      fetchDataActivos();
+    } catch { alert('Error de conexión al guardar.'); }
+    btn.disabled = false;
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  if (tabs.retiro) document.getElementById('navRetiros').style.display = 'flex';
+  if (tabs.activo) document.getElementById('navActivos').style.display = 'flex';
+  if (tabs.retiro) updateFilterOptionsWithCountsRetiros();
+  if (tabs.activo) updateFilterOptionsWithCountsActivos();
+  makeTableResizable(document.getElementById('retirosTable'));
+  makeTableResizable(document.getElementById('activosTable'));
+
+  switchTab(tabs.activo ? 'activos' : 'retiros');
+</script>
+</body>
+</html>

@@ -124,6 +124,15 @@ function generarFilasArticulosHTML(articulos) {
  * @param {string[]} areasRequeridas
  * @returns {string}
  */
+// Sello "Firmado: dd/mm/yyyy hh:mm" bajo una firma, igual al que usa el módulo Logysign.
+// `fecha` es el valor ya guardado en BD (columna fecha_firma_<area>), no se calcula aquí.
+function fechaFirmaTexto(fecha) {
+  if (!fecha) return '';
+  const b = new Date(new Date(fecha).toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const p = n => String(n).padStart(2, '0');
+  return `Firmado: ${p(b.getDate())}/${p(b.getMonth() + 1)}/${b.getFullYear()} ${p(b.getHours())}:${p(b.getMinutes())}`;
+}
+
 function generarFirmasAreasHtml(pz, areasRequeridas) {
   // Distribuir en filas de 3
   const cols = 3;
@@ -141,7 +150,8 @@ function generarFirmasAreasHtml(pz, areasRequeridas) {
       const etiqueta = NOMBRES_AREA[area] || area;
 
       const firmaHtml = url
-        ? `<img src="${url}" style="max-height:50px;max-width:140px;display:block;margin:0 auto">`
+        ? `<img src="${url}" style="max-height:50px;max-width:140px;display:block;margin:0 auto">
+           <div style="font-size:6px;color:#888;text-align:center">${fechaFirmaTexto(pz[`fecha_firma_${area}`])}</div>`
         : `<div style="height:50px;border-bottom:1px solid #555;margin-bottom:2px"></div>`;
 
       return `<td style="width:${width}%;padding:6px 10px;vertical-align:bottom">
@@ -176,4 +186,5 @@ module.exports = {
   generarFilasArticulosHTML,
   generarFirmasAreasHtml,
   estaCompleto,
+  fechaFirmaTexto,
 };

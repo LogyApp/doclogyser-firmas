@@ -248,15 +248,21 @@
     }
     .btn-save-contact:hover { background: #2c2c4a; }
 
-    /* Completado (Estado C) */
-    .completado-card {
-      background: #fff; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.1);
-      padding: 48px 24px; text-align: center; margin-bottom: 14px;
+    /* Retiro completado: se sigue viendo el dashboard, pero bloqueado para edición
+       (mismo patrón que /seleccion/admin al enviar a Sociodemográfica) */
+    .interfaz-bloqueada { filter: grayscale(1); opacity: .7; }
+    .interfaz-bloqueada button, .interfaz-bloqueada input, .interfaz-bloqueada select {
+      pointer-events: none !important; cursor: not-allowed;
     }
-    .completado-icon { font-size: 3rem; margin-bottom: 16px; }
-    .completado-title { font-size: 1.3rem; font-weight: bold; color: #1a1a2e; margin-bottom: 8px; }
-    .completado-desc  { font-size: .95rem; color: #555; line-height: 1.8; max-width: 480px; margin: 0 auto; }
+    .interfaz-bloqueada a {
+      pointer-events: auto !important; cursor: pointer !important;
+      color: #2563eb !important; text-decoration: underline;
+    }
+    .bloqueado-banner {
+      background: #fef3c7; border: 1px solid #fcd34d; color: #92400e;
+      border-radius: 8px; padding: 10px 16px; margin-bottom: 14px;
+      font-size: .85rem; font-weight: 600; text-align: center;
+    }
 
     /* Loading */
     .loading-overlay {
@@ -350,8 +356,11 @@
     </div>
   </div>
 
-  <!-- ══════════════ ESTADO B: Dashboard ══════════════ -->
+  <!-- ══════════════ ESTADO B: Dashboard (también se usa, bloqueado, para el Estado C) ══════════════ -->
   <div id="estadoDashboard" style="display:none">
+    <div class="bloqueado-banner" id="bloqueadoBanner" style="display:none">
+      &#128274; Proceso de retiro completado — solo puede consultar los documentos.
+    </div>
     <div class="dashboard-grid">
 
       <!-- Columna izquierda -->
@@ -457,17 +466,6 @@
     </div>
   </div>
 
-  <!-- ══════════════ ESTADO C: Proceso completado ══════════════ -->
-  <div id="estadoCompletado" style="display:none">
-    <div class="completado-card">
-      <div class="completado-icon">&#9989;</div>
-      <div class="completado-title">Proceso de retiro completado</div>
-      <div class="completado-desc">
-        Todos los documentos han sido firmados y el Paz y Salvo ha sido procesado.<br><br>
-        <strong>Consulte los documentos de retiro en la carpeta digital del empleado.</strong>
-      </div>
-    </div>
-  </div>
 
 </div>
 
@@ -528,7 +526,14 @@
     document.getElementById('estadoDashboard').style.display = 'block';
     initDashboard();
   } else {
-    document.getElementById('estadoCompletado').style.display = 'block';
+    // Proceso completado: se sigue viendo la interfaz de gestión (documentos, Paz y Salvo, etc.)
+    // pero bloqueada para edición — mismo patrón que /seleccion/admin tras enviar a Sociodemográfica.
+    document.getElementById('headerTitle').textContent = 'Retiro completado — solo lectura';
+    document.getElementById('bloqueadoBanner').style.display = 'block';
+    const dash = document.getElementById('estadoDashboard');
+    dash.classList.add('interfaz-bloqueada');
+    dash.style.display = 'block';
+    initDashboard();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1281,7 +1286,7 @@
     btn.disabled = true; btn.textContent = 'Enviando…';
     msg.style.display = 'none';
     try {
-      const r = await fetch('/generar-retiro/api/reenviar-pz-areas', {
+      const r = await fetch('/gestionar-retiro/api/reenviar-pz-areas', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idPz: _idPzActual, usuario }),
       });
