@@ -29,9 +29,10 @@ function filtroBusqueda(busqueda) {
       v.\`Trabajador\` COLLATE utf8mb4_0900_ai_ci LIKE ? OR
       v.\`Regional\` COLLATE utf8mb4_0900_ai_ci LIKE ? OR
       v.\`Operación\` COLLATE utf8mb4_0900_ai_ci LIKE ? OR
-      v.\`Identificación\` LIKE ?
+      v.\`Identificación\` LIKE ? OR
+      v.\`Id Vinculación\` COLLATE utf8mb4_0900_ai_ci LIKE ?
     )`,
-    params: [like, like, like, like],
+    params: [like, like, like, like, like],
   };
 }
 
@@ -117,6 +118,7 @@ router.get('/api/retiros', async (req, res) => {
     const listQuery = `
       SELECT
         v.\`Id Vinculación\`     AS IdVinculacion,
+        v.\`Identificación\`     AS Identificacion,
         v.\`Regional\`           AS Regional,
         v.\`Operación\`          AS Operacion,
         v.\`Trabajador\`         AS Trabajador,
@@ -127,9 +129,6 @@ router.get('/api/retiros', async (req, res) => {
         v.ar_ciudad_regional     AS ArCiudadRegional,
         v.\`Fecha Legalización Retiro\` AS FechaLegalizacion,
         v.token_firma_ct         AS TokenFirmaCt,
-        v.token_firma_ar         AS TokenFirmaAr,
-        v.token_firma_emoe       AS TokenFirmaEmoe,
-        v.token_firma_crs        AS TokenFirmaCrs,
         v.\`Usuario\`            AS Usuario,
         v.\`Fecha Actualización\` AS FechaActualizacion
       FROM \`Maestro_Vinculación\` v
@@ -149,30 +148,54 @@ router.get('/api/retiros', async (req, res) => {
     ]);
 
     // ¿Ya tiene documentos de firma generados? (misma condición que "firmaConfirmada" en generar-retiro)
-    // y estado del Paz y Salvo (para derivar si la legalización ya está completa)
     const condiciones = await obtenerCondicionesRetiro();
     const ids = results.map(r => r.IdVinculacion);
-    const pzMap = new Map();
+    const pzConFirma = new Set();
     if (ids.length) {
       const ph = ids.map(() => '?').join(',');
       const [pzRows] = await pool.execute(
-        `SELECT id_vinculacion, estado, firma_responsable_url FROM Maestro_pazysalvo WHERE id_vinculacion IN (${ph})`,
+        `SELECT id_vinculacion FROM Maestro_pazysalvo WHERE id_vinculacion IN (${ph}) AND firma_responsable_url IS NOT NULL`,
         ids
       );
-      pzRows.forEach(r => pzMap.set(r.id_vinculacion, r));
+      pzRows.forEach(r => pzConFirma.add(r.id_vinculacion));
+    }
+
+    // "Legalización" replica la lógica de Vista_retiros_pendientes (Maestro_docTrabajador),
+    // pero sin la fecha de corte fija de esa vista: un retiro está "legalizado" cuando ya
+    // tiene el documento de terminación/renuncia + Certificado (57) + Examen de egreso (58)
+    // válidos (Validación distinta de 'ERROR'), o cuando existe un "Documento de Retiro" (47)
+    // que cierra el caso manualmente.
+    const identificaciones = [...new Set(results.map(r => String(r.Identificacion)))];
+    const docsMap = new Map(); // Identificación -> Set(TipoDocumento)
+    if (identificaciones.length) {
+      const ph = identificaciones.map(() => '?').join(',');
+      const [docRows] = await pool.execute(
+        `SELECT Identificación, TipoDocumento FROM Maestro_docTrabajador
+         WHERE Identificación IN (${ph}) AND TipoDocumento IN ('47','55','76','77','57','58')
+           AND (Validación IS NULL OR Validación <> 'ERROR')`,
+        identificaciones
+      );
+      docRows.forEach(r => {
+        const key = String(r.Identificación);
+        if (!docsMap.has(key)) docsMap.set(key, new Set());
+        docsMap.get(key).add(String(r.TipoDocumento));
+      });
     }
 
     const resultsFinal = results.map(r => {
-      const terminaProceso = !!condiciones[r.MotivoRetiro]?.TerminaProceso;
-      const pz = pzMap.get(r.IdVinculacion);
-      const tieneDocsGenerados = !!(terminaProceso || r.ArCiudadRegional || r.TokenFirmaCt || pz?.firma_responsable_url);
+      const condicion = condiciones[r.MotivoRetiro];
+      const terminaProceso = !!condicion?.TerminaProceso;
+      const tieneDocsGenerados = !!(terminaProceso || r.ArCiudadRegional || r.TokenFirmaCt || pzConFirma.has(r.IdVinculacion));
 
-      let estadoLegalizacion = 'no_iniciado';
-      if (r.FechaLegalizacion || terminaProceso) {
-        const todosFirmados = !r.TokenFirmaCt && !r.TokenFirmaAr && !r.TokenFirmaEmoe && !r.TokenFirmaCrs;
-        const pzOk = !pz || pz.estado === 'completado';
-        estadoLegalizacion = (terminaProceso || (todosFirmados && pzOk)) ? 'legalizado' : 'en_proceso';
-      }
+      const docsSet = docsMap.get(String(r.Identificacion)) || new Set();
+      const tieneDoc47 = docsSet.has('47');
+      const docTerminacionRequerido = r.MotivoRetiro === 'Renuncia' ? '55' : (condicion?.TieneTCRP ? '77' : '76');
+      const tieneLos3Docs = docsSet.has(docTerminacionRequerido) && docsSet.has('57') && docsSet.has('58');
+      const mismaFechaIngresoRetiro = r.FechaIngreso && r.FechaRetiro &&
+        new Date(r.FechaIngreso).getTime() === new Date(r.FechaRetiro).getTime();
+
+      const pendiente = !terminaProceso && !mismaFechaIngresoRetiro && !tieneDoc47 && !tieneLos3Docs;
+      const estadoLegalizacion = !pendiente ? 'legalizado' : (r.FechaLegalizacion ? 'en_proceso' : 'no_iniciado');
 
       return {
         IdVinculacion:      r.IdVinculacion,

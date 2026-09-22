@@ -45,6 +45,14 @@ const directoriocorporativoRoutes    = require('./src/routes/directoriocorporati
 
 const app = express();
 
+// Cloud Run termina el HTTPS en su balanceador y reenvía al contenedor por HTTP
+// plano, marcando el protocolo original en X-Forwarded-Proto. Sin esto,
+// req.protocol siempre da 'http', y las URLs absolutas construidas con él
+// (ej. el enlace a "Generar documentos de retiro") quedan como http:// —
+// lo que el navegador bloquea como "Mixed Content" al abrirlas en un iframe
+// dentro de una página https.
+app.set('trust proxy', 1);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 

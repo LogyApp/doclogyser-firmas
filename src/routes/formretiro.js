@@ -672,7 +672,7 @@ router.get('/:idVinculacion', async (req, res) => {
     }
 
     const idVin      = vin['Id Vinculación'];
-    const baseUrl    = `${req.protocol}://${req.get('host')}`;
+    const baseUrl    = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     const urlGenerarDocs = (yaRetirado && puedeGenerarDocs)
       ? `${baseUrl}/gestionar-retiro/${encodeURIComponent(idVin)}?usuario=${encodeURIComponent(usuario)}`
       : null;

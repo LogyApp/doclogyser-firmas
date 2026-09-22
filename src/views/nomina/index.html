@@ -271,7 +271,7 @@
           <div class="filtros-grid">
             <div class="filtro-field"><label>Regional</label><select id="actFilterRegional"></select></div>
             <div class="filtro-field"><label>Operación</label><select id="actFilterOperacion"></select></div>
-            <div class="filtro-field"><label>Buscar</label><input type="text" id="actFilterIdentificacion" placeholder="Identificación, trabajador, regional u operación..."></div>
+            <div class="filtro-field"><label>Buscar</label><input type="text" id="actFilterIdentificacion" placeholder="Identificación, trabajador, regional, operación o Id Vinculación..."></div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosActivos()">&#8635; Limpiar filtros</button>
         </div>
@@ -320,7 +320,7 @@
           <div class="filtros-grid">
             <div class="filtro-field"><label>Regional</label><select id="retFilterRegional"></select></div>
             <div class="filtro-field"><label>Operación</label><select id="retFilterOperacion"></select></div>
-            <div class="filtro-field"><label>Buscar</label><input type="text" id="retFilterIdentificacion" placeholder="Identificación, trabajador, regional u operación..."></div>
+            <div class="filtro-field"><label>Buscar</label><input type="text" id="retFilterIdentificacion" placeholder="Identificación, trabajador, regional, operación o Id Vinculación..."></div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosRetiros()">&#8635; Limpiar filtros</button>
         </div>
@@ -1061,7 +1061,15 @@
   makeTableResizable(document.getElementById('retirosTable'));
   makeTableResizable(document.getElementById('activosTable'));
 
-  switchTab(tabs.activo ? 'activos' : 'retiros');
+  // Enlace directo a un registro: BASE_URL/nomina?usuario=ID&Idvinculacion=IdVinculación
+  const paramsUrl = new URLSearchParams(window.location.search);
+  const idVinculacionUrl = paramsUrl.get('Idvinculacion') || paramsUrl.get('idVinculacion') || paramsUrl.get('IdVinculacion');
+  if (idVinculacionUrl && tabs.retiro) {
+    retFilterIdentificacion.value = idVinculacionUrl;
+    switchTab('retiros');
+  } else {
+    switchTab(tabs.activo ? 'activos' : 'retiros');
+  }
 </script>
 </body>
 </html>
