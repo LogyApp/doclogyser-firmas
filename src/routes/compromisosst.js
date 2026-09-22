@@ -418,12 +418,14 @@ router.get('/api/conteos-filtros', async (req, res) => {
       sharedParams.push(fechaHasta);
     }
     if (estado) {
-      if (estado === 'VERDE') {
+      if (estado === 'VERDE' || estado === 'COMPLETADO') {
         sharedConds.push('a.firma_lidersst IS NOT NULL');
-      } else if (estado === 'AMARILLO') {
-        sharedConds.push('a.firma_trabajador IS NOT NULL AND a.firma_lidersst IS NULL');
-      } else if (estado === 'ROJO') {
+      } else if (estado === 'AMARILLO' || estado === 'PEND_ANALISTA') {
+        sharedConds.push('a.firma_trabajador IS NOT NULL AND a.firma_analista IS NULL');
+      } else if (estado === 'ROJO' || estado === 'PEND_TRAB') {
         sharedConds.push('a.firma_trabajador IS NULL');
+      } else if (estado === 'PEND_LIDER') {
+        sharedConds.push('a.firma_analista IS NOT NULL AND a.firma_lidersst IS NULL');
       }
     }
 

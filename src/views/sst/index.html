@@ -549,31 +549,95 @@
 
     table.data-table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
       text-align: left;
       font-size: 0.88rem;
-      min-width: 780px;
+      min-width: 820px;
+    }
+
+    table.data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
 
     table.data-table th {
       background: #f8fafc;
-      color: var(--text-muted);
-      font-weight: 600;
-      padding: 12px 14px;
+      color: #334155;
+      font-weight: 700;
+      padding: 10px 12px;
       border-bottom: 2px solid var(--border);
+      border-right: 1px solid var(--border);
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 25;
       text-transform: uppercase;
-      font-size: 0.74rem;
-      letter-spacing: 0.5px;
+      font-size: 0.72rem;
+      letter-spacing: 0.4px;
+      user-select: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    table.data-table th.sortable {
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    table.data-table th.sortable:hover {
+      background: #eff6ff;
+      color: var(--primary);
+    }
+
+    .th-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .sort-icon {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+
+    th.sorted .sort-icon {
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .col-resizer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      cursor: col-resize;
+      user-select: none;
+      height: 100%;
+      z-index: 30;
+    }
+
+    .col-resizer:hover, .col-resizer.resizing {
+      background: var(--accent);
+      opacity: 0.7;
     }
 
     table.data-table td {
-      padding: 12px 14px;
+      padding: 10px 12px;
       border-bottom: 1px solid var(--border);
+      border-right: 1px solid #f1f5f9;
       color: var(--text);
+      background: #ffffff;
       vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     table.data-table tbody tr {
@@ -581,11 +645,11 @@
       transition: background 0.15s;
     }
 
-    table.data-table tbody tr:hover {
-      background: #f1f5f9;
+    table.data-table tbody tr:hover td {
+      background: #f8fafc;
     }
 
-    table.data-table tbody tr.selected {
+    table.data-table tbody tr.selected td {
       background: #ecfdf5;
       border-left: 3px solid var(--accent);
     }
@@ -608,6 +672,158 @@
     .badge-danger  { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
     .badge-info    { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
     .badge-gray    { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+    /* Fichas de asistentes y acciones en Participación */
+    .ast-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 13px;
+      margin-bottom: 10px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .ast-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .ast-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+    .ast-card-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+    .ast-card-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .ast-card-contact {
+      font-size: 0.74rem;
+      color: #64748b;
+      margin-top: 4px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .ast-actions-grid {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 9px;
+      padding-top: 9px;
+      border-top: 1px dashed var(--border);
+    }
+    .btn-ast-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-ast-action:hover:not([disabled]) {
+      transform: translateY(-1px);
+    }
+    .btn-ast-datos {
+      background: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+    .btn-ast-datos:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    .btn-ast-whatsapp {
+      background: #25d366;
+      color: #ffffff;
+    }
+    .btn-ast-whatsapp:hover {
+      background: #1da851;
+      box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3);
+    }
+    .btn-ast-email {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    .btn-ast-email:hover {
+      background: #1d4ed8;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+    }
+    .btn-ast-copy {
+      background: #0284c7;
+      color: #ffffff;
+    }
+    .btn-ast-copy:hover {
+      background: #0369a1;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+    }
+    .btn-ast-action[disabled], .btn-ast-action.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    /* Badges de firma específicas de Participación */
+    .badge-firma-aceptada { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-firma-prefilled { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-firma-sin { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    /* Galería de evidencias */
+    .evidencias-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .evidencia-thumb {
+      width: 100%;
+      height: 75px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .evidencia-thumb:hover {
+      transform: scale(1.04);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+      border-color: var(--accent);
+    }
+
+    /* Modal Lightbox */
+    .modal-lightbox-content {
+      max-width: 85vw;
+      max-height: 85vh;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    .modal-lightbox-img {
+      max-width: 100%;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
 
     /* ══════════════════════════════════════════════════════════
        PANEL DE DETALLE LATERAL
@@ -1078,18 +1294,45 @@
       <div class="view-layout" id="layout-ev">
         <div class="table-card">
           <div class="table-container">
-            <table class="data-table">
+            <table class="data-table" id="table-ev">
               <thead>
                 <tr>
-                  <th>Notificar</th>
-                  <th>Documento PDF</th>
-                  <th>Fecha</th>
-                  <th>Trabajador</th>
-                  <th>Tipo</th>
-                  <th>Puntaje</th>
-                  <th>Resultado</th>
-                  <th>Firma Trabajador</th>
-                  <th>Evaluador</th>
+                  <th style="width: 105px; min-width: 90px;" class="sortable" onclick="toggleSortSst('ev', 'notificar')" id="th-ev-notificar">
+                    <div class="th-content"><span>Notificar</span><span class="sort-icon" id="sort-icon-ev-notificar">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 145px; min-width: 120px;" class="sortable" onclick="toggleSortSst('ev', 'pdf')" id="th-ev-pdf">
+                    <div class="th-content"><span>Documento PDF</span><span class="sort-icon" id="sort-icon-ev-pdf">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 110px; min-width: 95px;" class="sortable" onclick="toggleSortSst('ev', 'fecha')" id="th-ev-fecha">
+                    <div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-ev-fecha">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 220px; min-width: 150px;" class="sortable" onclick="toggleSortSst('ev', 'trabajador')" id="th-ev-trabajador">
+                    <div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-ev-trabajador">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 120px; min-width: 90px;" class="sortable" onclick="toggleSortSst('ev', 'tipo')" id="th-ev-tipo">
+                    <div class="th-content"><span>Tipo</span><span class="sort-icon" id="sort-icon-ev-tipo">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 95px; min-width: 80px;" class="sortable" onclick="toggleSortSst('ev', 'puntaje')" id="th-ev-puntaje">
+                    <div class="th-content"><span>Puntaje</span><span class="sort-icon" id="sort-icon-ev-puntaje">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 115px; min-width: 95px;" class="sortable" onclick="toggleSortSst('ev', 'resultado')" id="th-ev-resultado">
+                    <div class="th-content"><span>Resultado</span><span class="sort-icon" id="sort-icon-ev-resultado">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 135px; min-width: 110px;" class="sortable" onclick="toggleSortSst('ev', 'firma')" id="th-ev-firma">
+                    <div class="th-content"><span>Firma Trabajador</span><span class="sort-icon" id="sort-icon-ev-firma">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 160px; min-width: 120px;" class="sortable" onclick="toggleSortSst('ev', 'evaluador')" id="th-ev-evaluador">
+                    <div class="th-content"><span>Evaluador</span><span class="sort-icon" id="sort-icon-ev-evaluador">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
                 </tr>
               </thead>
               <tbody id="tbody-ev">
@@ -1196,19 +1439,43 @@
         <div class="view-layout" id="layout-cap">
           <div class="table-card">
             <div class="table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Notificar</th>
-                    <th>Documento PDF</th>
-                    <th>Fecha</th>
-                    <th>Trabajador</th>
-                    <th>Tema</th>
-                    <th>Puntaje</th>
-                    <th>Resultado</th>
-                    <th>Evaluador</th>
-                  </tr>
-                </thead>
+            <table class="data-table" id="table-cap">
+              <thead>
+                <tr>
+                  <th style="width: 105px; min-width: 90px;" class="sortable" onclick="toggleSortSst('cap', 'notificar')" id="th-cap-notificar">
+                    <div class="th-content"><span>Notificar</span><span class="sort-icon" id="sort-icon-cap-notificar">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 145px; min-width: 120px;" class="sortable" onclick="toggleSortSst('cap', 'pdf')" id="th-cap-pdf">
+                    <div class="th-content"><span>Documento PDF</span><span class="sort-icon" id="sort-icon-cap-pdf">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 110px; min-width: 95px;" class="sortable" onclick="toggleSortSst('cap', 'fecha')" id="th-cap-fecha">
+                    <div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-cap-fecha">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 220px; min-width: 150px;" class="sortable" onclick="toggleSortSst('cap', 'trabajador')" id="th-cap-trabajador">
+                    <div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-cap-trabajador">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 180px; min-width: 130px;" class="sortable" onclick="toggleSortSst('cap', 'tema')" id="th-cap-tema">
+                    <div class="th-content"><span>Tema</span><span class="sort-icon" id="sort-icon-cap-tema">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 95px; min-width: 80px;" class="sortable" onclick="toggleSortSst('cap', 'puntaje')" id="th-cap-puntaje">
+                    <div class="th-content"><span>Puntaje</span><span class="sort-icon" id="sort-icon-cap-puntaje">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 115px; min-width: 95px;" class="sortable" onclick="toggleSortSst('cap', 'resultado')" id="th-cap-resultado">
+                    <div class="th-content"><span>Resultado</span><span class="sort-icon" id="sort-icon-cap-resultado">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 160px; min-width: 120px;" class="sortable" onclick="toggleSortSst('cap', 'evaluador')" id="th-cap-evaluador">
+                    <div class="th-content"><span>Evaluador</span><span class="sort-icon" id="sort-icon-cap-evaluador">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                </tr>
+              </thead>
                 <tbody id="tbody-cap">
                   <tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando capacitaciones...</td></tr>
                 </tbody>
@@ -1314,16 +1581,37 @@
       <div class="view-layout" id="layout-pc">
         <div class="table-card">
           <div class="table-container">
-            <table class="data-table">
+            <table class="data-table" id="table-pc">
               <thead>
                 <tr>
-                  <th>Notificar</th>
-                  <th>Documento PDF</th>
-                  <th>Fecha</th>
-                  <th>Trabajador</th>
-                  <th>Cliente</th>
-                  <th>Ciudad</th>
-                  <th>Registrado Por</th>
+                  <th style="width: 105px; min-width: 90px;" class="sortable" onclick="toggleSortSst('pc', 'notificar')" id="th-pc-notificar">
+                    <div class="th-content"><span>Notificar</span><span class="sort-icon" id="sort-icon-pc-notificar">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 145px; min-width: 120px;" class="sortable" onclick="toggleSortSst('pc', 'pdf')" id="th-pc-pdf">
+                    <div class="th-content"><span>Documento PDF</span><span class="sort-icon" id="sort-icon-pc-pdf">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 110px; min-width: 95px;" class="sortable" onclick="toggleSortSst('pc', 'fecha')" id="th-pc-fecha">
+                    <div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-pc-fecha">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 220px; min-width: 150px;" class="sortable" onclick="toggleSortSst('pc', 'trabajador')" id="th-pc-trabajador">
+                    <div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-pc-trabajador">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 160px; min-width: 110px;" class="sortable" onclick="toggleSortSst('pc', 'cliente')" id="th-pc-cliente">
+                    <div class="th-content"><span>Cliente</span><span class="sort-icon" id="sort-icon-pc-cliente">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 130px; min-width: 100px;" class="sortable" onclick="toggleSortSst('pc', 'ciudad')" id="th-pc-ciudad">
+                    <div class="th-content"><span>Ciudad</span><span class="sort-icon" id="sort-icon-pc-ciudad">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 160px; min-width: 120px;" class="sortable" onclick="toggleSortSst('pc', 'registrado_por')" id="th-pc-registrado_por">
+                    <div class="th-content"><span>Registrado Por</span><span class="sort-icon" id="sort-icon-pc-registrado_por">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
                 </tr>
               </thead>
               <tbody id="tbody-pc">
@@ -1397,16 +1685,37 @@
       <div class="view-layout" id="layout-part">
         <div class="table-card">
           <div class="table-container">
-            <table class="data-table">
+            <table class="data-table" id="table-part">
               <thead>
                 <tr>
-                  <th>Documento PDF</th>
-                  <th>Acciones</th>
-                  <th>Fecha</th>
-                  <th>Tema</th>
-                  <th>Lugar</th>
-                  <th>Responsable</th>
-                  <th>Duración</th>
+                  <th style="width: 145px; min-width: 120px;" class="sortable" onclick="toggleSortSst('part', 'pdf')" id="th-part-pdf">
+                    <div class="th-content"><span>Documento PDF</span><span class="sort-icon" id="sort-icon-part-pdf">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 130px; min-width: 110px;" id="th-part-acciones">
+                    <div class="th-content"><span>Acciones</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 110px; min-width: 95px;" class="sortable" onclick="toggleSortSst('part', 'fecha')" id="th-part-fecha">
+                    <div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-part-fecha">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 220px; min-width: 150px;" class="sortable" onclick="toggleSortSst('part', 'tema')" id="th-part-tema">
+                    <div class="th-content"><span>Tema</span><span class="sort-icon" id="sort-icon-part-tema">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 150px; min-width: 110px;" class="sortable" onclick="toggleSortSst('part', 'lugar')" id="th-part-lugar">
+                    <div class="th-content"><span>Lugar</span><span class="sort-icon" id="sort-icon-part-lugar">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 160px; min-width: 120px;" class="sortable" onclick="toggleSortSst('part', 'responsable')" id="th-part-responsable">
+                    <div class="th-content"><span>Responsable</span><span class="sort-icon" id="sort-icon-part-responsable">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 110px; min-width: 90px;" class="sortable" onclick="toggleSortSst('part', 'duracion')" id="th-part-duracion">
+                    <div class="th-content"><span>Duración</span><span class="sort-icon" id="sort-icon-part-duracion">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
                 </tr>
               </thead>
               <tbody id="tbody-part">
@@ -1478,6 +1787,7 @@
               <select class="form-control" id="filtro-csst-estado" onchange="filtrarAutomatico('csst')">
                 <option value="">Todos</option>
                 <option value="COMPLETADO">Completados</option>
+                <option value="PEND_ANALISTA">Pendiente Analista SST</option>
                 <option value="PEND_LIDER">Pendiente Líder SST</option>
                 <option value="PEND_TRAB">Pendiente Trabajador</option>
               </select>
@@ -1501,15 +1811,33 @@
       <div class="view-layout" id="layout-csst">
         <div class="table-card">
           <div class="table-container">
-            <table class="data-table">
+            <table class="data-table" id="table-csst">
               <thead>
                 <tr>
-                  <th>Notificar</th>
-                  <th>Documento PDF</th>
-                  <th>Fecha de Registro</th>
-                  <th>Trabajador</th>
-                  <th>Analista SST</th>
-                  <th>Estado Firmas</th>
+                  <th style="width: 105px; min-width: 90px;" class="sortable" onclick="toggleSortSst('csst', 'notificar')" id="th-csst-notificar">
+                    <div class="th-content"><span>Notificar</span><span class="sort-icon" id="sort-icon-csst-notificar">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 145px; min-width: 120px;" class="sortable" onclick="toggleSortSst('csst', 'pdf')" id="th-csst-pdf">
+                    <div class="th-content"><span>Documento PDF</span><span class="sort-icon" id="sort-icon-csst-pdf">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 120px; min-width: 100px;" class="sortable" onclick="toggleSortSst('csst', 'fecha')" id="th-csst-fecha">
+                    <div class="th-content"><span>Fecha Registro</span><span class="sort-icon" id="sort-icon-csst-fecha">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 220px; min-width: 150px;" class="sortable" onclick="toggleSortSst('csst', 'trabajador')" id="th-csst-trabajador">
+                    <div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-csst-trabajador">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 160px; min-width: 120px;" class="sortable" onclick="toggleSortSst('csst', 'analista')" id="th-csst-analista">
+                    <div class="th-content"><span>Analista SST</span><span class="sort-icon" id="sort-icon-csst-analista">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 140px; min-width: 110px;" class="sortable" onclick="toggleSortSst('csst', 'estado')" id="th-csst-estado">
+                    <div class="th-content"><span>Estado Firmas</span><span class="sort-icon" id="sort-icon-csst-estado">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
                 </tr>
               </thead>
               <tbody id="tbody-csst">
@@ -1545,6 +1873,76 @@
       </div>
       <div class="modal-iframe-body">
         <iframe id="iframe-crear" src="about:blank" title="Formulario de Creación"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Contacto Asistente (Participación) -->
+  <div class="modal-overlay" id="modal-contacto-part">
+    <div class="modal-content" style="max-width: 480px; width: 92%; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">✏️ Editar Contacto de Asistente</div>
+        <button type="button" class="modal-close" onclick="cerrarModalContactoParticipacion()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-contacto-part" onsubmit="guardarContactoParticipacion(event)">
+        <input type="hidden" id="modal-contacto-part-id">
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Nombre del Colaborador</label>
+          <input type="text" id="modal-contacto-part-nombre" readonly style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: #f1f5f9; color: var(--text-main); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Teléfono Celular (10 dígitos)</label>
+          <input type="tel" id="modal-contacto-part-celular" placeholder="Ej: 3001234567" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Correo Electrónico</label>
+          <input type="email" id="modal-contacto-part-email" placeholder="correo@ejemplo.com" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalContactoParticipacion()">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm">💾 Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lightbox Modal (Participación) -->
+  <div class="modal-overlay" id="modal-lightbox-part" onclick="cerrarLightboxParticipacion()">
+    <div style="max-width: 85vw; max-height: 85vh; position: relative;" onclick="event.stopPropagation()">
+      <button onclick="cerrarLightboxParticipacion()" style="position: absolute; top: -14px; right: -14px; z-index: 10; background: #dc2626; color: #fff; border: 2px solid #fff; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">✕</button>
+      <img id="lightbox-part-img" src="" class="modal-lightbox-img" style="max-width: 85vw; max-height: 85vh; object-fit: contain; border-radius: 8px; display: block;">
+    </div>
+  </div>
+
+  <!-- Modal para Firma de Analista SST (Compromiso SST) -->
+  <div class="modal-overlay" id="modal-firmar-analista-csst" onclick="if(event.target === this) cerrarModalFirmaAnalistaCsst();">
+    <div style="background: #ffffff; width: 100%; max-width: 500px; padding: 24px; border-radius: 12px; border-top: 5px solid #16a34a; position: relative; margin: auto; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+      <button onclick="cerrarModalFirmaAnalistaCsst()" style="position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--text-muted); line-height: 1;">✕</button>
+      <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">Firma del Analista SST</div>
+      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">Dibuja tu firma a continuación para autorizar el Compromiso SST como Analista:</p>
+
+      <!-- Sección firma prellenada (si existe en GCS) -->
+      <div id="modal-csst-prefilled-section" style="display: none; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+        <p style="color: #15803d; font-weight: 600; font-size: 0.85rem; margin-bottom: 10px;">Tienes una firma registrada en el sistema:</p>
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; display: inline-block; padding: 6px; margin-bottom: 12px;">
+          <img id="modal-csst-prefilled-img" src="" style="max-height: 75px; max-width: 100%; display: block;" alt="Firma registrada">
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+          <button type="button" class="btn btn-sm" id="btn-csst-usar-prefilled" style="background: #16a34a; color: #fff; font-weight: 600;">Usar firma registrada</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-csst-dibujar-nueva">Dibujar otra firma...</button>
+        </div>
+      </div>
+
+      <!-- Sección dibujar firma (lienzo canvas) -->
+      <div id="modal-csst-canvas-section">
+        <div style="border: 2px dashed #cbd5e1; border-radius: 8px; background: #fafafa; margin-bottom: 16px; position: relative; overflow: hidden; height: 180px;">
+          <canvas id="canvas-firma-csst" width="450" height="180" style="cursor: crosshair; display: block; width: 100%; height: 100%;"></canvas>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalFirmaAnalistaCsst()">Cancelar</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-csst-limpiar-canvas">Limpiar</button>
+          <button type="button" class="btn btn-sm" id="btn-csst-guardar-canvas" style="background: #16a34a; color: #fff; font-weight: 600;">Confirmar Firma</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1592,9 +1990,168 @@
 
     let debounceTimers = {};
 
+    // ═════ ESTADO Y CONTROL DE ORDENAMIENTO (ASC / DESC) ═════
+    let sortStateSst = {
+      ev: { key: 'fecha', dir: 'desc' },
+      cap: { key: 'fecha', dir: 'desc' },
+      pc: { key: 'fecha', dir: 'desc' },
+      part: { key: 'fecha', dir: 'desc' },
+      csst: { key: 'fecha', dir: 'desc' }
+    };
+
+    function toggleSortSst(modKey, col) {
+      const cur = sortStateSst[modKey];
+      if (cur.key === col) {
+        cur.dir = cur.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        cur.key = col;
+        cur.dir = 'asc';
+      }
+      actualizarIconosOrdenSst(modKey);
+      reRenderTablaSst(modKey);
+    }
+
+    function actualizarIconosOrdenSst(modKey) {
+      const table = document.getElementById(`table-${modKey}`);
+      if (!table) return;
+      const ths = table.querySelectorAll('th.sortable');
+      const cur = sortStateSst[modKey];
+      ths.forEach(th => {
+        const icon = th.querySelector('.sort-icon');
+        if (!icon) return;
+        const onclickAttr = th.getAttribute('onclick') || '';
+        if (onclickAttr.includes(`'${cur.key}'`)) {
+          icon.innerText = cur.dir === 'asc' ? '▲' : '▼';
+          icon.style.opacity = '1';
+        } else {
+          icon.innerText = '↕';
+          icon.style.opacity = '0.35';
+        }
+      });
+    }
+
+    function getSortValueSst(modKey, item, col) {
+      if (!item) return '';
+      switch (col) {
+        case 'notificar':
+          return item.url_doc ? 0 : 1;
+        case 'pdf':
+        case 'acciones':
+          return item.url_doc ? 1 : 0;
+        case 'fecha':
+          return item.fecha || item.fecha_registro || '';
+        case 'trabajador':
+          return limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador || '').toLowerCase();
+        case 'tipo':
+          return String(item.tipo || '').toLowerCase();
+        case 'puntaje':
+        case 'calificacion':
+          return (item.puntaje !== null && item.puntaje !== undefined && item.puntaje !== '') ? Number(item.puntaje) : -1;
+        case 'resultado':
+          return String(item.url_doc ? (item.resultado || '') : 'PENDIENTE').toLowerCase();
+        case 'firma':
+          return item.url_doc ? 1 : 0;
+        case 'evaluador':
+        case 'capacitador':
+          return String(item.nombre_evaluador || item.usuario || '').toLowerCase();
+        case 'tema':
+          return String(item.tema || '').toLowerCase();
+        case 'cliente':
+          return String(item.cliente || '').toLowerCase();
+        case 'ciudad':
+          return String(item.ciudad || '').toLowerCase();
+        case 'registrado':
+          return String(item.nombre_creador || item.usuario || '').toLowerCase();
+        case 'lugar':
+          return String(item.lugar || '').toLowerCase();
+        case 'responsable':
+          let resp = item.nombre_responsable || item.responsable || '';
+          if (resp.includes(' ** ')) resp = resp.split(' ** ')[1];
+          return resp.toLowerCase();
+        case 'duracion':
+          return String(item.duracion || '').toLowerCase();
+        case 'analista':
+          return String(item.nombre_analista || '').toLowerCase();
+        case 'estado':
+          return (item.firma_trabajador ? 1 : 0) + (item.firma_lidersst ? 2 : 0) + (item.url_doc ? 4 : 0);
+        default:
+          return String(item[col] || '').toLowerCase();
+      }
+    }
+
+    function ordenarDatosSst(modKey, items) {
+      const cur = sortStateSst[modKey];
+      if (!cur || !cur.key || !Array.isArray(items)) return items;
+      return items.slice().sort((a, b) => {
+        const va = getSortValueSst(modKey, a, cur.key);
+        const vb = getSortValueSst(modKey, b, cur.key);
+        let cmp;
+        if (typeof va === 'number' && typeof vb === 'number') {
+          cmp = va - vb;
+        } else {
+          cmp = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+        }
+        return cur.dir === 'asc' ? cmp : -cmp;
+      });
+    }
+
+    function reRenderTablaSst(modKey) {
+      if (modKey === 'ev') aplicarFiltroYOrdenEv();
+      else if (modKey === 'cap') aplicarFiltroYOrdenCap();
+      else if (modKey === 'pc') aplicarFiltroYOrdenPc();
+      else if (modKey === 'part') aplicarFiltroYOrdenPart();
+      else if (modKey === 'csst') aplicarFiltroYOrdenCsst();
+    }
+
+    // ═════ REDIMENSIÓN DE COLUMNAS (DRAG & RESIZE) ═════
+    function inicializarRedimensionColumnasSst() {
+      const resizers = document.querySelectorAll('.data-table .col-resizer');
+      resizers.forEach(resizer => {
+        if (resizer._hasResizerHandler) return;
+        resizer._hasResizerHandler = true;
+
+        resizer.addEventListener('mousedown', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+
+          const th = this.parentElement;
+          const startX = e.pageX;
+          const startWidth = th.offsetWidth;
+          resizer.classList.add('resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+
+          function onMouseMove(e) {
+            const diffX = e.pageX - startX;
+            const newWidth = Math.max(50, startWidth + diffX);
+            th.style.width = newWidth + 'px';
+            th.style.minWidth = newWidth + 'px';
+          }
+
+          function onMouseUp() {
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+          }
+
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       initSidebarUser();
       initLinks();
+      inicializarRedimensionColumnasSst();
+      actualizarIconosOrdenSst('ev');
+      actualizarIconosOrdenSst('cap');
+      actualizarIconosOrdenSst('pc');
+      actualizarIconosOrdenSst('part');
+      actualizarIconosOrdenSst('csst');
+      inicializarCanvasCsst();
       switchTab('evaluacion');
     });
 
@@ -1741,6 +2298,8 @@
       }
 
       const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
+      actualizarIconosOrdenSst(key);
+      inicializarRedimensionColumnasSst();
       if (!dataStore[key].length) {
         cargarDatos(key);
       }
@@ -1922,15 +2481,20 @@
       // Actualizar select de regionales con conteos
       actualizarSelectConteos('ev', counts);
 
-      // Filtrado por resultado
-      let filtrados = evals;
+      aplicarFiltroYOrdenEv();
+    }
+
+    function aplicarFiltroYOrdenEv() {
+      const resVal = document.getElementById('filtro-ev-resultado').value;
+      let filtrados = (dataStore.ev || []).slice();
       if (resVal) {
-        filtrados = evals.filter(item => {
+        filtrados = filtrados.filter(item => {
           const itemRes = item.url_doc ? (item.resultado === 'APROBADO' ? 'APROBADO' : 'NO APROBADO') : 'PENDIENTE';
           return itemRes === resVal;
         });
       }
 
+      filtrados = ordenarDatosSst('ev', filtrados);
       renderTablaEvaluaciones(filtrados);
     }
 
@@ -1940,6 +2504,7 @@
 
       if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron evaluaciones registradas.</td></tr>';
+        inicializarRedimensionColumnasSst();
         return;
       }
 
@@ -1986,6 +2551,8 @@
           </tr>
         `;
       }).join('');
+
+      inicializarRedimensionColumnasSst();
     }
 
     function abrirDetalleEvaluacion(id) {
@@ -2117,14 +2684,20 @@
 
       actualizarSelectConteos('cap', counts);
 
-      let filtrados = caps;
+      aplicarFiltroYOrdenCap();
+    }
+
+    function aplicarFiltroYOrdenCap() {
+      const resVal = document.getElementById('filtro-cap-resultado').value;
+      let filtrados = (dataStore.cap || []).slice();
       if (resVal) {
-        filtrados = caps.filter(item => {
+        filtrados = filtrados.filter(item => {
           const itemRes = item.url_doc ? (item.resultado === 'APROBADO' ? 'APROBADO' : 'NO APROBADO') : 'PENDIENTE';
           return itemRes === resVal;
         });
       }
 
+      filtrados = ordenarDatosSst('cap', filtrados);
       renderTablaCapacitaciones(filtrados);
     }
 
@@ -2134,6 +2707,7 @@
 
       if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron capacitaciones registradas.</td></tr>';
+        inicializarRedimensionColumnasSst();
         return;
       }
 
@@ -2175,6 +2749,8 @@
           </tr>
         `;
       }).join('');
+
+      inicializarRedimensionColumnasSst();
     }
 
     function abrirDetalleCapacitacion(id) {
@@ -2338,14 +2914,20 @@
 
       actualizarSelectConteos('pc', counts);
 
-      let filtrados = pruebas;
+      aplicarFiltroYOrdenPc();
+    }
+
+    function aplicarFiltroYOrdenPc() {
+      const est = document.getElementById('filtro-pc-estado').value;
+      let filtrados = (dataStore.pc || []).slice();
       if (est) {
-        filtrados = pruebas.filter(item => {
+        filtrados = filtrados.filter(item => {
           const isFirmado = !!item.url_doc;
           return est === 'FIRMADO' ? isFirmado : !isFirmado;
         });
       }
 
+      filtrados = ordenarDatosSst('pc', filtrados);
       renderTablaPruebas(filtrados);
     }
 
@@ -2355,6 +2937,7 @@
 
       if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron consentimientos de prueba.</td></tr>';
+        inicializarRedimensionColumnasSst();
         return;
       }
 
@@ -2389,6 +2972,8 @@
           </tr>
         `;
       }).join('');
+
+      inicializarRedimensionColumnasSst();
     }
 
     function abrirDetallePrueba(id) {
@@ -2489,16 +3074,23 @@
     }
 
     // 4. PARTICIPACIÓN (ASISTENCIA)
-    async function cargarParticipaciones() {
-      const q = document.getElementById('filtro-part-search').value.toLowerCase().trim();
-      const desde = document.getElementById('filtro-part-desde').value;
-      const hasta = document.getElementById('filtro-part-hasta').value;
+    let selectedAsistenciaId = null;
+    let currentEvidenciasCount = 0;
 
+    async function cargarParticipaciones() {
       const res = await fetch(`/participacion/api/asistencias?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
       const participaciones = await res.json();
       dataStore.part = participaciones;
 
-      const filtrados = participaciones.filter(item => {
+      aplicarFiltroYOrdenPart();
+    }
+
+    function aplicarFiltroYOrdenPart() {
+      const q = (document.getElementById('filtro-part-search').value || '').toLowerCase().trim();
+      const desde = document.getElementById('filtro-part-desde').value;
+      const hasta = document.getElementById('filtro-part-hasta').value;
+
+      let filtrados = (dataStore.part || []).filter(item => {
         const matchQ = !q || (item.tema || '').toLowerCase().includes(q) || (item.nombre_responsable || '').toLowerCase().includes(q) || (item.lugar || '').toLowerCase().includes(q);
         let matchFecha = true;
         if (desde && item.fecha && item.fecha < desde) matchFecha = false;
@@ -2506,6 +3098,7 @@
         return matchQ && matchFecha;
       });
 
+      filtrados = ordenarDatosSst('part', filtrados);
       renderTablaParticipaciones(filtrados);
     }
 
@@ -2515,6 +3108,7 @@
 
       if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron formatos de asistencia.</td></tr>';
+        inicializarRedimensionColumnasSst();
         return;
       }
 
@@ -2542,104 +3136,380 @@
           </tr>
         `;
       }).join('');
+
+      inicializarRedimensionColumnasSst();
     }
 
     async function abrirDetalleParticipacion(id) {
-      showLoading('Cargando detalle de asistentes...');
+      selectedAsistenciaId = id;
+      showLoading('Cargando detalle de asistencia...');
       try {
         const res = await fetch(`/participacion/api/asistencia/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
-        const item = await res.json();
-        selectedItems.part = item;
+        const data = await res.json();
+        selectedItems.part = data;
 
         document.querySelectorAll('#tbody-part tr').forEach(r => r.classList.remove('selected'));
         const row = document.getElementById(`row-part-${id}`);
         if (row) row.classList.add('selected');
 
-        const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
-        const asistentes = item.asistentes || item.items || [];
+        const fechaFmt = data.fecha ? data.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+        const duracionFmt = data.duracion ? data.duracion.slice(0, 5) : '—';
+        const horaIniFmt = data.hora_inicial ? data.hora_inicial.slice(0, 5) : '—';
+        const horaFinFmt = data.hora_final ? data.hora_final.slice(0, 5) : '—';
 
-        let astListHtml = asistentes.length ? asistentes.map((a, idx) => {
-          const nombreA = limpiarNombreTrabajador(a.nombre_trabajador || a.Trabajador);
-          const cedulaA = a.identificacion || a.Identificación || '—';
-          const cargoA = a.cargo || a.Cargo || '—';
-          const estaFirmado = !!a.firma_asistente || a.estado_firma === 'ACEPTADA' || !!a.firmaBase64;
-          return `
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border);">
-            <div>
-              <div style="font-weight:600; font-size:0.85rem;">${idx + 1}. ${nombreA}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">C.C. ${cedulaA} • ${cargoA}</div>
+        let cleanResponsable = data.nombre_responsable || data.responsable || '—';
+        if (cleanResponsable.includes(' ** ')) {
+          cleanResponsable = cleanResponsable.split(' ** ')[1];
+        }
+
+        const creadorStr = data.nombre_creador || (data.usuario && data.usuario.includes(' - ') ? data.usuario.split(' - ')[0] : data.usuario) || '—';
+
+        // 1. Evidencias
+        const evidencias = Array.isArray(data.evidencias) ? data.evidencias : [];
+        currentEvidenciasCount = evidencias.length;
+        let evidenciasHtml = '';
+        if (evidencias.length > 0) {
+          evidenciasHtml = `
+            <div class="evidencias-grid">
+              ${evidencias.map(ev => `
+                <img src="${ev.url_evidencia}" class="evidencia-thumb" onclick="abrirLightboxParticipacion('${ev.url_evidencia}')" title="Click para ampliar imagen" alt="Evidencia">
+              `).join('')}
             </div>
-            <div>
-              ${estaFirmado 
-                ? '<span class="badge badge-success">✓ Firmado</span>' 
-                : `<a href="/participacion/firmar?id_asistencia=${item.id_asistencia}&cedula=${cedulaA}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:0.7rem; padding:2px 8px;">Firmar ↗</a>`}
-            </div>
-          </div>
-        `;
-        }).join('') : '<p style="color:var(--text-muted); font-size:0.85rem;">No hay asistentes agregados.</p>';
+          `;
+        } else {
+          evidenciasHtml = '<div style="font-size: 0.8rem; color: #888; font-style: italic; margin-top: 6px;">Sin fotos de evidencia registradas.</div>';
+        }
+
+        // 2. Acciones globales (Creador o Sistema)
+        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
+        const esAutorizadoEliminar = ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+
+        let accionesGlobalesHtml = '';
+        if (esCreadorOSistema) {
+          const btnPdfText = data.url_doc ? '🔄 Regenerar PDF (Solo Firmas Listas)' : '⚙️ Generar PDF (Solo Firmas Listas)';
+          accionesGlobalesHtml += `
+            <button class="btn btn-sm" onclick="generarPDFParticipacion(${data.id_asistencia}, true)" style="background: #10b981; color: #fff; border: none; font-weight: 600;">
+              ${btnPdfText}
+            </button>
+          `;
+
+          if (!data.url_doc) {
+            accionesGlobalesHtml += `
+              <button class="btn btn-primary btn-sm" onclick="notificarTodosParticipacion(${data.id_asistencia})">
+                ✉️ Enviar Correo a Todos
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="abrirEditarParticipacion(${data.id_asistencia})">
+                ✏️ Editar Formato
+              </button>
+            `;
+          } else {
+            accionesGlobalesHtml += `
+              <button class="btn btn-primary btn-sm" disabled style="opacity: 0.5; pointer-events: none;">
+                ✉️ Enviar Correo a Todos
+              </button>
+              <button class="btn btn-secondary btn-sm" disabled style="opacity: 0.5; pointer-events: none;">
+                ✏️ Editar Formato
+              </button>
+            `;
+          }
+        }
+
+        if (esAutorizadoEliminar && !data.url_doc) {
+          accionesGlobalesHtml += `
+            <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${data.id_asistencia}')" style="background: #dc2626; color: #fff; border: none; font-weight: 600;">
+              🗑️ Eliminar Registro
+            </button>
+          `;
+        }
+
+        // 3. Asistentes
+        const items = data.items || data.asistentes || [];
+        const esAutorizadoControl = (data.usuario === CONFIG.usuarioId || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol));
+
+        let asistentesHtml = '';
+        if (items.length) {
+          asistentesHtml = items.map((ast, idx) => {
+            let cleanNombre = ast.nombre_trabajador || ast.Trabajador || '—';
+            if (cleanNombre.includes(' ** ')) {
+              cleanNombre = cleanNombre.split(' ** ')[1];
+            }
+
+            let badgeFirma = '';
+            if (ast.estado_firma === 'ACEPTADA') {
+              badgeFirma = '<span class="status-badge badge-firma-aceptada">✓ Aceptada</span>';
+            } else if (ast.estado_firma === 'PREFILLED') {
+              badgeFirma = '<span class="status-badge badge-firma-prefilled">Firma Prellenada</span>';
+            } else {
+              badgeFirma = '<span class="status-badge badge-firma-sin">Sin Firma</span>';
+            }
+
+            let controlButtons = '';
+            if (esAutorizadoControl) {
+              const rawCel = ast.celular ? String(ast.celular).trim().replace(/\D/g, '') : '';
+              let celParam = rawCel;
+              if (celParam.length === 10 && celParam.startsWith('3')) {
+                celParam = '57' + celParam;
+              }
+
+              const urlFirmaLink = `${window.location.origin}/participacion/firmar?item=${ast.id_item_asistencia}`;
+              const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para verificar y firmar digitalmente tu asistencia a la actividad sobre "${data.tema}": ${urlFirmaLink}`);
+
+              const safeNombre = cleanNombre.replace(/'/g, "\\'");
+              const safeEmail = (ast.email || '').replace(/'/g, "\\'");
+              const safeCel = (ast.celular || '').replace(/'/g, "\\'");
+
+              if (data.url_doc) {
+                controlButtons = `
+                  <div class="ast-actions-grid">
+                    <button class="btn-ast-action btn-ast-datos" onclick="abrirModalContactoParticipacion('${ast.identificacion}', '${safeNombre}', '${safeCel}', '${safeEmail}')">
+                      ✏️ Datos
+                    </button>
+                    <button class="btn-ast-action btn-ast-whatsapp" disabled style="opacity:0.45; pointer-events:none;">
+                      📲 WhatsApp
+                    </button>
+                    <button class="btn-ast-action btn-ast-email" disabled style="opacity:0.45; pointer-events:none;">
+                      ✉️ Correo
+                    </button>
+                    <button class="btn-ast-action btn-ast-copy" disabled style="opacity:0.45; pointer-events:none;">
+                      📋 Copiar
+                    </button>
+                  </div>
+                `;
+              } else {
+                const waUrl = celParam ? `https://wa.me/${celParam}?text=${msgWaText}` : '#';
+                const waDisabled = celParam ? '' : 'disabled style="opacity:0.45; pointer-events:none;" title="Sin celular registrado"';
+
+                controlButtons = `
+                  <div class="ast-actions-grid">
+                    <button class="btn-ast-action btn-ast-datos" onclick="abrirModalContactoParticipacion('${ast.identificacion}', '${safeNombre}', '${safeCel}', '${safeEmail}')">
+                      ✏️ Datos
+                    </button>
+                    <a href="${waUrl}" target="_blank" class="btn-ast-action btn-ast-whatsapp" ${waDisabled}>
+                      📲 WhatsApp
+                    </a>
+                    <button class="btn-ast-action btn-ast-email" onclick="notificarIndividualParticipacion(${ast.id_item_asistencia})">
+                      ✉️ Correo
+                    </button>
+                    <button class="btn-ast-action btn-ast-copy" onclick="copiarPortapapeles('${urlFirmaLink}')">
+                      📋 Copiar
+                    </button>
+                  </div>
+                `;
+              }
+            }
+
+            return `
+              <div class="ast-card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                  <div>
+                    <div class="ast-card-title">${idx + 1}. ${cleanNombre}</div>
+                    <div class="ast-card-sub">C.C. ${ast.identificacion} • ${ast.cargo || '—'} (Op: ${ast.operacion || '—'})</div>
+                    <div class="ast-card-contact">
+                      <span>📱 ${ast.celular ? ast.celular : '<em style="color:#94a3b8;">Sin celular</em>'}</span>
+                      <span>✉️ ${ast.email ? ast.email : '<em style="color:#94a3b8;">Sin correo</em>'}</span>
+                    </div>
+                  </div>
+                  <div>${badgeFirma}</div>
+                </div>
+                ${controlButtons}
+              </div>
+            `;
+          }).join('');
+        } else {
+          asistentesHtml = '<div style="font-size:0.85rem; color:var(--text-muted); font-style:italic;">No se encontraron asistentes registrados para esta actividad.</div>';
+        }
 
         const bodyHtml = `
           <div class="detail-section">
-            <div class="detail-section-title">Datos de la Sesión</div>
-            <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--primary);">${item.tema || '—'}</span></div>
+            <div class="detail-section-title">Datos de la Actividad</div>
+            <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--primary);">${data.tema || '—'}</span></div>
             <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
-            <div class="detail-row"><span class="label">Horario:</span><span class="value">${item.hora_inicial || '—'} a ${item.hora_final || '—'}</span></div>
-            <div class="detail-row"><span class="label">Lugar:</span><span class="value">${item.lugar || '—'}</span></div>
-            <div class="detail-row"><span class="label">Responsable:</span><span class="value">${item.nombre_responsable || item.usuario || '—'}</span></div>
-            <div class="detail-row"><span class="label">Objetivo:</span><span class="value">${item.objetivo || '—'}</span></div>
+            <div class="detail-row"><span class="label">Horario:</span><span class="value">${horaIniFmt} a ${horaFinFmt} (${duracionFmt} Hs)</span></div>
+            <div class="detail-row"><span class="label">Lugar:</span><span class="value">${data.lugar || '—'}</span></div>
+            <div class="detail-row"><span class="label">Responsable:</span><span class="value">${cleanResponsable}</span></div>
+            <div class="detail-row"><span class="label">Objetivo:</span><span class="value">${data.objetivo || '—'}</span></div>
+            <div class="detail-row"><span class="label">Creado por:</span><span class="value">${creadorStr}</span></div>
+            ${data.url_doc ? `
+              <div style="margin-top:10px;">
+                <a href="${data.url_doc}" target="_blank" class="btn btn-accent btn-sm" style="width:100%; display:inline-flex; justify-content:center; align-items:center; gap:6px;">
+                  📄 Abrir Acta de Asistencia (PDF)
+                </a>
+              </div>
+            ` : ''}
           </div>
 
           <div class="detail-section">
-            <div class="detail-section-title">Asistentes (${asistentes.length})</div>
-            <div style="max-height:220px; overflow-y:auto;">
-              ${astListHtml}
-            </div>
+            <div class="detail-section-title">Fotos de Evidencia (${evidencias.length})</div>
+            ${evidenciasHtml}
           </div>
 
-          <div class="detail-actions">
-            ${item.url_doc 
-              ? `<a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">📄 Ver Acta PDF de Asistencia</a>`
-              : `<button class="btn btn-primary btn-sm" onclick="generarPDFParticipacion('${item.id_asistencia}')">⚙️ Generar / Actualizar PDF</button>`}
-            ${puedeEliminarRegistro(item, 'part') ? `
-              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${item.id_asistencia}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
-                🗑️ Eliminar Registro
-              </button>
-            ` : ''}
+          ${accionesGlobalesHtml ? `
+            <div class="detail-section">
+              <div class="detail-section-title">Acciones de Control</div>
+              <div class="detail-actions">
+                ${accionesGlobalesHtml}
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="detail-section">
+            <div class="detail-section-title">Asistentes (${items.length})</div>
+            <div style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+              ${asistentesHtml}
+            </div>
           </div>
         `;
 
-        document.getElementById('detail-part-title').innerText = `Asistencia #${item.id_asistencia}`;
+        document.getElementById('detail-part-title').innerText = `Asistencia #${data.id_asistencia}`;
         document.getElementById('detail-part-body').innerHTML = bodyHtml;
         document.getElementById('layout-part').classList.add('detail-active');
         document.getElementById('detail-part').style.display = 'block';
-      } catch (e) {
-        showToast('Error al abrir detalle de asistencia', 'error');
+
+      } catch (err) {
+        console.error('Error al cargar detalle de participación:', err);
+        showToast('Error al cargar detalle de asistencia', 'error');
       } finally {
         hideLoading();
       }
     }
 
-    async function generarPDFParticipacion(id) {
-      showLoading('Generando documento PDF...');
+    // ═════ MODAL CONTACTO (PARTICIPACIÓN) ═════
+    function abrirModalContactoParticipacion(identificacion, nombre, celular, email) {
+      document.getElementById('modal-contacto-part-id').value = identificacion || '';
+      document.getElementById('modal-contacto-part-nombre').value = nombre || '';
+      document.getElementById('modal-contacto-part-celular').value = celular || '';
+      document.getElementById('modal-contacto-part-email').value = email || '';
+      document.getElementById('modal-contacto-part').style.display = 'flex';
+    }
+
+    function cerrarModalContactoParticipacion() {
+      document.getElementById('modal-contacto-part').style.display = 'none';
+    }
+
+    async function guardarContactoParticipacion(e) {
+      e.preventDefault();
+      if (!selectedAsistenciaId) return;
+
+      const identificacion = document.getElementById('modal-contacto-part-id').value.trim();
+      const celular = document.getElementById('modal-contacto-part-celular').value.trim();
+      const email = document.getElementById('modal-contacto-part-email').value.trim();
+
+      showLoading('Actualizando datos en Maestro_Segmentación...');
+      try {
+        const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/guardar-contacto`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identificacion, celular, email })
+        });
+
+        if (res.ok) {
+          showToast('Datos de contacto actualizados correctamente', 'success');
+          cerrarModalContactoParticipacion();
+          abrirDetalleParticipacion(selectedAsistenciaId);
+        } else {
+          const data = await res.json();
+          showToast(data.error || 'Error al actualizar contacto', 'error');
+        }
+      } catch (err) {
+        console.error('guardarContactoParticipacion err:', err);
+        showToast('Error al conectar con el servidor', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ═════ NOTIFICACIONES (PARTICIPACIÓN) ═════
+    async function notificarIndividualParticipacion(idItemAsistencia) {
+      if (!selectedAsistenciaId) return;
+      showLoading('Enviando correo al asistente...');
+      try {
+        const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/enviar-notificacion`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_item_asistencia: idItemAsistencia })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Notificación individual enviada con éxito', 'success');
+        } else {
+          showToast(data.error || 'Error al enviar notificación', 'error');
+        }
+      } catch (err) {
+        console.error('notificarIndividualParticipacion err:', err);
+        showToast('Error al notificar por correo', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function notificarTodosParticipacion(idAsistencia) {
+      showLoading('Enviando correos a todos los asistentes...');
+      try {
+        const res = await fetch(`/participacion/api/asistencia/${idAsistencia}/enviar-notificacion`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enviarATodos: true })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Notificaciones enviadas a ${data.enviados || 0} asistentes`, 'success');
+        } else {
+          showToast(data.error || 'Error al enviar notificaciones', 'error');
+        }
+      } catch (err) {
+        console.error('notificarTodosParticipacion err:', err);
+        showToast('Error al enviar notificaciones', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ═════ GENERACIÓN DE PDF (PARTICIPACIÓN) ═════
+    async function generarPDFParticipacion(id, force = false) {
+      if (currentEvidenciasCount === 0) {
+        if (!confirm('¿Confirma que no desea poner foto de evidencia para esta actividad?')) {
+          return;
+        }
+      }
+      showLoading('Generando documento PDF de asistencia...');
       try {
         const res = await fetch(`/participacion/api/asistencia/${id}/generar-pdf`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ force: true })
+          body: JSON.stringify({ force })
         });
         const data = await res.json();
-        if (data.success) {
-          showToast('PDF generado correctamente', 'success');
+
+        if (res.ok && data.ok) {
+          showToast('PDF generado y guardado en carpetas de asistentes con éxito', 'success');
           abrirDetalleParticipacion(id);
           cargarParticipaciones();
         } else {
-          showToast(data.error || 'No se pudo generar el PDF', 'error');
+          showToast(data.error || 'Error al generar PDF', 'error');
         }
-      } catch (e) {
-        showToast('Error al generar PDF', 'error');
+      } catch (err) {
+        console.error('generarPDFParticipacion err:', err);
+        showToast('Error de red al generar PDF', 'error');
       } finally {
         hideLoading();
       }
+    }
+
+    function abrirEditarParticipacion(id) {
+      document.getElementById('modal-crear-label').innerText = `Editar Formato de Asistencia #${id}`;
+      document.getElementById('iframe-crear').src = `/formparticipacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}&id=${encodeURIComponent(id)}`;
+      document.getElementById('modal-crear-container').style.display = 'flex';
+    }
+
+    // ═════ LIGHTBOX (PARTICIPACIÓN) ═════
+    function abrirLightboxParticipacion(url) {
+      document.getElementById('lightbox-part-img').src = url;
+      document.getElementById('modal-lightbox-part').style.display = 'flex';
+    }
+
+    function cerrarLightboxParticipacion() {
+      document.getElementById('modal-lightbox-part').style.display = 'none';
+      document.getElementById('lightbox-part-img').src = '';
     }
 
     // 5. COMPROMISO SST
@@ -2671,16 +3541,29 @@
 
       actualizarSelectConteos('csst', counts);
 
-      let filtrados = compromisos;
+      aplicarFiltroYOrdenCsst();
+    }
+
+    let selectedCompromisoCsstId = null;
+    let firmaPrellenadaCsst = null;
+    let canvasCsst = null;
+    let ctxCsst = null;
+    let drawingCsst = false;
+
+    function aplicarFiltroYOrdenCsst() {
+      const est = document.getElementById('filtro-csst-estado').value;
+      let filtrados = (dataStore.csst || []).slice();
       if (est) {
-        filtrados = compromisos.filter(item => {
+        filtrados = filtrados.filter(item => {
           if (est === 'COMPLETADO') return !!item.url_doc;
+          if (est === 'PEND_ANALISTA') return !item.url_doc && !!item.firma_trabajador && !item.firma_analista;
           if (est === 'PEND_LIDER') return !item.url_doc && !!item.firma_analista && !item.firma_lidersst;
           if (est === 'PEND_TRAB') return !item.url_doc && !item.firma_trabajador;
           return true;
         });
       }
 
+      filtrados = ordenarDatosSst('csst', filtrados);
       renderTablaCompromisos(filtrados);
     }
 
@@ -2690,6 +3573,7 @@
 
       if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron compromisos SST.</td></tr>';
+        inicializarRedimensionColumnasSst();
         return;
       }
 
@@ -2698,16 +3582,31 @@
         const nombreTrabajador = limpiarNombreTrabajador(it.nombre_trabajador || it.Trabajador);
         const cedula = it.identificaciontrabajador || '—';
 
-        const bTrab = it.firma_trabajador ? '<span class="badge badge-success">✓ Firmó</span>' : '<span class="badge badge-warning">Pendiente</span>';
-        const bLider = it.firma_lidersst ? '<span class="badge badge-success">✓ Firmó</span>' : '<span class="badge badge-gray">Pendiente</span>';
+        // Determinar badge de estado general
+        let badgeEstado = '';
+        if (it.url_doc || (it.firma_analista && it.firma_lidersst)) {
+          badgeEstado = '<span class="badge badge-success">✓ Completado</span>';
+        } else if (it.firma_trabajador && !it.firma_analista) {
+          badgeEstado = '<span class="badge badge-warning" style="background:#fef3c7; color:#b45309; border:1px solid #fcd34d;">⏳ Pend. Analista</span>';
+        } else if (it.firma_trabajador && it.firma_analista && !it.firma_lidersst) {
+          badgeEstado = '<span class="badge badge-info" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">⏳ Pend. Líder</span>';
+        } else {
+          badgeEstado = '<span class="badge badge-warning">⏳ Pend. Trabajador</span>';
+        }
+
+        const esCreadorOSistema = String(it.usuario) === String(CONFIG.usuarioId) || ['AdmSst', 'Sistema'].includes(CONFIG.rol);
+        const esPlanBAnalista = ['AdmSst', 'LiderSst'].includes(CONFIG.rol);
+        const puedeFirmarAnalista = (esCreadorOSistema || esPlanBAnalista) && !!it.firma_trabajador && !it.firma_analista && !it.url_doc;
 
         let waBtn = '—';
         if (!it.firma_trabajador) {
-          const urlFirma = `${window.location.origin}/compromisosst/firmar-trabajador?item=${it.idcsst}&token=${it.token_trabajador}`;
+          const urlFirma = `${window.location.origin}/compromisosst/firmar-trabajador?item=${it.idcsst}&token=${it.token_trabajador || ''}`;
           const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Seguridad SST: ${urlFirma}`);
           let cel = String(it.celular_trabajador || it.celular || '').replace(/\D/g, '');
           if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
           waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+        } else if (puedeFirmarAnalista) {
+          waBtn = `<button type="button" onclick="event.stopPropagation(); abrirDetalleCompromiso('${it.idcsst}').then(() => abrirModalFirmaAnalistaCsst('${it.idcsst}'));" class="btn btn-sm" style="background:#16a34a; color:#fff; font-size:0.75rem; padding:4px 8px; font-weight:600;">✍️ Firmar</button>`;
         }
 
         const pdfLink = it.url_doc
@@ -2721,30 +3620,64 @@
             <td><strong>${fechaFmt}</strong></td>
             <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cedula}</small></td>
             <td>${it.nombre_analista || '—'}</td>
-            <td>${bTrab} / ${bLider}</td>
+            <td>${badgeEstado}</td>
           </tr>
         `;
       }).join('');
+
+      inicializarRedimensionColumnasSst();
     }
 
-    function abrirDetalleCompromiso(id) {
-      const item = dataStore.csst.find(x => String(x.idcsst) === String(id));
-      if (!item) return;
+    async function abrirDetalleCompromiso(id) {
+      selectedCompromisoCsstId = id;
+      firmaPrellenadaCsst = null;
 
-      selectedItems.csst = item;
       document.querySelectorAll('#tbody-csst tr').forEach(r => r.classList.remove('selected'));
       const row = document.getElementById(`row-csst-${id}`);
       if (row) row.classList.add('selected');
 
+      // Mostrar de inmediato con los datos existentes en cache
+      let item = (dataStore.csst || []).find(x => String(x.idcsst) === String(id));
+      if (item) {
+        selectedItems.csst = item;
+        renderDetalleCompromisoHtml(item);
+      }
+
+      // Cargar información completa del registro y firma precargada desde GCS
+      try {
+        const res = await fetch(`/compromisosst/api/compromiso/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (res.ok) {
+          const freshItem = await res.json();
+          if (freshItem && freshItem.idcsst) {
+            if (item) {
+              Object.assign(item, freshItem);
+            } else {
+              item = freshItem;
+            }
+            selectedItems.csst = item;
+            firmaPrellenadaCsst = freshItem.firma_usuario_base64 || null;
+            renderDetalleCompromisoHtml(item);
+          }
+        }
+      } catch (err) {
+        console.error('Error al obtener detalle del compromiso:', err);
+      }
+    }
+
+    function renderDetalleCompromisoHtml(item) {
       const fechaFmt = item.fecha_registro ? item.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '—';
       const nombre = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
       const cedula = item.identificaciontrabajador || '—';
 
-      const urlFirma = `${window.location.origin}/compromisosst/firmar-trabajador?item=${item.idcsst}&token=${item.token_trabajador}`;
+      const urlFirma = `${window.location.origin}/compromisosst/firmar-trabajador?item=${item.idcsst}&token=${item.token_trabajador || ''}`;
       const msgWa = encodeURIComponent(`Hola ${nombre}, por favor ingresa al siguiente enlace para firmar tu Compromiso de Seguridad SST: ${urlFirma}`);
       let cel = String(item.celular_trabajador || item.celular || '').replace(/\D/g, '');
       if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
       const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWa}` : `https://wa.me/?text=${msgWa}`;
+
+      const esCreadorOSistema = String(item.usuario) === String(CONFIG.usuarioId) || ['AdmSst', 'Sistema'].includes(CONFIG.rol);
+      const esPlanBAnalista = ['AdmSst', 'LiderSst'].includes(CONFIG.rol);
+      const puedeFirmarAnalista = (esCreadorOSistema || esPlanBAnalista) && !!item.firma_trabajador && !item.firma_analista && !item.url_doc;
 
       let actionsHtml = '';
       if (!item.url_doc) {
@@ -2762,7 +3695,13 @@
               </button>
             ` : ''}
 
-            ${(CONFIG.rol === 'LiderSst' || CONFIG.rol === 'AdmSst' || CONFIG.rol === 'Sistema') && !item.firma_lidersst ? `
+            ${puedeFirmarAnalista ? `
+              <button type="button" class="btn btn-sm" id="btn-firmar-analista-csst" onclick="abrirModalFirmaAnalistaCsst('${item.idcsst}')" style="background:#16a34a; color:#fff; font-weight:700; width:100%; padding:9px 12px; margin-bottom:8px; border:none; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow: 0 2px 4px rgba(22,163,74,0.3);">
+                ✍️ Firmar como Analista SST
+              </button>
+            ` : ''}
+
+            ${(CONFIG.rol === 'LiderSst' || CONFIG.rol === 'AdmSst' || CONFIG.rol === 'Sistema') && !item.firma_lidersst && (item.firma_analista || item.firma_trabajador) ? `
               <a href="/compromisosst/firmar-lider?item=${item.idcsst}" target="_blank" class="btn btn-primary btn-sm">
                 ✍️ Firmar como Líder SST
               </a>
@@ -2798,9 +3737,9 @@
         <div class="detail-section">
           <div class="detail-section-title">Estado de Firmas</div>
           <div class="detail-row"><span class="label">Fecha Registro:</span><span class="value">${fechaFmt}</span></div>
-          <div class="detail-row"><span class="label">Firma Trabajador:</span><span class="value">${item.firma_trabajador ? '✓ Firmado' : '⏳ Pendiente'}</span></div>
-          <div class="detail-row"><span class="label">Firma Analista:</span><span class="value">${item.firma_analista ? '✓ Firmado' : '⏳ Pendiente'}</span></div>
-          <div class="detail-row"><span class="label">Firma Líder SST:</span><span class="value">${item.firma_lidersst ? '✓ Firmado' : '⏳ Pendiente'}</span></div>
+          <div class="detail-row"><span class="label">Firma Trabajador:</span><span class="value">${item.firma_trabajador ? '<span class="badge badge-success">✓ Firmado</span>' : '<span class="badge badge-warning">⏳ Pendiente</span>'}</span></div>
+          <div class="detail-row"><span class="label">Firma Analista:</span><span class="value">${item.firma_analista ? '<span class="badge badge-success">✓ Firmado</span>' : '<span class="badge badge-warning">⏳ Pendiente</span>'}</span></div>
+          <div class="detail-row"><span class="label">Firma Líder SST:</span><span class="value">${item.firma_lidersst ? '<span class="badge badge-success">✓ Firmado</span>' : '<span class="badge badge-gray">⏳ Pendiente</span>'}</span></div>
         </div>
 
         ${actionsHtml}
@@ -2810,6 +3749,175 @@
       document.getElementById('detail-csst-body').innerHTML = bodyHtml;
       document.getElementById('layout-csst').classList.add('detail-active');
       document.getElementById('detail-csst').style.display = 'block';
+    }
+
+    // Modal Canvas para Firma de Analista SST en CSST
+    function abrirModalFirmaAnalistaCsst(idcsst) {
+      if (idcsst) selectedCompromisoCsstId = idcsst;
+      const modal = document.getElementById('modal-firmar-analista-csst');
+      if (!modal) return;
+
+      const prefilledSec = document.getElementById('modal-csst-prefilled-section');
+      const canvasSec = document.getElementById('modal-csst-canvas-section');
+
+      if (firmaPrellenadaCsst) {
+        document.getElementById('modal-csst-prefilled-img').src = firmaPrellenadaCsst;
+        prefilledSec.style.display = 'block';
+        canvasSec.style.display = 'none';
+      } else {
+        prefilledSec.style.display = 'none';
+        canvasSec.style.display = 'block';
+      }
+
+      modal.style.display = 'flex';
+      limpiarCanvasCsst();
+    }
+
+    function cerrarModalFirmaAnalistaCsst() {
+      const modal = document.getElementById('modal-firmar-analista-csst');
+      if (modal) modal.style.display = 'none';
+    }
+
+    function limpiarCanvasCsst() {
+      if (!canvasCsst || !ctxCsst) {
+        canvasCsst = document.getElementById('canvas-firma-csst');
+        if (canvasCsst) ctxCsst = canvasCsst.getContext('2d');
+      }
+      if (!canvasCsst || !ctxCsst) return;
+      ctxCsst.fillStyle = '#ffffff';
+      ctxCsst.fillRect(0, 0, canvasCsst.width, canvasCsst.height);
+      ctxCsst.lineWidth = 3;
+      ctxCsst.lineCap = 'round';
+      ctxCsst.strokeStyle = '#000000';
+    }
+
+    function inicializarCanvasCsst() {
+      canvasCsst = document.getElementById('canvas-firma-csst');
+      if (!canvasCsst) return;
+      ctxCsst = canvasCsst.getContext('2d');
+
+      const getPos = (e) => {
+        const rect = canvasCsst.getBoundingClientRect();
+        const scaleX = canvasCsst.width / rect.width;
+        const scaleY = canvasCsst.height / rect.height;
+        return {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+      };
+
+      const drawMouse = (e) => {
+        if (!drawingCsst) return;
+        const pos = getPos(e);
+        ctxCsst.lineTo(pos.x, pos.y);
+        ctxCsst.stroke();
+        ctxCsst.beginPath();
+        ctxCsst.moveTo(pos.x, pos.y);
+      };
+
+      canvasCsst.addEventListener('mousedown', (e) => {
+        drawingCsst = true;
+        const pos = getPos(e);
+        ctxCsst.beginPath();
+        ctxCsst.moveTo(pos.x, pos.y);
+      });
+      canvasCsst.addEventListener('mousemove', drawMouse);
+      canvasCsst.addEventListener('mouseup', () => { drawingCsst = false; ctxCsst.beginPath(); });
+      canvasCsst.addEventListener('mouseleave', () => { drawingCsst = false; ctxCsst.beginPath(); });
+
+      const drawTouch = (e) => {
+        if (!drawingCsst) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = canvasCsst.getBoundingClientRect();
+        const scaleX = canvasCsst.width / rect.width;
+        const scaleY = canvasCsst.height / rect.height;
+        const pos = {
+          x: (touch.clientX - rect.left) * scaleX,
+          y: (touch.clientY - rect.top) * scaleY
+        };
+        ctxCsst.lineTo(pos.x, pos.y);
+        ctxCsst.stroke();
+        ctxCsst.beginPath();
+        ctxCsst.moveTo(pos.x, pos.y);
+      };
+
+      canvasCsst.addEventListener('touchstart', (e) => {
+        drawingCsst = true;
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = canvasCsst.getBoundingClientRect();
+        const scaleX = canvasCsst.width / rect.width;
+        const scaleY = canvasCsst.height / rect.height;
+        ctxCsst.beginPath();
+        ctxCsst.moveTo((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+      }, { passive: false });
+      canvasCsst.addEventListener('touchmove', drawTouch, { passive: false });
+      canvasCsst.addEventListener('touchend', () => { drawingCsst = false; ctxCsst.beginPath(); });
+
+      // Botones del modal
+      const btnLimpiar = document.getElementById('btn-csst-limpiar-canvas');
+      if (btnLimpiar) btnLimpiar.addEventListener('click', limpiarCanvasCsst);
+
+      const btnGuardar = document.getElementById('btn-csst-guardar-canvas');
+      if (btnGuardar) {
+        btnGuardar.addEventListener('click', () => {
+          if (!canvasCsst) return;
+          const imgBase64 = canvasCsst.toDataURL('image/png');
+          enviarFirmaAnalistaCsst(imgBase64);
+        });
+      }
+
+      const btnUsarPrefilled = document.getElementById('btn-csst-usar-prefilled');
+      if (btnUsarPrefilled) {
+        btnUsarPrefilled.addEventListener('click', () => {
+          if (firmaPrellenadaCsst) {
+            enviarFirmaAnalistaCsst(firmaPrellenadaCsst);
+          }
+        });
+      }
+
+      const btnDibujarNueva = document.getElementById('btn-csst-dibujar-nueva');
+      if (btnDibujarNueva) {
+        btnDibujarNueva.addEventListener('click', () => {
+          document.getElementById('modal-csst-prefilled-section').style.display = 'none';
+          document.getElementById('modal-csst-canvas-section').style.display = 'block';
+          limpiarCanvasCsst();
+        });
+      }
+    }
+
+    async function enviarFirmaAnalistaCsst(imgBase64) {
+      if (!selectedCompromisoCsstId) {
+        showToast('No hay un compromiso seleccionado', 'error');
+        return;
+      }
+      cerrarModalFirmaAnalistaCsst();
+      showLoading('Guardando firma del Analista SST...');
+      try {
+        const r = await fetch('/compromisosst/api/firmar-analista', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idcsst: selectedCompromisoCsstId,
+            firma_base64: imgBase64,
+            usuario: CONFIG.usuarioId
+          })
+        });
+        const resp = await r.json();
+        if (r.ok && resp.ok) {
+          showToast('Firma del Analista registrada con éxito.', 'success');
+          await cargarCompromisos();
+          await abrirDetalleCompromiso(selectedCompromisoCsstId);
+        } else {
+          showToast(resp.error || 'Error al registrar la firma del analista', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de conexión al enviar la firma', 'error');
+      } finally {
+        hideLoading();
+      }
     }
 
     // Helper para actualizar options de Regional y Operación con conteos
@@ -2879,6 +3987,9 @@
       document.getElementById('iframe-crear').src = 'about:blank';
       // Recargar la pestaña activa para mostrar cualquier nuevo registro
       actualizarVistaActual();
+      if (currentTab === 'participacion' && selectedAsistenciaId) {
+        abrirDetalleParticipacion(selectedAsistenciaId);
+      }
     }
 
     // Helpers UI
