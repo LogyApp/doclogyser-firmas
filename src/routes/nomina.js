@@ -127,6 +127,7 @@ router.get('/api/retiros', async (req, res) => {
         v.\`Fecha de Ingreso\`   AS FechaIngreso,
         v.\`Fecha de Retiro\`    AS FechaRetiro,
         v.\`Motivo del Retiro\`  AS MotivoRetiro,
+        v.\`Archivo Vinculación\` AS TipoRenuncia,
         v.ar_ciudad_regional     AS ArCiudadRegional,
         v.\`Fecha Legalización Retiro\` AS FechaLegalizacion,
         v.token_firma_ct         AS TokenFirmaCt,
@@ -163,9 +164,9 @@ router.get('/api/retiros', async (req, res) => {
 
     // "Legalización" replica la lógica de Vista_retiros_pendientes (Maestro_docTrabajador),
     // pero sin la fecha de corte fija de esa vista: un retiro está "legalizado" cuando ya
-    // tiene el documento de terminación/renuncia + Certificado (57) + Examen de egreso (58)
-    // válidos (Validación distinta de 'ERROR'), o cuando existe un "Documento de Retiro" (47)
-    // que cierra el caso manualmente.
+    // tiene el documento de terminación/renuncia requerido (ninguno si es Renuncia Verbal) +
+    // Certificado (57) + Examen de egreso (58) válidos (Validación distinta de 'ERROR'), o
+    // cuando existe un "Documento de Retiro" (47) que cierra el caso manualmente.
     const identificaciones = [...new Set(results.map(r => String(r.Identificacion)))];
     const docsMap = new Map(); // Identificación -> Set(TipoDocumento)
     if (identificaciones.length) {
@@ -190,8 +191,8 @@ router.get('/api/retiros', async (req, res) => {
 
       const docsSet = docsMap.get(String(r.Identificacion)) || new Set();
       const tieneDoc47 = docsSet.has('47');
-      const requerido = docTerminacionRequerido(r.MotivoRetiro, condicion);
-      const tieneLos3Docs = docsSet.has(requerido) && docsSet.has('57') && docsSet.has('58');
+      const requerido = docTerminacionRequerido(r.MotivoRetiro, condicion, r.TipoRenuncia);
+      const tieneLos3Docs = (requerido === null || docsSet.has(requerido)) && docsSet.has('57') && docsSet.has('58');
       const mismaFechaIngresoRetiro = r.FechaIngreso && r.FechaRetiro &&
         new Date(r.FechaIngreso).getTime() === new Date(r.FechaRetiro).getTime();
 

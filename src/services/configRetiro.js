@@ -82,19 +82,24 @@ function puedeGenerarDocumentosRetiro(rol, regional) {
 }
 
 // ── Legalización del retiro (misma lógica que Vista_retiros_pendientes) ─────
-// Documento de terminación/renuncia exigido según el motivo: 55 (Carta de
-// Renuncia) si el motivo es Renuncia, 77 (TCRP) si el motivo tiene
-// TieneTCRP=1 (Periodo de Prueba), 76 (TCR) en el resto de los casos.
-function docTerminacionRequerido(motivoRetiro, condicion) {
-  if (motivoRetiro === 'Renuncia') return '55';
+// Documento de terminación/renuncia exigido según el motivo:
+// - Renuncia + tipo Verbal: ninguno (null) — no hay carta escrita que exigir.
+// - Renuncia + tipo Escrita (o sin especificar): 55 (Carta de Renuncia).
+// - Motivo con TieneTCRP=1 (Periodo de Prueba): 77 (TCRP).
+// - Cualquier otro motivo: 76 (TCR).
+function docTerminacionRequerido(motivoRetiro, condicion, tipoRenuncia) {
+  if (motivoRetiro === 'Renuncia') {
+    return tipoRenuncia === 'Verbal' ? null : '55';
+  }
   return condicion?.TieneTCRP ? '77' : '76';
 }
 
 // true si el retiro ya está "legalizado": el motivo cierra el proceso sin
 // trámite, la fecha de ingreso y de retiro coinciden (caso descartado por la
 // vista original), existe un Documento de Retiro (47) que cierra el caso a
-// mano, o ya están los 3 documentos válidos (terminación/renuncia + 57 + 58).
-async function estaRetiroLegalizado({ identificacion, motivoRetiro, fechaIngreso, fechaRetiro }) {
+// mano, o ya están los documentos válidos requeridos (terminación/renuncia,
+// si aplica, + 57 + 58).
+async function estaRetiroLegalizado({ identificacion, motivoRetiro, fechaIngreso, fechaRetiro, tipoRenuncia }) {
   const condicion = await obtenerCondicionRetiro(motivoRetiro);
   if (condicion?.TerminaProceso) return true;
 
@@ -111,8 +116,8 @@ async function estaRetiroLegalizado({ identificacion, motivoRetiro, fechaIngreso
   const docsSet = new Set(docRows.map(r => String(r.TipoDocumento)));
   if (docsSet.has('47')) return true;
 
-  const requerido = docTerminacionRequerido(motivoRetiro, condicion);
-  return docsSet.has(requerido) && docsSet.has('57') && docsSet.has('58');
+  const requerido = docTerminacionRequerido(motivoRetiro, condicion, tipoRenuncia);
+  return (requerido === null || docsSet.has(requerido)) && docsSet.has('57') && docsSet.has('58');
 }
 
 module.exports = {

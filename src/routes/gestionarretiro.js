@@ -185,8 +185,9 @@ router.get('/:idVinculacion', async (req, res) => {
     const procesoCompleto = firmaConfirmada && await estaRetiroLegalizado({
       identificacion,
       motivoRetiro,
-      fechaIngreso: vin['Fecha de Ingreso'],
-      fechaRetiro:  vin['Fecha de Retiro'],
+      fechaIngreso:  vin['Fecha de Ingreso'],
+      fechaRetiro:   vin['Fecha de Retiro'],
+      tipoRenuncia:  vin['Archivo Vinculación'],
     });
 
     const estadoPagina = !firmaConfirmada ? 'formulario'
