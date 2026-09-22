@@ -110,7 +110,13 @@
   table.retiros-table tbody tr { cursor: pointer; transition: background .12s; }
   table.retiros-table tbody tr:hover { background: #f0faf8; }
   td.col-fecha-retiro { background: var(--retiro-bg); color: var(--retiro); font-weight: 700; }
+  td.col-fecha-ingreso { background: #e6f7f5; color: var(--primary); font-weight: 700; }
   .celda-fecha-hora { font-size: .75rem; color: var(--text-muted); }
+
+  .badge-legal { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: .74rem; font-weight: 700; }
+  .badge-legal.no_iniciado { background: #f1f5f9; color: #64748b; }
+  .badge-legal.en_proceso  { background: #fef3c7; color: #92400e; }
+  .badge-legal.legalizado  { background: #dcfce7; color: #15803d; }
 
   .btn-retirar {
     background: var(--retiro); color: #fff; border: none; padding: 6px 14px;
@@ -144,6 +150,10 @@
 
   /* Modal de ficha de Vinculación (formulario propio, no iframe) */
   .modal-ficha-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg); }
+  .aviso-banner {
+    background: #fff6e6; border: 1px solid #ffe2ad; color: #a15c00;
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: .82rem; font-weight: 600;
+  }
   .ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .ficha-field { margin-bottom: 4px; }
   .ficha-field label { display: block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
@@ -261,7 +271,7 @@
           <div class="filtros-grid">
             <div class="filtro-field"><label>Regional</label><select id="actFilterRegional"></select></div>
             <div class="filtro-field"><label>Operación</label><select id="actFilterOperacion"></select></div>
-            <div class="filtro-field"><label>Identificación</label><input type="text" id="actFilterIdentificacion" placeholder="Buscar por identificación..."></div>
+            <div class="filtro-field"><label>Buscar</label><input type="text" id="actFilterIdentificacion" placeholder="Identificación, trabajador, regional u operación..."></div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosActivos()">&#8635; Limpiar filtros</button>
         </div>
@@ -273,7 +283,7 @@
           <table class="retiros-table" id="activosTable">
             <thead>
               <tr>
-                <th style="width:130px" data-sort="IdVinculacion">Id Vinculación<span id="actSort-IdVinculacion" class="sort-indicator"></span></th>
+                <th style="width:190px" class="no-sort">Acciones</th>
                 <th style="width:110px" data-sort="Regional">Regional<span id="actSort-Regional" class="sort-indicator"></span></th>
                 <th style="width:150px" data-sort="Operacion">Operación<span id="actSort-Operacion" class="sort-indicator"></span></th>
                 <th style="width:200px" data-sort="Trabajador">Trabajador<span id="actSort-Trabajador" class="sort-indicator"></span></th>
@@ -281,7 +291,7 @@
                 <th style="width:120px" data-sort="FechaIngreso">Fecha de Ingreso<span id="actSort-FechaIngreso" class="sort-indicator"></span></th>
                 <th style="width:110px" data-sort="Usuario">Usuario<span id="actSort-Usuario" class="sort-indicator"></span></th>
                 <th style="width:150px" data-sort="FechaActualizacion">Fecha Actualización<span id="actSort-FechaActualizacion" class="sort-indicator"></span></th>
-                <th style="width:110px" class="no-sort">Acciones</th>
+                <th style="width:130px" data-sort="IdVinculacion">Id Vinculación<span id="actSort-IdVinculacion" class="sort-indicator"></span></th>
               </tr>
             </thead>
             <tbody id="activosBody"></tbody>
@@ -310,7 +320,7 @@
           <div class="filtros-grid">
             <div class="filtro-field"><label>Regional</label><select id="retFilterRegional"></select></div>
             <div class="filtro-field"><label>Operación</label><select id="retFilterOperacion"></select></div>
-            <div class="filtro-field"><label>Identificación</label><input type="text" id="retFilterIdentificacion" placeholder="Buscar por identificación..."></div>
+            <div class="filtro-field"><label>Buscar</label><input type="text" id="retFilterIdentificacion" placeholder="Identificación, trabajador, regional u operación..."></div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosRetiros()">&#8635; Limpiar filtros</button>
         </div>
@@ -322,7 +332,7 @@
           <table class="retiros-table" id="retirosTable">
             <thead>
               <tr>
-                <th style="width:130px" data-sort="IdVinculacion">Id Vinculación<span id="retSort-IdVinculacion" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="estadoLegalizacion">Legalización<span id="retSort-estadoLegalizacion" class="sort-indicator"></span></th>
                 <th style="width:110px" data-sort="Regional">Regional<span id="retSort-Regional" class="sort-indicator"></span></th>
                 <th style="width:150px" data-sort="Operacion">Operación<span id="retSort-Operacion" class="sort-indicator"></span></th>
                 <th style="width:200px" data-sort="Trabajador">Trabajador<span id="retSort-Trabajador" class="sort-indicator"></span></th>
@@ -331,6 +341,7 @@
                 <th style="width:120px" data-sort="FechaRetiro">Fecha de Retiro<span id="retSort-FechaRetiro" class="sort-indicator"></span></th>
                 <th style="width:110px" data-sort="Usuario">Usuario<span id="retSort-Usuario" class="sort-indicator"></span></th>
                 <th style="width:150px" data-sort="FechaActualizacion">Fecha Actualización<span id="retSort-FechaActualizacion" class="sort-indicator"></span></th>
+                <th style="width:130px" data-sort="IdVinculacion">Id Vinculación<span id="retSort-IdVinculacion" class="sort-indicator"></span></th>
               </tr>
             </thead>
             <tbody id="retirosBody"></tbody>
@@ -361,7 +372,9 @@
       <button type="button" onclick="cerrarFichaVinculacion()">&#10005; Cerrar</button>
     </div>
     <div class="modal-ficha-body" id="fichaBody">
+      <div class="aviso-banner" id="avisoEdicionConcurrente" style="display:none"></div>
       <div class="ficha-grid">
+        <div class="ficha-field"><label>Id Vinculación</label><input type="text" id="ficha_idVinculacion" disabled></div>
         <div class="ficha-field"><label>Identificación</label><input type="text" id="ficha_identificacion" disabled></div>
         <div class="ficha-field"><label>Trabajador</label><input type="text" id="ficha_trabajador" disabled></div>
         <div class="ficha-field"><label>Estado</label><input type="text" id="ficha_estado" disabled></div>
@@ -604,7 +617,7 @@
     const params = new URLSearchParams({ usuario });
     if (retFilterRegional.value) params.set('regional', retFilterRegional.value);
     if (retFilterOperacion.value) params.set('operacion', retFilterOperacion.value);
-    if (retFilterIdentificacion.value.trim()) params.set('identificacion', retFilterIdentificacion.value.trim());
+    if (retFilterIdentificacion.value.trim()) params.set('busqueda', retFilterIdentificacion.value.trim());
     try {
       const resp = await fetch('/nomina/api/retiros?' + params.toString());
       const data = await resp.json();
@@ -617,6 +630,8 @@
     } catch { alert('Error de conexión al cargar los retiros.'); }
   }
 
+  const RANGO_LEGALIZACION = { no_iniciado: 0, en_proceso: 1, legalizado: 2 };
+
   function sortAndRenderRetiros() {
     const col = _retirosState.sortCol;
     if (col) {
@@ -625,6 +640,10 @@
         let valA = a[col], valB = b[col];
         if (valA === undefined || valA === null) valA = '';
         if (valB === undefined || valB === null) valB = '';
+        if (col === 'estadoLegalizacion') {
+          const ra = RANGO_LEGALIZACION[valA] ?? -1, rb = RANGO_LEGALIZACION[valB] ?? -1;
+          return _retirosState.sortOrder === 'asc' ? ra - rb : rb - ra;
+        }
         if (esFecha) {
           const ta = valA ? new Date(valA).getTime() : 0, tb = valB ? new Date(valB).getTime() : 0;
           return _retirosState.sortOrder === 'asc' ? ta - tb : tb - ta;
@@ -635,7 +654,7 @@
         return 0;
       });
     }
-    ['IdVinculacion','Regional','Operacion','Trabajador','Cargo','FechaIngreso','FechaRetiro','Usuario','FechaActualizacion'].forEach(k => {
+    ['estadoLegalizacion','IdVinculacion','Regional','Operacion','Trabajador','Cargo','FechaIngreso','FechaRetiro','Usuario','FechaActualizacion'].forEach(k => {
       const span = document.getElementById('retSort-' + k);
       if (!span) return;
       span.textContent = _retirosState.sortCol === k ? (_retirosState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
@@ -659,10 +678,12 @@
     body.innerHTML = '';
     document.getElementById('retContador').textContent = `${_retirosState.allData.length} registro(s)`;
     document.getElementById('retEmptyState').style.display = _retirosState.allData.length ? 'none' : 'block';
+    const ETIQUETA_LEGAL = { no_iniciado: 'No iniciado', en_proceso: 'En proceso', legalizado: 'Legalizado' };
     _retirosState.allData.forEach(row => {
       const tr = document.createElement('tr');
+      const estLeg = row.estadoLegalizacion || 'no_iniciado';
       tr.innerHTML = `
-        <td>${esc(row.IdVinculacion)}</td>
+        <td><span class="badge-legal ${estLeg}">${ETIQUETA_LEGAL[estLeg]}</span></td>
         <td>${esc(row.Regional)}</td>
         <td>${esc(row.Operacion)}</td>
         <td>${esc(row.Trabajador)}</td>
@@ -671,6 +692,7 @@
         <td class="col-fecha-retiro">${formatFechaCorta(row.FechaRetiro)}</td>
         <td>${esc(row.Usuario)}</td>
         <td>${celdaFechaHora(row.FechaActualizacion)}</td>
+        <td>${esc(row.IdVinculacion)}</td>
       `;
       tr.addEventListener('click', () => abrirFilaRetiro(row));
       body.appendChild(tr);
@@ -759,7 +781,7 @@
     const params = new URLSearchParams({ usuario });
     if (actFilterRegional.value) params.set('regional', actFilterRegional.value);
     if (actFilterOperacion.value) params.set('operacion', actFilterOperacion.value);
-    if (actFilterIdentificacion.value.trim()) params.set('identificacion', actFilterIdentificacion.value.trim());
+    if (actFilterIdentificacion.value.trim()) params.set('busqueda', actFilterIdentificacion.value.trim());
     try {
       const resp = await fetch('/nomina/api/activos?' + params.toString());
       const data = await resp.json();
@@ -814,20 +836,21 @@
     body.innerHTML = '';
     document.getElementById('actContador').textContent = `${_activosState.allData.length} registro(s)`;
     document.getElementById('actEmptyState').style.display = _activosState.allData.length ? 'none' : 'block';
+    const ROLES_CONFIRMAN_ESTADO = ['Coordinador', 'CoordinadorR', 'Auxiliar', 'AuxiliarR'];
     _activosState.allData.forEach(row => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${esc(row.IdVinculacion)}</td>
+        <td></td>
         <td>${esc(row.Regional)}</td>
         <td>${esc(row.Operacion)}</td>
         <td>${esc(row.Trabajador)}</td>
         <td>${esc(row.Cargo)}</td>
-        <td>${formatFechaCorta(row.FechaIngreso)}</td>
+        <td class="col-fecha-ingreso">${formatFechaCorta(row.FechaIngreso)}</td>
         <td>${esc(row.Usuario)}</td>
         <td>${celdaFechaHora(row.FechaActualizacion)}</td>
-        <td></td>
+        <td>${esc(row.IdVinculacion)}</td>
       `;
-      const celdaAcciones = tr.lastElementChild;
+      const celdaAcciones = tr.firstElementChild;
       celdaAcciones.className = 'celda-acciones';
 
       const btnRetirar = document.createElement('button');
@@ -849,9 +872,36 @@
       }
       celdaAcciones.appendChild(btnTomoCargo);
 
+      // Antioquia: Nómina genera documentos sin marcar Retirado; el Coordinador/Auxiliar
+      // responsable confirma aquí el cambio de Estado una vez ya está todo gestionado.
+      const tieneMotivoRetiro = row.MotivoRetiro && row.MotivoRetiro.trim() && row.MotivoRetiro !== 'SI';
+      if (tieneMotivoRetiro && ROLES_CONFIRMAN_ESTADO.includes(rol)) {
+        const btnConfirmarEstado = document.createElement('button');
+        btnConfirmarEstado.type = 'button'; btnConfirmarEstado.className = 'btn-tomo-cargo';
+        btnConfirmarEstado.style.background = 'var(--retiro)';
+        btnConfirmarEstado.textContent = 'Confirmar Estado Retirado';
+        btnConfirmarEstado.onclick = (e) => { e.stopPropagation(); confirmarEstadoRetirado(row.IdVinculacion, btnConfirmarEstado); };
+        celdaAcciones.appendChild(btnConfirmarEstado);
+      }
+
       tr.addEventListener('click', () => abrirFichaVinculacion(row.IdVinculacion));
       body.appendChild(tr);
     });
+  }
+
+  async function confirmarEstadoRetirado(idVinculacion, btn) {
+    if (!confirm('¿Confirma que este trabajador ya quedó retirado?')) return;
+    btn.disabled = true;
+    try {
+      const resp = await fetch('/nomina/api/confirmar-estado-retirado', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idVinculacion, usuario }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) { alert('Error: ' + (data.error || 'No se pudo confirmar')); btn.disabled = false; return; }
+      fetchDataActivos();
+      if (_retirosState.cargado) fetchDataRetiros();
+    } catch { alert('Error de conexión.'); btn.disabled = false; }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -909,6 +959,7 @@
       const r = data.registro;
       const p = data.permisos;
 
+      document.getElementById('ficha_idVinculacion').value = r.idVinculacion || '';
       document.getElementById('ficha_identificacion').value = r.identificacion || '';
       document.getElementById('ficha_trabajador').value = r.trabajador || '';
       document.getElementById('ficha_estado').value = r.estado || '';
@@ -946,12 +997,31 @@
         auxilioTransporte: crearBotonGrupo('grupoAuxilioTransporte', ['SI', 'NO'], r.auxilioTransporte, p.auxilioTransporte),
       };
 
+      const avisoEl = document.getElementById('avisoEdicionConcurrente');
+      if (data.edicionActiva) {
+        avisoEl.textContent = `⚠️ ${data.edicionActiva.usuario} tiene esta ficha abierta desde hace ${data.edicionActiva.minutos} minuto(s). Sus cambios podrían sobrescribirse.`;
+        avisoEl.style.display = 'block';
+      } else {
+        avisoEl.style.display = 'none';
+      }
+
       document.getElementById('fichaModalOverlay').classList.add('open');
     } catch { alert('Error de conexión al cargar la ficha.'); }
   }
 
+  function liberarEdicionFicha() {
+    if (!_fichaIdActual) return;
+    // Fire-and-forget: no bloquea el cierre del modal por esto.
+    fetch('/nomina/api/vinculacion/' + encodeURIComponent(_fichaIdActual) + '/liberar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario }),
+    }).catch(() => {});
+  }
+
   function cerrarFichaVinculacion() {
     document.getElementById('fichaModalOverlay').classList.remove('open');
+    liberarEdicionFicha();
+    _fichaIdActual = null;
   }
 
   async function guardarFicha() {

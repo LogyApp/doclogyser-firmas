@@ -19,6 +19,22 @@ function paginaError(mensaje) {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Error</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0f0f0}div{background:#fff;padding:2rem;border-radius:8px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.15);max-width:400px;width:90%}h2{color:#e74c3c;margin-top:0}p{color:#666;margin:0}</style></head><body><div><h2>Error</h2><p>${mensaje}</p></div></body></html>`;
 }
 
+// Filtro de búsqueda libre por Trabajador/Regional/Operación (insensible a
+// mayúsculas y tildes vía COLLATE utf8mb4_0900_ai_ci) o Identificación (numérica).
+function filtroBusqueda(busqueda) {
+  if (!busqueda) return null;
+  const like = `%${busqueda}%`;
+  return {
+    cond: `(
+      v.\`Trabajador\` COLLATE utf8mb4_0900_ai_ci LIKE ? OR
+      v.\`Regional\` COLLATE utf8mb4_0900_ai_ci LIKE ? OR
+      v.\`Operación\` COLLATE utf8mb4_0900_ai_ci LIKE ? OR
+      v.\`Identificación\` LIKE ?
+    )`,
+    params: [like, like, like, like],
+  };
+}
+
 function resumenAcceso(acceso) {
   if (!acceso) return null;
   return {
@@ -68,7 +84,7 @@ router.get('/', async (req, res) => {
 // ── GET /api/retiros ─────────────────────────────────────────────────────
 router.get('/api/retiros', async (req, res) => {
   try {
-    const { usuario, regional, operacion, identificacion } = req.query;
+    const { usuario, regional, operacion, busqueda } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoNomina(usuario, 'Retiro');
@@ -86,18 +102,18 @@ router.get('/api/retiros', async (req, res) => {
       securityParams.push(...acceso.operacionesFiltro);
     }
 
-    const fReg = regional      ? { cond: 'v.`Regional` = ?',           param: regional }        : null;
-    const fOp  = operacion     ? { cond: 'v.`Operación` = ?',          param: operacion }       : null;
-    const fId  = identificacion ? { cond: 'v.`Identificación` LIKE ?', param: `%${identificacion}%` } : null;
+    const fReg = regional  ? { cond: 'v.`Regional` = ?',  param: regional }  : null;
+    const fOp  = operacion ? { cond: 'v.`Operación` = ?', param: operacion } : null;
+    const fBus = filtroBusqueda(busqueda);
 
     const buildWhere = (filtersList) => {
       const c = [...securityConds];
       const p = [...securityParams];
-      filtersList.forEach(f => { if (f) { c.push(f.cond); p.push(f.param); } });
+      filtersList.forEach(f => { if (f) { c.push(f.cond); p.push(...(f.params || [f.param])); } });
       return { where: c.length ? `WHERE ${c.join(' AND ')}` : '', params: p };
     };
 
-    const listFilter = buildWhere([fReg, fOp, fId]);
+    const listFilter = buildWhere([fReg, fOp, fBus]);
     const listQuery = `
       SELECT
         v.\`Id Vinculación\`     AS IdVinculacion,
@@ -109,7 +125,11 @@ router.get('/api/retiros', async (req, res) => {
         v.\`Fecha de Retiro\`    AS FechaRetiro,
         v.\`Motivo del Retiro\`  AS MotivoRetiro,
         v.ar_ciudad_regional     AS ArCiudadRegional,
+        v.\`Fecha Legalización Retiro\` AS FechaLegalizacion,
         v.token_firma_ct         AS TokenFirmaCt,
+        v.token_firma_ar         AS TokenFirmaAr,
+        v.token_firma_emoe       AS TokenFirmaEmoe,
+        v.token_firma_crs        AS TokenFirmaCrs,
         v.\`Usuario\`            AS Usuario,
         v.\`Fecha Actualización\` AS FechaActualizacion
       FROM \`Maestro_Vinculación\` v
@@ -119,8 +139,8 @@ router.get('/api/retiros', async (req, res) => {
     `;
 
     // Conteos dinámicos por Regional/Operación (excluyendo su propia dimensión del filtro)
-    const cReg = buildWhere([fOp, fId]);
-    const cOp  = buildWhere([fReg, fId]);
+    const cReg = buildWhere([fOp, fBus]);
+    const cOp  = buildWhere([fReg, fBus]);
 
     const [[results], [regRows], [opRows]] = await Promise.all([
       pool.execute(listQuery, listFilter.params),
@@ -129,35 +149,45 @@ router.get('/api/retiros', async (req, res) => {
     ]);
 
     // ¿Ya tiene documentos de firma generados? (misma condición que "firmaConfirmada" en generar-retiro)
+    // y estado del Paz y Salvo (para derivar si la legalización ya está completa)
     const condiciones = await obtenerCondicionesRetiro();
     const ids = results.map(r => r.IdVinculacion);
-    const pzConFirma = new Set();
+    const pzMap = new Map();
     if (ids.length) {
       const ph = ids.map(() => '?').join(',');
       const [pzRows] = await pool.execute(
-        `SELECT id_vinculacion FROM Maestro_pazysalvo WHERE id_vinculacion IN (${ph}) AND firma_responsable_url IS NOT NULL`,
+        `SELECT id_vinculacion, estado, firma_responsable_url FROM Maestro_pazysalvo WHERE id_vinculacion IN (${ph})`,
         ids
       );
-      pzRows.forEach(r => pzConFirma.add(r.id_vinculacion));
+      pzRows.forEach(r => pzMap.set(r.id_vinculacion, r));
     }
 
-    const resultsFinal = results.map(r => ({
-      IdVinculacion:      r.IdVinculacion,
-      Regional:           r.Regional,
-      Operacion:          r.Operacion,
-      Trabajador:         r.Trabajador,
-      Cargo:              r.Cargo,
-      FechaIngreso:       r.FechaIngreso,
-      FechaRetiro:        r.FechaRetiro,
-      Usuario:            r.Usuario,
-      FechaActualizacion: r.FechaActualizacion,
-      tieneDocsGenerados: !!(
-        condiciones[r.MotivoRetiro]?.TerminaProceso ||
-        r.ArCiudadRegional ||
-        r.TokenFirmaCt ||
-        pzConFirma.has(r.IdVinculacion)
-      ),
-    }));
+    const resultsFinal = results.map(r => {
+      const terminaProceso = !!condiciones[r.MotivoRetiro]?.TerminaProceso;
+      const pz = pzMap.get(r.IdVinculacion);
+      const tieneDocsGenerados = !!(terminaProceso || r.ArCiudadRegional || r.TokenFirmaCt || pz?.firma_responsable_url);
+
+      let estadoLegalizacion = 'no_iniciado';
+      if (r.FechaLegalizacion || terminaProceso) {
+        const todosFirmados = !r.TokenFirmaCt && !r.TokenFirmaAr && !r.TokenFirmaEmoe && !r.TokenFirmaCrs;
+        const pzOk = !pz || pz.estado === 'completado';
+        estadoLegalizacion = (terminaProceso || (todosFirmados && pzOk)) ? 'legalizado' : 'en_proceso';
+      }
+
+      return {
+        IdVinculacion:      r.IdVinculacion,
+        Regional:           r.Regional,
+        Operacion:          r.Operacion,
+        Trabajador:         r.Trabajador,
+        Cargo:              r.Cargo,
+        FechaIngreso:       r.FechaIngreso,
+        FechaRetiro:        r.FechaRetiro,
+        Usuario:            r.Usuario,
+        FechaActualizacion: r.FechaActualizacion,
+        tieneDocsGenerados,
+        estadoLegalizacion,
+      };
+    });
 
     const regCounts = {};
     regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = Number(r.total); });
@@ -177,7 +207,7 @@ router.get('/api/retiros', async (req, res) => {
 // ── GET /api/activos ─────────────────────────────────────────────────────
 router.get('/api/activos', async (req, res) => {
   try {
-    const { usuario, regional, operacion, identificacion } = req.query;
+    const { usuario, regional, operacion, busqueda } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const acceso = await computarAccesoNomina(usuario, 'Activo');
@@ -195,18 +225,18 @@ router.get('/api/activos', async (req, res) => {
       securityParams.push(...acceso.operacionesFiltro);
     }
 
-    const fReg = regional      ? { cond: 'v.`Regional` = ?',           param: regional }        : null;
-    const fOp  = operacion     ? { cond: 'v.`Operación` = ?',          param: operacion }       : null;
-    const fId  = identificacion ? { cond: 'v.`Identificación` LIKE ?', param: `%${identificacion}%` } : null;
+    const fReg = regional  ? { cond: 'v.`Regional` = ?',  param: regional }  : null;
+    const fOp  = operacion ? { cond: 'v.`Operación` = ?', param: operacion } : null;
+    const fBus = filtroBusqueda(busqueda);
 
     const buildWhere = (filtersList) => {
       const c = [...securityConds];
       const p = [...securityParams];
-      filtersList.forEach(f => { if (f) { c.push(f.cond); p.push(f.param); } });
+      filtersList.forEach(f => { if (f) { c.push(f.cond); p.push(...(f.params || [f.param])); } });
       return { where: c.length ? `WHERE ${c.join(' AND ')}` : '', params: p };
     };
 
-    const listFilter = buildWhere([fReg, fOp, fId]);
+    const listFilter = buildWhere([fReg, fOp, fBus]);
     const listQuery = `
       SELECT
         v.\`Id Vinculación\`     AS IdVinculacion,
@@ -224,8 +254,8 @@ router.get('/api/activos', async (req, res) => {
       LIMIT 500
     `;
 
-    const cReg = buildWhere([fOp, fId]);
-    const cOp  = buildWhere([fReg, fId]);
+    const cReg = buildWhere([fOp, fBus]);
+    const cOp  = buildWhere([fReg, fBus]);
 
     const [[results], [regRows], [opRows]] = await Promise.all([
       pool.execute(listQuery, listFilter.params),
@@ -279,6 +309,74 @@ router.post('/api/tomo-cargo', async (req, res) => {
   }
 });
 
+// ── POST /api/confirmar-estado-retirado ───────────────────────────────────
+// Cierra el hueco de Antioquia: Nómina puede generar documentos sin marcar
+// Estado='Retirado' (solo llena Motivo/Fecha de Retiro). Una vez Nómina
+// termina, el Coordinador/Auxiliar responsable confirma aquí el cambio de
+// Estado — sin tocar ningún otro campo del proceso.
+const ROLES_CONFIRMAN_ESTADO = ['Coordinador', 'CoordinadorR', 'Auxiliar', 'AuxiliarR'];
+router.post('/api/confirmar-estado-retirado', async (req, res) => {
+  try {
+    const { idVinculacion, usuario } = req.body;
+    if (!idVinculacion || !usuario) return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length || !ROLES_CONFIRMAN_ESTADO.includes(uRows[0].Rol)) {
+      return res.status(403).json({ ok: false, error: 'Su rol no puede confirmar el estado de retiro' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT Estado, `Motivo del Retiro` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      [idVinculacion]
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const motivo = rows[0]['Motivo del Retiro'];
+    if (rows[0].Estado === 'Retirado') return res.json({ ok: true, sinCambios: true });
+    if (!motivo || !motivo.trim() || motivo === 'SI') {
+      return res.status(400).json({ ok: false, error: 'Este registro aún no tiene un motivo de retiro registrado' });
+    }
+
+    await pool.execute(
+      `UPDATE \`Maestro_Vinculación\` SET Estado = 'Retirado', Usuario = ?, \`Fecha Actualización\` = ? WHERE \`Id Vinculación\` = ?`,
+      [usuario, fechaHoraBogota(), idVinculacion]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[nomina] POST /api/confirmar-estado-retirado', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── Aviso de edición concurrente (Nomina_Edicion_Activa) ─────────────────
+// No es un bloqueo real: solo avisa si alguien más abrió la misma ficha
+// hace poco, para no pisar cambios sin darse cuenta.
+const MINUTOS_VIGENCIA_EDICION = 10;
+
+async function marcarEdicionYObtenerAviso(idVinculacion, usuario) {
+  const [existentes] = await pool.execute(
+    `SELECT Usuario, FechaHora, TIMESTAMPDIFF(MINUTE, FechaHora, NOW()) AS minutos
+     FROM Nomina_Edicion_Activa WHERE IdVinculacion = ? LIMIT 1`,
+    [idVinculacion]
+  );
+  let aviso = null;
+  if (existentes.length && existentes[0].Usuario !== usuario && existentes[0].minutos < MINUTOS_VIGENCIA_EDICION) {
+    aviso = { usuario: existentes[0].Usuario, minutos: existentes[0].minutos };
+  }
+  await pool.execute(
+    `INSERT INTO Nomina_Edicion_Activa (IdVinculacion, Usuario, FechaHora) VALUES (?, ?, NOW())
+     ON DUPLICATE KEY UPDATE Usuario = VALUES(Usuario), FechaHora = VALUES(FechaHora)`,
+    [idVinculacion, usuario]
+  );
+  return aviso;
+}
+
+async function liberarEdicion(idVinculacion, usuario) {
+  await pool.execute(
+    'DELETE FROM Nomina_Edicion_Activa WHERE IdVinculacion = ? AND Usuario = ?',
+    [idVinculacion, usuario]
+  );
+}
+
 // ── GET /api/vinculacion/:id ──────────────────────────────────────────────
 // Datos + permisos por rol para el formulario de edición de la ficha del
 // trabajador activo (se abre al hacer clic en un registro de la pestaña Activos).
@@ -302,6 +400,8 @@ router.get('/api/vinculacion/:id', async (req, res) => {
       return res.status(403).json({ error: 'No tiene acceso a esta operación' });
     }
 
+    const edicionActiva = await marcarEdicionYObtenerAviso(idVinculacion, usuario);
+
     const permisos = calcularPermisosVinculacion(acceso.rol, vin['Grupo Nomina']);
 
     const [areaRows] = await pool.execute(
@@ -312,6 +412,7 @@ router.get('/api/vinculacion/:id', async (req, res) => {
     res.json({
       ok: true,
       permisos,
+      edicionActiva,
       areaOpciones: areaRows.map(r => ({ id: r.ID, nombre: r.AREA })),
       registro: {
         idVinculacion:     vin['Id Vinculación'],
@@ -383,9 +484,26 @@ router.post('/api/vinculacion/:id', async (req, res) => {
       `UPDATE \`Maestro_Vinculación\` SET ${campos.join(', ')} WHERE \`Id Vinculación\` = ?`,
       valores
     );
+    await liberarEdicion(idVinculacion, usuario);
     res.json({ ok: true });
   } catch (err) {
     console.error('[nomina] POST /api/vinculacion/:id', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/vinculacion/:id/liberar ─────────────────────────────────────
+// Se llama al cerrar/cancelar la ficha sin guardar, para no dejar el aviso
+// de "alguien más lo está editando" activo más de lo necesario.
+router.post('/api/vinculacion/:id/liberar', async (req, res) => {
+  try {
+    const idVinculacion = decodeURIComponent(req.params.id);
+    const { usuario } = req.body;
+    if (!usuario) return res.status(400).json({ ok: false, error: 'usuario requerido' });
+    await liberarEdicion(idVinculacion, usuario);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[nomina] POST /api/vinculacion/:id/liberar', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
