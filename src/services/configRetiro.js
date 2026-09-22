@@ -81,6 +81,40 @@ function puedeGenerarDocumentosRetiro(rol, regional) {
   return false; // Contratación y cualquier otro rol: solo puede marcar el retiro, no gestionar documentos
 }
 
+// ── Legalización del retiro (misma lógica que Vista_retiros_pendientes) ─────
+// Documento de terminación/renuncia exigido según el motivo: 55 (Carta de
+// Renuncia) si el motivo es Renuncia, 77 (TCRP) si el motivo tiene
+// TieneTCRP=1 (Periodo de Prueba), 76 (TCR) en el resto de los casos.
+function docTerminacionRequerido(motivoRetiro, condicion) {
+  if (motivoRetiro === 'Renuncia') return '55';
+  return condicion?.TieneTCRP ? '77' : '76';
+}
+
+// true si el retiro ya está "legalizado": el motivo cierra el proceso sin
+// trámite, la fecha de ingreso y de retiro coinciden (caso descartado por la
+// vista original), existe un Documento de Retiro (47) que cierra el caso a
+// mano, o ya están los 3 documentos válidos (terminación/renuncia + 57 + 58).
+async function estaRetiroLegalizado({ identificacion, motivoRetiro, fechaIngreso, fechaRetiro }) {
+  const condicion = await obtenerCondicionRetiro(motivoRetiro);
+  if (condicion?.TerminaProceso) return true;
+
+  const mismaFecha = fechaIngreso && fechaRetiro &&
+    new Date(fechaIngreso).getTime() === new Date(fechaRetiro).getTime();
+  if (mismaFecha) return true;
+
+  const [docRows] = await pool.execute(
+    `SELECT TipoDocumento FROM Maestro_docTrabajador
+     WHERE Identificación = ? AND TipoDocumento IN ('47','55','76','77','57','58')
+       AND (Validación IS NULL OR Validación <> 'ERROR')`,
+    [String(identificacion)]
+  );
+  const docsSet = new Set(docRows.map(r => String(r.TipoDocumento)));
+  if (docsSet.has('47')) return true;
+
+  const requerido = docTerminacionRequerido(motivoRetiro, condicion);
+  return docsSet.has(requerido) && docsSet.has('57') && docsSet.has('58');
+}
+
 module.exports = {
   ID_DOC_TCR,
   ID_DOC_TCRP,
@@ -89,4 +123,6 @@ module.exports = {
   obtenerPrefijoDoc,
   obtenerEstadoLogysign,
   puedeGenerarDocumentosRetiro,
+  docTerminacionRequerido,
+  estaRetiroLegalizado,
 };

@@ -3,7 +3,7 @@ const fs      = require('fs');
 const path    = require('path');
 const pool    = require('../services/db');
 const { reconstruirToken, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenPZ } = require('../services/token');
-const { obtenerCondicionRetiro, obtenerEstadoLogysign, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro } = require('../services/configRetiro');
+const { obtenerCondicionRetiro, obtenerEstadoLogysign, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro, estaRetiroLegalizado } = require('../services/configRetiro');
 
 const router   = express.Router();
 const DASHBOARD_HTML = path.join(__dirname, '../views/gestionarretiro/index.html');
@@ -179,14 +179,15 @@ router.get('/:idVinculacion', async (req, res) => {
            vin.token_firma_ct !== null ||
            (pzRows.length && pzRows[0].firma_responsable_url));
 
-    const procesoCompleto = esMotivoFinal
-      ? true
-      : (firmaConfirmada &&
-         vin.token_firma_ct   === null &&
-         vin.token_firma_ar   === null &&
-         vin.token_firma_emoe === null &&
-         vin.token_firma_crs  === null &&
-         (!pzInfo || pzInfo.estado === 'completado'));
+    // "Completado" (vista bloqueada de solo lectura) usa la misma lógica de
+    // legalización que la columna de la pestaña Retiros en Nómina — antes solo
+    // miraba que los tokens de firma estuvieran en null y el PZ completado.
+    const procesoCompleto = firmaConfirmada && await estaRetiroLegalizado({
+      identificacion,
+      motivoRetiro,
+      fechaIngreso: vin['Fecha de Ingreso'],
+      fechaRetiro:  vin['Fecha de Retiro'],
+    });
 
     const estadoPagina = !firmaConfirmada ? 'formulario'
                        : procesoCompleto  ? 'completado'
@@ -243,7 +244,7 @@ router.get('/:idVinculacion', async (req, res) => {
       }
     } catch (evrErr) {
       // Columnas EVR aún no migradas — continúa sin bloque EVR
-      console.warn('[generarretiro] EVR no disponible (¿ALTER TABLE pendiente?):', evrErr.message);
+      console.warn('[gestionarretiro] EVR no disponible (¿ALTER TABLE pendiente?):', evrErr.message);
     }
 
     // ── Ciudad sugerida: usuario → Maestro_Usuarios.Operación → Maestro_Operaciones.C.C. ──
@@ -311,7 +312,7 @@ router.get('/:idVinculacion', async (req, res) => {
 
     res.send(template.replace('__CONFIG__', config));
   } catch (err) {
-    console.error('[generarretiro GET]', err);
+    console.error('[gestionarretiro GET]', err);
     res.status(500).send(paginaError('Error interno del servidor'));
   }
 });
@@ -343,6 +344,7 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
     if (pz.estado === 'completado') return res.status(400).json({ ok: false, error: 'El PZ ya está completado' });
 
     const { EMAILS_AREA } = require('../services/pazYSalvoService');
+    const { notificarAreaPazYSalvo } = require('../services/email');
     const areasReq = JSON.parse(pz.areas_requeridas || '[]');
     const baseUrl  = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 
@@ -364,9 +366,14 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
       const tokenFinal = tok || await generarTokenPZ(idPz, campoToken, campoExpira);
       const urlFirma   = `${baseUrl}/pazysalvo-area/${encodeURIComponent(idPz)}?area=${area}&token=${encodeURIComponent(tokenFinal)}`;
       try {
-        // MÓDULO DE PRUEBA (gestionar-retiro): correo real deshabilitado a propósito
-        // mientras se valida este flujo en paralelo a generar-retiro.
-        console.log(`[gestionar-retiro] email de prueba omitido — reenvío PZ área "${area}" a`, destinatarios, urlFirma);
+        await notificarAreaPazYSalvo({
+          area, destinatarios,
+          trabajador:    limpiarNombre(pz.Trabajador),
+          identificacion: String(pz['Identificación']),
+          cargo:         pz.Cargo || '',
+          operacion:     pz['Operación'] || '',
+          urlFirma,
+        });
         reenviados++;
       } catch (e) { console.error(`[reenviar-pz ${area}]`, e.message); }
     }

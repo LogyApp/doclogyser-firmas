@@ -4,6 +4,7 @@
 const ROLES_EDITAN_BASICOS = ['Selección', 'Selección Centro', 'Contratación', 'Nomina', 'Asistencial', 'Sistema', 'Control'];
 const ROLES_VEN_SALARIO    = ['Selección', 'Nomina', 'Control', 'Sistema'];
 const ROLES_EDITAN_AUX_TRANSPORTE = ['Sistema', 'Nomina'];
+const ROLES_EDITAN_FECHA_INGRESO  = ['Contratación', 'Control', 'Sistema'];
 const GRUPOS_NOMINA_SALARIO_SELECCION_CENTRO = ['Operativo', 'Aprendiz'];
 
 // Campos de Maestro_Vinculación completamente ocultos en este formulario para todos los roles.
@@ -35,7 +36,7 @@ function calcularPermisosVinculacion(rol, grupoNominaActual) {
     salarioVisible:       puedeVerSalario,
     salarioEditable:      puedeVerSalario,
     auxilioTransporte:    ROLES_EDITAN_AUX_TRANSPORTE.includes(rol), // visible para todos, editable solo para estos
-    fechaIngreso:         puedeEditarBasicos,
+    fechaIngreso:         ROLES_EDITAN_FECHA_INGRESO.includes(rol),
   };
 }
 

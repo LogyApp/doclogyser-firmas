@@ -378,9 +378,9 @@
         <div class="ficha-field"><label>Identificación</label><input type="text" id="ficha_identificacion" disabled></div>
         <div class="ficha-field"><label>Trabajador</label><input type="text" id="ficha_trabajador" disabled></div>
         <div class="ficha-field"><label>Estado</label><input type="text" id="ficha_estado" disabled></div>
-        <div class="ficha-field"><label>Cargo</label><input type="text" id="ficha_cargo"></div>
-        <div class="ficha-field"><label>Regional</label><input type="text" id="ficha_regional"></div>
-        <div class="ficha-field"><label>Operación</label><input type="text" id="ficha_operacion"></div>
+        <div class="ficha-field"><label>Cargo</label><select id="ficha_cargo"></select></div>
+        <div class="ficha-field"><label>Regional</label><select id="ficha_regional" onchange="onFichaRegionalChange()"></select></div>
+        <div class="ficha-field"><label>Operación</label><select id="ficha_operacion"></select></div>
         <div class="ficha-field"><label>Área</label><select id="ficha_area"></select></div>
         <div class="ficha-field"><label>Fecha de Ingreso</label><input type="date" id="ficha_fechaIngreso"></div>
         <div class="ficha-field" id="campoSalario" style="display:none"><label>Salario</label><input type="number" id="ficha_salario"></div>
@@ -713,7 +713,7 @@
   // ═══════════════════════════════════════════════════════════════════════
   // Pestaña ACTIVOS
   // ═══════════════════════════════════════════════════════════════════════
-  const _activosState = { allData: [], counts: { regionales: {}, operaciones: {} }, sortCol: 'Trabajador', sortOrder: 'asc', cargado: false };
+  const _activosState = { allData: [], counts: { regionales: {}, operaciones: {} }, sortCol: 'FechaIngreso', sortOrder: 'desc', cargado: false };
   const actFilterRegional      = document.getElementById('actFilterRegional');
   const actFilterOperacion     = document.getElementById('actFilterOperacion');
   const actFilterIdentificacion = document.getElementById('actFilterIdentificacion');
@@ -948,6 +948,18 @@
 
   let _fichaGrupos = null;
   let _fichaIdActual = null;
+  let _fichaOpsPorRegional = {};
+
+  function onFichaRegionalChange() {
+    const reg = document.getElementById('ficha_regional').value;
+    const opEl = document.getElementById('ficha_operacion');
+    opEl.innerHTML = '<option value="">— Seleccione —</option>';
+    (_fichaOpsPorRegional[reg] || []).forEach(op => {
+      const opt = document.createElement('option');
+      opt.value = op; opt.textContent = op;
+      opEl.appendChild(opt);
+    });
+  }
 
   async function abrirFichaVinculacion(idVinculacion) {
     try {
@@ -964,12 +976,45 @@
       document.getElementById('ficha_trabajador').value = r.trabajador || '';
       document.getElementById('ficha_estado').value = r.estado || '';
 
+      // Cargo (Config_Cargo_Laboral, filtrado por acceso del rol)
       const cargoEl = document.getElementById('ficha_cargo');
-      cargoEl.value = r.cargo || ''; cargoEl.disabled = !p.cargo;
+      cargoEl.innerHTML = '<option value="">— Seleccione —</option>';
+      (data.cargoOpciones || []).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        if (c === r.cargo) opt.selected = true;
+        cargoEl.appendChild(opt);
+      });
+      if (r.cargo && !(data.cargoOpciones || []).includes(r.cargo)) {
+        const opt = document.createElement('option');
+        opt.value = r.cargo; opt.textContent = r.cargo + ' (actual)';
+        opt.selected = true;
+        cargoEl.appendChild(opt);
+      }
+      cargoEl.disabled = !p.cargo;
+
+      // Regional / Operación en cascada (mismo patrón que SST/Inventario)
+      _fichaOpsPorRegional = (data.regionalOpciones && data.regionalOpciones.opsPorRegional) || {};
       const regionalEl = document.getElementById('ficha_regional');
-      regionalEl.value = r.regional || ''; regionalEl.disabled = !p.regional;
+      regionalEl.innerHTML = '<option value="">— Seleccione —</option>';
+      ((data.regionalOpciones && data.regionalOpciones.regionales) || []).forEach(reg => {
+        const opt = document.createElement('option');
+        opt.value = reg; opt.textContent = reg;
+        if (reg === r.regional) opt.selected = true;
+        regionalEl.appendChild(opt);
+      });
+      regionalEl.disabled = !p.regional;
+
       const operacionEl = document.getElementById('ficha_operacion');
-      operacionEl.value = r.operacion || ''; operacionEl.disabled = !p.operacion;
+      operacionEl.innerHTML = '<option value="">— Seleccione —</option>';
+      (_fichaOpsPorRegional[r.regional] || []).forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.textContent = op;
+        if (op === r.operacion) opt.selected = true;
+        operacionEl.appendChild(opt);
+      });
+      operacionEl.disabled = !p.operacion;
+
       const fechaIngresoEl = document.getElementById('ficha_fechaIngreso');
       fechaIngresoEl.value = r.fechaIngreso ? String(r.fechaIngreso).slice(0, 10) : ''; fechaIngresoEl.disabled = !p.fechaIngreso;
 

@@ -3,7 +3,8 @@ const fs      = require('fs');
 const path    = require('path');
 const pool    = require('../services/db');
 const { computarAccesoNomina } = require('../services/accesoNomina');
-const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro } = require('../services/configRetiro');
+const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
+const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido } = require('../services/configRetiro');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
 
 function fechaHoraBogota() {
@@ -147,7 +148,7 @@ router.get('/api/retiros', async (req, res) => {
       pool.execute(`SELECT v.\`Operación\` AS Operacion, COUNT(*) as total FROM \`Maestro_Vinculación\` v ${cOp.where} GROUP BY v.\`Operación\``, cOp.params),
     ]);
 
-    // ¿Ya tiene documentos de firma generados? (misma condición que "firmaConfirmada" en generar-retiro)
+    // ¿Ya tiene documentos de firma generados? (misma condición que "firmaConfirmada" en gestionar-retiro)
     const condiciones = await obtenerCondicionesRetiro();
     const ids = results.map(r => r.IdVinculacion);
     const pzConFirma = new Set();
@@ -189,8 +190,8 @@ router.get('/api/retiros', async (req, res) => {
 
       const docsSet = docsMap.get(String(r.Identificacion)) || new Set();
       const tieneDoc47 = docsSet.has('47');
-      const docTerminacionRequerido = r.MotivoRetiro === 'Renuncia' ? '55' : (condicion?.TieneTCRP ? '77' : '76');
-      const tieneLos3Docs = docsSet.has(docTerminacionRequerido) && docsSet.has('57') && docsSet.has('58');
+      const requerido = docTerminacionRequerido(r.MotivoRetiro, condicion);
+      const tieneLos3Docs = docsSet.has(requerido) && docsSet.has('57') && docsSet.has('58');
       const mismaFechaIngresoRetiro = r.FechaIngreso && r.FechaRetiro &&
         new Date(r.FechaIngreso).getTime() === new Date(r.FechaRetiro).getTime();
 
@@ -273,7 +274,7 @@ router.get('/api/activos', async (req, res) => {
         v.\`Motivo del Retiro\`  AS MotivoRetiro
       FROM \`Maestro_Vinculación\` v
       ${listFilter.where}
-      ORDER BY v.\`Trabajador\` ASC
+      ORDER BY v.\`Fecha de Ingreso\` DESC
       LIMIT 500
     `;
 
@@ -432,11 +433,31 @@ router.get('/api/vinculacion/:id', async (req, res) => {
       [vin['Operación']]
     );
 
+    // Cargo: catálogo completo si el rol tiene Acceso=1 en Maestro_Menu_Nomina
+    // (sección Activo); si no, limitado a los cargos operativos.
+    const [cargoRows] = await pool.execute(
+      acceso.sinFiltro
+        ? 'SELECT DISTINCT Cargo FROM Config_Cargo_Laboral ORDER BY Cargo'
+        : "SELECT DISTINCT Cargo FROM Config_Cargo_Laboral WHERE `Grupo Nomina` = 'Operativo' ORDER BY Cargo"
+    );
+
+    // Regional/Operación editables: catálogo completo de la empresa (no el
+    // alcance del usuario), igual patrón cascada Regional→Operación de SST/Inventario.
+    const [opRowsCompleto] = await pool.execute(
+      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
+    );
+    const opsPorRegionalCompleto = agruparOperacionesPorRegional(opRowsCompleto);
+
     res.json({
       ok: true,
       permisos,
       edicionActiva,
       areaOpciones: areaRows.map(r => ({ id: r.ID, nombre: r.AREA })),
+      cargoOpciones: cargoRows.map(r => r.Cargo),
+      regionalOpciones: {
+        regionales:     Object.keys(opsPorRegionalCompleto).sort(),
+        opsPorRegional: opsPorRegionalCompleto,
+      },
       registro: {
         idVinculacion:     vin['Id Vinculación'],
         identificacion:    vin['Identificación'],
