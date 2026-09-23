@@ -9,12 +9,12 @@ const {
   subirFirma,
   subirDocumentoRetiro,
 } = require('../services/storage');
-const { notificarRetiro, notificarDocumentoRetiroTrabajador } = require('../services/email');
+const { notificarRetiro, notificarInicioLegalizacionSinRetirar, notificarDocumentoRetiroTrabajador } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenEVR, reconstruirToken } = require('../services/token');
 const { determinarNivelYAreas } = require('../services/pazYSalvoService');
-const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, puedeGenerarDocumentosRetiro } = require('../services/configRetiro');
+const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, puedeGenerarDocumentosRetiro, obtenerResponsablesOperacionRegional } = require('../services/configRetiro');
 
 const router   = express.Router();
 const FORM_HTML = path.join(__dirname, '../views/formretiro/form.html');
@@ -739,10 +739,6 @@ router.post('/:idVinculacion', async (req, res) => {
     if (!motivoRetiro || !condicion) {
       return res.status(400).json({ ok: false, error: 'Motivo de retiro inválido' });
     }
-    // Roles distintos de Nómina/Sistema deben confirmar el estado 'Retirado' en el formulario
-    if (!esNominaOSistema && estado !== 'Retirado') {
-      return res.status(400).json({ ok: false, error: 'Debe seleccionar el estado "Retirado" para continuar' });
-    }
 
     const [vinRows] = await pool.execute(
       `SELECT \`Id Vinculación\`, \`Identificación\`, Trabajador, Cargo, \`Fecha de Ingreso\`, Estado, \`Operación\`, Regional
@@ -753,6 +749,14 @@ router.post('/:idVinculacion', async (req, res) => {
     if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
     const vin = vinRows[0];
     const identificacion = vin['Identificación'];
+
+    // Roles distintos de Nómina/Sistema siempre deben confirmar "Retirado". Nómina
+    // también queda obligada cuando el trabajador pertenece a la Operación
+    // "Administracion" (no tiene Coordinador/Auxiliar propio que lo haga después).
+    const nominaObligadaAdministracion = rolUsuario === 'Nomina' && vin['Operación'] === 'Administracion';
+    if ((!esNominaOSistema || nominaObligadaAdministracion) && estado !== 'Retirado') {
+      return res.status(400).json({ ok: false, error: 'Debe seleccionar el estado "Retirado" para continuar' });
+    }
 
     // Prevenir re-registro si ya está retirado (solo para roles no-Nómina)
     const esRetirado = (vin.Estado === 'Retirado') || (vin['Motivo del Retiro'] && vin['Motivo del Retiro'] !== 'SI' && vin['Motivo del Retiro'].trim() !== '');
@@ -790,18 +794,37 @@ router.post('/:idVinculacion', async (req, res) => {
 
     await pool.execute(query, params);
 
-
-    notificarRetiro({
-      trabajador:     vin.Trabajador,
-      identificacion: String(identificacion),
-      cargo:          vin.Cargo,
-      operacion:      vin['Operación'],
-      fechaRetiro,
-      motivoRetiro,
-      registradoPor:    usuData.Nombre || usuario,
-      emailRegistrador: usuData.Email || null,
-    }).then(() => marcarNotificado(idVin))
-      .catch(e => console.error('[retiro email]', e.message));
+    if (estado === 'Retirado') {
+      // Estado sí cambió en esta petición: notificación completa de retiro.
+      obtenerResponsablesOperacionRegional(vin['Operación'], vin.Regional)
+        .then(destinatariosResponsables => notificarRetiro({
+          trabajador:     vin.Trabajador,
+          identificacion: String(identificacion),
+          cargo:          vin.Cargo,
+          operacion:      vin['Operación'],
+          fechaRetiro,
+          motivoRetiro,
+          registradoPor:    usuData.Nombre || usuario,
+          emailRegistrador: usuData.Email || null,
+          rolRegistrador:   rolUsuario,
+          destinatariosResponsables,
+        }))
+        .then(() => marcarNotificado(idVin))
+        .catch(e => console.error('[retiro email]', e.message));
+    } else if (rolUsuario === 'Nomina') {
+      // Nómina inició la legalización sin marcar Retirado: avisar al responsable
+      // (Coordinador/Auxiliar u su fallback regional) para que lo confirme pronto.
+      obtenerResponsablesOperacionRegional(vin['Operación'], vin.Regional)
+        .then(destinatarios => notificarInicioLegalizacionSinRetirar({
+          trabajador:     vin.Trabajador,
+          identificacion: String(identificacion),
+          cargo:          vin.Cargo,
+          operacion:      vin['Operación'],
+          motivoRetiro,
+          destinatarios,
+        }))
+        .catch(e => console.error('[retiro email legalizacion]', e.message));
+    }
 
     // Carta de Renuncia (doc 55): opcional, exclusiva de motivos con RequiereTipoRenuncia + tipo Escrita.
     // La Terminación de Contrato ya NO se carga aquí — se gestiona por el módulo Logysign (ver Módulo 3).

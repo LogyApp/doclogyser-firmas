@@ -258,11 +258,46 @@
       pointer-events: auto !important; cursor: pointer !important;
       color: #2563eb !important; text-decoration: underline;
     }
+    /* El envío de documentación por correo al trabajador debe seguir
+       funcionando aunque el proceso esté completado y bloqueado. */
+    .interfaz-bloqueada .btn-email-send:not(:disabled) {
+      pointer-events: auto !important; cursor: pointer !important;
+    }
     .bloqueado-banner {
       background: #fef3c7; border: 1px solid #fcd34d; color: #92400e;
       border-radius: 8px; padding: 10px 16px; margin-bottom: 14px;
       font-size: .85rem; font-weight: 600; text-align: center;
     }
+    .pendientes-banner {
+      background: #fef3c7; border: 1px solid #fcd34d; color: #92400e;
+      border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;
+      font-size: .83rem;
+    }
+    .pendientes-banner strong { display: block; margin-bottom: 6px; font-size: .85rem; }
+    .pendientes-banner ul { margin: 0; padding-left: 20px; }
+    .pendientes-banner li { margin: 2px 0; }
+
+    /* Modal carga manual Terminación de Contrato */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 1500;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-tc {
+      background: #fff; border-radius: 10px; padding: 26px 24px;
+      max-width: 420px; width: 90%;
+    }
+    .modal-tc h3 { margin: 0 0 12px; font-size: 1.05rem; color: #34495e; }
+    .modal-tc p { font-size: .85rem; color: #666; margin: 0 0 16px; }
+    .modal-tc .modal-btns { display: flex; gap: 10px; margin-top: 18px; }
+    .modal-tc .modal-btns button {
+      flex: 1; padding: 10px; border-radius: 6px; border: none;
+      font-size: .85rem; font-weight: 600; cursor: pointer;
+    }
+    .modal-tc .btn-cancelar-tc { background: #f0f0f0; color: #555; }
+    .modal-tc .btn-subir-tc { background: #34495e; color: #fff; }
+    .modal-tc .btn-subir-tc:disabled { opacity: .6; cursor: not-allowed; }
 
     /* Loading */
     .loading-overlay {
@@ -292,6 +327,9 @@
     <div>
       <div class="page-title" id="headerTitle">Gestión de Documentos de Retiro</div>
       <div class="page-sub" id="headerSub"></div>
+      <div class="page-sub" id="fechaRetiroEditRow" style="display:none;margin-top:2px">
+        <button type="button" class="btn-ver-doc" style="padding:2px 10px;font-size:.74rem" onclick="abrirModalFecha()">&#9998; Editar Fecha de Retiro</button>
+      </div>
       <div class="badge-row">
         <span class="badge badge-user" id="badgeUsuario"></span>
         <span class="badge badge-motivo" id="badgeMotivo"></span>
@@ -361,6 +399,7 @@
     <div class="bloqueado-banner" id="bloqueadoBanner" style="display:none">
       &#128274; Proceso de retiro completado — solo puede consultar los documentos.
     </div>
+    <div class="pendientes-banner" id="pendientesLegalizacionBanner" style="display:none"></div>
     <div class="dashboard-grid">
 
       <!-- Columna izquierda -->
@@ -475,12 +514,53 @@
   <div class="loading-text" id="loadingText">Procesando, por favor espere…</div>
 </div>
 
+<!-- Modal: carga manual de Terminación de Contrato -->
+<div class="modal-overlay" id="modalTerminacionOverlay">
+  <div class="modal-tc">
+    <h3>Cargar documento firmado</h3>
+    <p id="modalTerminacionTexto">Suba el PDF de la Terminación de Contrato ya firmada por el trabajador.</p>
+    <div class="file-drop-area" onclick="document.getElementById('inpTerminacionManual').click()">
+      Haga clic o arrastre el PDF aquí
+    </div>
+    <div id="prevTerminacionManual" class="file-preview" style="display:none">
+      <span>&#128196;</span>
+      <span class="file-preview-nombre" id="nomTerminacionManual"></span>
+    </div>
+    <input type="file" id="inpTerminacionManual" accept="application/pdf" style="display:none" onchange="prepararTerminacionManual()">
+    <div id="errTerminacionManual" class="err" style="display:none">Solo se aceptan archivos PDF.</div>
+    <div class="modal-btns">
+      <button type="button" class="btn-cancelar-tc" onclick="cerrarModalTerminacion()">Cancelar</button>
+      <button type="button" class="btn-subir-tc" id="btnSubirTerminacion" onclick="subirTerminacionManual()" disabled>Subir documento</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: editar Fecha de Retiro -->
+<div class="modal-overlay" id="modalFechaOverlay">
+  <div class="modal-tc">
+    <h3>Editar Fecha de Retiro</h3>
+    <p>
+      Solo Nómina o Sistema pueden corregir esta fecha. Al guardar, se <strong>regenerarán automáticamente</strong>
+      el Certificado de Retiro, la Aceptación de Renuncia y el Paz y Salvo final (si ya existen), reutilizando la
+      firma ya capturada. Otros documentos ya cargados (Carta de Renuncia, Terminación de Contrato) no se pueden
+      regenerar solos y quedarán marcados para volver a tramitarlos manualmente.
+    </p>
+    <input type="date" id="inpNuevaFecha" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:6px;font-size:.9rem">
+    <div id="errFechaRetiro" class="err" style="display:none">Ingrese una fecha válida.</div>
+    <div class="modal-btns">
+      <button type="button" class="btn-cancelar-tc" onclick="cerrarModalFecha()">Cancelar</button>
+      <button type="button" class="btn-subir-tc" id="btnGuardarFecha" onclick="guardarNuevaFecha()">Guardar y regenerar</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const _cfg = __CONFIG__;
   const {
     estadoPagina, idVinculacion, usuario, usuarioNombre, rolUsuario, esNominaOSistema,
-    trabajador, cargo, identificacion, motivoRetiro, tipoRenuncia, fechaRetiro, ciudadRegional,
+    trabajador, cargo, identificacion, motivoRetiro, tipoRenuncia, fechaRetiro, fechaRetiroISO, ciudadRegional,
     firmaResponsableUrl, ciudadSugerida, docs, docsOpcionales, terminacionContrato,
+    legalizacionPendientes,
     urlFirmaCT, urlFirmaAR, urlFirmaEMOE, urlFirmaCRS,
     pazYSalvo, evr, contacto,
   } = _cfg;
@@ -516,6 +596,9 @@
   document.getElementById('badgeUsuario').textContent = '\u{1F464} ' + usuarioNombre;
   document.getElementById('badgeMotivo').textContent  = motivoRetiro + (tipoRenuncia ? ` (${tipoRenuncia})` : '');
   document.getElementById('headerSub').textContent    = trabajador + ' · CC ' + identificacion + ' · ' + (fechaRetiro || '');
+  if (esNominaOSistema && fechaRetiroISO) {
+    document.getElementById('fechaRetiroEditRow').style.display = 'block';
+  }
 
   // ── Mostrar estado correcto ───────────────────────────────────────────────
   if (estadoPagina === 'formulario') {
@@ -673,6 +756,7 @@
   // ══════════════════════════════════════════════════════════════════════════
 
   function initDashboard() {
+    renderPendientesLegalizacion();
     renderDocs();
     renderDocsOpcionales();
     renderTerminacionContrato();
@@ -681,6 +765,21 @@
     renderEnvioTrabajador();
     document.getElementById('notifCelular').value = contacto?.celular || '';
     document.getElementById('notifEmail').value   = contacto?.email   || '';
+  }
+
+  // Muestra puntualmente qué falta para legalizar el retiro (solo mientras
+  // el proceso sigue "en proceso" — en estado completado no hay pendientes).
+  function renderPendientesLegalizacion() {
+    const banner = document.getElementById('pendientesLegalizacionBanner');
+    if (!legalizacionPendientes || !legalizacionPendientes.length) {
+      banner.style.display = 'none';
+      return;
+    }
+    banner.innerHTML = `
+      <strong>&#9888; Legalización en proceso — falta por completar:</strong>
+      <ul>${legalizacionPendientes.map(p => `<li>${p}</li>`).join('')}</ul>
+    `;
+    banner.style.display = 'block';
   }
 
   // ── Bloque 1: Documentos para firma (CT, AR, EMOE, CRS) ──────────────────
@@ -809,10 +908,16 @@
       : 'Terminación de Contrato';
 
     if (terminacionContrato.estado === 'FIRMADO') {
+      const avisoDesact = terminacionContrato.desactualizado ? `
+        <div style="margin-top:10px;padding:8px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;color:#92400e;font-size:.78rem">
+          &#9888; Este documento se generó con una Fecha de Retiro anterior. Cárguelo de nuevo con la fecha corregida.
+          <div style="margin-top:6px"><button type="button" class="btn-ver-doc" onclick="abrirModalTerminacion('${nombreDoc}')">&#128206; Cargar documento actualizado</button></div>
+        </div>` : '';
       cont.innerHTML = `
         <div class="doc-opc-card">
           <div class="doc-opc-label">&#9989; ${nombreDoc} <span style="color:#27ae60;font-weight:400">&#10003; Firmada por el trabajador</span></div>
           ${terminacionContrato.url ? `<a href="${terminacionContrato.url}" target="_blank" class="btn-ver-doc">&#128196; Ver documento firmado</a>` : ''}
+          ${avisoDesact}
         </div>`;
       return;
     }
@@ -838,7 +943,101 @@
     cont.innerHTML = `
       <div class="doc-opc-card">
         <div class="doc-opc-label" style="color:#a15c00">&#9888;&#65039; Confirme con el área Jurídica la solicitud de la <strong>${motivoDoc}</strong> para que el trabajador pueda firmarla.</div>
+        <div style="margin-top:10px">
+          <button type="button" class="btn-ver-doc" onclick="abrirModalTerminacion('${nombreDoc}')">&#128206; Cargar documento firmado manualmente</button>
+        </div>
       </div>`;
+  }
+
+  // ── Modal: carga manual de Terminación de Contrato (76/77) ───────────────
+  function abrirModalTerminacion(nombreDoc) {
+    document.getElementById('modalTerminacionTexto').textContent =
+      `Suba el PDF de la ${nombreDoc} ya firmada por el trabajador.`;
+    document.getElementById('modalTerminacionOverlay').classList.add('open');
+  }
+  function cerrarModalTerminacion() {
+    document.getElementById('modalTerminacionOverlay').classList.remove('open');
+    const inp = document.getElementById('inpTerminacionManual');
+    inp.value = '';
+    document.getElementById('prevTerminacionManual').style.display = 'none';
+    document.getElementById('errTerminacionManual').style.display = 'none';
+    document.getElementById('btnSubirTerminacion').disabled = true;
+  }
+  function prepararTerminacionManual() {
+    const inp = document.getElementById('inpTerminacionManual');
+    const f = inp?.files[0];
+    const err = document.getElementById('errTerminacionManual');
+    if (!f || f.type !== 'application/pdf') {
+      err.style.display = 'block';
+      document.getElementById('btnSubirTerminacion').disabled = true;
+      return;
+    }
+    err.style.display = 'none';
+    document.getElementById('prevTerminacionManual').style.display = 'flex';
+    document.getElementById('nomTerminacionManual').textContent = f.name;
+    document.getElementById('btnSubirTerminacion').disabled = false;
+  }
+  async function subirTerminacionManual() {
+    const inp = document.getElementById('inpTerminacionManual');
+    const f = inp?.files[0];
+    if (!f) return;
+    const btn = document.getElementById('btnSubirTerminacion');
+    btn.disabled = true; btn.textContent = 'Subiendo…';
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const r = await fetch('/gestionar-retiro/api/subir-terminacion-contrato', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idVinculacion, docBase64: ev.target.result, usuario }),
+        });
+        const d = await r.json();
+        if (d.ok) { location.reload(); return; }
+        alert('Error: ' + (d.error || 'No se pudo cargar el documento'));
+      } catch { alert('Error de conexión.'); }
+      btn.disabled = false; btn.textContent = 'Subir documento';
+    };
+    reader.readAsDataURL(f);
+  }
+
+  // ── Modal: editar Fecha de Retiro ─────────────────────────────────────────
+  function abrirModalFecha() {
+    document.getElementById('inpNuevaFecha').value = fechaRetiroISO || '';
+    document.getElementById('errFechaRetiro').style.display = 'none';
+    document.getElementById('modalFechaOverlay').classList.add('open');
+  }
+  function cerrarModalFecha() {
+    document.getElementById('modalFechaOverlay').classList.remove('open');
+  }
+  async function guardarNuevaFecha() {
+    const nuevaFecha = document.getElementById('inpNuevaFecha').value;
+    const err = document.getElementById('errFechaRetiro');
+    if (!nuevaFecha) { err.style.display = 'block'; return; }
+    err.style.display = 'none';
+
+    if (!confirm('¿Confirma el cambio de Fecha de Retiro a ' + nuevaFecha + '? Los documentos ya generados que incluyen esta fecha se regenerarán automáticamente.')) {
+      return;
+    }
+
+    const btn = document.getElementById('btnGuardarFecha');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try {
+      const r = await fetch('/gestionar-retiro/api/actualizar-fecha-retiro', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idVinculacion, usuario, nuevaFecha }),
+      });
+      const d = await r.json();
+      if (!d.ok) { alert('Error: ' + (d.error || 'No se pudo actualizar la fecha')); btn.disabled = false; btn.textContent = 'Guardar y regenerar'; return; }
+      if (d.sinCambios) { cerrarModalFecha(); return; }
+      let msg = 'Fecha de Retiro actualizada.';
+      if (d.regenerados?.length) msg += '\nDocumentos regenerados: ' + d.regenerados.join(', ') + '.';
+      if (d.errores?.length) msg += '\nNo se pudieron regenerar (revisar manualmente): ' + d.errores.join(', ') + '.';
+      if (d.desactualizados?.length) msg += '\nQuedaron marcados como desactualizados (requieren volver a tramitarse/cargarse): ' + d.desactualizados.join(', ') + '.';
+      alert(msg);
+      location.reload();
+    } catch {
+      alert('Error de conexión.');
+      btn.disabled = false; btn.textContent = 'Guardar y regenerar';
+    }
   }
 
   function copiarEnlaceTerminacion(btn) {

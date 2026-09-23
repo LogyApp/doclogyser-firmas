@@ -412,20 +412,55 @@ const CC_SST = ['sstadmon@logyser.com'];
 
 const ID_RETIRO_EXCLUIDO = 1117517812;
 
+// Roles que la lógica de "responsables por Operación/Regional" ya cubre —
+// si quien registra el retiro tiene uno de estos roles, no se le duplica
+// la notificación (ya va a quedar en el CC por la búsqueda de responsables).
+const ROLES_YA_CUBIERTOS_RESPONSABLES = ['Auxiliar', 'Coordinador', 'AuxiliarR', 'CoordinadorR'];
+
+// Diferencia en días (hoy en Bogotá − fecha de retiro). fechaRetiro puede ser
+// 'YYYY-MM-DD' (string, tal como llega del formulario) o un Date (columna DB).
+function diasDesdeRetiro(fechaRetiro) {
+  if (!fechaRetiro) return null;
+  const str = fechaRetiro instanceof Date
+    ? `${fechaRetiro.getFullYear()}-${String(fechaRetiro.getMonth() + 1).padStart(2, '0')}-${String(fechaRetiro.getDate()).padStart(2, '0')}`
+    : String(fechaRetiro).slice(0, 10);
+  const [y, m, d] = str.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const fr = new Date(y, m - 1, d);
+  const hoyBogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const hoyLocal = new Date(hoyBogota.getFullYear(), hoyBogota.getMonth(), hoyBogota.getDate());
+  return Math.round((hoyLocal - fr) / 86400000);
+}
+
 async function notificarRetiro({
   trabajador, identificacion, cargo, operacion,
   fechaRetiro, motivoRetiro, registradoPor, emailRegistrador,
+  rolRegistrador, destinatariosResponsables,
 }) {
   if (Number(identificacion) === ID_RETIRO_EXCLUIDO) return;
 
   const cargoNorm = (cargo || '').trim().toUpperCase();
-  const ccBase    = ['admin@logyser.com', emailRegistrador].filter(Boolean);
-  const ccExtra   = CARGOS_ADMIN.includes(cargoNorm) ? CC_ADMIN
-                  : CARGOS_SST.includes(cargoNorm)   ? CC_SST
-                  : [];
+  const notificarAlRegistrador = emailRegistrador && !ROLES_YA_CUBIERTOS_RESPONSABLES.includes(rolRegistrador);
+  const ccResponsables = (destinatariosResponsables || []).map(r => r.Email).filter(Boolean);
+  const ccBase  = ['admin@logyser.com', notificarAlRegistrador ? emailRegistrador : null, ...ccResponsables].filter(Boolean);
+  const ccExtra = CARGOS_ADMIN.includes(cargoNorm) ? CC_ADMIN
+                : CARGOS_SST.includes(cargoNorm)   ? CC_SST
+                : [];
   const cc = [...new Set([...ccBase, ...ccExtra])].join(', ');
 
   const asunto = `Retiro de personal — ${trabajador}`;
+
+  const dias = diasDesdeRetiro(fechaRetiro);
+  const enTiempo = dias !== null && dias <= 3;
+  const avisoOportunidad = dias === null ? '' : `
+    <div style="margin-top:14px;padding:11px 16px;border-radius:4px;font-size:.88rem;
+                background:${enTiempo ? '#eafaf1' : '#fdf0f0'};
+                border-left:4px solid ${enTiempo ? '#27ae60' : '#c0392b'};
+                color:${enTiempo ? '#1e7e45' : '#7b241c'}">
+      ${enTiempo
+        ? `&#10003; Notificado ${dias} día(s) después de la fecha de retiro — dentro del tiempo establecido.`
+        : `&#9888; Notificado ${dias} día(s) después de la fecha de retiro — fuera del tiempo establecido (más de 3 días), punto a mejorar en la oportunidad del reporte.`}
+    </div>`;
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
@@ -482,6 +517,10 @@ async function notificarRetiro({
                     border-radius:0 4px 4px 0;color:#7b241c;font-size:.88rem">
           Estado: <strong>Retirado</strong>
         </div>
+        ${avisoOportunidad}
+        <p style="color:#555;margin:16px 0 0;font-size:.88rem;line-height:1.5">
+          Se debe proceder con la <strong>legalización del retiro</strong> (generación y firma de documentos) lo más pronto posible.
+        </p>
       </div>
       ${FOOTER}
     </div>`;
@@ -490,6 +529,78 @@ async function notificarRetiro({
     from:    `"LOG&SER Notificaciones" <${EMAIL_FROM}>`,
     to:      'retiros@logyser.com',
     cc,
+    subject: asunto,
+    html:    cuerpo,
+  });
+}
+
+// Nómina llenó el Módulo 1 (fecha/motivo) sin marcar Estado='Retirado' — el
+// Coordinador/Auxiliar (o su fallback regional) debe confirmarlo pronto.
+async function notificarInicioLegalizacionSinRetirar({
+  trabajador, identificacion, cargo, operacion, motivoRetiro, destinatarios,
+}) {
+  if (!destinatarios || !destinatarios.length) return;
+  const to = [...new Set(destinatarios.map(d => d.Email).filter(Boolean))].join(', ');
+  if (!to) return;
+
+  const asunto = `Confirmar Estado Retirado pendiente — ${trabajador}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="border-top:5px solid #d97706;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #eee">
+
+        <div style="display:inline-block;background:#fff6e6;border:1px solid #ffe2ad;
+                    border-radius:6px;padding:6px 16px;margin-bottom:18px">
+          <span style="color:#a15c00;font-weight:bold;font-size:.88rem">
+            &#9679; PROCESO DE LEGALIZACIÓN DE RETIRO INICIADO
+          </span>
+        </div>
+
+        <h2 style="color:#1a1a2e;margin:0 0 6px">Falta confirmar el retiro en LogyApp</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.92rem;line-height:1.5">
+          El área de Nómina ya inició el proceso de legalización (generación de documentos)
+          de este colaborador, pero su Estado en el sistema todavía figura como <strong>Activo</strong>.
+          Es necesario que confirme el Estado Retirado en la plataforma de LogyApp lo más
+          pronto posible, para evitar novedades o que se afecten indicadores.
+        </p>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.93rem">
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888;width:38%">Trabajador</td>
+            <td style="padding:9px 12px;font-weight:bold">${trabajador}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;color:#888">Identificación</td>
+            <td style="padding:9px 12px">${identificacion}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Cargo</td>
+            <td style="padding:9px 12px">${cargo || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding:9px 12px;color:#888">Operación</td>
+            <td style="padding:9px 12px">${operacion || '—'}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Motivo del retiro</td>
+            <td style="padding:9px 12px;font-weight:bold;color:#c0392b">${motivoRetiro || '—'}</td>
+          </tr>
+        </table>
+
+        <div style="padding:11px 16px;background:#fff6e6;border-left:4px solid #d97706;
+                    border-radius:0 4px 4px 0;color:#a15c00;font-size:.88rem">
+          Ingrese a la pestaña <strong>Activos</strong> de Nómina en LogyApp y confirme el Estado Retirado de este trabajador.
+        </div>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from:    `"LOG&SER Notificaciones" <${EMAIL_FROM}>`,
+    to,
+    cc:      'admin@logyser.com, retiros@logyser.com',
     subject: asunto,
     html:    cuerpo,
   });
@@ -2104,6 +2215,60 @@ async function notificarPendientesCoordinador({ email, nombreCoordinador, rol, s
   });
 }
 
+// ── Reporte diario de "Tomó Cargo" pendiente ────────────────────────────────
+// A las 7:30am se avisa a los responsables de cada Operación (o Regional, si
+// no hay Auxiliar/Coordinador en la Operación) sobre los ingresos cuya Fecha
+// de Ingreso ya pasó y que aún no han sido confirmados con el botón "Tomó Cargo".
+async function notificarTomoCargoPendiente({ destinatarios, scopeLabel, registros }) {
+  const asunto = `Ingresos sin confirmar "Tomó Cargo" — ${scopeLabel} — LOG&SER`;
+
+  const tableRows = registros.map(r => `
+    <tr>
+      <td style="padding:8px; border:1px solid #ddd;">${r.trabajador}</td>
+      <td style="padding:8px; border:1px solid #ddd;">${r.cargo || '—'}</td>
+      <td style="padding:8px; border:1px solid #ddd;">${r.operacion || '—'}</td>
+      <td style="padding:8px; border:1px solid #ddd; font-weight:bold; color:#d68910;">${formatFecha(r.fechaIngreso)}</td>
+    </tr>
+  `).join('');
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
+      ${HEADER}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin-top:0">Ingresos pendientes de confirmar</h2>
+        <p style="color:#555">
+          Los siguientes trabajadores ya tienen registrada una Fecha de Ingreso anterior a hoy, pero aún no se ha
+          confirmado en Nómina que efectivamente <strong>tomaron el cargo</strong> (${scopeLabel}).
+        </p>
+        <div style="margin:16px 0;padding:12px;background:#fffbea;border-left:4px solid #f0d060;font-size:.88rem;color:#7a6000">
+          Por favor confirme cuanto antes en el módulo de Nómina (pestaña Activos) si el trabajador tomó el cargo,
+          para mantener el registro al día.
+        </div>
+        <p style="color:#555;font-weight:bold;margin-bottom:8px">Total de ingresos sin confirmar: ${registros.length}</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:.85rem;border:1px solid #ddd">
+          <thead>
+            <tr style="background:#f8f9fb">
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">Trabajador</th>
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">Cargo</th>
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">Operación</th>
+              <th style="padding:8px; border:1px solid #ddd; text-align:left;">Fecha de Ingreso</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from:    `"LOG&SER Nómina" <${EMAIL_FROM}>`,
+    to:      destinatarios.join(', '),
+    cc:      'admin@logyser.com, contratacionnacional@logyser.com',
+    subject: asunto,
+    html:    cuerpo,
+  });
+}
+
 // ── Notificación de Transferencia de Inventario (Kardex_Pendiente) ─────────
 
 async function notificarTransferenciaDespachada({ operacionOrigen, operacionDestino, categoria, usuarioNombre, destinatarios }) {
@@ -2181,6 +2346,7 @@ module.exports = {
   notificarDotacionLey,
   notificarDocumentoGenerado,
   notificarRetiro,
+  notificarInicioLegalizacionSinRetirar,
   notificarFirmaRenuncia,
   notificarRenunciaFirmada,
   notificarIngreso,
@@ -2210,5 +2376,6 @@ module.exports = {
   notificarCambiosBancos,
   notificarReportePendientes,
   notificarPendientesCoordinador,
+  notificarTomoCargoPendiente,
   transporter,
 };

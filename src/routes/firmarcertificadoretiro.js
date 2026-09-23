@@ -20,9 +20,13 @@ function fechaHoraBogota() {
   return `${b.getFullYear()}-${p(b.getMonth()+1)}-${p(b.getDate())} ${p(b.getHours())}:${p(b.getMinutes())}:${p(b.getSeconds())}`;
 }
 
-// Sello visible bajo la firma, igual al que usa el módulo Logysign al firmar
-function fechaFirmaTexto() {
-  const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+// Sello visible bajo la firma, igual al que usa el módulo Logysign al firmar.
+// Con `fecha` explícita (ej. al regenerar el PDF) se conserva el momento real
+// en que el trabajador firmó, en vez de estampar la fecha de regeneración.
+function fechaFirmaTexto(fecha) {
+  const b = fecha
+    ? new Date(new Date(fecha).toLocaleString('en-US', { timeZone: 'America/Bogota' }))
+    : new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
   const p = n => String(n).padStart(2, '0');
   return `Firmado: ${p(b.getDate())}/${p(b.getMonth()+1)}/${b.getFullYear()} ${p(b.getHours())}:${p(b.getMinutes())}`;
 }
@@ -238,4 +242,39 @@ router.post('/:idVinculacion', async (req, res) => {
   }
 });
 
+// ── Regeneración (cambio de Fecha de Retiro) ────────────────────────────────
+// Reconstruye el PDF ya firmado con los datos actuales de la vinculación
+// (incluida la Fecha de Retiro corregida), reutilizando la firma del
+// trabajador ya capturada y el timestamp original de firma. Sube el PDF al
+// mismo nombre de archivo (lo sobrescribe) y actualiza el registro existente
+// en Maestro_docTrabajador en vez de crear uno nuevo.
+async function regenerarCertificadoRetiro(idVinculacion, docExistente) {
+  const [vinRows] = await pool.execute('SELECT * FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ?', [idVinculacion]);
+  if (!vinRows.length) throw new Error('Vinculación no encontrada');
+  const vin = vinRows[0];
+
+  const [segRows] = await pool.execute(
+    'SELECT ARL, EPS, `Pensión` FROM `Maestro_Segmentación` WHERE `Identificación` = ? LIMIT 1',
+    [vin['Identificación']]
+  );
+  const seg = segRows[0] || null;
+
+  const responsable = await resolverFirmaResponsable(vin.Usuario);
+  const urlFirmaTrab = await obtenerUrlFirmaReciente(vin['Identificación']).catch(() => null);
+  const firmaTrabajadorHtml = urlFirmaTrab
+    ? `<img src="${urlFirmaTrab}" style="height:80px;display:block;margin-bottom:4px">
+       <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(docExistente.FechaRegistro)}</div>`
+    : `<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>`;
+
+  const plantilla   = await obtenerPlantilla('certificado_retiro');
+  const datos       = buildDatos(vin, seg, responsable, firmaTrabajadorHtml);
+  const htmlFinal   = reemplazarVariables(plantilla.contenido_html, preprocesarDatos(datos));
+  const pdfBuffer   = await generarPDF(htmlFinal);
+  const urlPdf      = await subirPDFCertificadoRetiro(vin['Identificación'], idVinculacion, pdfBuffer);
+
+  await pool.execute('UPDATE Maestro_docTrabajador SET Doc = ? WHERE id = ?', [urlPdf, docExistente.id]);
+  return urlPdf;
+}
+
 module.exports = router;
+module.exports.regenerarCertificadoRetiro = regenerarCertificadoRetiro;

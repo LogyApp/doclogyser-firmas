@@ -25,9 +25,13 @@ function fechaHoraBogota() {
   return `${bogota.getFullYear()}-${p(bogota.getMonth() + 1)}-${p(bogota.getDate())} ${p(bogota.getHours())}:${p(bogota.getMinutes())}:${p(bogota.getSeconds())}`;
 }
 
-// Sello visible bajo la firma, igual al que usa el módulo Logysign al firmar
-function fechaFirmaTexto() {
-  const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+// Sello visible bajo la firma, igual al que usa el módulo Logysign al firmar.
+// Con `fecha` explícita (ej. al regenerar el PDF) se conserva el momento real
+// en que el trabajador firmó, en vez de estampar la fecha de regeneración.
+function fechaFirmaTexto(fecha) {
+  const b = fecha
+    ? new Date(new Date(fecha).toLocaleString('en-US', { timeZone: 'America/Bogota' }))
+    : new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
   const p = n => String(n).padStart(2, '0');
   return `Firmado: ${p(b.getDate())}/${p(b.getMonth()+1)}/${b.getFullYear()} ${p(b.getHours())}:${p(b.getMinutes())}`;
 }
@@ -102,10 +106,10 @@ async function resolverFirmaResponsable(idUsuario) {
   };
 }
 
-function buildFirmaHtml(url) {
+function buildFirmaHtml(url, fecha) {
   return url
     ? `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">
-       <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto()}</div>`
+       <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(fecha)}</div>`
     : `<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>`;
 }
 
@@ -254,4 +258,29 @@ router.post('/:idVinculacion', async (req, res) => {
   }
 });
 
+// ── Regeneración (cambio de Fecha de Retiro) ────────────────────────────────
+// Misma lógica que regenerarCertificadoRetiro (ver firmarcertificadoretiro.js):
+// reconstruye el PDF con la Fecha de Retiro corregida, reutilizando la firma
+// ya capturada y el timestamp original de firma, sobrescribiendo el mismo
+// archivo y actualizando el registro existente (no crea uno nuevo).
+async function regenerarAceptacionRenuncia(idVinculacion, docExistente) {
+  const [vinRows] = await pool.execute('SELECT * FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ?', [idVinculacion]);
+  if (!vinRows.length) throw new Error('Vinculación no encontrada');
+  const vin = vinRows[0];
+
+  const firmante = await resolverFirmaResponsable(vin.Usuario);
+  const urlFirmaTrab = await obtenerUrlFirmaReciente(vin['Identificación']).catch(() => null);
+  const firmaTrabajadorHtml = buildFirmaHtml(urlFirmaTrab, docExistente.FechaRegistro);
+
+  const plantilla   = await obtenerPlantilla('aceptacion_renuncia');
+  const datos       = buildDatosPlantilla(vin, firmante, firmaTrabajadorHtml);
+  const htmlFinal   = reemplazarVariables(plantilla.contenido_html, preprocesarDatos(datos));
+  const pdfBuffer   = await generarPDF(htmlFinal);
+  const urlPdf      = await subirPDFAceptacionRenuncia(vin['Identificación'], idVinculacion, pdfBuffer);
+
+  await pool.execute('UPDATE Maestro_docTrabajador SET Doc = ? WHERE id = ?', [urlPdf, docExistente.id]);
+  return urlPdf;
+}
+
 module.exports = router;
+module.exports.regenerarAceptacionRenuncia = regenerarAceptacionRenuncia;

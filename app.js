@@ -119,12 +119,6 @@ app.listen(PORT, () => {
   }
 });
 
-// Notificador de retiros: captura cambios hechos desde AppSheet u otros sistemas
-// La interfaz /formretiro ya notifica directamente; este cron es el respaldo
-const { verificarRetiros } = require('./src/services/retiroNotifier');
-verificarRetiros(); // verificación inicial al arrancar
-setInterval(verificarRetiros, 2 * 60 * 1000); // cada 2 minutos
-
 // Notificador de ingresos: detecta nuevos colaboradores con cargos críticos
 // y envía correo al equipo administrativo para programar capacitación
 const { verificarIngresos } = require('./src/services/ingresoNotifier');
@@ -169,6 +163,10 @@ setInterval(verificarEVSSTExpirados, 5 * 60 * 1000); // cada 5 minutos
 // Actualizador diario automático de Forma de Pago y reportador de pendientes (a las 7:30 AM Colombia)
 const { iniciarProgramadorFormaPago } = require('./src/services/formaPagoUpdater');
 iniciarProgramadorFormaPago();
+
+// Reporte diario de ingresos sin confirmar "Tomó Cargo" (a las 7:30 AM Colombia)
+const { iniciarProgramadorTomoCargo } = require('./src/services/tomoCargoNotifier');
+iniciarProgramadorTomoCargo();
 
 // Programador de envíos de correos de Logysign en la fecha/hora seleccionada
 const { iniciarProgramadorEnvios } = require('./src/services/logysignScheduler');

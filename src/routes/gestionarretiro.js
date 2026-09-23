@@ -1,9 +1,14 @@
 const express = require('express');
 const fs      = require('fs');
 const path    = require('path');
+const { v4: uuidv4 } = require('uuid');
 const pool    = require('../services/db');
 const { reconstruirToken, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenPZ } = require('../services/token');
-const { obtenerCondicionRetiro, obtenerEstadoLogysign, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro, estaRetiroLegalizado } = require('../services/configRetiro');
+const { obtenerCondicionRetiro, obtenerEstadoLogysign, obtenerPrefijoDoc, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro, obtenerPendientesLegalizacion } = require('../services/configRetiro');
+const { subirDocumentoRetiro } = require('../services/storage');
+const { regenerarCertificadoRetiro } = require('./firmarcertificadoretiro');
+const { regenerarAceptacionRenuncia } = require('./firmarenuncia');
+const { regenerarPazYSalvoFinal } = require('./pazysalvoarea');
 
 const router   = express.Router();
 const DASHBOARD_HTML = path.join(__dirname, '../views/gestionarretiro/index.html');
@@ -44,6 +49,27 @@ function toDateStr(val) {
   if (!val) return null;
   if (val instanceof Date) return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
   return String(val).slice(0, 10);
+}
+
+function fechaHoraBogota() {
+  const bogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const p = n => String(n).padStart(2, '0');
+  return `${bogota.getFullYear()}-${p(bogota.getMonth() + 1)}-${p(bogota.getDate())} ${p(bogota.getHours())}:${p(bogota.getMinutes())}:${p(bogota.getSeconds())}`;
+}
+
+async function registrarDocTrabajador({ regional, operacion, identificacion, fechaIngreso,
+  tipoDocumento, prefijo, doc, usuario }) {
+  const id = uuidv4();
+  await pool.execute(
+    `INSERT INTO Maestro_docTrabajador
+     (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
+      TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
+      Justificacion_Solicitud, FechaRegistro, Usuario)
+     VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, ?)`,
+    [id, regional || null, operacion || null, identificacion,
+     toDateStr(fechaIngreso), tipoDocumento, prefijo, doc, fechaHoraBogota(), usuario]
+  );
+  return id;
 }
 
 function paginaError(mensaje) {
@@ -115,15 +141,26 @@ router.get('/:idVinculacion', async (req, res) => {
         validacion: r['Validación'],
       }));
 
-    // ── Terminación de Contrato — gestión en el módulo Logysign (docs 76/77) ─
+    // ── Terminación de Contrato — gestión en el módulo Logysign (docs 76/77), o
+    // cargada manualmente (ver /api/subir-terminacion-contrato) cuando Jurídica
+    // no pudo tramitarla por Logysign. La carga manual tiene prioridad: si el
+    // documento ya está en Maestro_docTrabajador, se considera vinculado sin
+    // necesidad de consultar el estado en Logysign.
     const fechaIngresoStr = toDateStr(vin['Fecha de Ingreso']);
     let terminacionContrato = null;
-    if (condicion?.TieneTCR) {
-      const info = await obtenerEstadoLogysign({ identificacion, idConfigDoc: ID_DOC_TCR, fechaIngreso: fechaIngresoStr });
-      terminacionContrato = { tipo: 'TCR', observacion: condicion.ObservacionTCR, ...info };
-    } else if (condicion?.TieneTCRP) {
-      const info = await obtenerEstadoLogysign({ identificacion, idConfigDoc: ID_DOC_TCRP, fechaIngreso: fechaIngresoStr });
-      terminacionContrato = { tipo: 'TCRP', observacion: condicion.ObservacionTCR, ...info };
+    if (condicion?.TieneTCR || condicion?.TieneTCRP) {
+      const tipo = condicion.TieneTCRP ? 'TCRP' : 'TCR';
+      const docManual = docsMap[tipo];
+      if (docManual) {
+        terminacionContrato = {
+          tipo, observacion: condicion.ObservacionTCR, estado: 'FIRMADO', url: docManual.Doc,
+          desactualizado: docManual['Validación'] === 'DESACTUALIZADO',
+        };
+      } else {
+        const idConfigDoc = tipo === 'TCRP' ? ID_DOC_TCRP : ID_DOC_TCR;
+        const info = await obtenerEstadoLogysign({ identificacion, idConfigDoc, fechaIngreso: fechaIngresoStr });
+        terminacionContrato = { tipo, observacion: condicion.ObservacionTCR, ...info };
+      }
     }
 
     // Paz y Salvo
@@ -182,13 +219,15 @@ router.get('/:idVinculacion', async (req, res) => {
     // "Completado" (vista bloqueada de solo lectura) usa la misma lógica de
     // legalización que la columna de la pestaña Retiros en Nómina — antes solo
     // miraba que los tokens de firma estuvieran en null y el PZ completado.
-    const procesoCompleto = firmaConfirmada && await estaRetiroLegalizado({
+    // También detalla qué falta puntualmente cuando el proceso sigue "en proceso".
+    const { legalizado: retiroLegalizado, pendientes: legalizacionPendientes } = await obtenerPendientesLegalizacion({
       identificacion,
       motivoRetiro,
       fechaIngreso:  vin['Fecha de Ingreso'],
       fechaRetiro:   vin['Fecha de Retiro'],
       tipoRenuncia:  vin['Archivo Vinculación'],
     });
+    const procesoCompleto = firmaConfirmada && retiroLegalizado;
 
     const estadoPagina = !firmaConfirmada ? 'formulario'
                        : procesoCompleto  ? 'completado'
@@ -291,6 +330,7 @@ router.get('/:idVinculacion', async (req, res) => {
       motivoRetiro,
       tipoRenuncia:     vin['Archivo Vinculación'] || null,
       fechaRetiro:      formatFechaCO(vin['Fecha de Retiro']),
+      fechaRetiroISO:   toDateStr(vin['Fecha de Retiro']),
       ciudadRegional:   vin.ar_ciudad_regional || '',
       // Formulario (estado A)
       firmaResponsableUrl,
@@ -302,6 +342,7 @@ router.get('/:idVinculacion', async (req, res) => {
         ed: docsMap['ED'] ? { url: docsMap['ED'].Doc, validacion: docsMap['ED']['Validación'] } : null,
       },
       terminacionContrato,
+      legalizacionPendientes: estadoPagina === 'dashboard' ? legalizacionPendientes : [],
       urlFirmaCT,
       urlFirmaAR,
       urlFirmaEMOE,
@@ -382,6 +423,160 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
     res.json({ ok: true, reenviados, areasPendientes });
   } catch (err) {
     console.error('[reenviar-pz-areas]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/subir-terminacion-contrato ───────────────────────────────────
+// Carga manual de la Terminación de Contrato (76) o su variante de Periodo de
+// Prueba (77), para cuando el área Jurídica no puede tramitarla por Logysign.
+// Solo disponible si el motivo del retiro lo exige (TieneTCR/TieneTCRP) y el
+// documento aún no está vinculado al trabajador.
+router.post('/api/subir-terminacion-contrato', async (req, res) => {
+  try {
+    const { idVinculacion, docBase64, usuario } = req.body;
+    if (!idVinculacion || !docBase64 || !usuario) {
+      return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+    }
+
+    const [uRows] = await pool.execute('SELECT Rol, Regional FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length || !puedeGenerarDocumentosRetiro(uRows[0].Rol, uRows[0].Regional)) {
+      return res.status(403).json({ ok: false, error: 'Sin permiso para cargar este documento' });
+    }
+
+    const [vinRows] = await pool.execute(
+      `SELECT \`Identificación\`, Regional, \`Operación\`, \`Fecha de Ingreso\`, \`Motivo del Retiro\`
+       FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1`,
+      [idVinculacion]
+    );
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const vin = vinRows[0];
+    const identificacion = vin['Identificación'];
+
+    const condicion = await obtenerCondicionRetiro(vin['Motivo del Retiro'] || '');
+    const tipoDoc = condicion?.TieneTCRP ? ID_DOC_TCRP : (condicion?.TieneTCR ? ID_DOC_TCR : null);
+    if (!tipoDoc) {
+      return res.status(400).json({ ok: false, error: 'El motivo de este retiro no requiere Terminación de Contrato' });
+    }
+
+    const [docRows] = await pool.execute(
+      'SELECT id, `Validación` FROM Maestro_docTrabajador WHERE Identificación = ? AND TipoDocumento = ? LIMIT 1',
+      [String(identificacion), tipoDoc]
+    );
+    // Un documento "DESACTUALIZADO" (ver /api/actualizar-fecha-retiro) sí puede
+    // reemplazarse — es justamente para eso que queda marcado así.
+    if (docRows.length && docRows[0]['Validación'] !== 'DESACTUALIZADO') {
+      return res.status(409).json({ ok: false, error: 'Este documento ya está cargado para el trabajador' });
+    }
+
+    const prefijo = await obtenerPrefijoDoc(tipoDoc);
+    const buffer  = Buffer.from(docBase64.replace(/^data:.*;base64,/, ''), 'base64');
+    const url     = await subirDocumentoRetiro(identificacion, prefijo, buffer);
+
+    if (docRows.length) {
+      await pool.execute(
+        `UPDATE Maestro_docTrabajador SET Doc = ?, \`Validación\` = 'PEND', FechaRegistro = ? WHERE id = ?`,
+        [url, fechaHoraBogota(), docRows[0].id]
+      );
+    } else {
+      await registrarDocTrabajador({
+        regional:      vin.Regional || null,
+        operacion:     vin['Operación'] || null,
+        identificacion,
+        fechaIngreso:  vin['Fecha de Ingreso'],
+        tipoDocumento: tipoDoc,
+        prefijo,
+        doc:           url,
+        usuario,
+      });
+    }
+
+    res.json({ ok: true, url });
+  } catch (err) {
+    console.error('[subir-terminacion-contrato]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/actualizar-fecha-retiro ──────────────────────────────────────
+// Solo Nómina/Sistema pueden corregir la Fecha de Retiro una vez registrada.
+// Al cambiarla, se regeneran en el acto los documentos que la incluyen en su
+// texto y que generamos nosotros de punta a punta (Certificado de Retiro,
+// Aceptación de Renuncia y el PDF final del Paz y Salvo), reutilizando la
+// firma ya capturada. Los demás documentos ya vinculados que no se pueden
+// regenerar automáticamente (Carta de Renuncia, Terminación de Contrato/TCRP,
+// vengan de Logysign o cargados a mano) quedan marcados como DESACTUALIZADO
+// para que alguien los vuelva a tramitar o cargar manualmente.
+router.post('/api/actualizar-fecha-retiro', async (req, res) => {
+  try {
+    const { idVinculacion, usuario, nuevaFecha } = req.body;
+    if (!idVinculacion || !usuario || !nuevaFecha) {
+      return res.status(400).json({ ok: false, error: 'Datos incompletos' });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)) {
+      return res.status(400).json({ ok: false, error: 'Fecha inválida' });
+    }
+
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length || !['Nomina', 'Sistema'].includes(uRows[0].Rol)) {
+      return res.status(403).json({ ok: false, error: 'Solo Nómina o Sistema pueden editar la Fecha de Retiro' });
+    }
+
+    const [vinRows] = await pool.execute(
+      'SELECT `Identificación`, `Fecha de Retiro` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      [idVinculacion]
+    );
+    if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
+    const identificacion = vinRows[0]['Identificación'];
+    const fechaAnterior  = toDateStr(vinRows[0]['Fecha de Retiro']);
+    if (fechaAnterior === nuevaFecha) return res.json({ ok: true, sinCambios: true });
+
+    await pool.execute(
+      `UPDATE \`Maestro_Vinculación\` SET \`Fecha de Retiro\` = ?, Usuario = ?, \`Fecha Actualización\` = ? WHERE \`Id Vinculación\` = ?`,
+      [nuevaFecha, usuario, fechaHoraBogota(), idVinculacion]
+    );
+
+    const [docRows] = await pool.execute(
+      `SELECT id, Prefijo, FechaRegistro FROM Maestro_docTrabajador
+       WHERE Identificación = ? AND Prefijo IN ('CT','AR','CR','TCR','TCRP')`,
+      [String(identificacion)]
+    );
+    const docCT = docRows.find(d => d.Prefijo === 'CT');
+    const docAR = docRows.find(d => d.Prefijo === 'AR');
+    const docsManuales = docRows.filter(d => ['CR', 'TCR', 'TCRP'].includes(d.Prefijo));
+
+    const regenerados = [];
+    const errores = [];
+
+    if (docCT) {
+      try { await regenerarCertificadoRetiro(idVinculacion, docCT); regenerados.push('Certificado Laboral de Retiro'); }
+      catch (e) { console.error('[actualizar-fecha-retiro CT]', e.message); errores.push('Certificado Laboral de Retiro'); }
+    }
+    if (docAR) {
+      try { await regenerarAceptacionRenuncia(idVinculacion, docAR); regenerados.push('Aceptación de Renuncia'); }
+      catch (e) { console.error('[actualizar-fecha-retiro AR]', e.message); errores.push('Aceptación de Renuncia'); }
+    }
+    try {
+      const urlPz = await regenerarPazYSalvoFinal(idVinculacion);
+      if (urlPz) regenerados.push('Paz y Salvo');
+    } catch (e) { console.error('[actualizar-fecha-retiro PZ]', e.message); errores.push('Paz y Salvo'); }
+
+    if (docsManuales.length) {
+      const ph = docsManuales.map(() => '?').join(',');
+      await pool.execute(
+        `UPDATE Maestro_docTrabajador SET \`Validación\` = 'DESACTUALIZADO' WHERE id IN (${ph})`,
+        docsManuales.map(d => d.id)
+      );
+    }
+
+    res.json({
+      ok: true,
+      regenerados,
+      errores,
+      desactualizados: docsManuales.map(d => NOMBRES_DOC[d.Prefijo] || d.Prefijo),
+    });
+  } catch (err) {
+    console.error('[actualizar-fecha-retiro]', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

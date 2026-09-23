@@ -4,7 +4,9 @@ const path    = require('path');
 const pool    = require('../services/db');
 const { computarAccesoNomina } = require('../services/accesoNomina');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
-const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido } = require('../services/configRetiro');
+const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido, obtenerResponsablesOperacionRegional } = require('../services/configRetiro');
+const { notificarRetiro } = require('../services/email');
+const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
 
 function fechaHoraBogota() {
@@ -345,18 +347,22 @@ router.post('/api/confirmar-estado-retirado', async (req, res) => {
     const { idVinculacion, usuario } = req.body;
     if (!idVinculacion || !usuario) return res.status(400).json({ ok: false, error: 'Datos incompletos' });
 
-    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const [uRows] = await pool.execute('SELECT Rol, Nombre, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
     if (!uRows.length || !ROLES_CONFIRMAN_ESTADO.includes(uRows[0].Rol)) {
       return res.status(403).json({ ok: false, error: 'Su rol no puede confirmar el estado de retiro' });
     }
+    const usuData = uRows[0];
 
     const [rows] = await pool.execute(
-      'SELECT Estado, `Motivo del Retiro` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      `SELECT \`Identificación\`, Trabajador, Cargo, \`Operación\`, Regional,
+              \`Fecha de Retiro\`, Estado, \`Motivo del Retiro\`
+       FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1`,
       [idVinculacion]
     );
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
-    const motivo = rows[0]['Motivo del Retiro'];
-    if (rows[0].Estado === 'Retirado') return res.json({ ok: true, sinCambios: true });
+    const vin = rows[0];
+    const motivo = vin['Motivo del Retiro'];
+    if (vin.Estado === 'Retirado') return res.json({ ok: true, sinCambios: true });
     if (!motivo || !motivo.trim() || motivo === 'SI') {
       return res.status(400).json({ ok: false, error: 'Este registro aún no tiene un motivo de retiro registrado' });
     }
@@ -365,6 +371,25 @@ router.post('/api/confirmar-estado-retirado', async (req, res) => {
       `UPDATE \`Maestro_Vinculación\` SET Estado = 'Retirado', Usuario = ?, \`Fecha Actualización\` = ? WHERE \`Id Vinculación\` = ?`,
       [usuario, fechaHoraBogota(), idVinculacion]
     );
+
+    // Este es el momento en que Estado realmente pasa a Retirado (caso Antioquia,
+    // Nómina ya había generado documentos antes sin marcarlo) — notificación completa.
+    obtenerResponsablesOperacionRegional(vin['Operación'], vin.Regional)
+      .then(destinatariosResponsables => notificarRetiro({
+        trabajador:     vin.Trabajador,
+        identificacion: String(vin['Identificación']),
+        cargo:          vin.Cargo,
+        operacion:      vin['Operación'],
+        fechaRetiro:    vin['Fecha de Retiro'],
+        motivoRetiro:   motivo,
+        registradoPor:    usuData.Nombre || usuario,
+        emailRegistrador: usuData.Email || null,
+        rolRegistrador:   usuData.Rol,
+        destinatariosResponsables,
+      }))
+      .then(() => marcarNotificado(idVinculacion))
+      .catch(e => console.error('[confirmar-estado-retirado email]', e.message));
+
     res.json({ ok: true });
   } catch (err) {
     console.error('[nomina] POST /api/confirmar-estado-retirado', err);

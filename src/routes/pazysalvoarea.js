@@ -68,6 +68,80 @@ async function registrarDocTrabajador({ regional, operacion, identificacion, fec
   return id;
 }
 
+// Arma y sube el PDF final del Paz y Salvo a partir de un registro `pz`
+// (join de Maestro_pazysalvo + Maestro_Vinculación) ya cargado. Reutilizada
+// tanto por la firma que completa el proceso como por la regeneración
+// (ver regenerarPazYSalvoFinal) cuando cambia la Fecha de Retiro.
+async function generarPazYSalvoFinalPDF(pz, areasRequeridas) {
+  const nombrePlantilla = pz.nivel_compromiso === 'alto' ? 'paz_y_salvo_alto' : 'paz_y_salvo_bajo';
+  const plantilla = await obtenerPlantilla(nombrePlantilla);
+  const articulos = typeof pz.articulos === 'string' ? JSON.parse(pz.articulos) : (pz.articulos || []);
+
+  const nombreTrabajador = limpiarNombre(pz.Trabajador);
+  const hoy = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
+
+  const datosPlantilla = {
+    fecha_expedicion:        hoy,
+    nombre_trabajador:       nombreTrabajador.toUpperCase(),
+    identificacion:          String(pz.identificacion),
+    cargo:                   pz.Cargo || '',
+    operacion:               pz['Operación'] || '',
+    fecha_retiro:            formatFechaCO(pz['Fecha de Retiro']),
+    filas_articulos:         generarFilasArticulosHTML(articulos),
+    firma_trabajador_html:   buildFirmaHtml(pz.firma_trabajador_url, pz.fecha_firma_trabajador),
+    firma_responsable_html:  buildFirmaHtml(pz.firma_responsable_url, pz.fecha_firma_responsable),
+    nombre_firmante:         pz.firma_responsable_nombre || '',
+    cargo_firmante:          pz.firma_responsable_cargo || '',
+    observaciones:           pz.observaciones || '',
+    // Nómina siempre presente
+    firma_nomina_html:       buildFirmaHtml(pz.firma_nomina_url, pz.fecha_firma_nomina),
+    firma_nomina_nombre:     pz.firma_nomina_nombre || '',
+    firma_nomina_cargo:      pz.firma_nomina_cargo || '',
+  };
+
+  // Firmas de áreas adicionales (nivel alto)
+  if (pz.nivel_compromiso === 'alto') {
+    datosPlantilla.firmas_areas_html = `<table style="width:100%;border-collapse:collapse">${generarFirmasAreasHtml(pz, areasRequeridas)}</table>`;
+  }
+
+  const htmlFinal = reemplazarVariables(plantilla.contenido_html, datosPlantilla);
+  const pdfBuffer = await generarPDF(htmlFinal);
+  return subirPDFPazYSalvo(pz.identificacion, pz.id_vinculacion, pdfBuffer);
+}
+
+// ── Regeneración (cambio de Fecha de Retiro) ────────────────────────────────
+// Reconstruye el PDF final del Paz y Salvo ya completado con la Fecha de
+// Retiro corregida, reutilizando las firmas ya capturadas de cada área.
+// Sobrescribe el mismo archivo y actualiza los registros existentes (no crea
+// filas nuevas). No hace nada si el Paz y Salvo de esta vinculación aún no
+// se ha completado (no hay PDF final que corregir).
+async function regenerarPazYSalvoFinal(idVinculacion) {
+  const [rows] = await pool.execute(
+    `SELECT pz.*, v.Trabajador, v.Cargo, v.\`Operación\`, v.\`Fecha de Retiro\`,
+            v.\`Fecha de Ingreso\`, v.Regional, v.Usuario
+     FROM Maestro_pazysalvo pz
+     JOIN \`Maestro_Vinculación\` v ON v.\`Id Vinculación\` = pz.id_vinculacion
+     WHERE pz.id_vinculacion = ? ORDER BY pz.fecha_creacion DESC LIMIT 1`,
+    [idVinculacion]
+  );
+  if (!rows.length || rows[0].estado !== 'completado') return null;
+  const pz = rows[0];
+
+  const areasRequeridas = typeof pz.areas_requeridas === 'string'
+    ? JSON.parse(pz.areas_requeridas) : (pz.areas_requeridas || []);
+
+  const urlPdf = await generarPazYSalvoFinalPDF(pz, areasRequeridas);
+
+  await pool.execute('UPDATE Maestro_pazysalvo SET url_pdf_final = ? WHERE id = ?', [urlPdf, pz.id]);
+  await pool.execute(
+    `UPDATE Maestro_docTrabajador SET Doc = ?
+     WHERE Identificación = ? AND TipoDocumento = '59'
+     ORDER BY FechaRegistro DESC LIMIT 1`,
+    [urlPdf, String(pz.identificacion)]
+  );
+  return urlPdf;
+}
+
 // ── GET /:area/:idPz?token=... ──────────────────────────────────────────────
 router.get('/:area/:idPz', async (req, res) => {
   try {
@@ -242,41 +316,7 @@ router.post('/:area/:idPz', async (req, res) => {
 
     // Verificar si todas las áreas han firmado
     if (estaCompleto(pzActual, areasRequeridas)) {
-      // Generar PDF final
-      const nombrePlantilla = pzActual.nivel_compromiso === 'alto' ? 'paz_y_salvo_alto' : 'paz_y_salvo_bajo';
-      const plantilla = await obtenerPlantilla(nombrePlantilla);
-      const articulos = typeof pzActual.articulos === 'string' ? JSON.parse(pzActual.articulos) : (pzActual.articulos || []);
-
-      const nombreTrabajador = limpiarNombre(pzActual.Trabajador);
-      const hoy = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
-
-      const datosPlantilla = {
-        fecha_expedicion:        hoy,
-        nombre_trabajador:       nombreTrabajador.toUpperCase(),
-        identificacion:          String(pzActual.identificacion),
-        cargo:                   pzActual.Cargo || '',
-        operacion:               pzActual['Operación'] || '',
-        fecha_retiro:            formatFechaCO(pzActual['Fecha de Retiro']),
-        filas_articulos:         generarFilasArticulosHTML(articulos),
-        firma_trabajador_html:   buildFirmaHtml(pzActual.firma_trabajador_url, pzActual.fecha_firma_trabajador),
-        firma_responsable_html:  buildFirmaHtml(pzActual.firma_responsable_url, pzActual.fecha_firma_responsable),
-        nombre_firmante:         pzActual.firma_responsable_nombre || '',
-        cargo_firmante:          pzActual.firma_responsable_cargo || '',
-        observaciones:           pzActual.observaciones || '',
-        // Nómina siempre presente
-        firma_nomina_html:       buildFirmaHtml(pzActual.firma_nomina_url, pzActual.fecha_firma_nomina),
-        firma_nomina_nombre:     pzActual.firma_nomina_nombre || '',
-        firma_nomina_cargo:      pzActual.firma_nomina_cargo || '',
-      };
-
-      // Firmas de áreas adicionales (nivel alto)
-      if (pzActual.nivel_compromiso === 'alto') {
-        datosPlantilla.firmas_areas_html = `<table style="width:100%;border-collapse:collapse">${generarFirmasAreasHtml(pzActual, areasRequeridas)}</table>`;
-      }
-
-      const htmlFinal = reemplazarVariables(plantilla.contenido_html, datosPlantilla);
-      const pdfBuffer = await generarPDF(htmlFinal);
-      const urlPdf = await subirPDFPazYSalvo(pzActual.identificacion, pzActual.id_vinculacion, pdfBuffer);
+      const urlPdf = await generarPazYSalvoFinalPDF(pzActual, areasRequeridas);
 
       const ahoraFin = new Date();
       await pool.execute(
@@ -360,3 +400,4 @@ router.post('/:area/:idPz/novedad', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.regenerarPazYSalvoFinal = regenerarPazYSalvoFinal;

@@ -94,18 +94,25 @@ function docTerminacionRequerido(motivoRetiro, condicion, tipoRenuncia) {
   return condicion?.TieneTCRP ? '77' : '76';
 }
 
-// true si el retiro ya está "legalizado": el motivo cierra el proceso sin
-// trámite, la fecha de ingreso y de retiro coinciden (caso descartado por la
-// vista original), existe un Documento de Retiro (47) que cierra el caso a
-// mano, o ya están los documentos válidos requeridos (terminación/renuncia,
-// si aplica, + 57 + 58).
-async function estaRetiroLegalizado({ identificacion, motivoRetiro, fechaIngreso, fechaRetiro, tipoRenuncia }) {
+// Nombres legibles de los documentos que puede exigir la legalización, para
+// mostrar al usuario exactamente qué falta cuando el proceso está "en proceso".
+const NOMBRES_DOC_LEGALIZACION = {
+  '55': 'Carta de Renuncia',
+  '76': 'Terminación de Contrato',
+  '77': 'Terminación de Contrato (Periodo de Prueba)',
+  '57': 'Certificado Laboral de Retiro',
+  '58': 'Autorización Examen Médico de Egreso',
+};
+
+// Devuelve { legalizado, pendientes[] }: misma lógica de estaRetiroLegalizado,
+// pero además detalla qué documentos concretos faltan cuando no está legalizado.
+async function obtenerPendientesLegalizacion({ identificacion, motivoRetiro, fechaIngreso, fechaRetiro, tipoRenuncia }) {
   const condicion = await obtenerCondicionRetiro(motivoRetiro);
-  if (condicion?.TerminaProceso) return true;
+  if (condicion?.TerminaProceso) return { legalizado: true, pendientes: [] };
 
   const mismaFecha = fechaIngreso && fechaRetiro &&
     new Date(fechaIngreso).getTime() === new Date(fechaRetiro).getTime();
-  if (mismaFecha) return true;
+  if (mismaFecha) return { legalizado: true, pendientes: [] };
 
   const [docRows] = await pool.execute(
     `SELECT TipoDocumento FROM Maestro_docTrabajador
@@ -114,10 +121,41 @@ async function estaRetiroLegalizado({ identificacion, motivoRetiro, fechaIngreso
     [String(identificacion)]
   );
   const docsSet = new Set(docRows.map(r => String(r.TipoDocumento)));
-  if (docsSet.has('47')) return true;
+  if (docsSet.has('47')) return { legalizado: true, pendientes: [] };
 
   const requerido = docTerminacionRequerido(motivoRetiro, condicion, tipoRenuncia);
-  return (requerido === null || docsSet.has(requerido)) && docsSet.has('57') && docsSet.has('58');
+  const requeridos = [requerido, '57', '58'].filter(Boolean);
+  const pendientes = requeridos.filter(id => !docsSet.has(id)).map(id => NOMBRES_DOC_LEGALIZACION[id] || id);
+  return { legalizado: pendientes.length === 0, pendientes };
+}
+
+// true si el retiro ya está "legalizado" (ver obtenerPendientesLegalizacion).
+async function estaRetiroLegalizado(datos) {
+  const { legalizado } = await obtenerPendientesLegalizacion(datos);
+  return legalizado;
+}
+
+// ── Responsables de un trabajador para notificaciones de retiro ────────────
+// Busca Auxiliar/Coordinador de su Operación; si no hay ninguno configurado,
+// cae a AuxiliarR/CoordinadorR de su Regional. Devuelve [] si no hay nadie.
+async function obtenerResponsablesOperacionRegional(operacion, regional) {
+  if (operacion) {
+    const [rowsOp] = await pool.execute(
+      `SELECT Email, Nombre, Rol FROM Maestro_Usuarios
+       WHERE Rol IN ('Auxiliar','Coordinador') AND \`Operación\` = ?
+         AND Email IS NOT NULL AND Email <> ''`,
+      [operacion]
+    );
+    if (rowsOp.length) return rowsOp;
+  }
+  if (!regional) return [];
+  const [rowsReg] = await pool.execute(
+    `SELECT Email, Nombre, Rol FROM Maestro_Usuarios
+     WHERE Rol IN ('AuxiliarR','CoordinadorR') AND Regional = ?
+       AND Email IS NOT NULL AND Email <> ''`,
+    [regional]
+  );
+  return rowsReg;
 }
 
 module.exports = {
@@ -130,4 +168,6 @@ module.exports = {
   puedeGenerarDocumentosRetiro,
   docTerminacionRequerido,
   estaRetiroLegalizado,
+  obtenerPendientesLegalizacion,
+  obtenerResponsablesOperacionRegional,
 };

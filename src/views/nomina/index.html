@@ -320,6 +320,14 @@
           <div class="filtros-grid">
             <div class="filtro-field"><label>Regional</label><select id="retFilterRegional"></select></div>
             <div class="filtro-field"><label>Operación</label><select id="retFilterOperacion"></select></div>
+            <div class="filtro-field"><label>Legalización</label>
+              <select id="retFilterLegalizacion">
+                <option value="">Todas</option>
+                <option value="no_iniciado">No iniciado</option>
+                <option value="en_proceso">En proceso</option>
+                <option value="legalizado">Legalizado</option>
+              </select>
+            </div>
             <div class="filtro-field"><label>Buscar</label><input type="text" id="retFilterIdentificacion" placeholder="Identificación, trabajador, regional, operación o Id Vinculación..."></div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosRetiros()">&#8635; Limpiar filtros</button>
@@ -529,6 +537,7 @@
   const _retirosState = { allData: [], counts: { regionales: {}, operaciones: {} }, sortCol: 'FechaRetiro', sortOrder: 'desc', cargado: false };
   const retFilterRegional      = document.getElementById('retFilterRegional');
   const retFilterOperacion     = document.getElementById('retFilterOperacion');
+  const retFilterLegalizacion  = document.getElementById('retFilterLegalizacion');
   const retFilterIdentificacion = document.getElementById('retFilterIdentificacion');
 
   (function initFiltrosPlegables(prefix) {
@@ -558,6 +567,7 @@
     let n = 0;
     if (retFilterRegional.value) n++;
     if (retFilterOperacion.value) n++;
+    if (retFilterLegalizacion.value) n++;
     if (retFilterIdentificacion.value.trim()) n++;
     const badge = document.getElementById('retFiltrosBadge');
     badge.textContent = n;
@@ -566,6 +576,7 @@
   function resetFiltrosRetiros() {
     retFilterRegional.value = '';
     retFilterOperacion.value = '';
+    retFilterLegalizacion.value = '';
     retFilterIdentificacion.value = '';
     fetchDataRetiros();
   }
@@ -608,6 +619,7 @@
   if (tabs.retiro) {
     retFilterRegional.addEventListener('change', fetchDataRetiros);
     retFilterOperacion.addEventListener('change', fetchDataRetiros);
+    retFilterLegalizacion.addEventListener('change', () => { actualizarBadgeFiltrosRetiros(); sortAndRenderRetiros(); });
     let debounceRet = null;
     retFilterIdentificacion.addEventListener('input', () => { clearTimeout(debounceRet); debounceRet = setTimeout(fetchDataRetiros, 350); });
   }
@@ -676,10 +688,14 @@
   function renderTableRetiros() {
     const body = document.getElementById('retirosBody');
     body.innerHTML = '';
-    document.getElementById('retContador').textContent = `${_retirosState.allData.length} registro(s)`;
-    document.getElementById('retEmptyState').style.display = _retirosState.allData.length ? 'none' : 'block';
+    const filtroLeg = retFilterLegalizacion.value;
+    const data = filtroLeg
+      ? _retirosState.allData.filter(r => (r.estadoLegalizacion || 'no_iniciado') === filtroLeg)
+      : _retirosState.allData;
+    document.getElementById('retContador').textContent = `${data.length} registro(s)`;
+    document.getElementById('retEmptyState').style.display = data.length ? 'none' : 'block';
     const ETIQUETA_LEGAL = { no_iniciado: 'No iniciado', en_proceso: 'En proceso', legalizado: 'Legalizado' };
-    _retirosState.allData.forEach(row => {
+    data.forEach(row => {
       const tr = document.createElement('tr');
       const estLeg = row.estadoLegalizacion || 'no_iniciado';
       tr.innerHTML = `
