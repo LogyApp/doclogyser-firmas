@@ -41,10 +41,17 @@ function agruparOperacionesPorRegional(rows) {
 
 async function obtenerContactoTrabajador(identificacion) {
   const [[row]] = await pool.execute(
-    'SELECT Email, Celular FROM `Maestro_Segmentación` WHERE Identificación = ? LIMIT 1',
+    'SELECT Email, Celular, Camiseta, Pantalon, Botas, Numero FROM `Maestro_Segmentación` WHERE Identificación = ? LIMIT 1',
     [identificacion]
   );
-  return { email: (row && row.Email) || '', celular: (row && row.Celular) || '' };
+  return {
+    email: (row && row.Email) || '',
+    celular: (row && row.Celular) || '',
+    camisa: (row && row.Camiseta) || '',
+    pantalon: (row && row.Pantalon) || '',
+    botas: (row && row.Botas) || '',
+    numero: (row && row.Numero) || ''
+  };
 }
 
 // Actualiza Email/Celular en Maestro_Segmentación (tabla maestra compartida del trabajador).

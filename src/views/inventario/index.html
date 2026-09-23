@@ -2531,6 +2531,32 @@
       align-items: center;
       background: #f8fafc;
     }
+
+    /* Column resizer and sorting for modal tables */
+    .col-resizer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      cursor: col-resize;
+      user-select: none;
+      height: 100%;
+      z-index: 20;
+    }
+    .col-resizer:hover, .col-resizer.resizing {
+      background: #2563eb;
+      opacity: 0.7;
+    }
+    .recibir-sort-icon {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      transition: color 0.15s;
+      flex-shrink: 0;
+    }
+    th.sorted .recibir-sort-icon {
+      color: #1e3c72;
+      font-weight: 800;
+    }
   </style>
 </head>
 <body>
@@ -5042,6 +5068,34 @@
       </div>
 
       <div style="padding: 16px 24px 0 24px;">
+        <!-- Banner informativo de Tallas de Dotación del Trabajador -->
+        <div id="acta-modal-tallas-banner" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <div style="font-weight: 700; font-size: 0.82rem; color: #166534; display: flex; align-items: center; gap: 6px;">
+              <span>👕</span> Tallas registradas del trabajador: <span id="acta-modal-tallas-trabajador-nombre" style="font-weight: 800; text-decoration: underline;">—</span>
+            </div>
+            <span style="font-size: 0.7rem; color: #15803d; font-weight: 600; background: #dcfce7; padding: 2px 6px; border-radius: 4px;">Dotación</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; font-size: 0.8rem;">
+            <div style="background: white; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 10px; text-align: center;">
+              <span style="font-size: 0.7rem; color: #64748b; display: block; font-weight: 600;">Camisa / Camiseta</span>
+              <strong id="acta-talla-camisa" style="color: #1e293b; font-size: 0.95rem;">—</strong>
+            </div>
+            <div style="background: white; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 10px; text-align: center;">
+              <span style="font-size: 0.7rem; color: #64748b; display: block; font-weight: 600;">Pantalón</span>
+              <strong id="acta-talla-pantalon" style="color: #1e293b; font-size: 0.95rem;">—</strong>
+            </div>
+            <div style="background: white; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 10px; text-align: center;">
+              <span style="font-size: 0.7rem; color: #64748b; display: block; font-weight: 600;">Botas</span>
+              <strong id="acta-talla-botas" style="color: #1e293b; font-size: 0.95rem;">—</strong>
+            </div>
+            <div style="background: white; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 10px; text-align: center;" title="Número de camisa si aplica">
+              <span style="font-size: 0.7rem; color: #64748b; display: block; font-weight: 600;">Número (Camisa)</span>
+              <strong id="acta-talla-numero" style="color: #1e293b; font-size: 0.95rem;">—</strong>
+            </div>
+          </div>
+        </div>
+
         <p style="font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; padding: 10px 14px; border-radius: 6px; margin: 0 0 12px 0; font-weight: 600; line-height: 1.4;">
           ⚠️ Ingresa Cantidad y Nota en cada artículo que quieras incluir. Solo se agregarán los que tengan cantidad mayor a 0.
         </p>
@@ -5630,6 +5684,37 @@
     let actaStockMap = {};
     let actaStockAplica = false;
     let actaStockBloquea = false;
+    let actaTrabajadorTallas = null;
+
+    function esCategoriaDotacion(cat) {
+      return String(cat || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase() === 'DOTACION';
+    }
+
+    function actualizarBannerTallasActa() {
+      const banner = document.getElementById('acta-modal-tallas-banner');
+      if (!banner) return;
+      const cat = document.getElementById('acta-form-categoria') ? document.getElementById('acta-form-categoria').value : '';
+      const trabajadorId = document.getElementById('acta-form-trabajador-id') ? document.getElementById('acta-form-trabajador-id').value : '';
+      const isDotacion = esCategoriaDotacion(cat);
+
+      if (isDotacion && trabajadorId && actaTrabajadorTallas) {
+        banner.style.display = 'block';
+        const nombreEl = document.getElementById('acta-modal-tallas-trabajador-nombre');
+        if (nombreEl) {
+          nombreEl.textContent = `${actaTrabajadorTallas.trabajadorNombre || trabajadorId} (C.C. ${actaTrabajadorTallas.identificacion || trabajadorId})`;
+        }
+        const camisaEl = document.getElementById('acta-talla-camisa');
+        if (camisaEl) camisaEl.textContent = actaTrabajadorTallas.camisa || '—';
+        const pantalonEl = document.getElementById('acta-talla-pantalon');
+        if (pantalonEl) pantalonEl.textContent = actaTrabajadorTallas.pantalon || '—';
+        const botasEl = document.getElementById('acta-talla-botas');
+        if (botasEl) botasEl.textContent = actaTrabajadorTallas.botas || '—';
+        const numeroEl = document.getElementById('acta-talla-numero');
+        if (numeroEl) numeroEl.textContent = actaTrabajadorTallas.numero || '—';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
     let currentActasSortColumn = 'Fecha_Registro';
     let currentActasSortOrder = 'desc';
     let currentActasPage = 1;
@@ -5877,7 +5962,7 @@
       const contentTabActas = document.getElementById('content-tab-actas');
       const contentTabDotacionLey = document.getElementById('content-tab-dotacionley');
 
-      const desactivarTodasLasPestañas = () => {
+      const desactivarTodasLasPestanas = () => {
         if (tabBtnInventario) tabBtnInventario.classList.remove('active');
         if (tabBtnReportes) tabBtnReportes.classList.remove('active');
         if (tabBtnPendienteRecibirMain) tabBtnPendienteRecibirMain.classList.remove('active');
@@ -5896,11 +5981,11 @@
         if (contentTabActas) contentTabActas.style.display = 'none';
         if (contentTabDotacionLey) contentTabDotacionLey.style.display = 'none';
       };
-      window.desactivarTodasLasPestañas = desactivarTodasLasPestañas;
+      window.desactivarTodasLasPestañas = desactivarTodasLasPestanas;
 
       if (tabBtnInventario) {
         tabBtnInventario.addEventListener('click', () => {
-          desactivarTodasLasPestañas();
+          desactivarTodasLasPestanas();
           tabBtnInventario.classList.add('active');
           if (contentTabInventario) contentTabInventario.style.display = 'block';
           fetchData();
@@ -5909,7 +5994,7 @@
 
       if (tabBtnReportes) {
         tabBtnReportes.addEventListener('click', () => {
-          desactivarTodasLasPestañas();
+          desactivarTodasLasPestanas();
           tabBtnReportes.classList.add('active');
           if (contentTabReportes) contentTabReportes.style.display = 'block';
           initReportesInventario();
@@ -5925,7 +6010,7 @@
 
       if (tabBtnPendienteRecibirMain) {
         tabBtnPendienteRecibirMain.addEventListener('click', () => {
-          desactivarTodasLasPestañas();
+          desactivarTodasLasPestanas();
           tabBtnPendienteRecibirMain.classList.add('active');
           if (contentTabPendienteRecibir) contentTabPendienteRecibir.style.display = 'block';
           initPendientesMain();
@@ -5934,7 +6019,7 @@
 
       if (tabBtnKardex) {
         tabBtnKardex.addEventListener('click', () => {
-          desactivarTodasLasPestañas();
+          desactivarTodasLasPestanas();
           tabBtnKardex.classList.add('active');
           if (contentTabKardex) contentTabKardex.style.display = 'block';
           if (!isKardexInitialized) {
@@ -5947,7 +6032,7 @@
 
       if (tabBtnArticulos) {
         tabBtnArticulos.addEventListener('click', () => {
-          desactivarTodasLasPestañas();
+          desactivarTodasLasPestanas();
           tabBtnArticulos.classList.add('active');
           if (contentTabArticulos) contentTabArticulos.style.display = 'block';
           initArticulos();
@@ -5956,7 +6041,7 @@
 
       if (tabBtnSolicitudes) {
         tabBtnSolicitudes.addEventListener('click', () => {
-          desactivarTodasLasPestañas();
+          desactivarTodasLasPestanas();
           tabBtnSolicitudes.classList.add('active');
           if (contentTabSolicitudes) contentTabSolicitudes.style.display = 'block';
           if (!isSolicitudesInitialized) {
@@ -5969,7 +6054,7 @@
 
       if (tabBtnActas) {
         tabBtnActas.addEventListener('click', () => {
-          desactivarTodasLasPestañas();
+          desactivarTodasLasPestanas();
           tabBtnActas.classList.add('active');
           if (contentTabActas) contentTabActas.style.display = 'block';
           initActas();
@@ -5978,7 +6063,7 @@
 
       if (tabBtnDotacionLey) {
         tabBtnDotacionLey.addEventListener('click', () => {
-          desactivarTodasLasPestañas();
+          desactivarTodasLasPestanas();
           tabBtnDotacionLey.classList.add('active');
           if (contentTabDotacionLey) contentTabDotacionLey.style.display = 'block';
           initDotacionLey();
@@ -13332,6 +13417,8 @@
     // MODAL DE RECEPCION Y FIRMA DIGITAL DE PEDIDOS
     // ==========================================
     let currentReceivingOrders = [];
+    let recibirItemsState = [];
+    let recibirSortState = { col: null, dir: 'asc' };
     let recibirSigCanvas = null;
     let recibirSigCtx = null;
     let isRecibirDrawing = false;
@@ -13498,109 +13585,111 @@
         `;
       }
 
-      // Build Items Table with Editable Cantidad Recibida, Trabajador y Selector de Acta
-      let itemsListHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 650px;">';
-      itemsListHtml += `
-        <thead>
-          <tr style="background: #f1f5f9; color: #475569; border-bottom: 1px solid #e2e8f0; font-size: 0.72rem; text-transform: uppercase;">
-            <th style="padding: 6px 8px; width: 44px; text-align: center;" title="Marcar para generar Acta de Entrega">
-              <input type="checkbox" id="recibir-select-all-actas" checked style="cursor: pointer; width: 15px; height: 15px;" title="Seleccionar/Deseleccionar todas las actas">
-              <div style="font-size: 0.62rem; color: #64748b; font-weight: 700; margin-top: 1px;">Acta</div>
-            </th>
-            <th style="padding: 6px 8px; width: 36px; text-align: center;">Img</th>
-            <th style="padding: 6px 8px; text-align: left;">Artículo</th>
-            <th style="padding: 6px 8px; text-align: left; min-width: 170px;">Trabajador</th>
-            <th style="padding: 6px 8px; text-align: center; width: 55px;">Enviado</th>
-            <th style="padding: 6px 8px; text-align: center; width: 75px;">Recibido</th>
-            <th style="padding: 6px 8px; text-align: left; width: 170px;">Novedad / Obs</th>
-          </tr>
-        </thead>
-        <tbody>
-      `;
+      // Build Items State and Table with Sortable & Resizable Columns
+      recibirSortState = { col: null, dir: 'asc' };
+      recibirItemsState = [];
 
       orders.forEach(o => {
         (o.items || []).forEach(it => {
-          const imgHtml = it.Imagen 
-            ? `<img src="${it.Imagen}" alt="" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;">` 
-            : `<span style="font-size: 1.1rem;">📦</span>`;
-          
           const hasWorker = it.UsuarioAsignado && String(it.UsuarioAsignado).trim() !== '';
-          const checkActaHtml = hasWorker
-            ? `<input type="checkbox" class="recibir-item-acta-check" data-id-kardex="${it.IdKardex}" checked style="cursor: pointer; width: 16px; height: 16px;" title="Generar acta de entrega a este trabajador">`
-            : `<span style="color: #cbd5e1; font-size: 0.85rem;" title="Sin identificación asignada">—</span>`;
-
           const workerDisplay = it.Trabajador
-            ? `<strong style="color: #1e293b;">${it.Trabajador}</strong>`
-            : (hasWorker ? `<span style="color: #475569; font-weight: 600;">C.C. ${it.UsuarioAsignado}</span>` : `<span style="color: #94a3b8; font-style: italic;">Sin asignar</span>`);
+            ? String(it.Trabajador)
+            : (hasWorker ? `C.C. ${it.UsuarioAsignado}` : 'Sin asignar');
 
-          itemsListHtml += `
-            <tr style="border-bottom: 1px solid #f8fafc;" class="recibir-item-row" data-id-kardex="${it.IdKardex}">
-              <td style="padding: 6px 8px; text-align: center;">${checkActaHtml}</td>
-              <td style="padding: 6px 8px; text-align: center;">${imgHtml}</td>
-              <td style="padding: 6px 8px; font-weight: 600; color: #1e293b;">
-                ${it.Articulo || '—'}
-                ${it.Referencia && it.Referencia !== '—' ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Ref: ${it.Referencia}</span>` : ''}
-                ${it.Talla && it.Talla !== '—' ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Talla: ${it.Talla}</span>` : ''}
-                ${orders.length > 1 ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Ped: ${o.Id} (${o.OperacionDestino})</span>` : ''}
-              </td>
-              <td style="padding: 6px 8px; font-size: 0.78rem;">
-                ${workerDisplay}
-              </td>
-              <td style="padding: 6px 8px; text-align: center; font-weight: 700; color: #64748b;">${it.Cantidad}</td>
-              <td style="padding: 6px 8px; text-align: center;">
-                <input type="number" class="recibir-item-cant-input" data-id-kardex="${it.IdKardex}" data-max="${it.Cantidad}" min="0" max="${it.Cantidad}" value="${it.Cantidad}" style="width: 55px; text-align: center; font-weight: 700; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.82rem; color: #1e3c72; outline: none;">
-              </td>
-              <td style="padding: 6px 8px;">
-                <input type="text" class="recibir-item-novedad-input" data-id-kardex="${it.IdKardex}" value="${it.Novedad || ''}" placeholder="Escribe novedad si hay..." style="width: 100%; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem;">
-                <div class="recibir-item-diff-note" id="diff-note-${it.IdKardex}" style="font-size: 0.7rem; color: #dc2626; display: none; margin-top: 2px; font-weight: 600;"></div>
-              </td>
-            </tr>
-          `;
+          recibirItemsState.push({
+            item: it,
+            order: o,
+            idKardex: it.IdKardex,
+            articulo: it.Articulo || '',
+            referencia: it.Referencia || '',
+            talla: it.Talla || '',
+            pedido: o.Id,
+            destino: o.OperacionDestino || '',
+            trabajador: workerDisplay,
+            usuarioAsignado: it.UsuarioAsignado || '',
+            hasWorker: !!hasWorker,
+            enviado: Number(it.Cantidad) || 0,
+            recibido: Number(it.Cantidad) || 0,
+            novedad: it.Novedad || '',
+            actaChecked: !!hasWorker,
+            imagen: it.Imagen || ''
+          });
         });
       });
 
-      itemsListHtml += '</tbody></table>';
+      let itemsListHtml = `
+        <table id="recibir-modal-items-table" style="width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 0.8rem; min-width: 720px;">
+          <thead>
+            <tr style="background: #f1f5f9; color: #475569; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #cbd5e1; font-size: 0.72rem; text-transform: uppercase;">
+              <th style="padding: 6px 8px; width: 55px; text-align: center; position: relative; user-select: none; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" title="Marcar para generar Acta de Entrega">
+                <input type="checkbox" id="recibir-select-all-actas" checked onclick="event.stopPropagation()" style="cursor: pointer; width: 15px; height: 15px;" title="Seleccionar/Deseleccionar todas las actas">
+                <div style="font-size: 0.62rem; color: #64748b; font-weight: 700; margin-top: 1px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 2px;" onclick="window.toggleSortRecibirTransferencia('acta')" title="Ordenar por acta (clic)">
+                  <span>Acta</span> <span class="recibir-sort-icon" id="recibir-sort-acta">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th style="padding: 6px 8px; width: 44px; text-align: center; position: relative; user-select: none; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                <span>Img</span>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable-th" style="padding: 6px 8px; text-align: left; width: 220px; position: relative; cursor: pointer; user-select: none; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" onclick="window.toggleSortRecibirTransferencia('articulo')" title="Ordenar por Artículo (clic)">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-right: 6px;">
+                  <span>Artículo</span>
+                  <span class="recibir-sort-icon" id="recibir-sort-articulo">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable-th" style="padding: 6px 8px; text-align: left; width: 180px; position: relative; cursor: pointer; user-select: none; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" onclick="window.toggleSortRecibirTransferencia('trabajador')" title="Ordenar por Trabajador (clic)">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-right: 6px;">
+                  <span>Trabajador</span>
+                  <span class="recibir-sort-icon" id="recibir-sort-trabajador">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable-th" style="padding: 6px 8px; text-align: center; width: 75px; position: relative; cursor: pointer; user-select: none; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" onclick="window.toggleSortRecibirTransferencia('enviado')" title="Ordenar por Enviado (clic)">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; padding-right: 6px;">
+                  <span>Enviado</span>
+                  <span class="recibir-sort-icon" id="recibir-sort-enviado">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable-th" style="padding: 6px 8px; text-align: center; width: 85px; position: relative; cursor: pointer; user-select: none; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" onclick="window.toggleSortRecibirTransferencia('recibido')" title="Ordenar por Recibido (clic)">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; padding-right: 6px;">
+                  <span>Recibido</span>
+                  <span class="recibir-sort-icon" id="recibir-sort-recibido">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+              <th class="sortable-th" style="padding: 6px 8px; text-align: left; width: 190px; position: relative; cursor: pointer; user-select: none; background: #f1f5f9; border-bottom: 2px solid #cbd5e1;" onclick="window.toggleSortRecibirTransferencia('novedad')" title="Ordenar por Novedad (clic)">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-right: 6px;">
+                  <span>Novedad / Obs</span>
+                  <span class="recibir-sort-icon" id="recibir-sort-novedad">↕</span>
+                </div>
+                <div class="col-resizer"></div>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="recibir-modal-items-tbody"></tbody>
+        </table>
+      `;
+
       itemsDiv.innerHTML = itemsListHtml;
 
       // Listener para seleccionar/deseleccionar todas las actas
       const selectAllActas = itemsDiv.querySelector('#recibir-select-all-actas');
       if (selectAllActas) {
         selectAllActas.addEventListener('change', () => {
+          const isChecked = selectAllActas.checked;
+          recibirItemsState.forEach(it => {
+            if (it.hasWorker) it.actaChecked = isChecked;
+          });
           const actasBoxes = itemsDiv.querySelectorAll('.recibir-item-acta-check');
-          actasBoxes.forEach(b => b.checked = selectAllActas.checked);
+          actasBoxes.forEach(b => b.checked = isChecked);
         });
       }
 
-      // Add live change listeners on Cantidad inputs
-      const cantInputs = itemsDiv.querySelectorAll('.recibir-item-cant-input');
-      cantInputs.forEach(inp => {
-        inp.addEventListener('input', () => {
-          const max = parseInt(inp.getAttribute('data-max')) || 0;
-          let val = parseInt(inp.value);
-          if (isNaN(val) || val < 0) val = 0;
-          if (val > max) {
-            val = max;
-            inp.value = max;
-          }
-
-          const idK = inp.getAttribute('data-id-kardex');
-          const diffNote = document.getElementById(`diff-note-${idK}`);
-          const diff = max - val;
-
-          if (diff > 0) {
-            inp.style.borderColor = '#ea580c';
-            inp.style.backgroundColor = '#fff7ed';
-            if (diffNote) {
-              diffNote.textContent = `⚠️ Faltan ${diff} und(s) que retornarán al origen.`;
-              diffNote.style.display = 'block';
-            }
-          } else {
-            inp.style.borderColor = '#cbd5e1';
-            inp.style.backgroundColor = 'white';
-            if (diffNote) diffNote.style.display = 'none';
-          }
-        });
-      });
+      renderRecibirItemsTableBody();
+      inicializarRedimensionColumnasRecibir();
 
       // Show Modal
       modal.style.display = 'flex';
@@ -13632,13 +13721,280 @@
       }
     }
 
+    function sincronizarInputsRecibirEnEstado() {
+      const tbody = document.getElementById('recibir-modal-items-tbody');
+      if (!tbody) return;
+      const rows = tbody.querySelectorAll('.recibir-item-row');
+      rows.forEach(row => {
+        const idK = row.getAttribute('data-id-kardex');
+        const item = recibirItemsState.find(x => String(x.idKardex) === String(idK));
+        if (!item) return;
+
+        const cantInput = row.querySelector('.recibir-item-cant-input');
+        if (cantInput) {
+          let val = parseInt(cantInput.value);
+          if (isNaN(val) || val < 0) val = 0;
+          if (val > item.enviado) val = item.enviado;
+          item.recibido = val;
+        }
+
+        const novInput = row.querySelector('.recibir-item-novedad-input');
+        if (novInput) {
+          item.novedad = novInput.value;
+        }
+
+        const actaCheck = row.querySelector('.recibir-item-acta-check');
+        if (actaCheck) {
+          item.actaChecked = actaCheck.checked;
+        }
+      });
+    }
+
+    function renderRecibirItemsTableBody() {
+      const tbody = document.getElementById('recibir-modal-items-tbody');
+      if (!tbody) return;
+
+      const ordersCount = currentReceivingOrders ? currentReceivingOrders.length : 1;
+      let rowsHtml = '';
+
+      recibirItemsState.forEach(it => {
+        const imgHtml = it.imagen
+          ? `<img src="${it.imagen}" alt="" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;">`
+          : `<span style="font-size: 1.1rem;">📦</span>`;
+
+        const checkActaHtml = it.hasWorker
+          ? `<input type="checkbox" class="recibir-item-acta-check" data-id-kardex="${it.idKardex}" ${it.actaChecked ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;" title="Generar acta de entrega a este trabajador">`
+          : `<span style="color: #cbd5e1; font-size: 0.85rem;" title="Sin identificación asignada">—</span>`;
+
+        const workerDisplay = it.item.Trabajador
+          ? `<strong style="color: #1e293b;">${it.item.Trabajador}</strong>`
+          : (it.hasWorker ? `<span style="color: #475569; font-weight: 600;">C.C. ${it.item.UsuarioAsignado}</span>` : `<span style="color: #94a3b8; font-style: italic;">Sin asignar</span>`);
+
+        const diff = it.enviado - it.recibido;
+        const hasDiff = diff > 0;
+        const inputBorder = hasDiff ? '#ea580c' : '#cbd5e1';
+        const inputBg = hasDiff ? '#fff7ed' : 'white';
+        const diffDisplay = hasDiff ? 'block' : 'none';
+        const diffText = hasDiff ? `⚠️ Faltan ${diff} und(s) que retornarán al origen.` : '';
+
+        rowsHtml += `
+          <tr style="border-bottom: 1px solid #f8fafc;" class="recibir-item-row" data-id-kardex="${it.idKardex}">
+            <td style="padding: 6px 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">${checkActaHtml}</td>
+            <td style="padding: 6px 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">${imgHtml}</td>
+            <td style="padding: 6px 8px; font-weight: 600; color: #1e293b; border-bottom: 1px solid #f1f5f9; overflow: hidden; text-overflow: ellipsis; white-space: normal;">
+              ${it.articulo || '—'}
+              ${it.referencia && it.referencia !== '—' ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Ref: ${it.referencia}</span>` : ''}
+              ${it.talla && it.talla !== '—' ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Talla: ${it.talla}</span>` : ''}
+              ${ordersCount > 1 ? `<span style="font-size: 0.7rem; color: #64748b; font-weight: normal; display: block;">Ped: ${it.pedido} (${it.destino})</span>` : ''}
+            </td>
+            <td style="padding: 6px 8px; font-size: 0.78rem; border-bottom: 1px solid #f1f5f9; overflow: hidden; text-overflow: ellipsis; white-space: normal;">
+              ${workerDisplay}
+            </td>
+            <td style="padding: 6px 8px; text-align: center; font-weight: 700; color: #64748b; border-bottom: 1px solid #f1f5f9;">${it.enviado}</td>
+            <td style="padding: 6px 8px; text-align: center; border-bottom: 1px solid #f1f5f9;">
+              <input type="number" class="recibir-item-cant-input" data-id-kardex="${it.idKardex}" data-max="${it.enviado}" min="0" max="${it.enviado}" value="${it.recibido}" style="width: 55px; text-align: center; font-weight: 700; padding: 4px; border: 1px solid ${inputBorder}; background-color: ${inputBg}; border-radius: 4px; font-size: 0.82rem; color: #1e3c72; outline: none;">
+            </td>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #f1f5f9;">
+              <input type="text" class="recibir-item-novedad-input" data-id-kardex="${it.idKardex}" value="${it.novedad || ''}" placeholder="Escribe novedad si hay..." style="width: 100%; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem;">
+              <div class="recibir-item-diff-note" id="diff-note-${it.idKardex}" style="font-size: 0.7rem; color: #dc2626; display: ${diffDisplay}; margin-top: 2px; font-weight: 600;">${diffText}</div>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = rowsHtml;
+
+      // Re-attach input listeners
+      const cantInputs = tbody.querySelectorAll('.recibir-item-cant-input');
+      cantInputs.forEach(inp => {
+        inp.addEventListener('input', () => {
+          const max = parseInt(inp.getAttribute('data-max')) || 0;
+          let val = parseInt(inp.value);
+          if (isNaN(val) || val < 0) val = 0;
+          if (val > max) {
+            val = max;
+            inp.value = max;
+          }
+
+          const idK = inp.getAttribute('data-id-kardex');
+          const itemState = recibirItemsState.find(x => String(x.idKardex) === String(idK));
+          if (itemState) itemState.recibido = val;
+
+          const diffNote = document.getElementById(`diff-note-${idK}`);
+          const diff = max - val;
+
+          if (diff > 0) {
+            inp.style.borderColor = '#ea580c';
+            inp.style.backgroundColor = '#fff7ed';
+            if (diffNote) {
+              diffNote.textContent = `⚠️ Faltan ${diff} und(s) que retornarán al origen.`;
+              diffNote.style.display = 'block';
+            }
+          } else {
+            inp.style.borderColor = '#cbd5e1';
+            inp.style.backgroundColor = 'white';
+            if (diffNote) diffNote.style.display = 'none';
+          }
+        });
+      });
+
+      const novInputs = tbody.querySelectorAll('.recibir-item-novedad-input');
+      novInputs.forEach(inp => {
+        inp.addEventListener('input', () => {
+          const idK = inp.getAttribute('data-id-kardex');
+          const itemState = recibirItemsState.find(x => String(x.idKardex) === String(idK));
+          if (itemState) itemState.novedad = inp.value;
+        });
+      });
+
+      const actasChecks = tbody.querySelectorAll('.recibir-item-acta-check');
+      actasChecks.forEach(ch => {
+        ch.addEventListener('change', () => {
+          const idK = ch.getAttribute('data-id-kardex');
+          const itemState = recibirItemsState.find(x => String(x.idKardex) === String(idK));
+          if (itemState) itemState.actaChecked = ch.checked;
+
+          const allChecks = tbody.querySelectorAll('.recibir-item-acta-check');
+          const allChecked = allChecks.length > 0 && Array.from(allChecks).every(c => c.checked);
+          const selectAllActas = document.getElementById('recibir-select-all-actas');
+          if (selectAllActas) selectAllActas.checked = allChecked;
+        });
+      });
+
+      const allChecks = tbody.querySelectorAll('.recibir-item-acta-check');
+      const allChecked = allChecks.length > 0 && Array.from(allChecks).every(c => c.checked);
+      const selectAllActas = document.getElementById('recibir-select-all-actas');
+      if (selectAllActas) selectAllActas.checked = allChecked;
+    }
+
+    window.toggleSortRecibirTransferencia = function(col) {
+      sincronizarInputsRecibirEnEstado();
+
+      if (recibirSortState.col === col) {
+        recibirSortState.dir = recibirSortState.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        recibirSortState.col = col;
+        recibirSortState.dir = 'asc';
+      }
+
+      recibirItemsState.sort((a, b) => {
+        let valA, valB;
+        if (col === 'acta') {
+          valA = a.actaChecked ? 1 : 0;
+          valB = b.actaChecked ? 1 : 0;
+        } else if (col === 'articulo') {
+          valA = a.articulo || '';
+          valB = b.articulo || '';
+        } else if (col === 'trabajador') {
+          valA = a.trabajador || '';
+          valB = b.trabajador || '';
+        } else if (col === 'enviado') {
+          valA = a.enviado;
+          valB = b.enviado;
+        } else if (col === 'recibido') {
+          valA = a.recibido;
+          valB = b.recibido;
+        } else if (col === 'novedad') {
+          valA = a.novedad || '';
+          valB = b.novedad || '';
+        } else {
+          return 0;
+        }
+
+        let cmp;
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          cmp = valA - valB;
+        } else {
+          cmp = String(valA).localeCompare(String(valB), 'es', { sensitivity: 'base', numeric: true });
+        }
+        return recibirSortState.dir === 'asc' ? cmp : -cmp;
+      });
+
+      // Update header indicators
+      const table = document.getElementById('recibir-modal-items-table');
+      if (table) {
+        const allThs = table.querySelectorAll('th');
+        allThs.forEach(th => th.classList.remove('sorted'));
+
+        const iconActa = document.getElementById('recibir-sort-acta');
+        if (iconActa) iconActa.textContent = '↕';
+        const iconArt = document.getElementById('recibir-sort-articulo');
+        if (iconArt) iconArt.textContent = '↕';
+        const iconTrab = document.getElementById('recibir-sort-trabajador');
+        if (iconTrab) iconTrab.textContent = '↕';
+        const iconEnv = document.getElementById('recibir-sort-enviado');
+        if (iconEnv) iconEnv.textContent = '↕';
+        const iconRec = document.getElementById('recibir-sort-recibido');
+        if (iconRec) iconRec.textContent = '↕';
+        const iconNov = document.getElementById('recibir-sort-novedad');
+        if (iconNov) iconNov.textContent = '↕';
+
+        const activeIcon = document.getElementById(`recibir-sort-${col}`);
+        if (activeIcon) {
+          activeIcon.textContent = recibirSortState.dir === 'asc' ? '▲' : '▼';
+          const parentTh = activeIcon.closest('th');
+          if (parentTh) parentTh.classList.add('sorted');
+        }
+      }
+
+      renderRecibirItemsTableBody();
+    };
+
+    function inicializarRedimensionColumnasRecibir() {
+      const table = document.getElementById('recibir-modal-items-table');
+      if (!table) return;
+      const resizers = table.querySelectorAll('.col-resizer');
+
+      resizers.forEach(resizer => {
+        if (resizer._hasResizerHandler) return;
+        resizer._hasResizerHandler = true;
+
+        resizer.addEventListener('click', function(e) {
+          e.stopPropagation();
+        });
+
+        resizer.addEventListener('mousedown', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+
+          const th = this.parentElement;
+          const startX = e.pageX;
+          const startWidth = th.offsetWidth;
+          resizer.classList.add('resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+
+          function onMouseMove(e) {
+            const diffX = e.pageX - startX;
+            const newWidth = Math.max(35, startWidth + diffX);
+            th.style.width = newWidth + 'px';
+            th.style.minWidth = newWidth + 'px';
+          }
+
+          function onMouseUp() {
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+          }
+
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    }
+
     function closeRecibirTransferenciaModal() {
       const modal = document.getElementById('recibir-transferencia-modal');
       if (modal) modal.style.display = 'none';
       currentReceivingOrders = [];
+      recibirItemsState = [];
+      recibirSortState = { col: null, dir: 'asc' };
     }
 
     async function submitRecibirTransferencia() {
+      sincronizarInputsRecibirEnEstado();
       const errorDiv = document.getElementById('recibir-modal-error');
       const obsInput = document.getElementById('recibir-modal-observaciones');
       const btnConfirm = document.getElementById('recibir-modal-btn-confirm');
@@ -14563,14 +14919,23 @@
                     document.getElementById('acta-form-trabajador-id').value = w['Identificación'];
                     workerAcList.style.display = 'none';
 
-                    // Cargar Email/Celular actuales desde Maestro_Segmentación
+                    // Cargar Email/Celular y tallas actuales desde Maestro_Segmentación
                     fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(w['Identificación'])}`)
-                      .then(r => r.ok ? r.json() : { email: '', celular: '' })
+                      .then(r => r.ok ? r.json() : {})
                       .then(contacto => {
                         const emailInput = document.getElementById('acta-form-email');
                         const celularInput = document.getElementById('acta-form-celular');
                         if (emailInput) emailInput.value = contacto.email || '';
                         if (celularInput) celularInput.value = contacto.celular || '';
+                        actaTrabajadorTallas = {
+                          trabajadorNombre: nombreCorto,
+                          identificacion: w['Identificación'],
+                          camisa: contacto.camisa || '',
+                          pantalon: contacto.pantalon || '',
+                          botas: contacto.botas || '',
+                          numero: contacto.numero || ''
+                        };
+                        actualizarBannerTallasActa();
                       })
                       .catch(() => {});
 
@@ -14670,6 +15035,32 @@
           } catch (e) {
             console.error('Error cargando stock:', e);
           }
+
+          // Si es DOTACIÓN y hay trabajador seleccionado, cargar y mostrar banner de tallas
+          const trabajadorId = document.getElementById('acta-form-trabajador-id') ? document.getElementById('acta-form-trabajador-id').value : '';
+          const isDotacion = esCategoriaDotacion(cat);
+          if (isDotacion && trabajadorId) {
+            if (!actaTrabajadorTallas || String(actaTrabajadorTallas.identificacion) !== String(trabajadorId)) {
+              try {
+                const resContacto = await fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(trabajadorId)}`);
+                if (resContacto.ok) {
+                  const contacto = await resContacto.json();
+                  const wName = document.getElementById('acta-form-trabajador-search').value || trabajadorId;
+                  actaTrabajadorTallas = {
+                    trabajadorNombre: wName,
+                    identificacion: trabajadorId,
+                    camisa: contacto.camisa || '',
+                    pantalon: contacto.pantalon || '',
+                    botas: contacto.botas || '',
+                    numero: contacto.numero || ''
+                  };
+                }
+              } catch (e) {
+                console.error('Error cargando tallas de trabajador:', e);
+              }
+            }
+          }
+          actualizarBannerTallasActa();
 
           if (actaArtModal) actaArtModal.style.display = 'flex';
           renderModalActaArticlesList();
@@ -15500,6 +15891,7 @@
       buttons.forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-value') === val);
       });
+      actualizarBannerTallasActa();
     };
 
     function actaEvidenciaMostrarPreview(src, opts) {
@@ -15643,6 +16035,8 @@
       if (solIdField) solIdField.value = '';
       document.getElementById('acta-form-title').textContent = 'Nueva Acta de Entrega';
       document.getElementById('acta-form-trabajador-id').value = '';
+      actaTrabajadorTallas = null;
+      actualizarBannerTallasActa();
 
       selectActaCategoryButton('');
 
@@ -15745,6 +16139,25 @@
 
       const celularInput = document.getElementById('acta-form-celular');
       if (celularInput) celularInput.value = data.celular || '';
+
+      if (data.identificacion) {
+        fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(data.identificacion)}`)
+          .then(r => r.ok ? r.json() : {})
+          .then(contacto => {
+            if (contacto.email && emailInput && !emailInput.value) emailInput.value = contacto.email;
+            if (contacto.celular && celularInput && !celularInput.value) celularInput.value = contacto.celular;
+            actaTrabajadorTallas = {
+              trabajadorNombre: data.trabajador || data.identificacion,
+              identificacion: data.identificacion,
+              camisa: contacto.camisa || '',
+              pantalon: contacto.pantalon || '',
+              botas: contacto.botas || '',
+              numero: contacto.numero || ''
+            };
+            actualizarBannerTallasActa();
+          })
+          .catch(() => {});
+      }
 
       // Regional y Operación (determinadas por la vinculación del colaborador)
       const formReg = document.getElementById('acta-form-regional');
