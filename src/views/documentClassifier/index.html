@@ -404,6 +404,31 @@
     }
     .worker-found { color: var(--success); }
     .worker-not-found { color: var(--error); }
+
+    .status-summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .status-metric {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .status-metric strong { display: block; font-size: 1.5rem; color: var(--primary); }
+    .status-metric span { font-size: 0.78rem; color: var(--text-light); }
+    .status-note { font-size: 0.82rem; color: var(--text-light); margin-bottom: 14px; }
+    .status-table-wrap { overflow-x: auto; }
+    .status-table { min-width: 620px; }
+    .status-empty { text-align: center; color: var(--text-light); padding: 22px; }
+    .status-ok { color: var(--success); font-weight: 700; }
+    .status-pending { color: #b45309; font-weight: 700; }
+
+    @media (max-width: 600px) {
+      .status-summary { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -475,6 +500,9 @@
             <button class="tab-btn" onclick="switchTab('tab-general')">
               Otros Errores <span class="tab-count" id="count-general">0</span>
             </button>
+            <button class="tab-btn" onclick="switchTab('tab-status')">
+              Monitoreo
+            </button>
           </div>
 
           <!-- Tab Content: No ID -->
@@ -534,6 +562,38 @@
             </div>
           </div>
 
+          <!-- Tab Content: Status -->
+          <div class="tab-content" id="tab-status">
+            <div class="status-summary">
+              <div class="status-metric">
+                <strong id="status-pending-count">—</strong>
+                <span>Archivos pendientes en document_inbox</span>
+              </div>
+              <div class="status-metric">
+                <strong id="status-processed-count">—</strong>
+                <span>Últimos registros procesados</span>
+              </div>
+            </div>
+            <p class="status-note" id="status-message">Actualiza el estado para consultar el flujo automático.</p>
+            <button class="btn btn-secondary" type="button" onclick="fetchStatus()">↻ Actualizar estado</button>
+
+            <h3 style="font-size:0.95rem; margin:18px 0 8px; color:var(--primary);">Archivos aún pendientes</h3>
+            <div class="table-container status-table-wrap">
+              <table class="status-table">
+                <thead><tr><th>Archivo</th><th>Fecha</th><th>Tamaño</th></tr></thead>
+                <tbody id="status-pending-list"></tbody>
+              </table>
+            </div>
+
+            <h3 style="font-size:0.95rem; margin:18px 0 8px; color:var(--primary);">Últimos procesados</h3>
+            <div class="table-container status-table-wrap">
+              <table class="status-table">
+                <thead><tr><th>Trabajador</th><th>Documento</th><th>Fecha</th><th>Estado</th></tr></thead>
+                <tbody id="status-processed-list"></tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       </section>
     </div>
@@ -589,6 +649,7 @@
       setupDropzone();
       await fetchDocumentTypes();
       await fetchErrors();
+      await fetchStatus();
     });
 
     // Setup drag & drop
@@ -747,6 +808,51 @@
       }
     }
 
+    async function fetchStatus() {
+      const message = document.getElementById('status-message');
+      try {
+        const response = await fetch(`${BASE_API}/status`);
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo consultar el estado');
+
+        document.getElementById('status-pending-count').textContent = data.pendientes.length;
+        document.getElementById('status-processed-count').textContent = data.procesados.length;
+
+        const pendingList = document.getElementById('status-pending-list');
+        pendingList.innerHTML = data.pendientes.length
+          ? data.pendientes.map(file => `<tr><td>${escapeHtml(file.name)}</td><td>${formatStatusDate(file.updated || file.timeCreated)}</td><td>${formatBytes(file.sizeBytes)}</td></tr>`).join('')
+          : '<tr><td colspan="3" class="status-empty"><span class="status-ok">✓ No hay archivos pendientes</span></td></tr>';
+
+        const processedList = document.getElementById('status-processed-list');
+        processedList.innerHTML = data.procesados.length
+          ? data.procesados.map(file => `<tr><td>${escapeHtml(file.trabajador || file.identificacion || '—')}</td><td>${escapeHtml(file.prefijo || '—')}</td><td>${formatStatusDate(file.fechaRegistro)}</td><td class="status-ok">Registrado</td></tr>`).join('')
+          : '<tr><td colspan="4" class="status-empty">Todavía no hay registros automáticos.</td></tr>';
+
+        message.textContent = `Bucket revisado: gs://${data.bucket}/. Los archivos exitosos dejan de aparecer allí y quedan registrados en Maestro_docTrabajador.`;
+      } catch (err) {
+        document.getElementById('status-pending-count').textContent = '—';
+        document.getElementById('status-processed-count').textContent = '—';
+        message.textContent = `No fue posible consultar el estado: ${err.message}`;
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
+    }
+
+    function formatStatusDate(value) {
+      if (!value) return '—';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('es-CO');
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+      return `${(bytes / (1024 ** index)).toFixed(index ? 1 : 0)} ${units[index]}`;
+    }
+
     // Render errors in tables
     function renderErrors() {
       const listNoId = document.getElementById('list-no-id');
@@ -829,7 +935,7 @@
       document.getElementById(tabId).classList.add('active');
       
       // Select corresponding button
-      const index = tabId === 'tab-no-id' ? 0 : tabId === 'tab-no-doc' ? 1 : 2;
+      const index = tabId === 'tab-no-id' ? 0 : tabId === 'tab-no-doc' ? 1 : tabId === 'tab-general' ? 2 : 3;
       document.querySelectorAll('.tab-btn')[index].classList.add('active');
     }
 

@@ -1763,13 +1763,22 @@ router.post('/api/documento/eliminar', async (req, res) => {
         const bucketName = parts[0];
         const fileName = parts.slice(1).join('/');
         try {
-          const { storage } = require('../services/storage');
-          const bucket = storage.bucket(bucketName);
-          const file = bucket.file(fileName);
-          const [exists] = await file.exists();
-          if (exists) {
-            await file.delete();
-            console.log(`[cloud-docs] Deleted file from GCS: gs://${bucketName}/${fileName}`);
+          // Verificar si otro registro en la base de datos aún referencia este mismo archivo
+          const [references] = await pool.query(
+            `SELECT id FROM ${table} WHERE (Url = ? OR Doc = ?) AND id != ? LIMIT 1`,
+            [doc.Url, doc.Url, id]
+          );
+          if (references.length > 0) {
+            console.log(`[cloud-docs] Archivo GCS ${doc.Url} omitido de borrado físico porque aún está referenciado por otro registro (${references[0].id}).`);
+          } else {
+            const { storage } = require('../services/storage');
+            const bucket = storage.bucket(bucketName);
+            const file = bucket.file(fileName);
+            const [exists] = await file.exists();
+            if (exists) {
+              await file.delete();
+              console.log(`[cloud-docs] Deleted file from GCS: gs://${bucketName}/${fileName}`);
+            }
           }
         } catch (gcsErr) {
           console.error(`[cloud-docs] Error deleting GCS file ${doc.Url}:`, gcsErr);

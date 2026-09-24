@@ -302,11 +302,34 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       firmaPage,
       firmasCoordenadas,
       fechaProgramada,
-      causa
+      causa,
+      force
     } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ error: 'Debe cargar un archivo PDF' });
+    }
+
+    // Verificar si ya existe una solicitud PENDIENTE del mismo documento para este trabajador
+    const [pendingRows] = await pool.execute(
+      'SELECT id, usuario_creador, fecha_registro FROM Dynamic_Logysign WHERE identificacion = ? AND id_config_doc = ? AND estado = "PENDIENTE"',
+      [identificacion, idConfigDoc]
+    );
+
+    if (pendingRows.length > 0) {
+      if (force !== 'true' && force !== true) {
+        return res.status(409).json({
+          conflict: true,
+          message: `El trabajador ya tiene una solicitud pendiente de firma para este documento (creada por ${pendingRows[0].usuario_creador || 'otro usuario'}). ¿Deseas anular la anterior y continuar con esta nueva versión?`,
+          pendingId: pendingRows[0].id
+        });
+      } else {
+        // Anular solicitudes anteriores pendientes
+        for (const p of pendingRows) {
+          await pool.execute('UPDATE Dynamic_Logysign SET estado = "CANCELADO" WHERE id = ?', [p.id]);
+          console.log(`[logysign] Solicitud previa ${p.id} cancelada para reemplazarla con nuevo envío.`);
+        }
+      }
     }
 
     // 1. Update celular/email in Maestro_Segmentación
@@ -672,7 +695,7 @@ router.post('/api/firmar', async (req, res) => {
     const signedPdfBytes = await pdfDoc.save();
 
     // 4. Upload signed PDF
-    const timestampStr = `${yyyy}${mm}${dd}${hh}${ss}`;
+    const timestampStr = `${yyyy}${mm}${dd}${hh}${min}${ss}`;
 
     const finalPdfName = `${logysign.identificacion}/${logysign.identificacion}.${logysign.prefijo}.${timestampStr}.pdf`;
     const finalPdfFile = bucketPdfs.file(finalPdfName);
@@ -754,12 +777,9 @@ router.post('/api/firmar', async (req, res) => {
       html: mailBody
     });
 
-    // 10. Clean up temporary PDF file
-    try {
-      await originalPdfFile.delete();
-    } catch (e) {
-      console.warn(`[logysign] No se pudo eliminar el PDF temporal original: ${pathInBucket}`, e.message);
-    }
+    // 10. Conservar el PDF temporal original como respaldo de auditoría
+    // (Mantiene vivo original_pdf_url en Dynamic_Logysign y permite reconstrucción ante cualquier pérdida)
+    console.log(`[logysign] PDF original sin firmar conservado para auditoría en: ${pathInBucket}`);
 
     res.json({ success: true, pdfUrl: `/logysign/api/signed-pdf/${logysign.id}` });
   } catch (err) {

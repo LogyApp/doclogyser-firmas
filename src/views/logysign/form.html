@@ -1441,13 +1441,31 @@
         formData.append('fechaProgramada', chkProgramar.checked ? inputFechaProgramacion.value : '');
         formData.append('causa', causaVal);
 
-        const res = await fetch('/logysign/api/enviar', {
+        let res = await fetch('/logysign/api/enviar', {
           method: 'POST',
           body: formData
         });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Ocurrió un error al enviar el flujo');
+        let data = await res.json();
+
+        // Si ya existía un documento pendiente, solicitar confirmación al usuario
+        if (res.status === 409 && data.conflict) {
+          hideLoading();
+          const confirmar = confirm(data.message);
+          if (!confirmar) {
+            checkFormValidity();
+            return;
+          }
+          showLoading('Anulando solicitud previa y enviando nueva versión...');
+          formData.append('force', 'true');
+          res = await fetch('/logysign/api/enviar', {
+            method: 'POST',
+            body: formData
+          });
+          data = await res.json();
+        }
+
+        if (!res.ok) throw new Error(data.error || data.message || 'Ocurrió un error al enviar el flujo');
 
         showToast(chkProgramar.checked ? 'Envío programado con éxito.' : 'Documento registrado y enviado con éxito.', 'success');
         

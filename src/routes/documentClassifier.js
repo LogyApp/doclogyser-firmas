@@ -450,6 +450,55 @@ router.get('/api/errors', async (req, res) => {
   }
 });
 
+// GET /api/status - Estado del flujo automatico del bucket document_inbox
+router.get('/api/status', async (req, res) => {
+  try {
+    const bucket = storage.bucket(BUCKET_INBOX);
+    const [files] = await bucket.getFiles();
+    const extensiones = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.bmp']);
+    const pendientes = files
+      .filter(file => {
+        const nombre = file.name || '';
+        return !nombre.includes('/') && extensiones.has(path.extname(nombre).toLowerCase());
+      })
+      .map(file => ({
+        name: path.basename(file.name),
+        sizeBytes: Number(file.metadata.size || 0),
+        timeCreated: file.metadata.timeCreated || null,
+        updated: file.metadata.updated || null
+      }))
+      .sort((a, b) => String(b.updated || b.timeCreated).localeCompare(String(a.updated || a.timeCreated)));
+
+    const [procesados] = await pool.execute(
+      `SELECT t.\`Identificación\` AS Identificacion, t.TipoDocumento, t.Prefijo, t.FechaRegistro,
+              t.Doc, t.Observaciones, s.Trabajador
+       FROM Maestro_docTrabajador t
+       LEFT JOIN Maestro_Segmentación s ON s.Identificación = t.Identificación
+       WHERE t.Observaciones LIKE 'Document AI%'
+       ORDER BY t.FechaRegistro DESC
+       LIMIT 30`
+    );
+
+    res.json({
+      ok: true,
+      bucket: BUCKET_INBOX,
+      pendientes,
+      procesados: procesados.map(row => ({
+        identificacion: row.Identificacion,
+        trabajador: row.Trabajador || null,
+        prefijo: row.Prefijo,
+        tipoDocumento: row.TipoDocumento,
+        fechaRegistro: row.FechaRegistro,
+        documento: row.Doc,
+        observaciones: row.Observaciones
+      }))
+    });
+  } catch (err) {
+    console.error('[Classifier] Error obteniendo estado del proceso:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE /api/errors - Delete GCS error file
 router.post('/api/errors/delete', async (req, res) => {
   try {

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "scan:watch": "node scripts/scanner-document-inbox.js"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.0.0",
