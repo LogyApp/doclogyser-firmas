@@ -249,8 +249,11 @@
     .btn-save-contact:hover { background: #2c2c4a; }
 
     /* Retiro completado: se sigue viendo el dashboard, pero bloqueado para edición
-       (mismo patrón que /seleccion/admin al enviar a Sociodemográfica) */
-    .interfaz-bloqueada { filter: grayscale(1); opacity: .7; }
+       (mismo patrón que /seleccion/admin al enviar a Sociodemográfica).
+       El gris se aplica tarjeta por tarjeta —y no al contenedor— porque un
+       filtro en el padre no se puede revertir en los hijos, y el Paz y Salvo
+       debe verse y usarse normal aunque el retiro ya esté legalizado. */
+    .interfaz-bloqueada .card { filter: grayscale(1); opacity: .7; }
     .interfaz-bloqueada button, .interfaz-bloqueada input, .interfaz-bloqueada select {
       pointer-events: none !important; cursor: not-allowed;
     }
@@ -262,6 +265,21 @@
        funcionando aunque el proceso esté completado y bloqueado. */
     .interfaz-bloqueada .btn-email-send:not(:disabled) {
       pointer-events: auto !important; cursor: pointer !important;
+    }
+    /* El Paz y Salvo puede seguir en trámite aunque el retiro ya esté
+       legalizado: su sección queda operativa (artículos, estado de firmas y
+       recordatorios a las áreas pendientes). */
+    .interfaz-bloqueada #cardArticulos,
+    .interfaz-bloqueada #cardEstadoPZ { filter: none; opacity: 1; }
+    .interfaz-bloqueada #cardArticulos button:not(:disabled),
+    .interfaz-bloqueada #cardEstadoPZ button:not(:disabled) {
+      pointer-events: auto !important; cursor: pointer !important;
+    }
+    .interfaz-bloqueada #cardArticulos input,
+    .interfaz-bloqueada #cardArticulos select,
+    .interfaz-bloqueada #cardEstadoPZ input,
+    .interfaz-bloqueada #cardEstadoPZ select {
+      pointer-events: auto !important; cursor: auto !important;
     }
     .bloqueado-banner {
       background: #fef3c7; border: 1px solid #fcd34d; color: #92400e;
@@ -397,7 +415,8 @@
   <!-- ══════════════ ESTADO B: Dashboard (también se usa, bloqueado, para el Estado C) ══════════════ -->
   <div id="estadoDashboard" style="display:none">
     <div class="bloqueado-banner" id="bloqueadoBanner" style="display:none">
-      &#128274; Proceso de retiro completado — solo puede consultar los documentos.
+      &#128274; Proceso de retiro completado — los documentos quedan en solo lectura.
+      El Paz y Salvo y el envío de documentación al trabajador siguen habilitados.
     </div>
     <div class="pendientes-banner" id="pendientesLegalizacionBanner" style="display:none"></div>
     <div class="dashboard-grid">
