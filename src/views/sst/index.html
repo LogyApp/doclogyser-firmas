@@ -1074,6 +1074,280 @@
     }
 
     /* ══════════════════════════════════════════════════════════
+       ESTILOS PARA PESTAÑA CASOS MÉDICOS
+    ══════════════════════════════════════════════════════════ */
+    .cm-worker-summary {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .cm-worker-summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .cm-case-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .cm-case-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+    .cm-case-card.abierto {
+      border-left: 4px solid var(--success);
+    }
+    .cm-case-card.cerrado {
+      border-left: 4px solid var(--text-muted);
+      opacity: 0.88;
+    }
+    .cm-case-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .cm-codigo-badge {
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+      font-weight: 800;
+      font-size: 0.82rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .badge-critica { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .badge-alta    { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+    .badge-media   { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-baja    { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+
+    .cm-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 16px;
+      font-size: 0.82rem;
+      margin-bottom: 10px;
+    }
+    .cm-info-grid .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .cm-info-grid .info-label {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.73rem;
+      text-transform: uppercase;
+    }
+    .cm-info-grid .info-value {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .cm-diagnostico-box {
+      background: #f8fafc;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.83rem;
+      margin-bottom: 10px;
+      border-left: 3px solid var(--accent);
+    }
+    .cm-recomendaciones-box {
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      color: #78350f;
+      margin-bottom: 10px;
+    }
+    .cm-autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 1050;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+      display: none;
+    }
+    .cm-autocomplete-item {
+      padding: 8px 12px;
+      font-size: 0.84rem;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      transition: background 0.15s;
+    }
+    .cm-autocomplete-item:hover {
+      background: #ecfdf5;
+      color: var(--primary);
+    }
+
+    /* ═════ EXPEDIENTE MÉDICO Y BITÁCORAS ═════ */
+    .cm-expediente-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    .cm-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: #ffffff;
+      padding: 12px 18px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .cm-hero-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .cm-hero-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .cm-hero-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin: 0;
+      line-height: 1.2;
+    }
+    .cm-hero-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .cm-hero-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px 16px;
+      background: #f8fafc;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      font-size: 0.83rem;
+    }
+    .cm-hero-meta-grid .lbl {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      display: block;
+    }
+    .cm-hero-meta-grid .val {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Bitácora dentro de la tarjeta de caso */
+    .cm-bitacora-box {
+      margin-top: 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .cm-bitacora-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .cm-bitacora-header-title {
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cm-bitacora-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .cm-bitacora-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      transition: all 0.15s ease;
+    }
+    .cm-bitacora-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .cm-bitacora-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.8rem;
+    }
+    .cm-contact-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .badge-res-cumplido { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-res-pendiente { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+    .badge-res-escalado { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .badge-res-finalizado { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .badge-res-reprogramado { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
+    .badge-res-sin-respuesta { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ══════════════════════════════════════════════════════════
        RESPONSIVE (< 900px)
     ══════════════════════════════════════════════════════════ */
     @media (max-width: 900px) {
@@ -1195,6 +1469,16 @@
           </svg>
         </div>
         <span>Compromiso SST</span>
+      </li>
+
+      <!-- 6. Casos Médicos -->
+      <li class="nav-item" data-tab="casosmedicos" onclick="switchTab('casosmedicos')">
+        <div class="nav-icon" title="Casos Médicos">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>
+          </svg>
+        </div>
+        <span>Casos Médicos</span>
       </li>
     </ul>
 
@@ -1858,6 +2142,172 @@
       </div>
     </section>
 
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 6: CASOS MÉDICOS
+    ────────────────────────────────────────────────────────── -->
+    <section class="tab-pane" id="pane-casosmedicos" style="display: none;">
+      <!-- VISTA 1: LISTADO Y FILTROS DE COLABORADORES -->
+      <div id="cm-view-listado">
+        <div class="tab-header">
+          <div class="tab-header-left">
+            <h1 class="tab-title">
+              <span>🏥 Casos Médicos</span>
+              <span class="badge badge-info" id="badge-total-cm">0 Colaboradores</span>
+            </h1>
+            <p class="tab-subtitle">Control de restricciones laborales, incapacidades y casos médicos agrupados por trabajador</p>
+          </div>
+          <div class="tab-actions">
+            <button class="btn btn-accent" id="btn-cm-nuevo-global" onclick="abrirModalNuevoCasoGlobal()">
+              <span>➕</span> Nuevo Caso Médico
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros Plegables con Conteo -->
+        <div class="card-filters">
+          <div class="filtros-toggle" onclick="toggleFiltros('cm')">
+            <span class="filtros-toggle-left">
+              Filtros de Búsqueda
+              <span class="filtros-badge" id="filtros-badge-cm">0</span>
+            </span>
+            <span class="filtros-chevron" id="filtros-chevron-cm">▸</span>
+          </div>
+          <div class="filtros-body" id="filtros-body-cm" style="display: none;">
+            <div class="filters-grid">
+              <div class="form-group">
+                <label class="form-label">Trabajador o Cédula</label>
+                <input type="text" class="form-control" id="filtro-cm-trabajador" placeholder="Nombre o Cédula..." oninput="filtrarDebounce('cm')">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Regional</label>
+                <select class="form-control" id="filtro-cm-regional" onchange="onRegionalChange('cm')">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Operación</label>
+                <select class="form-control" id="filtro-cm-operacion" onchange="filtrarAutomatico('cm')">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Estado General</label>
+                <select class="form-control" id="filtro-cm-estado" onchange="filtrarAutomatico('cm')">
+                  <option value="">Todos</option>
+                  <option value="ABIERTO">Abiertos</option>
+                  <option value="CERRADO">Cerrados</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Prioridad</label>
+                <select class="form-control" id="filtro-cm-prioridad" onchange="filtrarAutomatico('cm')">
+                  <option value="">Todas</option>
+                  <option value="1">Crítica</option>
+                  <option value="2">Alta</option>
+                  <option value="3">Media</option>
+                  <option value="4">Baja</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha Registro Desde</label>
+                <input type="date" class="form-control" id="filtro-cm-desde" onchange="filtrarAutomatico('cm')">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha Registro Hasta</label>
+                <input type="date" class="form-control" id="filtro-cm-hasta" onchange="filtrarAutomatico('cm')">
+              </div>
+              <div class="form-group">
+                <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros('cm')" style="height: 38px;">Limpiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla Agrupada por Colaborador -->
+        <div class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="table-cm">
+              <thead>
+                <tr>
+                  <th style="width: 220px; min-width: 170px;" class="sortable" onclick="toggleSortSst('cm', 'trabajador')" id="th-cm-trabajador">
+                    <div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-cm-trabajador">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 130px; min-width: 100px;" class="sortable" onclick="toggleSortSst('cm', 'regional')" id="th-cm-regional">
+                    <div class="th-content"><span>Regional</span><span class="sort-icon" id="sort-icon-cm-regional">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 150px; min-width: 110px;" class="sortable" onclick="toggleSortSst('cm', 'operacion')" id="th-cm-operacion">
+                    <div class="th-content"><span>Operación</span><span class="sort-icon" id="sort-icon-cm-operacion">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 160px; min-width: 120px;" class="sortable" onclick="toggleSortSst('cm', 'cargo')" id="th-cm-cargo">
+                    <div class="th-content"><span>Cargo</span><span class="sort-icon" id="sort-icon-cm-cargo">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 125px; min-width: 105px;" class="sortable" onclick="toggleSortSst('cm', 'casos')" id="th-cm-casos">
+                    <div class="th-content"><span>Total Casos</span><span class="sort-icon" id="sort-icon-cm-casos">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 115px; min-width: 95px;" class="sortable" onclick="toggleSortSst('cm', 'prioridad')" id="th-cm-prioridad">
+                    <div class="th-content"><span>Prioridad</span><span class="sort-icon" id="sort-icon-cm-prioridad">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 200px; min-width: 150px;" class="sortable" onclick="toggleSortSst('cm', 'diagnostico')" id="th-cm-diagnostico">
+                    <div class="th-content"><span>Último Diagnóstico</span><span class="sort-icon" id="sort-icon-cm-diagnostico">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 125px; min-width: 100px;" class="sortable" onclick="toggleSortSst('cm', 'fecha')" id="th-cm-fecha">
+                    <div class="th-content"><span>Último Caso</span><span class="sort-icon" id="sort-icon-cm-fecha">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 115px; min-width: 95px;">
+                    <div class="th-content"><span>Acción</span></div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="tbody-cm">
+                <tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando casos médicos...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA 2: EXPEDIENTE COMPLETO DEL COLABORADOR (CASOS + BITÁCORAS) -->
+      <div id="cm-view-expediente" style="display: none;" class="cm-expediente-container">
+        <!-- Barra Superior de Navegación y Acciones -->
+        <div class="cm-top-bar">
+          <button type="button" class="btn btn-secondary" onclick="volverListadoCm()" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+            <span>←</span> Volver al Listado
+          </button>
+          <div class="cm-top-bar-actions" id="cm-expediente-top-actions">
+            <button type="button" class="btn btn-accent" id="btn-cm-agregar-caso-expediente" onclick="abrirModalAgregarCasoDesdeExpediente()" style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+              <span>➕</span> Agregar Caso a este Trabajador
+            </button>
+          </div>
+        </div>
+
+        <!-- Hero Card Informativo del Trabajador -->
+        <div class="cm-hero-card" id="cm-hero-card">
+          <!-- Generado dinámicamente -->
+        </div>
+
+        <!-- Encabezado de la Sección de Casos -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+          <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span>📋</span> Casos Médicos Registrados
+            <span class="badge badge-info" id="cm-badge-total-casos-expediente">0</span>
+          </h2>
+        </div>
+
+        <!-- Contenedor dinámico de Tarjetas de Caso con Bitácora -->
+        <div id="cm-expediente-casos-container" style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Generado dinámicamente -->
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -1947,6 +2397,311 @@
     </div>
   </div>
 
+  <!-- Modal Crear / Agregar Caso Médico -->
+  <div class="modal-overlay" id="modal-cm-crear" onclick="if(event.target === this) cerrarModalAgregarCaso();">
+    <div class="modal-content modal-form-large" style="max-width: 860px; height: 88vh;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>🏥</span> <span id="modal-cm-title">Registrar Caso Médico</span>
+        </div>
+        <button type="button" class="modal-close" onclick="cerrarModalAgregarCaso()" title="Cerrar">&times;</button>
+      </div>
+      <div style="flex: 1; overflow-y: auto; padding: 20px;">
+        <form id="form-cm-crear" onsubmit="guardarCasoMedico(event)">
+          <input type="hidden" id="cm-hidden-identificacion">
+
+          <!-- 1. SELECCIÓN / DATOS DEL TRABAJADOR -->
+          <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <span>👤</span> Información del Colaborador
+            </div>
+
+            <!-- Buscador para nuevo trabajador global -->
+            <div id="cm-worker-search-container" style="margin-bottom: 12px; position: relative;">
+              <label class="form-label">Buscar Colaborador (Nombre o C.C.) *</label>
+              <input type="text" class="form-control" id="cm-input-worker-search" placeholder="Escribe al menos 2 letras o números..." autocomplete="off" oninput="buscarTrabajadorGlobal(this.value)">
+              <div class="cm-autocomplete-dropdown" id="cm-worker-dropdown"></div>
+            </div>
+
+            <!-- Ficha de datos del trabajador (readonly) -->
+            <div class="filters-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Nombre</label>
+                <input type="text" class="form-control" id="cm-view-nombre" readonly style="background: #f1f5f9; font-weight: 600;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Identificación</label>
+                <input type="text" class="form-control" id="cm-view-identificacion" readonly style="background: #f1f5f9;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Cargo</label>
+                <input type="text" class="form-control" id="cm-view-cargo" readonly style="background: #f1f5f9;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Regional</label>
+                <input type="text" class="form-control" id="cm-view-regional" readonly style="background: #f1f5f9;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Operación</label>
+                <input type="text" class="form-control" id="cm-view-operacion" readonly style="background: #f1f5f9;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Fecha Ingreso</label>
+                <input type="text" class="form-control" id="cm-view-fecha-ingreso" readonly style="background: #f1f5f9;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Antigüedad</label>
+                <input type="text" class="form-control" id="cm-view-antiguedad" readonly style="background: #f1f5f9;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Edad</label>
+                <input type="text" class="form-control" id="cm-view-edad" readonly style="background: #f1f5f9;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">EPS</label>
+                <input type="text" class="form-control" id="cm-view-eps" readonly style="background: #f1f5f9;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">AFP (Pensión)</label>
+                <input type="text" class="form-control" id="cm-view-afp" readonly style="background: #f1f5f9;">
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. CLASIFICACIÓN DEL CASO -->
+          <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>📑</span> Clasificación y Prioridad
+            </div>
+            <div class="filters-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">¿Es continuación de caso anterior?</label>
+                <select class="form-control" id="cm-select-es-continuacion" onchange="onEsContinuacionChange()">
+                  <option value="2">NO</option>
+                  <option value="1">SÍ</option>
+                </select>
+              </div>
+              <div class="form-group" id="cm-group-caso-anterior" style="display: none;">
+                <label class="form-label">Caso Anterior Relacionado</label>
+                <select class="form-control" id="cm-select-caso-anterior">
+                  <option value="">Selecciona caso anterior...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tipo de Caso *</label>
+                <select class="form-control" id="cm-select-tipo-caso" required>
+                  <option value="">Cargando tipos...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Estado General *</label>
+                <select class="form-control" id="cm-select-estado-general" required>
+                  <option value="">Cargando estados...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Prioridad del Caso *</label>
+                <select class="form-control" id="cm-select-prioridad" required>
+                  <option value="">Cargando prioridades...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tipo de Evento *</label>
+                <select class="form-control" id="cm-select-tipo-evento" required onchange="onTipoEventoChange()">
+                  <option value="">Cargando eventos...</option>
+                </select>
+              </div>
+              <div class="form-group" id="cm-group-accidente-transito" style="display: none;">
+                <label class="form-label">Tipo de Accidente de Tránsito</label>
+                <select class="form-control" id="cm-select-accidente-transito">
+                  <option value="">Selecciona origen...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. DIAGNÓSTICO CIE-10 Y CLÍNICOS -->
+          <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>🩺</span> Diagnóstico CIE-10 y Evento
+            </div>
+            <div style="margin-bottom: 14px; position: relative;">
+              <label class="form-label">Buscar Diagnóstico CIE-10 (Código o Nombre) *</label>
+              <input type="text" class="form-control" id="cm-input-diag-search" placeholder="Ej: M545, Lumbago, Tunel del carpo..." autocomplete="off" oninput="buscarDiagnosticosCie10(this.value)">
+              <input type="hidden" id="cm-hidden-diagnostico">
+              <div class="cm-autocomplete-dropdown" id="cm-diag-dropdown"></div>
+              <div id="cm-selected-diag-badge" style="display: none; margin-top: 6px; padding: 6px 10px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 0.82rem; color: #065f46; font-weight: 600;"></div>
+            </div>
+
+            <div class="filters-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Fecha del Evento</label>
+                <input type="date" class="form-control" id="cm-input-fecha-evento">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Días de Incapacidad</label>
+                <input type="number" class="form-control" id="cm-input-dias-incapacidad" min="0" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">% Pérdida Capacidad (PCL)</label>
+                <input type="number" class="form-control" id="cm-input-pcl" min="0" max="100" step="0.01" placeholder="Ej: 15.50">
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. RECOMENDACIONES Y FECHAS -->
+          <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>📝</span> Recomendaciones y Restricciones Médicas
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="form-label">Recomendaciones / Restricciones Laborales</label>
+              <textarea class="form-control" id="cm-textarea-recomendaciones" rows="3" placeholder="Detalle de restricciones físico-laborales, tiempos y cuidados prescritos por médico tratante..."></textarea>
+            </div>
+            <div class="filters-grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Fecha Inicio Recomendaciones</label>
+                <input type="date" class="form-control" id="cm-input-fecha-inicio">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha Fin Recomendaciones</label>
+                <input type="date" class="form-control" id="cm-input-fecha-fin">
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. GESTIÓN, RESPONSABLES Y SEGUIMIENTO -->
+          <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>📋</span> Puesto de Trabajo y Seguimiento
+            </div>
+            <div class="filters-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+              <div class="form-group">
+                <label class="form-label">Actividad Laboral Actual / Reubicación</label>
+                <textarea class="form-control" id="cm-textarea-actividad" rows="2" placeholder="Funciones actuales desempeñadas..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Historial / Evolución Médica</label>
+                <textarea class="form-control" id="cm-textarea-historial" rows="2" placeholder="Antecedentes y notas de evolución..."></textarea>
+              </div>
+            </div>
+            <div class="filters-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
+              <div class="form-group">
+                <label class="form-label">Responsable SST</label>
+                <input type="text" class="form-control" id="cm-input-resp-sst" placeholder="Nombre profesional SST">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Responsable Operación</label>
+                <input type="text" class="form-control" id="cm-input-resp-operacion" placeholder="Líder o jefe de operación">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Estado de Gestión</label>
+                <select class="form-control" id="cm-select-estado-gestion">
+                  <option value="REQUIERE ACCIÓN">REQUIERE ACCIÓN</option>
+                  <option value="EN GESTIÓN">EN GESTIÓN</option>
+                  <option value="AL DÍA">AL DÍA</option>
+                </select>
+              </div>
+            </div>
+            <div class="filters-grid" style="grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Próxima Acción / Tarea</label>
+                <input type="text" class="form-control" id="cm-input-proxima-accion" placeholder="Próxima gestión o cita médica...">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha Compromiso</label>
+                <input type="date" class="form-control" id="cm-input-fecha-compromiso">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Último Seguimiento</label>
+                <input type="date" class="form-control" id="cm-input-ultimo-seguimiento">
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModalAgregarCaso()">Cancelar</button>
+            <button type="submit" class="btn btn-accent" id="btn-cm-guardar" style="font-weight: 700;">
+              💾 Guardar Caso Médico
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agregar Registro a Bitácora -->
+  <div class="modal-overlay" id="modal-cm-bitacora" onclick="if(event.target === this) cerrarModalBitacora();" style="display: none;">
+    <div class="modal-content modal-form-large" style="max-width: 650px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>📝</span> <span id="modal-cm-bitacora-title">Registrar Seguimiento en Bitácora</span>
+        </div>
+        <button type="button" class="modal-close" onclick="cerrarModalBitacora()" title="Cerrar">&times;</button>
+      </div>
+      <div style="flex: 1; overflow-y: auto; padding: 20px;">
+        <form id="form-cm-bitacora" onsubmit="guardarBitacora(event)">
+          <input type="hidden" id="cm-bitacora-idcaso">
+          <input type="hidden" id="cm-bitacora-identificacion">
+
+          <!-- Encabezado informativo del caso y colaborador -->
+          <div style="background: #f1f5f9; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--primary); font-size: 0.92rem;" id="modal-cm-bitacora-caso-cod">Caso Médico</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;" id="modal-cm-bitacora-trabajador">Colaborador</div>
+          </div>
+
+          <div class="filters-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div class="form-group">
+              <label class="form-label">Fecha de Seguimiento *</label>
+              <input type="date" class="form-control" id="cm-bitacora-fecha" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tipo de Contacto *</label>
+              <select class="form-control" id="cm-bitacora-tipo-contacto" required>
+                <option value="">Seleccione tipo de contacto...</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="filters-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div class="form-group">
+              <label class="form-label">Resultado del Seguimiento *</label>
+              <select class="form-control" id="cm-bitacora-resultado" required>
+                <option value="">Seleccione resultado...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha de Compromiso / Próx. Cita</label>
+              <input type="date" class="form-control" id="cm-bitacora-fecha-compromiso">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label">Objetivo y Detalle del Seguimiento *</label>
+            <textarea class="form-control" id="cm-bitacora-objetivo" rows="3" required placeholder="Describe el objetivo del contacto, estado de salud o restricciones del colaborador, respuesta del trabajador/EPS/ARL..."></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label">Compromiso / Acción Acordada</label>
+            <textarea class="form-control" id="cm-bitacora-compromiso" rows="2" placeholder="Acciones requeridas, radicación de documentos, citas programadas..."></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 18px;">
+            <label class="form-label">Actualización de Actividad Laboral (Opcional)</label>
+            <textarea class="form-control" id="cm-bitacora-actividad" rows="2" placeholder="Actualizar las funciones que desempeña actualmente el colaborador..."></textarea>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModalBitacora()">Cancelar</button>
+            <button type="submit" class="btn btn-accent" id="btn-cm-guardar-bitacora" style="font-weight: 700;">
+              💾 Guardar en Bitácora
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loading-overlay">
     <div class="spinner"></div>
@@ -1969,7 +2724,8 @@
       cap: [],
       pc: [],
       part: [],
-      csst: []
+      csst: [],
+      cm: []
     };
 
     let countsStore = {
@@ -1977,7 +2733,8 @@
       cap: { regionales: {}, operaciones: {} },
       pc: { regionales: {}, operaciones: {} },
       part: {},
-      csst: { regionales: {}, operaciones: {} }
+      csst: { regionales: {}, operaciones: {} },
+      cm: { regionales: {}, operaciones: {} }
     };
 
     let selectedItems = {
@@ -1985,7 +2742,8 @@
       cap: null,
       pc: null,
       part: null,
-      csst: null
+      csst: null,
+      cm: null
     };
 
     let debounceTimers = {};
@@ -1996,7 +2754,8 @@
       cap: { key: 'fecha', dir: 'desc' },
       pc: { key: 'fecha', dir: 'desc' },
       part: { key: 'fecha', dir: 'desc' },
-      csst: { key: 'fecha', dir: 'desc' }
+      csst: { key: 'fecha', dir: 'desc' },
+      cm: { key: 'trabajador', dir: 'asc' }
     };
 
     function toggleSortSst(modKey, col) {
@@ -2032,6 +2791,30 @@
 
     function getSortValueSst(modKey, item, col) {
       if (!item) return '';
+      if (modKey === 'cm') {
+        switch (col) {
+          case 'trabajador':
+            return limpiarNombreTrabajador(item.nombre_trabajador || '').toLowerCase();
+          case 'regional':
+            return String(item.regional || '').toLowerCase();
+          case 'operacion':
+            return String(item.operacion || '').toLowerCase();
+          case 'cargo':
+            return String(item.cargo || '').toLowerCase();
+          case 'casos':
+          case 'total_casos':
+            return Number(item.total_casos || 0);
+          case 'prioridad':
+            return Number(item.min_prioridad_id || 99);
+          case 'diagnostico':
+            return String(item.ultimo_diagnostico_cod || '').toLowerCase();
+          case 'fecha':
+          case 'ultimo_caso':
+            return item.max_fecha_caso || '';
+          default:
+            return String(item[col] || '').toLowerCase();
+        }
+      }
       switch (col) {
         case 'notificar':
           return item.url_doc ? 0 : 1;
@@ -2101,6 +2884,7 @@
       else if (modKey === 'pc') aplicarFiltroYOrdenPc();
       else if (modKey === 'part') aplicarFiltroYOrdenPart();
       else if (modKey === 'csst') aplicarFiltroYOrdenCsst();
+      else if (modKey === 'cm') aplicarFiltroYOrdenCm();
     }
 
     // ═════ REDIMENSIÓN DE COLUMNAS (DRAG & RESIZE) ═════
@@ -2151,6 +2935,7 @@
       actualizarIconosOrdenSst('pc');
       actualizarIconosOrdenSst('part');
       actualizarIconosOrdenSst('csst');
+      actualizarIconosOrdenSst('cm');
       inicializarCanvasCsst();
       switchTab('evaluacion');
     });
@@ -2161,9 +2946,13 @@
       document.getElementById('sidebar-user-avatar').innerText = uName.charAt(0).toUpperCase();
       document.getElementById('sidebar-user-role').innerText = CONFIG.rol || 'SST';
       document.getElementById('sidebar-user-reg').innerText = CONFIG.regional || 'Nacional';
-      
+
       const mobBadge = document.getElementById('mobile-user-badge');
       if (mobBadge) mobBadge.innerText = `${uName} (${CONFIG.rol || 'SST'})`;
+
+      if (typeof actualizarPermisosBotonesCm === 'function') {
+        actualizarPermisosBotonesCm();
+      }
     }
 
     function initLinks() {
@@ -2297,7 +3086,11 @@
         toggleMobileSidebar(false);
       }
 
-      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
+      if (tabId === 'casosmedicos' && typeof actualizarPermisosBotonesCm === 'function') {
+        actualizarPermisosBotonesCm();
+      }
+
+      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : tabId === 'casosmedicos' ? 'cm' : 'csst';
       actualizarIconosOrdenSst(key);
       inicializarRedimensionColumnasSst();
       if (!dataStore[key].length) {
@@ -2327,7 +3120,7 @@
       const icon = document.getElementById('btn-actualizar-global-icon');
       if (icon) icon.style.animation = 'spin 0.8s linear infinite';
 
-      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : 'csst';
+      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'casosmedicos' ? 'cm' : 'csst';
       cargarDatos(key).finally(() => {
         if (icon) icon.style.animation = 'none';
       });
@@ -2338,7 +3131,7 @@
       const body = document.getElementById(`filtros-body-${modKey}`);
       const chevron = document.getElementById(`filtros-chevron-${modKey}`);
       if (!body) return;
-      
+
       const isOpen = body.style.display === 'block';
       body.style.display = isOpen ? 'none' : 'block';
       if (chevron) {
@@ -2355,6 +3148,22 @@
         if (document.getElementById('filtro-part-search').value.trim()) count++;
         if (document.getElementById('filtro-part-desde').value) count++;
         if (document.getElementById('filtro-part-hasta').value) count++;
+      } else if (modKey === 'cm') {
+        const trab = document.getElementById('filtro-cm-trabajador');
+        const reg = document.getElementById('filtro-cm-regional');
+        const op = document.getElementById('filtro-cm-operacion');
+        const est = document.getElementById('filtro-cm-estado');
+        const prio = document.getElementById('filtro-cm-prioridad');
+        const fd = document.getElementById('filtro-cm-desde');
+        const fh = document.getElementById('filtro-cm-hasta');
+
+        if (trab && trab.value.trim()) count++;
+        if (reg && reg.value) count++;
+        if (op && op.value) count++;
+        if (est && est.value) count++;
+        if (prio && prio.value) count++;
+        if (fd && fd.value) count++;
+        if (fh && fh.value) count++;
       } else {
         const trab = document.getElementById(`filtro-${modKey}-trabajador`);
         const reg = document.getElementById(`filtro-${modKey}-regional`);
@@ -2412,6 +3221,22 @@
         document.getElementById('filtro-part-search').value = '';
         document.getElementById('filtro-part-desde').value = '';
         document.getElementById('filtro-part-hasta').value = '';
+      } else if (modKey === 'cm') {
+        const trab = document.getElementById('filtro-cm-trabajador');
+        const reg = document.getElementById('filtro-cm-regional');
+        const op = document.getElementById('filtro-cm-operacion');
+        const est = document.getElementById('filtro-cm-estado');
+        const prio = document.getElementById('filtro-cm-prioridad');
+        const fd = document.getElementById('filtro-cm-desde');
+        const fh = document.getElementById('filtro-cm-hasta');
+
+        if (trab) trab.value = '';
+        if (reg) reg.value = '';
+        if (op) op.value = '';
+        if (est) est.value = '';
+        if (prio) prio.value = '';
+        if (fd) fd.value = '';
+        if (fh) fh.value = '';
       } else {
         const trab = document.getElementById(`filtro-${modKey}-trabajador`);
         const reg = document.getElementById(`filtro-${modKey}-regional`);
@@ -2443,6 +3268,7 @@
         if (modKey === 'pc') await cargarPruebas();
         if (modKey === 'part') await cargarParticipaciones();
         if (modKey === 'csst') await cargarCompromisos();
+        if (modKey === 'cm') await cargarCasosMedicos();
       } catch (err) {
         console.error(`Error cargando datos de ${modKey}:`, err);
         showToast('Error al cargar datos', 'error');
@@ -3920,6 +4746,1050 @@
       }
     }
 
+    // ══════════════════════════════════════════════════════════
+    // MÓDULO CASOS MÉDICOS (SST)
+    // ══════════════════════════════════════════════════════════
+    let catalogosCasosMedicos = null;
+    let debounceCmWorker = null;
+    let debounceCmDiag = null;
+    let selectedWorkerData = null;
+    let currentExpedienteTrabajadorId = null;
+
+    // Control de Permisos por Rol para Casos Médicos y Bitácoras
+    function puedeCrearCaso() {
+      const rol = String(CONFIG.rol || '').trim();
+      return ['Sistema', 'AdmSst', 'LiderSst'].includes(rol);
+    }
+
+    function puedeCrearBitacora() {
+      const rol = String(CONFIG.rol || '').trim();
+      return ['Sistema', 'AdmSst', 'LiderSst', 'AnaSst', 'AuxSst'].includes(rol);
+    }
+
+    function actualizarPermisosBotonesCm() {
+      const btnNuevoGlobal = document.getElementById('btn-cm-nuevo-global');
+      if (btnNuevoGlobal) {
+        btnNuevoGlobal.style.display = puedeCrearCaso() ? 'inline-flex' : 'none';
+      }
+      const btnAddExp = document.getElementById('btn-cm-agregar-caso-expediente');
+      if (btnAddExp) {
+        btnAddExp.style.display = puedeCrearCaso() ? 'inline-flex' : 'none';
+      }
+    }
+
+    function getIconoTipoContacto(tipo) {
+      const t = (tipo || '').toLowerCase();
+      if (t.includes('llamada')) return '📞';
+      if (t.includes('whatsapp')) return '💬';
+      if (t.includes('reunión') || t.includes('reunion')) return '👥';
+      if (t.includes('correo')) return '📧';
+      if (t.includes('visita')) return '🏠';
+      if (t.includes('revisión') || t.includes('revision') || t.includes('document')) return '📄';
+      return '📋';
+    }
+
+    function getBadgeClaseResultado(res) {
+      const r = (res || '').toUpperCase();
+      if (r === 'CUMPLIDO') return 'badge-res-cumplido';
+      if (r === 'PENDIENTE') return 'badge-res-pendiente';
+      if (r === 'ESCALADO') return 'badge-res-escalado';
+      if (r === 'FINALIZADO') return 'badge-res-finalizado';
+      if (r === 'REPROGRAMADO') return 'badge-res-reprogramado';
+      if (r === 'SIN RESPUESTA') return 'badge-res-sin-respuesta';
+      return 'badge-secondary';
+    }
+
+    async function cargarCasosMedicos() {
+      const tr = document.getElementById('filtro-cm-trabajador').value.trim();
+      const reg = document.getElementById('filtro-cm-regional').value;
+      const op = document.getElementById('filtro-cm-operacion').value;
+      const est = document.getElementById('filtro-cm-estado').value;
+      const prio = document.getElementById('filtro-cm-prioridad').value;
+      const fd = document.getElementById('filtro-cm-desde').value;
+      const fh = document.getElementById('filtro-cm-hasta').value;
+
+      const params = new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        trabajador: tr,
+        regional: reg,
+        operacion: op,
+        estado: est,
+        prioridad: prio,
+        fechaDesde: fd,
+        fechaHasta: fh
+      });
+
+      const [rData, rCounts] = await Promise.all([
+        fetch(`/casosmedicos/api/trabajadores-casos?${params.toString()}`),
+        fetch(`/casosmedicos/api/conteos-filtros?${params.toString()}`)
+      ]);
+
+      const [casos, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      dataStore.cm = Array.isArray(casos) ? casos : [];
+      countsStore.cm = counts || { regionales: {}, operaciones: {} };
+
+      actualizarSelectConteos('cm', counts);
+      actualizarPermisosBotonesCm();
+      aplicarFiltroYOrdenCm();
+    }
+
+    function aplicarFiltroYOrdenCm() {
+      let filtrados = (dataStore.cm || []).slice();
+      filtrados = ordenarDatosSst('cm', filtrados);
+      renderTablaCasosMedicos(filtrados);
+    }
+
+    function renderTablaCasosMedicos(items) {
+      const tbody = document.getElementById('tbody-cm');
+      document.getElementById('badge-total-cm').innerText = `${items.length} Colaboradores`;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron casos médicos registrados.</td></tr>';
+        inicializarRedimensionColumnasSst();
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const nombreTrabajador = limpiarNombreTrabajador(it.nombre_trabajador);
+        const cedula = it.identificacion || '—';
+        const reg = it.regional || '—';
+        const op = it.operacion || '—';
+        const cargo = it.cargo || '—';
+        const totalCasos = it.total_casos || 0;
+        const abiertos = it.casos_abiertos || 0;
+
+        // Prioridad badge
+        let prioBadge = '<span class="badge badge-secondary">—</span>';
+        const prioNombre = (it.prioridad_nombre || '').toUpperCase();
+        if (prioNombre.includes('CRÍT') || prioNombre.includes('CRIT') || it.min_prioridad_id === 1) {
+          prioBadge = '<span class="badge badge-critica">Crítica</span>';
+        } else if (prioNombre.includes('ALTA') || it.min_prioridad_id === 2) {
+          prioBadge = '<span class="badge badge-alta">Alta</span>';
+        } else if (prioNombre.includes('MEDIA') || it.min_prioridad_id === 3) {
+          prioBadge = '<span class="badge badge-media">Media</span>';
+        } else if (prioNombre.includes('BAJA') || it.min_prioridad_id === 4) {
+          prioBadge = '<span class="badge badge-baja">Baja</span>';
+        }
+
+        // Diagnóstico
+        let diagHtml = '—';
+        if (it.ultimo_diagnostico_cod) {
+          const desc = it.ultimo_diagnostico_desc || '';
+          diagHtml = `<strong>${it.ultimo_diagnostico_cod}</strong>: <span style="font-size:0.75rem; color:var(--text-muted);" title="${desc}">${desc.length > 30 ? desc.slice(0, 30) + '...' : desc}</span>`;
+        }
+
+        // Última fecha
+        const fechaFmt = it.max_fecha_caso ? it.max_fecha_caso.slice(0, 10).split('-').reverse().join('/') : '—';
+        const isSelected = selectedItems.cm === String(cedula);
+
+        return `
+          <tr onclick="abrirExpedienteTrabajador('${cedula}')" id="row-cm-${cedula}" class="${isSelected ? 'selected' : ''}" style="cursor:pointer;">
+            <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted); font-size:0.75rem;">C.C. ${cedula}</small></td>
+            <td>${reg}</td>
+            <td>${op}</td>
+            <td>${cargo}</td>
+            <td>
+              <span class="badge badge-info" style="font-weight:700;">${totalCasos}</span>
+              ${abiertos > 0 ? `<span class="badge badge-warning" style="font-size:0.7rem; margin-left:4px;" title="Casos Abiertos">${abiertos} ab.</span>` : ''}
+            </td>
+            <td>${prioBadge}</td>
+            <td>${diagHtml}</td>
+            <td><strong>${fechaFmt}</strong></td>
+            <td>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); abrirExpedienteTrabajador('${cedula}')" style="color:var(--primary); font-weight:600; font-size:0.75rem; padding:4px 8px;">
+                👁 Ver Casos
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      inicializarRedimensionColumnasSst();
+    }
+
+    function volverListadoCm() {
+      document.getElementById('cm-view-expediente').style.display = 'none';
+      document.getElementById('cm-view-listado').style.display = 'block';
+      inicializarRedimensionColumnasSst();
+    }
+
+    function abrirModalAgregarCasoDesdeExpediente() {
+      if (!puedeCrearCaso()) {
+        showToast('No tienes permisos para registrar casos médicos', 'error');
+        return;
+      }
+      if (currentExpedienteTrabajadorId) {
+        abrirModalAgregarCaso(currentExpedienteTrabajadorId);
+      }
+    }
+
+    async function abrirExpedienteTrabajador(identificacion) {
+      if (!identificacion) return;
+      currentExpedienteTrabajadorId = String(identificacion);
+      selectedItems.cm = String(identificacion);
+
+      // Resaltar fila seleccionada en tabla si existe
+      document.querySelectorAll('#tbody-cm tr').forEach(r => r.classList.remove('selected'));
+      const row = document.getElementById(`row-cm-${identificacion}`);
+      if (row) row.classList.add('selected');
+
+      // Alternar vistas: ocultar listado y mostrar expediente completo
+      document.getElementById('cm-view-listado').style.display = 'none';
+      const expView = document.getElementById('cm-view-expediente');
+      expView.style.display = 'flex';
+
+      const heroEl = document.getElementById('cm-hero-card');
+      const casosContainerEl = document.getElementById('cm-expediente-casos-container');
+      const badgeTotal = document.getElementById('cm-badge-total-casos-expediente');
+
+      heroEl.innerHTML = '<div style="text-align:center; padding:24px; color:var(--text-muted);"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando información del colaborador...</div>';
+      casosContainerEl.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted);"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando historial médico y bitácora...</div>';
+      badgeTotal.innerText = '...';
+
+      // Scroll suave hacia el contenedor
+      const pane = document.getElementById('pane-casosmedicos');
+      if (pane) pane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      try {
+        const [rCasos, rTrab] = await Promise.all([
+          fetch(`/casosmedicos/api/casos-trabajador/${encodeURIComponent(identificacion)}`),
+          fetch(`/casosmedicos/api/trabajador-info/${encodeURIComponent(identificacion)}`)
+        ]);
+
+        const casos = await rCasos.json();
+        const trab = await rTrab.json();
+
+        // 1. Render Hero Card del Trabajador
+        const nombreTrabajador = limpiarNombreTrabajador(trab.nombre || identificacion);
+        const totalCasos = Array.isArray(casos) ? casos.length : 0;
+        const abiertos = Array.isArray(casos) ? casos.filter(c => c.estado_general_id === 1).length : 0;
+        badgeTotal.innerText = `${totalCasos} Caso${totalCasos === 1 ? '' : 's'}`;
+
+        heroEl.innerHTML = `
+          <div class="cm-hero-header">
+            <div>
+              <h2 class="cm-hero-title">${nombreTrabajador}</h2>
+              <div class="cm-hero-subtitle">
+                Cédula: <strong>${identificacion}</strong> &bull; Cargo: <strong>${trab.cargo || '—'}</strong>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="badge ${trab.estado === 'Activo' ? 'badge-success' : 'badge-secondary'}">${trab.estado || 'Activo'}</span>
+              <span class="badge badge-info" style="font-weight:700;">${totalCasos} Caso${totalCasos === 1 ? '' : 's'}</span>
+              ${abiertos > 0 ? `<span class="badge badge-warning" style="font-weight:700;">${abiertos} Abierto${abiertos === 1 ? '' : 's'}</span>` : ''}
+            </div>
+          </div>
+          <div class="cm-hero-meta-grid">
+            <div><span class="lbl">Regional</span><span class="val">${trab.regional || '—'}</span></div>
+            <div><span class="lbl">Operación</span><span class="val">${trab.operacion || '—'}</span></div>
+            <div><span class="lbl">Fecha Ingreso</span><span class="val">${trab.fechaIngreso ? trab.fechaIngreso.split('-').reverse().join('/') : '—'}</span></div>
+            <div><span class="lbl">Antigüedad</span><span class="val">${trab.anosEmpresa || 0} años</span></div>
+            <div><span class="lbl">Edad</span><span class="val">${trab.edad || 0} años</span></div>
+            <div><span class="lbl">EPS</span><span class="val">${trab.eps || '—'}</span></div>
+            <div><span class="lbl">AFP (Pensión)</span><span class="val">${trab.afp || '—'}</span></div>
+          </div>
+        `;
+
+        // Botón "Agregar Caso a este Trabajador" según rol
+        const btnAddExp = document.getElementById('btn-cm-agregar-caso-expediente');
+        if (btnAddExp) {
+          btnAddExp.style.display = puedeCrearCaso() ? 'inline-flex' : 'none';
+        }
+
+        // 2. Render Casos Médicos y Bitácoras
+        if (!Array.isArray(casos) || !casos.length) {
+          casosContainerEl.innerHTML = `
+            <div style="text-align:center; padding:40px 20px; background:#fff; border:1px dashed var(--border); border-radius:8px; color:var(--text-muted);">
+              <div style="font-size:2.5rem; margin-bottom:8px;">📁</div>
+              <div style="font-weight:700; font-size:1.05rem; margin-bottom:4px; color:var(--text-main);">No hay casos médicos registrados para este colaborador</div>
+              <p style="font-size:0.85rem; max-width:400px; margin:0 auto 16px;">Haz clic en el botón a continuación para registrar el primer caso médico con sus restricciones y diagnósticos.</p>
+              ${puedeCrearCaso() ? `
+                <button type="button" class="btn btn-accent" onclick="abrirModalAgregarCasoDesdeExpediente()" style="font-weight:700;">
+                  <span>➕</span> Agregar Primer Caso Médico
+                </button>
+              ` : ''}
+            </div>
+          `;
+          return;
+        }
+
+        const casesHtml = casos.map(c => {
+          const estadoBadge = c.estado_general_id === 1
+            ? '<span class="badge badge-warning">Abierto</span>'
+            : '<span class="badge badge-success">Cerrado</span>';
+
+          const prioNombre = (c.prioridad_nombre || '').toUpperCase();
+          let prioBadge = '<span class="badge badge-secondary">—</span>';
+          if (prioNombre.includes('CRÍT') || prioNombre.includes('CRIT') || c.prioridad_id === 1) {
+            prioBadge = '<span class="badge badge-critica">Crítica</span>';
+          } else if (prioNombre.includes('ALTA') || c.prioridad_id === 2) {
+            prioBadge = '<span class="badge badge-alta">Alta</span>';
+          } else if (prioNombre.includes('MEDIA') || c.prioridad_id === 3) {
+            prioBadge = '<span class="badge badge-media">Media</span>';
+          } else if (prioNombre.includes('BAJA') || c.prioridad_id === 4) {
+            prioBadge = '<span class="badge badge-baja">Baja</span>';
+          }
+
+          const tipoEventoBadge = `<span class="badge badge-secondary">${c.tipo_evento_nombre || 'Evento'}</span>`;
+          const tipoCasoBadge = `<span class="badge badge-info">${c.tipo_caso_nombre || 'Caso'}</span>`;
+          const transitoBadge = c.tipo_accidente_transito_nombre ? `<span class="badge badge-secondary">🚗 ${c.tipo_accidente_transito_nombre}</span>` : '';
+          const continuacionBadge = (Number(c.es_continuacion) === 1 && c.caso_anterior_codigo) ? `<span class="badge badge-secondary">🔗 Viene de ${c.caso_anterior_codigo}</span>` : '';
+
+          let alertaVencBadge = '';
+          if (c.alerta_vencimiento === 'VIGENTE') alertaVencBadge = '<span class="badge badge-success" style="font-size:0.7rem;">Vigente</span>';
+          else if (c.alerta_vencimiento === 'POR VENCER') alertaVencBadge = '<span class="badge badge-warning" style="font-size:0.7rem;">Por Vencer</span>';
+          else if (c.alerta_vencimiento === 'VENCIDO') alertaVencBadge = '<span class="badge badge-danger" style="font-size:0.7rem;">Vencido</span>';
+
+          let alertaSegBadge = '';
+          if (c.alerta_seguimiento === 'AL DÍA') alertaSegBadge = '<span class="badge badge-success" style="font-size:0.7rem;">Al Día</span>';
+          else if (c.alerta_seguimiento === 'PENDIENTE') alertaSegBadge = '<span class="badge badge-warning" style="font-size:0.7rem;">Pendiente</span>';
+          else if (c.alerta_seguimiento === 'CRÍTICO') alertaSegBadge = '<span class="badge badge-danger" style="font-size:0.7rem;">Crítico</span>';
+
+          const fInicioFmt = c.fecha_inicio ? c.fecha_inicio.slice(0, 10).split('-').reverse().join('/') : null;
+          const fFinFmt = c.fecha_fin ? c.fecha_fin.slice(0, 10).split('-').reverse().join('/') : null;
+          const fEventoFmt = c.fecha_evento ? c.fecha_evento.slice(0, 10).split('-').reverse().join('/') : '—';
+          const fCompromisoFmt = c.fecha_compromiso ? c.fecha_compromiso.slice(0, 10).split('-').reverse().join('/') : '—';
+          const fUltimoSegFmt = c.ultimo_seguimiento ? c.ultimo_seguimiento.slice(0, 10).split('-').reverse().join('/') : '—';
+          const fRegFmt = c.fecha_registro ? c.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '—';
+
+          // Permiso de eliminación del caso
+          const creador = String(c.usuario || '').trim().toLowerCase();
+          const usuId = String(CONFIG.usuarioId || '').trim().toLowerCase();
+          const usuNombre = String(CONFIG.usuarioNombre || '').trim().toLowerCase();
+          const esAdmin = ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+          const puedeEliminarCaso = esAdmin || (creador && (creador === usuId || creador === usuNombre));
+
+          // Bitácoras hijas del caso
+          const bitacoras = Array.isArray(c.bitacoras) ? c.bitacoras : [];
+          const nombreEscapado = (trab.nombre || identificacion).replace(/'/g, "\\'");
+
+          let bitacoraHtml = `
+            <div class="cm-bitacora-box">
+              <div class="cm-bitacora-header">
+                <div class="cm-bitacora-header-title">
+                  <span>📝 Bitácora de Seguimiento</span>
+                  <span class="badge badge-secondary" style="font-weight:700; font-size:0.75rem;">${bitacoras.length}</span>
+                </div>
+                ${puedeCrearBitacora() ? `
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalBitacora(${c.id}, '${c.codigo_caso}', '${identificacion}', '${nombreEscapado}')" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:0.78rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:4px 10px;">
+                    <span>➕</span> Agregar Seguimiento
+                  </button>
+                ` : ''}
+              </div>
+          `;
+
+          if (bitacoras.length === 0) {
+            bitacoraHtml += `
+              <div style="text-align:center; padding:16px; color:var(--text-muted); font-size:0.82rem; background:#ffffff; border-radius:6px; border:1px dashed #cbd5e1;">
+                Sin registros en la bitácora aún.${puedeCrearBitacora() ? ' Haz clic en "Agregar Seguimiento" para registrar un contacto.' : ''}
+              </div>
+            `;
+          } else {
+            bitacoraHtml += '<div class="cm-bitacora-timeline">';
+            bitacoraHtml += bitacoras.map(b => {
+              const iconContact = getIconoTipoContacto(b.tipo_contacto);
+              const badgeResClase = getBadgeClaseResultado(b.resultado);
+              const fSegFmt = b.fecha_seguimiento ? b.fecha_seguimiento.slice(0, 10).split('-').reverse().join('/') : '—';
+              const fCompFmt = b.fecha_compromiso ? b.fecha_compromiso.slice(0, 10).split('-').reverse().join('/') : null;
+
+              // Permiso de eliminación de bitácora
+              const creadorBit = String(b.usuario || '').trim().toLowerCase();
+              const puedeEliminarBit = esAdmin || (creadorBit && (creadorBit === usuId || creadorBit === usuNombre));
+
+              return `
+                <div class="cm-bitacora-card">
+                  <div class="cm-bitacora-card-top">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                      <span class="cm-contact-badge">${iconContact} ${b.tipo_contacto || 'Contacto'}</span>
+                      <span style="font-weight:700; color:var(--text-main); font-size:0.82rem;">${fSegFmt}</span>
+                      <span class="badge ${badgeResClase}" style="font-size:0.72rem;">${b.resultado || 'PENDIENTE'}</span>
+                      <span style="color:var(--text-muted); font-size:0.75rem;">Registrado por: <strong>${b.usuario_nombre || b.usuario || 'SST'}</strong></span>
+                    </div>
+                    ${puedeEliminarBit ? `
+                      <button type="button" class="btn btn-sm" onclick="eliminarBitacora(${b.idbitacora}, ${c.id}, '${identificacion}')" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:0.72rem; padding:2px 7px; border-radius:4px; cursor:pointer;" title="Eliminar este registro de bitácora">
+                        🗑 Eliminar
+                      </button>
+                    ` : ''}
+                  </div>
+                  <div style="font-size:0.83rem; color:var(--text-main); margin-bottom:4px; line-height:1.45;">
+                    <strong>Objetivo:</strong> ${b.seguimiento_objetivo}
+                  </div>
+                  ${b.compromiso_accion ? `
+                    <div style="font-size:0.8rem; color:#1e3a8a; background:#eff6ff; padding:6px 10px; border-radius:5px; margin-top:5px; border-left:3px solid #3b82f6;">
+                      <strong>Compromiso / Acción:</strong> ${b.compromiso_accion}
+                      ${fCompFmt ? `<span style="display:inline-block; margin-left:8px; font-weight:700; color:#1d4ed8;">📅 Plazo: ${fCompFmt}</span>` : ''}
+                    </div>
+                  ` : ''}
+                  ${b.actividad_actual ? `
+                    <div style="font-size:0.8rem; color:#475569; margin-top:5px;">
+                      <strong>Actividad Laboral Reportada:</strong> ${b.actividad_actual}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join('');
+            bitacoraHtml += '</div>';
+          }
+          bitacoraHtml += '</div>';
+
+          return `
+            <div class="cm-case-card" style="background:#ffffff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;">
+              <div class="cm-case-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:12px;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <span style="font-weight:800; font-size:1.05rem; color:var(--primary);">${c.codigo_caso}</span>
+                  ${estadoBadge}
+                  ${prioBadge}
+                  ${tipoCasoBadge}
+                  ${tipoEventoBadge}
+                  ${transitoBadge}
+                  ${continuacionBadge}
+                </div>
+                <div>
+                  ${puedeEliminarCaso ? `
+                    <button type="button" class="btn btn-sm" onclick="eliminarCasoMedico(${c.id}, '${identificacion}')" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Eliminar este caso">
+                      🗑 Eliminar Caso
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+
+              <div class="cm-case-body">
+                <!-- Diagnóstico CIE-10 -->
+                <div class="cm-diagnostico-box" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:0.85rem; color:#1e40af;">
+                  <strong>🩺 Diagnóstico CIE-10:</strong> [${c.diagnostico || '—'}] ${c.diagnostico_desc || 'Sin descripción'}
+                </div>
+
+                <!-- Métricas Clínicas -->
+                <div class="cm-info-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:8px 12px; margin-bottom:10px; font-size:0.82rem;">
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Fecha Evento</span> <span class="val" style="font-weight:600;">${fEventoFmt}</span></div>
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Días Incapacidad</span> <span class="val" style="font-weight:600;">${c.dias_incapacidad != null ? c.dias_incapacidad : '0'}</span></div>
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">% PCL (Pérdida)</span> <span class="val" style="font-weight:600;">${c.pcl_porcentaje != null ? c.pcl_porcentaje + '%' : '—'}</span></div>
+                  <div>
+                    <span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Recomendaciones</span>
+                    <span class="val" style="font-weight:600;">${fInicioFmt && fFinFmt ? `${fInicioFmt} al ${fFinFmt}` : fInicioFmt ? `Desde ${fInicioFmt}` : 'Sin definir'} ${alertaVencBadge}</span>
+                  </div>
+                </div>
+
+                <!-- Detalle de Restricciones -->
+                ${c.recomendaciones ? `
+                  <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px 12px; border-radius:6px; font-size:0.82rem; margin-bottom:10px;">
+                    <strong>Detalle Restricciones:</strong> ${c.recomendaciones}
+                  </div>
+                ` : ''}
+
+                <!-- Actividad actual y notas de evolución -->
+                ${(c.actividad_actual || c.historial_anterior) ? `
+                  <div class="cm-info-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:8px 12px; margin-bottom:10px; font-size:0.82rem;">
+                    ${c.actividad_actual ? `<div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Actividad Laboral</span> <span class="val" style="font-weight:600;">${c.actividad_actual}</span></div>` : ''}
+                    ${c.historial_anterior ? `<div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Historial / Evolución</span> <span class="val" style="font-weight:600;">${c.historial_anterior}</span></div>` : ''}
+                  </div>
+                ` : ''}
+
+                <!-- Gestión y Seguimiento -->
+                <div class="cm-info-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:8px 12px; border-top:1px dashed var(--border); padding-top:10px; margin-top:8px; font-size:0.82rem;">
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Responsable SST</span> <span class="val" style="font-weight:600;">${c.responsable_sst || '—'}</span></div>
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Responsable Operación</span> <span class="val" style="font-weight:600;">${c.responsable_operacion || '—'}</span></div>
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Estado Gestión</span> <span class="val badge ${c.estado_gestion === 'AL DÍA' ? 'badge-success' : c.estado_gestion === 'EN GESTIÓN' ? 'badge-warning' : 'badge-danger'}" style="font-size:0.72rem;">${c.estado_gestion || 'REQUIERE ACCIÓN'}</span></div>
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Próxima Acción</span> <span class="val" style="font-weight:600;">${c.proxima_accion || '—'}</span></div>
+                  <div><span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Fecha Compromiso</span> <span class="val" style="font-weight:600;">${fCompromisoFmt}</span></div>
+                  <div>
+                    <span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Último Seguimiento</span>
+                    <span class="val" style="font-weight:600;">${fUltimoSegFmt} ${alertaSegBadge}</span>
+                  </div>
+                </div>
+
+                <!-- Sección Integrada de Bitácora -->
+                ${bitacoraHtml}
+
+                <!-- Footer con metadata -->
+                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:10px; display:flex; justify-content:space-between; flex-wrap:wrap; border-top:1px solid #f1f5f9; padding-top:8px;">
+                  <span>Registrado por: <strong>${c.usuario_nombre || c.usuario || 'SST'}</strong></span>
+                  <span>Fecha Registro: ${fRegFmt}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        casosContainerEl.innerHTML = casesHtml;
+      } catch (err) {
+        console.error('Error abriendo expediente de casos médicos:', err);
+        heroEl.innerHTML = '<div style="color:var(--danger); padding:20px; text-align:center;">Error al cargar el expediente del colaborador.</div>';
+        casosContainerEl.innerHTML = '';
+      }
+    }
+
+    function abrirDetalleCasosMedicos(identificacion) {
+      abrirExpedienteTrabajador(identificacion);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // MODAL Y GESTIÓN DE BITÁCORA
+    // ══════════════════════════════════════════════════════════
+    async function abrirModalBitacora(idcaso, codigoCaso, identificacion, nombreTrabajador) {
+      if (!puedeCrearBitacora()) {
+        showToast('No tienes permisos para registrar seguimientos en la bitácora', 'error');
+        return;
+      }
+      showLoading('Cargando formulario de bitácora...');
+      try {
+        await cargarCatalogosCasosMedicos();
+        document.getElementById('cm-bitacora-idcaso').value = idcaso;
+        document.getElementById('cm-bitacora-identificacion').value = identificacion;
+        document.getElementById('modal-cm-bitacora-caso-cod').innerText = `Caso Médico: ${codigoCaso || ('#' + idcaso)}`;
+        document.getElementById('modal-cm-bitacora-trabajador').innerText = `Colaborador: ${limpiarNombreTrabajador(nombreTrabajador)} (C.C. ${identificacion})`;
+
+        document.getElementById('cm-bitacora-fecha').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('cm-bitacora-tipo-contacto').value = 'Llamada';
+        document.getElementById('cm-bitacora-resultado').value = 'PENDIENTE';
+        document.getElementById('cm-bitacora-fecha-compromiso').value = '';
+        document.getElementById('cm-bitacora-objetivo').value = '';
+        document.getElementById('cm-bitacora-compromiso').value = '';
+        document.getElementById('cm-bitacora-actividad').value = '';
+
+        document.getElementById('modal-cm-bitacora').style.display = 'flex';
+      } catch (err) {
+        console.error('Error abriendo modal bitacora:', err);
+        showToast('Error al abrir modal de bitácora', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function cerrarModalBitacora() {
+      document.getElementById('modal-cm-bitacora').style.display = 'none';
+      document.getElementById('form-cm-bitacora').reset();
+    }
+
+    async function guardarBitacora(e) {
+      e.preventDefault();
+      if (!puedeCrearBitacora()) {
+        showToast('No tienes permiso para registrar en bitácora', 'error');
+        return;
+      }
+
+      const idcaso = document.getElementById('cm-bitacora-idcaso').value;
+      const identificacion = document.getElementById('cm-bitacora-identificacion').value;
+      const fecha_seguimiento = document.getElementById('cm-bitacora-fecha').value;
+      const tipo_contacto = document.getElementById('cm-bitacora-tipo-contacto').value;
+      const resultado = document.getElementById('cm-bitacora-resultado').value;
+      const fecha_compromiso = document.getElementById('cm-bitacora-fecha-compromiso').value || null;
+      const seguimiento_objetivo = document.getElementById('cm-bitacora-objetivo').value.trim();
+      const compromiso_accion = document.getElementById('cm-bitacora-compromiso').value.trim() || null;
+      const actividad_actual = document.getElementById('cm-bitacora-actividad').value.trim() || null;
+
+      if (!idcaso || !fecha_seguimiento || !tipo_contacto || !resultado || !seguimiento_objetivo) {
+        showToast('Por favor completa los campos requeridos (*)', 'error');
+        return;
+      }
+
+      const payload = {
+        idcaso,
+        fecha_seguimiento,
+        tipo_contacto,
+        resultado,
+        fecha_compromiso,
+        seguimiento_objetivo,
+        compromiso_accion,
+        actividad_actual,
+        usuario: CONFIG.usuarioId
+      };
+
+      const btn = document.getElementById('btn-cm-guardar-bitacora');
+      btn.disabled = true;
+      btn.innerText = 'Guardando seguimiento...';
+      showLoading('Registrando en bitácora...');
+
+      try {
+        const res = await fetch('/casosmedicos/api/bitacora/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast(data.message || 'Registro agregado a la bitácora', 'success');
+          cerrarModalBitacora();
+          await abrirExpedienteTrabajador(identificacion);
+          cargarCasosMedicos();
+        } else {
+          showToast(data.error || 'Error al guardar bitácora', 'error');
+        }
+      } catch (err) {
+        console.error('Error guardando bitácora:', err);
+        showToast('Error de red al registrar en bitácora', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '💾 Guardar en Bitácora';
+        hideLoading();
+      }
+    }
+
+    async function eliminarBitacora(idbitacora, idcaso, identificacion) {
+      if (!confirm('¿Está seguro de que desea eliminar este registro de la bitácora?')) {
+        return;
+      }
+
+      showLoading('Eliminando registro de bitácora...');
+      try {
+        const res = await fetch(`/casosmedicos/api/bitacora/${idbitacora}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast(data.message || 'Registro de bitácora eliminado', 'success');
+          await abrirExpedienteTrabajador(identificacion);
+          cargarCasosMedicos();
+        } else {
+          showToast(data.error || 'No se pudo eliminar el registro', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al eliminar el registro', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // MODAL Y FORMULARIO DE CASOS MÉDICOS
+    // ══════════════════════════════════════════════════════════
+    async function cargarCatalogosCasosMedicos() {
+      if (catalogosCasosMedicos) return catalogosCasosMedicos;
+      try {
+        const res = await fetch('/casosmedicos/api/catalogos');
+        const data = await res.json();
+        catalogosCasosMedicos = data;
+
+        const sTipoCaso = document.getElementById('cm-select-tipo-caso');
+        sTipoCaso.innerHTML = '<option value="">Selecciona tipo de caso...</option>' +
+          data.tiposCaso.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+
+        const sEstadoGen = document.getElementById('cm-select-estado-general');
+        sEstadoGen.innerHTML = data.estados.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+
+        const sPrioridad = document.getElementById('cm-select-prioridad');
+        sPrioridad.innerHTML = '<option value="">Selecciona prioridad...</option>' +
+          data.prioridades.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+
+        const sTipoEvento = document.getElementById('cm-select-tipo-evento');
+        sTipoEvento.innerHTML = '<option value="">Selecciona evento...</option>' +
+          data.tiposEvento.map(te => `<option value="${te.id}">${te.nombre}</option>`).join('');
+
+        const sAccTransito = document.getElementById('cm-select-accidente-transito');
+        sAccTransito.innerHTML = '<option value="">Selecciona origen...</option>' +
+          data.accidentesTransito.map(at => `<option value="${at.id}">${at.nombre}</option>`).join('');
+
+        if (data.tiposContacto && Array.isArray(data.tiposContacto)) {
+          const sTipoContacto = document.getElementById('cm-bitacora-tipo-contacto');
+          if (sTipoContacto) {
+            sTipoContacto.innerHTML = '<option value="">Seleccione tipo de contacto...</option>' +
+              data.tiposContacto.map(tc => `<option value="${tc.tipo}">${tc.tipo}</option>`).join('');
+          }
+        }
+
+        if (data.resultadosBitacora && Array.isArray(data.resultadosBitacora)) {
+          const sResultado = document.getElementById('cm-bitacora-resultado');
+          if (sResultado) {
+            sResultado.innerHTML = '<option value="">Seleccione resultado...</option>' +
+              data.resultadosBitacora.map(r => `<option value="${r.resultado}">${r.resultado}</option>`).join('');
+          }
+        }
+
+        return catalogosCasosMedicos;
+      } catch (err) {
+        console.error('Error cargando catálogos de casos médicos:', err);
+        showToast('Error cargando catálogos', 'error');
+        return null;
+      }
+    }
+
+    function onTipoEventoChange() {
+      const tipoEventoVal = document.getElementById('cm-select-tipo-evento').value;
+      const groupTransito = document.getElementById('cm-group-accidente-transito');
+      const selTransito = document.getElementById('cm-select-accidente-transito');
+      if (String(tipoEventoVal) === '4') {
+        groupTransito.style.display = 'block';
+        selTransito.required = true;
+      } else {
+        groupTransito.style.display = 'none';
+        selTransito.required = false;
+        selTransito.value = '';
+      }
+    }
+
+    function onEsContinuacionChange() {
+      const esContVal = document.getElementById('cm-select-es-continuacion').value;
+      const groupAnt = document.getElementById('cm-group-caso-anterior');
+      const selAnt = document.getElementById('cm-select-caso-anterior');
+      if (String(esContVal) === '1') {
+        groupAnt.style.display = 'block';
+      } else {
+        groupAnt.style.display = 'none';
+        selAnt.value = '';
+      }
+    }
+
+    async function abrirModalAgregarCaso(identificacion) {
+      showLoading('Cargando información del colaborador...');
+      try {
+        await cargarCatalogosCasosMedicos();
+        const r = await fetch(`/casosmedicos/api/trabajador-info/${encodeURIComponent(identificacion)}`);
+        const trab = await r.json();
+
+        selectedWorkerData = trab;
+        document.getElementById('cm-worker-search-container').style.display = 'none';
+        poblarDatosTrabajadorModal(trab);
+        resetCamposCasoModal();
+
+        document.getElementById('modal-cm-title').innerText = `Registrar Caso Médico: ${trab.nombre || identificacion}`;
+        document.getElementById('modal-cm-crear').style.display = 'flex';
+      } catch (e) {
+        console.error(e);
+        showToast('Error cargando datos del trabajador', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function abrirModalNuevoCasoGlobal() {
+      showLoading('Preparando formulario...');
+      try {
+        await cargarCatalogosCasosMedicos();
+        selectedWorkerData = null;
+        limpiarDatosTrabajadorModal();
+        resetCamposCasoModal();
+
+        document.getElementById('cm-worker-search-container').style.display = 'block';
+        document.getElementById('cm-input-worker-search').value = '';
+        document.getElementById('cm-worker-dropdown').style.display = 'none';
+        document.getElementById('modal-cm-title').innerText = 'Registrar Nuevo Caso Médico';
+        document.getElementById('modal-cm-crear').style.display = 'flex';
+      } catch (e) {
+        console.error(e);
+        showToast('Error abriendo formulario', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function cerrarModalAgregarCaso() {
+      document.getElementById('modal-cm-crear').style.display = 'none';
+      document.getElementById('form-cm-crear').reset();
+      selectedWorkerData = null;
+      limpiarDatosTrabajadorModal();
+      resetCamposCasoModal();
+    }
+
+    function poblarDatosTrabajadorModal(trab) {
+      selectedWorkerData = trab;
+      document.getElementById('cm-hidden-identificacion').value = trab.identificacion || '';
+      document.getElementById('cm-view-nombre').value = trab.nombre || '';
+      document.getElementById('cm-view-identificacion').value = trab.identificacion || '';
+      document.getElementById('cm-view-cargo').value = trab.cargo || '';
+      document.getElementById('cm-view-regional').value = trab.regional || '';
+      document.getElementById('cm-view-operacion').value = trab.operacion || '';
+      document.getElementById('cm-view-fecha-ingreso').value = trab.fechaIngreso ? trab.fechaIngreso.split('-').reverse().join('/') : '';
+      document.getElementById('cm-view-antiguedad').value = `${trab.anosEmpresa || 0} años`;
+      document.getElementById('cm-view-edad').value = `${trab.edad || 0} años`;
+      document.getElementById('cm-view-eps').value = trab.eps || '';
+      document.getElementById('cm-view-afp').value = trab.afp || '';
+
+      const selAnt = document.getElementById('cm-select-caso-anterior');
+      selAnt.innerHTML = '<option value="">Selecciona caso anterior...</option>';
+      if (Array.isArray(trab.casosPrevios) && trab.casosPrevios.length) {
+        trab.casosPrevios.forEach(cp => {
+          const opt = document.createElement('option');
+          opt.value = cp.id;
+          opt.textContent = `${cp.codigo_caso} - ${cp.diagnostico || 'Sin diag'} (${cp.fecha_inicio ? cp.fecha_inicio.slice(0,10) : 'Sin fecha'})`;
+          selAnt.appendChild(opt);
+        });
+      }
+    }
+
+    function limpiarDatosTrabajadorModal() {
+      selectedWorkerData = null;
+      document.getElementById('cm-hidden-identificacion').value = '';
+      document.getElementById('cm-view-nombre').value = '';
+      document.getElementById('cm-view-identificacion').value = '';
+      document.getElementById('cm-view-cargo').value = '';
+      document.getElementById('cm-view-regional').value = '';
+      document.getElementById('cm-view-operacion').value = '';
+      document.getElementById('cm-view-fecha-ingreso').value = '';
+      document.getElementById('cm-view-antiguedad').value = '';
+      document.getElementById('cm-view-edad').value = '';
+      document.getElementById('cm-view-eps').value = '';
+      document.getElementById('cm-view-afp').value = '';
+      document.getElementById('cm-select-caso-anterior').innerHTML = '<option value="">Selecciona caso anterior...</option>';
+    }
+
+    function resetCamposCasoModal() {
+      document.getElementById('cm-select-es-continuacion').value = '2';
+      onEsContinuacionChange();
+
+      document.getElementById('cm-select-tipo-caso').value = '';
+      document.getElementById('cm-select-estado-general').value = '1';
+      document.getElementById('cm-select-prioridad').value = '3';
+      document.getElementById('cm-select-tipo-evento').value = '';
+      onTipoEventoChange();
+
+      document.getElementById('cm-input-diag-search').value = '';
+      document.getElementById('cm-hidden-diagnostico').value = '';
+      document.getElementById('cm-diag-dropdown').style.display = 'none';
+      document.getElementById('cm-selected-diag-badge').style.display = 'none';
+      document.getElementById('cm-selected-diag-badge').innerText = '';
+
+      document.getElementById('cm-input-fecha-evento').value = '';
+      document.getElementById('cm-input-dias-incapacidad').value = '';
+      document.getElementById('cm-input-pcl').value = '';
+
+      document.getElementById('cm-textarea-recomendaciones').value = '';
+      document.getElementById('cm-input-fecha-inicio').value = '';
+      document.getElementById('cm-input-fecha-fin').value = '';
+
+      document.getElementById('cm-textarea-actividad').value = '';
+      document.getElementById('cm-textarea-historial').value = '';
+
+      document.getElementById('cm-input-resp-sst').value = CONFIG.usuarioNombre || CONFIG.usuarioId || '';
+      document.getElementById('cm-input-resp-operacion').value = '';
+      document.getElementById('cm-select-estado-gestion').value = 'REQUIERE ACCIÓN';
+      document.getElementById('cm-input-proxima-accion').value = '';
+      document.getElementById('cm-input-fecha-compromiso').value = '';
+      document.getElementById('cm-input-ultimo-seguimiento').value = new Date().toISOString().slice(0, 10);
+    }
+
+    function buscarTrabajadorGlobal(q) {
+      clearTimeout(debounceCmWorker);
+      const dropdown = document.getElementById('cm-worker-dropdown');
+      if (!q || q.trim().length < 2) {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+        return;
+      }
+      debounceCmWorker = setTimeout(async () => {
+        try {
+          const res = await fetch(`/casosmedicos/api/search-trabajadores?q=${encodeURIComponent(q.trim())}`);
+          const rows = await res.json();
+          if (!rows.length) {
+            dropdown.innerHTML = '<div class="cm-autocomplete-item" style="color:var(--text-muted); cursor:default;">No se encontraron colaboradores</div>';
+            dropdown.style.display = 'block';
+            return;
+          }
+          dropdown.innerHTML = rows.map(r => `
+            <div class="cm-autocomplete-item" onclick="seleccionarTrabajadorParaCaso('${r.identificacion}')">
+              <strong>${limpiarNombreTrabajador(r.trabajador)}</strong>
+              <small style="color:var(--text-muted); display:block;">Cédula: ${r.identificacion}</small>
+            </div>
+          `).join('');
+          dropdown.style.display = 'block';
+        } catch (e) {
+          console.error(e);
+        }
+      }, 300);
+    }
+
+    async function seleccionarTrabajadorParaCaso(identificacion) {
+      document.getElementById('cm-worker-dropdown').style.display = 'none';
+      showLoading('Cargando información del trabajador...');
+      try {
+        const r = await fetch(`/casosmedicos/api/trabajador-info/${encodeURIComponent(identificacion)}`);
+        const trab = await r.json();
+        poblarDatosTrabajadorModal(trab);
+        document.getElementById('cm-input-worker-search').value = trab.nombre || identificacion;
+      } catch (e) {
+        showToast('Error cargando información', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function buscarDiagnosticosCie10(q) {
+      clearTimeout(debounceCmDiag);
+      const dropdown = document.getElementById('cm-diag-dropdown');
+      if (!q || q.trim().length < 2) {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+        return;
+      }
+      debounceCmDiag = setTimeout(async () => {
+        try {
+          const res = await fetch(`/casosmedicos/api/diagnosticos?q=${encodeURIComponent(q.trim())}`);
+          const rows = await res.json();
+          if (!rows.length) {
+            dropdown.innerHTML = '<div class="cm-autocomplete-item" style="color:var(--text-muted); cursor:default;">No se encontraron diagnósticos CIE-10</div>';
+            dropdown.style.display = 'block';
+            return;
+          }
+          dropdown.innerHTML = rows.map(d => {
+            const descSafe = (d.Descripcion || '').replace(/'/g, "\\'");
+            return `
+              <div class="cm-autocomplete-item" onclick="seleccionarDiagnostico('${d.Cod}', '${descSafe}')">
+                <strong>${d.Cod}</strong> — ${d.Descripcion}
+              </div>
+            `;
+          }).join('');
+          dropdown.style.display = 'block';
+        } catch (e) {
+          console.error(e);
+        }
+      }, 300);
+    }
+
+    function seleccionarDiagnostico(cod, desc) {
+      document.getElementById('cm-hidden-diagnostico').value = cod;
+      document.getElementById('cm-input-diag-search').value = `${cod} - ${desc}`;
+      document.getElementById('cm-diag-dropdown').style.display = 'none';
+
+      const badge = document.getElementById('cm-selected-diag-badge');
+      badge.innerText = `✓ [${cod}] ${desc}`;
+      badge.style.display = 'block';
+    }
+
+    async function guardarCasoMedico(e) {
+      e.preventDefault();
+
+      const identificacion = document.getElementById('cm-hidden-identificacion').value.trim();
+      if (!identificacion) {
+        showToast('Debes seleccionar un colaborador válido', 'error');
+        return;
+      }
+
+      const tipoCasoId = document.getElementById('cm-select-tipo-caso').value;
+      const estadoGeneralId = document.getElementById('cm-select-estado-general').value;
+      const prioridadId = document.getElementById('cm-select-prioridad').value;
+      const tipoEventoId = document.getElementById('cm-select-tipo-evento').value;
+      const diagnostico = document.getElementById('cm-hidden-diagnostico').value.trim();
+
+      if (!diagnostico) {
+        showToast('Debes seleccionar un diagnóstico CIE-10', 'error');
+        document.getElementById('cm-input-diag-search').focus();
+        return;
+      }
+
+      const fInicio = document.getElementById('cm-input-fecha-inicio').value;
+      const fFin = document.getElementById('cm-input-fecha-fin').value;
+      if (fInicio && fFin && new Date(fFin) < new Date(fInicio)) {
+        showToast('La fecha fin de recomendaciones no puede ser menor a la fecha de inicio', 'error');
+        return;
+      }
+
+      let fechaIngresoPayload = null;
+      const fiVal = document.getElementById('cm-view-fecha-ingreso').value.trim();
+      if (fiVal) {
+        if (fiVal.includes('/')) {
+          fechaIngresoPayload = fiVal.split('/').reverse().join('-');
+        } else {
+          fechaIngresoPayload = fiVal;
+        }
+      } else {
+        fechaIngresoPayload = (selectedWorkerData && selectedWorkerData.fechaIngreso) || new Date().toISOString().slice(0, 10);
+      }
+
+      const payload = {
+        usuario: CONFIG.usuarioId,
+        identificacion,
+        tipo_caso_id: tipoCasoId,
+        estado_general_id: estadoGeneralId,
+        prioridad_id: prioridadId,
+        es_continuacion: document.getElementById('cm-select-es-continuacion').value,
+        caso_anterior_id: document.getElementById('cm-select-caso-anterior').value || null,
+        regional_id: document.getElementById('cm-view-regional').value || 'BOGOTÁ',
+        operacion: document.getElementById('cm-view-operacion').value || null,
+        fecha_ingreso: fechaIngresoPayload,
+        numero_anos_empresa: parseInt(document.getElementById('cm-view-antiguedad').value, 10) || 0,
+        fecha_nacimiento: (selectedWorkerData && selectedWorkerData.fechaNacimiento) || null,
+        edad: parseInt(document.getElementById('cm-view-edad').value, 10) || null,
+        eps_id: document.getElementById('cm-view-eps').value || null,
+        afp_id: document.getElementById('cm-view-afp').value || null,
+        diagnostico,
+        tipo_evento_id: tipoEventoId,
+        tipo_accidente_transito_id: document.getElementById('cm-select-accidente-transito').value || null,
+        fecha_evento: document.getElementById('cm-input-fecha-evento').value || null,
+        dias_incapacidad: document.getElementById('cm-input-dias-incapacidad').value ? parseInt(document.getElementById('cm-input-dias-incapacidad').value, 10) : 0,
+        pcl_porcentaje: document.getElementById('cm-input-pcl').value ? parseFloat(document.getElementById('cm-input-pcl').value) : null,
+        recomendaciones: document.getElementById('cm-textarea-recomendaciones').value.trim() || null,
+        fecha_inicio: fInicio || null,
+        fecha_fin: fFin || null,
+        actividad_actual: document.getElementById('cm-textarea-actividad').value.trim() || null,
+        historial_anterior: document.getElementById('cm-textarea-historial').value.trim() || null,
+        responsable_sst: document.getElementById('cm-input-resp-sst').value.trim() || null,
+        responsable_operacion: document.getElementById('cm-input-resp-operacion').value.trim() || null,
+        estado_gestion: document.getElementById('cm-select-estado-gestion').value,
+        proxima_accion: document.getElementById('cm-input-proxima-accion').value.trim() || null,
+        fecha_compromiso: document.getElementById('cm-input-fecha-compromiso').value || null,
+        ultimo_seguimiento: document.getElementById('cm-input-ultimo-seguimiento').value || null
+      };
+
+      const btnGuardar = document.getElementById('btn-cm-guardar');
+      btnGuardar.disabled = true;
+      btnGuardar.innerText = 'Guardando caso...';
+      showLoading('Registrando caso médico...');
+
+      try {
+        const res = await fetch('/casosmedicos/api/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast(data.message || 'Caso médico registrado exitosamente', 'success');
+          cerrarModalAgregarCaso();
+          await cargarCasosMedicos();
+          abrirDetalleCasosMedicos(identificacion);
+        } else {
+          showToast(data.error || 'Error al registrar caso médico', 'error');
+        }
+      } catch (err) {
+        console.error('Error guardando caso médico:', err);
+        showToast('Error de red al guardar el caso', 'error');
+      } finally {
+        btnGuardar.disabled = false;
+        btnGuardar.innerText = '💾 Guardar Caso Médico';
+        hideLoading();
+      }
+    }
+
+    async function eliminarCasoMedico(id, identificacion) {
+      if (!confirm('¿Está seguro de que desea eliminar este caso médico? Esta acción marcará el registro como eliminado.')) {
+        return;
+      }
+
+      showLoading('Eliminando caso médico...');
+      try {
+        const res = await fetch(`/casosmedicos/api/caso/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast(data.message || 'Caso médico eliminado', 'success');
+          await cargarCasosMedicos();
+          abrirDetalleCasosMedicos(identificacion);
+        } else {
+          showToast(data.error || 'No se pudo eliminar el caso médico', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al eliminar el caso', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Cerrar autocompletes al hacer click fuera
+    document.addEventListener('click', (e) => {
+      const wDrop = document.getElementById('cm-worker-dropdown');
+      const wInput = document.getElementById('cm-input-worker-search');
+      if (wDrop && wInput && !wDrop.contains(e.target) && e.target !== wInput) {
+        wDrop.style.display = 'none';
+      }
+      const dDrop = document.getElementById('cm-diag-dropdown');
+      const dInput = document.getElementById('cm-input-diag-search');
+      if (dDrop && dInput && !dDrop.contains(e.target) && e.target !== dInput) {
+        dDrop.style.display = 'none';
+      }
+    });
+
     // Helper para actualizar options de Regional y Operación con conteos
     function actualizarSelectConteos(modKey, counts) {
       const filtroReg = document.getElementById(`filtro-${modKey}-regional`);
@@ -3951,8 +5821,14 @@
     }
 
     function cerrarDetalle(modKey) {
-      document.getElementById(`layout-${modKey}`).classList.remove('detail-active');
-      document.getElementById(`detail-${modKey}`).style.display = 'none';
+      if (modKey === 'cm') {
+        volverListadoCm();
+        return;
+      }
+      const lay = document.getElementById(`layout-${modKey}`);
+      if (lay) lay.classList.remove('detail-active');
+      const det = document.getElementById(`detail-${modKey}`);
+      if (det) det.style.display = 'none';
       selectedItems[modKey] = null;
       document.querySelectorAll(`#tbody-${modKey} tr`).forEach(tr => tr.classList.remove('selected'));
     }

@@ -131,4 +131,5 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.computarAccesoSST = computarAccesoSST;
 module.exports = router;
