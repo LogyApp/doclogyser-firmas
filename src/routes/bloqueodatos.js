@@ -153,9 +153,12 @@ router.get('/api/clientes-credito/info', async (req, res) => {
       total: rows.length,
       onesCount: ones.length,
       zerosCount: zeros.length,
+      totalHabilitados: ones.length,
+      totalExcluidos: zeros.length,
       ones,
       zeros,
       infoText,
+      resumenTexto: infoText,
       clients: rows
     });
   } catch (err) {

@@ -5,86 +5,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Módulo de Facturación — LOG&SER</title>
   <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
-  
+
+  <!-- Google Fonts: Outfit (títulos) + Inter (datos) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
     :root {
       --primary: #064e3b;
+      --primary-gradient: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
       --primary-dark: #022c22;
       --primary-light: #0d9488;
-      --accent: #0f766e;
-      --accent-hover: #115e59;
-      --accent-soft: rgba(13, 148, 136, 0.12);
-      --success: #16a34a;
-      --success-soft: #eafaf1;
-      --danger: #dc2626;
-      --danger-soft: #fef2f2;
-      --warning: #d97706;
-      --warning-soft: #fefbeb;
-      --bg: #f3f6f8;
+      --accent: #14b8a6;
+      --accent-hover: #0f766e;
+      --accent-soft: rgba(20, 184, 166, 0.12);
+      --bg: #f8fafc;
       --card-bg: #ffffff;
       --text: #0f172a;
       --text-muted: #64748b;
       --border: #e2e8f0;
-      --radius-lg: 16px;
-      --radius-md: 10px;
+      --border-dark: #cbd5e1;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --radius: 10px;
       --radius-sm: 6px;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-      --shadow-md: 0 4px 12px rgba(6, 78, 59, 0.08);
-      --shadow-lg: 0 12px 28px rgba(6, 78, 59, 0.16);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 12px 20px -3px rgba(6, 78, 59, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
       --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 20px; }
-    
-    .container { max-width: 1300px; margin: 0 auto; }
 
-    /* Header styling with corporate identity */
-    header {
-      background: linear-gradient(135deg, var(--primary) 0%, #0f3d35 100%);
-      border-radius: var(--radius-lg);
-      padding: 12px 24px;
-      color: #fff;
-      margin-bottom: 22px;
-      box-shadow: var(--shadow-lg);
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-      position: relative;
-      overflow: hidden;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    header::after {
-      content: '';
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 3.5px;
-      background: #14b8a6;
+    /* ══════════════════════════════════════════════════════════
+       SIDEBAR FIJO (280px) IDÉNTICO A NÓMINA, SST E INVENTARIO
+    ══════════════════════════════════════════════════════════ */
+    .sidebar {
+      width: 280px;
+      background: var(--primary);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 100;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 4px 0 15px rgba(6, 78, 59, 0.15);
+      transition: transform 0.3s ease;
+    }
+
+    /* Cabecera con 2 Logos idéntico a Nómina / SST / Inventario */
+    .sidebar-brand {
+      padding: 24px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.12);
     }
 
     .brand-lockup {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 12px;
+      gap: 6px;
+      padding: 10px 18px;
       flex-shrink: 0;
     }
 
-    .brand-logo-app {
+    .brand-lockup img.brand-logo-app {
       display: block;
       object-fit: contain;
-      height: 32px;
-    }
-
-    .brand-divider {
-      width: 1.5px;
-      height: 26px;
-      background: rgba(255, 255, 255, 0.25);
+      height: 30px;
     }
 
     .brand-logo-company-crop {
@@ -103,1287 +112,1862 @@
       max-width: none;
     }
 
-    .header-logo {
-      text-align: center;
+    .brand-divider {
+      width: 80%;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.22);
     }
 
-    .header-logo h1 {
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.85rem;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      color: #fff;
+    .nav-list {
+      list-style: none;
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      overflow-y: auto;
     }
 
-    .header-logo h1 .accent {
-      color: #5eead4;
-    }
-
-    .header-logo p {
-      font-size: 0.88rem;
-      color: rgba(255, 255, 255, 0.75);
-    }
-
-    .user-badge {
-      background: rgba(255, 255, 255, 0.12);
-      padding: 8px 16px;
-      border-radius: 50px;
-      font-size: 0.84rem;
-      font-weight: 500;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      display: inline-flex;
+    .nav-item {
+      position: relative;
+      display: flex;
       align-items: center;
-      gap: 8px;
-      color: #fff;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 500;
+      font-size: 0.9rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2px;
+      color: rgba(255, 255, 255, 0.55);
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
       flex-shrink: 0;
     }
 
-    .user-badge::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #5eead4;
+    .nav-item:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
     }
 
-    /* Tabs Bar */
-    .tabs-bar {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 1px;
+    .nav-item:hover .nav-icon {
+      color: #fff;
     }
 
-    .tab-btn {
-      background: none;
-      border: none;
-      padding: 10px 22px;
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.05rem;
+    .nav-item.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.14);
       font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      position: relative;
-      transition: var(--transition);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     }
 
-    .tab-btn:hover {
-      color: var(--primary);
-      background: rgba(13, 148, 136, 0.05);
+    .nav-item.active .nav-icon {
+      color: var(--accent);
     }
 
-    .tab-btn.active {
-      color: var(--primary);
-      background: #fff;
-      box-shadow: 0 -2px 6px rgba(0,0,0,0.03);
-    }
-
-    .tab-btn.active::after {
+    .nav-item.active::before {
       content: '';
       position: absolute;
-      left: 0; right: 0; bottom: -2px;
-      height: 3px;
-      background: var(--primary-light);
+      left: 0;
+      top: 25%;
+      height: 50%;
+      width: 3.5px;
+      background-color: var(--accent);
+      border-radius: 8px;
     }
 
-    /* Metrics Grid */
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-
-    .metric-card {
-      background: #fff;
-      border-radius: var(--radius-md);
-      padding: 18px 20px;
-      box-shadow: var(--shadow-sm);
-      border: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .metric-info h3 {
+    .sidebar-user {
+      padding: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
       font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-muted);
-      margin-bottom: 4px;
+      color: rgba(255, 255, 255, 0.7);
+      background: rgba(0, 0, 0, 0.08);
     }
 
-    .metric-info .count-val {
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.7rem;
-      font-weight: 700;
-      color: var(--text);
+    .sidebar-user strong {
+      display: block;
+      color: #fff;
+      font-size: 0.86rem;
+      margin-bottom: 2px;
     }
 
-    .metric-icon {
-      font-size: 2rem;
-      opacity: 0.8;
+    /* ══════════════════════════════════════════════════════════
+       CONTENIDO PRINCIPAL (.wrapper)
+    ══════════════════════════════════════════════════════════ */
+    .wrapper {
+      margin-left: 280px;
+      flex: 1;
+      min-width: 0;
+      padding: 26px 30px;
+      height: 100vh;
+      overflow-y: auto;
     }
 
-    /* Content Card */
-    .content-card {
-      background: #fff;
-      border-radius: var(--radius-md);
-      padding: 22px;
-      box-shadow: var(--shadow-sm);
-      border: 1px solid var(--border);
-      margin-bottom: 22px;
-    }
-
-    /* Toolbar & Filters */
-    .toolbar {
+    .page-hd {
+      margin-bottom: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 14px;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .page-sub {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 20px;
       margin-bottom: 20px;
     }
 
-    .filters-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: flex-end;
+    /* Métricas */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
     }
 
-    .filter-group {
+    .metric-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      padding: 18px 20px;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .filter-group label {
+    .metric-label {
       font-size: 0.75rem;
+      text-transform: uppercase;
       font-weight: 700;
       color: var(--text-muted);
-      text-transform: uppercase;
+      letter-spacing: 0.4px;
     }
 
-    .filter-group select, .filter-group input {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 8px 12px;
-      font-size: 0.88rem;
+    .metric-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.7rem;
+      font-weight: 700;
       color: var(--text);
-      background: #f8fafc;
-      outline: none;
-      min-width: 170px;
-      transition: var(--transition);
+      margin-top: 2px;
     }
 
-    .filter-group select:focus, .filter-group input:focus {
-      border-color: var(--primary-light);
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+    /* Filtros Plegables / Barra de Filtros */
+    .filtros-toggle {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
     }
 
-    /* Buttons */
-    .btn {
-      display: inline-flex;
+    .filtros-toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--primary);
+    }
+
+    .filtros-badge {
+      display: none;
       align-items: center;
       justify-content: center;
-      gap: 7px;
-      padding: 9px 18px;
-      border-radius: var(--radius-sm);
-      font-family: 'Outfit', sans-serif;
-      font-weight: 600;
-      font-size: 0.9rem;
-      cursor: pointer;
-      border: none;
-      transition: var(--transition);
-      text-decoration: none;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
     }
 
+    .filtros-chevron {
+      display: inline-block;
+      transition: transform 0.2s ease;
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+
+    .filtros-body {
+      margin-top: 16px;
+    }
+
+    .filtros-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .filtro-field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .filtro-field select, .filtro-field input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      background: #fff;
+      color: var(--text);
+      font-family: inherit;
+      transition: var(--transition);
+    }
+
+    .filtro-field select:focus, .filtro-field input:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .btn-reset {
+      margin-top: 14px;
+      background: none;
+      border: 1.5px solid var(--border);
+      color: var(--text-muted);
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-reset:hover {
+      background: #f1f5f9;
+      color: var(--text);
+    }
+
+    /* Botones primarios corporativos */
     .btn-primary {
-      background: var(--primary-light);
+      background: var(--primary);
       color: #fff;
+      padding: 10px 20px;
+      border-radius: 7px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 4px rgba(6, 78, 59, 0.2);
+      transition: var(--transition);
+      font-family: inherit;
     }
 
     .btn-primary:hover {
-      background: var(--accent-hover);
-      box-shadow: 0 3px 10px rgba(13, 148, 136, 0.25);
+      background: #047857;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(6, 78, 59, 0.25);
     }
 
-    .btn-secondary {
-      background: #e2e8f0;
-      color: #334155;
-    }
-
-    .btn-secondary:hover {
-      background: #cbd5e1;
-    }
-
-    /* Tables */
+    /* Tabla Corporativa con encabezado fijo y redimensionable */
     .table-container {
+      max-height: 68vh;
+      overflow-y: auto;
       overflow-x: auto;
       border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius);
+      background: #fff;
     }
 
-    table {
-      width: 100%;
+    table.data-table {
       border-collapse: collapse;
-      font-size: 0.88rem;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    table.data-table thead th {
+      background-color: #f8fafc;
+      color: var(--primary);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      font-weight: 700;
       text-align: left;
-    }
-
-    th {
-      background: #f8fafc;
-      color: #475569;
-      font-weight: 600;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
+      padding: 11px 14px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: inset 0 -1px 0 var(--border);
       white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
     }
 
-    td {
+    table.data-table tbody td {
       padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      color: #1e293b;
-      vertical-align: middle;
+      font-size: 0.85rem;
+      border-bottom: 1px solid #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
     }
 
-    tr:hover td {
-      background: #f1f5f9;
+    table.data-table tbody tr:hover {
+      background-color: #f8fafc;
     }
 
+    /* Column resizing & sort indicators */
+    .sort-indicator { font-size: 0.72rem; color: var(--text-muted); margin-left: 4px; }
+    .th-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; touch-action: none; z-index: 2; }
+    .th-resize::after { content: ''; display: block; position: absolute; right: 0; top: 20%; bottom: 20%; width: 2px; background: #cbd5e1; transition: background 0.2s; }
+    .th-resize:hover::after, .th-resize.resizing::after { background: var(--primary); }
+
+    /* Badges */
     .badge {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 3px 9px;
+      gap: 5px;
+      padding: 3px 10px;
       border-radius: 50px;
-      font-size: 0.78rem;
-      font-weight: 600;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
     }
+    .badge-bloq { background: #fee2e2; color: #b91c1c; }
+    .badge-desbloq { background: #dcfce7; color: #15803d; }
+    .badge-servicios { background: #e0f2fe; color: #0369a1; }
 
-    .badge-lock {
-      background: var(--danger-soft);
-      color: var(--danger);
-      border: 1px solid #fca5a5;
-    }
-
-    .badge-unlock {
-      background: var(--success-soft);
-      color: var(--success);
-      border: 1px solid #86efac;
-    }
-
-    .badge-tag {
-      background: #f1f5f9;
-      color: #475569;
-      border: 1px solid #cbd5e1;
-    }
-
-    /* Switch toggle for Clientes Crédito */
-    .toggle-switch {
+    /* Switch Toggle */
+    .switch {
       position: relative;
       display: inline-block;
       width: 44px;
       height: 24px;
+      vertical-align: middle;
     }
-
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1; transition: .25s; border-radius: 24px;
     }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background-color: white; transition: .25s; border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    input:checked + .slider { background-color: var(--primary-light); }
+    input:checked + .slider:before { transform: translateX(20px); }
 
-    .toggle-slider {
-      position: absolute;
+    /* Grupos de botones */
+    .btn-grupo {
+      display: flex;
+      gap: 6px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .btn-grupo-opt {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      font-size: 0.84rem;
+      font-weight: 600;
       cursor: pointer;
-      inset: 0;
-      background-color: #cbd5e1;
-      transition: .3s;
-      border-radius: 24px;
+      color: var(--text-muted);
+      transition: all 0.18s;
+      font-family: inherit;
+      text-align: center;
+    }
+    .btn-grupo-opt.sel {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
     }
 
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .3s;
-      border-radius: 50%;
-    }
-
-    input:checked + .toggle-slider {
-      background-color: #10b981;
-    }
-
-    input:checked + .toggle-slider:before {
-      transform: translateX(20px);
-    }
-
-    /* Modal Overlay & Modal */
+    /* ══════════════════════════════════════════════════════════
+       MODALES FLOTANTES
+    ══════════════════════════════════════════════════════════ */
     .modal-overlay {
+      display: none;
       position: fixed;
       inset: 0;
       background: rgba(15, 23, 42, 0.6);
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(3px);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .modal-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+    .modal-card {
+      background: #ffffff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 600px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+      animation: modalSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalSlide {
+      from { transform: translateY(20px) scale(0.98); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .modal-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 999;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease-out;
-      padding: 16px;
-    }
-
-    .modal-overlay.open {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .modal {
-      background: #fff;
-      border-radius: var(--radius-lg);
-      width: 100%;
-      max-width: 620px;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 28px;
-      box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border);
-      transform: translateY(20px);
-      transition: transform 0.2s ease-out;
-    }
-
-    .modal-overlay.open .modal {
-      transform: translateY(0);
-    }
-
-    .modal-header {
-      font-family: 'Outfit', sans-serif;
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1.5px solid var(--border);
-      padding-bottom: 12px;
-    }
-
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 1.4rem;
-      color: var(--text-muted);
-      cursor: pointer;
-    }
-
-    .modal-form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      margin-bottom: 16px;
-    }
-
-    .modal-form-group label {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: #334155;
-      text-transform: uppercase;
-    }
-
-    .modal-form-group select,
-    .modal-form-group input[type="text"],
-    .modal-form-group input[type="number"],
-    .modal-form-group input[type="datetime-local"] {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 9px 12px;
-      font-size: 0.92rem;
-      color: var(--text);
-      background: #f8fafc;
-      outline: none;
-      width: 100%;
-    }
-
-    .modal-form-group select:focus,
-    .modal-form-group input:focus {
-      border-color: var(--primary-light);
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
-    }
-
-    /* Option button group */
-    .option-group {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .opt-btn {
-      background: #f1f5f9;
-      border: 1px solid var(--border);
-      color: #334155;
-      padding: 8px 16px;
-      border-radius: var(--radius-sm);
-      font-size: 0.88rem;
-      font-weight: 500;
-      cursor: pointer;
       transition: var(--transition);
     }
-
-    .opt-btn:hover:not(.active) {
-      background: #e2e8f0;
+    .modal-close-btn:hover { background: rgba(255, 255, 255, 0.28); }
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .modal-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: #f8fafc;
     }
 
-    .opt-btn.active {
-      background: var(--primary-light);
-      border-color: var(--primary);
-      color: #fff;
-      font-weight: 600;
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text);
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .form-group input:disabled {
+      background: #f1f5f9;
+      color: var(--text-muted);
+      cursor: not-allowed;
     }
 
-    .info-box {
+    /* Banner informativo */
+    .info-banner {
       background: #f0fdfa;
       border: 1px solid #99f6e4;
-      border-radius: var(--radius-sm);
+      border-left: 4px solid var(--primary-light);
       padding: 12px 14px;
-      font-size: 0.85rem;
+      border-radius: 6px;
+      font-size: 0.83rem;
       color: #0f766e;
-      margin-top: 6px;
+      margin-top: 10px;
       line-height: 1.45;
     }
 
-    .clients-checklist {
+    /* Checklist de clientes manual */
+    .checklist-box {
+      border: 1px solid var(--border);
+      border-radius: 6px;
       max-height: 160px;
       overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
       padding: 8px 12px;
-      background: #fafafa;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-top: 6px;
+      background: #fff;
     }
-
-    .clients-checklist label {
-      font-size: 0.82rem;
-      text-transform: none;
-      font-weight: 500;
+    .check-item {
       display: flex;
       align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      color: #1e293b;
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
       gap: 10px;
-      margin-top: 24px;
-      border-top: 1.5px solid var(--border);
-      padding-top: 16px;
+      padding: 6px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .check-item:last-child { border-bottom: none; }
+    .check-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary-light); cursor: pointer; }
+
+    /* Autocomplete NIT */
+    .autocomplete-wrapper { position: relative; }
+    .autocomplete-list {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: #fff; border: 1.5px solid var(--primary-light); border-radius: 6px;
+      max-height: 190px; overflow-y: auto; z-index: 2500; box-shadow: var(--shadow-lg);
+      display: none;
+    }
+    .autocomplete-item {
+      padding: 9px 12px; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+    }
+    .autocomplete-item:hover { background: #f0fdfa; }
+
+    /* Móvil Header y Backdrop */
+    .mobile-header {
+      display: none;
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 150;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .mobile-menu-btn {
+      background: none; border: none; color: #fff; font-size: 1.4rem; cursor: pointer; padding: 4px;
+    }
+    .mobile-title {
+      font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 700;
+    }
+    .mobile-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99;
+    }
+    .mobile-backdrop.open { display: block; }
+
+    @media (max-width: 900px) {
+      body { flex-direction: column; overflow: visible; height: auto; }
+      .mobile-header { display: flex; }
+      .sidebar { transform: translateX(-100%); transition: transform .25s ease; }
+      .sidebar.open { transform: translateX(0); }
+      .wrapper { margin-left: 0; padding: 18px; height: auto; min-height: calc(100vh - 56px); overflow-y: visible; }
+      .filtros-grid { grid-template-columns: 1fr; }
+      .table-container { max-height: 60vh; }
     }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <!-- Header -->
-  <header>
-    <div class="brand-lockup">
-      <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
-      <div class="brand-divider"></div>
-      <div class="brand-logo-company-crop">
-        <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
-      </div>
-    </div>
-    <div class="header-logo">
-      <h1>Módulo de <span class="accent">Facturación</span></h1>
-      <p>Gestión de Bloqueos Quincenales y Clientes Crédito</p>
-    </div>
-    <div class="user-badge" id="user-badge">
-      Cargando...
-    </div>
+  <!-- Backdrop móvil -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Header móvil -->
+  <header class="mobile-header">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
+    <div class="mobile-title"><span>💳 Facturación</span></div>
+    <span id="mobile-user-badge" style="font-size:.75rem;background:rgba(255,255,255,.2);padding:3px 8px;border-radius:4px"></span>
   </header>
 
-  <!-- Pestañas -->
-  <div class="tabs-bar">
-    <button class="tab-btn active" id="tab-btn-bloqueo" onclick="switchMainTab('bloqueo')">
-      🔒 Bloqueo de Datos
-    </button>
-    <button class="tab-btn" id="tab-btn-clientes" onclick="switchMainTab('clientes')">
-      👥 Clientes Crédito
-    </button>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════════════════
-       PESTAÑA 1: BLOQUEO DE DATOS (SERVICIOS)
-       ══════════════════════════════════════════════════════════════════════════ -->
-  <div id="tab-content-bloqueo">
-    <!-- Métricas -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-info">
-          <h3>Total Bloqueos</h3>
-          <div class="count-val" id="metric-total-bloqueos">0</div>
+  <!-- ══════════════════════════════════════════════════════════
+       BARRA LATERAL IZQUIERDA (Estilo Nómina / SST / Inventario)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
         </div>
-        <div class="metric-icon">📑</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-info">
-          <h3>Bloqueados</h3>
-          <div class="count-val" id="metric-bloqueados" style="color: var(--danger);">0</div>
-        </div>
-        <div class="metric-icon">🔒</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-info">
-          <h3>Desbloqueados</h3>
-          <div class="count-val" id="metric-desbloqueados" style="color: var(--success);">0</div>
-        </div>
-        <div class="metric-icon">🔓</div>
       </div>
     </div>
 
-    <!-- Contenedor y Tabla -->
-    <div class="content-card">
-      <div class="toolbar">
-        <div class="filters-row">
-          <div class="filter-group">
-            <label for="filtro-regional">Regional</label>
-            <select id="filtro-regional" onchange="onRegionalFilterChange()">
-              <option value="">— Todas —</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label for="filtro-operacion">Operación</label>
-            <select id="filtro-operacion" onchange="renderBloqueosTable()">
-              <option value="">— Todas —</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label for="filtro-quincena">Quincena</label>
-            <select id="filtro-quincena" onchange="renderBloqueosTable()">
-              <option value="">— Todas —</option>
-            </select>
-          </div>
-          <button class="btn btn-secondary" onclick="limpiarFiltrosBloqueo()">
-            🧹 Limpiar
-          </button>
-        </div>
+    <ul class="nav-list">
+      <li class="nav-item active" id="navBloqueo" onclick="switchMainTab('bloqueo')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <span>Bloqueo de Datos</span>
+      </li>
+      <li class="nav-item" id="navClientes" onclick="switchMainTab('clientes')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        <span>Clientes Crédito</span>
+      </li>
+    </ul>
+
+    <div class="sidebar-user" id="sidebarUser">
+      <!-- Dinámico con info del usuario -->
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       CONTENIDO PRINCIPAL
+  ══════════════════════════════════════════════════════════ -->
+  <div class="wrapper">
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 1: BLOQUEO DE DATOS (SERVICIOS)
+    ────────────────────────────────────────────────────────── -->
+    <div id="tab-content-bloqueo">
+      <div class="page-hd">
         <div>
-          <button class="btn btn-primary" onclick="abrirModalBloqueo()">
-            ➕ Nuevo Registro
-          </button>
+          <div class="page-title">Facturación · Bloqueo de Datos</div>
+          <div class="page-sub">Historial y control quincenal de bloqueo para turnos de servicios</div>
         </div>
+        <button class="btn-primary" onclick="abrirModalBloqueo()">
+          ➕ Nuevo Bloqueo
+        </button>
       </div>
 
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 60px;">ID</th>
-              <th>Regional</th>
-              <th>Operación</th>
-              <th>Quincena / Límite</th>
-              <th>Año</th>
-              <th>Datos</th>
-              <th>Forma Pago</th>
-              <th style="text-align: center;">Condición</th>
-              <th>Usuario</th>
-              <th>Fecha Registro</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-bloqueos">
-            <!-- Carga dinámica -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════════════════
-       PESTAÑA 2: CLIENTES CRÉDITO
-       ══════════════════════════════════════════════════════════════════════════ -->
-  <div id="tab-content-clientes" style="display: none;">
-    <!-- Métricas Clientes -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-info">
-          <h3>Total Clientes</h3>
-          <div class="count-val" id="metric-total-clientes">0</div>
-        </div>
-        <div class="metric-icon">🏢</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-info">
-          <h3>Activos para Bloqueo (1)</h3>
-          <div class="count-val" id="metric-activos-clientes" style="color: var(--success);">0</div>
-        </div>
-        <div class="metric-icon">✅</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-info">
-          <h3>Excluidos (0)</h3>
-          <div class="count-val" id="metric-excluidos-clientes" style="color: var(--warning);">0</div>
-        </div>
-        <div class="metric-icon">⏸</div>
-      </div>
-    </div>
-
-    <!-- Contenedor y Tabla Clientes -->
-    <div class="content-card">
-      <div class="toolbar">
-        <div class="filters-row" style="flex: 1;">
-          <div class="filter-group" style="flex: 1; max-width: 400px;">
-            <label for="buscar-cliente-input">Buscar Cliente / Nit / Nombre</label>
-            <input type="text" id="buscar-cliente-input" placeholder="🔍 Escribe para filtrar..." oninput="renderClientesTable()">
+      <!-- Métricas -->
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div>
+            <div class="metric-label">Total Bloqueos</div>
+            <div class="metric-val" id="count-total">0</div>
           </div>
+          <div style="font-size: 1.8rem; opacity: 0.8;">📑</div>
         </div>
-        <div>
-          <button class="btn btn-primary" onclick="abrirModalNuevoCliente()">
-            ➕ Agregar Cliente Crédito
-          </button>
-        </div>
-      </div>
-
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 80px;">ID</th>
-              <th style="width: 100px; text-align: center;">Bloqueo</th>
-              <th>Cliente a Facturar</th>
-              <th>Nit</th>
-              <th>Nombre / Razón Social</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-clientes">
-            <!-- Carga dinámica -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════
-     MODAL: NUEVO REGISTRO DE BLOQUEO (FACTURACIÓN)
-     ══════════════════════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-bloqueo-overlay">
-  <div class="modal">
-    <div class="modal-header">
-      <span>🔒 Registrar Bloqueo / Desbloqueo</span>
-      <button class="modal-close" onclick="cerrarModalBloqueo()">&times;</button>
-    </div>
-
-    <form id="form-bloqueo-facturacion" onsubmit="event.preventDefault(); submitBloqueoFacturacion();">
-      <!-- Regional y Operación (Opcionales) -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div class="modal-form-group">
-          <label for="modal-reg">Regional</label>
-          <select id="modal-reg" onchange="onModalRegionalChange()">
-            <option value="">— Todas las Regionales —</option>
-          </select>
-        </div>
-        <div class="modal-form-group">
-          <label for="modal-op">Operación</label>
-          <select id="modal-op">
-            <option value="">— Todas las Operaciones —</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Criterio de Tiempo: Quincena vs Fecha -->
-      <div class="modal-form-group">
-        <label>Criterio de Bloqueo <span style="color:var(--danger)">*</span></label>
-        <div class="option-group">
-          <button type="button" class="opt-btn active" id="btn-crit-quincena" onclick="setCritTiempo('Quincena')">Por Quincena</button>
-          <button type="button" class="opt-btn" id="btn-crit-fecha" onclick="setCritTiempo('Fecha')">Por Fecha (Hasta)</button>
-        </div>
-      </div>
-
-      <!-- Grupo Quincena -->
-      <div class="modal-form-group" id="group-quincena">
-        <label for="modal-quincena">Quincena <span style="color:var(--danger)">*</span></label>
-        <select id="modal-quincena">
-          <option value="">— Seleccione Quincena —</option>
-        </select>
-      </div>
-
-      <!-- Grupo Fecha (Hasta) -->
-      <div class="modal-form-group" id="group-fecha" style="display: none;">
-        <label for="modal-hasta">Hasta Fecha y Hora (Hora Inicio) <span style="color:var(--danger)">*</span></label>
-        <input type="datetime-local" id="modal-hasta">
-        <span style="font-size:0.75rem; color:var(--text-muted);">Solo se bloqueará hasta esta fecha y hora.</span>
-      </div>
-
-      <!-- Forma de Pago -->
-      <div class="modal-form-group">
-        <label>Forma de Pago <span style="color:var(--danger)">*</span></label>
-        <div class="option-group" id="group-forma-pago">
-          <button type="button" class="opt-btn active" data-val="3" onclick="setFormaPago('3')">3 - Crédito</button>
-          <button type="button" class="opt-btn" data-val="" onclick="setFormaPago('')">Todas</button>
-          <button type="button" class="opt-btn" data-val="1" onclick="setFormaPago('1')">1 - Efectivo</button>
-          <button type="button" class="opt-btn" data-val="2" onclick="setFormaPago('2')">2 - Transferencia</button>
-        </div>
-      </div>
-
-      <!-- Sección Clientes a los que aplica (solo cuando Forma de Pago es 3) -->
-      <div id="section-clientes-credito" style="border: 1px solid var(--border); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 16px; background: #fafafa;">
-        <div class="modal-form-group" style="margin-bottom: 8px;">
-          <label>Clientes a los que aplica</label>
-          <div class="option-group">
-            <button type="button" class="opt-btn active" id="btn-cli-pre" onclick="setTipoClientes('Preseleccionados')">Preseleccionados</button>
-            <button type="button" class="opt-btn" id="btn-cli-todos" onclick="setTipoClientes('Todos')">Todos</button>
-            <button type="button" class="opt-btn" id="btn-cli-manual" onclick="setTipoClientes('Manual')">Manual</button>
+        <div class="metric-card">
+          <div>
+            <div class="metric-label">Bloqueados</div>
+            <div class="metric-val" style="color: var(--danger);" id="count-bloqueados">0</div>
           </div>
+          <div style="font-size: 1.8rem; opacity: 0.8;">🔒</div>
         </div>
-
-        <!-- Info box para Preseleccionados -->
-        <div class="info-box" id="info-preseleccionados">
-          Cargando clientes preseleccionados...
+        <div class="metric-card">
+          <div>
+            <div class="metric-label">Desbloqueados</div>
+            <div class="metric-val" style="color: var(--success);" id="count-desbloqueados">0</div>
+          </div>
+          <div style="font-size: 1.8rem; opacity: 0.8;">🔓</div>
         </div>
+      </div>
 
-        <!-- Checklist para Manual -->
-        <div id="box-manual-clientes" style="display: none; margin-top: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 0.8rem; font-weight: 600; color: #475569;">Marque los clientes:</span>
-            <div style="font-size: 0.75rem;">
-              <a href="javascript:void(0)" onclick="toggleAllManualCheckboxes(true)" style="color: var(--primary-light); margin-right: 8px;">Todos</a>
-              <a href="javascript:void(0)" onclick="toggleAllManualCheckboxes(false)" style="color: var(--danger);">Ninguno</a>
+      <!-- Filtros -->
+      <div class="card">
+        <div class="filtros-toggle" id="bloqFiltrosToggle" onclick="toggleFiltrosBloqueo()">
+          <span class="filtros-toggle-left">
+            &#128269; Filtros de Consulta
+            <span class="filtros-badge" id="bloqFiltrosBadge">0</span>
+          </span>
+          <span class="filtros-chevron" id="bloqFiltrosChevron">&#9656;</span>
+        </div>
+        <div class="filtros-body" id="bloqFiltrosBody" style="display: none;">
+          <div class="filtros-grid">
+            <div class="filtro-field">
+              <label>Regional</label>
+              <select id="filtro-regional" onchange="onFiltroRegionalChange()">
+                <option value="">Todas las Regionales</option>
+              </select>
+            </div>
+            <div class="filtro-field">
+              <label>Operación</label>
+              <select id="filtro-operacion" onchange="renderBloqueosTable()">
+                <option value="">Todas las Operaciones</option>
+              </select>
+            </div>
+            <div class="filtro-field">
+              <label>Quincena</label>
+              <select id="filtro-quincena" onchange="renderBloqueosTable()">
+                <option value="">Todas las Quincenas</option>
+              </select>
             </div>
           </div>
-          <div class="clients-checklist" id="clients-checklist-container">
-            <!-- Checkboxes generados dinámicamente -->
+          <button type="button" class="btn-reset" onclick="resetFiltrosBloqueo()">&#8635; Limpiar filtros</button>
+        </div>
+      </div>
+
+      <!-- Tabla de Bloqueos (Redimensionable y Ordenable) -->
+      <div class="table-container">
+        <table class="data-table" id="tabla-bloqueos">
+          <thead>
+            <tr>
+              <th style="width:70px" data-sort="id">ID<span id="bloqSort-id" class="sort-indicator"></span></th>
+              <th style="width:130px" data-sort="regional">Regional<span id="bloqSort-regional" class="sort-indicator"></span></th>
+              <th style="width:160px" data-sort="operacion">Operación<span id="bloqSort-operacion" class="sort-indicator"></span></th>
+              <th style="width:160px" data-sort="quincena">Quincena / Límite<span id="bloqSort-quincena" class="sort-indicator"></span></th>
+              <th style="width:80px" data-sort="anio">Año<span id="bloqSort-anio" class="sort-indicator"></span></th>
+              <th style="width:120px" data-sort="datos">Datos<span id="bloqSort-datos" class="sort-indicator"></span></th>
+              <th style="width:120px" data-sort="formaPago">Forma Pago<span id="bloqSort-formaPago" class="sort-indicator"></span></th>
+              <th style="width:130px; text-align:center" data-sort="condicion">Condición<span id="bloqSort-condicion" class="sort-indicator"></span></th>
+              <th style="width:140px" data-sort="usuario">Usuario<span id="bloqSort-usuario" class="sort-indicator"></span></th>
+              <th style="width:160px" data-sort="fechaRegistro">Fecha Registro<span id="bloqSort-fechaRegistro" class="sort-indicator"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-bloqueos-body">
+            <tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando bloqueos...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 2: CLIENTES CRÉDITO
+    ────────────────────────────────────────────────────────── -->
+    <div id="tab-content-clientes" style="display: none;">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Facturación · Clientes Crédito</div>
+          <div class="page-sub">Administración de clientes y selección predeterminada para bloqueo de datos</div>
+        </div>
+        <button class="btn-primary" onclick="abrirModalCliente()">
+          ➕ Agregar Cliente Crédito
+        </button>
+      </div>
+
+      <!-- Métricas Clientes -->
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div>
+            <div class="metric-label">Total Clientes Crédito</div>
+            <div class="metric-val" id="count-clientes-total">0</div>
+          </div>
+          <div style="font-size: 1.8rem; opacity: 0.8;">🏢</div>
+        </div>
+        <div class="metric-card">
+          <div>
+            <div class="metric-label">Habilitados para Bloqueo (1)</div>
+            <div class="metric-val" style="color: var(--primary-light);" id="count-clientes-activos">0</div>
+          </div>
+          <div style="font-size: 1.8rem; opacity: 0.8;">✔</div>
+        </div>
+        <div class="metric-card">
+          <div>
+            <div class="metric-label">Excluidos (0)</div>
+            <div class="metric-val" style="color: var(--text-muted);" id="count-clientes-inactivos">0</div>
+          </div>
+          <div style="font-size: 1.8rem; opacity: 0.8;">✖</div>
+        </div>
+      </div>
+
+      <!-- Barra de Búsqueda -->
+      <div class="card" style="padding: 14px 20px;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+          <div class="filtro-field" style="flex:1; min-width:240px;">
+            <input type="text" id="buscar-cliente" placeholder="Buscar por Cliente a Facturar, NIT, Razón Social o Usuario..." oninput="renderClientesTable()">
+          </div>
+          <div class="filtro-field" style="width:200px;">
+            <select id="filtro-estado-cliente" onchange="renderClientesTable()">
+              <option value="">Todos los Estados</option>
+              <option value="1">Habilitados para Bloqueo (1)</option>
+              <option value="0">Deshabilitados (0)</option>
+            </select>
           </div>
         </div>
       </div>
 
-      <!-- Condición: Bloquear vs Desbloquear -->
-      <div class="modal-form-group">
-        <label>Acción a Ejecutar <span style="color:var(--danger)">*</span></label>
-        <div class="option-group">
-          <button type="button" class="opt-btn active" id="btn-cond-bloquear" onclick="setCondicion('Bloquear')">🔒 Bloquear</button>
-          <button type="button" class="opt-btn" id="btn-cond-desbloquear" onclick="setCondicion('Desbloquear')">🔓 Desbloquear</button>
-        </div>
+      <!-- Tabla de Clientes (Redimensionable y Ordenable) -->
+      <div class="table-container">
+        <table class="data-table" id="tabla-clientes">
+          <thead>
+            <tr>
+              <th style="width: 80px; text-align: center;" data-sort="bloqueo">Bloqueo<span id="cliSort-bloqueo" class="sort-indicator"></span></th>
+              <th style="width: 260px;" data-sort="clienteAFacturar">Cliente a Facturar<span id="cliSort-clienteAFacturar" class="sort-indicator"></span></th>
+              <th style="width: 130px;" data-sort="nit">NIT<span id="cliSort-nit" class="sort-indicator"></span></th>
+              <th style="width: 280px;" data-sort="nombre">Nombre / Razón Social<span id="cliSort-nombre" class="sort-indicator"></span></th>
+              <th style="width: 140px;" data-sort="usuario">Usuario<span id="cliSort-usuario" class="sort-indicator"></span></th>
+              <th style="width: 160px;" data-sort="fechaRegistro">Fecha Registro<span id="cliSort-fechaRegistro" class="sort-indicator"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-clientes-body">
+            <tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando clientes...</td></tr>
+          </tbody>
+        </table>
       </div>
-
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="cerrarModalBloqueo()">Cancelar</button>
-        <button type="submit" class="btn btn-primary" id="btn-submit-bloqueo">Confirmar y Aplicar</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════
-     MODAL: AGREGAR CLIENTE CRÉDITO
-     ══════════════════════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-cliente-overlay">
-  <div class="modal" style="max-width: 500px;">
-    <div class="modal-header">
-      <span>➕ Agregar Cliente Crédito</span>
-      <button class="modal-close" onclick="cerrarModalNuevoCliente()">&times;</button>
     </div>
 
-    <form id="form-nuevo-cliente" onsubmit="event.preventDefault(); submitNuevoCliente();">
-      <div class="modal-form-group">
-        <label for="cliente-id">ID (Autogenerado)</label>
-        <input type="text" id="cliente-id" readonly style="background: #e2e8f0; color: #64748b;">
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 1: NUEVO BLOQUEO DE FACTURACIÓN (SERVICIOS)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-bloqueo-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span>🔒 Bloqueo de Datos — Servicios</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalBloqueo()">&times;</button>
       </div>
 
-      <div class="modal-form-group">
-        <label for="cliente-nombre-facturar">Cliente a Facturar <span style="color:var(--danger)">*</span></label>
-        <input type="text" id="cliente-nombre-facturar" required placeholder="EJ: ALAMO" oninput="this.value = this.value.toUpperCase()">
+      <div class="modal-body">
+        <form id="form-bloqueo" onsubmit="event.preventDefault(); submitBloqueo();">
+          
+          <!-- Criterio Temporal -->
+          <div class="form-group">
+            <label>Criterio Temporal *</label>
+            <div class="btn-grupo">
+              <button type="button" class="btn-grupo-opt sel" id="btn-crit-quincena" onclick="setCriterio('Quincena')">Por Quincena</button>
+              <button type="button" class="btn-grupo-opt" id="btn-crit-fecha" onclick="setCriterio('Fecha')">Por Fecha (Hasta)</button>
+            </div>
+          </div>
+
+          <!-- Selector Quincena -->
+          <div class="form-group" id="row-quincena">
+            <label>Quincena *</label>
+            <select id="modal-quincena">
+              <option value="">— Seleccione Quincena —</option>
+            </select>
+          </div>
+
+          <!-- Selector Fecha / Hora Límite -->
+          <div class="form-group" id="row-hasta" style="display: none;">
+            <label>Fecha y Hora Límite (Hasta) *</label>
+            <input type="datetime-local" id="modal-hasta">
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Se bloquearán turnos con Hora Inicio menor o igual a esta fecha.</small>
+          </div>
+
+          <!-- Regional y Operación Opcionales -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Regional (Opcional)</label>
+              <select id="modal-reg" onchange="onModalRegionalChange()">
+                <option value="">— Todas las Regionales —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Operación (Opcional)</label>
+              <select id="modal-op">
+                <option value="">— Todas las Operaciones —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Datos y Forma de Pago -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Datos</label>
+              <input type="text" value="Servicios" disabled>
+            </div>
+            <div class="form-group">
+              <label>Forma de Pago</label>
+              <select id="modal-fp" onchange="onModalFormaPagoChange()">
+                <option value="3" selected>3 - Crédito</option>
+                <option value="1">1 - Efectivo</option>
+                <option value="2">2 - Transferencia</option>
+                <option value="">Todas</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Sección Clientes a los que aplica (Solo si Forma de Pago = 3) -->
+          <div id="seccion-clientes-credito" style="border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px; background: #fafafa;">
+            <label style="display:block; font-size: 0.78rem; font-weight:700; color:#334155; margin-bottom: 6px; text-transform:uppercase;">Clientes a los que aplica *</label>
+            
+            <div class="btn-grupo" style="margin-bottom: 10px;">
+              <button type="button" class="btn-grupo-opt sel" id="btn-tc-preseleccionados" onclick="setTipoClientes('Preseleccionados')">Preseleccionados</button>
+              <button type="button" class="btn-grupo-opt" id="btn-tc-todos" onclick="setTipoClientes('Todos')">Todos</button>
+              <button type="button" class="btn-grupo-opt" id="btn-tc-manual" onclick="setTipoClientes('Manual')">Manual</button>
+            </div>
+
+            <!-- Info Preseleccionados -->
+            <div id="info-preseleccionados" class="info-banner">
+              Cargando resumen de clientes preseleccionados...
+            </div>
+
+            <!-- Contenedor Manual -->
+            <div id="container-manual" style="display: none; margin-top: 10px;">
+              <input type="text" id="busqueda-manual-cliente" placeholder="Filtrar clientes en la lista..." oninput="filtrarChecklistManual()" style="margin-bottom: 8px; font-size: 0.82rem; padding: 6px 10px;">
+              <div class="checklist-box" id="checklist-clientes">
+                <!-- Generado dinámicamente -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Acción a Ejecutar -->
+          <div class="form-group">
+            <label>Acción a Ejecutar *</label>
+            <div class="btn-grupo">
+              <button type="button" class="btn-grupo-opt sel" id="btn-cond-bloquear" onclick="setCondicion('Bloquear')">🔒 Bloquear</button>
+              <button type="button" class="btn-grupo-opt" id="btn-cond-desbloquear" onclick="setCondicion('Desbloquear')">🔓 Desbloquear</button>
+            </div>
+          </div>
+
+        </form>
       </div>
 
-      <div class="modal-form-group">
-        <label for="cliente-nit">Nit</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="number" id="cliente-nit" placeholder="Nit sin dígito de verificación" oninput="onNitInput(this.value)">
-          <span id="nit-searching" style="display: none; align-items: center; font-size: 0.78rem; color: var(--primary-light);">🔎 Buscando...</span>
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalBloqueo()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-submit-bloqueo" onclick="submitBloqueo()">Confirmar y Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 2: AGREGAR CLIENTE CRÉDITO
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-cliente-overlay">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span>➕ Agregar Cliente Crédito</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalCliente()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="form-cliente" onsubmit="event.preventDefault(); submitCliente();">
+          
+          <div class="form-group">
+            <label>Cliente a Facturar *</label>
+            <input type="text" id="mc-cliente-facturar" required placeholder="Ej: LOGYSER S.A.S" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Nombre que aparece en la planilla o factura (en mayúsculas).</small>
+          </div>
+
+          <div class="form-group autocomplete-wrapper">
+            <label>NIT / Código (Búsqueda Predictiva)</label>
+            <input type="text" id="mc-nit" placeholder="Escriba el NIT para buscar..." autocomplete="off" oninput="buscarClienteNit(this.value)">
+            <div class="autocomplete-list" id="nit-autocomplete-list"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Nombre / Razón Social *</label>
+            <input type="text" id="mc-nombre" required placeholder="Razón social del cliente">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Estado Inicial</label>
+            <div style="display:flex; align-items:center; gap:10px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border);">
+              <label class="switch" style="margin:0;">
+                <input type="checkbox" id="mc-bloqueo" checked disabled>
+                <span class="slider"></span>
+              </label>
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">Habilitado para bloqueo (1)</span>
+            </div>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalCliente()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-submit-cliente" onclick="submitCliente()">Guardar Cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCRIPTS Y LÓGICA DE NEGOCIO
+  ══════════════════════════════════════════════════════════ -->
+  
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3: EDITAR / ELIMINAR CLIENTE CRÉDITO
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-editar-cliente-overlay">
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <span>✏️ Editar Cliente Crédito</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalEditarCliente()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="form-editar-cliente" onsubmit="event.preventDefault(); guardarEdicionCliente();">
+          
+          <input type="hidden" id="mec-id">
+
+          <div class="form-group">
+            <label>ID Registro</label>
+            <input type="text" id="mec-id-disp" disabled style="background:#f1f5f9; font-weight:600; color:#64748b;">
+          </div>
+
+          <div class="form-group">
+            <label>Cliente a Facturar *</label>
+            <input type="text" id="mec-cliente-facturar" required placeholder="Ej: LOGYSER S.A.S" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Nombre que aparece en la planilla o factura (en mayúsculas).</small>
+          </div>
+
+          <div class="form-group autocomplete-wrapper">
+            <label>NIT / Código (Búsqueda Predictiva)</label>
+            <input type="text" id="mec-nit" placeholder="Escriba el NIT para buscar..." autocomplete="off" oninput="buscarClienteNitEdicion(this.value)">
+            <div class="autocomplete-list" id="mec-nit-autocomplete-list"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Nombre / Razón Social *</label>
+            <input type="text" id="mec-nombre" required placeholder="Razón social del cliente">
+          </div>
+
+          <div class="form-group">
+            <label>Estado de Bloqueo</label>
+            <div style="display:flex; align-items:center; gap:10px; padding: 10px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border);">
+              <label class="switch" style="margin:0;">
+                <input type="checkbox" id="mec-bloqueo">
+                <span class="slider"></span>
+              </label>
+              <span id="mec-bloqueo-label" style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">Habilitado para bloqueo (1)</span>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Último Usuario</label>
+              <input type="text" id="mec-usuario" disabled style="background:#f8fafc; font-size:0.85rem;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Fecha Registro</label>
+              <input type="text" id="mec-fecha" disabled style="background:#f8fafc; font-size:0.85rem;">
+            </div>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <button type="button" class="btn-reset" onclick="eliminarCliente()" style="margin-top:0; border-color:#fca5a5; color:#dc2626; background:#fef2f2; font-weight:700;">
+          🗑️ Eliminar
+        </button>
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalEditarCliente()">Cancelar</button>
+          <button type="button" class="btn-primary" id="btn-guardar-edicion-cliente" onclick="guardarEdicionCliente()">Guardar Cambios</button>
         </div>
       </div>
-
-      <div class="modal-form-group">
-        <label for="cliente-razon-social">Nombre / Razón Social</label>
-        <input type="text" id="cliente-razon-social" placeholder="Razón social del cliente">
-      </div>
-
-      <div class="modal-form-group" style="flex-direction: row; align-items: center; gap: 10px; margin-top: 10px;">
-        <label class="toggle-switch">
-          <input type="checkbox" id="cliente-bloqueo-chk" checked>
-          <span class="toggle-slider"></span>
-        </label>
-        <span style="font-size: 0.88rem; font-weight: 600; color: #334155;">Activar para Bloqueo (1)</span>
-      </div>
-
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="cerrarModalNuevoCliente()">Cancelar</button>
-        <button type="submit" class="btn btn-primary" id="btn-submit-cliente">Guardar Cliente</button>
-      </div>
-    </form>
+    </div>
   </div>
-</div>
 
 <script>
-  const CONFIG = __CONFIG__;
-  let allBloqueos = [];
-  let allClientes = [];
-  let quincenasList = [];
-  let preseleccionadosInfo = null;
+    const CONFIG = __CONFIG__;
+    let allBloqueos = [];
+    let allClientes = [];
+    let quincenasList = [];
+    let preseleccionadosInfo = null;
 
-  // Estado del formulario de bloqueo
-  let formState = {
-    criterio: 'Quincena',
-    formaPago: '3',
-    tipoClientes: 'Preseleccionados',
-    condicion: 'Bloquear'
-  };
+    let sortBloqueosState = { col: 'fechaRegistro', order: 'desc' };
+    let sortClientesState = { col: 'clienteAFacturar', order: 'asc' };
 
-  window.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('user-badge').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
-
-    // Cargar quincenas
-    try {
-      const qResp = await fetch(`/bloqueodatos/api/quincenas?usuario=${CONFIG.usuario}`);
-      if (qResp.ok) quincenasList = await qResp.json();
-    } catch (e) { console.error('Error cargando quincenas:', e); }
-
-    // Poblar selectores de regional
-    const selFiltroReg = document.getElementById('filtro-regional');
-    const selModalReg = document.getElementById('modal-reg');
-    CONFIG.regionalesFiltro.forEach(r => {
-      const o1 = document.createElement('option'); o1.value = r; o1.textContent = r; selFiltroReg.appendChild(o1);
-      const o2 = document.createElement('option'); o2.value = r; o2.textContent = r; selModalReg.appendChild(o2);
-    });
-
-    // Poblar selectores de quincena
-    const selFiltroQ = document.getElementById('filtro-quincena');
-    const selModalQ = document.getElementById('modal-quincena');
-    quincenasList.forEach(q => {
-      const o1 = document.createElement('option'); o1.value = q; o1.textContent = q; selFiltroQ.appendChild(o1);
-      const o2 = document.createElement('option'); o2.value = q; o2.textContent = q; selModalQ.appendChild(o2);
-    });
-
-    // Poner fecha y hora por defecto en input Hasta (hora colombiana actual)
-    const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    const defaultLocal = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    document.getElementById('modal-hasta').value = defaultLocal;
-
-    // Cargar datos iniciales
-    await Promise.all([cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo()]);
-  });
-
-  // Switch de pestañas principales
-  function switchMainTab(tab) {
-    document.getElementById('tab-btn-bloqueo').classList.toggle('active', tab === 'bloqueo');
-    document.getElementById('tab-btn-clientes').classList.toggle('active', tab === 'clientes');
-    document.getElementById('tab-content-bloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
-    document.getElementById('tab-content-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // LOGICA TABLA BLOQUEOS
-  // ─────────────────────────────────────────────────────────────────────────
-  async function cargarBloqueos() {
-    try {
-      const resp = await fetch(`/facturacion/api/bloqueos?usuario=${CONFIG.usuario}`);
-      if (resp.ok) {
-        allBloqueos = await resp.json();
-        renderBloqueosTable();
-      }
-    } catch (e) { console.error('Error cargando bloqueos:', e); }
-  }
-
-  function onRegionalFilterChange() {
-    const reg = document.getElementById('filtro-regional').value;
-    const selOp = document.getElementById('filtro-operacion');
-    selOp.innerHTML = '<option value="">— Todas —</option>';
-    if (reg && CONFIG.opsPorRegional[reg]) {
-      CONFIG.opsPorRegional[reg].forEach(op => {
-        const opt = document.createElement('option'); opt.value = op; opt.textContent = op; selOp.appendChild(opt);
-      });
-    }
-    renderBloqueosTable();
-  }
-
-  function limpiarFiltrosBloqueo() {
-    document.getElementById('filtro-regional').value = '';
-    document.getElementById('filtro-operacion').innerHTML = '<option value="">— Todas —</option>';
-    document.getElementById('filtro-quincena').value = '';
-    renderBloqueosTable();
-  }
-
-  function renderBloqueosTable() {
-    const reg = document.getElementById('filtro-regional').value;
-    const op = document.getElementById('filtro-operacion').value;
-    const q = document.getElementById('filtro-quincena').value;
-
-    const filtered = allBloqueos.filter(b => {
-      if (reg && b.regional !== reg) return false;
-      if (op && b.operacion !== op) return false;
-      if (q && b.quincena !== q) return false;
-      return true;
-    });
-
-    // Métricas
-    document.getElementById('metric-total-bloqueos').innerText = filtered.length;
-    document.getElementById('metric-bloqueados').innerText = filtered.filter(b => b.condicion === 'Bloquear').length;
-    document.getElementById('metric-desbloqueados').innerText = filtered.filter(b => b.condicion === 'Desbloquear').length;
-
-    const tbody = document.getElementById('tbody-bloqueos');
-    tbody.innerHTML = '';
-    if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron registros de bloqueo con los filtros aplicados.</td></tr>';
-      return;
-    }
-
-    filtered.forEach(b => {
-      const tr = document.createElement('tr');
-      const isBloqueo = b.condicion === 'Bloquear';
-      const condBadge = isBloqueo
-        ? '<span class="badge badge-lock">🔒 Bloquear</span>'
-        : '<span class="badge badge-unlock">🔓 Desbloquear</span>';
-
-      const limiteStr = b.hasta 
-        ? `📅 Hasta: ${b.hasta.replace('T', ' ').slice(0, 16)}`
-        : (b.quincena || '—');
-
-      const fpStr = b.formaPago === 3 ? '3 - Crédito' : (b.formaPago === 1 ? '1 - Efectivo' : (b.formaPago === 2 ? '2 - Transf.' : (b.formaPago ? b.formaPago : 'Todas')));
-
-      tr.innerHTML = `
-        <td style="font-weight:600; color:var(--text-muted);">#${b.id}</td>
-        <td>${b.regional || '— Todas —'}</td>
-        <td style="font-weight:500;">${b.operacion || '— Todas —'}</td>
-        <td style="font-weight:600; color:var(--primary-light);">${limiteStr}</td>
-        <td>${b.anio || '—'}</td>
-        <td><span class="badge badge-tag">${b.datos || 'Servicios'}</span></td>
-        <td>${fpStr}</td>
-        <td style="text-align:center;">${condBadge}</td>
-        <td>${b.usuario || '—'}</td>
-        <td style="color:var(--text-muted); font-size:0.82rem;">${b.fechaRegistro ? b.fechaRegistro.replace('T', ' ').slice(0, 19) : '—'}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // LOGICA TABLA CLIENTES CRÉDITO
-  // ─────────────────────────────────────────────────────────────────────────
-  async function cargarClientes() {
-    try {
-      const resp = await fetch(`/facturacion/api/clientes-credito?usuario=${CONFIG.usuario}`);
-      if (resp.ok) {
-        allClientes = await resp.json();
-        renderClientesTable();
-      }
-    } catch (e) { console.error('Error cargando clientes:', e); }
-  }
-
-  function renderClientesTable() {
-    const q = (document.getElementById('buscar-cliente-input').value || '').trim().toLowerCase();
-    const filtered = allClientes.filter(c => {
-      if (!q) return true;
-      return (c.clienteAFacturar && c.clienteAFacturar.toLowerCase().includes(q)) ||
-             (c.nit && String(c.nit).includes(q)) ||
-             (c.nombre && c.nombre.toLowerCase().includes(q));
-    });
-
-    document.getElementById('metric-total-clientes').innerText = allClientes.length;
-    document.getElementById('metric-activos-clientes').innerText = allClientes.filter(c => c.bloqueo === 1).length;
-    document.getElementById('metric-excluidos-clientes').innerText = allClientes.filter(c => c.bloqueo === 0).length;
-
-    const tbody = document.getElementById('tbody-clientes');
-    tbody.innerHTML = '';
-    if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron clientes de crédito.</td></tr>';
-      return;
-    }
-
-    filtered.forEach(c => {
-      const tr = document.createElement('tr');
-      const isChecked = c.bloqueo === 1 ? 'checked' : '';
-      tr.innerHTML = `
-        <td style="font-family:monospace; color:var(--text-muted);">${c.id}</td>
-        <td style="text-align:center;">
-          <label class="toggle-switch">
-            <input type="checkbox" ${isChecked} onchange="toggleClienteBloqueo('${c.id}', this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
-        </td>
-        <td style="font-weight:700; color:var(--primary);">${c.clienteAFacturar}</td>
-        <td>${c.nit || '—'}</td>
-        <td style="color:#334155;">${c.nombre || '—'}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  async function toggleClienteBloqueo(id, nuevoEstado) {
-    try {
-      const resp = await fetch(`/facturacion/api/clientes-credito/toggle?usuario=${CONFIG.usuario}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, nuevoEstado: nuevoEstado ? 1 : 0 })
-      });
-      if (resp.ok) {
-        const item = allClientes.find(c => c.id === id);
-        if (item) item.bloqueo = nuevoEstado ? 1 : 0;
-        document.getElementById('metric-activos-clientes').innerText = allClientes.filter(c => c.bloqueo === 1).length;
-        document.getElementById('metric-excluidos-clientes').innerText = allClientes.filter(c => c.bloqueo === 0).length;
-        cargarPreseleccionadosInfo();
-      } else {
-        alert('Error al actualizar el estado de bloqueo');
-        cargarClientes();
-      }
-    } catch (e) {
-      console.error(e);
-      cargarClientes();
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // MODAL NUEVO REGISTRO BLOQUEO FACTURACIÓN
-  // ─────────────────────────────────────────────────────────────────────────
-  function abrirModalBloqueo() {
-    document.getElementById('modal-bloqueo-overlay').classList.add('open');
-  }
-
-  function cerrarModalBloqueo() {
-    document.getElementById('modal-bloqueo-overlay').classList.remove('open');
-  }
-
-  function onModalRegionalChange() {
-    const reg = document.getElementById('modal-reg').value;
-    const selOp = document.getElementById('modal-op');
-    selOp.innerHTML = '<option value="">— Todas las Operaciones —</option>';
-    if (reg && CONFIG.opsPorRegional[reg]) {
-      CONFIG.opsPorRegional[reg].forEach(op => {
-        const opt = document.createElement('option'); opt.value = op; opt.textContent = op; selOp.appendChild(opt);
-      });
-    }
-  }
-
-  function setCritTiempo(crit) {
-    formState.criterio = crit;
-    document.getElementById('btn-crit-quincena').classList.toggle('active', crit === 'Quincena');
-    document.getElementById('btn-crit-fecha').classList.toggle('active', crit === 'Fecha');
-    document.getElementById('group-quincena').style.display = crit === 'Quincena' ? 'block' : 'none';
-    document.getElementById('group-fecha').style.display = crit === 'Fecha' ? 'block' : 'none';
-  }
-
-  function setFormaPago(fp) {
-    formState.formaPago = fp;
-    const btns = document.getElementById('group-forma-pago').querySelectorAll('.opt-btn');
-    btns.forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === fp));
-    document.getElementById('section-clientes-credito').style.display = fp === '3' ? 'block' : 'none';
-  }
-
-  function setTipoClientes(tipo) {
-    formState.tipoClientes = tipo;
-    document.getElementById('btn-cli-pre').classList.toggle('active', tipo === 'Preseleccionados');
-    document.getElementById('btn-cli-todos').classList.toggle('active', tipo === 'Todos');
-    document.getElementById('btn-cli-manual').classList.toggle('active', tipo === 'Manual');
-    document.getElementById('info-preseleccionados').style.display = tipo === 'Preseleccionados' ? 'block' : 'none';
-    document.getElementById('box-manual-clientes').style.display = tipo === 'Manual' ? 'block' : 'none';
-  }
-
-  function setCondicion(cond) {
-    formState.condicion = cond;
-    document.getElementById('btn-cond-bloquear').classList.toggle('active', cond === 'Bloquear');
-    document.getElementById('btn-cond-desbloquear').classList.toggle('active', cond === 'Desbloquear');
-  }
-
-  async function cargarPreseleccionadosInfo() {
-    try {
-      const resp = await fetch(`/bloqueodatos/api/clientes-credito/info?usuario=${CONFIG.usuario}`);
-      if (resp.ok) {
-        preseleccionadosInfo = await resp.json();
-        document.getElementById('info-preseleccionados').innerHTML = `
-          <strong>Preselección Automática:</strong> ${preseleccionadosInfo.infoText}
-          <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">(Total configurados: ${preseleccionadosInfo.total} | Activos: ${preseleccionadosInfo.onesCount} | Excluidos: ${preseleccionadosInfo.zerosCount})</div>
-        `;
-
-        // Render checklist para manual
-        const cont = document.getElementById('clients-checklist-container');
-        cont.innerHTML = '';
-        (preseleccionadosInfo.clients || []).forEach(c => {
-          const lbl = document.createElement('label');
-          lbl.innerHTML = `<input type="checkbox" class="chk-cliente-manual" value="${c.clienteAFacturar}" ${c.bloqueo === 1 ? 'checked' : ''}> ${c.clienteAFacturar}`;
-          cont.appendChild(lbl);
-        });
-      }
-    } catch (e) { console.error('Error info preseleccionados:', e); }
-  }
-
-  function toggleAllManualCheckboxes(check) {
-    document.querySelectorAll('.chk-cliente-manual').forEach(chk => chk.checked = check);
-  }
-
-  async function submitBloqueoFacturacion() {
-    const reg = document.getElementById('modal-reg').value;
-    const op = document.getElementById('modal-op').value;
-    const quincena = document.getElementById('modal-quincena').value;
-    const hasta = document.getElementById('modal-hasta').value;
-
-    if (formState.criterio === 'Quincena' && !quincena) {
-      alert('Por favor seleccione la quincena.');
-      return;
-    }
-    if (formState.criterio === 'Fecha' && !hasta) {
-      alert('Por favor ingrese la fecha y hora límite.');
-      return;
-    }
-
-    let clientesManuales = [];
-    if (formState.formaPago === '3' && formState.tipoClientes === 'Manual') {
-      document.querySelectorAll('.chk-cliente-manual:checked').forEach(c => clientesManuales.push(c.value));
-      if (!clientesManuales.length) {
-        alert('Debe seleccionar al menos un cliente en la opción Manual.');
-        return;
-      }
-    }
-
-    const payload = {
-      modulo: 'Facturacion',
-      regional: reg || '',
-      operacion: op || '',
-      criterio: formState.criterio,
-      quincena: formState.criterio === 'Quincena' ? quincena : null,
-      hasta: formState.criterio === 'Fecha' ? hasta : null,
-      datos: 'Servicios',
-      formaPago: formState.formaPago,
-      tipoClientes: formState.formaPago === '3' ? formState.tipoClientes : 'Todos',
-      clientesManuales,
-      condicion: formState.condicion
+    let formState = {
+      criterio: 'Quincena',
+      formaPago: '3',
+      tipoClientes: 'Preseleccionados',
+      condicion: 'Bloquear'
     };
 
-    const confirmMsg = `¿Confirma aplicar la acción "${formState.condicion}" a los Servicios de Facturación?`;
-    if (!confirm(confirmMsg)) return;
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Usuario en sidebar y móvil
+      const userHtml = `<strong>${CONFIG.usuarioNombre}</strong><span>${CONFIG.rol}</span>${CONFIG.regional ? `<br><small style="opacity:.7">${CONFIG.regional}</small>` : ''}`;
+      const sbUser = document.getElementById('sidebarUser');
+      if (sbUser) sbUser.innerHTML = userHtml;
 
-    const btnSubmit = document.getElementById('btn-submit-bloqueo');
-    btnSubmit.disabled = true;
-    btnSubmit.innerText = 'Procesando...';
+      const mobBadge = document.getElementById('mobile-user-badge');
+      if (mobBadge) mobBadge.textContent = (CONFIG.usuarioNombre || '').split(' ')[0] || CONFIG.usuario;
 
-    try {
-      const resp = await fetch(`/bloqueodatos/api/crear?usuario=${CONFIG.usuario}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json();
-      if (resp.ok && data.ok) {
-        alert(`✅ Acción ejecutada exitosamente.\nServicios modificados: ${data.affectedServicios}`);
-        cerrarModalBloqueo();
-        cargarBloqueos();
-      } else {
-        alert('Error: ' + (data.error || 'No se pudo aplicar el bloqueo'));
-      }
-    } catch (e) {
-      alert('Error de conexión al procesar la solicitud.');
-    } finally {
-      btnSubmit.disabled = false;
-      btnSubmit.innerText = 'Confirmar y Aplicar';
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // MODAL AGREGAR CLIENTE CRÉDITO
-  // ─────────────────────────────────────────────────────────────────────────
-  function abrirModalNuevoCliente() {
-    // Generar UUID corto
-    const genId = 'C' + Math.random().toString(36).substring(2, 9).toUpperCase();
-    document.getElementById('cliente-id').value = genId;
-    document.getElementById('cliente-nombre-facturar').value = '';
-    document.getElementById('cliente-nit').value = '';
-    document.getElementById('cliente-razon-social').value = '';
-    document.getElementById('cliente-bloqueo-chk').checked = true;
-    document.getElementById('modal-cliente-overlay').classList.add('open');
-  }
-
-  function cerrarModalNuevoCliente() {
-    document.getElementById('modal-cliente-overlay').classList.remove('open');
-  }
-
-  let nitTimeout = null;
-  function onNitInput(nitVal) {
-    clearTimeout(nitTimeout);
-    const searchSpan = document.getElementById('nit-searching');
-    if (!nitVal || String(nitVal).trim().length < 5) {
-      searchSpan.style.display = 'none';
-      return;
-    }
-    searchSpan.style.display = 'inline-flex';
-    nitTimeout = setTimeout(async () => {
+      // Cargar quincenas
       try {
-        const resp = await fetch(`/facturacion/api/buscar-cliente?nit=${encodeURIComponent(nitVal)}`);
+        const qResp = await fetch(`/bloqueodatos/api/quincenas?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (qResp.ok) quincenasList = await qResp.json();
+      } catch (e) { console.error('Error cargando quincenas:', e); }
+
+      // Poblar filtros de regional
+      const selFiltroReg = document.getElementById('filtro-regional');
+      const selModalReg = document.getElementById('modal-reg');
+      (CONFIG.regionalesFiltro || []).forEach(r => {
+        const o1 = document.createElement('option'); o1.value = r; o1.textContent = r; selFiltroReg.appendChild(o1);
+        const o2 = document.createElement('option'); o2.value = r; o2.textContent = r; selModalReg.appendChild(o2);
+      });
+
+      // Poblar selectores de quincena
+      const selFiltroQ = document.getElementById('filtro-quincena');
+      const selModalQ = document.getElementById('modal-quincena');
+      quincenasList.forEach(q => {
+        const o1 = document.createElement('option'); o1.value = q; o1.textContent = q; selFiltroQ.appendChild(o1);
+        const o2 = document.createElement('option'); o2.value = q; o2.textContent = q; selModalQ.appendChild(o2);
+      });
+
+      // Fecha/hora por defecto en input Hasta (hora colombiana actual)
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const defaultLocal = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      document.getElementById('modal-hasta').value = defaultLocal;
+
+      // Listeners de ordenamiento en tablas
+      document.querySelectorAll('#tabla-bloqueos thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortBloqueosState.col === col) {
+            sortBloqueosState.order = sortBloqueosState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortBloqueosState.col = col;
+            sortBloqueosState.order = 'asc';
+          }
+          sortAndRenderBloqueos();
+        });
+      });
+
+      document.querySelectorAll('#tabla-clientes thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortClientesState.col === col) {
+            sortClientesState.order = sortClientesState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortClientesState.col = col;
+            sortClientesState.order = 'asc';
+          }
+          sortAndRenderClientes();
+        });
+      });
+
+      // Cargar datos
+      await Promise.all([cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo()]);
+
+      // Inicializar columnas redimensionables
+      makeTableResizable(document.getElementById('tabla-bloqueos'));
+      makeTableResizable(document.getElementById('tabla-clientes'));
+    });
+
+    // ──────────────────────────────────────────────────────────
+    // FUNCIÓN PARA REDIMENSIONAR COLUMNAS (makeTableResizable)
+    // ──────────────────────────────────────────────────────────
+    function makeTableResizable(table) {
+      if (!table) return;
+      const row = table.querySelector('thead tr');
+      const cols = row ? row.children : [];
+      if (!cols.length) return;
+
+      let totalWidth = 0;
+      for (let i = 0; i < cols.length; i++) {
+        const declared = parseInt(cols[i].style.width) || 0;
+        totalWidth += declared > 0 ? declared : 110;
+      }
+      table.style.minWidth = totalWidth + 'px';
+
+      for (let i = 0; i < cols.length; i++) {
+        const th = cols[i];
+        const existing = th.querySelector('.th-resize');
+        if (existing) existing.remove();
+
+        const handle = document.createElement('span');
+        handle.className = 'th-resize';
+        handle.title = 'Arrastra para cambiar el ancho';
+        th.style.position = 'sticky';
+        th.appendChild(handle);
+
+        let startX, startWidth;
+        handle.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          startX = e.clientX;
+          startWidth = th.offsetWidth;
+          handle.classList.add('resizing');
+          try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+
+          const onPointerMove = (moveEvent) => {
+            const width = Math.max(50, startWidth + (moveEvent.clientX - startX));
+            th.style.width = width + 'px';
+            th.style.minWidth = width + 'px';
+          };
+          const onPointerUp = () => {
+            handle.classList.remove('resizing');
+            handle.removeEventListener('pointermove', onPointerMove);
+            handle.removeEventListener('pointerup', onPointerUp);
+            handle.removeEventListener('pointercancel', onPointerUp);
+          };
+          handle.addEventListener('pointermove', onPointerMove);
+          handle.addEventListener('pointerup', onPointerUp);
+          handle.addEventListener('pointercancel', onPointerUp);
+        });
+      }
+    }
+
+    function toggleMobileSidebar(force) {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('mobile-backdrop');
+      const isOpen = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+      sb.classList.toggle('open', isOpen);
+      bd.classList.toggle('open', isOpen);
+    }
+
+    function switchMainTab(tab) {
+      document.getElementById('navBloqueo').classList.toggle('active', tab === 'bloqueo');
+      document.getElementById('navClientes').classList.toggle('active', tab === 'clientes');
+      document.getElementById('tab-content-bloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
+      document.getElementById('tab-content-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
+      toggleMobileSidebar(false);
+      if (tab === 'bloqueo') makeTableResizable(document.getElementById('tabla-bloqueos'));
+      if (tab === 'clientes') makeTableResizable(document.getElementById('tabla-clientes'));
+    }
+
+    function toggleFiltrosBloqueo() {
+      const body = document.getElementById('bloqFiltrosBody');
+      const chevron = document.getElementById('bloqFiltrosChevron');
+      const isVisible = body.style.display === 'block';
+      body.style.display = isVisible ? 'none' : 'block';
+      chevron.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // BLOQUEOS (SERVICIOS)
+    // ──────────────────────────────────────────────────────────
+    async function cargarBloqueos() {
+      try {
+        const resp = await fetch(`/facturacion/api/bloqueos?usuario=${encodeURIComponent(CONFIG.usuario)}`);
         if (resp.ok) {
-          const d = await resp.json();
-          if (d.encontrado && d.razonSocial) {
-            document.getElementById('cliente-razon-social').value = d.razonSocial;
+          allBloqueos = await resp.json();
+          sortAndRenderBloqueos();
+          makeTableResizable(document.getElementById('tabla-bloqueos'));
+        }
+      } catch (e) {
+        console.error('Error cargando bloqueos:', e);
+      }
+    }
+
+    function sortAndRenderBloqueos() {
+      const col = sortBloqueosState.col;
+      const order = sortBloqueosState.order;
+      if (col) {
+        allBloqueos.sort((a, b) => {
+          let va = a[col] ?? '';
+          let vb = b[col] ?? '';
+          if (col === 'id' || col === 'anio' || col === 'formaPago') {
+            va = Number(va) || 0;
+            vb = Number(vb) || 0;
+            return order === 'asc' ? va - vb : vb - va;
+          }
+          if (typeof va === 'string') va = va.toLowerCase();
+          if (typeof vb === 'string') vb = vb.toLowerCase();
+          if (va < vb) return order === 'asc' ? -1 : 1;
+          if (va > vb) return order === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
+      ['id','regional','operacion','quincena','anio','datos','formaPago','condicion','usuario','fechaRegistro'].forEach(k => {
+        const span = document.getElementById('bloqSort-' + k);
+        if (!span) return;
+        span.textContent = sortBloqueosState.col === k ? (sortBloqueosState.order === 'asc' ? ' ▲' : ' ▼') : '';
+        if (sortBloqueosState.col === k) span.style.color = 'var(--primary)';
+      });
+
+      renderBloqueosTable();
+    }
+
+    function renderBloqueosTable() {
+      const reg = document.getElementById('filtro-regional').value;
+      const op = document.getElementById('filtro-operacion').value;
+      const q = document.getElementById('filtro-quincena').value;
+
+      let countActive = 0;
+      if (reg) countActive++;
+      if (op) countActive++;
+      if (q) countActive++;
+      const badge = document.getElementById('bloqFiltrosBadge');
+      if (badge) {
+        badge.textContent = countActive;
+        badge.style.display = countActive > 0 ? 'inline-flex' : 'none';
+      }
+
+      const filtered = allBloqueos.filter(b => {
+        if (reg && b.regional !== reg) return false;
+        if (op && b.operacion !== op) return false;
+        if (q && b.quincena !== q) return false;
+        return true;
+      });
+
+      document.getElementById('count-total').textContent = filtered.length;
+      document.getElementById('count-bloqueados').textContent = filtered.filter(b => b.condicion === 'Bloquear').length;
+      document.getElementById('count-desbloqueados').textContent = filtered.filter(b => b.condicion === 'Desbloquear').length;
+
+      const tbody = document.getElementById('tabla-bloqueos-body');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron registros de bloqueo para los filtros seleccionados.</td></tr>';
+        return;
+      }
+
+      filtered.forEach(b => {
+        const tr = document.createElement('tr');
+        const isBloq = b.condicion === 'Bloquear';
+        const condBadge = isBloq
+          ? '<span class="badge badge-bloq">🔒 Bloqueado</span>'
+          : '<span class="badge badge-desbloq">🔓 Desbloqueado</span>';
+
+        const limite = b.hasta ? `Hasta: ${b.hasta.replace('T', ' ').slice(0, 16)}` : (b.quincena || '—');
+        const fpStr = b.formaPago === 3 ? '3 - Crédito' : (b.formaPago === 1 ? '1 - Efectivo' : (b.formaPago === 2 ? '2 - Transf.' : (b.formaPago ? b.formaPago : 'Todas')));
+
+        tr.innerHTML = `
+          <td style="font-weight: 600; color: var(--text-muted);">#${b.id}</td>
+          <td>${esc(b.regional) || '— Todas —'}</td>
+          <td style="font-weight: 500;">${esc(b.operacion) || '— Todas —'}</td>
+          <td style="font-weight: 600; color: var(--primary);">${esc(limite)}</td>
+          <td>${b.anio || '—'}</td>
+          <td><span class="badge badge-servicios">Servicios</span></td>
+          <td>${fpStr}</td>
+          <td style="text-align: center;">${condBadge}</td>
+          <td>${esc(b.usuario) || '—'}</td>
+          <td style="font-size: 0.8rem; color: var(--text-muted);">${b.fechaRegistro ? b.fechaRegistro.replace('T', ' ').slice(0, 19) : '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function onFiltroRegionalChange() {
+      const reg = document.getElementById('filtro-regional').value;
+      const selOp = document.getElementById('filtro-operacion');
+      selOp.innerHTML = '<option value="">Todas las Operaciones</option>';
+      if (reg && CONFIG.opsPorRegional && CONFIG.opsPorRegional[reg]) {
+        CONFIG.opsPorRegional[reg].forEach(op => {
+          const opt = document.createElement('option'); opt.value = op; opt.textContent = op; selOp.appendChild(opt);
+        });
+      }
+      renderBloqueosTable();
+    }
+
+    function resetFiltrosBloqueo() {
+      document.getElementById('filtro-regional').value = '';
+      document.getElementById('filtro-operacion').innerHTML = '<option value="">Todas las Operaciones</option>';
+      document.getElementById('filtro-quincena').value = '';
+      renderBloqueosTable();
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // CLIENTES CRÉDITO
+    // ──────────────────────────────────────────────────────────
+    async function cargarClientes() {
+      try {
+        const resp = await fetch(`/facturacion/api/clientes-credito?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (resp.ok) {
+          allClientes = await resp.json();
+          sortAndRenderClientes();
+          renderChecklistManual();
+          makeTableResizable(document.getElementById('tabla-clientes'));
+        }
+      } catch (e) {
+        console.error('Error cargando clientes:', e);
+      }
+    }
+
+    function sortAndRenderClientes() {
+      const col = sortClientesState.col;
+      const order = sortClientesState.order;
+      if (col) {
+        allClientes.sort((a, b) => {
+          let va = a[col] ?? (col === 'clienteAFacturar' ? (a.clienteFacturar || a['Cliente a Facturar'] || '') : '');
+          let vb = b[col] ?? (col === 'clienteAFacturar' ? (b.clienteFacturar || b['Cliente a Facturar'] || '') : '');
+          if (col === 'bloqueo' || col === 'nit') {
+            va = Number(va) || 0;
+            vb = Number(vb) || 0;
+            return order === 'asc' ? va - vb : vb - va;
+          }
+          if (typeof va === 'string') va = va.toLowerCase();
+          if (typeof vb === 'string') vb = vb.toLowerCase();
+          if (va < vb) return order === 'asc' ? -1 : 1;
+          if (va > vb) return order === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+
+      ['bloqueo','clienteAFacturar','nit','nombre','usuario','fechaRegistro'].forEach(k => {
+        const span = document.getElementById('cliSort-' + k);
+        if (!span) return;
+        span.textContent = sortClientesState.col === k ? (sortClientesState.order === 'asc' ? ' ▲' : ' ▼') : '';
+        if (sortClientesState.col === k) span.style.color = 'var(--primary)';
+      });
+
+      renderClientesTable();
+    }
+
+    function renderClientesTable() {
+      const q = (document.getElementById('buscar-cliente').value || '').toLowerCase().trim();
+      const estadoFiltro = document.getElementById('filtro-estado-cliente').value;
+
+      const filtered = allClientes.filter(c => {
+        if (estadoFiltro !== '' && String(c.bloqueo) !== estadoFiltro) return false;
+        if (q) {
+          const cF = (c.clienteAFacturar || c.clienteFacturar || c['Cliente a Facturar'] || '').toLowerCase();
+          const nit = String(c.nit || '').toLowerCase();
+          const nom = (c.nombre || '').toLowerCase();
+          const usr = (c.usuario || '').toLowerCase();
+          if (!cF.includes(q) && !nit.includes(q) && !nom.includes(q) && !usr.includes(q)) return false;
+        }
+        return true;
+      });
+
+      document.getElementById('count-clientes-total').textContent = allClientes.length;
+      document.getElementById('count-clientes-activos').textContent = allClientes.filter(c => c.bloqueo === 1).length;
+      document.getElementById('count-clientes-inactivos').textContent = allClientes.filter(c => c.bloqueo === 0).length;
+
+      const tbody = document.getElementById('tabla-clientes-body');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron clientes crédito con los criterios de búsqueda.</td></tr>';
+        return;
+      }
+
+      filtered.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.title = 'Haz clic para ver, editar o eliminar este cliente';
+        tr.addEventListener('click', (e) => {
+          if (e.target.closest('.switch') || e.target.tagName === 'INPUT') return;
+          abrirModalEditarCliente(c);
+        });
+
+        const isChecked = c.bloqueo === 1 ? 'checked' : '';
+        const cFNom = c.clienteAFacturar || c.clienteFacturar || c['Cliente a Facturar'] || '—';
+        const usrNom = c.usuario || 'Sistema';
+        const fReg = c.fechaRegistro ? c.fechaRegistro.replace('T', ' ').slice(0, 19) : '—';
+
+        tr.innerHTML = `
+          <td style="text-align: center;">
+            <label class="switch">
+              <input type="checkbox" ${isChecked} onchange="toggleClienteBloqueo('${c.id}', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </td>
+          <td style="font-weight: 600; color: var(--primary);">${esc(cFNom)}</td>
+          <td style="font-family: monospace; font-size: 0.85rem;">${esc(c.nit) || '—'}</td>
+          <td>${esc(c.nombre)}</td>
+          <td style="font-size: 0.85rem; color: #475569;">${esc(usrNom)}</td>
+          <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(fReg)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function toggleClienteBloqueo(id, nuevoEstado) {
+      try {
+        const resp = await fetch(`/facturacion/api/clientes-credito/toggle?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, bloqueo: nuevoEstado ? 1 : 0 })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          const item = allClientes.find(c => c.id === id);
+          if (item) item.bloqueo = nuevoEstado ? 1 : 0;
+          renderClientesTable();
+          cargarPreseleccionadosInfo();
+        } else {
+          alert('Error al actualizar el estado: ' + (data.error || 'Desconocido'));
+          cargarClientes();
+        }
+      } catch (e) {
+        alert('Error de conexión al cambiar estado.');
+        cargarClientes();
+      }
+    }
+
+    async function cargarPreseleccionadosInfo() {
+      try {
+        const resp = await fetch(`/facturacion/api/clientes-credito/info?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (resp.ok) {
+          preseleccionadosInfo = await resp.json();
+          const infoBox = document.getElementById('info-preseleccionados');
+          if (infoBox) {
+            const resumen = preseleccionadosInfo.resumenTexto || preseleccionadosInfo.infoText || 'Todos los clientes de crédito configurados';
+            const total = (typeof preseleccionadosInfo.totalHabilitados !== 'undefined') ? preseleccionadosInfo.totalHabilitados : (preseleccionadosInfo.onesCount || 0);
+            infoBox.innerHTML = `<strong>Criterio de Clientes:</strong> ${esc(resumen)}<br><small style="color:#0f766e;opacity:.9;">Total clientes a bloquear en este grupo: <strong>${total}</strong></small>`;
           }
         }
-      } catch (e) { console.error('Error buscando cliente por Nit:', e); }
-      finally { searchSpan.style.display = 'none'; }
-    }, 400);
-  }
-
-  async function submitNuevoCliente() {
-    const id = document.getElementById('cliente-id').value;
-    const clienteAFacturar = document.getElementById('cliente-nombre-facturar').value.trim();
-    const nit = document.getElementById('cliente-nit').value.trim();
-    const nombre = document.getElementById('cliente-razon-social').value.trim();
-    const bloqueo = document.getElementById('cliente-bloqueo-chk').checked ? 1 : 0;
-
-    if (!clienteAFacturar) {
-      alert('El campo Cliente a Facturar es obligatorio.');
-      return;
-    }
-
-    const btn = document.getElementById('btn-submit-cliente');
-    btn.disabled = true;
-    btn.innerText = 'Guardando...';
-
-    try {
-      const resp = await fetch(`/facturacion/api/clientes-credito?usuario=${CONFIG.usuario}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, clienteAFacturar, nit, nombre, bloqueo })
-      });
-      const data = await resp.json();
-      if (resp.ok && data.ok) {
-        alert('✅ Cliente de crédito agregado exitosamente.');
-        cerrarModalNuevoCliente();
-        cargarClientes();
-        cargarPreseleccionadosInfo();
-      } else {
-        alert('Error: ' + (data.error || 'No se pudo guardar el cliente'));
+      } catch (e) {
+        console.error('Error cargando preseleccionados:', e);
       }
-    } catch (e) {
-      alert('Error de conexión al guardar el cliente.');
-    } finally {
-      btn.disabled = false;
-      btn.innerText = 'Guardar Cliente';
     }
-  }
-</script>
 
+    // ──────────────────────────────────────────────────────────
+    // FORMULARIO MODAL BLOQUEO
+    // ──────────────────────────────────────────────────────────
+    function abrirModalBloqueo() {
+      document.getElementById('modal-bloqueo-overlay').classList.add('open');
+      cargarPreseleccionadosInfo();
+    }
+
+    function cerrarModalBloqueo() {
+      document.getElementById('modal-bloqueo-overlay').classList.remove('open');
+    }
+
+    function setCriterio(crit) {
+      formState.criterio = crit;
+      document.getElementById('btn-crit-quincena').classList.toggle('sel', crit === 'Quincena');
+      document.getElementById('btn-crit-fecha').classList.toggle('sel', crit === 'Fecha');
+      document.getElementById('row-quincena').style.display = crit === 'Quincena' ? 'block' : 'none';
+      document.getElementById('row-hasta').style.display = crit === 'Fecha' ? 'block' : 'none';
+    }
+
+    function onModalRegionalChange() {
+      const reg = document.getElementById('modal-reg').value;
+      const selOp = document.getElementById('modal-op');
+      selOp.innerHTML = '<option value="">— Todas las Operaciones —</option>';
+      if (reg && CONFIG.opsPorRegional && CONFIG.opsPorRegional[reg]) {
+        CONFIG.opsPorRegional[reg].forEach(op => {
+          const opt = document.createElement('option'); opt.value = op; opt.textContent = op; selOp.appendChild(opt);
+        });
+      }
+    }
+
+    function onModalFormaPagoChange() {
+      const fp = document.getElementById('modal-fp').value;
+      formState.formaPago = fp;
+      document.getElementById('seccion-clientes-credito').style.display = fp === '3' ? 'block' : 'none';
+    }
+
+    function setTipoClientes(tipo) {
+      formState.tipoClientes = tipo;
+      document.getElementById('btn-tc-preseleccionados').classList.toggle('sel', tipo === 'Preseleccionados');
+      document.getElementById('btn-tc-todos').classList.toggle('sel', tipo === 'Todos');
+      document.getElementById('btn-tc-manual').classList.toggle('sel', tipo === 'Manual');
+
+      document.getElementById('info-preseleccionados').style.display = tipo === 'Preseleccionados' ? 'block' : 'none';
+      document.getElementById('container-manual').style.display = tipo === 'Manual' ? 'block' : 'none';
+    }
+
+    function setCondicion(cond) {
+      formState.condicion = cond;
+      document.getElementById('btn-cond-bloquear').classList.toggle('sel', cond === 'Bloquear');
+      document.getElementById('btn-cond-desbloquear').classList.toggle('sel', cond === 'Desbloquear');
+    }
+
+    function renderChecklistManual() {
+      const container = document.getElementById('checklist-clientes');
+      container.innerHTML = '';
+      allClientes.forEach(c => {
+        const cF = c.clienteAFacturar || c.clienteFacturar || c['Cliente a Facturar'] || '';
+        const item = document.createElement('label');
+        item.className = 'check-item';
+        item.setAttribute('data-name', cF.toLowerCase());
+        item.innerHTML = `
+          <input type="checkbox" class="chk-cliente" value="${esc(cF)}">
+          <span><strong>${esc(cF)}</strong> <small style="color:var(--text-muted)">(${esc(c.nombre)})</small></span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function filtrarChecklistManual() {
+      const term = (document.getElementById('busqueda-manual-cliente').value || '').toLowerCase().trim();
+      const items = document.querySelectorAll('#checklist-clientes .check-item');
+      items.forEach(el => {
+        const name = el.getAttribute('data-name') || '';
+        el.style.display = name.includes(term) ? 'flex' : 'none';
+      });
+    }
+
+    async function submitBloqueo() {
+      const reg = document.getElementById('modal-reg').value;
+      const op = document.getElementById('modal-op').value;
+      const fp = document.getElementById('modal-fp').value;
+
+      let payload = {
+        modulo: 'Facturacion',
+        regional: reg,
+        operacion: op,
+        formaPago: fp,
+        condicion: formState.condicion,
+        datos: 'Servicios'
+      };
+
+      if (formState.criterio === 'Quincena') {
+        const q = document.getElementById('modal-quincena').value;
+        if (!q) return alert('Por favor seleccione una quincena.');
+        payload.criterio = 'Quincena';
+        payload.quincena = q;
+      } else {
+        const hasta = document.getElementById('modal-hasta').value;
+        if (!hasta) return alert('Por favor ingrese la fecha y hora límite (Hasta).');
+        payload.criterio = 'Fecha';
+        payload.hasta = hasta;
+      }
+
+      if (fp === '3') {
+        payload.tipoClientes = formState.tipoClientes;
+        if (formState.tipoClientes === 'Manual') {
+          const chks = Array.from(document.querySelectorAll('.chk-cliente:checked')).map(el => el.value);
+          if (chks.length === 0) return alert('Seleccione al menos un cliente en la lista manual.');
+          payload.clientesManuales = chks;
+        }
+      }
+
+      if (!confirm(`¿Confirma aplicar la acción "${formState.condicion}" a los turnos de Servicios?`)) return;
+
+      const btn = document.getElementById('btn-submit-bloqueo');
+      btn.disabled = true;
+      btn.textContent = 'Procesando...';
+
+      try {
+        const resp = await fetch(`/bloqueodatos/api/crear?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert(`✅ Acción ejecutada exitosamente.\nTurnos de servicios afectados: ${data.affectedServicios}`);
+          cerrarModalBloqueo();
+          cargarBloqueos();
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo aplicar el bloqueo.'));
+        }
+      } catch (e) {
+        alert('Error de conexión con el servidor.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Confirmar y Aplicar';
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // MODAL AGREGAR CLIENTE CRÉDITO
+    // ──────────────────────────────────────────────────────────
+    function abrirModalCliente() {
+      document.getElementById('form-cliente').reset();
+      document.getElementById('nit-autocomplete-list').style.display = 'none';
+      document.getElementById('modal-cliente-overlay').classList.add('open');
+    }
+
+    function cerrarModalCliente() {
+      document.getElementById('modal-cliente-overlay').classList.remove('open');
+    }
+
+    let searchNitTimeout = null;
+    function buscarClienteNit(q) {
+      clearTimeout(searchNitTimeout);
+      const listEl = document.getElementById('nit-autocomplete-list');
+      if (!q || q.trim().length < 2) {
+        listEl.style.display = 'none';
+        return;
+      }
+      searchNitTimeout = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/buscar-cliente?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
+          if (resp.ok) {
+            const data = await resp.json();
+            listEl.innerHTML = '';
+            if (data.length === 0) {
+              listEl.innerHTML = '<div style="padding: 8px 12px; color: #a0aec0; font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
+            } else {
+              data.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'autocomplete-item';
+                row.innerHTML = `<strong>${esc(item.nit)}</strong> — ${esc(item.nombre)}`;
+                row.onclick = () => {
+                  document.getElementById('mc-nit').value = item.nit;
+                  document.getElementById('mc-nombre').value = item.nombre;
+                  listEl.style.display = 'none';
+                };
+                listEl.appendChild(row);
+              });
+            }
+            listEl.style.display = 'block';
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 250);
+    }
+
+    async function submitCliente() {
+      const cF = (document.getElementById('mc-cliente-facturar').value || '').trim().toUpperCase();
+      const nit = (document.getElementById('mc-nit').value || '').trim();
+      const nom = (document.getElementById('mc-nombre').value || '').trim();
+
+      if (!cF) return alert('El Cliente a Facturar es obligatorio.');
+      if (!nom) return alert('El Nombre / Razón Social es obligatorio.');
+
+      const btn = document.getElementById('btn-submit-cliente');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const resp = await fetch(`/facturacion/api/clientes-credito?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clienteAFacturar: cF,
+            nit,
+            nombre: nom,
+            bloqueo: 1
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert('✅ Cliente de crédito guardado exitosamente.');
+          cerrarModalCliente();
+          await Promise.all([cargarClientes(), cargarPreseleccionadosInfo()]);
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo guardar el cliente.'));
+        }
+      } catch (e) {
+        alert('Error de conexión.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar Cliente';
+      }
+    }
+
+    function esc(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // MODAL EDITAR / ELIMINAR CLIENTE CRÉDITO
+    // ──────────────────────────────────────────────────────────
+    let searchNitEditTimeout = null;
+    function buscarClienteNitEdicion(q) {
+      clearTimeout(searchNitEditTimeout);
+      const listEl = document.getElementById('mec-nit-autocomplete-list');
+      if (!q || q.trim().length < 2) {
+        listEl.style.display = 'none';
+        return;
+      }
+      searchNitEditTimeout = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/buscar-cliente?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
+          if (resp.ok) {
+            const data = await resp.json();
+            listEl.innerHTML = '';
+            if (!data.encontrado) {
+              listEl.innerHTML = '<div style="padding: 8px 12px; color: #a0aec0; font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
+            } else {
+              const row = document.createElement('div');
+              row.className = 'autocomplete-item';
+              row.innerHTML = `<strong>${esc(data.codigo)}</strong> — ${esc(data.razonSocial)}`;
+              row.onclick = () => {
+                document.getElementById('mec-nit').value = data.codigo;
+                document.getElementById('mec-nombre').value = data.razonSocial;
+                listEl.style.display = 'none';
+              };
+              listEl.appendChild(row);
+            }
+            listEl.style.display = 'block';
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 250);
+    }
+
+    function abrirModalEditarCliente(c) {
+      document.getElementById('mec-id').value = c.id;
+      document.getElementById('mec-id-disp').value = '#' + c.id;
+      document.getElementById('mec-cliente-facturar').value = c.clienteAFacturar || c.clienteFacturar || c['Cliente a Facturar'] || '';
+      document.getElementById('mec-nit').value = c.nit || '';
+      document.getElementById('mec-nombre').value = c.nombre || '';
+      const isBloq = c.bloqueo === 1;
+      const chk = document.getElementById('mec-bloqueo');
+      chk.checked = isBloq;
+      const lbl = document.getElementById('mec-bloqueo-label');
+      lbl.textContent = isBloq ? 'Habilitado para bloqueo (1)' : 'Excluido de bloqueo (0)';
+      lbl.style.color = isBloq ? 'var(--primary)' : 'var(--text-muted)';
+      chk.onchange = () => {
+        lbl.textContent = chk.checked ? 'Habilitado para bloqueo (1)' : 'Excluido de bloqueo (0)';
+        lbl.style.color = chk.checked ? 'var(--primary)' : 'var(--text-muted)';
+      };
+      document.getElementById('mec-usuario').value = c.usuario || 'Sistema';
+      document.getElementById('mec-fecha').value = c.fechaRegistro ? c.fechaRegistro.replace('T', ' ').slice(0, 19) : '—';
+      document.getElementById('mec-nit-autocomplete-list').style.display = 'none';
+      document.getElementById('modal-editar-cliente-overlay').classList.add('open');
+    }
+
+    function cerrarModalEditarCliente() {
+      document.getElementById('modal-editar-cliente-overlay').classList.remove('open');
+    }
+
+    async function guardarEdicionCliente() {
+      const id = document.getElementById('mec-id').value;
+      const cF = (document.getElementById('mec-cliente-facturar').value || '').trim().toUpperCase();
+      const nit = (document.getElementById('mec-nit').value || '').trim();
+      const nom = (document.getElementById('mec-nombre').value || '').trim();
+      const bloq = document.getElementById('mec-bloqueo').checked ? 1 : 0;
+
+      if (!cF) return alert('El Cliente a Facturar es obligatorio.');
+      if (!nom) return alert('El Nombre / Razón Social es obligatorio.');
+
+      const btn = document.getElementById('btn-guardar-edicion-cliente');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const resp = await fetch(`/facturacion/api/clientes-credito/${encodeURIComponent(id)}?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clienteAFacturar: cF,
+            nit,
+            nombre: nom,
+            bloqueo: bloq
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert('✅ Cliente actualizado exitosamente.');
+          cerrarModalEditarCliente();
+          await Promise.all([cargarClientes(), cargarPreseleccionadosInfo()]);
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo actualizar el cliente.'));
+        }
+      } catch (e) {
+        alert('Error de conexión al actualizar el cliente.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar Cambios';
+      }
+    }
+
+    async function eliminarCliente() {
+      const id = document.getElementById('mec-id').value;
+      const cF = document.getElementById('mec-cliente-facturar').value;
+      if (!confirm(`¿Está seguro de que desea eliminar el cliente crédito "${cF}"?\nEsta acción no se puede deshacer.`)) return;
+
+      try {
+        const resp = await fetch(`/facturacion/api/clientes-credito/${encodeURIComponent(id)}?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'DELETE'
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert('🗑️ Cliente eliminado exitosamente.');
+          cerrarModalEditarCliente();
+          await Promise.all([cargarClientes(), cargarPreseleccionadosInfo()]);
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo eliminar el cliente.'));
+        }
+      } catch (e) {
+        alert('Error de conexión al eliminar el cliente.');
+      }
+    }
+
+  </script>
 </body>
 </html>

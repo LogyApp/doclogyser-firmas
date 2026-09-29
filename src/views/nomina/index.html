@@ -363,6 +363,91 @@
       </div>
     </div>
 
+    <!-- ══════════════ Pestaña: Bloqueo de Datos ══════════════ -->
+    <div id="panelBloqueo" style="display:none">
+      <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div class="page-title">Nómina · Bloqueo de Datos</div>
+          <div class="page-sub">Historial de cierres de novedades y bloqueo quincenal de asistencia</div>
+        </div>
+        <button class="btn-guardar-ficha" type="button" onclick="abrirModalBloqueoNomina()" style="display:inline-flex; align-items:center; gap:8px;">
+          ➕ Nuevo Registro
+        </button>
+      </div>
+
+      <!-- Métricas -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
+        <div class="card" style="padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700;">Total Registros</div>
+            <div style="font-size:1.6rem; font-weight:700; color:#1a202c;" id="bloqCountTotal">0</div>
+          </div>
+          <div style="font-size:1.8rem; opacity:0.8;">📑</div>
+        </div>
+        <div class="card" style="padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700;">Bloqueados</div>
+            <div style="font-size:1.6rem; font-weight:700; color:#e53e3e;" id="bloqCountBloqueados">0</div>
+          </div>
+          <div style="font-size:1.8rem; opacity:0.8;">🔒</div>
+        </div>
+        <div class="card" style="padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700;">Desbloqueados</div>
+            <div style="font-size:1.6rem; font-weight:700; color:#38a169;" id="bloqCountDesbloqueados">0</div>
+          </div>
+          <div style="font-size:1.8rem; opacity:0.8;">🔓</div>
+        </div>
+      </div>
+
+      <!-- Filtros y Tabla -->
+      <div class="card">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:16px;">
+          <div class="filtro-field">
+            <label>Regional</label>
+            <select id="bloqFilterRegional" onchange="onBloqRegionalChange()"><option value="">Todas las regionales</option></select>
+          </div>
+          <div class="filtro-field">
+            <label>Operación</label>
+            <select id="bloqFilterOperacion" onchange="renderBloqueoNominaTable()"><option value="">Todas las operaciones</option></select>
+          </div>
+          <div class="filtro-field">
+            <label>Quincena</label>
+            <select id="bloqFilterQuincena" onchange="renderBloqueoNominaTable()"><option value="">Todas las quincenas</option></select>
+          </div>
+          <div class="filtro-field">
+            <label>Datos</label>
+            <select id="bloqFilterDatos" onchange="renderBloqueoNominaTable()">
+              <option value="">Todos los datos</option>
+              <option value="Asistencia">Asistencia</option>
+              <option value="Servicios">Servicios</option>
+            </select>
+          </div>
+          <button type="button" class="btn-reset" onclick="resetFiltrosBloqueoNomina()">&#8635; Limpiar filtros</button>
+        </div>
+
+        <div class="table-container">
+          <table class="retiros-table" id="bloqueoNominaTable">
+            <thead>
+              <tr>
+                <th style="width:70px" data-sort="id">ID<span id="bloqSort-id" class="sort-indicator"></span></th>
+                <th style="width:130px" data-sort="regional">Regional<span id="bloqSort-regional" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="operacion">Operación<span id="bloqSort-operacion" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="quincena">Quincena / Límite<span id="bloqSort-quincena" class="sort-indicator"></span></th>
+                <th style="width:80px" data-sort="anio">Año<span id="bloqSort-anio" class="sort-indicator"></span></th>
+                <th style="width:130px" data-sort="datos">Módulo / Datos<span id="bloqSort-datos" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="formaPago">Forma Pago<span id="bloqSort-formaPago" class="sort-indicator"></span></th>
+                <th style="width:130px; text-align:center" data-sort="condicion">Condición<span id="bloqSort-condicion" class="sort-indicator"></span></th>
+                <th style="width:140px" data-sort="usuario">Usuario<span id="bloqSort-usuario" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="fechaRegistro">Fecha Registro<span id="bloqSort-fechaRegistro" class="sort-indicator"></span></th>
+              </tr>
+            </thead>
+            <tbody id="bloqueoNominaBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 <!-- Modal (formretiro / gestionar-retiro) -->
@@ -419,6 +504,53 @@
       <button type="button" class="btn-reset" onclick="cerrarFichaVinculacion()">Cancelar</button>
       <button type="button" class="btn-guardar-ficha" id="btnGuardarFicha" onclick="guardarFicha()">Guardar</button>
     </div>
+  </div>
+</div>
+
+
+<!-- Modal Nuevo Registro de Bloqueo en Nómina -->
+<div class="modal-full-overlay" id="modalBloqueoNominaOverlay">
+  <div class="modal-full" style="max-width: 520px; height: auto; max-height: 90vh;">
+    <div class="modal-full-header">
+      <span>🔒 Bloquear / Desbloquear Asistencia</span>
+      <button type="button" onclick="cerrarModalBloqueoNomina()">&#10005; Cerrar</button>
+    </div>
+
+    <form id="formBloqueoNomina" onsubmit="event.preventDefault(); submitBloqueoNomina();" style="padding: 24px; background: #fff; overflow-y: auto;">
+      <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Regional *</label>
+        <select id="mNomRegional" required onchange="onMNomRegionalChange()">
+          <option value="">— Seleccione Regional —</option>
+        </select>
+      </div>
+
+      <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Operación</label>
+        <select id="mNomOperacion">
+          <option value="">— Todas las Operaciones —</option>
+        </select>
+      </div>
+
+      <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Quincena *</label>
+        <select id="mNomQuincena" required>
+          <option value="">— Seleccione Quincena —</option>
+        </select>
+      </div>
+
+      <div class="ficha-field" style="margin-bottom: 18px;">
+        <label>Acción a Ejecutar *</label>
+        <div class="btn-grupo">
+          <button type="button" id="btnMNomBloquear" class="btn-grupo-opt sel" onclick="setMNomCond('Bloquear')">🔒 Bloquear</button>
+          <button type="button" id="btnMNomDesbloquear" class="btn-grupo-opt" onclick="setMNomCond('Desbloquear')">🔓 Desbloquear</button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 10px;">
+        <button type="button" class="btn-reset" onclick="cerrarModalBloqueoNomina()">Cancelar</button>
+        <button type="submit" class="btn-guardar-ficha" id="btnSubmitBloqNom">Confirmar y Aplicar</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1124,7 +1256,7 @@
   // ═══════════════════════════════════════════════════════════════════════
   // Pestaña BLOQUEO DE DATOS EN NÓMINA
   // ═══════════════════════════════════════════════════════════════════════
-  const _bloqueoNominaState = { allData: [], cargado: false };
+  const _bloqueoNominaState = { allData: [], sortCol: 'fechaRegistro', sortOrder: 'desc', cargado: false };
   let _mNomCondicion = 'Bloquear';
   let _bloqQuincenasList = [];
 
@@ -1180,12 +1312,55 @@
       if (resp.ok) {
         _bloqueoNominaState.allData = await resp.json();
         _bloqueoNominaState.cargado = true;
-        renderBloqueoNominaTable();
+        sortAndRenderBloqueoNomina();
+        makeTableResizable(document.getElementById('bloqueoNominaTable'));
       }
     } catch (e) {
       console.error('Error cargando bloqueos en nómina:', e);
     }
   }
+
+  function sortAndRenderBloqueoNomina() {
+    const col = _bloqueoNominaState.sortCol;
+    const order = _bloqueoNominaState.sortOrder;
+    if (col) {
+      _bloqueoNominaState.allData.sort((a, b) => {
+        let va = a[col] ?? '';
+        let vb = b[col] ?? '';
+        if (col === 'id' || col === 'anio' || col === 'formaPago') {
+          va = Number(va) || 0;
+          vb = Number(vb) || 0;
+          return order === 'asc' ? va - vb : vb - va;
+        }
+        if (typeof va === 'string') va = va.toLowerCase();
+        if (typeof vb === 'string') vb = vb.toLowerCase();
+        if (va < vb) return order === 'asc' ? -1 : 1;
+        if (va > vb) return order === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    ['id','regional','operacion','quincena','anio','datos','formaPago','condicion','usuario','fechaRegistro'].forEach(k => {
+      const span = document.getElementById('bloqSort-' + k);
+      if (!span) return;
+      span.textContent = _bloqueoNominaState.sortCol === k ? (_bloqueoNominaState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+      if (_bloqueoNominaState.sortCol === k) span.style.color = 'var(--primary)';
+    });
+    renderBloqueoNominaTable();
+  }
+
+  document.querySelectorAll('#bloqueoNominaTable thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', (e) => {
+      if (e.target.classList.contains('th-resize')) return;
+      const col = th.getAttribute('data-sort');
+      if (_bloqueoNominaState.sortCol === col) {
+        _bloqueoNominaState.sortOrder = _bloqueoNominaState.sortOrder === 'asc' ? 'desc' : 'asc';
+      } else {
+        _bloqueoNominaState.sortCol = col;
+        _bloqueoNominaState.sortOrder = 'asc';
+      }
+      sortAndRenderBloqueoNomina();
+    });
+  });
 
   function renderBloqueoNominaTable() {
     const reg = document.getElementById('bloqFilterRegional').value;
@@ -1308,6 +1483,7 @@
   if (tabs.activo) updateFilterOptionsWithCountsActivos();
   makeTableResizable(document.getElementById('retirosTable'));
   makeTableResizable(document.getElementById('activosTable'));
+  makeTableResizable(document.getElementById('bloqueoNominaTable'));
 
   // ── Navegación y búsqueda directa por URL ─────────────────────────────────
   // Soporta:

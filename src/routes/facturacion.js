@@ -95,7 +95,7 @@ router.get('/api/clientes-credito', async (req, res) => {
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [rows] = await pool.execute(
-      "SELECT ID as id, Bloqueo as bloqueo, `Cliente a Facturar` as clienteAFacturar, Nit as nit, Nombre as nombre FROM Maestro_Clientes_Credito ORDER BY `Cliente a Facturar` ASC"
+      "SELECT ID as id, Bloqueo as bloqueo, `Cliente a Facturar` as clienteAFacturar, Nit as nit, Nombre as nombre, Usuario as usuario, Fecha_Registro as fechaRegistro FROM Maestro_Clientes_Credito ORDER BY `Cliente a Facturar` ASC"
     );
     res.json(rows);
   } catch (err) {
@@ -123,13 +123,14 @@ router.post('/api/clientes-credito', async (req, res) => {
     const nombreVal = (nombre || '').trim() || null;
     const bloqueoVal = (bloqueo === 0 || bloqueo === '0') ? 0 : 1;
     const newId = crypto.randomUUID().slice(0, 8);
+    const usuarioVal = acceso.usuarioNombre || usuario;
 
     await pool.execute(
-      'INSERT INTO Maestro_Clientes_Credito (ID, Bloqueo, `Cliente a Facturar`, Nit, Nombre) VALUES (?, ?, ?, ?, ?)',
-      [newId, bloqueoVal, clienteUpper, nitVal, nombreVal]
+      'INSERT INTO Maestro_Clientes_Credito (ID, Bloqueo, `Cliente a Facturar`, Nit, Nombre, Usuario, Fecha_Registro) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [newId, bloqueoVal, clienteUpper, nitVal, nombreVal, usuarioVal]
     );
 
-    res.json({ ok: true, id: newId, clienteAFacturar: clienteUpper, nit: nitVal, nombre: nombreVal, bloqueo: bloqueoVal });
+    res.json({ ok: true, id: newId, clienteAFacturar: clienteUpper, nit: nitVal, nombre: nombreVal, bloqueo: bloqueoVal, usuario: usuarioVal });
   } catch (err) {
     console.error('[facturacion] POST /api/clientes-credito:', err);
     res.status(500).json({ error: err.message });
@@ -168,7 +169,7 @@ router.post('/api/clientes-credito/toggle', async (req, res) => {
 // ── GET /api/buscar-cliente (Buscar Nit en Maestro_Clientes) ───────────────
 router.get('/api/buscar-cliente', async (req, res) => {
   try {
-    const { nit } = req.query;
+    const nit = req.query.nit || req.query.q;
     if (!nit) return res.status(400).json({ error: 'Parámetro nit requerido' });
 
     const cleanNit = parseInt(String(nit).replace(/[^0-9]/g, ''));
@@ -193,5 +194,105 @@ router.get('/api/buscar-cliente', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ── GET /api/clientes-credito/info ─────────────────────────────────────────
+router.get('/api/clientes-credito/info', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT ID as id, Bloqueo as bloqueo, `Cliente a Facturar` as clienteAFacturar, Nit as nit, Nombre as nombre FROM Maestro_Clientes_Credito ORDER BY `Cliente a Facturar` ASC'
+    );
+    const ones = rows.filter(r => r.bloqueo === 1).map(r => r.clienteAFacturar);
+    const zeros = rows.filter(r => r.bloqueo === 0).map(r => r.clienteAFacturar);
+
+    let infoText = '';
+    if (ones.length > zeros.length) {
+      infoText = zeros.length > 0 
+        ? `Todos menos: ${zeros.join(', ')}`
+        : 'Todos los clientes de crédito configurados';
+    } else {
+      infoText = ones.length > 0
+        ? `Se bloquearán los clientes: ${ones.join(', ')}`
+        : 'Ningún cliente preseleccionado para bloqueo';
+    }
+
+    res.json({
+      total: rows.length,
+      onesCount: ones.length,
+      zerosCount: zeros.length,
+      totalHabilitados: ones.length,
+      totalExcluidos: zeros.length,
+      ones,
+      zeros,
+      infoText,
+      resumenTexto: infoText,
+      clients: rows
+    });
+  } catch (err) {
+    console.error('[facturacion] GET /api/clientes-credito/info:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT & POST /api/clientes-credito/actualizar (Editar Cliente Crédito) ────
+async function handleActualizarCliente(req, res) {
+  try {
+    const { usuario } = req.query;
+    const id = req.params.id || req.body.id;
+    const { clienteAFacturar, nit, nombre, bloqueo } = req.body;
+
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
+    if (!clienteAFacturar || !clienteAFacturar.trim()) {
+      return res.status(400).json({ error: 'El Cliente a Facturar es obligatorio.' });
+    }
+
+    const clienteUpper = clienteAFacturar.trim().toUpperCase();
+    const nitVal = nit ? parseInt(nit) : null;
+    const nombreVal = (nombre || '').trim() || null;
+    const bloqueoVal = (bloqueo === 0 || bloqueo === '0') ? 0 : 1;
+    const usuarioVal = acceso.usuarioNombre || usuario;
+
+    await pool.execute(
+      'UPDATE Maestro_Clientes_Credito SET `Cliente a Facturar` = ?, Nit = ?, Nombre = ?, Bloqueo = ?, Usuario = ? WHERE ID = ?',
+      [clienteUpper, nitVal, nombreVal, bloqueoVal, usuarioVal, id]
+    );
+
+    res.json({ ok: true, id, clienteAFacturar: clienteUpper, nit: nitVal, nombre: nombreVal, bloqueo: bloqueoVal, usuario: usuarioVal });
+  } catch (err) {
+    console.error('[facturacion] UPDATE cliente-credito:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.put('/api/clientes-credito/:id', handleActualizarCliente);
+router.post('/api/clientes-credito/actualizar', handleActualizarCliente);
+
+// ── DELETE & POST /api/clientes-credito/eliminar (Eliminar Cliente Crédito) ─
+async function handleEliminarCliente(req, res) {
+  try {
+    const { usuario } = req.query;
+    const id = req.params.id || req.body.id;
+
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
+
+    const [result] = await pool.execute('DELETE FROM Maestro_Clientes_Credito WHERE ID = ?', [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+
+    res.json({ ok: true, id });
+  } catch (err) {
+    console.error('[facturacion] DELETE cliente-credito:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.delete('/api/clientes-credito/:id', handleEliminarCliente);
+router.post('/api/clientes-credito/eliminar', handleEliminarCliente);
 
 module.exports = router;
