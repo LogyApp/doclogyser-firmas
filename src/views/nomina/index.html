@@ -1122,11 +1122,70 @@
   makeTableResizable(document.getElementById('retirosTable'));
   makeTableResizable(document.getElementById('activosTable'));
 
-  // Enlace directo a un registro: BASE_URL/nomina?usuario=ID&Idvinculacion=IdVinculación
+  // ── Navegación y búsqueda directa por URL ─────────────────────────────────
+  // Soporta:
+  //   - tab: 'activos' | 'retiros'
+  //   - identificacion / cedula / busqueda / buscar: Cédula o término a buscar
+  //   - Idvinculacion: ID de vinculación específico
+  //   - regional: Filtro por regional
+  //   - operacion: Filtro por operación
+  //
+  // Ejemplos:
+  //   BASE_URL/nomina?usuario=ID&tab=activos&identificacion=12345678
+  //   BASE_URL/nomina?usuario=ID&identificacion=12345678
+  //   BASE_URL/nomina?usuario=ID&tab=retiros&Idvinculacion=VINC-001
   const paramsUrl = new URLSearchParams(window.location.search);
-  const idVinculacionUrl = paramsUrl.get('Idvinculacion') || paramsUrl.get('idVinculacion') || paramsUrl.get('IdVinculacion');
-  if (idVinculacionUrl && tabs.retiro) {
-    retFilterIdentificacion.value = idVinculacionUrl;
+  const tabParam = (paramsUrl.get('tab') || '').toLowerCase().trim();
+  const busquedaParam = paramsUrl.get('identificacion') || paramsUrl.get('identificación') ||
+                        paramsUrl.get('cedula') || paramsUrl.get('cédula') ||
+                        paramsUrl.get('busqueda') || paramsUrl.get('búsqueda') ||
+                        paramsUrl.get('buscar') || '';
+  const idVinculacionParam = paramsUrl.get('Idvinculacion') || paramsUrl.get('idVinculacion') || paramsUrl.get('IdVinculacion') || '';
+  const regionalParam = paramsUrl.get('regional') || '';
+  const operacionParam = paramsUrl.get('operacion') || paramsUrl.get('operación') || '';
+
+  function abrirFiltrosSiCerrado(prefix) {
+    const body = document.getElementById(prefix + 'FiltrosBody');
+    if (body && body.style.display !== 'block') {
+      const toggle = document.getElementById(prefix + 'FiltrosToggle');
+      if (toggle) toggle.click();
+    }
+  }
+
+  // Determinar pestaña destino
+  let tabDestino = null;
+  if (tabParam === 'activos' || tabParam === 'activo') {
+    tabDestino = 'activos';
+  } else if (tabParam === 'retiros' || tabParam === 'retiro') {
+    tabDestino = 'retiros';
+  } else if (busquedaParam) {
+    tabDestino = tabs.activo ? 'activos' : 'retiros';
+  } else if (idVinculacionParam) {
+    tabDestino = tabs.retiro ? 'retiros' : 'activos';
+  } else {
+    tabDestino = tabs.activo ? 'activos' : 'retiros';
+  }
+
+  // Aplicar filtros en la pestaña correspondiente
+  if (tabDestino === 'activos' && tabs.activo) {
+    const termino = busquedaParam || idVinculacionParam;
+    if (termino) actFilterIdentificacion.value = termino;
+    if (regionalParam) actFilterRegional.value = regionalParam;
+    if (operacionParam) actFilterOperacion.value = operacionParam;
+
+    if (termino || regionalParam || operacionParam) {
+      abrirFiltrosSiCerrado('act');
+    }
+    switchTab('activos');
+  } else if (tabDestino === 'retiros' && tabs.retiro) {
+    const termino = idVinculacionParam || busquedaParam;
+    if (termino) retFilterIdentificacion.value = termino;
+    if (regionalParam) retFilterRegional.value = regionalParam;
+    if (operacionParam) retFilterOperacion.value = operacionParam;
+
+    if (termino || regionalParam || operacionParam) {
+      abrirFiltrosSiCerrado('ret');
+    }
     switchTab('retiros');
   } else {
     switchTab(tabs.activo ? 'activos' : 'retiros');
