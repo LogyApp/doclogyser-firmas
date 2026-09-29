@@ -54,16 +54,17 @@ router.get('/', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).send(paginaError('Parámetro ?usuario requerido'));
 
-    // Cada pestaña (Retiro/Activo) tiene su propio Acceso en Maestro_Menu_Nomina.
+    // Cada pestaña (Retiro/Activo/Bloqueo_datos) tiene su propio Acceso en Maestro_Menu_Nomina.
     // Secuencial (no Promise.all) para no abrir varias conexiones nuevas a la vez
     // contra Cloud SQL en la carga inicial de la página.
     const accesoRetiro = await computarAccesoNomina(usuario, 'Retiro');
     const accesoActivo = await computarAccesoNomina(usuario, 'Activo');
-    if (!accesoRetiro && !accesoActivo) {
+    const accesoBloqueo = await computarAccesoNomina(usuario, 'Bloqueo_datos');
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo;
     const puedeGenerarDocs = puedeGenerarDocumentosRetiro(base.rol, base.regional);
 
     const template = fs.readFileSync(NOMINA_HTML, 'utf8');
@@ -75,6 +76,7 @@ router.get('/', async (req, res) => {
       tabs: {
         retiro: resumenAcceso(accesoRetiro),
         activo: resumenAcceso(accesoActivo),
+        bloqueo: resumenAcceso(accesoBloqueo),
       },
     }).replace(/<\/script>/gi, '<\\/script>');
 

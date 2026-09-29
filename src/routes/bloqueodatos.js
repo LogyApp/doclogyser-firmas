@@ -6,7 +6,6 @@ const pool = require('../services/db');
 const router = express.Router();
 
 const HTML_INDEX_PATH = path.join(__dirname, '../views/bloqueodatos/index.html');
-const HTML_FORM_PATH  = path.join(__dirname, '../views/formbloqueodatos/form.html');
 
 async function computarAccesoBloqueo(usuarioId) {
   if (!usuarioId) return null;
@@ -45,7 +44,7 @@ async function computarAccesoBloqueo(usuarioId) {
   };
 }
 
-// Servir la interfaz de listado o el formulario
+// Servir la interfaz principal de bloqueodatos
 router.get('/', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -58,20 +57,15 @@ router.get('/', async (req, res) => {
       return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
     }
 
-    let initialView = 'listado';
-    let pathTemplate = HTML_INDEX_PATH;
-
     const lowerBaseUrl = (req.baseUrl || '').toLowerCase();
     if (lowerBaseUrl.includes('/formbloqueodatos')) {
-      initialView = 'formulario';
-      pathTemplate = HTML_FORM_PATH;
+      return res.redirect(`/bloqueodatos?usuario=${encodeURIComponent(usuario)}`);
     }
 
-    const html = fs.readFileSync(pathTemplate, 'utf8');
+    const html = fs.readFileSync(HTML_INDEX_PATH, 'utf8');
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
-      initialView,
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -96,7 +90,6 @@ router.get('/api/quincenas', async (req, res) => {
       [currentYear]
     );
 
-    // Si no hay quincenas configuradas para el año actual, fallback a todas
     if (!qRows.length) {
       [qRows] = await pool.execute(
         "SELECT Quincena FROM Config_Quincenas WHERE Quincena != 'Todo' GROUP BY Quincena ORDER BY MAX(Id) DESC"
@@ -110,7 +103,7 @@ router.get('/api/quincenas', async (req, res) => {
   }
 });
 
-// API: Obtener listado de bloqueos
+// API: Obtener listado de bloqueos (incluyendo campo Hasta)
 router.get('/api/bloqueos', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -120,7 +113,9 @@ router.get('/api/bloqueos', async (req, res) => {
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const selectQuery = `
-      SELECT b.ID AS id, b.Operación AS operacion, b.Quincena AS quincena, b.Año AS anio, b.Datos AS datos, b.Forma_Pago AS formaPago, b.Condición AS condicion, b.Usuario AS usuario, b.Fecha_Registro AS fechaRegistro, b.Modulo AS modulo,
+      SELECT b.ID AS id, b.Operación AS operacion, b.Quincena AS quincena, b.Hasta AS hasta,
+             b.Año AS anio, b.Datos AS datos, b.Forma_Pago AS formaPago, b.Condición AS condicion,
+             b.Usuario AS usuario, b.Fecha_Registro AS fechaRegistro, b.Modulo AS modulo,
              COALESCE(b.Regional, o.REGIONAL) AS regional
       FROM Bloqueo_Nomina b
       LEFT JOIN Maestro_Operaciones o ON b.Operación = o.OPERACIÓN
@@ -134,168 +129,293 @@ router.get('/api/bloqueos', async (req, res) => {
   }
 });
 
+// API: Obtener información de clientes crédito preseleccionados e informe
+router.get('/api/clientes-credito/info', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT ID as id, Bloqueo as bloqueo, `Cliente a Facturar` as clienteAFacturar, Nit as nit, Nombre as nombre FROM Maestro_Clientes_Credito ORDER BY `Cliente a Facturar` ASC'
+    );
+    const ones = rows.filter(r => r.bloqueo === 1).map(r => r.clienteAFacturar);
+    const zeros = rows.filter(r => r.bloqueo === 0).map(r => r.clienteAFacturar);
+
+    let infoText = '';
+    if (ones.length > zeros.length) {
+      infoText = zeros.length > 0 
+        ? `Todos menos: ${zeros.join(', ')}`
+        : 'Todos los clientes de crédito configurados';
+    } else {
+      infoText = ones.length > 0
+        ? `Se bloquearán los clientes: ${ones.join(', ')}`
+        : 'Ningún cliente preseleccionado para bloqueo';
+    }
+
+    res.json({
+      total: rows.length,
+      onesCount: ones.length,
+      zerosCount: zeros.length,
+      ones,
+      zeros,
+      infoText,
+      clients: rows
+    });
+  } catch (err) {
+    console.error('[bloqueodatos] GET /api/clientes-credito/info:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Crear un registro de bloqueo/desbloqueo y aplicar cambios
 router.post('/api/crear', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const { modulo, regional, operacion, quincena, datos, formaPago, condicion } = req.body;
+    const {
+      modulo,
+      regional,
+      operacion,
+      criterio, // 'Quincena' o 'Fecha' (para Facturación)
+      quincena,
+      hasta,
+      formaPago,
+      tipoClientes, // 'Todos', 'Preseleccionados', 'Manual'
+      clientesManuales, // Array de strings cuando tipoClientes === 'Manual'
+      condicion
+    } = req.body;
 
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoBloqueo(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    // Validaciones obligatorias
     if (!modulo) return res.status(400).json({ error: 'El módulo es obligatorio' });
-    if (!regional) return res.status(400).json({ error: 'La regional es obligatoria' });
-    if (!quincena) return res.status(400).json({ error: 'La quincena es obligatoria' });
-    if (datos !== '' && datos !== 'Asistencia' && datos !== 'Servicios') {
-      return res.status(400).json({ error: 'El campo Datos es inválido' });
-    }
     if (!condicion || (condicion !== 'Bloquear' && condicion !== 'Desbloquear')) {
-      return res.status(400).json({ error: 'La condición es inválida (debe ser Bloquear o Desbloquear)' });
+      return res.status(400).json({ error: 'La condición debe ser Bloquear o Desbloquear' });
     }
 
-    // Resolver Año: Asegurar que se registre la quincena del año actual
     const currentYear = new Date().getFullYear();
-    const [qRow] = await pool.execute(
-      "SELECT `Año` FROM Config_Quincenas WHERE Quincena = ? AND `Año` = ? LIMIT 1",
-      [quincena, currentYear]
-    );
-    const anio = qRow.length ? qRow[0].Año : currentYear;
-
-    // Obtener fecha límite de la quincena correspondiente al año actual
-    let [fRows] = await pool.execute(
-      "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ? AND `Año` = ?",
-      [quincena, anio]
-    );
-    if (!fRows.length || !fRows[0].fecha_limite) {
-      const [fallbackRows] = await pool.execute(
-        "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ?",
-        [quincena]
-      );
-      fRows = fallbackRows;
-    }
-    if (!fRows.length || !fRows[0].fecha_limite) {
-      return res.status(400).json({ error: 'No se encontró la fecha límite para la quincena especificada en Maestro_Fechas.' });
-    }
-    const fechaLimite = fRows[0].fecha_limite;
-
-    // Determinar operaciones destino
-    let targetOperations = [];
-    if (operacion) {
-      targetOperations = [operacion];
-    } else {
-      const [opRows] = await pool.execute(
-        "SELECT OPERACIÓN FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO'",
-        [regional]
-      );
-      targetOperations = opRows.map(row => row.OPERACIÓN || row.Operación).filter(Boolean);
-    }
-
-    if (targetOperations.length === 0) {
-      return res.status(400).json({ error: 'No se encontraron operaciones asociadas al destino seleccionado.' });
-    }
-
-    // Ejecutar transacciones de actualización e inserción de log
     const conn = await pool.getConnection();
+
     try {
       await conn.beginTransaction();
-
-      const estadoServicio = condicion === 'Bloquear' ? 'Green' : 'Yellow';
-      const edicionServicio = condicion === 'Bloquear' ? 'Completado' : 'Pendiente';
-      const estadoAsistencia = condicion === 'Bloquear' ? 'Green' : 'Yellow';
-
-      // 1. Insertar el registro en la bitácora Bloqueo_Nomina
-      await conn.execute(
-        `INSERT INTO Bloqueo_Nomina (Operación, Regional, Quincena, Año, Datos, Forma_Pago, Condición, Usuario, Fecha_Registro, Modulo)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
-        [
-          operacion || null,
-          regional,
-          quincena,
-          anio,
-          datos || null,
-          formaPago ? parseInt(formaPago) : null,
-          condicion,
-          acceso.usuarioNombre,
-          modulo
-        ]
-      );
 
       let affectedServicios = 0;
       let affectedAsistencia = 0;
 
-      // 2. Ejecutar la actualización según el módulo
+      // ─────────────────────────────────────────────────────────────────
+      // CASO 1: MÓDULO NÓMINA (SOLO ASISTENCIA)
+      // ─────────────────────────────────────────────────────────────────
       if (modulo === 'Nomina') {
-        const opPlaceholders = targetOperations.map(() => '?').join(',');
+        if (!regional) return res.status(400).json({ error: 'La regional es obligatoria para Nómina' });
+        if (!quincena) return res.status(400).json({ error: 'La quincena es obligatoria para Nómina' });
 
-        // Caso A: Datos y Forma de Pago son nulos (Actualizar todo)
-        if (!datos && !formaPago) {
-          // Servicios
-          const [rServ] = await conn.execute(
-            `UPDATE Dynamic_Servicios ds
-             JOIN Dynamic_Recibos dr ON dr.IdRecibo = ds.IdRecibo
-             SET ds.Estado = ?, ds.Edición = ?
-             WHERE dr.Operación IN (${opPlaceholders})
-               AND ds.\`Forma De Pago\` IN (1, 2, 3)
-               AND ds.\`Hora Inicio\` < ?`,
-            [estadoServicio, edicionServicio, ...targetOperations, fechaLimite]
-          );
-          affectedServicios = rServ.affectedRows || 0;
+        // Resolver año de quincena
+        const [qRow] = await conn.execute(
+          "SELECT `Año` FROM Config_Quincenas WHERE Quincena = ? AND `Año` = ? LIMIT 1",
+          [quincena, currentYear]
+        );
+        const anio = qRow.length ? qRow[0].Año : currentYear;
 
-          // Asistencia
-          const [rAsis] = await conn.execute(
-            `UPDATE Dynamic_Asistencia
-             SET Estado = ?
-             WHERE Origen IN (${opPlaceholders})
-               AND Día < ?`,
-            [estadoAsistencia, ...targetOperations, fechaLimite]
+        // Fecha límite
+        let [fRows] = await conn.execute(
+          "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ? AND `Año` = ?",
+          [quincena, anio]
+        );
+        if (!fRows.length || !fRows[0].fecha_limite) {
+          const [fallbackRows] = await conn.execute(
+            "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ?",
+            [quincena]
           );
-          affectedAsistencia = rAsis.affectedRows || 0;
+          fRows = fallbackRows;
+        }
+        if (!fRows.length || !fRows[0].fecha_limite) {
+          throw new Error('No se encontró la fecha límite para la quincena especificada en Maestro_Fechas.');
+        }
+        const fechaLimite = fRows[0].fecha_limite;
+
+        // Operaciones destino
+        let targetOps = [];
+        if (operacion) {
+          targetOps = [operacion];
+        } else {
+          const [opRows] = await conn.execute(
+            "SELECT OPERACIÓN FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO'",
+            [regional]
+          );
+          targetOps = opRows.map(r => r.OPERACIÓN || r.Operación).filter(Boolean);
+        }
+        if (!targetOps.length) {
+          throw new Error('No se encontraron operaciones asociadas a la regional seleccionada.');
         }
 
-        // Caso B: Solo Asistencia
-        else if (datos === 'Asistencia') {
-          const [rAsis] = await conn.execute(
-            `UPDATE Dynamic_Asistencia
-             SET Estado = ?
-             WHERE Origen IN (${opPlaceholders})
-               AND Día < ?`,
-            [estadoAsistencia, ...targetOperations, fechaLimite]
+        const estadoAsistencia = condicion === 'Bloquear' ? 'Green' : 'Yellow';
+        const tagObservacion = condicion === 'Bloquear' ? ' [Bloqueado por Nomina]' : ' [Desbloqueado por Nomina]';
+        const tagDefault = condicion === 'Bloquear' ? '[Bloqueado por Nomina]' : '[Desbloqueado por Nomina]';
+
+        // 1. Insertar log en Bloqueo_Nomina
+        await conn.execute(
+          `INSERT INTO Bloqueo_Nomina (Operación, Regional, Quincena, Hasta, Año, Datos, Forma_Pago, Condición, Usuario, Fecha_Registro, Modulo)
+           VALUES (?, ?, ?, NULL, ?, 'Asistencia', NULL, ?, ?, NOW(), 'Nomina')`,
+          [
+            operacion || null,
+            regional,
+            quincena,
+            anio,
+            condicion,
+            acceso.usuarioNombre
+          ]
+        );
+
+        // 2. Actualizar Dynamic_Asistencia
+        const opPh = targetOps.map(() => '?').join(',');
+        const [rAsis] = await conn.execute(
+          `UPDATE Dynamic_Asistencia
+           SET Estado = ?,
+               Observaciones = CASE
+                 WHEN Observaciones IS NULL OR TRIM(Observaciones) = '' THEN ?
+                 ELSE TRIM(CONCAT(
+                   TRIM(REPLACE(REPLACE(Observaciones, '[Bloqueado por Nomina]', ''), '[Desbloqueado por Nomina]', '')),
+                   ?
+                 ))
+               END
+           WHERE Origen IN (${opPh})
+             AND Día < ?`,
+          [estadoAsistencia, tagDefault, tagObservacion, ...targetOps, fechaLimite]
+        );
+        affectedAsistencia = rAsis.affectedRows || 0;
+      }
+
+      // ─────────────────────────────────────────────────────────────────
+      // CASO 2: MÓDULO FACTURACIÓN (SOLO SERVICIOS)
+      // ─────────────────────────────────────────────────────────────────
+      else if (modulo === 'Facturacion') {
+        const crit = criterio === 'Fecha' ? 'Fecha' : 'Quincena';
+        let fechaCorte = null;
+        let anioRegistro = currentYear;
+        let quincenaRegistro = null;
+        let hastaRegistro = null;
+
+        if (crit === 'Fecha') {
+          if (!hasta) throw new Error('La fecha y hora límite es obligatoria para bloqueo por fecha.');
+          fechaCorte = hasta.replace('T', ' ');
+          if (fechaCorte.length === 16) fechaCorte += ':00'; // YYYY-MM-DD HH:mm:ss
+          hastaRegistro = fechaCorte;
+          anioRegistro = new Date(fechaCorte).getFullYear() || currentYear;
+        } else {
+          if (!quincena) throw new Error('La quincena es obligatoria para bloqueo por quincena.');
+          quincenaRegistro = quincena;
+          const [qRow] = await conn.execute(
+            "SELECT `Año` FROM Config_Quincenas WHERE Quincena = ? AND `Año` = ? LIMIT 1",
+            [quincena, currentYear]
           );
-          affectedAsistencia = rAsis.affectedRows || 0;
+          anioRegistro = qRow.length ? qRow[0].Año : currentYear;
+
+          let [fRows] = await conn.execute(
+            "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ? AND `Año` = ?",
+            [quincena, anioRegistro]
+          );
+          if (!fRows.length || !fRows[0].fecha_limite) {
+            const [fallback] = await conn.execute(
+              "SELECT DATE_ADD(MAX(Fecha), INTERVAL 1 DAY) AS fecha_limite FROM Maestro_Fechas WHERE Quincena = ?",
+              [quincena]
+            );
+            fRows = fallback;
+          }
+          if (!fRows.length || !fRows[0].fecha_limite) {
+            throw new Error('No se encontró la fecha límite para la quincena especificada en Maestro_Fechas.');
+          }
+          fechaCorte = fRows[0].fecha_limite;
         }
 
-        // Caso C: Solo Servicios (todas las formas de pago 1, 2, 3)
-        else if (datos === 'Servicios' && !formaPago) {
-          const [rServ] = await conn.execute(
-            `UPDATE Dynamic_Servicios ds
-             JOIN Dynamic_Recibos dr ON dr.IdRecibo = ds.IdRecibo
-             SET ds.Estado = ?, ds.Edición = ?
-             WHERE dr.Operación IN (${opPlaceholders})
-               AND ds.\`Forma De Pago\` IN (1, 2, 3)
-               AND ds.\`Hora Inicio\` < ?`,
-            [estadoServicio, edicionServicio, ...targetOperations, fechaLimite]
-          );
-          affectedServicios = rServ.affectedRows || 0;
+        const estadoServicio = condicion === 'Bloquear' ? 'Green' : 'Yellow';
+        const edicionServicio = condicion === 'Bloquear' ? 'Completado' : 'Pendiente';
+        const targetEstado = condicion === 'Bloquear' ? 'Yellow' : 'Green';
+        const tagObservacion = condicion === 'Bloquear' ? ' [Bloqueado por Facturación]' : ' [Desbloqueado por Facturación]';
+        const tagDefault = condicion === 'Bloquear' ? '[Bloqueado por Facturación]' : '[Desbloqueado por Facturación]';
+
+        // 1. Insertar log en Bloqueo_Nomina
+        await conn.execute(
+          `INSERT INTO Bloqueo_Nomina (Operación, Regional, Quincena, Hasta, Año, Datos, Forma_Pago, Condición, Usuario, Fecha_Registro, Modulo)
+           VALUES (?, ?, ?, ?, ?, 'Servicios', ?, ?, ?, NOW(), 'Facturacion')`,
+          [
+            operacion || null,
+            regional || null,
+            quincenaRegistro,
+            hastaRegistro,
+            anioRegistro,
+            formaPago ? parseInt(formaPago) : (formaPago === '0' ? 0 : 3),
+            condicion,
+            acceso.usuarioNombre
+          ]
+        );
+
+        // 2. Construir consulta dinámica para Dynamic_Servicios
+        const whereClauses = [];
+        const params = [estadoServicio, edicionServicio, tagDefault, tagObservacion];
+
+        // Filtro de estado anterior
+        if (condicion === 'Bloquear') {
+          whereClauses.push("(ds.Estado = 'Yellow' OR ds.Estado IS NULL OR ds.Estado != 'Green')");
+        } else {
+          whereClauses.push("ds.Estado = 'Green'");
         }
 
-        // Caso D: Solo Servicios con forma de pago específica
-        else if (datos === 'Servicios' && formaPago > 0) {
-          const [rServ] = await conn.execute(
-            `UPDATE Dynamic_Servicios ds
-             JOIN Dynamic_Recibos dr ON dr.IdRecibo = ds.IdRecibo
-             SET ds.Estado = ?, ds.Edición = ?
-             WHERE dr.Operación IN (${opPlaceholders})
-               AND ds.\`Forma De Pago\` = ?
-               AND ds.\`Hora Inicio\` < ?`,
-            [estadoServicio, edicionServicio, ...targetOperations, parseInt(formaPago), fechaLimite]
-          );
-          affectedServicios = rServ.affectedRows || 0;
+        // Filtro de tiempo
+        if (crit === 'Fecha') {
+          whereClauses.push("ds.`Hora Inicio` <= ?");
+          params.push(fechaCorte);
+        } else {
+          whereClauses.push("ds.`Hora Inicio` < ?");
+          params.push(fechaCorte);
         }
-      } else if (modulo === 'Facturacion') {
-        // Por ahora, lógica de facturación no definida; se creará el log únicamente.
-        console.log('[bloqueodatos] Log creado para módulo de Facturación sin actualizaciones.');
+
+        // Filtro Regional / Operación
+        if (operacion) {
+          whereClauses.push("dr.`Operación` = ?");
+          params.push(operacion);
+        } else if (regional) {
+          whereClauses.push("dr.`Operación` IN (SELECT OPERACIÓN FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO')");
+          params.push(regional);
+        }
+
+        // Filtro Forma de Pago
+        const fp = formaPago ? parseInt(formaPago) : 3;
+        if (fp > 0) {
+          whereClauses.push("ds.`Forma De Pago` = ?");
+          params.push(fp);
+        } else {
+          whereClauses.push("ds.`Forma De Pago` IN (1, 2, 3)");
+        }
+
+        // Filtro de Clientes cuando Forma de Pago es 3 (Crédito)
+        if (fp === 3) {
+          const tClientes = tipoClientes || 'Preseleccionados';
+          if (tClientes === 'Preseleccionados') {
+            whereClauses.push("dr.`Cliente a Facturar` IN (SELECT `Cliente a Facturar` FROM Maestro_Clientes_Credito WHERE Bloqueo = 1)");
+          } else if (tClientes === 'Manual') {
+            if (!clientesManuales || !Array.isArray(clientesManuales) || clientesManuales.length === 0) {
+              throw new Error('Debe seleccionar al menos un cliente en la opción Manual.');
+            }
+            const cPh = clientesManuales.map(() => '?').join(',');
+            whereClauses.push(`dr.\`Cliente a Facturar\` IN (${cPh})`);
+            params.push(...clientesManuales);
+          }
+        }
+
+        const updateSql = `
+          UPDATE Dynamic_Servicios ds
+          JOIN Dynamic_Recibos dr ON dr.IdRecibo = ds.IdRecibo
+          SET ds.Estado = ?,
+              ds.Edición = ?,
+              ds.Observaciones = CASE
+                WHEN ds.Observaciones IS NULL OR TRIM(ds.Observaciones) = '' THEN ?
+                ELSE TRIM(CONCAT(
+                  TRIM(REPLACE(REPLACE(ds.Observaciones, '[Bloqueado por Facturación]', ''), '[Desbloqueado por Facturación]', '')),
+                  ?
+                ))
+              END
+          WHERE ${whereClauses.join(' AND ')}
+        `;
+
+        const [rServ] = await conn.execute(updateSql, params);
+        affectedServicios = rServ.affectedRows || 0;
       }
 
       await conn.commit();

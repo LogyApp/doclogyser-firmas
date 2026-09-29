@@ -42,6 +42,7 @@ const sstRoutes                      = require('./src/routes/sst');
 const firmacorporativaRoutes         = require('./src/routes/firmacorporativa');
 const directoriocorporativoRoutes    = require('./src/routes/directoriocorporativo');
 const casosmedicosRoutes             = require('./src/routes/casosmedicos');
+const facturacionRoutes               = require('./src/routes/facturacion');
 
 const app = express();
 
@@ -107,6 +108,7 @@ app.use('/descuentonomina', descuentonominaRoutes);
 app.use('/formdescuentonomina', descuentonominaRoutes);
 app.use('/sst', sstRoutes);
 app.use('/casosmedicos', casosmedicosRoutes);
+app.use('/facturacion', facturacionRoutes);
 app.use('/firma-corporativa', firmacorporativaRoutes);
 app.use('/directorio-corporativo', directoriocorporativoRoutes);
 if (process.env.NODE_ENV !== 'production') {

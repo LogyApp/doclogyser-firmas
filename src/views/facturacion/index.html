@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Módulo de Facturación — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #064e3b;
+      --primary-dark: #022c22;
+      --primary-light: #0d9488;
+      --accent: #0f766e;
+      --accent-hover: #115e59;
+      --accent-soft: rgba(13, 148, 136, 0.12);
+      --success: #16a34a;
+      --success-soft: #eafaf1;
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+      --warning: #d97706;
+      --warning-soft: #fefbeb;
+      --bg: #f3f6f8;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 12px rgba(6, 78, 59, 0.08);
+      --shadow-lg: 0 12px 28px rgba(6, 78, 59, 0.16);
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 20px; }
+    
+    .container { max-width: 1300px; margin: 0 auto; }
+
+    /* Header styling with corporate identity */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, #0f3d35 100%);
+      border-radius: var(--radius-lg);
+      padding: 12px 24px;
+      color: #fff;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3.5px;
+      background: #14b8a6;
+    }
+
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .brand-logo-app {
+      display: block;
+      object-fit: contain;
+      height: 32px;
+    }
+
+    .brand-divider {
+      width: 1.5px;
+      height: 26px;
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .brand-logo-company-crop {
+      width: 133px;
+      height: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brand-logo-company-crop img {
+      position: absolute;
+      left: -64px;
+      top: -65px;
+      width: 268px;
+      height: 178px;
+      max-width: none;
+    }
+
+    .header-logo {
+      text-align: center;
+    }
+
+    .header-logo h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .header-logo h1 .accent {
+      color: #5eead4;
+    }
+
+    .header-logo p {
+      font-size: 0.88rem;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    .user-badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #5eead4;
+    }
+
+    /* Tabs Bar */
+    .tabs-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 1px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 10px 22px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    }
+
+    .tab-btn:hover {
+      color: var(--primary);
+      background: rgba(13, 148, 136, 0.05);
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      background: #fff;
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.03);
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: -2px;
+      height: 3px;
+      background: var(--primary-light);
+    }
+
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .metric-card {
+      background: #fff;
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .metric-info h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .metric-info .count-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .metric-icon {
+      font-size: 2rem;
+      opacity: 0.8;
+    }
+
+    /* Content Card */
+    .content-card {
+      background: #fff;
+      border-radius: var(--radius-md);
+      padding: 22px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      margin-bottom: 22px;
+    }
+
+    /* Toolbar & Filters */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .filters-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-group label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .filter-group select, .filter-group input {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      color: var(--text);
+      background: #f8fafc;
+      outline: none;
+      min-width: 170px;
+      transition: var(--transition);
+    }
+
+    .filter-group select:focus, .filter-group input:focus {
+      border-color: var(--primary-light);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary-light);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 3px 10px rgba(13, 148, 136, 0.25);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      text-align: left;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: #f1f5f9;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 50px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .badge-lock {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid #fca5a5;
+    }
+
+    .badge-unlock {
+      background: var(--success-soft);
+      color: var(--success);
+      border: 1px solid #86efac;
+    }
+
+    .badge-tag {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+
+    /* Switch toggle for Clientes Crédito */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #cbd5e1;
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #10b981;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Modal Overlay & Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease-out;
+      padding: 16px;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 620px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      transform: translateY(20px);
+      transition: transform 0.2s ease-out;
+    }
+
+    .modal-overlay.open .modal {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1.5px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .modal-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 16px;
+    }
+
+    .modal-form-group label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+    }
+
+    .modal-form-group select,
+    .modal-form-group input[type="text"],
+    .modal-form-group input[type="number"],
+    .modal-form-group input[type="datetime-local"] {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      font-size: 0.92rem;
+      color: var(--text);
+      background: #f8fafc;
+      outline: none;
+      width: 100%;
+    }
+
+    .modal-form-group select:focus,
+    .modal-form-group input:focus {
+      border-color: var(--primary-light);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+    }
+
+    /* Option button group */
+    .option-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .opt-btn {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      color: #334155;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .opt-btn:hover:not(.active) {
+      background: #e2e8f0;
+    }
+
+    .opt-btn.active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .info-box {
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 0.85rem;
+      color: #0f766e;
+      margin-top: 6px;
+      line-height: 1.45;
+    }
+
+    .clients-checklist {
+      max-height: 160px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      background: #fafafa;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .clients-checklist label {
+      font-size: 0.82rem;
+      text-transform: none;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: #1e293b;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+      border-top: 1.5px solid var(--border);
+      padding-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div class="brand-lockup">
+      <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+      <div class="brand-divider"></div>
+      <div class="brand-logo-company-crop">
+        <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+      </div>
+    </div>
+    <div class="header-logo">
+      <h1>Módulo de <span class="accent">Facturación</span></h1>
+      <p>Gestión de Bloqueos Quincenales y Clientes Crédito</p>
+    </div>
+    <div class="user-badge" id="user-badge">
+      Cargando...
+    </div>
+  </header>
+
+  <!-- Pestañas -->
+  <div class="tabs-bar">
+    <button class="tab-btn active" id="tab-btn-bloqueo" onclick="switchMainTab('bloqueo')">
+      🔒 Bloqueo de Datos
+    </button>
+    <button class="tab-btn" id="tab-btn-clientes" onclick="switchMainTab('clientes')">
+      👥 Clientes Crédito
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       PESTAÑA 1: BLOQUEO DE DATOS (SERVICIOS)
+       ══════════════════════════════════════════════════════════════════════════ -->
+  <div id="tab-content-bloqueo">
+    <!-- Métricas -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Total Bloqueos</h3>
+          <div class="count-val" id="metric-total-bloqueos">0</div>
+        </div>
+        <div class="metric-icon">📑</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Bloqueados</h3>
+          <div class="count-val" id="metric-bloqueados" style="color: var(--danger);">0</div>
+        </div>
+        <div class="metric-icon">🔒</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Desbloqueados</h3>
+          <div class="count-val" id="metric-desbloqueados" style="color: var(--success);">0</div>
+        </div>
+        <div class="metric-icon">🔓</div>
+      </div>
+    </div>
+
+    <!-- Contenedor y Tabla -->
+    <div class="content-card">
+      <div class="toolbar">
+        <div class="filters-row">
+          <div class="filter-group">
+            <label for="filtro-regional">Regional</label>
+            <select id="filtro-regional" onchange="onRegionalFilterChange()">
+              <option value="">— Todas —</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filtro-operacion">Operación</label>
+            <select id="filtro-operacion" onchange="renderBloqueosTable()">
+              <option value="">— Todas —</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filtro-quincena">Quincena</label>
+            <select id="filtro-quincena" onchange="renderBloqueosTable()">
+              <option value="">— Todas —</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary" onclick="limpiarFiltrosBloqueo()">
+            🧹 Limpiar
+          </button>
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="abrirModalBloqueo()">
+            ➕ Nuevo Registro
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 60px;">ID</th>
+              <th>Regional</th>
+              <th>Operación</th>
+              <th>Quincena / Límite</th>
+              <th>Año</th>
+              <th>Datos</th>
+              <th>Forma Pago</th>
+              <th style="text-align: center;">Condición</th>
+              <th>Usuario</th>
+              <th>Fecha Registro</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-bloqueos">
+            <!-- Carga dinámica -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       PESTAÑA 2: CLIENTES CRÉDITO
+       ══════════════════════════════════════════════════════════════════════════ -->
+  <div id="tab-content-clientes" style="display: none;">
+    <!-- Métricas Clientes -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Total Clientes</h3>
+          <div class="count-val" id="metric-total-clientes">0</div>
+        </div>
+        <div class="metric-icon">🏢</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Activos para Bloqueo (1)</h3>
+          <div class="count-val" id="metric-activos-clientes" style="color: var(--success);">0</div>
+        </div>
+        <div class="metric-icon">✅</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Excluidos (0)</h3>
+          <div class="count-val" id="metric-excluidos-clientes" style="color: var(--warning);">0</div>
+        </div>
+        <div class="metric-icon">⏸</div>
+      </div>
+    </div>
+
+    <!-- Contenedor y Tabla Clientes -->
+    <div class="content-card">
+      <div class="toolbar">
+        <div class="filters-row" style="flex: 1;">
+          <div class="filter-group" style="flex: 1; max-width: 400px;">
+            <label for="buscar-cliente-input">Buscar Cliente / Nit / Nombre</label>
+            <input type="text" id="buscar-cliente-input" placeholder="🔍 Escribe para filtrar..." oninput="renderClientesTable()">
+          </div>
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="abrirModalNuevoCliente()">
+            ➕ Agregar Cliente Crédito
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 80px;">ID</th>
+              <th style="width: 100px; text-align: center;">Bloqueo</th>
+              <th>Cliente a Facturar</th>
+              <th>Nit</th>
+              <th>Nombre / Razón Social</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-clientes">
+            <!-- Carga dinámica -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL: NUEVO REGISTRO DE BLOQUEO (FACTURACIÓN)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-bloqueo-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span>🔒 Registrar Bloqueo / Desbloqueo</span>
+      <button class="modal-close" onclick="cerrarModalBloqueo()">&times;</button>
+    </div>
+
+    <form id="form-bloqueo-facturacion" onsubmit="event.preventDefault(); submitBloqueoFacturacion();">
+      <!-- Regional y Operación (Opcionales) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="modal-form-group">
+          <label for="modal-reg">Regional</label>
+          <select id="modal-reg" onchange="onModalRegionalChange()">
+            <option value="">— Todas las Regionales —</option>
+          </select>
+        </div>
+        <div class="modal-form-group">
+          <label for="modal-op">Operación</label>
+          <select id="modal-op">
+            <option value="">— Todas las Operaciones —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Criterio de Tiempo: Quincena vs Fecha -->
+      <div class="modal-form-group">
+        <label>Criterio de Bloqueo <span style="color:var(--danger)">*</span></label>
+        <div class="option-group">
+          <button type="button" class="opt-btn active" id="btn-crit-quincena" onclick="setCritTiempo('Quincena')">Por Quincena</button>
+          <button type="button" class="opt-btn" id="btn-crit-fecha" onclick="setCritTiempo('Fecha')">Por Fecha (Hasta)</button>
+        </div>
+      </div>
+
+      <!-- Grupo Quincena -->
+      <div class="modal-form-group" id="group-quincena">
+        <label for="modal-quincena">Quincena <span style="color:var(--danger)">*</span></label>
+        <select id="modal-quincena">
+          <option value="">— Seleccione Quincena —</option>
+        </select>
+      </div>
+
+      <!-- Grupo Fecha (Hasta) -->
+      <div class="modal-form-group" id="group-fecha" style="display: none;">
+        <label for="modal-hasta">Hasta Fecha y Hora (Hora Inicio) <span style="color:var(--danger)">*</span></label>
+        <input type="datetime-local" id="modal-hasta">
+        <span style="font-size:0.75rem; color:var(--text-muted);">Solo se bloqueará hasta esta fecha y hora.</span>
+      </div>
+
+      <!-- Forma de Pago -->
+      <div class="modal-form-group">
+        <label>Forma de Pago <span style="color:var(--danger)">*</span></label>
+        <div class="option-group" id="group-forma-pago">
+          <button type="button" class="opt-btn active" data-val="3" onclick="setFormaPago('3')">3 - Crédito</button>
+          <button type="button" class="opt-btn" data-val="" onclick="setFormaPago('')">Todas</button>
+          <button type="button" class="opt-btn" data-val="1" onclick="setFormaPago('1')">1 - Efectivo</button>
+          <button type="button" class="opt-btn" data-val="2" onclick="setFormaPago('2')">2 - Transferencia</button>
+        </div>
+      </div>
+
+      <!-- Sección Clientes a los que aplica (solo cuando Forma de Pago es 3) -->
+      <div id="section-clientes-credito" style="border: 1px solid var(--border); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 16px; background: #fafafa;">
+        <div class="modal-form-group" style="margin-bottom: 8px;">
+          <label>Clientes a los que aplica</label>
+          <div class="option-group">
+            <button type="button" class="opt-btn active" id="btn-cli-pre" onclick="setTipoClientes('Preseleccionados')">Preseleccionados</button>
+            <button type="button" class="opt-btn" id="btn-cli-todos" onclick="setTipoClientes('Todos')">Todos</button>
+            <button type="button" class="opt-btn" id="btn-cli-manual" onclick="setTipoClientes('Manual')">Manual</button>
+          </div>
+        </div>
+
+        <!-- Info box para Preseleccionados -->
+        <div class="info-box" id="info-preseleccionados">
+          Cargando clientes preseleccionados...
+        </div>
+
+        <!-- Checklist para Manual -->
+        <div id="box-manual-clientes" style="display: none; margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: #475569;">Marque los clientes:</span>
+            <div style="font-size: 0.75rem;">
+              <a href="javascript:void(0)" onclick="toggleAllManualCheckboxes(true)" style="color: var(--primary-light); margin-right: 8px;">Todos</a>
+              <a href="javascript:void(0)" onclick="toggleAllManualCheckboxes(false)" style="color: var(--danger);">Ninguno</a>
+            </div>
+          </div>
+          <div class="clients-checklist" id="clients-checklist-container">
+            <!-- Checkboxes generados dinámicamente -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Condición: Bloquear vs Desbloquear -->
+      <div class="modal-form-group">
+        <label>Acción a Ejecutar <span style="color:var(--danger)">*</span></label>
+        <div class="option-group">
+          <button type="button" class="opt-btn active" id="btn-cond-bloquear" onclick="setCondicion('Bloquear')">🔒 Bloquear</button>
+          <button type="button" class="opt-btn" id="btn-cond-desbloquear" onclick="setCondicion('Desbloquear')">🔓 Desbloquear</button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModalBloqueo()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-bloqueo">Confirmar y Aplicar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL: AGREGAR CLIENTE CRÉDITO
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-cliente-overlay">
+  <div class="modal" style="max-width: 500px;">
+    <div class="modal-header">
+      <span>➕ Agregar Cliente Crédito</span>
+      <button class="modal-close" onclick="cerrarModalNuevoCliente()">&times;</button>
+    </div>
+
+    <form id="form-nuevo-cliente" onsubmit="event.preventDefault(); submitNuevoCliente();">
+      <div class="modal-form-group">
+        <label for="cliente-id">ID (Autogenerado)</label>
+        <input type="text" id="cliente-id" readonly style="background: #e2e8f0; color: #64748b;">
+      </div>
+
+      <div class="modal-form-group">
+        <label for="cliente-nombre-facturar">Cliente a Facturar <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="cliente-nombre-facturar" required placeholder="EJ: ALAMO" oninput="this.value = this.value.toUpperCase()">
+      </div>
+
+      <div class="modal-form-group">
+        <label for="cliente-nit">Nit</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="number" id="cliente-nit" placeholder="Nit sin dígito de verificación" oninput="onNitInput(this.value)">
+          <span id="nit-searching" style="display: none; align-items: center; font-size: 0.78rem; color: var(--primary-light);">🔎 Buscando...</span>
+        </div>
+      </div>
+
+      <div class="modal-form-group">
+        <label for="cliente-razon-social">Nombre / Razón Social</label>
+        <input type="text" id="cliente-razon-social" placeholder="Razón social del cliente">
+      </div>
+
+      <div class="modal-form-group" style="flex-direction: row; align-items: center; gap: 10px; margin-top: 10px;">
+        <label class="toggle-switch">
+          <input type="checkbox" id="cliente-bloqueo-chk" checked>
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="font-size: 0.88rem; font-weight: 600; color: #334155;">Activar para Bloqueo (1)</span>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModalNuevoCliente()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-cliente">Guardar Cliente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const CONFIG = __CONFIG__;
+  let allBloqueos = [];
+  let allClientes = [];
+  let quincenasList = [];
+  let preseleccionadosInfo = null;
+
+  // Estado del formulario de bloqueo
+  let formState = {
+    criterio: 'Quincena',
+    formaPago: '3',
+    tipoClientes: 'Preseleccionados',
+    condicion: 'Bloquear'
+  };
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('user-badge').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+
+    // Cargar quincenas
+    try {
+      const qResp = await fetch(`/bloqueodatos/api/quincenas?usuario=${CONFIG.usuario}`);
+      if (qResp.ok) quincenasList = await qResp.json();
+    } catch (e) { console.error('Error cargando quincenas:', e); }
+
+    // Poblar selectores de regional
+    const selFiltroReg = document.getElementById('filtro-regional');
+    const selModalReg = document.getElementById('modal-reg');
+    CONFIG.regionalesFiltro.forEach(r => {
+      const o1 = document.createElement('option'); o1.value = r; o1.textContent = r; selFiltroReg.appendChild(o1);
+      const o2 = document.createElement('option'); o2.value = r; o2.textContent = r; selModalReg.appendChild(o2);
+    });
+
+    // Poblar selectores de quincena
+    const selFiltroQ = document.getElementById('filtro-quincena');
+    const selModalQ = document.getElementById('modal-quincena');
+    quincenasList.forEach(q => {
+      const o1 = document.createElement('option'); o1.value = q; o1.textContent = q; selFiltroQ.appendChild(o1);
+      const o2 = document.createElement('option'); o2.value = q; o2.textContent = q; selModalQ.appendChild(o2);
+    });
+
+    // Poner fecha y hora por defecto en input Hasta (hora colombiana actual)
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const defaultLocal = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    document.getElementById('modal-hasta').value = defaultLocal;
+
+    // Cargar datos iniciales
+    await Promise.all([cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo()]);
+  });
+
+  // Switch de pestañas principales
+  function switchMainTab(tab) {
+    document.getElementById('tab-btn-bloqueo').classList.toggle('active', tab === 'bloqueo');
+    document.getElementById('tab-btn-clientes').classList.toggle('active', tab === 'clientes');
+    document.getElementById('tab-content-bloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
+    document.getElementById('tab-content-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOGICA TABLA BLOQUEOS
+  // ─────────────────────────────────────────────────────────────────────────
+  async function cargarBloqueos() {
+    try {
+      const resp = await fetch(`/facturacion/api/bloqueos?usuario=${CONFIG.usuario}`);
+      if (resp.ok) {
+        allBloqueos = await resp.json();
+        renderBloqueosTable();
+      }
+    } catch (e) { console.error('Error cargando bloqueos:', e); }
+  }
+
+  function onRegionalFilterChange() {
+    const reg = document.getElementById('filtro-regional').value;
+    const selOp = document.getElementById('filtro-operacion');
+    selOp.innerHTML = '<option value="">— Todas —</option>';
+    if (reg && CONFIG.opsPorRegional[reg]) {
+      CONFIG.opsPorRegional[reg].forEach(op => {
+        const opt = document.createElement('option'); opt.value = op; opt.textContent = op; selOp.appendChild(opt);
+      });
+    }
+    renderBloqueosTable();
+  }
+
+  function limpiarFiltrosBloqueo() {
+    document.getElementById('filtro-regional').value = '';
+    document.getElementById('filtro-operacion').innerHTML = '<option value="">— Todas —</option>';
+    document.getElementById('filtro-quincena').value = '';
+    renderBloqueosTable();
+  }
+
+  function renderBloqueosTable() {
+    const reg = document.getElementById('filtro-regional').value;
+    const op = document.getElementById('filtro-operacion').value;
+    const q = document.getElementById('filtro-quincena').value;
+
+    const filtered = allBloqueos.filter(b => {
+      if (reg && b.regional !== reg) return false;
+      if (op && b.operacion !== op) return false;
+      if (q && b.quincena !== q) return false;
+      return true;
+    });
+
+    // Métricas
+    document.getElementById('metric-total-bloqueos').innerText = filtered.length;
+    document.getElementById('metric-bloqueados').innerText = filtered.filter(b => b.condicion === 'Bloquear').length;
+    document.getElementById('metric-desbloqueados').innerText = filtered.filter(b => b.condicion === 'Desbloquear').length;
+
+    const tbody = document.getElementById('tbody-bloqueos');
+    tbody.innerHTML = '';
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron registros de bloqueo con los filtros aplicados.</td></tr>';
+      return;
+    }
+
+    filtered.forEach(b => {
+      const tr = document.createElement('tr');
+      const isBloqueo = b.condicion === 'Bloquear';
+      const condBadge = isBloqueo
+        ? '<span class="badge badge-lock">🔒 Bloquear</span>'
+        : '<span class="badge badge-unlock">🔓 Desbloquear</span>';
+
+      const limiteStr = b.hasta 
+        ? `📅 Hasta: ${b.hasta.replace('T', ' ').slice(0, 16)}`
+        : (b.quincena || '—');
+
+      const fpStr = b.formaPago === 3 ? '3 - Crédito' : (b.formaPago === 1 ? '1 - Efectivo' : (b.formaPago === 2 ? '2 - Transf.' : (b.formaPago ? b.formaPago : 'Todas')));
+
+      tr.innerHTML = `
+        <td style="font-weight:600; color:var(--text-muted);">#${b.id}</td>
+        <td>${b.regional || '— Todas —'}</td>
+        <td style="font-weight:500;">${b.operacion || '— Todas —'}</td>
+        <td style="font-weight:600; color:var(--primary-light);">${limiteStr}</td>
+        <td>${b.anio || '—'}</td>
+        <td><span class="badge badge-tag">${b.datos || 'Servicios'}</span></td>
+        <td>${fpStr}</td>
+        <td style="text-align:center;">${condBadge}</td>
+        <td>${b.usuario || '—'}</td>
+        <td style="color:var(--text-muted); font-size:0.82rem;">${b.fechaRegistro ? b.fechaRegistro.replace('T', ' ').slice(0, 19) : '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOGICA TABLA CLIENTES CRÉDITO
+  // ─────────────────────────────────────────────────────────────────────────
+  async function cargarClientes() {
+    try {
+      const resp = await fetch(`/facturacion/api/clientes-credito?usuario=${CONFIG.usuario}`);
+      if (resp.ok) {
+        allClientes = await resp.json();
+        renderClientesTable();
+      }
+    } catch (e) { console.error('Error cargando clientes:', e); }
+  }
+
+  function renderClientesTable() {
+    const q = (document.getElementById('buscar-cliente-input').value || '').trim().toLowerCase();
+    const filtered = allClientes.filter(c => {
+      if (!q) return true;
+      return (c.clienteAFacturar && c.clienteAFacturar.toLowerCase().includes(q)) ||
+             (c.nit && String(c.nit).includes(q)) ||
+             (c.nombre && c.nombre.toLowerCase().includes(q));
+    });
+
+    document.getElementById('metric-total-clientes').innerText = allClientes.length;
+    document.getElementById('metric-activos-clientes').innerText = allClientes.filter(c => c.bloqueo === 1).length;
+    document.getElementById('metric-excluidos-clientes').innerText = allClientes.filter(c => c.bloqueo === 0).length;
+
+    const tbody = document.getElementById('tbody-clientes');
+    tbody.innerHTML = '';
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron clientes de crédito.</td></tr>';
+      return;
+    }
+
+    filtered.forEach(c => {
+      const tr = document.createElement('tr');
+      const isChecked = c.bloqueo === 1 ? 'checked' : '';
+      tr.innerHTML = `
+        <td style="font-family:monospace; color:var(--text-muted);">${c.id}</td>
+        <td style="text-align:center;">
+          <label class="toggle-switch">
+            <input type="checkbox" ${isChecked} onchange="toggleClienteBloqueo('${c.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </td>
+        <td style="font-weight:700; color:var(--primary);">${c.clienteAFacturar}</td>
+        <td>${c.nit || '—'}</td>
+        <td style="color:#334155;">${c.nombre || '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function toggleClienteBloqueo(id, nuevoEstado) {
+    try {
+      const resp = await fetch(`/facturacion/api/clientes-credito/toggle?usuario=${CONFIG.usuario}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, nuevoEstado: nuevoEstado ? 1 : 0 })
+      });
+      if (resp.ok) {
+        const item = allClientes.find(c => c.id === id);
+        if (item) item.bloqueo = nuevoEstado ? 1 : 0;
+        document.getElementById('metric-activos-clientes').innerText = allClientes.filter(c => c.bloqueo === 1).length;
+        document.getElementById('metric-excluidos-clientes').innerText = allClientes.filter(c => c.bloqueo === 0).length;
+        cargarPreseleccionadosInfo();
+      } else {
+        alert('Error al actualizar el estado de bloqueo');
+        cargarClientes();
+      }
+    } catch (e) {
+      console.error(e);
+      cargarClientes();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MODAL NUEVO REGISTRO BLOQUEO FACTURACIÓN
+  // ─────────────────────────────────────────────────────────────────────────
+  function abrirModalBloqueo() {
+    document.getElementById('modal-bloqueo-overlay').classList.add('open');
+  }
+
+  function cerrarModalBloqueo() {
+    document.getElementById('modal-bloqueo-overlay').classList.remove('open');
+  }
+
+  function onModalRegionalChange() {
+    const reg = document.getElementById('modal-reg').value;
+    const selOp = document.getElementById('modal-op');
+    selOp.innerHTML = '<option value="">— Todas las Operaciones —</option>';
+    if (reg && CONFIG.opsPorRegional[reg]) {
+      CONFIG.opsPorRegional[reg].forEach(op => {
+        const opt = document.createElement('option'); opt.value = op; opt.textContent = op; selOp.appendChild(opt);
+      });
+    }
+  }
+
+  function setCritTiempo(crit) {
+    formState.criterio = crit;
+    document.getElementById('btn-crit-quincena').classList.toggle('active', crit === 'Quincena');
+    document.getElementById('btn-crit-fecha').classList.toggle('active', crit === 'Fecha');
+    document.getElementById('group-quincena').style.display = crit === 'Quincena' ? 'block' : 'none';
+    document.getElementById('group-fecha').style.display = crit === 'Fecha' ? 'block' : 'none';
+  }
+
+  function setFormaPago(fp) {
+    formState.formaPago = fp;
+    const btns = document.getElementById('group-forma-pago').querySelectorAll('.opt-btn');
+    btns.forEach(b => b.classList.toggle('active', b.getAttribute('data-val') === fp));
+    document.getElementById('section-clientes-credito').style.display = fp === '3' ? 'block' : 'none';
+  }
+
+  function setTipoClientes(tipo) {
+    formState.tipoClientes = tipo;
+    document.getElementById('btn-cli-pre').classList.toggle('active', tipo === 'Preseleccionados');
+    document.getElementById('btn-cli-todos').classList.toggle('active', tipo === 'Todos');
+    document.getElementById('btn-cli-manual').classList.toggle('active', tipo === 'Manual');
+    document.getElementById('info-preseleccionados').style.display = tipo === 'Preseleccionados' ? 'block' : 'none';
+    document.getElementById('box-manual-clientes').style.display = tipo === 'Manual' ? 'block' : 'none';
+  }
+
+  function setCondicion(cond) {
+    formState.condicion = cond;
+    document.getElementById('btn-cond-bloquear').classList.toggle('active', cond === 'Bloquear');
+    document.getElementById('btn-cond-desbloquear').classList.toggle('active', cond === 'Desbloquear');
+  }
+
+  async function cargarPreseleccionadosInfo() {
+    try {
+      const resp = await fetch(`/bloqueodatos/api/clientes-credito/info?usuario=${CONFIG.usuario}`);
+      if (resp.ok) {
+        preseleccionadosInfo = await resp.json();
+        document.getElementById('info-preseleccionados').innerHTML = `
+          <strong>Preselección Automática:</strong> ${preseleccionadosInfo.infoText}
+          <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">(Total configurados: ${preseleccionadosInfo.total} | Activos: ${preseleccionadosInfo.onesCount} | Excluidos: ${preseleccionadosInfo.zerosCount})</div>
+        `;
+
+        // Render checklist para manual
+        const cont = document.getElementById('clients-checklist-container');
+        cont.innerHTML = '';
+        (preseleccionadosInfo.clients || []).forEach(c => {
+          const lbl = document.createElement('label');
+          lbl.innerHTML = `<input type="checkbox" class="chk-cliente-manual" value="${c.clienteAFacturar}" ${c.bloqueo === 1 ? 'checked' : ''}> ${c.clienteAFacturar}`;
+          cont.appendChild(lbl);
+        });
+      }
+    } catch (e) { console.error('Error info preseleccionados:', e); }
+  }
+
+  function toggleAllManualCheckboxes(check) {
+    document.querySelectorAll('.chk-cliente-manual').forEach(chk => chk.checked = check);
+  }
+
+  async function submitBloqueoFacturacion() {
+    const reg = document.getElementById('modal-reg').value;
+    const op = document.getElementById('modal-op').value;
+    const quincena = document.getElementById('modal-quincena').value;
+    const hasta = document.getElementById('modal-hasta').value;
+
+    if (formState.criterio === 'Quincena' && !quincena) {
+      alert('Por favor seleccione la quincena.');
+      return;
+    }
+    if (formState.criterio === 'Fecha' && !hasta) {
+      alert('Por favor ingrese la fecha y hora límite.');
+      return;
+    }
+
+    let clientesManuales = [];
+    if (formState.formaPago === '3' && formState.tipoClientes === 'Manual') {
+      document.querySelectorAll('.chk-cliente-manual:checked').forEach(c => clientesManuales.push(c.value));
+      if (!clientesManuales.length) {
+        alert('Debe seleccionar al menos un cliente en la opción Manual.');
+        return;
+      }
+    }
+
+    const payload = {
+      modulo: 'Facturacion',
+      regional: reg || '',
+      operacion: op || '',
+      criterio: formState.criterio,
+      quincena: formState.criterio === 'Quincena' ? quincena : null,
+      hasta: formState.criterio === 'Fecha' ? hasta : null,
+      datos: 'Servicios',
+      formaPago: formState.formaPago,
+      tipoClientes: formState.formaPago === '3' ? formState.tipoClientes : 'Todos',
+      clientesManuales,
+      condicion: formState.condicion
+    };
+
+    const confirmMsg = `¿Confirma aplicar la acción "${formState.condicion}" a los Servicios de Facturación?`;
+    if (!confirm(confirmMsg)) return;
+
+    const btnSubmit = document.getElementById('btn-submit-bloqueo');
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = 'Procesando...';
+
+    try {
+      const resp = await fetch(`/bloqueodatos/api/crear?usuario=${CONFIG.usuario}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (resp.ok && data.ok) {
+        alert(`✅ Acción ejecutada exitosamente.\nServicios modificados: ${data.affectedServicios}`);
+        cerrarModalBloqueo();
+        cargarBloqueos();
+      } else {
+        alert('Error: ' + (data.error || 'No se pudo aplicar el bloqueo'));
+      }
+    } catch (e) {
+      alert('Error de conexión al procesar la solicitud.');
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = 'Confirmar y Aplicar';
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MODAL AGREGAR CLIENTE CRÉDITO
+  // ─────────────────────────────────────────────────────────────────────────
+  function abrirModalNuevoCliente() {
+    // Generar UUID corto
+    const genId = 'C' + Math.random().toString(36).substring(2, 9).toUpperCase();
+    document.getElementById('cliente-id').value = genId;
+    document.getElementById('cliente-nombre-facturar').value = '';
+    document.getElementById('cliente-nit').value = '';
+    document.getElementById('cliente-razon-social').value = '';
+    document.getElementById('cliente-bloqueo-chk').checked = true;
+    document.getElementById('modal-cliente-overlay').classList.add('open');
+  }
+
+  function cerrarModalNuevoCliente() {
+    document.getElementById('modal-cliente-overlay').classList.remove('open');
+  }
+
+  let nitTimeout = null;
+  function onNitInput(nitVal) {
+    clearTimeout(nitTimeout);
+    const searchSpan = document.getElementById('nit-searching');
+    if (!nitVal || String(nitVal).trim().length < 5) {
+      searchSpan.style.display = 'none';
+      return;
+    }
+    searchSpan.style.display = 'inline-flex';
+    nitTimeout = setTimeout(async () => {
+      try {
+        const resp = await fetch(`/facturacion/api/buscar-cliente?nit=${encodeURIComponent(nitVal)}`);
+        if (resp.ok) {
+          const d = await resp.json();
+          if (d.encontrado && d.razonSocial) {
+            document.getElementById('cliente-razon-social').value = d.razonSocial;
+          }
+        }
+      } catch (e) { console.error('Error buscando cliente por Nit:', e); }
+      finally { searchSpan.style.display = 'none'; }
+    }, 400);
+  }
+
+  async function submitNuevoCliente() {
+    const id = document.getElementById('cliente-id').value;
+    const clienteAFacturar = document.getElementById('cliente-nombre-facturar').value.trim();
+    const nit = document.getElementById('cliente-nit').value.trim();
+    const nombre = document.getElementById('cliente-razon-social').value.trim();
+    const bloqueo = document.getElementById('cliente-bloqueo-chk').checked ? 1 : 0;
+
+    if (!clienteAFacturar) {
+      alert('El campo Cliente a Facturar es obligatorio.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit-cliente');
+    btn.disabled = true;
+    btn.innerText = 'Guardando...';
+
+    try {
+      const resp = await fetch(`/facturacion/api/clientes-credito?usuario=${CONFIG.usuario}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, clienteAFacturar, nit, nombre, bloqueo })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.ok) {
+        alert('✅ Cliente de crédito agregado exitosamente.');
+        cerrarModalNuevoCliente();
+        cargarClientes();
+        cargarPreseleccionadosInfo();
+      } else {
+        alert('Error: ' + (data.error || 'No se pudo guardar el cliente'));
+      }
+    } catch (e) {
+      alert('Error de conexión al guardar el cliente.');
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'Guardar Cliente';
+    }
+  }
+</script>
+
+</body>
+</html>

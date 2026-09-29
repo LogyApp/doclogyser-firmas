@@ -234,6 +234,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         <span>Retiros</span>
       </li>
+      <li class="nav-item" id="navBloqueo" onclick="switchTab('bloqueo')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <span>Bloqueo de Datos</span>
+      </li>
       <li class="nav-item disabled" title="Próximamente">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
         <span>Vacaciones</span>
@@ -524,10 +528,13 @@
     _tabActual = tab;
     document.getElementById('navRetiros').classList.toggle('active', tab === 'retiros');
     document.getElementById('navActivos').classList.toggle('active', tab === 'activos');
+    if (document.getElementById('navBloqueo')) document.getElementById('navBloqueo').classList.toggle('active', tab === 'bloqueo');
     document.getElementById('panelRetiros').style.display = tab === 'retiros' ? 'block' : 'none';
     document.getElementById('panelActivos').style.display = tab === 'activos' ? 'block' : 'none';
+    if (document.getElementById('panelBloqueo')) document.getElementById('panelBloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
     if (tab === 'retiros' && !_retirosState.cargado) fetchDataRetiros();
     if (tab === 'activos' && !_activosState.cargado) fetchDataActivos();
+    if (tab === 'bloqueo' && !_bloqueoNominaState.cargado) fetchDataBloqueoNomina();
     toggleMobileSidebar(false);
   }
 
@@ -1114,9 +1121,189 @@
     btn.disabled = false;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // Pestaña BLOQUEO DE DATOS EN NÓMINA
+  // ═══════════════════════════════════════════════════════════════════════
+  const _bloqueoNominaState = { allData: [], cargado: false };
+  let _mNomCondicion = 'Bloquear';
+  let _bloqQuincenasList = [];
+
+  function setMNomCond(cond) {
+    _mNomCondicion = cond;
+    document.getElementById('btnMNomBloquear').classList.toggle('sel', cond === 'Bloquear');
+    document.getElementById('btnMNomDesbloquear').classList.toggle('sel', cond === 'Desbloquear');
+  }
+
+  function abrirModalBloqueoNomina() {
+    document.getElementById('modalBloqueoNominaOverlay').classList.add('open');
+  }
+  function cerrarModalBloqueoNomina() {
+    document.getElementById('modalBloqueoNominaOverlay').classList.remove('open');
+  }
+
+  function onMNomRegionalChange() {
+    const reg = document.getElementById('mNomRegional').value;
+    const selOp = document.getElementById('mNomOperacion');
+    selOp.innerHTML = '<option value="">— Todas las Operaciones —</option>';
+    const opsObj = (tabs.bloqueo && tabs.bloqueo.opsPorRegional) || (tabs.activo && tabs.activo.opsPorRegional) || {};
+    if (reg && opsObj[reg]) {
+      opsObj[reg].forEach(op => {
+        const o = document.createElement('option'); o.value = op; o.textContent = op; selOp.appendChild(o);
+      });
+    }
+  }
+
+  function onBloqRegionalChange() {
+    const reg = document.getElementById('bloqFilterRegional').value;
+    const selOp = document.getElementById('bloqFilterOperacion');
+    selOp.innerHTML = '<option value="">Todas las operaciones</option>';
+    const opsObj = (tabs.bloqueo && tabs.bloqueo.opsPorRegional) || (tabs.activo && tabs.activo.opsPorRegional) || {};
+    if (reg && opsObj[reg]) {
+      opsObj[reg].forEach(op => {
+        const o = document.createElement('option'); o.value = op; o.textContent = op; selOp.appendChild(o);
+      });
+    }
+    renderBloqueoNominaTable();
+  }
+
+  function resetFiltrosBloqueoNomina() {
+    document.getElementById('bloqFilterRegional').value = '';
+    document.getElementById('bloqFilterOperacion').innerHTML = '<option value="">Todas las operaciones</option>';
+    document.getElementById('bloqFilterQuincena').value = '';
+    document.getElementById('bloqFilterDatos').value = '';
+    renderBloqueoNominaTable();
+  }
+
+  async function fetchDataBloqueoNomina() {
+    try {
+      const resp = await fetch(`/bloqueodatos/api/bloqueos?usuario=${encodeURIComponent(usuario)}`);
+      if (resp.ok) {
+        _bloqueoNominaState.allData = await resp.json();
+        _bloqueoNominaState.cargado = true;
+        renderBloqueoNominaTable();
+      }
+    } catch (e) {
+      console.error('Error cargando bloqueos en nómina:', e);
+    }
+  }
+
+  function renderBloqueoNominaTable() {
+    const reg = document.getElementById('bloqFilterRegional').value;
+    const op = document.getElementById('bloqFilterOperacion').value;
+    const q = document.getElementById('bloqFilterQuincena').value;
+    const dat = document.getElementById('bloqFilterDatos').value;
+
+    const data = _bloqueoNominaState.allData.filter(r => {
+      if (reg && r.regional !== reg) return false;
+      if (op && r.operacion !== op) return false;
+      if (q && r.quincena !== q) return false;
+      if (dat && r.datos !== dat) return false;
+      return true;
+    });
+
+    document.getElementById('bloqCountTotal').textContent = data.length;
+    document.getElementById('bloqCountBloqueados').textContent = data.filter(r => r.condicion === 'Bloquear').length;
+    document.getElementById('bloqCountDesbloqueados').textContent = data.filter(r => r.condicion === 'Desbloquear').length;
+
+    const body = document.getElementById('bloqueoNominaBody');
+    body.innerHTML = '';
+    if (!data.length) {
+      body.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 24px; color: #a0aec0;">No se encontraron registros de bloqueo.</td></tr>';
+      return;
+    }
+
+    data.forEach(r => {
+      const tr = document.createElement('tr');
+      const isBloq = r.condicion === 'Bloquear';
+      const condBadge = isBloq
+        ? '<span class="badge-legal" style="background:#fed7d7; color:#c53030;">🔒 Bloqueado</span>'
+        : '<span class="badge-legal" style="background:#c6f6d5; color:#22543d;">🔓 Desbloqueado</span>';
+
+      const limite = r.hasta ? `Hasta: ${r.hasta.replace('T', ' ').slice(0, 16)}` : (r.quincena || '—');
+      const fpStr = r.formaPago === 3 ? '3 - Crédito' : (r.formaPago === 1 ? '1 - Efectivo' : (r.formaPago === 2 ? '2 - Transf.' : (r.formaPago ? r.formaPago : 'Todas')));
+
+      tr.innerHTML = `
+        <td style="font-weight:600; color:#718096;">#${r.id}</td>
+        <td>${esc(r.regional) || '— Todas —'}</td>
+        <td style="font-weight:500;">${esc(r.operacion) || '— Todas —'}</td>
+        <td style="font-weight:600; color:#2b6cb0;">${esc(limite)}</td>
+        <td>${r.anio || '—'}</td>
+        <td><span class="badge-legal" style="background:#edf2f7; color:#4a5568;">${esc(r.modulo)} · ${esc(r.datos)}</span></td>
+        <td>${fpStr}</td>
+        <td style="text-align:center;">${condBadge}</td>
+        <td>${esc(r.usuario) || '—'}</td>
+        <td style="font-size:0.8rem; color:#718096;">${r.fechaRegistro ? r.fechaRegistro.replace('T', ' ').slice(0, 19) : '—'}</td>
+      `;
+      body.appendChild(tr);
+    });
+  }
+
+  async function submitBloqueoNomina() {
+    const reg = document.getElementById('mNomRegional').value;
+    const op = document.getElementById('mNomOperacion').value;
+    const q = document.getElementById('mNomQuincena').value;
+
+    if (!reg) return alert('La regional es obligatoria.');
+    if (!q) return alert('La quincena es obligatoria.');
+
+    if (!confirm(`¿Confirma aplicar la acción "${_mNomCondicion}" a los turnos de Asistencia?`)) return;
+
+    const btn = document.getElementById('btnSubmitBloqNom');
+    btn.disabled = true;
+    btn.textContent = 'Procesando...';
+
+    try {
+      const resp = await fetch(`/bloqueodatos/api/crear?usuario=${encodeURIComponent(usuario)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          modulo: 'Nomina',
+          regional: reg,
+          operacion: op || '',
+          quincena: q,
+          datos: 'Asistencia',
+          condicion: _mNomCondicion
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.ok) {
+        alert(`✅ Acción ejecutada exitosamente.\nTurnos de asistencia afectados: ${data.affectedAsistencia}`);
+        cerrarModalBloqueoNomina();
+        fetchDataBloqueoNomina();
+      } else {
+        alert('Error: ' + (data.error || 'No se pudo aplicar el bloqueo'));
+      }
+    } catch (e) {
+      alert('Error de conexión.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Confirmar y Aplicar';
+    }
+  }
+
   // ── Init ─────────────────────────────────────────────────────────────────
   if (tabs.retiro) document.getElementById('navRetiros').style.display = 'flex';
   if (tabs.activo) document.getElementById('navActivos').style.display = 'flex';
+  if (tabs.bloqueo) {
+    document.getElementById('navBloqueo').style.display = 'flex';
+    // Poblar filtros de bloqueo
+    const selReg = document.getElementById('bloqFilterRegional');
+    const selMReg = document.getElementById('mNomRegional');
+    (tabs.bloqueo.regionalesFiltro || []).forEach(r => {
+      const o1 = document.createElement('option'); o1.value = r; o1.textContent = r; selReg.appendChild(o1);
+      const o2 = document.createElement('option'); o2.value = r; o2.textContent = r; selMReg.appendChild(o2);
+    });
+    // Cargar quincenas
+    fetch(`/bloqueodatos/api/quincenas?usuario=${encodeURIComponent(usuario)}`).then(r => r.json()).then(qs => {
+      _bloqQuincenasList = qs;
+      const selQ = document.getElementById('bloqFilterQuincena');
+      const selMQ = document.getElementById('mNomQuincena');
+      qs.forEach(q => {
+        const o1 = document.createElement('option'); o1.value = q; o1.textContent = q; selQ.appendChild(o1);
+        const o2 = document.createElement('option'); o2.value = q; o2.textContent = q; selMQ.appendChild(o2);
+      });
+    }).catch(e => console.error(e));
+  }
   if (tabs.retiro) updateFilterOptionsWithCountsRetiros();
   if (tabs.activo) updateFilterOptionsWithCountsActivos();
   makeTableResizable(document.getElementById('retirosTable'));
@@ -1158,6 +1345,8 @@
     tabDestino = 'activos';
   } else if (tabParam === 'retiros' || tabParam === 'retiro') {
     tabDestino = 'retiros';
+  } else if (tabParam === 'bloqueo' || tabParam === 'bloqueodatos') {
+    tabDestino = 'bloqueo';
   } else if (busquedaParam) {
     tabDestino = tabs.activo ? 'activos' : 'retiros';
   } else if (idVinculacionParam) {
@@ -1187,6 +1376,8 @@
       abrirFiltrosSiCerrado('ret');
     }
     switchTab('retiros');
+  } else if (tabDestino === 'bloqueo' && tabs.bloqueo) {
+    switchTab('bloqueo');
   } else {
     switchTab(tabs.activo ? 'activos' : 'retiros');
   }
