@@ -2269,6 +2269,101 @@ async function notificarTomoCargoPendiente({ destinatarios, scopeLabel, registro
   });
 }
 
+// ── Notificación de Confirmación de "Tomó Cargo" ─────────────────────────
+// Se dispara cuando Contratación confirma que el colaborador tomó el cargo
+// en Nómina (botón "Tomó Cargo"). Se notifica a contratacionnacional@logyser.com
+// con copia a admin@logyser.com y a los Auxiliares/Coordinadores de la Operación
+// (o Regional si no hay asignados en la Operación).
+async function notificarTomoCargoConfirmado({
+  trabajador,
+  identificacion,
+  cargo,
+  operacion,
+  regional,
+  fechaIngreso,
+  fechaConfirmacion,
+  usuarioConfirmador,
+  destinatariosCC = [],
+}) {
+  const partes = String(trabajador || '').split(' ** ');
+  const nombreLimpio = (partes.length > 1 ? partes[1] : (trabajador || '')).trim();
+  const opLabel = operacion || regional || 'LOG&SER';
+  const asunto = `Confirmación de toma de cargo — ${nombreLimpio} — ${opLabel} — LOG&SER`;
+
+  // Deduplicar destinatarios en CC asegurando admin@logyser.com
+  const ccEmails = ['admin@logyser.com', ...(Array.isArray(destinatariosCC) ? destinatariosCC : [destinatariosCC])]
+    .map(e => (typeof e === 'string' ? e.trim().toLowerCase() : ''))
+    .filter(e => e && e !== 'contratacionnacional@logyser.com');
+  const ccUnicos = [...new Set(ccEmails)];
+
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f4f4f4;padding:24px">
+      <div style="border-top:5px solid #27ae60;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+      </div>
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="display:inline-block;background:#eafaf1;border:1px solid #a9dfbf;border-radius:6px;padding:6px 14px;margin-bottom:18px">
+          <span style="color:#1e8449;font-weight:bold;font-size:.88rem">
+            &#10004; TOMA DE CARGO CONFIRMADA
+          </span>
+        </div>
+
+        <h2 style="color:#1a1a2e;margin:0 0 8px">Confirmación de Toma de Cargo</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.92rem;line-height:1.5">
+          Se ha confirmado en el sistema que el siguiente colaborador tomó posesión de su cargo e inició labores efectivamente en la operación.
+        </p>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.92rem;border:1px solid #e0e0e0">
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;width:38%;border:1px solid #e0e0e0">Trabajador</td>
+            <td style="padding:10px 14px;font-weight:bold;border:1px solid #e0e0e0;color:#1a1a2e">${nombreLimpio}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Identificación</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${identificacion || '—'}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Cargo</td>
+            <td style="padding:10px 14px;font-weight:bold;color:#1e8449;border:1px solid #e0e0e0">${cargo || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Operación</td>
+            <td style="padding:10px 14px;font-weight:bold;border:1px solid #e0e0e0">${operacion || '—'}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Regional</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${regional || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Fecha de ingreso</td>
+            <td style="padding:10px 14px;font-weight:bold;color:#d68910;border:1px solid #e0e0e0">${formatFecha(fechaIngreso) || '—'}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Confirmado por</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${usuarioConfirmador || '—'}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Fecha de confirmación</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${fechaConfirmacion || '—'}</td>
+          </tr>
+        </table>
+
+        <div style="padding:12px 16px;background:#eafaf1;border-left:4px solid #27ae60;border-radius:0 4px 4px 0;color:#1e6f3e;font-size:.88rem;line-height:1.5">
+          Este registro confirma el inicio de actividades para efectos de contratación, nómina y seguimiento operativo.
+        </div>
+      </div>
+      ${FOOTER}
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Nómina" <${EMAIL_FROM}>`,
+    to: 'contratacionnacional@logyser.com',
+    cc: ccUnicos.length ? ccUnicos.join(', ') : undefined,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
 // ── Notificación de Transferencia de Inventario (Kardex_Pendiente) ─────────
 
 async function notificarTransferenciaDespachada({ operacionOrigen, operacionDestino, categoria, usuarioNombre, destinatarios }) {
@@ -2377,5 +2472,6 @@ module.exports = {
   notificarReportePendientes,
   notificarPendientesCoordinador,
   notificarTomoCargoPendiente,
+  notificarTomoCargoConfirmado,
   transporter,
 };

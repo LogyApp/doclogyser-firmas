@@ -5,7 +5,7 @@ const pool    = require('../services/db');
 const { computarAccesoNomina } = require('../services/accesoNomina');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
 const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido, obtenerResponsablesOperacionRegional } = require('../services/configRetiro');
-const { notificarRetiro } = require('../services/email');
+const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
 
@@ -309,27 +309,68 @@ router.get('/api/activos', async (req, res) => {
 // Contratación confirma que un ingreso nuevo sí tomó el cargo. Reutiliza la
 // columna `Motivo del Retiro` con el valor centinela 'SI' (ya usado en el
 // resto del sistema para distinguir "sin motivo real de retiro").
+// Notifica por correo a contratacionnacional@logyser.com, con copia a admin@logyser.com
+// y a los Auxiliares/Coordinadores de la Operación (o Regional).
 router.post('/api/tomo-cargo', async (req, res) => {
   try {
     const { idVinculacion, usuario } = req.body;
     if (!idVinculacion || !usuario) return res.status(400).json({ ok: false, error: 'Datos incompletos' });
 
     const [rows] = await pool.execute(
-      'SELECT `Motivo del Retiro` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      `SELECT \`Id Vinculación\`, \`Identificación\`, Trabajador, Cargo, \`Operación\`, Regional,
+              \`Fecha de Ingreso\`, \`Motivo del Retiro\`
+       FROM \`Maestro_Vinculación\`
+       WHERE \`Id Vinculación\` = ? LIMIT 1`,
       [idVinculacion]
     );
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
-    if (rows[0]['Motivo del Retiro'] === 'SI') {
+    const vin = rows[0];
+    if (vin['Motivo del Retiro'] === 'SI') {
       return res.status(409).json({ ok: false, error: 'Ya se había confirmado que tomó el cargo' });
     }
 
+    const fechaActualizacion = fechaHoraBogota();
     await pool.execute(
       `UPDATE \`Maestro_Vinculación\`
        SET \`Motivo del Retiro\` = 'SI', Usuario = ?, \`Fecha Actualización\` = ?
        WHERE \`Id Vinculación\` = ?`,
-      [usuario, fechaHoraBogota(), idVinculacion]
+      [usuario, fechaActualizacion, idVinculacion]
     );
     res.json({ ok: true });
+
+    // Notificación por correo asíncrona (no bloquea la respuesta del endpoint)
+    (async () => {
+      try {
+        let usuarioConfirmador = usuario;
+        try {
+          const [uRows] = await pool.execute(
+            'SELECT Nombre, Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+            [usuario]
+          );
+          if (uRows.length && uRows[0].Nombre) {
+            usuarioConfirmador = `${uRows[0].Nombre} (${uRows[0].Rol || usuario})`;
+          }
+        } catch (_) {}
+
+        const responsables = await obtenerResponsablesOperacionRegional(vin['Operación'], vin.Regional);
+        const ccEmails = responsables.map(r => r.Email).filter(Boolean);
+
+        await notificarTomoCargoConfirmado({
+          trabajador: vin.Trabajador,
+          identificacion: vin['Identificación'],
+          cargo: vin.Cargo,
+          operacion: vin['Operación'],
+          regional: vin.Regional,
+          fechaIngreso: vin['Fecha de Ingreso'],
+          fechaConfirmacion: fechaActualizacion,
+          usuarioConfirmador,
+          destinatariosCC: ccEmails,
+        });
+        console.log(`[nomina] Notificación 'Tomó Cargo' enviada para ${vin['Identificación']} (${vin.Trabajador}) | CC:`, ccEmails);
+      } catch (errEmail) {
+        console.error('[nomina] Error enviando correo de confirmación de tomó cargo:', errEmail);
+      }
+    })();
   } catch (err) {
     console.error('[nomina] POST /api/tomo-cargo', err);
     res.status(500).json({ ok: false, error: err.message });
