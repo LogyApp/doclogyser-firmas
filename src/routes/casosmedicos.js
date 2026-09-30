@@ -4,6 +4,83 @@ const { computarAccesoSST } = require('./sst');
 
 const router = express.Router();
 
+function normalizarNombreColumna(nombre) {
+  return String(nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function citarIdentificador(nombre) {
+  return `\`${String(nombre).replace(/`/g, '``')}\``;
+}
+
+router.get('/api/incapacidades', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro ?usuario requerido' });
+
+    const acceso = await computarAccesoSST(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado para el módulo SST' });
+
+    const [columnas] = await pool.query('SHOW COLUMNS FROM Dynamic_Asistencia');
+    const encontrarColumna = (...nombres) => {
+      const buscados = nombres.map(normalizarNombreColumna);
+      const columna = columnas.find(c => buscados.includes(normalizarNombreColumna(c.Field)));
+      return columna ? columna.Field : null;
+    };
+
+    const eventoCol = encontrarColumna('Evento');
+    const operacionCol = encontrarColumna('Operación', 'Operacion', 'Origen');
+    const regionalCol = encontrarColumna('Regional');
+    const fechaCol = encontrarColumna('Día', 'Dia', 'Fecha');
+    const trabajadorCol = encontrarColumna('Trabajador', 'Nombre');
+    const identificacionCol = encontrarColumna('Cédula', 'Cedula', 'Identificación', 'Identificacion');
+    const urlCol = encontrarColumna('Url Incapacidad');
+
+    if (!eventoCol || !urlCol) {
+      return res.status(500).json({ error: 'Dynamic_Asistencia no contiene las columnas Evento y Url Incapacidad requeridas' });
+    }
+    if (!acceso.sinFiltro && (!operacionCol || !acceso.operacionesFiltro.length)) return res.json([]);
+
+    const opExpr = operacionCol ? `da.${citarIdentificador(operacionCol)}` : 'NULL';
+    const regionalExpr = regionalCol
+      ? `COALESCE(da.${citarIdentificador(regionalCol)}, mo.REGIONAL)`
+      : (operacionCol ? 'mo.REGIONAL' : 'NULL');
+    const joins = operacionCol
+      ? `LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = da.${citarIdentificador(operacionCol)}`
+      : '';
+    const where = [`da.${citarIdentificador(eventoCol)} LIKE ?`];
+    const params = ['%Incapacidad%'];
+
+    if (!acceso.sinFiltro) {
+      where.push(`da.${citarIdentificador(operacionCol)} IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    const [rows] = await pool.execute(`
+      SELECT DISTINCT da.*,
+        ${opExpr} AS __sst_operacion,
+        ${regionalExpr} AS __sst_regional
+      FROM Dynamic_Asistencia da
+      ${joins}
+      WHERE ${where.join(' AND ')}
+      ${fechaCol ? `ORDER BY da.${citarIdentificador(fechaCol)} DESC` : ''}
+    `, params);
+
+    res.json(rows.map(row => ({
+      ...row,
+      sst_fecha: fechaCol ? row[fechaCol] : null,
+      sst_trabajador: trabajadorCol ? row[trabajadorCol] : null,
+      sst_identificacion: identificacionCol ? row[identificacionCol] : null,
+      sst_regional: row.__sst_regional,
+      sst_operacion: row.__sst_operacion,
+      sst_evento: row[eventoCol],
+      sst_url: row[urlCol]
+    })));
+  } catch (err) {
+    console.error('[casosmedicos] Error en /api/incapacidades:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ══════════════════════════════════════════════════════════════
 // API: GET /api/trabajadores-casos
 // Devuelve trabajadores que tienen casos médicos, con métricas agrupadas
@@ -342,16 +419,20 @@ router.get('/api/casos-trabajador/:identificacion', async (req, res) => {
           b.idbitacora,
           b.idcaso,
           b.fecha_seguimiento,
-          b.tipo_contacto,
+          COALESCE(tc.tipo, b.tipo_contacto) AS tipo_contacto,
+          b.tipo_contacto AS tipo_contacto_id,
           b.seguimiento_objetivo,
           b.compromiso_accion,
           b.fecha_compromiso,
-          b.resultado,
+          COALESCE(cr.resultado, b.resultado) AS resultado,
+          b.resultado AS resultado_id,
           b.actividad_actual,
           b.usuario,
           b.fecha_registro,
           u.Nombre AS usuario_nombre
         FROM Maestro_bitacora_cmedicos b
+        LEFT JOIN Config_Tipo_Contacto tc ON tc.id = CAST(b.tipo_contacto AS UNSIGNED)
+        LEFT JOIN Config_Resultados cr ON cr.id = CAST(b.resultado AS UNSIGNED)
         LEFT JOIN Maestro_Usuarios u ON b.usuario = u.ID
         WHERE b.idcaso IN (${ph})
         ORDER BY b.fecha_seguimiento DESC, b.idbitacora DESC
@@ -404,8 +485,8 @@ router.get('/api/catalogos', async (req, res) => {
       regionales: regionales.map(r => r.Regional),
       eps: eps.map(e => e.EPS),
       afp: afp.map(a => a.Fondo),
-      tiposContacto: tiposContacto.map(t => t.tipo),
-      resultadosBitacora: resultadosBitacora.map(r => r.resultado)
+      tiposContacto,
+      resultadosBitacora
     });
   } catch (err) {
     console.error('[casosmedicos] Error en /api/catalogos:', err);
@@ -620,8 +701,13 @@ router.post('/api/crear', async (req, res) => {
     if (!regional_id) {
       return res.status(400).json({ error: 'La regional es obligatoria' });
     }
+    const [eventoRows] = await pool.execute('SELECT nombre FROM Config_Tipo_Evento WHERE id = ?', [tipo_evento_id]);
+    const esSeguimientoEmo = eventoRows.some(row => String(row.nombre || '').trim().toUpperCase() === 'SEGUIMIENTO EMO');
     if (!fecha_ingreso) {
       return res.status(400).json({ error: 'La fecha de ingreso es obligatoria' });
+    }
+    if (!diagnostico && !esSeguimientoEmo) {
+      return res.status(400).json({ error: 'El diagnóstico CIE-10 es obligatorio para este tipo de evento' });
     }
 
     // Regla de validación fecha_fin >= fecha_inicio
@@ -846,16 +932,20 @@ router.get('/api/bitacoras/:idcaso', async (req, res) => {
         b.idbitacora,
         b.idcaso,
         b.fecha_seguimiento,
-        b.tipo_contacto,
+        COALESCE(tc.tipo, b.tipo_contacto) AS tipo_contacto,
+        b.tipo_contacto AS tipo_contacto_id,
         b.seguimiento_objetivo,
         b.compromiso_accion,
         b.fecha_compromiso,
-        b.resultado,
+        COALESCE(cr.resultado, b.resultado) AS resultado,
+        b.resultado AS resultado_id,
         b.actividad_actual,
         b.usuario,
         b.fecha_registro,
         u.Nombre AS usuario_nombre
       FROM Maestro_bitacora_cmedicos b
+      LEFT JOIN Config_Tipo_Contacto tc ON tc.id = CAST(b.tipo_contacto AS UNSIGNED)
+      LEFT JOIN Config_Resultados cr ON cr.id = CAST(b.resultado AS UNSIGNED)
       LEFT JOIN Maestro_Usuarios u ON b.usuario = u.ID
       WHERE b.idcaso = ?
       ORDER BY b.fecha_seguimiento DESC, b.idbitacora DESC
@@ -917,16 +1007,16 @@ router.post('/api/bitacora/crear', async (req, res) => {
     }
 
     // Validar tipo_contacto contra Config_Tipo_Contacto
-    const [tcRows] = await pool.execute('SELECT tipo FROM Config_Tipo_Contacto WHERE tipo = ?', [tipo_contacto]);
+    const [tcRows] = await pool.execute('SELECT id FROM Config_Tipo_Contacto WHERE id = ?', [tipo_contacto]);
     if (!tcRows.length) {
       return res.status(400).json({ error: `Tipo de contacto no válido: ${tipo_contacto}` });
     }
 
-    // Validar resultado contra Config_Resultados si viene definido
+    // Validar resultado contra Config_Resultados y guardar el identificador del catálogo.
     let validResultado = resultado || null;
     if (validResultado) {
-      const [resRows] = await pool.execute('SELECT resultado FROM Config_Resultados WHERE resultado = ?', [validResultado]);
-      if (!resRows.length) validResultado = null;
+      const [resRows] = await pool.execute('SELECT id FROM Config_Resultados WHERE id = ?', [validResultado]);
+      if (!resRows.length) return res.status(400).json({ error: `Resultado no válido: ${validResultado}` });
     }
 
     // Validar usuario contra Maestro_Usuarios

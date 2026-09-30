@@ -1480,6 +1480,14 @@
         </div>
         <span>Casos Médicos</span>
       </li>
+      <li class="nav-item" data-tab="incapacidades" onclick="switchTab('incapacidades')">
+        <div class="nav-icon" title="Incapacidades">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-6 14h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/>
+          </svg>
+        </div>
+        <span>Incapacidades</span>
+      </li>
     </ul>
 
     <!-- Botón Actualizar Global idéntico a Inventario -->
@@ -2308,6 +2316,47 @@
       </div>
     </section>
 
+    <section class="tab-pane" id="pane-incapacidades" style="display: none;">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title"><span>🩹 Incapacidades</span><span class="badge badge-info" id="badge-total-inc">0 Registros</span></h1>
+          <p class="tab-subtitle">Incapacidades registradas en asistencia</p>
+        </div>
+      </div>
+      <div class="card-filters">
+        <div class="filtros-toggle" onclick="toggleFiltros('inc')">
+          <span class="filtros-toggle-left">Filtros de Búsqueda <span class="filtros-badge" id="filtros-badge-inc">0</span></span>
+          <span class="filtros-chevron" id="filtros-chevron-inc">▸</span>
+        </div>
+        <div class="filtros-body" id="filtros-body-inc" style="display: none;">
+          <div class="filters-grid">
+            <div class="form-group"><label class="form-label">Trabajador o Cédula</label><input type="text" class="form-control" id="filtro-inc-trabajador" placeholder="Nombre o cédula..." oninput="filtrarDebounce('inc')"></div>
+            <div class="form-group"><label class="form-label">Regional</label><select class="form-control" id="filtro-inc-regional" onchange="onRegionalChange('inc')"><option value="">Todas</option></select></div>
+            <div class="form-group"><label class="form-label">Operación</label><select class="form-control" id="filtro-inc-operacion" onchange="filtrarAutomatico('inc')"><option value="">Todas</option></select></div>
+            <div class="form-group"><label class="form-label">Fecha Desde</label><input type="date" class="form-control" id="filtro-inc-desde" onchange="filtrarAutomatico('inc')"></div>
+            <div class="form-group"><label class="form-label">Fecha Hasta</label><input type="date" class="form-control" id="filtro-inc-hasta" onchange="filtrarAutomatico('inc')"></div>
+            <div class="form-group"><button class="btn btn-secondary btn-sm" onclick="limpiarFiltros('inc')" style="height: 38px;">Limpiar</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-container">
+          <table class="data-table" id="table-inc">
+            <thead><tr>
+              <th style="width: 120px; min-width: 100px;" class="sortable" onclick="toggleSortSst('inc', 'fecha')"><div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-inc-fecha">↕</span></div><div class="col-resizer"></div></th>
+              <th style="width: 220px; min-width: 150px;" class="sortable" onclick="toggleSortSst('inc', 'trabajador')"><div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-inc-trabajador">↕</span></div><div class="col-resizer"></div></th>
+              <th style="width: 130px; min-width: 105px;" class="sortable" onclick="toggleSortSst('inc', 'identificacion')"><div class="th-content"><span>Identificación</span><span class="sort-icon" id="sort-icon-inc-identificacion">↕</span></div><div class="col-resizer"></div></th>
+              <th style="width: 150px; min-width: 110px;" class="sortable" onclick="toggleSortSst('inc', 'regional')"><div class="th-content"><span>Regional</span><span class="sort-icon" id="sort-icon-inc-regional">↕</span></div><div class="col-resizer"></div></th>
+              <th style="width: 170px; min-width: 120px;" class="sortable" onclick="toggleSortSst('inc', 'operacion')"><div class="th-content"><span>Operación</span><span class="sort-icon" id="sort-icon-inc-operacion">↕</span></div><div class="col-resizer"></div></th>
+              <th style="width: 190px; min-width: 140px;" class="sortable" onclick="toggleSortSst('inc', 'evento')"><div class="th-content"><span>Evento</span><span class="sort-icon" id="sort-icon-inc-evento">↕</span></div><div class="col-resizer"></div></th>
+              <th style="width: 150px; min-width: 110px;"><div class="th-content"><span>Documento</span></div><div class="col-resizer"></div></th>
+            </tr></thead>
+            <tbody id="tbody-inc"><tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted);">Cargando incapacidades...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -2521,7 +2570,7 @@
           </div>
 
           <!-- 3. DIAGNÓSTICO CIE-10 Y CLÍNICOS -->
-          <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <div id="cm-group-diagnostico" style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
             <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <span>🩺</span> Diagnóstico CIE-10 y Evento
             </div>
@@ -2725,7 +2774,8 @@
       pc: [],
       part: [],
       csst: [],
-      cm: []
+      cm: [],
+      inc: []
     };
 
     let countsStore = {
@@ -2734,7 +2784,8 @@
       pc: { regionales: {}, operaciones: {} },
       part: {},
       csst: { regionales: {}, operaciones: {} },
-      cm: { regionales: {}, operaciones: {} }
+      cm: { regionales: {}, operaciones: {} },
+      inc: { regionales: {}, operaciones: {} }
     };
 
     let selectedItems = {
@@ -2743,7 +2794,8 @@
       pc: null,
       part: null,
       csst: null,
-      cm: null
+      cm: null,
+      inc: null
     };
 
     let debounceTimers = {};
@@ -2755,7 +2807,8 @@
       pc: { key: 'fecha', dir: 'desc' },
       part: { key: 'fecha', dir: 'desc' },
       csst: { key: 'fecha', dir: 'desc' },
-      cm: { key: 'trabajador', dir: 'asc' }
+      cm: { key: 'trabajador', dir: 'asc' },
+      inc: { key: 'fecha', dir: 'desc' }
     };
 
     function toggleSortSst(modKey, col) {
@@ -2813,6 +2866,17 @@
             return item.max_fecha_caso || '';
           default:
             return String(item[col] || '').toLowerCase();
+        }
+      }
+      if (modKey === 'inc') {
+        switch (col) {
+          case 'fecha': return item.sst_fecha || '';
+          case 'trabajador': return limpiarNombreTrabajador(item.sst_trabajador || '').toLowerCase();
+          case 'identificacion': return String(item.sst_identificacion || '').toLowerCase();
+          case 'regional': return String(item.sst_regional || '').toLowerCase();
+          case 'operacion': return String(item.sst_operacion || '').toLowerCase();
+          case 'evento': return String(item.sst_evento || '').toLowerCase();
+          default: return String(item[col] || '').toLowerCase();
         }
       }
       switch (col) {
@@ -2885,6 +2949,7 @@
       else if (modKey === 'part') aplicarFiltroYOrdenPart();
       else if (modKey === 'csst') aplicarFiltroYOrdenCsst();
       else if (modKey === 'cm') aplicarFiltroYOrdenCm();
+      else if (modKey === 'inc') aplicarFiltroYOrdenInc();
     }
 
     // ═════ REDIMENSIÓN DE COLUMNAS (DRAG & RESIZE) ═════
@@ -2936,6 +3001,7 @@
       actualizarIconosOrdenSst('part');
       actualizarIconosOrdenSst('csst');
       actualizarIconosOrdenSst('cm');
+      actualizarIconosOrdenSst('inc');
       inicializarCanvasCsst();
       switchTab('evaluacion');
     });
@@ -3090,7 +3156,7 @@
         actualizarPermisosBotonesCm();
       }
 
-      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : tabId === 'casosmedicos' ? 'cm' : 'csst';
+      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : tabId === 'casosmedicos' ? 'cm' : tabId === 'incapacidades' ? 'inc' : 'csst';
       actualizarIconosOrdenSst(key);
       inicializarRedimensionColumnasSst();
       if (!dataStore[key].length) {
@@ -3120,7 +3186,7 @@
       const icon = document.getElementById('btn-actualizar-global-icon');
       if (icon) icon.style.animation = 'spin 0.8s linear infinite';
 
-      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'casosmedicos' ? 'cm' : 'csst';
+      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'casosmedicos' ? 'cm' : currentTab === 'incapacidades' ? 'inc' : 'csst';
       cargarDatos(key).finally(() => {
         if (icon) icon.style.animation = 'none';
       });
@@ -3164,6 +3230,11 @@
         if (prio && prio.value) count++;
         if (fd && fd.value) count++;
         if (fh && fh.value) count++;
+      } else if (modKey === 'inc') {
+        ['trabajador', 'regional', 'operacion', 'desde', 'hasta'].forEach(campo => {
+          const input = document.getElementById(`filtro-inc-${campo}`);
+          if (input && input.value.trim()) count++;
+        });
       } else {
         const trab = document.getElementById(`filtro-${modKey}-trabajador`);
         const reg = document.getElementById(`filtro-${modKey}-regional`);
@@ -3189,6 +3260,25 @@
       const selOp = document.getElementById(`filtro-${modKey}-operacion`);
       if (!selOp) return;
 
+      if (modKey === 'inc') {
+        const anterior = selOp.value;
+        const filas = (dataStore.inc || []).filter(row => !selReg || row.sst_regional === selReg);
+        const conteos = {};
+        filas.forEach(row => {
+          if (row.sst_operacion) conteos[row.sst_operacion] = (conteos[row.sst_operacion] || 0) + 1;
+        });
+        selOp.innerHTML = '<option value="">Todas</option>';
+        Object.keys(conteos).sort((a, b) => a.localeCompare(b, 'es')).forEach(op => {
+          const opt = document.createElement('option');
+          opt.value = op;
+          opt.textContent = `${op} (${conteos[op]})`;
+          opt.selected = op === anterior;
+          selOp.appendChild(opt);
+        });
+        filtrarAutomatico(modKey);
+        return;
+      }
+
       selOp.innerHTML = '<option value="">Todas</option>';
       const ops = selReg ? (CONFIG.opsPorRegional[selReg] || []) : (CONFIG.operacionesFiltro || []);
       const opCounts = (countsStore[modKey] && countsStore[modKey].operaciones) || {};
@@ -3213,6 +3303,10 @@
 
     function filtrarAutomatico(modKey) {
       actualizarBadgeFiltros(modKey);
+      if (modKey === 'inc') {
+        aplicarFiltroYOrdenInc();
+        return;
+      }
       cargarDatos(modKey);
     }
 
@@ -3237,6 +3331,11 @@
         if (prio) prio.value = '';
         if (fd) fd.value = '';
         if (fh) fh.value = '';
+      } else if (modKey === 'inc') {
+        ['trabajador', 'regional', 'operacion', 'desde', 'hasta'].forEach(campo => {
+          const input = document.getElementById(`filtro-inc-${campo}`);
+          if (input) input.value = '';
+        });
       } else {
         const trab = document.getElementById(`filtro-${modKey}-trabajador`);
         const reg = document.getElementById(`filtro-${modKey}-regional`);
@@ -3269,6 +3368,7 @@
         if (modKey === 'part') await cargarParticipaciones();
         if (modKey === 'csst') await cargarCompromisos();
         if (modKey === 'cm') await cargarCasosMedicos();
+        if (modKey === 'inc') await cargarIncapacidades();
       } catch (err) {
         console.error(`Error cargando datos de ${modKey}:`, err);
         showToast('Error al cargar datos', 'error');
@@ -4799,6 +4899,96 @@
       return 'badge-secondary';
     }
 
+    function escaparHtmlIncapacidad(valor) {
+      return String(valor == null ? '' : valor).replace(/[&<>"']/g, caracter => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[caracter]);
+    }
+
+    function actualizarFiltrosIncapacidades() {
+      const rows = dataStore.inc || [];
+      const selectRegional = document.getElementById('filtro-inc-regional');
+      const selectOperacion = document.getElementById('filtro-inc-operacion');
+      const regionalActual = selectRegional.value;
+      const operacionActual = selectOperacion.value;
+      const conteosRegional = {};
+      rows.forEach(row => {
+        if (row.sst_regional) conteosRegional[row.sst_regional] = (conteosRegional[row.sst_regional] || 0) + 1;
+      });
+      selectRegional.innerHTML = '<option value="">Todas</option>';
+      Object.keys(conteosRegional).sort((a, b) => a.localeCompare(b, 'es')).forEach(regional => {
+        const option = document.createElement('option');
+        option.value = regional;
+        option.textContent = `${regional} (${conteosRegional[regional]})`;
+        option.selected = regional === regionalActual;
+        selectRegional.appendChild(option);
+      });
+      onRegionalChange('inc');
+      if ([...selectOperacion.options].some(option => option.value === operacionActual)) {
+        selectOperacion.value = operacionActual;
+      }
+      aplicarFiltroYOrdenInc();
+    }
+
+    async function cargarIncapacidades() {
+      const params = new URLSearchParams({ usuario: CONFIG.usuarioId });
+      const response = await fetch(`/casosmedicos/api/incapacidades?${params.toString()}`);
+      const rows = await response.json();
+      if (!response.ok) throw new Error(rows.error || 'No fue posible cargar las incapacidades');
+      dataStore.inc = Array.isArray(rows) ? rows : [];
+      actualizarFiltrosIncapacidades();
+      actualizarBadgeFiltros('inc');
+      aplicarFiltroYOrdenInc();
+    }
+
+    function aplicarFiltroYOrdenInc() {
+      const buscar = document.getElementById('filtro-inc-trabajador').value.trim().toLocaleLowerCase('es');
+      const regional = document.getElementById('filtro-inc-regional').value;
+      const operacion = document.getElementById('filtro-inc-operacion').value;
+      const fechaDesde = document.getElementById('filtro-inc-desde').value;
+      const fechaHasta = document.getElementById('filtro-inc-hasta').value;
+      const filtrados = ordenarDatosSst('inc', (dataStore.inc || []).filter(row => {
+        const fecha = String(row.sst_fecha || '').slice(0, 10);
+        const texto = [row.sst_trabajador, row.sst_identificacion, row.sst_evento].join(' ').toLocaleLowerCase('es');
+        return (!buscar || texto.includes(buscar))
+          && (!regional || row.sst_regional === regional)
+          && (!operacion || row.sst_operacion === operacion)
+          && (!fechaDesde || (fecha && fecha >= fechaDesde))
+          && (!fechaHasta || (fecha && fecha <= fechaHasta));
+      }));
+      renderTablaIncapacidades(filtrados);
+    }
+
+    function renderTablaIncapacidades(items) {
+      const tbody = document.getElementById('tbody-inc');
+      document.getElementById('badge-total-inc').innerText = `${items.length} Registros`;
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted);">No se encontraron incapacidades.</td></tr>';
+        inicializarRedimensionColumnasSst();
+        return;
+      }
+
+      tbody.innerHTML = items.map(row => {
+        const fechaRaw = String(row.sst_fecha || '').slice(0, 10);
+        const fecha = fechaRaw ? fechaRaw.split('-').reverse().join('/') : '—';
+        const url = String(row.sst_url || '').trim();
+        const urlSegura = /^https?:\/\//i.test(url) || url.startsWith('/') ? escaparHtmlIncapacidad(url) : '';
+        const enlace = urlSegura
+          ? `<a href="${urlSegura}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">📄 Abrir incapacidad</a>`
+          : '<span style="color:var(--text-muted);">Sin documento</span>';
+        return `<tr>
+          <td>${escaparHtmlIncapacidad(fecha)}</td>
+          <td><strong>${escaparHtmlIncapacidad(limpiarNombreTrabajador(row.sst_trabajador))}</strong></td>
+          <td>${escaparHtmlIncapacidad(row.sst_identificacion || '—')}</td>
+          <td>${escaparHtmlIncapacidad(row.sst_regional || '—')}</td>
+          <td>${escaparHtmlIncapacidad(row.sst_operacion || '—')}</td>
+          <td>${escaparHtmlIncapacidad(row.sst_evento || '—')}</td>
+          <td>${enlace}</td>
+        </tr>`;
+      }).join('');
+      inicializarRedimensionColumnasSst();
+    }
+
     async function cargarCasosMedicos() {
       const tr = document.getElementById('filtro-cm-trabajador').value.trim();
       const reg = document.getElementById('filtro-cm-regional').value;
@@ -5133,8 +5323,8 @@
           bitacoraHtml += '</div>';
 
           return `
-            <div class="cm-case-card" style="background:#ffffff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;">
-              <div class="cm-case-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:12px;">
+            <details class="cm-case-card" style="background:#ffffff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;">
+              <summary class="cm-case-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:12px; cursor:pointer; list-style:none;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                   <span style="font-weight:800; font-size:1.05rem; color:var(--primary);">${c.codigo_caso}</span>
                   ${estadoBadge}
@@ -5144,16 +5334,17 @@
                   ${transitoBadge}
                   ${continuacionBadge}
                 </div>
-                <div>
-                  ${puedeEliminarCaso ? `
-                    <button type="button" class="btn btn-sm" onclick="eliminarCasoMedico(${c.id}, '${identificacion}')" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Eliminar este caso">
-                      🗑 Eliminar Caso
-                    </button>
-                  ` : ''}
-                </div>
-              </div>
+                <span aria-hidden="true" style="color:var(--text-muted);">⌄</span>
+              </summary>
 
               <div class="cm-case-body">
+                ${puedeEliminarCaso ? `
+                  <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); eliminarCasoMedico(${c.id}, '${identificacion}')" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Eliminar este caso">
+                      🗑 Eliminar Caso
+                    </button>
+                  </div>
+                ` : ''}
                 <!-- Diagnóstico CIE-10 -->
                 <div class="cm-diagnostico-box" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:0.85rem; color:#1e40af;">
                   <strong>🩺 Diagnóstico CIE-10:</strong> [${c.diagnostico || '—'}] ${c.diagnostico_desc || 'Sin descripción'}
@@ -5207,7 +5398,7 @@
                   <span>Fecha Registro: ${fRegFmt}</span>
                 </div>
               </div>
-            </div>
+            </details>
           `;
         }).join('');
 
@@ -5240,8 +5431,10 @@
         document.getElementById('modal-cm-bitacora-trabajador').innerText = `Colaborador: ${limpiarNombreTrabajador(nombreTrabajador)} (C.C. ${identificacion})`;
 
         document.getElementById('cm-bitacora-fecha').value = new Date().toISOString().slice(0, 10);
-        document.getElementById('cm-bitacora-tipo-contacto').value = 'Llamada';
-        document.getElementById('cm-bitacora-resultado').value = 'PENDIENTE';
+        const contactoInicial = catalogosCasosMedicos.tiposContacto.find(tc => tc.tipo.toLowerCase() === 'llamada');
+        const resultadoInicial = catalogosCasosMedicos.resultadosBitacora.find(r => r.resultado.toUpperCase() === 'PENDIENTE');
+        document.getElementById('cm-bitacora-tipo-contacto').value = contactoInicial ? String(contactoInicial.id) : '';
+        document.getElementById('cm-bitacora-resultado').value = resultadoInicial ? String(resultadoInicial.id) : '';
         document.getElementById('cm-bitacora-fecha-compromiso').value = '';
         document.getElementById('cm-bitacora-objetivo').value = '';
         document.getElementById('cm-bitacora-compromiso').value = '';
@@ -5384,7 +5577,7 @@
           const sTipoContacto = document.getElementById('cm-bitacora-tipo-contacto');
           if (sTipoContacto) {
             sTipoContacto.innerHTML = '<option value="">Seleccione tipo de contacto...</option>' +
-              data.tiposContacto.map(tc => `<option value="${tc.tipo}">${tc.tipo}</option>`).join('');
+              data.tiposContacto.map(tc => `<option value="${tc.id}">${tc.tipo}</option>`).join('');
           }
         }
 
@@ -5392,7 +5585,7 @@
           const sResultado = document.getElementById('cm-bitacora-resultado');
           if (sResultado) {
             sResultado.innerHTML = '<option value="">Seleccione resultado...</option>' +
-              data.resultadosBitacora.map(r => `<option value="${r.resultado}">${r.resultado}</option>`).join('');
+              data.resultadosBitacora.map(r => `<option value="${r.id}">${r.resultado}</option>`).join('');
           }
         }
 
@@ -5406,6 +5599,18 @@
 
     function onTipoEventoChange() {
       const tipoEventoVal = document.getElementById('cm-select-tipo-evento').value;
+      const tipoEventoNombre = document.getElementById('cm-select-tipo-evento').selectedOptions[0]?.textContent.trim().toUpperCase();
+      const grupoDiagnostico = document.getElementById('cm-group-diagnostico');
+      const inputDiagnostico = document.getElementById('cm-input-diag-search');
+      const esSeguimientoEmo = tipoEventoNombre === 'SEGUIMIENTO EMO';
+      grupoDiagnostico.style.display = esSeguimientoEmo ? 'none' : 'block';
+      inputDiagnostico.required = !esSeguimientoEmo;
+      if (esSeguimientoEmo) {
+        inputDiagnostico.value = '';
+        document.getElementById('cm-hidden-diagnostico').value = '';
+        document.getElementById('cm-diag-dropdown').style.display = 'none';
+        document.getElementById('cm-selected-diag-badge').style.display = 'none';
+      }
       const groupTransito = document.getElementById('cm-group-accidente-transito');
       const selTransito = document.getElementById('cm-select-accidente-transito');
       if (String(tipoEventoVal) === '4') {
@@ -5660,7 +5865,8 @@
       const tipoEventoId = document.getElementById('cm-select-tipo-evento').value;
       const diagnostico = document.getElementById('cm-hidden-diagnostico').value.trim();
 
-      if (!diagnostico) {
+      const tipoEventoNombre = document.getElementById('cm-select-tipo-evento').selectedOptions[0]?.textContent.trim().toUpperCase();
+      if (!diagnostico && tipoEventoNombre !== 'SEGUIMIENTO EMO') {
         showToast('Debes seleccionar un diagnóstico CIE-10', 'error');
         document.getElementById('cm-input-diag-search').focus();
         return;

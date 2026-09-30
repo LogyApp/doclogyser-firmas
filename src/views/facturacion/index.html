@@ -13,18 +13,18 @@
 
   <style>
     :root {
-      --primary: #064e3b;
-      --primary-gradient: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
-      --primary-dark: #022c22;
-      --primary-light: #0d9488;
-      --accent: #14b8a6;
-      --accent-hover: #0f766e;
-      --accent-soft: rgba(20, 184, 166, 0.12);
-      --bg: #f8fafc;
+      --primary: #3b0764;
+      --primary-gradient: linear-gradient(135deg, #2e0854 0%, #4a148c 50%, #6b21a8 100%);
+      --primary-dark: #1b0430;
+      --primary-light: #7c3aed;
+      --accent: #9333ea;
+      --accent-hover: #7e22ce;
+      --accent-soft: rgba(147, 51, 234, 0.12);
+      --bg: #fdfcff;
       --card-bg: #ffffff;
       --text: #0f172a;
       --text-muted: #64748b;
-      --border: #e2e8f0;
+      --border: #e9d5ff;
       --border-dark: #cbd5e1;
       --success: #16a34a;
       --warning: #f59e0b;
@@ -32,8 +32,8 @@
       --radius: 10px;
       --radius-sm: 6px;
       --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
-      --shadow-lg: 0 12px 20px -3px rgba(6, 78, 59, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --shadow: 0 4px 6px -1px rgba(59, 7, 100, 0.05), 0 2px 4px -2px rgba(59, 7, 100, 0.03);
+      --shadow-lg: 0 12px 20px -3px rgba(59, 7, 100, 0.20), 0 4px 6px -2px rgba(59, 7, 100, 0.06);
       --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -67,7 +67,7 @@
       top: 0;
       z-index: 100;
       border-right: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 4px 0 15px rgba(6, 78, 59, 0.15);
+      box-shadow: 4px 0 15px rgba(59, 7, 100, 0.18);
       transition: transform 0.3s ease;
     }
 
@@ -351,6 +351,24 @@
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
+    .filtro-field-quincena-highlight {
+      background: #f5f3ff !important;
+      border: 1.5px solid #a855f7 !important;
+      border-radius: 8px !important;
+      padding: 6px 10px !important;
+      box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.15) !important;
+    }
+    .filtro-field-quincena-highlight label {
+      color: #7e22ce !important;
+      font-weight: 700 !important;
+    }
+    .filtro-field-quincena-highlight select {
+      background: #ffffff !important;
+      border-color: #c084fc !important;
+      font-weight: 600 !important;
+      color: #581c87 !important;
+    }
+
     .btn-reset {
       margin-top: 14px;
       background: none;
@@ -388,7 +406,7 @@
     }
 
     .btn-primary:hover {
-      background: #047857;
+      background: #6b21a8;
       transform: translateY(-1px);
       box-shadow: 0 4px 8px rgba(6, 78, 59, 0.25);
     }
@@ -621,13 +639,13 @@
 
     /* Banner informativo */
     .info-banner {
-      background: #f0fdfa;
-      border: 1px solid #99f6e4;
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
       border-left: 4px solid var(--primary-light);
       padding: 12px 14px;
       border-radius: 6px;
       font-size: 0.83rem;
-      color: #0f766e;
+      color: #7e22ce;
       margin-top: 10px;
       line-height: 1.45;
     }
@@ -664,7 +682,7 @@
     .autocomplete-item {
       padding: 9px 12px; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid #f1f5f9;
     }
-    .autocomplete-item:hover { background: #f0fdfa; }
+    .autocomplete-item:hover { background: #faf5ff; }
 
     /* Móvil Header y Backdrop */
     .mobile-header {
@@ -699,6 +717,157 @@
       .filtros-grid { grid-template-columns: 1fr; }
       .table-container { max-height: 60vh; }
     }
+  
+    /* Category chips & switch */
+    .category-chip {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      user-select: none;
+      min-width: 135px;
+    }
+    .category-chip:hover {
+      background-color: #faf5ff;
+      border-color: #c084fc;
+      color: var(--primary);
+    }
+    .category-chip.active {
+      background: var(--primary-gradient);
+      border-color: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(59, 7, 100, 0.25);
+    }
+    .category-chip .chip-title {
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: 0.3px;
+    }
+    .category-chip .chip-sub {
+      font-size: 0.72rem;
+      opacity: 0.85;
+    }
+    .category-chip.active .chip-sub {
+      color: #f3e8ff;
+    }
+
+    /* Switch toggle */
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider.round {
+      border-radius: 20px;
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1;
+      transition: .3s;
+    }
+    .switch .slider.round:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    .switch input:checked + .slider {
+      background-color: var(--primary-light);
+    }
+    .switch input:checked + .slider:before {
+      transform: translateX(18px);
+    }
+
+    /* Detail View Styling */
+    .detail-container {
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .detail-header-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-top: 16px;
+    }
+    .detail-section {
+      background: #faf5ff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .detail-section-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(147, 51, 234, 0.15);
+      padding-bottom: 6px;
+    }
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
+      font-size: 0.84rem;
+    }
+    .detail-item:last-child {
+      border-bottom: none;
+    }
+    .detail-label {
+      color: var(--text-muted);
+      font-weight: 500;
+      flex: 1;
+    }
+    .detail-value {
+      font-weight: 600;
+      color: var(--text);
+      text-align: right;
+      flex: 1.2;
+      word-break: break-word;
+    }
+    .photo-thumb {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .photo-thumb:hover {
+      transform: scale(1.05);
+    }
+
   </style>
 </head>
 <body>
@@ -728,13 +897,21 @@
     </div>
 
     <ul class="nav-list">
-      <li class="nav-item active" id="navBloqueo" onclick="switchMainTab('bloqueo')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-        <span>Bloqueo de Datos</span>
+      <li class="nav-item active" id="navServicios" onclick="switchMainTab('servicios')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Servicios</span>
       </li>
-      <li class="nav-item" id="navClientes" onclick="switchMainTab('clientes')">
+      <li class="nav-item" id="navRecibos" onclick="switchMainTab('recibos')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path><path d="M16 8h-8"></path><path d="M16 12h-8"></path><path d="M11 16h-3"></path></svg>
+        <span>Recibos</span>
+      </li>
+      <li class="nav-item" id="navClientes" onclick="switchMainTab('clientescredito')">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
         <span>Clientes Crédito</span>
+      </li>
+      <li class="nav-item" id="navBloqueo" onclick="switchMainTab('bloqueo')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <span>Bloqueo de Datos</span>
       </li>
     </ul>
 
@@ -751,7 +928,513 @@
     <!-- ──────────────────────────────────────────────────────────
          PESTAÑA 1: BLOQUEO DE DATOS (SERVICIOS)
     ────────────────────────────────────────────────────────── -->
-    <div id="tab-content-bloqueo">
+    
+    <!-- ══════════════════════════════════════════════════════════
+         PESTAÑA: SERVICIOS (Dynamic_Servicios)
+    ══════════════════════════════════════════════════════════ -->
+    <div id="tab-content-servicios">
+      
+      <!-- SUBVISTA 1: LISTADO DE SERVICIOS -->
+      <div id="servicios-vista-listado">
+        <div class="page-hd">
+          <div>
+            <div class="page-title">Facturación · Servicios</div>
+            <div class="page-sub">Historial operativo de servicios prestados, liquidación de tarifas e impuestos</div>
+          </div>
+        </div>
+
+        <!-- Barra de Botones de Forma de Pago con Toggle de Sumas -->
+        <div class="card" style="padding: 16px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+            <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+              <span>💳</span> Forma de Pago
+            </div>
+            <!-- Switch Valor Base / Total Pago -->
+            <div style="display: flex; align-items: center; gap: 8px; background: #faf5ff; padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border);">
+              <span id="toggle-lbl-base" style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chk-modo-total').checked = false; toggleModoSumas(false);">Valor Base</span>
+              <label class="switch" style="position: relative; display: inline-block; width: 38px; height: 20px; margin: 0;">
+                <input type="checkbox" id="chk-modo-total" onchange="toggleModoSumas(this.checked)" checked>
+                <span class="slider round"></span>
+              </label>
+              <span id="toggle-lbl-total" style="font-size: 0.8rem; font-weight: 700; color: var(--primary); cursor: pointer;" onclick="document.getElementById('chk-modo-total').checked = true; toggleModoSumas(true);">Total Pago</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Category Chips for Forma de Pago -->
+          <div id="servicios-fpago-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="category-chip active" onclick="seleccionarFormaPago('')">
+              <span class="chip-title">📌 TODAS</span>
+              <span class="chip-sub">Cargando...</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros de Búsqueda Avanzados -->
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="servFiltrosToggle" onclick="toggleFiltrosServicios()">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="servFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="servFiltrosChevron">▸</span>
+          </div>
+          <div class="filtros-body" id="servFiltrosBody" style="display: none;">
+            <!-- Barra de búsqueda libre -->
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por IdRecibo, IdServicio, Placa, Transportadora, Proveedor, Cliente a Facturar, Nit o Razón Social</label>
+              <div style="position: relative;">
+                <input type="text" id="serv-filtro-q" placeholder="Ej: PEPSICO, 304-18921, NUW696, 900123456..." oninput="onServicioSearchInput(this.value)" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none; transition: border-color 0.2s;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+              </div>
+            </div>
+
+            <!-- Grid de selects -->
+            <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+              <div class="filtro-field">
+                <label>Desde (Hora Inicio)</label>
+                <input type="date" id="serv-filtro-desde" onchange="onServicioFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: var(--text);">
+              </div>
+              <div class="filtro-field">
+                <label>Hasta (Hora Inicio)</label>
+                <input type="date" id="serv-filtro-hasta" onchange="onServicioFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: var(--text);">
+              </div>
+              <div class="filtro-field">
+                <label>Año</label>
+                <select id="serv-filtro-anio" onchange="onServicioFilterChange()">
+                  <option value="2026" selected>2026</option>
+                  <option value="2025">2025</option>
+                  <option value="todos">Todos los años</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Mes</label>
+                <select id="serv-filtro-mes" onchange="onServicioFilterChange()">
+                  <option value="">Todos los meses</option>
+                </select>
+              </div>
+              <div class="filtro-field filtro-field-quincena-highlight">
+                <label>Quincena</label>
+                <select id="serv-filtro-quincena" onchange="onServicioFilterChange()">
+                  <option value="">Todas las quincenas</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Regional</label>
+                <select id="serv-filtro-regional" onchange="onServicioRegionalChange()">
+                  <option value="">Todas las regionales</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Operación</label>
+                <select id="serv-filtro-operacion" onchange="onServicioFilterChange()">
+                  <option value="">Todas las operaciones</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Usuario</label>
+                <select id="serv-filtro-usuario" onchange="onServicioFilterChange()">
+                  <option value="">Todos los usuarios</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Cliente a Facturar</label>
+                <select id="serv-filtro-cliente" onchange="onServicioFilterChange()">
+                  <option value="">Todos los clientes</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
+              <button type="button" class="btn-reset" onclick="resetFiltrosServicios()">↺ Limpiar filtros</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de 20 Columnas (Redimensionable y Ordenable) -->
+        <div class="table-container">
+          <table class="data-table" id="tabla-servicios">
+            <thead>
+              <tr>
+                <th style="width:140px" data-sort="fechaServicio">Fecha Servicio<span id="servSort-fechaServicio" class="sort-indicator"></span></th>
+                <th style="width:130px" data-sort="consecutivoRecibo">Consecutivo Recibo<span id="servSort-consecutivoRecibo" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="totalPago">Total Pago<span id="servSort-totalPago" class="sort-indicator"></span></th>
+                <th style="width:85px; text-align:right" data-sort="cantidad">Cantidad<span id="servSort-cantidad" class="sort-indicator"></span></th>
+                <th style="width:110px; text-align:right" data-sort="valorUnitario">Valor Unitario<span id="servSort-valorUnitario" class="sort-indicator"></span></th>
+                <th style="width:110px; text-align:right" data-sort="valorBase">V. Base<span id="servSort-valorBase" class="sort-indicator"></span></th>
+                <th style="width:100px; text-align:right" data-sort="iva">IVA<span id="servSort-iva" class="sort-indicator"></span></th>
+                <th style="width:110px; text-align:right" data-sort="valorReteFuente">V. ReteFuente<span id="servSort-valorReteFuente" class="sort-indicator"></span></th>
+                <th style="width:100px; text-align:right" data-sort="valorReteIVA">V. ReteIVA<span id="servSort-valorReteIVA" class="sort-indicator"></span></th>
+                <th style="width:100px; text-align:right" data-sort="valorReteICA">V. ReteICA<span id="servSort-valorReteICA" class="sort-indicator"></span></th>
+                <th style="width:130px" data-sort="actividad">Actividad<span id="servSort-actividad" class="sort-indicator"></span></th>
+                <th style="width:90px" data-sort="unidad">Unidad<span id="servSort-unidad" class="sort-indicator"></span></th>
+                <th style="width:90px" data-sort="placa">Placa<span id="servSort-placa" class="sort-indicator"></span></th>
+                <th style="width:100px" data-sort="vehiculo">Vehículo<span id="servSort-vehiculo" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="clienteAFacturar">Cliente a Facturar<span id="servSort-clienteAFacturar" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="transportadora">Transportadora<span id="servSort-transportadora" class="sort-indicator"></span></th>
+                <th style="width:140px" data-sort="proveedor">Proveedor<span id="servSort-proveedor" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="usuario">Usuario<span id="servSort-usuario" class="sort-indicator"></span></th>
+                <th style="width:140px" data-sort="fechaRegistro">Fecha Registro<span id="servSort-fechaRegistro" class="sort-indicator"></span></th>
+                <th style="width:140px" data-sort="quincena">Quincena<span id="servSort-quincena" class="sort-indicator"></span></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-servicios-body">
+              <tr><td colspan="20" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando servicios...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUBVISTA 2: VISTA DETALLE DE SERVICIO (&idservicio=...) -->
+      <div id="servicios-vista-detalle" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" onclick="volverAListadoServicios()" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: white;">
+              <span>←</span> Volver al listado de servicios
+            </button>
+            <button type="button" id="btn-volver-a-recibo" class="btn-secondary" onclick="volverAReciboOrigen()" style="display: none; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1.5px solid #a855f7; background: #faf5ff; color: #6b21a8;">
+              <span>←</span> Volver al recibo <strong id="btn-volver-a-recibo-id" style="margin-left: 4px;"></strong>
+            </button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="det-estado-badge" style="padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;">-</span>
+            <span id="det-consecutivo-badge" style="background: #f3e8ff; border: 1px solid #d8b4fe; color: var(--primary); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
+          </div>
+        </div>
+
+        <div class="detail-container">
+          <div class="detail-header-card">
+            <div>
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">ID Servicio</div>
+              <div id="det-id-servicio" style="font-size: 1.35rem; font-weight: 800; color: var(--primary);">-</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total a Pagar</div>
+              <div id="det-total-pago-header" style="font-size: 1.8rem; font-weight: 800; color: var(--primary);">$ 0</div>
+            </div>
+          </div>
+
+          <!-- Grid de Secciones de Información -->
+          <div class="detail-grid">
+            <!-- Sección 1: Liquidación Financiera -->
+            <div class="detail-section">
+              <div class="detail-section-title"><span>💰</span> Liquidación Financiera</div>
+              <div class="detail-item"><span class="detail-label">Cantidad:</span><span class="detail-value" id="det-cantidad">-</span></div>
+              <div class="detail-item"><span class="detail-label">Valor Unitario:</span><span class="detail-value" id="det-valor-unitario">-</span></div>
+              <div class="detail-item"><span class="detail-label">Valor Base:</span><span class="detail-value" id="det-valor-base" style="font-weight: 700; color: var(--primary);">-</span></div>
+              <div class="detail-item"><span class="detail-label">IVA (19%):</span><span class="detail-value" id="det-iva">-</span></div>
+              <div class="detail-item"><span class="detail-label">ReteFuente (4%):</span><span class="detail-value" id="det-retefuente" style="color: #e11d48;">-</span></div>
+              <div class="detail-item"><span class="detail-label">ReteIVA (15%):</span><span class="detail-value" id="det-reteiva" style="color: #e11d48;">-</span></div>
+              <div class="detail-item"><span class="detail-label">ReteICA:</span><span class="detail-value" id="det-reteica" style="color: #e11d48;">-</span></div>
+              <div class="detail-item" style="border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;"><span class="detail-label" style="font-weight: 700; color: var(--primary);">Total Pago:</span><span class="detail-value" id="det-total-pago-box" style="font-size: 1.05rem; font-weight: 800; color: var(--primary);">-</span></div>
+              <div class="detail-item"><span class="detail-label">Forma de Pago:</span><span class="detail-value" id="det-forma-pago">-</span></div>
+              <div class="detail-item"><span class="detail-label">Fecha Transferencia:</span><span class="detail-value" id="det-fecha-transferencia">-</span></div>
+            </div>
+
+            <!-- Sección 2: Operación y Tiempos -->
+            <div class="detail-section">
+              <div class="detail-section-title"><span>🚚</span> Operación y Tiempos</div>
+              <div class="detail-item"><span class="detail-label">Fecha Servicio:</span><span class="detail-value" id="det-hora-inicio">-</span></div>
+              <div class="detail-item"><span class="detail-label">Hora Final:</span><span class="detail-value" id="det-hora-final">-</span></div>
+              <div class="detail-item"><span class="detail-label">Duración / Horas:</span><span class="detail-value" id="det-duracion">-</span></div>
+              <div class="detail-item"><span class="detail-label">Operación:</span><span class="detail-value" id="det-operacion">-</span></div>
+              <div class="detail-item"><span class="detail-label">Regional:</span><span class="detail-value" id="det-regional">-</span></div>
+              <div class="detail-item"><span class="detail-label">Quincena:</span><span class="detail-value" id="det-quincena">-</span></div>
+              <div class="detail-item"><span class="detail-label">Actividad:</span><span class="detail-value" id="det-actividad">-</span></div>
+              <div class="detail-item"><span class="detail-label">Unidad:</span><span class="detail-value" id="det-unidad">-</span></div>
+              <div class="detail-item"><span class="detail-label">Placa:</span><span class="detail-value" id="det-placa">-</span></div>
+              <div class="detail-item"><span class="detail-label">Vehículo / Remolque:</span><span class="detail-value" id="det-vehiculo">-</span></div>
+              <div class="detail-item"><span class="detail-label">Muelle:</span><span class="detail-value" id="det-muelle">-</span></div>
+              <div class="detail-item"><span class="detail-label">Origen / Destino:</span><span class="detail-value" id="det-ruta">-</span></div>
+              <div class="detail-item"><span class="detail-label">Manifiesto:</span><span class="detail-value" id="det-manifiesto">-</span></div>
+            </div>
+
+            <!-- Sección 3: Cliente y Terceros -->
+            <div class="detail-section">
+              <div class="detail-section-title"><span>🏢</span> Cliente y Terceros</div>
+              <div class="detail-item"><span class="detail-label">Cliente a Facturar:</span><span class="detail-value" id="det-cliente-facturar">-</span></div>
+              <div class="detail-item"><span class="detail-label">NIT:</span><span class="detail-value" id="det-nit">-</span></div>
+              <div class="detail-item"><span class="detail-label">Razón Social:</span><span class="detail-value" id="det-razon-social">-</span></div>
+              <div class="detail-item"><span class="detail-label">Transportadora:</span><span class="detail-value" id="det-transportadora">-</span></div>
+              <div class="detail-item"><span class="detail-label">Proveedor:</span><span class="detail-value" id="det-proveedor">-</span></div>
+              <div class="detail-item"><span class="detail-label">Cliente por Placa:</span><span class="detail-value" id="det-cliente-placa">-</span></div>
+              <div class="detail-item"><span class="detail-label">Modalidad:</span><span class="detail-value" id="det-modalidad">-</span></div>
+              <div class="detail-item"><span class="detail-label">Teléfono / Email:</span><span class="detail-value" id="det-contacto">-</span></div>
+              <div class="detail-item"><span class="detail-label">Obs. Recibo:</span><span class="detail-value" id="det-obs-recibo">-</span></div>
+            </div>
+
+            <!-- Sección 4: Personal y Trazabilidad -->
+            <div class="detail-section">
+              <div class="detail-section-title"><span>👷</span> Personal y Trazabilidad</div>
+              <div class="detail-item"><span class="detail-label">Usuario Registrador:</span><span class="detail-value" id="det-usuario">-</span></div>
+              <div class="detail-item"><span class="detail-label">Fecha de Registro:</span><span class="detail-value" id="det-fecha-registro">-</span></div>
+              <div class="detail-item"><span class="detail-label">Grupo de Trabajo:</span><span class="detail-value" id="det-grupo">-</span></div>
+              <div class="detail-item"><span class="detail-label">Auxiliares:</span><span class="detail-value" id="det-auxiliares">-</span></div>
+              <div class="detail-item"><span class="detail-label">Notas:</span><span class="detail-value" id="det-notas">-</span></div>
+              <div class="detail-item"><span class="detail-label">Observaciones:</span><span class="detail-value" id="det-observaciones">-</span></div>
+              <div class="detail-item"><span class="detail-label">Edición / Validación:</span><span class="detail-value" id="det-edicion-val">-</span></div>
+            </div>
+          </div>
+
+          <!-- Sección 5: Evidencias y Documentos -->
+          <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 12px;"><span>📷</span> Evidencias y Documentos</div>
+            <div id="det-evidencias-container" style="display: flex; gap: 16px; flex-wrap: wrap;">
+              <!-- Fotos o mensaje si no hay fotos -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         PESTAÑA: RECIBOS (Dynamic_Recibos / vista_recibos_appsheet)
+    ══════════════════════════════════════════════════════════ -->
+    <div id="tab-content-recibos" style="display: none;">
+      
+      <!-- SUBVISTA 1: LISTADO DE RECIBOS -->
+      <div id="recibos-vista-listado">
+        <div class="page-hd">
+          <div>
+            <div class="page-title">Facturación · Recibos</div>
+            <div class="page-sub">Consulta de recibos consolidados, desglose de impuestos y validación operativa</div>
+          </div>
+        </div>
+
+        <!-- Barra de Botones de Modalidad con Toggle de Sumas -->
+        <div class="card" style="padding: 16px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+            <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+              <span>📑</span> Modalidad
+            </div>
+            <!-- Switch Subtotal / Total -->
+            <div style="display: flex; align-items: center; gap: 8px; background: #faf5ff; padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border);">
+              <span id="toggle-recib-lbl-subtotal" style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chk-recib-modo-total').checked = false; toggleRecibModoSumas(false);">Subtotal</span>
+              <label class="switch" style="position: relative; display: inline-block; width: 38px; height: 20px; margin: 0;">
+                <input type="checkbox" id="chk-recib-modo-total" onchange="toggleRecibModoSumas(this.checked)" checked>
+                <span class="slider round"></span>
+              </label>
+              <span id="toggle-recib-lbl-total" style="font-size: 0.8rem; font-weight: 700; color: var(--primary); cursor: pointer;" onclick="document.getElementById('chk-recib-modo-total').checked = true; toggleRecibModoSumas(true);">Total</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Category Chips for Modalidad -->
+          <div id="recibos-modalidad-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="category-chip active" onclick="seleccionarModalidadRecibo('')">
+              <span class="chip-title">📌 TODAS</span>
+              <span class="chip-sub">Cargando...</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros de Búsqueda Avanzados para Recibos -->
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="recibFiltrosToggle" onclick="toggleFiltrosRecibos()">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="recibFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="recibFiltrosChevron">▸</span>
+          </div>
+          <div class="filtros-body" id="recibFiltrosBody" style="display: none;">
+            <!-- Barra de búsqueda libre -->
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por IdRecibo, Consecutivo Recibo, Placa, Cliente a Facturar, Nit, Razón Social o Usuario</label>
+              <div style="position: relative;">
+                <input type="text" id="recib-filtro-q" placeholder="Ej: 305-06854, SKY772, GIANNINI, 1032497619..." oninput="onReciboSearchInput(this.value)" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none; transition: border-color 0.2s;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+              </div>
+            </div>
+
+            <!-- Grid de selects -->
+            <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+              <div class="filtro-field">
+                <label>Desde (Fecha Registro)</label>
+                <input type="date" id="recib-filtro-desde" onchange="onReciboFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: var(--text);">
+              </div>
+              <div class="filtro-field">
+                <label>Hasta (Fecha Registro)</label>
+                <input type="date" id="recib-filtro-hasta" onchange="onReciboFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: var(--text);">
+              </div>
+              <div class="filtro-field">
+                <label>Año</label>
+                <select id="recib-filtro-anio" onchange="onReciboFilterChange()">
+                  <option value="2026" selected>2026</option>
+                  <option value="2025">2025</option>
+                  <option value="todos">Todos los años</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Mes</label>
+                <select id="recib-filtro-mes" onchange="onReciboFilterChange()">
+                  <option value="">Todos los meses</option>
+                </select>
+              </div>
+              <div class="filtro-field filtro-field-quincena-highlight">
+                <label>Quincena</label>
+                <select id="recib-filtro-quincena" onchange="onReciboFilterChange()">
+                  <option value="">Todas las quincenas</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Regional</label>
+                <select id="recib-filtro-regional" onchange="onReciboRegionalChange()">
+                  <option value="">Todas las regionales</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Operación</label>
+                <select id="recib-filtro-operacion" onchange="onReciboFilterChange()">
+                  <option value="">Todas las operaciones</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Usuario</label>
+                <select id="recib-filtro-usuario" onchange="onReciboFilterChange()">
+                  <option value="">Todos los usuarios</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Cliente a Facturar</label>
+                <select id="recib-filtro-cliente" onchange="onReciboFilterChange()">
+                  <option value="">Todos los clientes</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
+              <button type="button" class="btn-reset" onclick="resetFiltrosRecibos()">↺ Limpiar filtros</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de 24 Columnas de Recibos (Redimensionable y Ordenable) -->
+        <div class="table-container">
+          <table class="data-table" id="tabla-recibos">
+            <thead>
+              <tr>
+                <th style="width:140px" data-sort="fecha_registro" class="sorted">Fecha Registro<span id="recSort-fecha_registro" class="sort-indicator"> ▼</span></th>
+                <th style="width:140px" data-sort="consecutivo_recibo">Consecutivo Recibo<span id="recSort-consecutivo_recibo" class="sort-indicator"></span></th>
+                <th style="width:130px" data-sort="total">Total<span id="recSort-total" class="sort-indicator"></span></th>
+                <th style="width:130px" data-sort="regional">Regional<span id="recSort-regional" class="sort-indicator"></span></th>
+                <th style="width:140px" data-sort="operacion">Operación<span id="recSort-operacion" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="modalidad">Modalidad<span id="recSort-modalidad" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="area">Área<span id="recSort-area" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="transportadora">Transportadora<span id="recSort-transportadora" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="proveedor">Proveedor<span id="recSort-proveedor" class="sort-indicator"></span></th>
+                <th style="width:100px" data-sort="placa">Placa<span id="recSort-placa" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="subtotal">Subtotal<span id="recSort-subtotal" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="iva">IVA<span id="recSort-iva" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="retefuente">Retefuente<span id="recSort-retefuente" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="reteiva">ReteIVA<span id="recSort-reteiva" class="sort-indicator"></span></th>
+                <th style="width:110px" data-sort="reteica">ReteICA<span id="recSort-reteica" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="cliente_credito">Cliente Crédito<span id="recSort-cliente_credito" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="categoria">Categoría<span id="recSort-categoria" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="nit">NIT<span id="recSort-nit" class="sort-indicator"></span></th>
+                <th style="width:180px" data-sort="nombres">Nombres / Razón Social<span id="recSort-nombres" class="sort-indicator"></span></th>
+                <th style="width:120px" data-sort="telefono">Teléfono<span id="recSort-telefono" class="sort-indicator"></span></th>
+                <th style="width:160px" data-sort="email">Email<span id="recSort-email" class="sort-indicator"></span></th>
+                <th style="width:150px" data-sort="usuario">Usuario<span id="recSort-usuario" class="sort-indicator"></span></th>
+                <th style="width:140px" data-sort="idrecibo">Id Recibo<span id="recSort-idrecibo" class="sort-indicator"></span></th>
+                <th style="width:130px" data-sort="quincena">Quincena<span id="recSort-quincena" class="sort-indicator"></span></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-recibos-body">
+              <tr><td colspan="24" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando recibos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUBVISTA 2: VISTA DETALLE DE RECIBO (&idrecibo=...) -->
+      <div id="recibos-vista-detalle" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <button type="button" class="btn-secondary" onclick="volverAListadoRecibos()" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: white;">
+            <span>←</span> Volver al listado de recibos
+          </button>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="det-recib-estado-badge" style="padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;">-</span>
+            <span id="det-recib-consecutivo-badge" style="background: #f3e8ff; border: 1px solid #d8b4fe; color: var(--primary); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
+          </div>
+        </div>
+
+        <div class="detail-container">
+          <div class="detail-header-card">
+            <div>
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Id Recibo</div>
+              <div id="det-recib-id" style="font-size: 1.35rem; font-weight: 800; color: var(--primary);">-</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Liquidación</div>
+              <div id="det-recib-total-header" style="font-size: 1.8rem; font-weight: 800; color: var(--primary);">$ 0</div>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <!-- Sección 1: Liquidación Financiera -->
+            <div class="detail-section">
+              <div class="detail-section-title"><span>💰</span> Liquidación Financiera</div>
+              <div class="detail-item"><span class="detail-label">Subtotal:</span><span class="detail-val" id="det-recib-subtotal" style="font-weight: 700;">$ 0</span></div>
+              <div class="detail-item"><span class="detail-label">IVA:</span><span class="detail-val" id="det-recib-iva">$ 0</span></div>
+              <div class="detail-item"><span class="detail-label">ReteFuente:</span><span class="detail-val" id="det-recib-retefuente" style="color: #e11d48;">$ 0</span></div>
+              <div class="detail-item"><span class="detail-label">ReteIVA:</span><span class="detail-val" id="det-recib-reteiva" style="color: #e11d48;">$ 0</span></div>
+              <div class="detail-item"><span class="detail-label">ReteICA:</span><span class="detail-val" id="det-recib-reteica" style="color: #e11d48;">$ 0</span></div>
+              <div class="detail-item" style="border-top: 2px solid var(--border); margin-top: 8px; padding-top: 8px;"><span class="detail-label" style="font-weight: 700; color: var(--primary);">Total:</span><span class="detail-val" id="det-recib-total" style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">$ 0</span></div>
+            </div>
+
+            <!-- Sección 2: Tercero y Facturación -->
+            <div class="detail-section">
+              <div class="detail-section-title"><span>🏢</span> Tercero / Cliente</div>
+              <div class="detail-item"><span class="detail-label">NIT:</span><span class="detail-val" id="det-recib-nit">-</span></div>
+              <div class="detail-item"><span class="detail-label">Razón Social:</span><span class="detail-val" id="det-recib-nombres" style="font-weight: 600;">-</span></div>
+              <div class="detail-item"><span class="detail-label">Cliente a Facturar:</span><span class="detail-val" id="det-recib-cliente-credito">-</span></div>
+              <div class="detail-item"><span class="detail-label">Categoría:</span><span class="detail-val" id="det-recib-categoria">-</span></div>
+              <div class="detail-item"><span class="detail-label">Teléfono:</span><span class="detail-val" id="det-recib-telefono">-</span></div>
+              <div class="detail-item"><span class="detail-label">Email:</span><span class="detail-val" id="det-recib-email">-</span></div>
+            </div>
+
+            <!-- Sección 3: Datos Operativos -->
+            <div class="detail-section">
+              <div class="detail-section-title"><span>🚛</span> Operación y Registro</div>
+              <div class="detail-item"><span class="detail-label">Regional:</span><span class="detail-val" id="det-recib-regional">-</span></div>
+              <div class="detail-item"><span class="detail-label">Operación:</span><span class="detail-val" id="det-recib-operacion">-</span></div>
+              <div class="detail-item"><span class="detail-label">Modalidad:</span><span class="detail-val" id="det-recib-modalidad">-</span></div>
+              <div class="detail-item"><span class="detail-label">Usuario Registro:</span><span class="detail-val" id="det-recib-usuario">-</span></div>
+              <div class="detail-item"><span class="detail-label">Fecha Registro:</span><span class="detail-val" id="det-recib-fecha">-</span></div>
+              <div class="detail-item"><span class="detail-label">Observaciones:</span><span class="detail-val" id="det-recib-observaciones">-</span></div>
+            </div>
+          </div>
+
+          <!-- Sección 4: Servicios Vinculados -->
+          <div style="margin-top: 24px;">
+            <div style="font-size: 0.95rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+              <span><span>📦</span> Servicios del Recibo (<span id="det-recib-servicios-count">0</span>)</span>
+            </div>
+            <div class="table-container">
+              <table class="data-table" id="tabla-det-recibo-servicios">
+                <thead>
+                  <tr>
+                    <th>Id Servicio</th>
+                    <th>Hora Inicio</th>
+                    <th>Actividad</th>
+                    <th>Placa</th>
+                    <th>Transportadora</th>
+                    <th>Cantidad</th>
+                    <th>Valor Unitario</th>
+                    <th>Valor Base</th>
+                    <th>Total Pago</th>
+                  </tr>
+                </thead>
+                <tbody id="det-recib-servicios-tbody">
+                  <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">Cargando servicios...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-content-bloqueo" style="display: none;">
       <div class="page-hd">
         <div>
           <div class="page-title">Facturación · Bloqueo de Datos</div>
@@ -791,7 +1474,7 @@
       <div class="card">
         <div class="filtros-toggle" id="bloqFiltrosToggle" onclick="toggleFiltrosBloqueo()">
           <span class="filtros-toggle-left">
-            &#128269; Filtros de Consulta
+            &#6b21a8; Filtros de Consulta
             <span class="filtros-badge" id="bloqFiltrosBadge">0</span>
           </span>
           <span class="filtros-chevron" id="bloqFiltrosChevron">&#9656;</span>
@@ -1247,19 +1930,78 @@
         });
       });
 
-      // Cargar datos
-      await Promise.all([cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo()]);
+      // Quincena actual por defecto para Servicios y Recibos
+      if (CONFIG.quincenaActual) {
+        const servQ = document.getElementById('serv-filtro-quincena');
+        if (servQ && !servQ.value) {
+          servQ.innerHTML = `<option value="">Todas las quincenas</option><option value="${esc(CONFIG.quincenaActual)}" selected>${esc(CONFIG.quincenaActual)}</option>`;
+          servQ.value = CONFIG.quincenaActual;
+        }
+        const recibQ = document.getElementById('recib-filtro-quincena');
+        if (recibQ && !recibQ.value) {
+          recibQ.innerHTML = `<option value="">Todas las quincenas</option><option value="${esc(CONFIG.quincenaActual)}" selected>${esc(CONFIG.quincenaActual)}</option>`;
+          recibQ.value = CONFIG.quincenaActual;
+        }
+      }
 
-      // Navegación directa por parámetro ?tab=bloqueo o ?tab=clientes
+      // Cargar datos iniciales
+      await Promise.all([cargarServicios(), cargarMetricasServicios(), cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo()]);
+
+      // Listeners de ordenamiento en tabla de servicios
+      document.querySelectorAll('#tabla-servicios thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortServiciosState.col === col) {
+            sortServiciosState.order = sortServiciosState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortServiciosState.col = col;
+            sortServiciosState.order = 'asc';
+          }
+          cargarServicios();
+        });
+      });
+
+      // Listeners de ordenamiento en tabla de recibos
+      document.querySelectorAll('#tabla-recibos thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortRecibosState.col === col) {
+            sortRecibosState.order = sortRecibosState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortRecibosState.col = col;
+            sortRecibosState.order = 'asc';
+          }
+          cargarRecibos();
+        });
+      });
+
+      // Navegación directa por parámetro ?tab=servicios | ?tab=recibos | ?tab=clientescredito | ?tab=bloqueo
       const paramsUrl = new URLSearchParams(window.location.search);
       const tabParam = (paramsUrl.get('tab') || '').toLowerCase().trim();
-      if (tabParam === 'clientes' || tabParam === 'clientes_credito' || tabParam === 'credito') {
-        switchMainTab('clientes');
-      } else {
+      const idServicioParam = paramsUrl.get('idservicio');
+      const idReciboParam = paramsUrl.get('idrecibo');
+
+      if (idServicioParam) {
+        switchMainTab('servicios');
+        verDetalleServicio(idServicioParam);
+      } else if (idReciboParam) {
+        switchMainTab('recibos');
+        verDetalleRecibo(idReciboParam);
+      } else if (tabParam === 'recibos' || tabParam === 'recibo') {
+        switchMainTab('recibos');
+      } else if (tabParam === 'clientescredito' || tabParam === 'clientes_credito' || tabParam === 'credito') {
+        switchMainTab('clientescredito');
+      } else if (tabParam === 'bloqueo' || tabParam === 'bloqueos') {
         switchMainTab('bloqueo');
+      } else {
+        switchMainTab('servicios');
       }
 
       // Inicializar columnas redimensionables
+      makeTableResizable(document.getElementById('tabla-servicios'));
+      makeTableResizable(document.getElementById('tabla-recibos'));
       makeTableResizable(document.getElementById('tabla-bloqueos'));
       makeTableResizable(document.getElementById('tabla-clientes'));
     });
@@ -1327,13 +2069,42 @@
     }
 
     function switchMainTab(tab) {
-      document.getElementById('navBloqueo').classList.toggle('active', tab === 'bloqueo');
-      document.getElementById('navClientes').classList.toggle('active', tab === 'clientes');
+      document.getElementById('navServicios')?.classList.toggle('active', tab === 'servicios');
+      document.getElementById('navRecibos')?.classList.toggle('active', tab === 'recibos');
+      document.getElementById('navClientes')?.classList.toggle('active', tab === 'clientescredito' || tab === 'clientes');
+      document.getElementById('navBloqueo')?.classList.toggle('active', tab === 'bloqueo');
+
+      document.getElementById('tab-content-servicios').style.display = tab === 'servicios' ? 'block' : 'none';
+      document.getElementById('tab-content-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
+      document.getElementById('tab-content-clientes').style.display = (tab === 'clientescredito' || tab === 'clientes') ? 'block' : 'none';
       document.getElementById('tab-content-bloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
-      document.getElementById('tab-content-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
+      
       toggleMobileSidebar(false);
-      if (tab === 'bloqueo') makeTableResizable(document.getElementById('tabla-bloqueos'));
-      if (tab === 'clientes') makeTableResizable(document.getElementById('tabla-clientes'));
+
+      // Sincronizar URL
+      const url = new URL(window.location);
+      url.searchParams.set('tab', tab === 'clientes' ? 'clientescredito' : tab);
+      if (tab !== 'servicios') {
+        url.searchParams.delete('idservicio');
+      }
+      if (tab !== 'recibos') {
+        url.searchParams.delete('idrecibo');
+      }
+      history.replaceState(null, '', url);
+
+      if (tab === 'servicios') {
+        makeTableResizable(document.getElementById('tabla-servicios'));
+      } else if (tab === 'recibos') {
+        makeTableResizable(document.getElementById('tabla-recibos'));
+        if (!recibosCargados) {
+          cargarRecibos();
+          cargarMetricasRecibos();
+        }
+      } else if (tab === 'bloqueo') {
+        makeTableResizable(document.getElementById('tabla-bloqueos'));
+      } else {
+        makeTableResizable(document.getElementById('tabla-clientes'));
+      }
     }
 
     function toggleFiltrosBloqueo() {
@@ -1607,7 +2378,7 @@
           if (infoBox) {
             const resumen = preseleccionadosInfo.resumenTexto || preseleccionadosInfo.infoText || 'Todos los clientes de crédito configurados';
             const total = (typeof preseleccionadosInfo.totalHabilitados !== 'undefined') ? preseleccionadosInfo.totalHabilitados : (preseleccionadosInfo.onesCount || 0);
-            infoBox.innerHTML = `<strong>Criterio de Clientes:</strong> ${esc(resumen)}<br><small style="color:#0f766e;opacity:.9;">Total clientes a bloquear en este grupo: <strong>${total}</strong></small>`;
+            infoBox.innerHTML = `<strong>Criterio de Clientes:</strong> ${esc(resumen)}<br><small style="color:#7e22ce;opacity:.9;">Total clientes a bloquear en este grupo: <strong>${total}</strong></small>`;
           }
         }
       } catch (e) {
@@ -1974,6 +2745,1048 @@
         }
       } catch (e) {
         alert('Error de conexión al eliminar el cliente.');
+      }
+    }
+
+  
+    // ══════════════════════════════════════════════════════════
+    // LÓGICA DE SERVICIOS (Dynamic_Servicios)
+    // ══════════════════════════════════════════════════════════
+    let allServicios = [];
+    let metricasServicios = null;
+    let modoSumas = 'total'; // 'base' o 'total'
+    let activeFormaPago = ''; // '' = todas, '0', '1', '2', '3', '4'
+    let searchDebounceTimeout = null;
+
+    let sortServiciosState = {
+      col: 'fechaRegistro',
+      order: 'desc'
+    };
+
+    const FORMAS_PAGO_NOMBRES = {
+      0: 'ANULADO',
+      1: 'EFECTIVO',
+      2: 'TRANSFERENCIA',
+      3: 'CRÉDITO',
+      4: 'PENDIENTE'
+    };
+
+    function toggleFiltrosServicios() {
+      const body = document.getElementById('servFiltrosBody');
+      const chevron = document.getElementById('servFiltrosChevron');
+      const isVisible = body.style.display === 'block';
+      body.style.display = isVisible ? 'none' : 'block';
+      chevron.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+    }
+
+    function toggleModoSumas(checked) {
+      modoSumas = checked ? 'total' : 'base';
+      const lblBase = document.getElementById('toggle-lbl-base');
+      const lblTotal = document.getElementById('toggle-lbl-total');
+      if (checked) {
+        lblBase.style.fontWeight = '500';
+        lblBase.style.color = 'var(--text-muted)';
+        lblTotal.style.fontWeight = '700';
+        lblTotal.style.color = 'var(--primary)';
+      } else {
+        lblBase.style.fontWeight = '700';
+        lblBase.style.color = 'var(--primary)';
+        lblTotal.style.fontWeight = '500';
+        lblTotal.style.color = 'var(--text-muted)';
+      }
+      renderFormaPagoButtons();
+      popularFiltrosDropdowns();
+    }
+
+    function seleccionarFormaPago(fp) {
+      activeFormaPago = fp;
+      renderFormaPagoButtons();
+      cargarServicios();
+      cargarMetricasServicios();
+    }
+
+    function onServicioSearchInput(val) {
+      if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+      searchDebounceTimeout = setTimeout(() => {
+        cargarServicios();
+        cargarMetricasServicios();
+      }, 350);
+    }
+
+    function onServicioFilterChange() {
+      cargarServicios();
+      cargarMetricasServicios();
+    }
+
+    function onServicioRegionalChange() {
+      // Filtrar operaciones que correspondan a esa regional si aplica
+      const regSel = document.getElementById('serv-filtro-regional').value;
+      const opSel = document.getElementById('serv-filtro-operacion');
+      if (CONFIG.opsPorRegional && CONFIG.opsPorRegional[regSel]) {
+        opSel.innerHTML = '<option value="">Todas las operaciones</option>' +
+          CONFIG.opsPorRegional[regSel].map(op => `<option value="${esc(op)}">${esc(op)}</option>`).join('');
+      }
+      cargarServicios();
+      cargarMetricasServicios();
+    }
+
+    function resetFiltrosServicios() {
+      document.getElementById('serv-filtro-q').value = '';
+      if (document.getElementById('serv-filtro-desde')) document.getElementById('serv-filtro-desde').value = '';
+      if (document.getElementById('serv-filtro-hasta')) document.getElementById('serv-filtro-hasta').value = '';
+      document.getElementById('serv-filtro-anio').value = '2026';
+      document.getElementById('serv-filtro-mes').value = '';
+      document.getElementById('serv-filtro-quincena').value = CONFIG.quincenaActual || '';
+      document.getElementById('serv-filtro-regional').value = '';
+      document.getElementById('serv-filtro-operacion').value = '';
+      document.getElementById('serv-filtro-usuario').value = '';
+      document.getElementById('serv-filtro-cliente').value = '';
+      activeFormaPago = '';
+      cargarServicios();
+      cargarMetricasServicios();
+    }
+
+    async function cargarServicios() {
+      const tbody = document.getElementById('tabla-servicios-body');
+      tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando servicios...</td></tr>';
+
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuario,
+          desde: document.getElementById('serv-filtro-desde')?.value || '',
+          hasta: document.getElementById('serv-filtro-hasta')?.value || '',
+          anio: document.getElementById('serv-filtro-anio')?.value || '2026',
+          mes: document.getElementById('serv-filtro-mes')?.value || '',
+          quincena: document.getElementById('serv-filtro-quincena')?.value || '',
+          regional: document.getElementById('serv-filtro-regional')?.value || '',
+          operacion: document.getElementById('serv-filtro-operacion')?.value || '',
+          usuarioServicio: document.getElementById('serv-filtro-usuario')?.value || '',
+          clienteAFacturar: document.getElementById('serv-filtro-cliente')?.value || '',
+          q: document.getElementById('serv-filtro-q')?.value || '',
+          sortCol: sortServiciosState.col,
+          sortDir: sortServiciosState.order,
+          limit: 500
+        });
+
+        if (activeFormaPago !== '') {
+          params.set('formaDePago', activeFormaPago);
+        }
+
+        const resp = await fetch(`/facturacion/api/servicios?${params.toString()}`);
+        if (!resp.ok) {
+          throw new Error('Error en el servidor al cargar servicios');
+        }
+        const data = await resp.json();
+        allServicios = data.rows || [];
+        renderServiciosTable();
+      } catch (err) {
+        console.error('[cargarServicios]', err);
+        tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: #e53e3e; padding: 24px;">Error al cargar datos de servicios.</td></tr>';
+      }
+    }
+
+    function renderServiciosTable() {
+      const tbody = document.getElementById('tabla-servicios-body');
+      if (!allServicios.length) {
+        tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron servicios con los filtros actuales.</td></tr>';
+        const cEl = document.getElementById('serv-count-mostrados');
+        const bEl = document.getElementById('serv-suma-base');
+        const tEl = document.getElementById('serv-suma-total');
+        if (cEl) cEl.textContent = '0';
+        if (bEl) bEl.textContent = '$ 0';
+        if (tEl) tEl.textContent = '$ 0';
+        return;
+      }
+
+      // Actualizar stats de la tabla si las tarjetas existen
+      let sumBase = 0;
+      let sumTotal = 0;
+      allServicios.forEach(s => {
+        sumBase += Number(s.valorBase || 0);
+        sumTotal += Number(s.totalPago || 0);
+      });
+
+      const countEl = document.getElementById('serv-count-mostrados');
+      const baseEl = document.getElementById('serv-suma-base');
+      const totalEl = document.getElementById('serv-suma-total');
+      if (countEl) countEl.textContent = allServicios.length;
+      if (baseEl) baseEl.textContent = '$ ' + formatMiles(Math.round(sumBase));
+      if (totalEl) totalEl.textContent = '$ ' + formatMiles(Math.round(sumTotal));
+
+      // Actualizar sort indicator
+      document.querySelectorAll('#tabla-servicios thead th[data-sort]').forEach(th => {
+        const ind = th.querySelector('.sort-indicator');
+        if (!ind) return;
+        const col = th.getAttribute('data-sort');
+        if (sortServiciosState.col === col) {
+          ind.textContent = sortServiciosState.order === 'asc' ? ' ▲' : ' ▼';
+          th.classList.add('sorted');
+        } else {
+          ind.textContent = '';
+          th.classList.remove('sorted');
+        }
+      });
+
+      tbody.innerHTML = allServicios.map(s => {
+        // Colores de estado
+        let colorEstado = '#4b5563';
+        if (s.estado === 'Yellow') colorEstado = '#d97706';
+        else if (s.estado === 'Green') colorEstado = '#16a34a';
+        else if (s.estado === 'Red') colorEstado = '#dc2626';
+
+        const reteFuenteHtml = s.valorReteFuente > 0 
+          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(s.valorReteFuente)}</span>` 
+          : '<span style="color: #94a3b8;">$ 0</span>';
+
+        const reteIvaHtml = s.valorReteIVA > 0 
+          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(s.valorReteIVA)}</span>` 
+          : '<span style="color: #94a3b8;">$ 0</span>';
+
+        const reteIcaHtml = s.valorReteICA > 0 
+          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(s.valorReteICA)}</span>` 
+          : '<span style="color: #94a3b8;">$ 0</span>';
+
+        return `
+          <tr onclick="verDetalleServicio('${esc(s.idServicio)}')" style="cursor: pointer;" title="Clic para ver detalle del servicio">
+            <td>${formatFechaBogota(s.fechaServicio)}</td>
+            <td style="color: ${colorEstado}; font-weight: 700;">${esc(s.consecutivoRecibo || '-')}</td>
+            <td style="color: ${colorEstado}; font-weight: 800; text-align: right;">$ ${formatMiles(s.totalPago)}</td>
+            <td style="text-align: right;">${s.cantidad != null ? s.cantidad : '-'}</td>
+            <td style="text-align: right;">$ ${formatMiles(s.valorUnitario)}</td>
+            <td style="text-align: right; font-weight: 600;">$ ${formatMiles(s.valorBase)}</td>
+            <td style="text-align: right;">$ ${formatMiles(s.iva)}</td>
+            <td style="text-align: right;">${reteFuenteHtml}</td>
+            <td style="text-align: right;">${reteIvaHtml}</td>
+            <td style="text-align: right;">${reteIcaHtml}</td>
+            <td>${esc(s.actividad || '-')}</td>
+            <td>${esc(s.unidad || '-')}</td>
+            <td>${esc(s.placa || '-')}</td>
+            <td>${esc(s.vehiculo || '-')}</td>
+            <td>${esc(s.clienteAFacturar || '-')}</td>
+            <td>${esc(s.transportadora || '-')}</td>
+            <td>${esc(s.proveedor || '-')}</td>
+            <td>${esc(s.usuario || '-')}</td>
+            <td>${formatFechaBogota(s.fechaRegistro)}</td>
+            <td>${esc(s.quincena || '-')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      makeTableResizable(document.getElementById('tabla-servicios'));
+    }
+
+    async function cargarMetricasServicios() {
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuario,
+          desde: document.getElementById('serv-filtro-desde')?.value || '',
+          hasta: document.getElementById('serv-filtro-hasta')?.value || '',
+          anio: document.getElementById('serv-filtro-anio')?.value || '2026',
+          mes: document.getElementById('serv-filtro-mes')?.value || '',
+          quincena: document.getElementById('serv-filtro-quincena')?.value || '',
+          regional: document.getElementById('serv-filtro-regional')?.value || '',
+          operacion: document.getElementById('serv-filtro-operacion')?.value || '',
+          usuarioServicio: document.getElementById('serv-filtro-usuario')?.value || '',
+          clienteAFacturar: document.getElementById('serv-filtro-cliente')?.value || '',
+          q: document.getElementById('serv-filtro-q')?.value || '',
+          formaDePago: activeFormaPago
+        });
+
+        const resp = await fetch(`/facturacion/api/servicios/metricas?${params.toString()}`);
+        if (!resp.ok) return;
+        metricasServicios = await resp.json();
+
+        renderFormaPagoButtons();
+        popularFiltrosDropdowns();
+      } catch (err) {
+        console.error('[cargarMetricasServicios]', err);
+      }
+    }
+
+    function renderFormaPagoButtons() {
+      const container = document.getElementById('servicios-fpago-buttons');
+      if (!container || !metricasServicios) return;
+
+      const fps = metricasServicios.formasDePago || [];
+      const totalGeneralCount = fps.reduce((a, b) => a + Number(b.totalCount || 0), 0);
+      const totalGeneralSum = fps.reduce((a, b) => a + Number(modoSumas === 'total' ? (b.sumTotalPago || 0) : (b.sumValorBase || 0)), 0);
+
+      let htmlButtons = `
+        <button type="button" class="category-chip ${activeFormaPago === '' ? 'active' : ''}" onclick="seleccionarFormaPago('')">
+          <span class="chip-title">📌 TODAS</span>
+          <span class="chip-sub">${formatMiles(totalGeneralCount)} serv · $ ${formatMiles(totalGeneralSum)}</span>
+        </button>
+      `;
+
+      // Formas de pago conocidas: 0, 1, 2, 3, 4
+      [0, 1, 2, 3, 4].forEach(code => {
+        const item = fps.find(f => Number(f.formaDePago) === code);
+        const count = item ? Number(item.totalCount || 0) : 0;
+        const sum = item ? Number(modoSumas === 'total' ? (item.sumTotalPago || 0) : (item.sumValorBase || 0)) : 0;
+        const name = FORMAS_PAGO_NOMBRES[code] || ('PAGO ' + code);
+
+        htmlButtons += `
+          <button type="button" class="category-chip ${String(activeFormaPago) === String(code) ? 'active' : ''}" onclick="seleccionarFormaPago('${code}')">
+            <span class="chip-title">${code}: ${name}</span>
+            <span class="chip-sub">${formatMiles(count)} serv · $ ${formatMiles(sum)}</span>
+          </button>
+        `;
+      });
+
+      container.innerHTML = htmlButtons;
+    }
+
+    function popularFiltrosDropdowns() {
+      if (!metricasServicios) return;
+
+      // 1. Regionales
+      const regSel = document.getElementById('serv-filtro-regional');
+      const curReg = regSel.value;
+      const regMap = {};
+      (metricasServicios.regionalesOps || []).forEach(r => {
+        if (!r.regional) return;
+        if (!regMap[r.regional]) regMap[r.regional] = { count: 0, sum: 0 };
+        regMap[r.regional].count += Number(r.totalCount || 0);
+        regMap[r.regional].sum += Number(modoSumas === 'total' ? (r.sumTotalPago || 0) : (r.sumValorBase || 0));
+      });
+      let regOpts = '<option value="">Todas las regionales</option>';
+      Object.keys(regMap).sort().forEach(reg => {
+        const m = regMap[reg];
+        regOpts += `<option value="${esc(reg)}" ${curReg === reg ? 'selected' : ''}>${esc(reg)} (${formatMiles(m.count)}) ($ ${formatMiles(m.sum)})</option>`;
+      });
+      regSel.innerHTML = regOpts;
+
+      // 2. Operaciones
+      const opSel = document.getElementById('serv-filtro-operacion');
+      const curOp = opSel.value;
+      let opOpts = '<option value="">Todas las operaciones</option>';
+      (metricasServicios.regionalesOps || []).forEach(o => {
+        if (!o.operacion) return;
+        const sum = modoSumas === 'total' ? Number(o.sumTotalPago || 0) : Number(o.sumValorBase || 0);
+        opOpts += `<option value="${esc(o.operacion)}" ${curOp === o.operacion ? 'selected' : ''}>${esc(o.operacion)} (${formatMiles(o.totalCount)}) ($ ${formatMiles(sum)})</option>`;
+      });
+      opSel.innerHTML = opOpts;
+
+      // 3. Meses (Descendente: Diciembre -> Enero)
+      const MESES_NOMBRES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const mesSel = document.getElementById('serv-filtro-mes');
+      const curMes = mesSel.value;
+      const mesMap = {};
+      (metricasServicios.fechas || []).forEach(f => {
+        if (!f.mes) return;
+        if (!mesMap[f.mes]) mesMap[f.mes] = { count: 0, sum: 0 };
+        mesMap[f.mes].count += Number(f.totalCount || 0);
+        mesMap[f.mes].sum += Number(modoSumas === 'total' ? (f.sumTotalPago || 0) : (f.sumValorBase || 0));
+      });
+      let mesOpts = '<option value="">Todos los meses</option>';
+      Object.keys(mesMap).map(Number).sort((a,b) => b - a).forEach(mNum => {
+        const m = mesMap[mNum];
+        const mNom = MESES_NOMBRES[mNum] || ('Mes ' + mNum);
+        mesOpts += `<option value="${mNum}" ${curMes === String(mNum) ? 'selected' : ''}>${mNom} (${formatMiles(m.count)}) ($ ${formatMiles(m.sum)})</option>`;
+      });
+      mesSel.innerHTML = mesOpts;
+
+      // 4. Quincenas (Descendente)
+      const qSel = document.getElementById('serv-filtro-quincena');
+      const curQ = qSel.value || CONFIG.quincenaActual || '';
+      const qMap = {};
+      (metricasServicios.fechas || []).forEach(item => {
+        if (!item.quincena) return;
+        if (!qMap[item.quincena]) qMap[item.quincena] = { count: 0, sum: 0 };
+        qMap[item.quincena].count += Number(item.totalCount || 0);
+        qMap[item.quincena].sum += Number(modoSumas === 'total' ? (item.sumTotalPago || 0) : (item.sumValorBase || 0));
+      });
+
+      const sortedQuincenas = Object.keys(qMap).sort((a, b) => {
+        const matchA = a.match(/^(\d+)\.\s*.*(Q[12])/i);
+        const matchB = b.match(/^(\d+)\.\s*.*(Q[12])/i);
+        if (matchA && matchB) {
+          const mesA = parseInt(matchA[1], 10);
+          const mesB = parseInt(matchB[1], 10);
+          if (mesA !== mesB) return mesB - mesA;
+          return matchB[2].localeCompare(matchA[2]);
+        }
+        return b.localeCompare(a);
+      });
+
+      let qOpts = '<option value="">Todas las quincenas</option>';
+      sortedQuincenas.forEach(qName => {
+        const m = qMap[qName];
+        qOpts += `<option value="${esc(qName)}" ${curQ === qName ? 'selected' : ''}>${esc(qName)} (${formatMiles(m.count)}) ($ ${formatMiles(m.sum)})</option>`;
+      });
+      if (curQ && !sortedQuincenas.includes(curQ)) {
+        qOpts += `<option value="${esc(curQ)}" selected>${esc(curQ)} (0) ($ 0)</option>`;
+      }
+      qSel.innerHTML = qOpts;
+
+      // 5. Clientes a Facturar (Ascendente A-Z)
+      const cliSel = document.getElementById('serv-filtro-cliente');
+      const curCli = cliSel.value;
+      const sortedClientes = [...(metricasServicios.clientes || [])].sort((a, b) => {
+        return (a.cliente || '').localeCompare(b.cliente || '', 'es', { sensitivity: 'base' });
+      });
+      let cliOpts = '<option value="">Todos los clientes</option>';
+      sortedClientes.forEach(c => {
+        const sum = modoSumas === 'total' ? Number(c.sumTotalPago || 0) : Number(c.sumValorBase || 0);
+        cliOpts += `<option value="${esc(c.cliente)}" ${curCli === c.cliente ? 'selected' : ''}>${esc(c.cliente)} (${formatMiles(c.totalCount)}) ($ ${formatMiles(sum)})</option>`;
+      });
+      cliSel.innerHTML = cliOpts;
+
+      // 6. Usuarios
+      const uSel = document.getElementById('serv-filtro-usuario');
+      const curU = uSel.value;
+      let uOpts = '<option value="">Todos los usuarios</option>';
+      (metricasServicios.usuarios || []).forEach(u => {
+        const sum = modoSumas === 'total' ? Number(u.sumTotalPago || 0) : Number(u.sumValorBase || 0);
+        uOpts += `<option value="${esc(u.usuario)}" ${curU === u.usuario ? 'selected' : ''}>${esc(u.usuario)} (${formatMiles(u.totalCount)}) ($ ${formatMiles(sum)})</option>`;
+      });
+      uSel.innerHTML = uOpts;
+    }
+
+    async function verDetalleServicio(idServicio) {
+      document.getElementById('servicios-vista-listado').style.display = 'none';
+      document.getElementById('servicios-vista-detalle').style.display = 'block';
+
+      // Botón para volver al recibo si se navegó desde el detalle del recibo
+      const btnVolverRecibo = document.getElementById('btn-volver-a-recibo');
+      const btnVolverReciboId = document.getElementById('btn-volver-a-recibo-id');
+      if (btnVolverRecibo) {
+        if (origenReciboId) {
+          btnVolverRecibo.style.display = 'inline-flex';
+          if (btnVolverReciboId) btnVolverReciboId.textContent = origenReciboId;
+        } else {
+          btnVolverRecibo.style.display = 'none';
+        }
+      }
+
+      // Sincronizar URL
+      const url = new URL(window.location);
+      url.searchParams.set('tab', 'servicios');
+      url.searchParams.set('idservicio', idServicio);
+      history.pushState(null, '', url);
+
+      document.getElementById('det-id-servicio').textContent = idServicio;
+      document.getElementById('det-total-pago-header').textContent = 'Cargando...';
+
+      try {
+        const resp = await fetch(`/facturacion/api/servicios/${encodeURIComponent(idServicio)}?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (!resp.ok) throw new Error('Servicio no encontrado');
+        const s = await resp.json();
+
+        // Estado Badge
+        const estadoBadge = document.getElementById('det-estado-badge');
+        estadoBadge.textContent = s.Estado || 'Sin Estado';
+        if (s.Estado === 'Yellow') {
+          estadoBadge.style.background = '#fef3c7';
+          estadoBadge.style.color = '#b45309';
+          estadoBadge.style.border = '1px solid #fde68a';
+        } else if (s.Estado === 'Green') {
+          estadoBadge.style.background = '#dcfce7';
+          estadoBadge.style.color = '#15803d';
+          estadoBadge.style.border = '1px solid #bbf7d0';
+        } else if (s.Estado === 'Red') {
+          estadoBadge.style.background = '#fee2e2';
+          estadoBadge.style.color = '#b91c1c';
+          estadoBadge.style.border = '1px solid #fca5a5';
+        } else {
+          estadoBadge.style.background = '#f1f5f9';
+          estadoBadge.style.color = '#475569';
+          estadoBadge.style.border = '1px solid #cbd5e1';
+        }
+
+        document.getElementById('det-consecutivo-badge').textContent = 'Recibo: ' + (s.consecutivoRecibo || 'Sin Consecutivo');
+        document.getElementById('det-total-pago-header').textContent = '$ ' + formatMiles(s.totalPago);
+        document.getElementById('det-total-pago-box').textContent = '$ ' + formatMiles(s.totalPago);
+
+        // Sección 1
+        document.getElementById('det-cantidad').textContent = s.Cantidad != null ? s.Cantidad : '-';
+        document.getElementById('det-valor-unitario').textContent = '$ ' + formatMiles(s['Valor Unitario']);
+        document.getElementById('det-valor-base').textContent = '$ ' + formatMiles(s.valorBase);
+        document.getElementById('det-iva').textContent = '$ ' + formatMiles(s.iva) + ' (19%)';
+        document.getElementById('det-retefuente').textContent = (s.valorReteFuente > 0 ? ('- $ ' + formatMiles(s.valorReteFuente)) : '$ 0') + (s.aplicaReteFuente ? ' (4%)' : ' (No aplica)');
+        document.getElementById('det-reteiva').textContent = (s.valorReteIVA > 0 ? ('- $ ' + formatMiles(s.valorReteIVA)) : '$ 0') + (s.aplicaReteIVA ? ' (15%)' : ' (No aplica)');
+        document.getElementById('det-reteica').textContent = (s.valorReteICA > 0 ? ('- $ ' + formatMiles(s.valorReteICA)) : '$ 0') + (s.aplicaReteICA ? ` (${(s.porcentajes?.reteIca * 100).toFixed(2)}%)` : ' (No aplica)');
+        document.getElementById('det-forma-pago').textContent = s['Forma De Pago'] != null ? `${s['Forma De Pago']}: ${FORMAS_PAGO_NOMBRES[s['Forma De Pago']] || ''}` : '-';
+        document.getElementById('det-fecha-transferencia').textContent = s['Fecha Transferencia'] || '-';
+
+        // Sección 2
+        document.getElementById('det-hora-inicio').textContent = formatFechaBogota(s['Hora Inicio']);
+        document.getElementById('det-hora-final').textContent = formatFechaBogota(s['Hora Final']);
+        document.getElementById('det-duracion').textContent = (s['Duración'] || '-') + (s['Total Hora'] ? ` (${s['Total Hora']})` : '');
+        document.getElementById('det-operacion').textContent = s.operacion || '-';
+        document.getElementById('det-regional').textContent = s.regionalNombre || '-';
+        document.getElementById('det-quincena').textContent = s.quincenaNombre || '-';
+        document.getElementById('det-actividad').textContent = s.actividadNombre || '-';
+        document.getElementById('det-unidad').textContent = s.Unidad || '-';
+        document.getElementById('det-placa').textContent = s.placaNombre || s.PL1 || '-';
+        document.getElementById('det-vehiculo').textContent = (s.Vehiculo || '-') + (s.Remolque ? ` / Remolque: ${s.Remolque}` : '');
+        document.getElementById('det-muelle').textContent = s.Muelle || '-';
+        document.getElementById('det-ruta').textContent = (s.Origen || '-') + ' ➔ ' + (s.Destino || '-');
+        document.getElementById('det-manifiesto').textContent = s.Manifiesto || '-';
+
+        // Sección 3
+        document.getElementById('det-cliente-facturar').textContent = s.clienteAFacturar || '-';
+        document.getElementById('det-nit').textContent = s.nit || '-';
+        document.getElementById('det-razon-social').textContent = s.razonSocial || '-';
+        document.getElementById('det-transportadora').textContent = s.transportadoraNombre || '-';
+        document.getElementById('det-proveedor').textContent = s.Proveedor || s['Proveedor Texto'] || '-';
+        document.getElementById('det-cliente-placa').textContent = s.clientePorPlaca || '-';
+        document.getElementById('det-modalidad').textContent = s.modalidad || '-';
+        document.getElementById('det-contacto').textContent = (s.reciboTelefono || '-') + (s.email ? ` / ${s.email}` : '');
+        document.getElementById('det-obs-recibo').textContent = s.reciboObservaciones || '-';
+
+        // Sección 4
+        document.getElementById('det-usuario').textContent = s.Usuario || '-';
+        document.getElementById('det-fecha-registro').textContent = formatFechaBogota(s.Fecha);
+        document.getElementById('det-grupo').textContent = s['Grupo Dtjo'] || '-';
+        document.getElementById('det-auxiliares').textContent = s.Auxiliares || '-';
+        document.getElementById('det-notas').textContent = s.Notas || '-';
+        document.getElementById('det-observaciones').textContent = s.Observaciones || '-';
+        document.getElementById('det-edicion-val').textContent = (s['Edición'] || '-') + (s.Validacion != null ? ` / Val: ${s.Validacion}` : '');
+
+        // Sección 5: Evidencias
+        const evidContainer = document.getElementById('det-evidencias-container');
+        const fotos = [
+          { label: 'Foto Documento', path: s['Foto Documento'] },
+          { label: 'Foto Transferencia', path: s['Foto Transferencia'] },
+          { label: 'Foto Evidencia', path: s['Foto Evidencia'] },
+          { label: 'Firma Recibido', path: s.Firma_Recibido }
+        ].filter(f => f.path && String(f.path).trim() !== '');
+
+        if (!fotos.length) {
+          evidContainer.innerHTML = '<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No hay evidencias fotográficas adjuntas para este servicio.</span>';
+        } else {
+          evidContainer.innerHTML = fotos.map(f => {
+            return `
+              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; text-align: center; max-width: 180px;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">${esc(f.label)}</div>
+                <div style="font-size: 0.72rem; word-break: break-all; color: var(--primary); font-family: monospace; padding: 4px; background: #faf5ff; border-radius: 4px;">${esc(f.path)}</div>
+              </div>
+            `;
+          }).join('');
+        }
+
+      } catch (err) {
+        console.error('[verDetalleServicio]', err);
+        alert('No se pudo cargar el detalle del servicio seleccionado.');
+        volverAListadoServicios();
+      }
+    }
+
+    let origenReciboId = null;
+
+    function abrirDetalleServicioDesdeRecibo(idServicio, idRecibo) {
+      origenReciboId = idRecibo;
+      switchMainTab('servicios');
+      verDetalleServicio(idServicio);
+    }
+
+    function volverAReciboOrigen() {
+      const targetId = origenReciboId;
+      origenReciboId = null;
+      const btnVolver = document.getElementById('btn-volver-a-recibo');
+      if (btnVolver) btnVolver.style.display = 'none';
+      if (targetId) {
+        switchMainTab('recibos');
+        verDetalleRecibo(targetId);
+      } else {
+        volverAListadoServicios();
+      }
+    }
+
+    function volverAListadoServicios() {
+      origenReciboId = null;
+      const btnVolver = document.getElementById('btn-volver-a-recibo');
+      if (btnVolver) btnVolver.style.display = 'none';
+
+      document.getElementById('servicios-vista-detalle').style.display = 'none';
+      document.getElementById('servicios-vista-listado').style.display = 'block';
+
+      // Sincronizar URL
+      const url = new URL(window.location);
+      url.searchParams.set('tab', 'servicios');
+      url.searchParams.delete('idservicio');
+      history.pushState(null, '', url);
+
+      makeTableResizable(document.getElementById('tabla-servicios'));
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // LÓGICA DE RECIBOS (Dynamic_Recibos / vista_recibos_appsheet)
+    // ══════════════════════════════════════════════════════════
+    let allRecibos = [];
+    let metricasRecibos = null;
+    let recibModoSumas = 'total'; // 'subtotal' o 'total'
+    let activeModalidadRecibo = ''; // '' = todas, 'RECAUDO', 'CREDITO'
+    let searchRecibDebounceTimeout = null;
+    let recibosCargados = false;
+
+    let sortRecibosState = {
+      col: 'fecha_registro',
+      order: 'desc'
+    };
+
+    function toggleFiltrosRecibos() {
+      const body = document.getElementById('recibFiltrosBody');
+      const chevron = document.getElementById('recibFiltrosChevron');
+      const isVisible = body.style.display === 'block';
+      body.style.display = isVisible ? 'none' : 'block';
+      chevron.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+    }
+
+    function toggleRecibModoSumas(checked) {
+      recibModoSumas = checked ? 'total' : 'subtotal';
+      const lblSub = document.getElementById('toggle-recib-lbl-subtotal');
+      const lblTot = document.getElementById('toggle-recib-lbl-total');
+      if (checked) {
+        lblSub.style.fontWeight = '500';
+        lblSub.style.color = 'var(--text-muted)';
+        lblTot.style.fontWeight = '700';
+        lblTot.style.color = 'var(--primary)';
+      } else {
+        lblSub.style.fontWeight = '700';
+        lblSub.style.color = 'var(--primary)';
+        lblTot.style.fontWeight = '500';
+        lblTot.style.color = 'var(--text-muted)';
+      }
+      renderModalidadButtons();
+      popularFiltrosDropdownsRecibos();
+    }
+
+    function seleccionarModalidadRecibo(mod) {
+      activeModalidadRecibo = mod;
+      renderModalidadButtons();
+      cargarRecibos();
+      cargarMetricasRecibos();
+    }
+
+    function onReciboSearchInput(val) {
+      if (searchRecibDebounceTimeout) clearTimeout(searchRecibDebounceTimeout);
+      searchRecibDebounceTimeout = setTimeout(() => {
+        cargarRecibos();
+        cargarMetricasRecibos();
+      }, 350);
+    }
+
+    function onReciboFilterChange() {
+      cargarRecibos();
+      cargarMetricasRecibos();
+    }
+
+    function onReciboRegionalChange() {
+      const regSel = document.getElementById('recib-filtro-regional').value;
+      const opSel = document.getElementById('recib-filtro-operacion');
+      if (CONFIG.opsPorRegional && CONFIG.opsPorRegional[regSel]) {
+        opSel.innerHTML = '<option value="">Todas las operaciones</option>' +
+          CONFIG.opsPorRegional[regSel].map(op => `<option value="${esc(op)}">${esc(op)}</option>`).join('');
+      }
+      cargarRecibos();
+      cargarMetricasRecibos();
+    }
+
+    function resetFiltrosRecibos() {
+      document.getElementById('recib-filtro-q').value = '';
+      if (document.getElementById('recib-filtro-desde')) document.getElementById('recib-filtro-desde').value = '';
+      if (document.getElementById('recib-filtro-hasta')) document.getElementById('recib-filtro-hasta').value = '';
+      document.getElementById('recib-filtro-anio').value = '2026';
+      document.getElementById('recib-filtro-mes').value = '';
+      document.getElementById('recib-filtro-quincena').value = CONFIG.quincenaActual || '';
+      document.getElementById('recib-filtro-regional').value = '';
+      document.getElementById('recib-filtro-operacion').value = '';
+      document.getElementById('recib-filtro-usuario').value = '';
+      document.getElementById('recib-filtro-cliente').value = '';
+      activeModalidadRecibo = '';
+      cargarRecibos();
+      cargarMetricasRecibos();
+    }
+
+    async function cargarRecibos() {
+      const tbody = document.getElementById('tabla-recibos-body');
+      tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando recibos...</td></tr>';
+
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuario,
+          desde: document.getElementById('recib-filtro-desde')?.value || '',
+          hasta: document.getElementById('recib-filtro-hasta')?.value || '',
+          anio: document.getElementById('recib-filtro-anio')?.value || '2026',
+          mes: document.getElementById('recib-filtro-mes')?.value || '',
+          quincena: document.getElementById('recib-filtro-quincena')?.value || '',
+          regional: document.getElementById('recib-filtro-regional')?.value || '',
+          operacion: document.getElementById('recib-filtro-operacion')?.value || '',
+          usuarioRecibo: document.getElementById('recib-filtro-usuario')?.value || '',
+          clienteAFacturar: document.getElementById('recib-filtro-cliente')?.value || '',
+          q: document.getElementById('recib-filtro-q')?.value || '',
+          sortCol: sortRecibosState.col,
+          sortDir: sortRecibosState.order,
+          limit: 500
+        });
+
+        if (activeModalidadRecibo !== '') {
+          params.set('modalidad', activeModalidadRecibo);
+        }
+
+        const resp = await fetch(`/facturacion/api/recibos?${params.toString()}`);
+        if (!resp.ok) {
+          throw new Error('Error en el servidor al cargar recibos');
+        }
+        const data = await resp.json();
+        allRecibos = data.rows || [];
+        recibosCargados = true;
+        renderRecibosTable();
+      } catch (err) {
+        console.error('[cargarRecibos]', err);
+        tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: #e53e3e; padding: 24px;">Error al cargar datos de recibos.</td></tr>';
+      }
+    }
+
+    function renderRecibosTable() {
+      const tbody = document.getElementById('tabla-recibos-body');
+      if (!allRecibos.length) {
+        tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron recibos con los filtros actuales.</td></tr>';
+        return;
+      }
+
+      // Actualizar sort indicator
+      document.querySelectorAll('#tabla-recibos thead th[data-sort]').forEach(th => {
+        const ind = th.querySelector('.sort-indicator');
+        if (!ind) return;
+        const col = th.getAttribute('data-sort');
+        if (sortRecibosState.col === col) {
+          ind.textContent = sortRecibosState.order === 'asc' ? ' ▲' : ' ▼';
+          th.classList.add('sorted');
+        } else {
+          ind.textContent = '';
+          th.classList.remove('sorted');
+        }
+      });
+
+      tbody.innerHTML = allRecibos.map(r => {
+        let colorEstado = '#4b5563';
+        let bgEstado = '#f3f4f6';
+        if (r.estado === 'Yellow') { colorEstado = '#d97706'; bgEstado = '#fef3c7'; }
+        else if (r.estado === 'Green') { colorEstado = '#16a34a'; bgEstado = '#dcfce7'; }
+        else if (r.estado === 'Red') { colorEstado = '#dc2626'; bgEstado = '#fee2e2'; }
+
+        const reteFuenteHtml = r.retefuente > 0 
+          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(r.retefuente)}</span>` 
+          : '<span style="color: #94a3b8;">$ 0</span>';
+
+        const reteIvaHtml = r.reteiva > 0 
+          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(r.reteiva)}</span>` 
+          : '<span style="color: #94a3b8;">$ 0</span>';
+
+        const reteIcaHtml = r.reteica > 0 
+          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(r.reteica)}</span>` 
+          : '<span style="color: #94a3b8;">$ 0</span>';
+
+        return `
+          <tr onclick="verDetalleRecibo('${esc(r.idrecibo)}')" style="cursor: pointer;" title="Clic para ver detalle de este recibo">
+            <td>${formatFechaBogota(r.fecha_registro)}</td>
+            <td style="font-weight: 700; color: ${colorEstado};">${esc(r.consecutivo_recibo || '-')}</td>
+            <td style="font-weight: 800; font-size: 0.92rem; color: ${colorEstado};">$ ${formatMiles(r.total)}</td>
+            <td>${esc(r.regional || '-')}</td>
+            <td>${esc(r.operacion || '-')}</td>
+            <td><span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; background: #faf5ff; border: 1px solid var(--border); color: var(--primary);">${esc(r.modalidad || '-')}</span></td>
+            <td>${esc(r.area || '-')}</td>
+            <td>${esc(r.transportadora || '-')}</td>
+            <td>${esc(r.proveedor || '-')}</td>
+            <td><strong>${esc(r.placa || '-')}</strong></td>
+            <td style="font-weight: 600;">$ ${formatMiles(r.subtotal)}</td>
+            <td>$ ${formatMiles(r.iva)}</td>
+            <td>${reteFuenteHtml}</td>
+            <td>${reteIvaHtml}</td>
+            <td>${reteIcaHtml}</td>
+            <td>${esc(r.cliente_credito || '-')}</td>
+            <td>${esc(r.categoria || '-')}</td>
+            <td>${esc(r.nit || '-')}</td>
+            <td>${esc(r.nombres || '-')}</td>
+            <td>${esc(r.telefono || '-')}</td>
+            <td>${esc(r.email || '-')}</td>
+            <td>${esc(r.usuario || '-')}</td>
+            <td style="font-family: monospace; font-size: 0.78rem; color: var(--text-muted);">${esc(r.idrecibo)}</td>
+            <td>${esc(r.quincena || '-')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      makeTableResizable(document.getElementById('tabla-recibos'));
+    }
+
+    async function cargarMetricasRecibos() {
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuario,
+          desde: document.getElementById('recib-filtro-desde')?.value || '',
+          hasta: document.getElementById('recib-filtro-hasta')?.value || '',
+          anio: document.getElementById('recib-filtro-anio')?.value || '2026',
+          mes: document.getElementById('recib-filtro-mes')?.value || '',
+          quincena: document.getElementById('recib-filtro-quincena')?.value || '',
+          regional: document.getElementById('recib-filtro-regional')?.value || '',
+          operacion: document.getElementById('recib-filtro-operacion')?.value || '',
+          usuarioRecibo: document.getElementById('recib-filtro-usuario')?.value || '',
+          clienteAFacturar: document.getElementById('recib-filtro-cliente')?.value || '',
+          q: document.getElementById('recib-filtro-q')?.value || '',
+          modalidad: activeModalidadRecibo
+        });
+
+        const resp = await fetch(`/facturacion/api/recibos/metricas?${params.toString()}`);
+        if (!resp.ok) return;
+        metricasRecibos = await resp.json();
+
+        renderModalidadButtons();
+        popularFiltrosDropdownsRecibos();
+      } catch (err) {
+        console.error('[cargarMetricasRecibos]', err);
+      }
+    }
+
+    function renderModalidadButtons() {
+      const container = document.getElementById('recibos-modalidad-buttons');
+      if (!container || !metricasRecibos) return;
+
+      const mods = metricasRecibos.modalidades || [];
+      const totalGeneralCount = mods.reduce((a, b) => a + Number(b.totalCount || 0), 0);
+      const totalGeneralSum = mods.reduce((a, b) => a + Number(recibModoSumas === 'total' ? (b.sumTotal || 0) : (b.sumSubtotal || 0)), 0);
+
+      let htmlButtons = `
+        <button type="button" class="category-chip ${activeModalidadRecibo === '' ? 'active' : ''}" onclick="seleccionarModalidadRecibo('')">
+          <span class="chip-title">📌 TODAS</span>
+          <span class="chip-sub">${formatMiles(totalGeneralCount)} recibos · $ ${formatMiles(totalGeneralSum)}</span>
+        </button>
+      `;
+
+      ['RECAUDO', 'CREDITO'].forEach(modKey => {
+        const item = mods.find(m => String(m.modalidad || '').toUpperCase() === modKey);
+        const count = item ? Number(item.totalCount || 0) : 0;
+        const sum = item ? Number(recibModoSumas === 'total' ? (item.sumTotal || 0) : (item.sumSubtotal || 0)) : 0;
+
+        htmlButtons += `
+          <button type="button" class="category-chip ${activeModalidadRecibo === modKey ? 'active' : ''}" onclick="seleccionarModalidadRecibo('${modKey}')">
+            <span class="chip-title">${modKey === 'RECAUDO' ? '💵 RECAUDO' : '💳 CRÉDITO'}</span>
+            <span class="chip-sub">${formatMiles(count)} recibos · $ ${formatMiles(sum)}</span>
+          </button>
+        `;
+      });
+
+      container.innerHTML = htmlButtons;
+    }
+
+    function popularFiltrosDropdownsRecibos() {
+      if (!metricasRecibos) return;
+
+      // 1. Regionales
+      const regSel = document.getElementById('recib-filtro-regional');
+      const curReg = regSel.value;
+      const regMap = {};
+      (metricasRecibos.regionalesOps || []).forEach(r => {
+        if (!r.regional) return;
+        if (!regMap[r.regional]) regMap[r.regional] = { count: 0, sum: 0 };
+        regMap[r.regional].count += Number(r.totalCount || 0);
+        regMap[r.regional].sum += Number(recibModoSumas === 'total' ? (r.sumTotal || 0) : (r.sumSubtotal || 0));
+      });
+      let regOpts = '<option value="">Todas las regionales</option>';
+      Object.keys(regMap).sort().forEach(reg => {
+        const m = regMap[reg];
+        regOpts += `<option value="${esc(reg)}" ${curReg === reg ? 'selected' : ''}>${esc(reg)} (${formatMiles(m.count)}) ($ ${formatMiles(m.sum)})</option>`;
+      });
+      regSel.innerHTML = regOpts;
+
+      // 2. Operaciones
+      const opSel = document.getElementById('recib-filtro-operacion');
+      const curOp = opSel.value;
+      let opOpts = '<option value="">Todas las operaciones</option>';
+      (metricasRecibos.regionalesOps || []).forEach(o => {
+        if (!o.operacion) return;
+        const sum = recibModoSumas === 'total' ? Number(o.sumTotal || 0) : Number(o.sumSubtotal || 0);
+        opOpts += `<option value="${esc(o.operacion)}" ${curOp === o.operacion ? 'selected' : ''}>${esc(o.operacion)} (${formatMiles(o.totalCount)}) ($ ${formatMiles(sum)})</option>`;
+      });
+      opSel.innerHTML = opOpts;
+
+      // 3. Meses (Descendente: Diciembre -> Enero)
+      const MESES_NOMBRES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const mesSel = document.getElementById('recib-filtro-mes');
+      const curMes = mesSel.value;
+      const mesMap = {};
+      (metricasRecibos.fechas || []).forEach(f => {
+        if (!f.mes) return;
+        if (!mesMap[f.mes]) mesMap[f.mes] = { count: 0, sum: 0 };
+        mesMap[f.mes].count += Number(f.totalCount || 0);
+        mesMap[f.mes].sum += Number(recibModoSumas === 'total' ? (f.sumTotal || 0) : (f.sumSubtotal || 0));
+      });
+      let mesOpts = '<option value="">Todos los meses</option>';
+      for (let m = 12; m >= 1; m--) {
+        if (mesMap[m]) {
+          const info = mesMap[m];
+          mesOpts += `<option value="${m}" ${String(curMes) === String(m) ? 'selected' : ''}>${m}. ${MESES_NOMBRES[m]} (${formatMiles(info.count)}) ($ ${formatMiles(info.sum)})</option>`;
+        }
+      }
+      mesSel.innerHTML = mesOpts;
+
+      // 4. Quincenas (Descendente)
+      const qSel = document.getElementById('recib-filtro-quincena');
+      const curQ = qSel.value || CONFIG.quincenaActual || '';
+      const qMap = {};
+      (metricasRecibos.fechas || []).forEach(f => {
+        if (!f.quincena) return;
+        if (!qMap[f.quincena]) qMap[f.quincena] = { count: 0, sum: 0 };
+        qMap[f.quincena].count += Number(f.totalCount || 0);
+        qMap[f.quincena].sum += Number(recibModoSumas === 'total' ? (f.sumTotal || 0) : (f.sumSubtotal || 0));
+      });
+      let qOpts = '<option value="">Todas las quincenas</option>';
+      const sortedRecibQ = Object.keys(qMap)
+        .sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
+      sortedRecibQ.forEach(q => {
+        const info = qMap[q];
+        qOpts += `<option value="${esc(q)}" ${curQ === q ? 'selected' : ''}>${esc(q)} (${formatMiles(info.count)}) ($ ${formatMiles(info.sum)})</option>`;
+      });
+      if (curQ && !sortedRecibQ.includes(curQ)) {
+        qOpts += `<option value="${esc(curQ)}" selected>${esc(curQ)} (0) ($ 0)</option>`;
+      }
+      qSel.innerHTML = qOpts;
+
+      // 5. Clientes a Facturar (Ascendente)
+      const cliSel = document.getElementById('recib-filtro-cliente');
+      const curCli = cliSel.value;
+      let cliOpts = '<option value="">Todos los clientes</option>';
+      (metricasRecibos.clientes || []).forEach(c => {
+        if (!c.cliente) return;
+        const sum = recibModoSumas === 'total' ? Number(c.sumTotal || 0) : Number(c.sumSubtotal || 0);
+        cliOpts += `<option value="${esc(c.cliente)}" ${curCli === c.cliente ? 'selected' : ''}>${esc(c.cliente)} (${formatMiles(c.totalCount)}) ($ ${formatMiles(sum)})</option>`;
+      });
+      cliSel.innerHTML = cliOpts;
+
+      // 6. Usuarios
+      const uSel = document.getElementById('recib-filtro-usuario');
+      const curU = uSel.value;
+      let uOpts = '<option value="">Todos los usuarios</option>';
+      (metricasRecibos.usuarios || []).forEach(u => {
+        if (!u.usuario) return;
+        const sum = recibModoSumas === 'total' ? Number(u.sumTotal || 0) : Number(u.sumSubtotal || 0);
+        uOpts += `<option value="${esc(u.usuario)}" ${curU === u.usuario ? 'selected' : ''}>${esc(u.usuario)} (${formatMiles(u.totalCount)}) ($ ${formatMiles(sum)})</option>`;
+      });
+      uSel.innerHTML = uOpts;
+    }
+
+    async function verDetalleRecibo(idRecibo) {
+      if (!idRecibo) return;
+      try {
+        const resp = await fetch(`/facturacion/api/recibos/${encodeURIComponent(idRecibo)}?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (!resp.ok) {
+          throw new Error('Error al consultar recibo');
+        }
+        const data = await resp.json();
+        const r = data.recibo;
+        const srvs = data.servicios || [];
+        const tots = data.totales || {};
+
+        document.getElementById('recibos-vista-listado').style.display = 'none';
+        document.getElementById('recibos-vista-detalle').style.display = 'block';
+
+        // Sincronizar URL
+        const url = new URL(window.location);
+        url.searchParams.set('tab', 'recibos');
+        url.searchParams.set('idrecibo', idRecibo);
+        history.pushState(null, '', url);
+
+        // Header info
+        document.getElementById('det-recib-id').textContent = r.IdRecibo;
+        document.getElementById('det-recib-total-header').textContent = '$ ' + formatMiles(tots.total);
+
+        const badgeEstado = document.getElementById('det-recib-estado-badge');
+        let col = '#4b5563', bg = '#f3f4f6';
+        if (srvs.some(s => s.Validacion === 2)) { col = '#d97706'; bg = '#fef3c7'; badgeEstado.textContent = 'Yellow'; }
+        else if (srvs.some(s => s.Validacion === 1)) { col = '#16a34a'; bg = '#dcfce7'; badgeEstado.textContent = 'Green'; }
+        else { col = '#dc2626'; bg = '#fee2e2'; badgeEstado.textContent = 'Red'; }
+        badgeEstado.style.color = col;
+        badgeEstado.style.background = bg;
+
+        document.getElementById('det-recib-consecutivo-badge').textContent = 'Recibo: ' + (r['Consecutivo Recibo'] || 'S/N');
+
+        // Liquidación
+        document.getElementById('det-recib-subtotal').textContent = '$ ' + formatMiles(tots.subtotal);
+        document.getElementById('det-recib-iva').textContent = '$ ' + formatMiles(tots.iva);
+        document.getElementById('det-recib-retefuente').textContent = (r.Retefuente === 'V' ? '- $ ' : '$ ') + formatMiles(tots.retefuente);
+        document.getElementById('det-recib-reteiva').textContent = (r.ReteIVA === 'V' ? '- $ ' : '$ ') + formatMiles(tots.reteiva);
+        document.getElementById('det-recib-reteica').textContent = (r.ReteICA === 'V' ? '- $ ' : '$ ') + formatMiles(tots.reteica);
+        document.getElementById('det-recib-total').textContent = '$ ' + formatMiles(tots.total);
+
+        // Tercero
+        document.getElementById('det-recib-nit').textContent = r.Nit || '-';
+        document.getElementById('det-recib-nombres').textContent = r.razonSocial || '-';
+        document.getElementById('det-recib-cliente-credito').textContent = r['Cliente a Facturar'] || '-';
+        document.getElementById('det-recib-categoria').textContent = r.categoriaNombre || r.Categoria || '-';
+        document.getElementById('det-recib-telefono').textContent = r.Telefono || '-';
+        document.getElementById('det-recib-email').textContent = r.Email || '-';
+
+        // Operativo
+        document.getElementById('det-recib-regional').textContent = r.regionalNombre || '-';
+        document.getElementById('det-recib-operacion').textContent = r['Operación'] || '-';
+        document.getElementById('det-recib-modalidad').textContent = r.Modalidad || '-';
+        document.getElementById('det-recib-usuario').textContent = r.Usuario || '-';
+        document.getElementById('det-recib-fecha').textContent = formatFechaBogota(r.Fecha);
+        document.getElementById('det-recib-observaciones').textContent = r.Observaciones || '-';
+
+        // Servicios table
+        document.getElementById('det-recib-servicios-count').textContent = srvs.length;
+        const tbodySrv = document.getElementById('det-recib-servicios-tbody');
+        if (!srvs.length) {
+          tbodySrv.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No hay servicios registrados para este recibo.</td></tr>';
+        } else {
+          tbodySrv.innerHTML = srvs.map(s => `
+            <tr onclick="abrirDetalleServicioDesdeRecibo('${esc(s.IdServicio)}', '${esc(r.IdRecibo)}')" style="cursor: pointer;" title="Clic para ver detalle completo de este servicio">
+              <td style="font-family: monospace; font-size: 0.8rem; color: var(--primary); font-weight: 700; text-decoration: underline;">${esc(s.IdServicio)}</td>
+              <td>${formatFechaBogota(s['Hora Inicio'])}</td>
+              <td>${esc(s.actividadNombre || s.Actividad || '-')}</td>
+              <td><strong>${esc(s.placaNombre || s.PL1 || '-')}</strong></td>
+              <td>${esc(s.transportadoraNombre || s.Transportadora || '-')}</td>
+              <td>${esc(s.Cantidad || 0)}</td>
+              <td>$ ${formatMiles(s['Valor Unitario'])}</td>
+              <td style="font-weight: 600;">$ ${formatMiles(s.valorBase)}</td>
+              <td style="font-weight: 700; color: var(--primary);">$ ${formatMiles(s.totalPago)}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('[verDetalleRecibo]', err);
+        alert('No se pudo cargar el detalle del recibo seleccionado.');
+        volverAListadoRecibos();
+      }
+    }
+
+    function volverAListadoRecibos() {
+      document.getElementById('recibos-vista-detalle').style.display = 'none';
+      document.getElementById('recibos-vista-listado').style.display = 'block';
+
+      // Sincronizar URL
+      const url = new URL(window.location);
+      url.searchParams.set('tab', 'recibos');
+      url.searchParams.delete('idrecibo');
+      history.pushState(null, '', url);
+
+      makeTableResizable(document.getElementById('tabla-recibos'));
+    }
+
+    function formatMiles(num) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Math.round(Number(num)).toLocaleString('es-CO');
+    }
+
+    function formatFechaBogota(dtStr) {
+      if (!dtStr) return '-';
+      try {
+        const d = new Date(dtStr);
+        if (isNaN(d.getTime())) return String(dtStr);
+        return d.toLocaleString('es-CO', {
+          timeZone: 'America/Bogota',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        return String(dtStr);
       }
     }
 
