@@ -1250,6 +1250,15 @@
       // Cargar datos
       await Promise.all([cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo()]);
 
+      // Navegación directa por parámetro ?tab=bloqueo o ?tab=clientes
+      const paramsUrl = new URLSearchParams(window.location.search);
+      const tabParam = (paramsUrl.get('tab') || '').toLowerCase().trim();
+      if (tabParam === 'clientes' || tabParam === 'clientes_credito' || tabParam === 'credito') {
+        switchMainTab('clientes');
+      } else {
+        switchMainTab('bloqueo');
+      }
+
       // Inicializar columnas redimensionables
       makeTableResizable(document.getElementById('tabla-bloqueos'));
       makeTableResizable(document.getElementById('tabla-clientes'));

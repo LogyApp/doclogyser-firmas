@@ -44,35 +44,39 @@ async function computarAccesoBloqueo(usuarioId) {
   };
 }
 
-// Servir la interfaz principal de bloqueodatos
-router.get('/', async (req, res) => {
-  try {
-    const { usuario } = req.query;
-    if (!usuario) {
-      return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
-    }
-
-    const acceso = await computarAccesoBloqueo(usuario);
-    if (!acceso) {
-      return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
-    }
-
-    const lowerBaseUrl = (req.baseUrl || '').toLowerCase();
-    if (lowerBaseUrl.includes('/formbloqueodatos')) {
-      return res.redirect(`/bloqueodatos?usuario=${encodeURIComponent(usuario)}`);
-    }
-
-    const html = fs.readFileSync(HTML_INDEX_PATH, 'utf8');
-    const config = JSON.stringify({
-      ...acceso,
-      regionalesFiltro: Object.keys(acceso.opsPorRegional),
-    }).replace(/<\/script>/gi, '<\\/script>');
-
-    res.send(html.replace('__CONFIG__', config));
-  } catch (err) {
-    console.error('[bloqueodatos] Error serving page:', err);
-    res.status(500).send('<h2>Error interno del servidor</h2>');
-  }
+// Ruta raíz deshabilitada: el módulo independiente ya no está disponible
+router.get('/', (req, res) => {
+  res.status(404).send(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="utf-8">
+      <title>Ruta no disponible — LOG&SER</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; }
+        .card { background: #fff; padding: 36px 32px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 480px; text-align: center; border: 1px solid #e2e8f0; }
+        .icon { font-size: 2.8rem; margin-bottom: 12px; }
+        h2 { color: #0f172a; margin: 0 0 10px 0; font-size: 1.25rem; font-weight: 700; }
+        p { color: #64748b; font-size: 0.92rem; line-height: 1.5; margin: 0 0 20px 0; }
+        .badge { display: inline-block; background: #fee2e2; color: #b91c1c; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-bottom: 14px; letter-spacing: 0.5px; }
+        .links { border-top: 1px solid #e2e8f0; padding-top: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; color: #475569; text-align: left; background: #f8fafc; border-radius: 8px; padding: 14px; }
+        .link-item code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; color: #0f172a; word-break: break-all; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="icon">🔒</div>
+        <span class="badge">RUTA DESHABILITADA (404)</span>
+        <h2>Módulo independiente no disponible</h2>
+        <p>El módulo independiente de <strong>Bloqueo de Datos</strong> ha sido desactivado. Esta funcionalidad ahora opera exclusivamente de forma integrada dentro de:</p>
+        <div class="links">
+          <div class="link-item"><strong>Nómina (Asistencia):</strong><br><code>BASE_URL/nomina?usuario=ID&tab=bloqueo</code></div>
+          <div class="link-item" style="margin-top:6px;"><strong>Facturación (Servicios):</strong><br><code>BASE_URL/facturacion?usuario=ID&tab=bloqueo</code></div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 // API: Obtener quincenas activas (del año actual)
