@@ -27,12 +27,13 @@ router.get('/api/incapacidades', async (req, res) => {
       return columna ? columna.Field : null;
     };
 
-    const eventoCol = encontrarColumna('Evento');
+    const eventoCol = encontrarColumna('Evento', 'Novedad');
     const operacionCol = encontrarColumna('Operación', 'Operacion', 'Origen');
     const regionalCol = encontrarColumna('Regional');
     const fechaCol = encontrarColumna('Día', 'Dia', 'Fecha');
     const trabajadorCol = encontrarColumna('Trabajador', 'Nombre');
     const identificacionCol = encontrarColumna('Cédula', 'Cedula', 'Identificación', 'Identificacion');
+    const diagnosticoCol = encontrarColumna('Cod Diagnostico', 'Código Diagnóstico', 'Codigo Diagnostico');
     const urlCol = encontrarColumna('Url Incapacidad');
 
     if (!eventoCol || !urlCol) {
@@ -56,25 +57,22 @@ router.get('/api/incapacidades', async (req, res) => {
     }
 
     const [rows] = await pool.execute(`
-      SELECT DISTINCT da.*,
-        ${opExpr} AS __sst_operacion,
-        ${regionalExpr} AS __sst_regional
+      SELECT DISTINCT
+        ${fechaCol ? `da.${citarIdentificador(fechaCol)}` : 'NULL'} AS sst_fecha,
+        ${trabajadorCol ? `da.${citarIdentificador(trabajadorCol)}` : 'NULL'} AS sst_trabajador,
+        ${identificacionCol ? `da.${citarIdentificador(identificacionCol)}` : 'NULL'} AS sst_identificacion,
+        ${regionalExpr} AS sst_regional,
+        ${opExpr} AS sst_operacion,
+        da.${citarIdentificador(eventoCol)} AS sst_evento,
+        ${diagnosticoCol ? `da.${citarIdentificador(diagnosticoCol)}` : 'NULL'} AS sst_cod_diagnostico,
+        da.${citarIdentificador(urlCol)} AS sst_url
       FROM Dynamic_Asistencia da
       ${joins}
       WHERE ${where.join(' AND ')}
       ${fechaCol ? `ORDER BY da.${citarIdentificador(fechaCol)} DESC` : ''}
     `, params);
 
-    res.json(rows.map(row => ({
-      ...row,
-      sst_fecha: fechaCol ? row[fechaCol] : null,
-      sst_trabajador: trabajadorCol ? row[trabajadorCol] : null,
-      sst_identificacion: identificacionCol ? row[identificacionCol] : null,
-      sst_regional: row.__sst_regional,
-      sst_operacion: row.__sst_operacion,
-      sst_evento: row[eventoCol],
-      sst_url: row[urlCol]
-    })));
+    res.json(rows);
   } catch (err) {
     console.error('[casosmedicos] Error en /api/incapacidades:', err);
     res.status(500).json({ error: err.message });

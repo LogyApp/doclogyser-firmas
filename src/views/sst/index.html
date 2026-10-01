@@ -1471,22 +1471,14 @@
         <span>Compromiso SST</span>
       </li>
 
-      <!-- 6. Casos Médicos -->
-      <li class="nav-item" data-tab="casosmedicos" onclick="switchTab('casosmedicos')">
-        <div class="nav-icon" title="Casos Médicos">
+      <!-- 6. Gestión Médica -->
+      <li class="nav-item" data-tab="gestionmedica" onclick="switchTab('gestionmedica')">
+        <div class="nav-icon" title="Gestión Médica">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>
           </svg>
         </div>
-        <span>Casos Médicos</span>
-      </li>
-      <li class="nav-item" data-tab="incapacidades" onclick="switchTab('incapacidades')">
-        <div class="nav-icon" title="Incapacidades">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-6 14h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/>
-          </svg>
-        </div>
-        <span>Incapacidades</span>
+        <span>Gestión Médica</span>
       </li>
     </ul>
 
@@ -2151,9 +2143,14 @@
     </section>
 
     <!-- ──────────────────────────────────────────────────────────
-         PESTAÑA 6: CASOS MÉDICOS
+         PESTAÑA 6: GESTIÓN MÉDICA
     ────────────────────────────────────────────────────────── -->
-    <section class="tab-pane" id="pane-casosmedicos" style="display: none;">
+    <section class="tab-pane" id="pane-gestionmedica" style="display: none;">
+      <div class="subtabs-bar" role="tablist" aria-label="Gestión Médica">
+        <button type="button" class="subtab-btn active" id="subtab-btn-gestion-casos" role="tab" aria-selected="true" onclick="switchGestionMedicaSubtab('casosmedicos')">Casos Médicos</button>
+        <button type="button" class="subtab-btn" id="subtab-btn-gestion-incapacidades" role="tab" aria-selected="false" onclick="switchGestionMedicaSubtab('incapacidades')">Incapacidades</button>
+      </div>
+      <div id="pane-casosmedicos" role="tabpanel">
       <!-- VISTA 1: LISTADO Y FILTROS DE COLABORADORES -->
       <div id="cm-view-listado">
         <div class="tab-header">
@@ -2314,9 +2311,9 @@
           <!-- Generado dinámicamente -->
         </div>
       </div>
-    </section>
+      </div>
 
-    <section class="tab-pane" id="pane-incapacidades" style="display: none;">
+      <div id="pane-incapacidades" role="tabpanel" style="display: none;">
       <div class="tab-header">
         <div class="tab-header-left">
           <h1 class="tab-title"><span>🩹 Incapacidades</span><span class="badge badge-info" id="badge-total-inc">0 Registros</span></h1>
@@ -2349,11 +2346,13 @@
               <th style="width: 150px; min-width: 110px;" class="sortable" onclick="toggleSortSst('inc', 'regional')"><div class="th-content"><span>Regional</span><span class="sort-icon" id="sort-icon-inc-regional">↕</span></div><div class="col-resizer"></div></th>
               <th style="width: 170px; min-width: 120px;" class="sortable" onclick="toggleSortSst('inc', 'operacion')"><div class="th-content"><span>Operación</span><span class="sort-icon" id="sort-icon-inc-operacion">↕</span></div><div class="col-resizer"></div></th>
               <th style="width: 190px; min-width: 140px;" class="sortable" onclick="toggleSortSst('inc', 'evento')"><div class="th-content"><span>Evento</span><span class="sort-icon" id="sort-icon-inc-evento">↕</span></div><div class="col-resizer"></div></th>
+              <th style="width: 150px; min-width: 110px;" class="sortable" onclick="toggleSortSst('inc', 'diagnostico')"><div class="th-content"><span>Cod Diagnostico</span><span class="sort-icon" id="sort-icon-inc-diagnostico">↕</span></div><div class="col-resizer"></div></th>
               <th style="width: 150px; min-width: 110px;"><div class="th-content"><span>Documento</span></div><div class="col-resizer"></div></th>
             </tr></thead>
-            <tbody id="tbody-inc"><tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted);">Cargando incapacidades...</td></tr></tbody>
+            <tbody id="tbody-inc"><tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">Cargando incapacidades...</td></tr></tbody>
           </table>
         </div>
+      </div>
       </div>
     </section>
 
@@ -2768,6 +2767,7 @@
   <!-- Lógica Integral de la Interfaz SST -->
   <script>
     let currentTab = 'evaluacion';
+    let subtabGestionMedica = 'casosmedicos';
     let dataStore = {
       ev: [],
       cap: [],
@@ -2870,12 +2870,13 @@
       }
       if (modKey === 'inc') {
         switch (col) {
-          case 'fecha': return item.sst_fecha || '';
+          case 'fecha': return item.sst_fecha_desde || item.sst_fecha || '';
           case 'trabajador': return limpiarNombreTrabajador(item.sst_trabajador || '').toLowerCase();
           case 'identificacion': return String(item.sst_identificacion || '').toLowerCase();
           case 'regional': return String(item.sst_regional || '').toLowerCase();
           case 'operacion': return String(item.sst_operacion || '').toLowerCase();
           case 'evento': return String(item.sst_evento || '').toLowerCase();
+          case 'diagnostico': return (item.sst_cod_diagnosticos || []).join(' ').toLowerCase();
           default: return String(item[col] || '').toLowerCase();
         }
       }
@@ -3152,16 +3153,37 @@
         toggleMobileSidebar(false);
       }
 
-      if (tabId === 'casosmedicos' && typeof actualizarPermisosBotonesCm === 'function') {
+      if (tabId === 'gestionmedica' && typeof actualizarPermisosBotonesCm === 'function') {
         actualizarPermisosBotonesCm();
       }
 
-      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : tabId === 'casosmedicos' ? 'cm' : tabId === 'incapacidades' ? 'inc' : 'csst';
+      if (tabId === 'gestionmedica') {
+        switchGestionMedicaSubtab(subtabGestionMedica);
+        return;
+      }
+
+      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
       actualizarIconosOrdenSst(key);
       inicializarRedimensionColumnasSst();
       if (!dataStore[key].length) {
         cargarDatos(key);
       }
+    }
+
+    function switchGestionMedicaSubtab(subtab) {
+      subtabGestionMedica = subtab === 'incapacidades' ? 'incapacidades' : 'casosmedicos';
+      const esCasos = subtabGestionMedica === 'casosmedicos';
+      document.getElementById('subtab-btn-gestion-casos').classList.toggle('active', esCasos);
+      document.getElementById('subtab-btn-gestion-casos').setAttribute('aria-selected', String(esCasos));
+      document.getElementById('subtab-btn-gestion-incapacidades').classList.toggle('active', !esCasos);
+      document.getElementById('subtab-btn-gestion-incapacidades').setAttribute('aria-selected', String(!esCasos));
+      document.getElementById('pane-casosmedicos').style.display = esCasos ? 'block' : 'none';
+      document.getElementById('pane-incapacidades').style.display = esCasos ? 'none' : 'block';
+
+      const key = esCasos ? 'cm' : 'inc';
+      actualizarIconosOrdenSst(key);
+      inicializarRedimensionColumnasSst();
+      if (!dataStore[key].length) cargarDatos(key);
     }
 
     function toggleMobileSidebar(forceState) {
@@ -3186,7 +3208,7 @@
       const icon = document.getElementById('btn-actualizar-global-icon');
       if (icon) icon.style.animation = 'spin 0.8s linear infinite';
 
-      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'casosmedicos' ? 'cm' : currentTab === 'incapacidades' ? 'inc' : 'csst';
+      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'gestionmedica' ? (subtabGestionMedica === 'casosmedicos' ? 'cm' : 'inc') : 'csst';
       cargarDatos(key).finally(() => {
         if (icon) icon.style.animation = 'none';
       });
@@ -3371,7 +3393,7 @@
         if (modKey === 'inc') await cargarIncapacidades();
       } catch (err) {
         console.error(`Error cargando datos de ${modKey}:`, err);
-        showToast('Error al cargar datos', 'error');
+        showToast(modKey === 'inc' && err.message ? err.message : 'Error al cargar datos', 'error');
       } finally {
         hideLoading();
       }
@@ -4905,6 +4927,77 @@
       })[caracter]);
     }
 
+    function fechaClaveIncapacidad(valor) {
+      if (!valor) return '';
+      if (valor instanceof Date) return valor.toISOString().slice(0, 10);
+      const iso = String(valor).match(/^\d{4}-\d{2}-\d{2}/);
+      if (iso) return iso[0];
+      const fecha = new Date(valor);
+      return Number.isNaN(fecha.getTime()) ? '' : fecha.toISOString().slice(0, 10);
+    }
+
+    function agruparIncapacidades(rows) {
+      const ordenados = (rows || []).map((row, index) => ({
+        ...row,
+        __fechaClave: fechaClaveIncapacidad(row.sst_fecha),
+        __indiceOriginal: index
+      })).sort((a, b) => String(a.sst_identificacion || '').localeCompare(String(b.sst_identificacion || ''))
+        || a.__fechaClave.localeCompare(b.__fechaClave)
+        || a.__indiceOriginal - b.__indiceOriginal);
+      const grupos = [];
+      let actual = null;
+
+      ordenados.forEach((row, index) => {
+        const identificacion = String(row.sst_identificacion || '').trim();
+        const fechaMs = row.__fechaClave ? Date.parse(`${row.__fechaClave}T00:00:00Z`) : NaN;
+        const diferenciaDias = actual && identificacion && row.__fechaClave
+          ? Math.round((fechaMs - actual.__ultimaFechaMs) / 86400000)
+          : Infinity;
+        const continuo = actual
+          && identificacion
+          && row.__fechaClave
+          && actual.sst_identificacion === identificacion
+          && diferenciaDias <= 1;
+
+        if (!continuo) {
+          actual = {
+            ...row,
+            sst_identificacion: identificacion || row.sst_identificacion,
+            sst_fecha_desde: row.__fechaClave,
+            sst_fecha_hasta: row.__fechaClave,
+            sst_dias_continuos: row.__fechaClave ? 1 : 0,
+            sst_cod_diagnosticos: row.sst_cod_diagnostico ? [String(row.sst_cod_diagnostico)] : [],
+            sst_documentos: row.sst_url ? [String(row.sst_url)] : [],
+            __fechasGrupo: row.__fechaClave ? new Set([row.__fechaClave]) : new Set(),
+            __ultimaFechaMs: fechaMs
+          };
+          if (!identificacion || !row.__fechaClave) actual.__filaUnica = index;
+          grupos.push(actual);
+          return;
+        }
+
+        actual.sst_fecha_hasta = row.__fechaClave;
+        actual.sst_fecha = row.__fechaClave;
+        actual.__ultimaFechaMs = fechaMs;
+        actual.sst_trabajador = row.sst_trabajador || actual.sst_trabajador;
+        actual.sst_regional = row.sst_regional || actual.sst_regional;
+        actual.sst_operacion = row.sst_operacion || actual.sst_operacion;
+        actual.sst_evento = row.sst_evento || actual.sst_evento;
+        if (!actual.__fechasGrupo.has(row.__fechaClave)) {
+          actual.__fechasGrupo.add(row.__fechaClave);
+          actual.sst_dias_continuos++;
+        }
+        if (row.sst_cod_diagnostico && !actual.sst_cod_diagnosticos.includes(String(row.sst_cod_diagnostico))) {
+          actual.sst_cod_diagnosticos.push(String(row.sst_cod_diagnostico));
+        }
+        if (row.sst_url && !actual.sst_documentos.includes(String(row.sst_url))) {
+          actual.sst_documentos.push(String(row.sst_url));
+        }
+      });
+
+      return grupos.map(({ __fechasGrupo, __ultimaFechaMs, __filaUnica, __fechaClave, __indiceOriginal, ...grupo }) => grupo);
+    }
+
     function actualizarFiltrosIncapacidades() {
       const rows = dataStore.inc || [];
       const selectRegional = document.getElementById('filtro-inc-regional');
@@ -4935,7 +5028,7 @@
       const response = await fetch(`/casosmedicos/api/incapacidades?${params.toString()}`);
       const rows = await response.json();
       if (!response.ok) throw new Error(rows.error || 'No fue posible cargar las incapacidades');
-      dataStore.inc = Array.isArray(rows) ? rows : [];
+      dataStore.inc = agruparIncapacidades(Array.isArray(rows) ? rows : []);
       actualizarFiltrosIncapacidades();
       actualizarBadgeFiltros('inc');
       aplicarFiltroYOrdenInc();
@@ -4948,42 +5041,46 @@
       const fechaDesde = document.getElementById('filtro-inc-desde').value;
       const fechaHasta = document.getElementById('filtro-inc-hasta').value;
       const filtrados = ordenarDatosSst('inc', (dataStore.inc || []).filter(row => {
-        const fecha = String(row.sst_fecha || '').slice(0, 10);
-        const texto = [row.sst_trabajador, row.sst_identificacion, row.sst_evento].join(' ').toLocaleLowerCase('es');
+        const texto = [row.sst_trabajador, row.sst_identificacion, row.sst_evento, ...(row.sst_cod_diagnosticos || [])].join(' ').toLocaleLowerCase('es');
+        const desde = row.sst_fecha_desde || '';
+        const hasta = row.sst_fecha_hasta || desde;
         return (!buscar || texto.includes(buscar))
           && (!regional || row.sst_regional === regional)
           && (!operacion || row.sst_operacion === operacion)
-          && (!fechaDesde || (fecha && fecha >= fechaDesde))
-          && (!fechaHasta || (fecha && fecha <= fechaHasta));
+          && (!fechaDesde || (hasta && hasta >= fechaDesde))
+          && (!fechaHasta || (desde && desde <= fechaHasta));
       }));
       renderTablaIncapacidades(filtrados);
     }
 
     function renderTablaIncapacidades(items) {
       const tbody = document.getElementById('tbody-inc');
-      document.getElementById('badge-total-inc').innerText = `${items.length} Registros`;
+      document.getElementById('badge-total-inc').innerText = `${items.length} Incapacidades`;
       if (!items.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted);">No se encontraron incapacidades.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">No se encontraron incapacidades.</td></tr>';
         inicializarRedimensionColumnasSst();
         return;
       }
 
       tbody.innerHTML = items.map(row => {
-        const fechaRaw = String(row.sst_fecha || '').slice(0, 10);
-        const fecha = fechaRaw ? fechaRaw.split('-').reverse().join('/') : '—';
-        const url = String(row.sst_url || '').trim();
-        const urlSegura = /^https?:\/\//i.test(url) || url.startsWith('/') ? escaparHtmlIncapacidad(url) : '';
-        const enlace = urlSegura
-          ? `<a href="${urlSegura}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">📄 Abrir incapacidad</a>`
-          : '<span style="color:var(--text-muted);">Sin documento</span>';
+        const fechaDesde = row.sst_fecha_desde ? row.sst_fecha_desde.split('-').reverse().join('/') : '—';
+        const fechaHasta = row.sst_fecha_hasta ? row.sst_fecha_hasta.split('-').reverse().join('/') : '—';
+        const rangoFecha = fechaDesde === fechaHasta ? fechaDesde : `${fechaDesde} al ${fechaHasta}`;
+        const documentos = row.sst_documentos || [];
+        const enlaces = documentos.length ? documentos.map((url, index) => {
+          const urlSegura = /^https?:\/\//i.test(url) || url.startsWith('/') ? escaparHtmlIncapacidad(url) : '';
+          return urlSegura ? `<a href="${urlSegura}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">📄 ${documentos.length > 1 ? `PDF ${index + 1}` : 'Abrir incapacidad'}</a>` : '';
+        }).join(' ') : '<span style="color:var(--text-muted);">Sin documento</span>';
+        const codigosDiagnostico = (row.sst_cod_diagnosticos || []).map(escaparHtmlIncapacidad).join(', ') || '—';
         return `<tr>
-          <td>${escaparHtmlIncapacidad(fecha)}</td>
+          <td>${escaparHtmlIncapacidad(rangoFecha)}<br><small>${row.sst_dias_continuos} día(s)</small></td>
           <td><strong>${escaparHtmlIncapacidad(limpiarNombreTrabajador(row.sst_trabajador))}</strong></td>
           <td>${escaparHtmlIncapacidad(row.sst_identificacion || '—')}</td>
           <td>${escaparHtmlIncapacidad(row.sst_regional || '—')}</td>
           <td>${escaparHtmlIncapacidad(row.sst_operacion || '—')}</td>
           <td>${escaparHtmlIncapacidad(row.sst_evento || '—')}</td>
-          <td>${enlace}</td>
+          <td>${codigosDiagnostico}</td>
+          <td>${enlaces}</td>
         </tr>`;
       }).join('');
       inicializarRedimensionColumnasSst();
