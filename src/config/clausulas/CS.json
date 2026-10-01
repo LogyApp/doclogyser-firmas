@@ -1,0 +1,296 @@
+{
+  "prefijo": "CS",
+  "nombre": "Reporte Inicial de Condiciones de Salud",
+  "codigo": "TH-R-011",
+  "version": "2",
+  "fecha_version": "2025-09-25",
+  "tabla_registro": "Digital_CS",
+  "categoria": "Seguridad y salud",
+  "tipo_render": "formulario_salud",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Reporte Inicial de Condiciones de Salud",
+    "codigo_doc": "TH-R-011",
+    "version_doc": "2",
+    "pagina": "1 de 1"
+  },
+  "intro": "Se realiza el siguiente cuestionario, considerando los requisitos del perfil, actividades a ejecutar y el riesgo al cual estará expuesto, por favor responder de manera consciente y veraz las siguientes preguntas, adicional se reitera que la información suministrada estará relacionada a legislación vigente Dec. 1072/2015, Res 2346/2007, obligaciones de los trabajadores brindar información del estado actual de salud y al documento de \"AUTORIZACIÓN PARA EL ACCESO A HISTORIA CLINICA Y TRATAMIENTO DE DATOS PERSONALES\".",
+  "diagrama_corporal": {
+    "instrucciones": "Marque con X, el segmento corporal en el que ha presentado fractura, amputaciones. Marque con X, el segmento corporal en el que ha presentado esguince o dolor en los últimos 6 meses",
+    "imagen": "/assets/docs/CS/cuerpo_humano.jpg",
+    "segmentos": [
+      {
+        "id": "craneo",
+        "label": "Cráneo"
+      },
+      {
+        "id": "cara",
+        "label": "Cara"
+      },
+      {
+        "id": "cuello",
+        "label": "Cuello"
+      },
+      {
+        "id": "torax",
+        "label": "Tórax"
+      },
+      {
+        "id": "tronco",
+        "label": "Tronco"
+      },
+      {
+        "id": "brazo",
+        "label": "Brazo"
+      },
+      {
+        "id": "antebrazo",
+        "label": "Antebrazo"
+      },
+      {
+        "id": "mano",
+        "label": "Mano"
+      },
+      {
+        "id": "abdomen",
+        "label": "Abdomen"
+      },
+      {
+        "id": "pelvis",
+        "label": "Pelvis"
+      },
+      {
+        "id": "muslo",
+        "label": "Muslo"
+      },
+      {
+        "id": "pierna",
+        "label": "Pierna"
+      },
+      {
+        "id": "pie",
+        "label": "Pie"
+      }
+    ]
+  },
+  "secciones_formulario": [
+    {
+      "tipo": "datos_generales",
+      "titulo": "Datos generales de salud",
+      "campos": [
+        {
+          "id": "peso",
+          "label": "Peso",
+          "tipo": "number"
+        },
+        {
+          "id": "altura",
+          "label": "Altura",
+          "tipo": "text"
+        },
+        {
+          "id": "edad",
+          "label": "Edad",
+          "tipo": "number"
+        },
+        {
+          "id": "fuma",
+          "label": "Fuma",
+          "tipo": "sino"
+        },
+        {
+          "id": "cigarrillos_dia",
+          "label": "¿Cuántos cigarrillos día?",
+          "tipo": "text",
+          "condicional": "fuma"
+        },
+        {
+          "id": "alcohol",
+          "label": "Alcohol",
+          "tipo": "sino"
+        },
+        {
+          "id": "alcohol_veces",
+          "label": "¿Cuántos veces x semana?",
+          "tipo": "text",
+          "condicional": "alcohol"
+        },
+        {
+          "id": "actividad_fisica",
+          "label": "Realiza actividad Física",
+          "tipo": "sino"
+        },
+        {
+          "id": "actividad_frecuencia",
+          "label": "¿Cuántas veces a la semana?",
+          "tipo": "text",
+          "condicional": "actividad_fisica"
+        },
+        {
+          "id": "actividad_cual",
+          "label": "Cual actividad realiza",
+          "tipo": "text",
+          "condicional": "actividad_fisica"
+        },
+        {
+          "id": "transporte",
+          "label": "Su medio de transporte es",
+          "tipo": "opciones",
+          "opciones": [
+            "Pie",
+            "Bicicleta",
+            "Moto",
+            "Vehículo particular",
+            "Transporte Publico"
+          ]
+        },
+        {
+          "id": "tiempo_desplazamiento",
+          "label": "Tiempo de desplazamiento x recorrido (Minutos)",
+          "tipo": "number"
+        }
+      ]
+    },
+    {
+      "tipo": "preguntas_sino",
+      "titulo": "Condiciones de salud actuales",
+      "columnas": [
+        "Sí/No",
+        "Fecha del evento",
+        "AT/T/C",
+        "Describa"
+      ],
+      "preguntas": [
+        {
+          "id": "cs1",
+          "texto": "Cuando fue la última vez que asistió a control médico"
+        },
+        {
+          "id": "cs2",
+          "texto": "Ha tenido alguna enfermedad diagnosticada. Menciónela"
+        },
+        {
+          "id": "cs3",
+          "texto": "Tiene antecedentes familiares importantes (Hipertensión, Diabetes, Cáncer, Coronaria, artritis, dermatitis, epilepsia, otra)"
+        },
+        {
+          "id": "cs4",
+          "texto": "Ha tenido algún tipo de accidente con lesiones como esguince fracturas, amputaciones, recomendaciones"
+        },
+        {
+          "id": "cs5",
+          "texto": "Ha tenido incapacidad mayor a 15 días por accidente de trabajo, transito o común en los últimos 6 meses"
+        },
+        {
+          "id": "cs6",
+          "texto": "Ha estado en tratamiento por terapia Física, psicológica, o por sustancias psicoactivas"
+        },
+        {
+          "id": "cs7",
+          "texto": "En los últimos 6 meses ha presentado problemas de hernias o dolores lumbares, espasmos, lumbago, ciática, vena varice"
+        },
+        {
+          "id": "cs8",
+          "texto": "Ha presentado Lesiones o dolor en Hombro, Clavícula, codo, manos, tronco, espalda, rodilla, tobillo, pie u otro"
+        },
+        {
+          "id": "cs9",
+          "texto": "Tiene conocimiento o diagnóstico de presentar algún tipo de hernia abdominal, inguinal, femoral, otras"
+        },
+        {
+          "id": "cs10",
+          "texto": "Ha presentado varicocele, ¿en que grado?"
+        },
+        {
+          "id": "cs11",
+          "texto": "Ha presentado dermatitis o lesiones en manos por alergias, exposición a temperaturas frio-calor"
+        },
+        {
+          "id": "cs12",
+          "texto": "Tiene alguna condición de salud que altere su visión ¿accidentes en ojos, cirugías, etc.?"
+        },
+        {
+          "id": "cs13",
+          "texto": "Actualmente utiliza gafas o lentes de contacto, para la realización de sus actividades cotidiana"
+        },
+        {
+          "id": "cs14",
+          "texto": "Ha presentado accidentes de tránsito, vehículo, moto, otro en los últimos 24 meses"
+        },
+        {
+          "id": "cs15",
+          "texto": "Ha presentado accidentes y lesiones al realizar deporte"
+        },
+        {
+          "id": "cs16",
+          "texto": "Ha tenido cirugías, Mencione cuál"
+        },
+        {
+          "id": "cs17",
+          "texto": "Ha presentado incapacidades en los últimos 6 meses"
+        },
+        {
+          "id": "cs18",
+          "texto": "Ha presentado algún accidente laboral o general que haya causado algún tipo de lesión o secuela"
+        },
+        {
+          "id": "cs19",
+          "texto": "Actualmente consume algún tipo de medicamento"
+        }
+      ]
+    },
+    {
+      "tipo": "preguntas_sino",
+      "titulo": "Lesiones que ha presentado en su vida",
+      "columnas": [
+        "Sí/No",
+        "Fecha del evento",
+        "AT/T/C",
+        "Describa"
+      ],
+      "preguntas": [
+        {
+          "id": "le1",
+          "texto": "Conoce si es apto para trabajar en alturas"
+        },
+        {
+          "id": "le2",
+          "texto": "Sufre de vértigo o tiene miedo a las alturas"
+        },
+        {
+          "id": "le3",
+          "texto": "Ha tenido caídas a nivel o a diferente a nivel y a causa de la mismo requirió atención médica"
+        },
+        {
+          "id": "le4",
+          "texto": "Ha tenido lesiones por arma blanca"
+        }
+      ]
+    }
+  ],
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": "Declaración bajo juramento",
+      "texto": "DECLARO BAJO JURAMENTO, la autenticidad de los datos consignados en el presente documento y autorizo a APOYO LOGISTICO Y OPERATIVO SAS a verificar la autenticidad de la información presentada para continuidad del proceso."
+    }
+  ],
+  "campos_firma": [
+    {
+      "id": "nombres",
+      "label": "Nombres y apellidos",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "Cédula",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}

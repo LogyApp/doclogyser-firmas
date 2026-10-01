@@ -1,0 +1,411 @@
+{
+  "prefijo": "ITAL",
+  "nombre": "Formatos Italcol",
+  "codigo": "ITAL",
+  "version": "1",
+  "fecha_version": "",
+  "tabla_registro": "Digital_ITAL",
+  "categoria": "Cliente - Italcol",
+  "tipo_render": "paquete",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Formatos y Políticas Italcol",
+    "codigo_doc": "ITAL",
+    "version_doc": "1",
+    "pagina": "1 de 1"
+  },
+  "documentos": [
+    {
+      "id": "quiz",
+      "sufijo": "ITAL-QUIZ",
+      "tipo": "quiz",
+      "titulo": "Formato de Evaluación de Conocimiento",
+      "tema": "Inducción en Seguridad y Salud en el Trabajo",
+      "codigo": "MAS-FR-GH-002",
+      "version": "01",
+      "campos_header": [
+        {
+          "id": "q_planta",
+          "label": "Planta"
+        },
+        {
+          "id": "q_empresa",
+          "label": "Empresa"
+        }
+      ],
+      "preguntas": [
+        {
+          "id": "p1",
+          "tipo": "vf_grupo",
+          "instruccion": "Responda falso o verdadero.",
+          "items": [
+            {
+              "id": "p1a",
+              "texto": "La política integral tiene como prioridad proteger la seguridad y salud de los trabajadores, Mediante la planeación, implementación, verificación y mejora continua del SG-SST, Identificando los peligros, evaluando y valorando los riesgos a los cuales se encuentren expuestos en su lugar de trabajo, Establecimiento de los controles respectivos, con el fin de establecer las acciones que contribuyan a la eliminación, reducción y prevención de incidentes, accidentes y enfermedades laborales."
+            },
+            {
+              "id": "p1b",
+              "texto": "La política de no consumo de alcohol, tabaco y sustancias psicoactivas establece que no se permite a ninguna persona, ingresar y trabajar bajo la influencia del alcohol o sustancias psicoactivas."
+            },
+            {
+              "id": "p1c",
+              "texto": "La política de seguridad vial establece que el límite máximo de velocidad para vehículos en áreas de operación dentro de las instalaciones de ITALCOL DE OCCIDENTE es de 10 Km/h."
+            },
+            {
+              "id": "p1d",
+              "texto": "La política de no uso de celulares en la jornada de trabajo determina que hacer uso de equipos electrónicos, como tables, relojes electrónicos, entre otros durante la jornada laboral, está prohibido."
+            }
+          ]
+        },
+        {
+          "id": "p2",
+          "tipo": "seleccion",
+          "instruccion": "Marque con una X la respuesta correcta.",
+          "texto": "Los EPP básicos que debo utilizar para ingresar a las áreas de producción son:",
+          "opciones": [
+            {
+              "letra": "a",
+              "texto": "Casco de Seguridad."
+            },
+            {
+              "letra": "b",
+              "texto": "Gafas de Seguridad."
+            },
+            {
+              "letra": "c",
+              "texto": "Protección Auditiva."
+            },
+            {
+              "letra": "d",
+              "texto": "Botas de Seguridad."
+            },
+            {
+              "letra": "e",
+              "texto": "Todas las anteriores."
+            }
+          ]
+        },
+        {
+          "id": "p3",
+          "tipo": "relacionar",
+          "instruccion": "Relacione con una flecha el concepto a cada palabra que corresponda.",
+          "terminos": [
+            {
+              "letra": "a",
+              "texto": "Peligro"
+            },
+            {
+              "letra": "b",
+              "texto": "Riesgo"
+            },
+            {
+              "letra": "c",
+              "texto": "Condición Insegura"
+            },
+            {
+              "letra": "d",
+              "texto": "Acto Inseguro"
+            },
+            {
+              "letra": "e",
+              "texto": "Accidente de Trabajo"
+            }
+          ],
+          "definiciones": [
+            "Combinación de probabilidad y severidad (consecuencia)",
+            "Comportamientos que dan origen a incidentes o accidentes.",
+            "Suceso repentino, causa u ocasión del trabajo, genera lesión",
+            "Circunstancias que pueden ocasionar incidentes o accidentes",
+            "Fuente o situación con potencial de daño."
+          ]
+        },
+        {
+          "id": "p4",
+          "tipo": "seleccion",
+          "texto": "¿Cuáles de los deberes hacen parte de mis responsabilidades como trabajador?",
+          "opciones": [
+            {
+              "letra": "a",
+              "texto": "Procurar el cuidado integral de su salud."
+            },
+            {
+              "letra": "b",
+              "texto": "Cumplir las normas de seguridad e higiene propias de la empresa."
+            },
+            {
+              "letra": "c",
+              "texto": "Reportar inmediatamente todo accidente de trabajo o incidente."
+            },
+            {
+              "letra": "d",
+              "texto": "Suministrar información clara, completa y veraz sobre su estado de salud."
+            },
+            {
+              "letra": "e",
+              "texto": "Todas las anteriores."
+            }
+          ]
+        },
+        {
+          "id": "p5",
+          "tipo": "completar",
+          "texto": "Complete la palabra que hace referencia cada letra de la sigla PILOSO.",
+          "letras": [
+            "P",
+            "I",
+            "L",
+            "O",
+            "S",
+            "O"
+          ]
+        },
+        {
+          "id": "p6",
+          "texto": "Al activarse una alarma de emergencia debo seguir las siguientes instrucciones.",
+          "tipo": "seleccion",
+          "opciones": [
+            {
+              "letra": "a",
+              "texto": "Salir de la planta, irme para mi casa, llamar a bomberos."
+            },
+            {
+              "letra": "b",
+              "texto": "Apagar mi equipo y estar atento a las instrucciones del líder de evacuación."
+            },
+            {
+              "letra": "c",
+              "texto": "A y b son correctas."
+            }
+          ]
+        },
+        {
+          "id": "p7",
+          "texto": "Cuál es el tiempo que se debe esperar para evacuar cuando una alarma se activa.",
+          "tipo": "seleccion",
+          "opciones": [
+            {
+              "letra": "a",
+              "texto": "0 minutos."
+            },
+            {
+              "letra": "b",
+              "texto": "30 segundos."
+            },
+            {
+              "letra": "c",
+              "texto": "1 hora."
+            }
+          ]
+        },
+        {
+          "id": "p8",
+          "texto": "Cuál es el lema del pilar de Protección en Acción.",
+          "tipo": "abierta"
+        }
+      ],
+      "declaracion": "Certifico que me ha sido divulgada y entiendo la Política de SST, los peligros y riesgos asociados al proceso productivo y los medios de control para mitigarlos. Por todo lo anterior firmo el presente documento como muestra del compromiso con mi seguridad y la de los demás, cumpliendo activamente con las normas de seguridad y todo lo expuesto en el curso de Seguridad y Salud en el Trabajo."
+    },
+    {
+      "id": "emergencias",
+      "sufijo": "ITAL-EMERG",
+      "tipo": "formulario",
+      "titulo": "Formulario de Información de Emergencias",
+      "codigo": "",
+      "version": "",
+      "campos_planta": [
+        "Girardota",
+        "Santa Rosa de Osos",
+        "Yarumal"
+      ],
+      "secciones": [
+        {
+          "titulo": "Información personal",
+          "campos": [
+            {
+              "id": "e_nombres",
+              "label": "Nombres y apellidos",
+              "tipo": "text"
+            },
+            {
+              "id": "e_sexo",
+              "label": "Sexo",
+              "tipo": "opciones",
+              "opciones": [
+                "Masculino",
+                "Femenino",
+                "Otro"
+              ]
+            },
+            {
+              "id": "e_nacionalidad",
+              "label": "Nacionalidad",
+              "tipo": "text"
+            },
+            {
+              "id": "e_nacimiento",
+              "label": "Fecha y lugar de nacimiento",
+              "tipo": "text"
+            },
+            {
+              "id": "e_direccion",
+              "label": "Dirección de residencia",
+              "tipo": "text"
+            },
+            {
+              "id": "e_contacto1_nombre",
+              "label": "Nombre de contacto en caso de emergencia",
+              "tipo": "text"
+            },
+            {
+              "id": "e_contacto1_tel",
+              "label": "Número de teléfono del contacto de emergencia",
+              "tipo": "text"
+            },
+            {
+              "id": "e_contacto2_nombre",
+              "label": "Nombre de contacto en caso de emergencia (2)",
+              "tipo": "text"
+            },
+            {
+              "id": "e_contacto2_tel",
+              "label": "Número de teléfono contacto en caso de emergencia (2)",
+              "tipo": "text"
+            }
+          ]
+        },
+        {
+          "titulo": "Datos médicos",
+          "campos": [
+            {
+              "id": "e_grupo_sanguineo",
+              "label": "Grupo sanguíneo",
+              "tipo": "text"
+            },
+            {
+              "id": "e_alergias",
+              "label": "Alergias",
+              "tipo": "text"
+            },
+            {
+              "id": "e_condicion_salud",
+              "label": "Condición de salud",
+              "tipo": "text"
+            }
+          ]
+        }
+      ],
+      "nota": "La información suministrada por el colaborador es de uso confidencial y solo será utilizada únicamente en caso de emergencia."
+    },
+    {
+      "id": "alcohol",
+      "sufijo": "ITAL-ALCOHOL",
+      "tipo": "politica",
+      "titulo": "Política de No Consumo de Alcohol, Tabaco y Sustancias Psicoactivas",
+      "codigo": "DN-PC-GE-001",
+      "version": "03",
+      "parrafos": [
+        "ITALCOL, ha definido y establecido una política para el no consumo de alcohol, tabaco y sustancias psicoactivas, para preservar, mejorar y conservar el bienestar de los trabajadores y su calidad de vida, logrando además un adecuado desempeño y competitividad del personal y de la empresa, así como el fomento de estilos de vida saludables, teniendo en cuenta lo establecido en la legislación vigente.",
+        "ITALCOL, es consciente que el alcoholismo y el consumo de sustancias psicoactivas por parte de los trabajadores, puede tener efectos adversos en su capacidad de desempeño y pueden afectar considerablemente la salud y seguridad de los demás colaboradores y de terceros. Por lo anterior, ITALCOL contempla los siguientes aspectos."
+      ],
+      "bullets": [
+        "Está prohibido presentarse a trabajar bajo el efecto de alcohol, drogas y/o sustancias psicoactivas o que crean dependencia.",
+        "Esta estrictamente prohibido la posesión, consumo, distribución o venta de bebidas alcohólicas, tabaco o sustancias psicoactivas, medicamentos formulados o drogas no recetadas en el desarrollo del trabajo, dentro y fuera de las instalaciones de la empresa, dentro de los centros de trabajo o durante la prestación de servicios.",
+        "ITALCOL se reserva el derecho de realizar pruebas de alcoholemia y/o de consumo de drogas ilícitas o de convocas a terceros para que las hagan, en situaciones en que un trabajador, directamente contratado o de terceros, este envuelto en algún accidente y/o presente características o actitudes sospechosas."
+      ],
+      "parrafos_cierre": [
+        "La empresa se acoge a las normas, políticas y campañas que en materia de desestimulacion o prohibición del consumo de tabaco, alcohol y drogas imparta el gobierno nacional.",
+        "El alcance de esta política aplicará a nuestros trabajadores, contratistas, visitantes y será divulgada a todo el personal."
+      ],
+      "fecha_firma_politica": "Enero del 2019",
+      "firmante": "JUAN FELIPE CADAVID HERNÁNDEZ — Gerente Regional Antioquia"
+    },
+    {
+      "id": "celular",
+      "sufijo": "ITAL-CELULAR",
+      "tipo": "politica",
+      "titulo": "Política de No Uso de Teléfonos Celulares en la Jornada de Trabajo",
+      "codigo": "DN-PC-GE-001",
+      "version": "03",
+      "parrafos": [
+        "ITALCOL, es consciente que el uso de teléfonos celulares en las áreas OPERATIVAS, tales como PRODUCCIÓN, ALMACEN, TALLERES DE MANTENIMIENTO, VIAS DE ACCESO, ETC. Puede generar distracciones, y en consecuencia generar accidentes graves, por este motivo declara la PROHIBICIÓN de la posesión y uso de teléfonos celulares y elementos distractores tales como tablets (de uso personal), relojes electrónicos entre otros, durante la jornada laboral, razón por la cual establece para sus colaboradores:"
+      ],
+      "bullets": [
+        "Realizar o recibir llamadas durante la jornada laboral en las áreas antes mencionadas queda prohibido.",
+        "Enviar mensajes de texto o manipular el teléfono celular durante la jornada laboral, está prohibido.",
+        "Hacer uso de equipos electrónicos, como tablets (de uso personal), relojes electrónicos, entre otros durante la jornada laboral, está prohibido.",
+        "La participación activa de colaboradores en los programas de señalización y capacitación que promueve el cumplimiento de la política contra el uso de teléfonos celulares durante la jornada laboral es de obligatorio cumplimiento.",
+        "Se permitirá el uso de tablets solo a personal autorizado y para fines específicos de su labor y en lugares autorizados."
+      ],
+      "parrafos_cierre": [
+        "El incumplimiento de cualquiera de las obligaciones antes determinadas se constituya como una FALTA GRAVE y una violación a las obligaciones y prohibiciones que rigen los controles de trabajo, en consecuencia, la EMPRESA pueda adoptar las medidas disciplinarias correspondientes, inclusive dar por finalizado el contrato de trabajo por justa causa de acuerdo con lo establecido en el reglamento interno de trabajo y la ley, según sea el caso.",
+        "La empresa dispondrá de casilleros y punto de uso de uso seguro del celular, así mismo pondrá a disposición de los colaboradores las herramientas que se requieran para el buen desempeño de las labores tales como cámaras, relojes de pared y/o radios.",
+        "Esta política estará en vigencia a partir de su publicación en las instalaciones de ITALCOL, y se aplicara a los colaboradores que desempeñan sus funciones laborales en las áreas OPERATIVAS y cualquier actor (Visitante, contratista o administrativo que ingrese a estas áreas). para los efectos de la presente política se entienden por jornada laboral, el tiempo en que el trabajador presente un servicio al empleador."
+      ],
+      "fecha_firma_politica": "Enero del 2019",
+      "firmante": "JUAN FELIPE CADAVID HERNÁNDEZ — Gerente Regional Antioquia"
+    },
+    {
+      "id": "sig",
+      "sufijo": "ITAL-SIG",
+      "tipo": "politica",
+      "titulo": "Política Sistema Integrado de Gestión Italcol",
+      "codigo": "DN-PC-GE-001",
+      "version": "04",
+      "parrafos": [
+        "ITALCOL, dedicada a la elaboración de alimentos para animales, comercialización, y almacenamiento de materias primas pecuarias en sus plantas de producción; recepción, almacenamiento y despachos de materias primas pecuarias en sus operaciones portuarias; fabricación de Premezclas vitamínicas y minerales para alimentación animal; cría de aves y cerdos; empleando materias primas nacionales e importadas; Para esto se compromete a cumplir con los requisitos internos y demás requisitos legales aplicables, así como el mejoramiento continuo de los procesos, con estándares de calidad e inocuidad de los alimentos, contando con un grupo humano dispuesto a lograr la satisfacción de las necesidades y expectativas de nuestros colaboradores, clientes y otras partes interesadas, garantizando operaciones de comercio exterior, seguras y confiables, trabajando en la mitigación de riesgos a través de toda la cadena de suministro, protegiendo así nuestras operaciones.",
+        "Tiene como prioridad proteger la seguridad y salud de los colaboradores mediante la planeación, implementación, verificación y mejora continua del Sistema de Gestión de Seguridad y Salud en el Trabajo identificando los peligros, evaluando y valorando los riesgos a los cuales se encuentren expuestos en su lugar de trabajo y que puedan afectar el bienestar físico, mental y social de los mismos y demás partes interesadas, mediante el establecimiento de los controles aplicables al contexto de cada centro de trabajo, con el fin de establecer las acciones que contribuyan a la eliminación, reducción y prevención de incidentes, accidentes, enfermedades laborales.",
+        "Actúa de manera responsable con la protección del medio ambiente, buscando la prevención de la contaminación, gestionando los aspectos ambientales significativos asociados a las actividades, productos y servicios desarrollados en sus operaciones y estableciendo dentro de sus prioridades el uso racional y eficiente de los recursos naturales de mayor consumo, recursos nutricionales, gestión de gases de efecto invernadero y la reducción, reutilización y aprovechamiento de sus residuos sólidos.",
+        "Se compromete a mejorar el desempeño energético, mediante la adquisición de productos y servicios con alta eficiencia energética, diseñando o desarrollando actividades que consideren la mejora de este. Así mismo asegura la disponibilidad de la información y los recursos para lograr los objetivos y metas energéticas, siendo factores claves para la sostenibilidad de la organización y sus partes interesadas.",
+        "ITALCOL, se compromete a asignar los recursos humanos, económicos, tecnológicos y de cualquier índole, necesarios para el diseño, implementación, evaluación y mejoramiento de las actividades del Sistema Integrado de Gestión. Así mismo, a generar mecanismos para la consulta y participación de los trabajadores y sus representantes.",
+        "Esta política se aplica y difunde en todos los centros de trabajo y a todos los niveles de la Organización y a cualquier persona que preste servicios independientemente de su forma de contratación, trabajadores directos o en misión, contratistas, subcontratistas, visitantes, asociados de negocio y todas las partes interesadas. Será revisada y actualizada acorde a los cambios normativos y legales asociados al Sistema Integrado de Gestión y al direccionamiento estratégico de ITALCOL."
+      ],
+      "fecha_firma_politica": "Mayo del 2023",
+      "firmante": "REPRESENTANTE LEGAL"
+    }
+  ],
+  "campos_firma": [
+    {
+      "id": "municipio",
+      "label": "Municipio",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "dia",
+      "label": "Día",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "mes",
+      "label": "Mes",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "anio",
+      "label": "Año",
+      "tipo": "text",
+      "maxlength": 4,
+      "requerido": true
+    },
+    {
+      "id": "nombres",
+      "label": "Nombres y apellidos",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "Cédula",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}

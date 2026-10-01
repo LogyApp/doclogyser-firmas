@@ -1,0 +1,110 @@
+{
+  "prefijo": "TD",
+  "nombre": "Autorización para el Tratamiento de Datos Personales",
+  "codigo": "TH-R-008",
+  "version": "2",
+  "fecha_version": "",
+  "tabla_registro": "Digital_TD",
+  "categoria": "Selección y vinculación",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Política para la Autorización, Tratamiento de Datos Personales y Aviso de Privacidad",
+    "codigo_doc": "TH-R-008",
+    "version_doc": "2",
+    "pagina": "1 de 1"
+  },
+  "intro": "Con la firma de este documento manifiesto que he sido informado por APOYO LOGISTICO Y OPERATIVO S.A.S. de lo siguiente:",
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": null,
+      "texto": "La Compañía actúa como responsable del tratamiento de datos personales del titular de acuerdo con lo establecido en la ley 1581 de 2012 de habeas data, y que conjunta o separadamente podrá recolectar, usar y tratar mis datos personales conforme a la Política de Tratamiento de Datos de la Compañía que se encuentra disponible en la base de datos del área de Talento Humano. Es de carácter facultativo el responder las preguntas sobre Datos Sensibles o sobre niñas, niños y adolescentes."
+    },
+    {
+      "numero": 2,
+      "titulo": null,
+      "texto": "Es de carácter facultativo el responder las preguntas sobre Datos Sensibles o sobre niñas, niños y adolescentes. Mis derechos como titular de los datos son los previstos en la Constitución y la ley, especialmente los siguientes:"
+    },
+    {
+      "numero": 3,
+      "titulo": null,
+      "texto": "Derecho a conocer, actualizar y rectificar mis datos personales frente a los responsables o encargados del Tratamiento, así como el derecho a revocar el consentimiento otorgado para el tratamiento de datos personales. Este derecho se podrá ejercer, entre otros frente a datos parciales, inexactos, incompletos, fraccionados, que induzcan a error, o aquellos cuyo Tratamiento esté expresamente prohibido o no haya sido autorizado; pueden ser ejercidos a través de los canales gratuitos dispuestos por la Compañía y observando la Política de Tratamiento de Datos Personales de APOYO LOGISTICO Y OPERATIVO S.A.S."
+    },
+    {
+      "numero": 4,
+      "titulo": null,
+      "texto": "Derecho a solicitar prueba de la autorización otorgada al responsable del Tratamiento salvo cuando expresamente se exceptúe como requisito para el Tratamiento;"
+    },
+    {
+      "numero": 5,
+      "titulo": null,
+      "texto": "Derecho a ser informado por el responsable del Tratamiento o el Encargado del Tratamiento, previa solicitud, respecto del uso que les ha dado a mis datos personales;"
+    },
+    {
+      "numero": 6,
+      "titulo": null,
+      "texto": "Derecho a revocar la autorización y/o solicitar la supresión del dato cuando en el Tratamiento no se respeten los principios, derechos y garantías constitucionales y legales."
+    },
+    {
+      "numero": 7,
+      "titulo": null,
+      "texto": "Derecho a acceder en forma gratuita a mis datos personales que hayan sido objeto de Tratamiento, en los términos establecidos en la Ley 1581 de 2.012 y las demás normas que la modifiquen, adicionen o complementen, para cualquier inquietud o información adicional relacionada con el tratamiento de datos personales, puedo contactarme al correo electrónico directora.th@logyser.com"
+    },
+    {
+      "numero": 8,
+      "titulo": "Aceptación de la Política de Tratamiento de Datos Personales",
+      "texto": "El trabajador, al firmar este documento, declara que ha leído y comprendido en su totalidad la Política de Tratamiento de Datos Personales de APOYO LOGÍSTICO Y OPERATIVO S.A.S (en adelante LOG&SER), la cual ha sido proporcionada para su revisión. El trabajador acepta y consiente el tratamiento de sus datos personales de acuerdo con los términos y condiciones establecidos en dicha política.\nEl trabajador entiende que la Política de Tratamiento de Datos Personales detalla cómo LOG&SER recopila, utiliza, almacena y protege la información personal, así como los derechos y procedimientos relacionados con la protección de datos. Asimismo, reconoce que tiene acceso a la política en cualquier momento y puede solicitar aclaraciones o ejercer sus derechos de acceso, corrección, actualización o eliminación de datos conforme a lo dispuesto en la política y la legislación aplicable.\nAl firmar este documento, el trabajador otorga su consentimiento explícito para el tratamiento de sus datos personales conforme a las finalidades descritas en la política."
+    }
+  ],
+  "campos_firma": [
+    {
+      "id": "municipio",
+      "label": "Municipio",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "dia",
+      "label": "Día",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "mes",
+      "label": "Mes",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "anio",
+      "label": "Año",
+      "tipo": "text",
+      "maxlength": 4,
+      "requerido": true
+    },
+    {
+      "id": "nombres",
+      "label": "Nombres y apellidos",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "Identificación",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "expedicion",
+      "label": "Lugar de expedición",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}

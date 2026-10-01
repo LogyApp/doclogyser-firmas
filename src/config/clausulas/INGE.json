@@ -1,0 +1,125 @@
+{
+  "prefijo": "INGE",
+  "nombre": "Comprobante de Inducción General",
+  "codigo": "SST-FM-004",
+  "version": "4",
+  "fecha_version": "2023-12-12",
+  "tabla_registro": "Digital_INGE",
+  "categoria": "Seguridad y salud",
+  "tipo_render": "checklist",
+  "campos_prellenado": ["identificacion", "nombre_completo", "cargo", "operacion", "fecha_ingreso", "firma_url"],
+  "encabezado": {
+    "titulo_politica": "Comprobante de Inducción General",
+    "codigo_doc": "SST-FM-004",
+    "version_doc": "04",
+    "pagina": "1 de 2"
+  },
+  "secciones_checklist": [
+    {
+      "numero": 1,
+      "titulo": "Información general de la empresa",
+      "items": [
+        {"id": "ig1", "texto": "Política integrada de calidad y seguridad, salud en el trabajo."},
+        {"id": "ig2", "texto": "Historia (Misión y Visión), Actividad económica, operación, valores corporativos."},
+        {"id": "ig3", "texto": "Objetivos de calidad."}
+      ]
+    },
+    {
+      "numero": 2,
+      "titulo": "Medio ambiente",
+      "items": [
+        {"id": "ma1", "texto": "Ahorro de Recursos."},
+        {"id": "ma2", "texto": "Manejo de Residuos Sólidos."}
+      ]
+    },
+    {
+      "numero": 3,
+      "titulo": "Administrativas",
+      "items": [
+        {"id": "ad1", "texto": "Presentación de la empresa."},
+        {"id": "ad2", "texto": "Organigrama."},
+        {"id": "ad3", "texto": "Horario de trabajo."},
+        {"id": "ad4", "texto": "Seguridad social."},
+        {"id": "ad5", "texto": "Condiciones laborales."},
+        {"id": "ad6", "texto": "Obligaciones contractuales."},
+        {"id": "ad7", "texto": "RIT."},
+        {"id": "ad8", "texto": "Normas - políticas."},
+        {"id": "ad9", "texto": "Derechos y deberes."},
+        {"id": "ad10", "texto": "Política de desconexión laboral."}
+      ]
+    },
+    {
+      "numero": 4,
+      "titulo": "Organizacionales",
+      "items": [
+        {"id": "or1", "texto": "Entrega del perfil del cargo asignado."}
+      ]
+    },
+    {
+      "numero": 5,
+      "titulo": "Aspectos laborales",
+      "items": [
+        {"id": "al1", "texto": "Roles y Responsabilidades del trabajador en Seguridad y Salud en el trabajo (Normas de seguridad)."},
+        {"id": "al2", "texto": "Identificación de peligros y valoración de riesgos de exposición (Físico, Químico, Locativo, Biológico, Biomecánica, Mecánico, Eléctrico, Psicosocial y Trabajos de Alto Riesgo como Altura)."},
+        {"id": "al3", "texto": "Políticas: SG-SST."},
+        {"id": "al4", "texto": "Código de Ética y comportamiento."},
+        {"id": "al5", "texto": "Cláusula de confidencialidad."}
+      ]
+    },
+    {
+      "numero": 6,
+      "titulo": "Sistema de Gestión de Seguridad y Salud en el Trabajo",
+      "items": [
+        {"id": "sg1", "texto": "Objetivos y Metas del SG-SST - Organigrama SGSST."},
+        {"id": "sg2", "texto": "Comité Paritario de Seguridad y Salud en el Trabajo (COPASST) — Conformación y funciones."},
+        {"id": "sg3", "texto": "Comité de convivencia — Conformación y funciones (Acoso Laboral)."},
+        {"id": "sg4", "texto": "Administradoras de Riesgos Laborales (ARL), Accidente de trabajo y Reporte AT — Protocolo de atención y reporte, investigación y planes de acción."},
+        {"id": "sg5", "texto": "Procesos de formación y capacitación dentro de la compañía."},
+        {"id": "sg6", "texto": "Uso correcto de Dotaciones y EPP."},
+        {"id": "sg7", "texto": "Normas de seguridad del cliente."}
+      ]
+    },
+    {
+      "numero": 7,
+      "titulo": "Gestión de riesgos",
+      "items": [
+        {"id": "gr1", "texto": "Programas de Vigilancia Epidemiológico: Osteomuscular, Auditivo y Respiratorio (Pausas Activas, Manejo manual de Cargas, Higiene postural, uso de respiradores y auditivos)."},
+        {"id": "gr2", "texto": "Uso continuo de Elementos de protección personal y Dotación suministrada por la empresa sin alteraciones."},
+        {"id": "gr3", "texto": "Asistencia y participación a campañas, Programa de Inspecciones de seguridad."},
+        {"id": "gr4", "texto": "Medidas de Prevención y Auto cuidado — Reporte de Actos y Condiciones."}
+      ]
+    },
+    {
+      "numero": 8,
+      "titulo": "Plan de preparación y respuesta a emergencias y reporte de incidentes",
+      "items": [
+        {"id": "pe1", "texto": "Objetivo, Brigada (Conformación y funciones)."},
+        {"id": "pe2", "texto": "Salidas de Emergencia, Puntos de encuentro, sistema de alarma y Simulacros de evacuación."},
+        {"id": "pe3", "texto": "Equipos, Elementos y Sistemas para atención y detención de emergencias (Botiquín, Camillas, Extintores)."}
+      ]
+    },
+    {
+      "numero": 9,
+      "titulo": "Proceso disciplinario por incumplimientos a normas SST",
+      "items": [
+        {"id": "pd1", "texto": "Comparendos de incumplimiento a normas verbales y escritos, citación a descargos, cancelación de contratos por: no usar dotación y EPP, operar equipos sin autorización, actos inseguros, no reportar accidentes, incumplimiento a horario, consumo de sustancias psicoactivas, incumplimiento a políticas corporativas."}
+      ]
+    }
+  ],
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": "Declaración de conocimiento y compromiso",
+      "texto": "Declaro haber recibido y entendido los contenidos del curso de Seguridad y Salud en el Trabajo y Medio Ambiente brindado por LOGYSER. Manifiesto conocer e identificar los riesgos a los que voy a estar expuesto y las medidas de control que debo utilizar en el desarrollo de mi labor. De igual forma, declaro que he conocido y entendido las Políticas de: Seguridad y Salud en el trabajo, Política integral, política de Prevención de consumo de sustancias psicoactivas, No discriminación, Seguridad vial y aspectos ambientales. Acepto de manera voluntaria la realización de las pruebas de alcoholemia que el empleador considere necesarias durante la relación laboral. Me obligo y me comprometo a cumplir con las normas y procedimientos establecidos por la empresa, velar por la preservación del medio ambiente y el uso correcto de los elementos de protección personal."
+    }
+  ],
+  "campos_firma": [
+    {"id": "municipio", "label": "Ciudad y operación", "tipo": "text", "requerido": true},
+    {"id": "dia", "label": "Día", "tipo": "text", "maxlength": 2, "requerido": true},
+    {"id": "mes", "label": "Mes", "tipo": "text", "maxlength": 2, "requerido": true},
+    {"id": "anio", "label": "Año", "tipo": "text", "maxlength": 4, "requerido": true},
+    {"id": "nombres", "label": "Nombres y apellidos", "tipo": "text", "requerido": true},
+    {"id": "cedula", "label": "Número de cédula", "tipo": "text", "requerido": true},
+    {"id": "cargo", "label": "Cargo", "tipo": "text", "requerido": true}
+  ]
+}

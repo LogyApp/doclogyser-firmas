@@ -1,0 +1,125 @@
+{
+  "prefijo": "MF",
+  "nombre": "Manual de funciones, responsabilidades y competencias — Auxiliar logístico",
+  "codigo": "SST-MA-002",
+  "version": "2",
+  "fecha_version": "2024-11-01",
+  "tabla_registro": "Digital_MF",
+  "categoria": "Seguridad y salud",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "cargo",
+    "operacion",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Manual de funciones - Responsabilidades - Competencias",
+    "codigo_doc": "SST-MA-002",
+    "version_doc": "2",
+    "pagina": "1 de 2"
+  },
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": "Identificación del cargo y ubicación",
+      "texto": "CARGO: Auxiliar logístico | UBICACIÓN: Sede Operativa\nVersión: 01 | Fecha de emisión: 01/11/2024\nJEFE INMEDIATO: Coordinador de centro de trabajo | NIVEL JERÁRQUICO: Operativo"
+    },
+    {
+      "numero": 2,
+      "titulo": "Objetivo del cargo",
+      "texto": "Apoyar en la gestión integral de la cadena logística dentro y fuera del Centro de Distribución, asegurando la correcta recepción y cargue de mercancías de acuerdo con los procedimientos establecidos y las políticas de Salud Ocupacional."
+    },
+    {
+      "numero": 3,
+      "titulo": "Autoridad",
+      "texto": "N/A"
+    },
+    {
+      "numero": 4,
+      "titulo": "Competencias del perfil",
+      "texto": "EDAD: Preferiblemente de 18 a 40 años\nGÉNERO: Preferiblemente masculino\nEDUCACIÓN: Que sepa leer y escribir\nFORMACIÓN: N/A\nEXPERIENCIA EN EL CARGO: No requiere\n\nNota: Los requerimientos de educación, formación o experiencia se tendrán en cuenta para la homologación de las competencias del cargo."
+    },
+    {
+      "numero": 5,
+      "titulo": "Responsabilidades del cargo",
+      "texto": "• Atender los vehículos.\n• Mantener en óptimas condiciones su área de trabajo, garantizando la movilidad de los equipos y la aplicación de las normas de seguridad.\n• Realizar la labor asignada siguiendo las directrices del cliente.\n• Apoyar las diferentes actividades imprevistas que se soliciten."
+    },
+    {
+      "numero": 6,
+      "titulo": "Funciones del cargo",
+      "texto": "• Cargar y descargar vehículos.\n• Informar al líder en caso de identificar mercancía averiada o en mal estado, así como situaciones de hurto, recepción de propinas, eventos por el estado del camión que pongan en riesgo la mercancía y daños en instalaciones y equipos.\n• Alistar mercancía para el despacho.\n• Poner especial atención en la manipulación de la mercancía de línea blanca y línea marrón antes de ser cargada o descargada para evitar y/o identificar averías.\n• Apadrinar mercancías a solicitud del proveedor.\n• Mantener limpias las áreas de trabajo.\n• Estibar la mercancía respetando los pictogramas.\n• Paletizar mercancía optimizando el recurso.\n• Destellar mercancía según los requerimientos del cliente.\n• Además de las tareas principales, todas aquellas inherentes al cargo, y que le sean asignadas por el jefe directo."
+    },
+    {
+      "numero": 7,
+      "titulo": "Responsabilidades en SST",
+      "texto": "• Velar por el cumplimiento de las Políticas, Objetivos, Misión, Visión, Reglamentos y programas existentes en el SST (Seguridad, Salud en el trabajo y Ambiente) en la organización.\n• Cumplir con la implementación de los procesos existentes en Seguridad, Salud Ocupacional y Ambiente (utilización de formatos según sea el caso).\n• Realizar sus actividades de forma segura, promoviendo su autocuidado, evitando generar impacto al medio ambiente, preservando los bienes de la Compañía y manteniendo una actitud preventiva y proactiva.\n• Conocer y cumplir el programa de clasificación de residuos sólidos establecido por la Compañía.\n• Desarrollar las actividades asignadas por el COPASST, Comité de Convivencia y Brigadista.\n• Liderar y participar activamente en las reuniones o capacitaciones concernientes a Seguridad, Salud en el trabajo y Ambiente.\n• Establecer el uso adecuado de ahorro de agua y energía.\n• Garantizar el uso, cuidado y mantenimiento de los elementos de protección personal y demás elementos de seguridad industrial requeridos para el desarrollo de las tareas, actividades y operación.\n• Reportar todos los actos inseguros, condiciones inseguras, incidentes y/o accidentes de trabajo inmediatamente a su jefe directo.\n• Suministrar información de forma clara, veraz y completa sobre su estado de salud.\n• Procurar el cuidado integral de su salud.\n• Participar en las actividades de capacitación de acuerdo al plan de trabajo SG-SST."
+    },
+    {
+      "numero": 8,
+      "titulo": "Rendición de cuentas",
+      "texto": "CARGOS QUE LE REPORTAN: N/a\nA QUIEN LE REPORTA: Jefe directo, Recursos Humanos, Gerencia, Seguridad y Salud en el trabajo."
+    }
+  ],
+  "control_cambios": [
+    {
+      "version": "1",
+      "fecha": "2015-05-10",
+      "descripcion": "Documento inicial"
+    },
+    {
+      "version": "2",
+      "fecha": "2024-11-01",
+      "descripcion": "Definir claramente las responsabilidades, omitir funciones y responsabilidades duplicadas, definir las competencias del perfil, establecer el control de cambios"
+    }
+  ],
+  "revisado_por": "Esteban Velasquez Quintero — Coordinador de Calidad",
+  "aprobado_por": "Carlos Gomez — Gerente de Operaciones",
+  "campos_firma": [
+    {
+      "id": "municipio",
+      "label": "Municipio",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "dia",
+      "label": "Día",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "mes",
+      "label": "Mes",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "anio",
+      "label": "Año",
+      "tipo": "text",
+      "maxlength": 4,
+      "requerido": true
+    },
+    {
+      "id": "nombres",
+      "label": "Nombres y apellidos",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "Número de identificación",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "expedicion",
+      "label": "Lugar de expedición",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}

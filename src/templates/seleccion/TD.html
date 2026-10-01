@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autorización para el Tratamiento de Datos Personales</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1B2A5E;
+    --navy-dk: #162249;
+    --navy-lt: #EEF1F8;
+    --orange: #F15A22;
+    --border: #D8DCEA;
+    --text: #0F1C3F;
+    --text-mid: #5A6A8A;
+    --text-dim: #9AA5BF;
+    --green: #16A34A;
+    --bg: #F4F6FB;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Plus Jakarta Sans", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px;
+    line-height: 1.5;
+  }
+  .doc-container {
+    max-width: 840px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px rgba(15, 28, 63, 0.08);
+    overflow: hidden;
+  }
+  .doc-head {
+    display: grid;
+    grid-template-columns: 140px 1fr 120px;
+    border-bottom: 2.5px solid var(--navy);
+  }
+  .dh-logo {
+    padding: 14px 16px;
+    border-right: 1.5px solid var(--navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dh-logo img { height: 32px; object-fit: contain; }
+  .dh-title {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-right: 1.5px solid var(--navy);
+  }
+  .dh-title span {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--navy);
+    line-height: 1.4;
+  }
+  .dh-meta { display: flex; flex-direction: column; }
+  .dm-row {
+    padding: 6px 10px;
+    font-size: 9.5px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dm-row:last-child { border-bottom: none; }
+  .dm-row span:first-child { color: var(--text-dim); }
+  .dm-row span:last-child { font-weight: 600; color: var(--text); }
+  .stripe { height: 3px; background: linear-gradient(90deg, #F15A22, #D94E1A); }
+  .colabo {
+    display: grid;
+    grid-template-columns: 2fr auto 1fr auto 1fr auto 1fr;
+    align-items: center;
+    padding: 10px 24px;
+    background: var(--navy);
+  }
+  .ci { display: flex; flex-direction: column; gap: 2px; }
+  .cl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: rgba(255,255,255,.6); }
+  .cv { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs { width: 1px; height: 28px; background: rgba(255,255,255,.15); margin: 0 14px; }
+  .doc-title { padding: 18px 24px 14px; text-align: center; border-bottom: 1px solid var(--border); }
+  .doc-title h1 { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--navy); }
+  .doc-body { padding: 24px 28px; border-bottom: 1px solid var(--border); }
+  .doc-sig { padding: 22px 28px 26px; }
+  .sig-frase { font-size: 12px; color: #333; margin-bottom: 16px; font-weight: 500; }
+  .sig-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1.5px solid var(--navy);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .sig-table th {
+    background: var(--navy-lt);
+    color: var(--navy);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  .sig-table td {
+    padding: 10px 10px;
+    font-size: 11px;
+    color: var(--text);
+    border: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .sig-box { min-height: 55px; display: flex; align-items: center; justify-content: center; }
+  .sig-img { max-height: 55px; max-width: 160px; object-fit: contain; }
+  @media (max-width: 640px) {
+    .doc-head, .colabo { grid-template-columns: 1fr; }
+    .cs { display: none; }
+    .colabo { gap: 10px; padding: 14px; }
+    .doc-body, .doc-sig { padding: 16px; }
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .doc-container { box-shadow: none; border: none; max-width: 100%; }
+    .colabo { background: #f0f2f8 !important; -webkit-print-color-adjust: exact; }
+    .cl { color: #555 !important; }
+    .cv { color: #000 !important; }
+  }
+</style>
+</head>
+<body>
+<div class="doc-container">
+  <!-- ENCABEZADO -->
+  <div class="doc-head">
+    <div class="dh-logo">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER">
+    </div>
+    <div class="dh-title">
+      <span>Política para la Autorización, Tratamiento de Datos Personales y Aviso de Privacidad</span>
+    </div>
+    <div class="dh-meta">
+      <div class="dm-row"><span>Código</span><span>TH-R-008</span></div>
+      <div class="dm-row"><span>Versión</span><span>2</span></div>
+      <div class="dm-row"><span>Página</span><span>1 de 1</span></div>
+    </div>
+  </div>
+  <div class="stripe"></div>
+
+  <!-- BANNER COLABORADOR -->
+  <div class="colabo">
+    <div class="ci"><div class="cl">Colaborador</div><div class="cv">{{nombre_completo}}</div></div>
+    <div class="cs"></div>
+    <div class="ci"><div class="cl">Identificación</div><div class="cv">{{identificacion}}</div></div>
+    <div class="cs"></div>
+    <div class="ci"><div class="cl">Cargo</div><div class="cv">{{cargo}}</div></div>
+    <div class="cs"></div>
+    <div class="ci"><div class="cl">Operación</div><div class="cv">{{operacion}}</div></div>
+  </div>
+
+  <!-- TITULO DOCUMENTO -->
+  <div class="doc-title">
+    <h1>Autorización para el Tratamiento de Datos Personales</h1>
+  </div>
+
+  <!-- CONTENIDO ESPECÍFICO -->
+  <div class="doc-body">
+    <div style="font-size:12px;color:#222;line-height:1.75;margin-bottom:14px">Con la firma de este documento manifiesto que he sido informado por APOYO LOGISTICO Y OPERATIVO S.A.S. de lo siguiente:</div><div style="display:flex;gap:6px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#222;flex-shrink:0;min-width:18px">1.</div><div style="font-size:12px;color:#222;line-height:1.7">La Compañía actúa como responsable del tratamiento de datos personales del titular de acuerdo con lo establecido en la ley 1581 de 2012 de habeas data, y que conjunta o separadamente podrá recolectar, usar y tratar mis datos personales conforme a la Política de Tratamiento de Datos de la Compañía que se encuentra disponible en la base de datos del área de Talento Humano. Es de carácter facultativo el responder las preguntas sobre Datos Sensibles o sobre niñas, niños y adolescentes. </div></div><div style="display:flex;gap:6px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#222;flex-shrink:0;min-width:18px">2.</div><div style="font-size:12px;color:#222;line-height:1.7">Es de carácter facultativo el responder las preguntas sobre Datos Sensibles o sobre niñas, niños y adolescentes. Mis derechos como titular de los datos son los previstos en la Constitución y la ley, especialmente los siguientes: </div></div><div style="display:flex;gap:6px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#222;flex-shrink:0;min-width:18px">3.</div><div style="font-size:12px;color:#222;line-height:1.7">Derecho a conocer, actualizar y rectificar mis datos personales frente a los responsables o encargados del Tratamiento, así como el derecho a revocar el consentimiento otorgado para el tratamiento de datos personales. Este derecho se podrá ejercer, entre otros frente a datos parciales, inexactos, incompletos, fraccionados, que induzcan a error, o aquellos cuyo Tratamiento esté expresamente prohibido o no haya sido autorizado; pueden ser ejercidos a través de los canales gratuitos dispuestos por la Compañía y observando la Política de Tratamiento de Datos Personales de APOYO LOGISTICO Y OPERATIVO S.A.S. </div></div><div style="display:flex;gap:6px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#222;flex-shrink:0;min-width:18px">4.</div><div style="font-size:12px;color:#222;line-height:1.7">Derecho a solicitar prueba de la autorización otorgada al responsable del Tratamiento salvo cuando expresamente se exceptúe como requisito para el Tratamiento; </div></div><div style="display:flex;gap:6px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#222;flex-shrink:0;min-width:18px">5.</div><div style="font-size:12px;color:#222;line-height:1.7">Derecho a ser informado por el responsable del Tratamiento o el Encargado del Tratamiento, previa solicitud, respecto del uso que les ha dado a mis datos personales; </div></div><div style="display:flex;gap:6px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#222;flex-shrink:0;min-width:18px">6.</div><div style="font-size:12px;color:#222;line-height:1.7">Derecho a revocar la autorización y/o solicitar la supresión del dato cuando en el Tratamiento no se respeten los principios, derechos y garantías constitucionales y legales. </div></div><div style="display:flex;gap:6px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#222;flex-shrink:0;min-width:18px">7.</div><div style="font-size:12px;color:#222;line-height:1.7">Derecho a acceder en forma gratuita a mis datos personales que hayan sido objeto de Tratamiento, en los términos establecidos en la Ley 1581 de 2.012 y las demás normas que la modifiquen, adicionen o complementen, para cualquier inquietud o información adicional relacionada con el tratamiento de datos personales, puedo contactarme al correo electrónico directora.th@logyser.com </div></div><div style="display:flex;gap:6px;margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:#222;flex-shrink:0;min-width:18px">8.</div><div style="font-size:12px;color:#222;line-height:1.7"><strong>Aceptación de la Política de Tratamiento de Datos Personales</strong> El trabajador, al firmar este documento, declara que ha leído y comprendido en su totalidad la Política de Tratamiento de Datos Personales de APOYO LOGÍSTICO Y OPERATIVO S.A.S (en adelante LOG&amp;SER), la cual ha sido proporcionada para su revisión. El trabajador acepta y consiente el tratamiento de sus datos personales de acuerdo con los términos y condiciones establecidos en dicha política. El trabajador entiende que la Política de Tratamiento de Datos Personales detalla cómo LOG&amp;SER recopila, utiliza, almacena y protege la información personal, así como los derechos y procedimientos relacionados con la protección de datos. Asimismo, reconoce que tiene acceso a la política en cualquier momento y puede solicitar aclaraciones o ejercer sus derechos de acceso, corrección, actualización o eliminación de datos conforme a lo dispuesto en la política y la legislación aplicable. Al firmar este documento, el trabajador otorga su consentimiento explícito para el tratamiento de sus datos personales conforme a las finalidades descritas en la política. </div></div>
+  </div>
+
+  <!-- TABLA DE FIRMA -->
+  <div class="doc-sig">
+    <p class="sig-frase">
+      Se firma en el municipio de <strong>{{municipio_firma}}</strong>, el día <strong>{{dia_firma}}</strong> del mes <strong>{{mes_firma}}</strong> del año <strong>{{anio_firma}}</strong>.
+    </p>
+    <table class="sig-table">
+      <thead>
+        <tr>
+          <th style="width:28%">Firma</th>
+          <th style="width:34%">Nombres y Apellidos</th>
+          <th style="width:19%">Identificación</th>
+          <th style="width:19%">Lugar de Expedición</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="sig-box">{{firma_colaborador}}</div>
+          </td>
+          <td><strong>{{nombre_completo}}</strong></td>
+          <td>{{identificacion}}</td>
+          <td>{{ciudad_expedicion}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

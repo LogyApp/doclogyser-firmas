@@ -6,6 +6,12 @@ const { Storage } = require('@google-cloud/storage');
 const { GoogleAuth } = require('google-auth-library');
 const pool = require('../services/db');
 const { notificarBloqueoAspirante } = require('../services/email');
+const {
+  DOCS_FIRMA_SELECCION,
+  obtenerDatosAspiranteParaFirma,
+  generarHtmlVistaFirma,
+  procesarFirmaDocumento
+} = require('../services/seleccionFirmas');
 
 // Multer in-memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -354,7 +360,7 @@ router.get('/portal/:uuid', async (req, res) => {
       mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path };
     });
 
-    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso));
+    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, DOCS_FIRMA_SELECCION));
   } catch (error) {
     console.error("Error en Portal Aspirante:", error);
     res.status(500).send("Error interno al cargar el portal");
@@ -376,22 +382,7 @@ router.get('/admin/:uuid', async (req, res) => {
     { id: 8, nombre: "Manipulación alimentos" }, 
     { id: 53, nombre: "Verificación referencias" }
   ];
-  const docsFirmar = [
-    { id: 2, nombre: "Acta condiciones" }, 
-    { id: 7, nombre: "Análisis riesgo" }, 
-    { id: 16, nombre: "Consentimiento H. Clínica" }, 
-    { id: 19, nombre: "Consentimiento Prueba" }, 
-    { id: 20, nombre: "Condiciones salud" }, 
-    { id: 29, nombre: "Evaluación Inducción" }, 
-    { id: 32, nombre: "Comprobante Inducción" }, 
-    { id: 39, nombre: "Manual funciones" }, 
-    { id: 48, fontName: "Normas seguridad" }, 
-    { id: 49, nombre: "Tratamiento datos" }, 
-    { id: 33, nombre: "Formatos Italcol" }
-  ];
-
-  // Fix: set name value for key 48 manually if misaligned
-  docsFirmar.forEach(d => { if(d.id === 48) d.nombre = d.nombre || d.fontName; });
+  const docsFirmar = DOCS_FIRMA_SELECCION;
 
   try {
     const [[aspiranteRows], [cargados]] = await Promise.all([
@@ -417,7 +408,7 @@ router.get('/admin/:uuid', async (req, res) => {
 
     if (a.IdRequisicion) {
       const [reqRows] = await pool.execute(
-        'SELECT `Requisición`, `Operación`, \`Cargo Requerido\`, `Fecha Requisición`, `Regional` FROM Dynamic_Requisiciones WHERE IdRequisicion = ? LIMIT 1',
+        'SELECT `Requisición`, `Operación`, `Cargo Requerido`, `Fecha Requisición`, `Regional` FROM Dynamic_Requisiciones WHERE IdRequisicion = ? LIMIT 1',
         [a.IdRequisicion]
       );
 
@@ -438,7 +429,7 @@ router.get('/admin/:uuid', async (req, res) => {
 
     res.send(generarHtmlAdmin(
       uuid,
-      { nombreCompleto, identificacion: a.identificacion, IdRequisicion: a.IdRequisicion, pdfUrl, requisicionInfo, regionalSugerida, operacionSugerida },
+      { nombreCompleto, identificacion: a.identificacion, IdRequisicion: a.IdRequisicion, pdfUrl, requisicionInfo, regionalSugerida, operacionSugerida, estadoProceso: a.estado_proceso },
       docsAspiranteIds, nombresAsp, docsTecnicos, docsFirmar, mapaDocs, 
       a.estado_proceso === 'contratado',
       usuario
@@ -446,6 +437,96 @@ router.get('/admin/:uuid', async (req, res) => {
   } catch (error) {
     console.error("Error en Admin Panel:", error);
     res.status(500).send("Error interno al cargar el panel administrativo");
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// Rutas de Firma Digital de Selección
+// ══════════════════════════════════════════════════════════════
+
+// Vista interactiva para firmar documento individual
+router.get('/firmar/:uuid/:idConfigDoc', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  const { uuid, idConfigDoc } = req.params;
+  const usuario = req.query.usuario || '';
+
+  try {
+    const datos = await obtenerDatosAspiranteParaFirma(uuid, idConfigDoc);
+    if (!datos) {
+      return res.status(404).send('Aspirante no encontrado');
+    }
+    if (datos.aspirante.estado_proceso === 'bloqueado') {
+      return res.redirect(`/seleccion/portal/${uuid}?usuario=${usuario}`);
+    }
+
+    const { reemplazarVariables } = require('../services/plantilla');
+    const contenidoHtmlConVariables = reemplazarVariables(datos.contenidoHtml, {
+      ...datos.variables,
+      firma_colaborador: '<div style="color:#64748b;font-style:italic;font-size:11px;text-align:center;padding:12px 0;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:6px;">[Tu firma digital aparecerá aquí tras confirmar]</div>'
+    });
+
+    const html = generarHtmlVistaFirma({
+      aspirante: datos.aspirante,
+      docItem: datos.docItem,
+      contenidoHtmlConVariables,
+      firmaPrevia: datos.firmaPrevia,
+      docActual: datos.docActual,
+      usuario,
+      bucketAspirantes: BUCKET_ASPIRANTES
+    });
+
+    res.send(html);
+  } catch (err) {
+    console.error('Error al cargar pantalla de firma:', err);
+    res.status(500).send('Error interno al cargar la firma del documento: ' + err.message);
+  }
+});
+
+// Procesar firma del documento y compilar PDF oficial con Puppeteer
+router.post('/firmar/:uuid/:idConfigDoc', express.json({ limit: '10mb' }), async (req, res) => {
+  const { uuid, idConfigDoc } = req.params;
+  const { firma_base64, es_nueva_firma } = req.body;
+
+  if (!firma_base64) {
+    return res.status(400).json({ ok: false, error: 'Falta la imagen de la firma' });
+  }
+
+  try {
+    const resultado = await procesarFirmaDocumento({
+      idAspirante: uuid,
+      idConfigDoc,
+      firmaBase64: firma_base64,
+      esNuevaFirma: !!es_nueva_firma,
+      bucketAspirantes: BUCKET_ASPIRANTES
+    });
+
+    res.json(resultado);
+  } catch (err) {
+    console.error('Error al procesar firma de selección:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Cambiar estado del proceso del aspirante (Admin: Registro <-> En proceso)
+router.post('/cambiar-estado-proceso', async (req, res) => {
+  const { id_aspirante, nuevo_estado } = req.body;
+  const usuario = req.query.usuario || req.body.usuario || '';
+
+  try {
+    const estadosValidos = ['Registro', 'En proceso'];
+    if (!estadosValidos.includes(nuevo_estado)) {
+      return res.status(400).send('Estado no permitido');
+    }
+
+    await pool.execute(
+      'UPDATE Dynamic_hv_aspirante SET estado_proceso = ? WHERE id_aspirante = ? AND estado_proceso != "contratado"',
+      [nuevo_estado, id_aspirante]
+    );
+
+    res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent('Estado del aspirante actualizado a ' + nuevo_estado)}`);
+  } catch (error) {
+    console.error('Error al cambiar estado proceso:', error);
+    res.status(500).send('Error al cambiar el estado del aspirante: ' + error.message);
   }
 });
 
@@ -1135,7 +1216,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
 // Plantillas HTML Inline (Ajustadas para prefijo /seleccion y query params)
 // ══════════════════════════════════════════════════════════════
 
-function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso) {
+function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = []) {
   if (estadoProceso === 'bloqueado') {
     return `
     <!DOCTYPE html>
@@ -1176,6 +1257,7 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
       const params = new URLSearchParams(window.location.search);
       if (params.get('msg') === 'deleted') alert('Documento eliminado correctamente.');
       if (params.get('msg') === 'uploaded') alert('Documento guardado y cargado correctamente.');
+      if (params.get('msg') === 'firmado') alert('¡Documento firmado y generado con éxito!');
     </script>
   `;
 
@@ -1266,6 +1348,93 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           }).join('')}
         </div>
       </div>
+
+      ${(estadoProceso === 'En proceso' || estadoProceso === 'contratado') ? `
+      <!-- Sección de Documentos para Firma Digital -->
+      <div class="bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-100 p-8 md:p-12 mb-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-orange-500 animate-pulse"></span>
+              <h3 class="text-xl font-black text-slate-800 uppercase italic tracking-tight">Fase de Vinculación: Documentos para Firma Digital</h3>
+            </div>
+            <p class="text-slate-500 text-xs mt-1 font-medium">
+              Por favor lee cuidadosamente y estampa tu firma digital en cada uno de los siguientes documentos obligatorios.
+            </p>
+          </div>
+          <div class="bg-orange-50 border border-orange-200 px-4 py-2 rounded-2xl text-xs font-black text-orange-700 whitespace-nowrap self-start md:self-auto">
+            ${docsFirma.filter(d => mapaDocs[d.id] && mapaDocs[d.id].estado === 'Firmado').length} de ${docsFirma.length} firmados
+          </div>
+        </div>
+
+        <!-- Barra de Progreso -->
+        <div class="w-full bg-slate-100 h-2.5 rounded-full mb-8 overflow-hidden">
+          <div class="bg-orange-500 h-full rounded-full transition-all duration-500" 
+            style="width: ${Math.round((docsFirma.filter(d => mapaDocs[d.id] && mapaDocs[d.id].estado === 'Firmado').length / (docsFirma.length || 1)) * 100)}%"></div>
+        </div>
+
+        <div class="space-y-3">
+          ${docsFirma.map((doc, idx) => {
+            const data = mapaDocs[doc.id];
+            const estaFirmado = data && data.estado === 'Firmado';
+            const estaCargado = data && !estaFirmado;
+
+            return `
+            <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaFirmado ? 'border-emerald-200 bg-emerald-50/50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} rounded-2xl shadow-xs transition-all hover:border-slate-200">
+              <div class="flex items-center space-x-3 flex-1">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${estaFirmado ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}">
+                  ${estaFirmado ? '✓' : (idx + 1)}
+                </div>
+                <div>
+                  <span class="text-sm font-bold text-slate-800 block">${doc.nombre}</span>
+                  <span class="text-[10px] font-semibold text-slate-400 font-mono">${doc.prefijo || ''}</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 mt-3 md:mt-0">
+                ${estaFirmado ? `
+                  <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">✓ Firmado</span>
+                  <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
+                    class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
+                    Ver PDF ↗
+                  </a>
+                  <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+                    class="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline">
+                    Volver a firmar
+                  </a>
+                ` : (estaCargado ? `
+                  <span class="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide">Cargado</span>
+                  <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
+                    class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
+                    Ver ↗
+                  </a>
+                  <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+                    class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs">
+                    Firmar Digitalmente →
+                  </a>
+                ` : `
+                  <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+                    class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5">
+                    <span>✍️</span> Abrir y Firmar →
+                  </a>
+                `)}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      ` : `
+      <!-- Card informativo cuando está en fase de Registro -->
+      <div class="bg-white/80 border border-slate-200/80 rounded-3xl p-6 text-center mb-8 shadow-xs">
+        <div class="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-slate-100 text-slate-400 mb-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        </div>
+        <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Fase 2: Documentos para Firma Digital (Pendiente de Activación)</h4>
+        <p class="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+          Una vez subas y el equipo de Selección valide tus documentos de soporte iniciales, tu estado pasará a <strong>'En Proceso'</strong> y se habilitará aquí la lista de contratos y formatos para firmar digitalmente.
+        </p>
+      </div>
+      `}
     </div>
 
     <!-- Spinner Overlay -->
@@ -1967,23 +2136,30 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
 function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa, bloqueado, usuario) {
   const renderFilaSeleccion = (doc) => {
     const data = mapa[doc.id];
+    const estaFirmado = data && data.estado === 'Firmado';
     return `
     <div class="p-3 border-b border-slate-100 last:border-0">
       <div class="flex justify-between items-center mb-2">
-        <span class="text-[11px] font-bold text-slate-700 uppercase">${doc.nombre}</span>
+        <div class="flex items-center gap-1.5 flex-1 pr-2">
+          <span class="text-[11px] font-bold text-slate-700 uppercase">${doc.nombre}</span>
+          ${doc.prefijo ? `<span class="text-[9px] text-slate-400 font-mono font-bold">(${doc.prefijo})</span>` : ''}
+        </div>
         ${data ? `
-          <div class="flex gap-2">
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${estaFirmado 
+              ? '<span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider">✓ FIRMADO</span>' 
+              : '<span class="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider">CARGADO</span>'}
             <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-[10px] text-blue-600 font-bold hover:underline">VER</a>
-            ${!bloqueado ? `<button type="button" onclick="eliminar(${doc.id}, '${doc.nombre}')" class="text-[10px] text-red-400 font-bold italic">ELIMINAR</button>` : ''}
+            ${!bloqueado ? `<button type="button" onclick="eliminar(${doc.id}, '${doc.nombre}')" class="text-[10px] text-red-400 font-bold italic hover:text-red-600">ELIMINAR</button>` : ''}
           </div>
-        ` : '<span class="text-[10px] text-slate-300 italic">Pendiente</span>'}
+        ` : '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold italic shrink-0">Pendiente</span>'}
       </div>
       ${!data && !bloqueado ? `
         <div class="relative border-2 border-dashed border-slate-200 rounded-lg p-2 hover:border-blue-400 transition-colors bg-slate-50">
           <input type="file" name="file_${doc.id}" accept=".pdf" 
                  onchange="this.parentElement.querySelector('.file-name').innerText = this.files[0].name; this.parentElement.classList.add('bg-blue-50', 'border-blue-400')"
                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-          <p class="text-[9px] text-center text-slate-400 file-name">Arrastra o haz clic para subir PDF</p>
+          <p class="text-[9px] text-center text-slate-400 file-name">Arrastra o haz clic para subir PDF manual</p>
         </div>
       ` : ''}
     </div>`;
@@ -2000,6 +2176,8 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
       if (params.get('msg') === 'deleted') alert('Documento eliminado del sistema');
     </script>
   `;
+
+  const totalFirmados = docsFir.filter(d => mapa[d.id] && mapa[d.id].estado === 'Firmado').length;
 
   return `
   <!DOCTYPE html>
@@ -2026,11 +2204,38 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
     <div class="max-w-7xl mx-auto ${bloqueado ? 'interfaz-bloqueada' : ''}">
       <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-3xl shadow-sm border border-slate-200 gap-4">
         <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="h-16 w-auto object-contain">
-        <div class="text-center md:text-right">
-          <h1 class="text-xl font-black text-slate-800 uppercase leading-tight">${asp.nombreCompleto}</h1>
-          <p class="text-xs text-slate-400 font-mono italic mb-2">C.C. ${asp.identificacion}</p>
+        <div class="text-center md:text-right space-y-1">
+          <div class="flex flex-wrap items-center justify-center md:justify-end gap-2 mb-1">
+            <h1 class="text-xl font-black text-slate-800 uppercase leading-tight">${asp.nombreCompleto}</h1>
+            ${asp.estadoProceso === 'En proceso' 
+              ? '<span class="bg-purple-100 text-purple-800 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider border border-purple-200">En Proceso (Fase de Firmas)</span>' 
+              : (asp.estadoProceso === 'contratado' 
+                ? '<span class="bg-emerald-100 text-emerald-800 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-200">✓ Contratado</span>'
+                : (asp.estadoProceso === 'bloqueado'
+                  ? '<span class="bg-red-100 text-red-800 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider border border-red-200">Bloqueado</span>'
+                  : '<span class="bg-amber-100 text-amber-800 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider border border-amber-200">En Registro</span>'
+                ))}
+          </div>
+          <p class="text-xs text-slate-400 font-mono italic">C.C. ${asp.identificacion}</p>
           ${asp.requisicionInfo ? `<p class="bg-slate-100 text-[10px] py-1 px-3 rounded-full text-slate-600 inline-block font-bold">${asp.requisicionInfo}</p>` : ``}
-          ${asp.pdfUrl ? `<p class="text-xs mt-2"><a class="text-blue-600 font-bold underline" href="${asp.pdfUrl}" target="_blank">VER HOJA DE VIDA (PDF)</a></p>` : ``}
+          ${asp.pdfUrl ? `<p class="text-xs mt-1"><a class="text-blue-600 font-bold underline" href="${asp.pdfUrl}" target="_blank">VER HOJA DE VIDA (PDF)</a></p>` : ``}
+          
+          <!-- Botón para avanzar o revertir estado En Proceso -->
+          ${!bloqueado && asp.estadoProceso !== 'contratado' ? `
+            <div class="pt-2 flex justify-center md:justify-end">
+              ${asp.estadoProceso === 'Registro' ? `
+                <button type="button" onclick="cambiarEstado('En proceso')" 
+                  class="bg-purple-600 hover:bg-purple-700 text-white font-black text-[11px] uppercase tracking-wider py-2 px-4 rounded-xl shadow-sm transition-all inline-flex items-center gap-1.5">
+                  <span>✍️</span> Habilitar Fase de Firmas (Poner 'En Proceso')
+                </button>
+              ` : `
+                <button type="button" onclick="cambiarEstado('Registro')" 
+                  class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-[10px] uppercase py-1.5 px-3 rounded-xl transition-all inline-flex items-center gap-1">
+                  <span>↩</span> Regresar a estado 'Registro'
+                </button>
+              `}
+            </div>
+          ` : ''}
         </div>
       </div>
 
@@ -2077,11 +2282,16 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
           class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
           <input type="hidden" name="id_aspirante" value="${uuid}">
           <input type="hidden" name="origen" value="admin">
-          <div class="p-4 bg-purple-600 text-white font-bold text-xs tracking-widest uppercase text-center">3. Documentos para Firmas</div>
+          <div class="p-4 bg-purple-600 text-white font-bold text-xs tracking-widest uppercase flex items-center justify-between">
+            <span>3. Documentos para Firmas</span>
+            <span class="text-[10px] bg-purple-800 text-purple-100 font-extrabold px-2.5 py-0.5 rounded-full">
+              ${totalFirmados} / ${docsFir.length} firmados
+            </span>
+          </div>
           <div class="p-2 h-[450px] overflow-y-auto">${docsFir.map(renderFilaSeleccion).join('')}</div>
           <div class="p-4 bg-white border-t border-slate-100">
             <button type="submit" class="w-full bg-purple-600 text-white py-3 rounded-2xl font-bold text-xs hover:bg-purple-700 transition-all shadow-md">
-              CARGAR SECCIÓN FIRMAS
+              CARGAR SECCIÓN FIRMAS (MANUAL)
             </button>
           </div>
         </form>
@@ -2179,7 +2389,16 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
           }
         });
 
-      document.getElementById('selectRegional').onchange = (e) => cargarOperaciones(e.target.value);
+      function cambiarEstado(nuevoEstado) {
+        const msg = nuevoEstado === 'En proceso' 
+          ? '¿Deseas activar la fase de firmas? El aspirante podrá ver y firmar digitalmente los 11 documentos en su portal.'
+          : '¿Deseas regresar el aspirante al estado Registro?';
+        if (confirm(msg)) {
+          const f = document.createElement('form'); f.method='POST'; f.action='/seleccion/cambiar-estado-proceso?usuario=${usuario}';
+          f.innerHTML = '<input type="hidden" name="id_aspirante" value="${uuid}"><input type="hidden" name="nuevo_estado" value="'+nuevoEstado+'">';
+          document.body.appendChild(f); f.submit();
+        }
+      }
 
       document.getElementById('formFinal').onsubmit = function() {
         const btn = document.getElementById('btnConfirmar');

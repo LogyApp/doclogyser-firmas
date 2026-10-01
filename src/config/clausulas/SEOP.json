@@ -1,0 +1,122 @@
+{
+  "prefijo": "SEOP",
+  "nombre": "Normas de Seguridad en Operación",
+  "codigo": "SST-FM-021",
+  "version": "1",
+  "fecha_version": "2022-12-30",
+  "tabla_registro": "Digital_SEOP",
+  "categoria": "Seguridad y salud",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "cargo",
+    "operacion",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Normas de Seguridad en Operación",
+    "codigo_doc": "SST-FM-021",
+    "version_doc": "01",
+    "pagina": "1 de 1"
+  },
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": "Objetivo y alcance",
+      "texto": "Objetivo: Establecer normas a nivel de Seguridad y Salud en el Trabajo para laborar en las operaciones, como medida de prevención frente a Riesgos y Peligros derivados de la operación de Logyser.\n\nAlcance: Aplica para todos los colaboradores de Logyser.\n\nObjetivos Específicos:\n• Prevenir incidentes y/o accidentes laborales, con afectación a la persona, al medio ambiente, a la operación y activos fijos de LOGYSER.\n• Adoptar cultura de auto cuidado y cumplimiento de normas de seguridad como medida preventiva frente a estado integral del trabajador."
+    },
+    {
+      "numero": 2,
+      "titulo": "Norma 1 — Presentación y dotación",
+      "texto": "Presento mi carnet al ingreso de las instalaciones de las operaciones, me presento a la zona de operación con mi dotación completa entregada por la empresa (Overol, calzado y EPP) durante toda mi jornada laboral utilizo mi dotación y EPP requeridos para mi labor."
+    },
+    {
+      "numero": 3,
+      "titulo": "Norma 2 — Puntualidad e información",
+      "texto": "Llego a mi lugar de trabajo con tiempo de anticipación necesario para recibir el turno; así como la información necesaria de las actividades a realizar."
+    },
+    {
+      "numero": 4,
+      "titulo": "Norma 3 — Accesorios y sustancias",
+      "texto": "Me abstengo de usar accesorios como: aretes, pearcing, expansiones, cadenas, pulseras, relojes, anillos, gorras y me presento al trabajo libre de efectos de sustancias de alcohol, drogas y psicoactivas, las cuales ponen en riesgo mi integridad y la de mis compañeros."
+    },
+    {
+      "numero": 5,
+      "titulo": "Norma 4 — Reporte de condiciones de salud",
+      "texto": "Reporto mis condiciones de salud de forma diaria y con 2 días de antelación como mínimo informo mis citas médicas, terapias, exámenes y otros para gestionar el permiso a través de formato físico."
+    },
+    {
+      "numero": 6,
+      "titulo": "Norma 5 — Soporte de incapacidad",
+      "texto": "Los soporte de incapacidad, recomendaciones y otros una vez sean expedidas, debo entregarla a jefe y/o gestión humana y SST, para respectivo análisis de puesto de trabajo."
+    },
+    {
+      "numero": 7,
+      "titulo": "Norma 6 — Reporte de lesiones",
+      "texto": "Toda lesión que me suceda en la ejecución de mi labor, la debo reportar de forma inmediata a la ocurrencia y participar en el proceso de investigación, plan de acción conforme a legislación vigente."
+    },
+    {
+      "numero": 8,
+      "titulo": "Norma 7 — Distracciones",
+      "texto": "Me abstengo de utilizar celular, manos libres, radios, mp3 o cualquier otro elemento que me genere distracción durante mi jornada laboral."
+    },
+    {
+      "numero": 9,
+      "titulo": "Norma 9 — Procedimientos y orden",
+      "texto": "Sigo procedimientos indicados en mi inducción, mantengo mi área de trabajo en condiciones óptimas de orden y aseo, cumpliendo normas y controles requeridos, suspendiendo toda labor que ponga en riesgo mi vida, la de mis compañeros, el medio ambiente y los recursos de la empresa."
+    },
+    {
+      "numero": 10,
+      "titulo": "Norma 10 — Conducta y seguridad vial",
+      "texto": "Reporto actos y condiciones inseguras, doy buen trato a jefes y compañeros, sigo instrucciones de mi jefe, acepto retroalimentación de superiores en caso de ser necesario; en el trabajo y fuera de él, cumplo las normas de seguridad vial (respeto señales de tránsito)."
+    },
+    {
+      "numero": 11,
+      "titulo": "Declaración de aceptación",
+      "texto": "Manifiesto haber leído, entendido y acepto cumplir con todas las normas de seguridad en operación establecidas por APOYO LOGÍSTICO Y OPERATIVO S.A.S. — LOG&SER, comprometiéndome a su estricto cumplimiento durante toda mi relación laboral con la empresa."
+    }
+  ],
+  "revisado_por": "Coordinador SG-SST",
+  "aprobado_por": "Zulma Yaneth Perdomo — Representante Legal",
+  "campos_firma": [
+    {
+      "id": "municipio",
+      "label": "Ciudad",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "dia",
+      "label": "Día",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "mes",
+      "label": "Mes",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "anio",
+      "label": "Año",
+      "tipo": "text",
+      "maxlength": 4,
+      "requerido": true
+    },
+    {
+      "id": "nombres",
+      "label": "Nombre y CC del trabajador",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "Número de identificación",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}

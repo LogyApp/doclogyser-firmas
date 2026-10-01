@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autorización para el Acceso a Historia Clínica y Tratamiento de Datos Personales</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1B2A5E;
+    --navy-dk: #162249;
+    --navy-lt: #EEF1F8;
+    --orange: #F15A22;
+    --border: #D8DCEA;
+    --text: #0F1C3F;
+    --text-mid: #5A6A8A;
+    --text-dim: #9AA5BF;
+    --green: #16A34A;
+    --bg: #F4F6FB;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Plus Jakarta Sans", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px;
+    line-height: 1.5;
+  }
+  .doc-container {
+    max-width: 840px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px rgba(15, 28, 63, 0.08);
+    overflow: hidden;
+  }
+  .doc-head {
+    display: grid;
+    grid-template-columns: 140px 1fr 120px;
+    border-bottom: 2.5px solid var(--navy);
+  }
+  .dh-logo {
+    padding: 14px 16px;
+    border-right: 1.5px solid var(--navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dh-logo img { height: 32px; object-fit: contain; }
+  .dh-title {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-right: 1.5px solid var(--navy);
+  }
+  .dh-title span {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--navy);
+    line-height: 1.4;
+  }
+  .dh-meta { display: flex; flex-direction: column; }
+  .dm-row {
+    padding: 6px 10px;
+    font-size: 9.5px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dm-row:last-child { border-bottom: none; }
+  .dm-row span:first-child { color: var(--text-dim); }
+  .dm-row span:last-child { font-weight: 600; color: var(--text); }
+  .stripe { height: 3px; background: linear-gradient(90deg, #F15A22, #D94E1A); }
+  .colabo {
+    display: grid;
+    grid-template-columns: 2fr auto 1fr auto 1fr auto 1fr;
+    align-items: center;
+    padding: 10px 24px;
+    background: var(--navy);
+  }
+  .ci { display: flex; flex-direction: column; gap: 2px; }
+  .cl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: rgba(255,255,255,.6); }
+  .cv { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cs { width: 1px; height: 28px; background: rgba(255,255,255,.15); margin: 0 14px; }
+  .doc-title { padding: 18px 24px 14px; text-align: center; border-bottom: 1px solid var(--border); }
+  .doc-title h1 { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--navy); }
+  .doc-body { padding: 24px 28px; border-bottom: 1px solid var(--border); }
+  .doc-sig { padding: 22px 28px 26px; }
+  .sig-frase { font-size: 12px; color: #333; margin-bottom: 16px; font-weight: 500; }
+  .sig-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1.5px solid var(--navy);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .sig-table th {
+    background: var(--navy-lt);
+    color: var(--navy);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  .sig-table td {
+    padding: 10px 10px;
+    font-size: 11px;
+    color: var(--text);
+    border: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .sig-box { min-height: 55px; display: flex; align-items: center; justify-content: center; }
+  .sig-img { max-height: 55px; max-width: 160px; object-fit: contain; }
+  @media (max-width: 640px) {
+    .doc-head, .colabo { grid-template-columns: 1fr; }
+    .cs { display: none; }
+    .colabo { gap: 10px; padding: 14px; }
+    .doc-body, .doc-sig { padding: 16px; }
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .doc-container { box-shadow: none; border: none; max-width: 100%; }
+    .colabo { background: #f0f2f8 !important; -webkit-print-color-adjust: exact; }
+    .cl { color: #555 !important; }
+    .cv { color: #000 !important; }
+  }
+</style>
+</head>
+<body>
+<div class="doc-container">
+  <!-- ENCABEZADO -->
+  <div class="doc-head">
+    <div class="dh-logo">
+      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&amp;SER">
+    </div>
+    <div class="dh-title">
+      <span>Autorización para el Acceso a Historia Clínica y Tratamiento de Datos Personales</span>
+    </div>
+    <div class="dh-meta">
+      <div class="dm-row"><span>Código</span><span>TH-R-025</span></div>
+      <div class="dm-row"><span>Versión</span><span>1</span></div>
+      <div class="dm-row"><span>Página</span><span>1 de 1</span></div>
+    </div>
+  </div>
+  <div class="stripe"></div>
+
+  <!-- BANNER COLABORADOR -->
+  <div class="colabo">
+    <div class="ci"><div class="cl">Colaborador</div><div class="cv">{{nombre_completo}}</div></div>
+    <div class="cs"></div>
+    <div class="ci"><div class="cl">Identificación</div><div class="cv">{{identificacion}}</div></div>
+    <div class="cs"></div>
+    <div class="ci"><div class="cl">Cargo</div><div class="cv">{{cargo}}</div></div>
+    <div class="cs"></div>
+    <div class="ci"><div class="cl">Operación</div><div class="cv">{{operacion}}</div></div>
+  </div>
+
+  <!-- TITULO DOCUMENTO -->
+  <div class="doc-title">
+    <h1>Autorización para el Acceso a Historia Clínica y Tratamiento de Datos Personales</h1>
+  </div>
+
+  <!-- CONTENIDO ESPECÍFICO -->
+  <div class="doc-body">
+    <div style="font-size:12px;color:#222;margin-bottom:16px"><strong>Ciudad:</strong> <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px;margin-right:30px">&nbsp;</span><strong>Fecha:</strong> <span style="border-bottom:1px solid #000;display:inline-block;min-width:120px">&nbsp;</span></div><div style="font-size:12px;color:#222;line-height:1.75;margin-bottom:12px">{{eps}} (Indicar nombre de EPS o compañía de medicina prepagada)
+
+Cordial saludo.</div><div style="font-size:12px;color:#222;line-height:1.75;margin-bottom:12px">Por medio de la suscripción de la presente autorización de tratamiento de datos personales, yo {{nombre_completo}}, identificado con cédula de ciudadanía o documento número {{identificacion}}, en mi calidad de empleado o aspirante en proceso de selección, manifiesto que autorizo a la empresa APOYO LOGÍSTICO Y OPERATIVO S.A.S. para que acceda de forma permanente a mi historia clínica médica y/u odontológica y efectúe el tratamiento (recolección, almacenamiento, uso, circulación o supresión) de mis datos personales que se deriven directamente de la prestación del desarrollo de mis funciones o que en mi calidad de aspirante tengan relación directa con el proceso de selección y el ejercicio del cargo de {{cargo}} al que aspiro ser contratado.</div><div style="font-size:12px;color:#222;line-height:1.75;margin-bottom:12px">Dicha autorización la realizo teniendo en cuenta la regulación existente actual sobre la protección de datos personales, esto es: Ley 1266 de 2008, Ley 1581 de 2012, Decreto 1075 de 2015 y demás normas que modifiquen, complementen o sustituyan la materia.</div><div style="font-size:12px;color:#222;line-height:1.75;margin-bottom:12px">Adicionalmente, informo que, como titular de los datos personales, conozco tener los derechos de aclaración, eliminación, corrección y actualización de estos, así como las demás condiciones establecidas en la Ley 1581 de 2012, que he leído previamente, dentro de las cuales se encuentran:
+- Acceder en forma gratuita a los datos proporcionados que hayan sido objeto de tratamiento.
+- Solicitar la actualización y rectificación de mi información frente a datos parciales, inexactos, incompletos, fraccionados, que induzcan a error, o a aquellos cuyo tratamiento esté prohibido o no haya sido autorizado.
+- Solicitar prueba de la autorización otorgada.
+- Presentar ante la Superintendencia de Industria y Comercio (SIC) quejas por infracciones a lo dispuesto en la normatividad vigente.
+- Revocar la autorización y/o solicitar la supresión del dato, a menos que exista un deber legal o contractual que haga imperativo conservar la información.
+- La posibilidad de abstenerse de responder las preguntas sobre datos sensibles o sobre datos de las niñas y niños y adolescentes.</div><div style="font-size:12px;color:#222;line-height:1.75;margin-bottom:12px">Acepto la finalidad antes indicada: SI ✓</div><div style="margin:20px auto;width:60%;border:1px solid #000"><div style="padding:8px 12px;border-bottom:1px solid #000;font-size:12px;font-weight:700;color:#222">Firma del trabajador:</div><div style="padding:8px 12px;font-size:12px;font-weight:700;color:#222"># Identificación</div></div>
+  </div>
+
+  <!-- TABLA DE FIRMA -->
+  <div class="doc-sig">
+    <p class="sig-frase">
+      Se firma en el municipio de <strong>{{municipio_firma}}</strong>, el día <strong>{{dia_firma}}</strong> del mes <strong>{{mes_firma}}</strong> del año <strong>{{anio_firma}}</strong>.
+    </p>
+    <table class="sig-table">
+      <thead>
+        <tr>
+          <th style="width:28%">Firma</th>
+          <th style="width:34%">Nombres y Apellidos</th>
+          <th style="width:19%">Identificación</th>
+          <th style="width:19%">Lugar de Expedición</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div class="sig-box">{{firma_colaborador}}</div>
+          </td>
+          <td><strong>{{nombre_completo}}</strong></td>
+          <td>{{identificacion}}</td>
+          <td>{{ciudad_expedicion}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

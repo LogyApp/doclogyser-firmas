@@ -1,0 +1,185 @@
+{
+  "prefijo": "EVIN",
+  "nombre": "Formato Evaluación de Inducción y Reinducción",
+  "codigo": "SST-FM-003",
+  "version": "3",
+  "fecha_version": "2022-12-28",
+  "tabla_registro": "Digital_EVIN",
+  "categoria": "Seguridad y salud",
+  "tipo_render": "evaluacion",
+  "campos_prellenado": ["identificacion", "nombre_completo", "cargo", "operacion", "firma_url"],
+  "encabezado": {
+    "titulo_politica": "Formato Evaluación de Inducción Reinducción",
+    "codigo_doc": "SST-FM-003",
+    "version_doc": "03",
+    "pagina": "1 de 2"
+  },
+  "secciones_evaluacion": [
+    {
+      "tipo": "calificacion_temas",
+      "titulo": "Evaluación de temas recibidos",
+      "instrucciones": "La opinión que nos brinda es crucial para mejorar constantemente el proceso de orientación. Evalúe de manera objetiva la información proporcionada en cada aspecto según el siguiente criterio: E=Excelente, B=Buena, R=Regular, M=Mala. Marque con una X la casilla correspondiente.",
+      "criterios": ["E", "B", "R", "M"],
+      "temas": [
+        "Organigrama",
+        "Misión",
+        "Visión",
+        "Objetivos de la Empresa",
+        "Políticas de la Empresa",
+        "Funciones y Responsabilidades de su Cargo",
+        "Derechos y Deberes del Trabajador",
+        "Reglamento Interno de la Empresa",
+        "Generalidades sobre Seguridad Social",
+        "Nómina y Prestaciones Sociales",
+        "Jefes Inmediatos",
+        "Estructura de su Área de Trabajo",
+        "Procedimiento de Trabajo Seguro",
+        "Permisos de Trabajo",
+        "Incapacidades"
+      ]
+    },
+    {
+      "tipo": "preguntas_vf",
+      "titulo": "Cuestionario de verificación — Marque (F) falso o (V) verdadero",
+      "preguntas": [
+        {
+          "id": "p1a",
+          "columna": "A",
+          "texto": "En LOGYSER S.A.S. todos tenemos la obligación moral de cuidarnos los unos a los otros.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p1b",
+          "columna": "B",
+          "texto": "La prioridad de LOGYSER es la seguridad y salud de nuestros trabajadores y clientes.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p2a",
+          "columna": "A",
+          "texto": "El objetivo del SG-SST es sensibilizar al personal frente a peligros presentes en su lugar de trabajo para prevenir lesiones derivadas de accidentes y/o enfermedad laboral.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p2b",
+          "columna": "B",
+          "texto": "El objetivo del SG-SST es premiar a los trabajadores que realicen de forma correcta su trabajo.",
+          "respuesta_correcta": "F"
+        },
+        {
+          "id": "p3a",
+          "columna": "A",
+          "texto": "El COPASST gestiona peligros y riesgo en el lugar de trabajo, hace parte del grupo investigador de accidentes de trabajo y enfermedades laborales y actúa como apoyo a SST.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p3b",
+          "columna": "B",
+          "texto": "El Comité de Convivencia laboral busca prevenir conductas de acoso laboral y proteger a los empleados contra los riesgos psicosociales.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p4a",
+          "columna": "A",
+          "texto": "Acoso Laboral es toda conducta persistente y demostrable ejercida por un empleador, jefe o compañero, encaminada a infundir miedo, intimidación, terror y angustia.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p4b",
+          "columna": "B",
+          "texto": "Es responsabilidad del trabajador reportar a Jefe inmediato la ausencia al trabajo de forma inmediata generada por estado de salud, incapacidad, accidente, calamidad.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p5a",
+          "columna": "A",
+          "texto": "Respetar a sus compañeros de trabajo es un deber del trabajador.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p5b",
+          "columna": "B",
+          "texto": "Recibir y acatar recomendaciones relacionadas con la ejecución de sus tareas es un deber del trabajador.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p6a",
+          "columna": "A",
+          "texto": "El no cumplir las normas de seguridad genera proceso disciplinario.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p6b",
+          "columna": "B",
+          "texto": "En caso de tratamiento médico por evento de AT, no es obligación del trabajador asistir a terapias ni reclamar los medicamentos.",
+          "respuesta_correcta": "F"
+        },
+        {
+          "id": "p7a",
+          "columna": "A",
+          "texto": "Reportar accidentes de trabajo de forma inmediata a jefe y SST es un deber del trabajador.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p7b",
+          "columna": "B",
+          "texto": "Se puede reportar eventos de AT después de la jornada laboral.",
+          "respuesta_correcta": "F"
+        },
+        {
+          "id": "p8a",
+          "columna": "A",
+          "texto": "En una evacuación, el trabajador debe seguir instrucciones del Jefe y Brigadistas; en caso de vapores, humos y gases se debe cubrir boca y nariz y salir de forma inmediata.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p8b",
+          "columna": "B",
+          "texto": "Durante una evacuación, el personal debe llegar al punto de encuentro y si encuentra camillas, extintor y botiquín es responsabilidad de cualquier trabajador llevarlos.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p9a",
+          "columna": "A",
+          "texto": "Los equipos de Emergencia (botiquín, extintor, Camilla, Kit para contención de derrame) deben ser inspeccionados como mínimo una vez al mes.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p9b",
+          "columna": "B",
+          "texto": "Durante una emergencia que requiera primeros auxilios, cualquier trabajador puede realizar la atención de manejo de Botiquín.",
+          "respuesta_correcta": "F"
+        },
+        {
+          "id": "p10a",
+          "columna": "A",
+          "texto": "Acto: Es toda acción que realiza un trabajador como olvidos, errores u omisiones al realizar una tarea y que pueden generar lesiones.",
+          "respuesta_correcta": "V"
+        },
+        {
+          "id": "p10b",
+          "columna": "B",
+          "texto": "Condiciones: Son características del lugar de trabajo que son inseguras para que el trabajador pueda realizar sus tareas.",
+          "respuesta_correcta": "V"
+        }
+      ]
+    }
+  ],
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": "Declaración de conocimiento",
+      "texto": "Declaro haber recibido y entendido los contenidos del curso de Seguridad y Salud en el Trabajo y Medio Ambiente brindado por LOGYSER. Manifiesto conocer e identificar los riesgos a los que voy a estar expuesto y las medidas de control que debo utilizar en el desarrollo de mi labor dando cumplimiento a directrices de la compañía y del cliente. Me obligo y me comprometo a cumplir con las normas y procedimientos establecidos por la empresa."
+    }
+  ],
+  "campos_firma": [
+    {"id": "municipio", "label": "Ciudad", "tipo": "text", "requerido": true},
+    {"id": "dia", "label": "Día", "tipo": "text", "maxlength": 2, "requerido": true},
+    {"id": "mes", "label": "Mes", "tipo": "text", "maxlength": 2, "requerido": true},
+    {"id": "anio", "label": "Año", "tipo": "text", "maxlength": 4, "requerido": true},
+    {"id": "nombres", "label": "Nombres y apellidos", "tipo": "text", "requerido": true},
+    {"id": "cedula", "label": "Número de cédula", "tipo": "text", "requerido": true},
+    {"id": "cargo", "label": "Cargo", "tipo": "text", "requerido": true},
+    {"id": "operacion", "label": "Operación", "tipo": "text", "requerido": true}
+  ]
+}

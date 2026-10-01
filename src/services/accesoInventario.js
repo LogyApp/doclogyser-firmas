@@ -93,11 +93,15 @@ async function computarAccesoInventario(usuarioId, seccionRequested = null) {
   } else if (codeBase === 3) {
     const tieneDispositivo = acceso.dispositivo && acceso.dispositivo.trim() !== '';
     if (tieneDispositivo) {
-      const [rows] = await pool.execute(
-        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA = ? OR MODALIDAD = ?) AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-        [acceso.dispositivo, acceso.dispositivo]
-      );
-      opRows = rows;
+      const dispositivos = acceso.dispositivo.split(',').map(d => d.trim()).filter(Boolean);
+      if (dispositivos.length) {
+        const ph = dispositivos.map(() => '?').join(',');
+        const [rows] = await pool.execute(
+          `SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA IN (${ph}) OR MODALIDAD IN (${ph})) AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN`,
+          [...dispositivos, ...dispositivos]
+        );
+        opRows = rows;
+      }
     } else if (acceso.operacion) {
       const [rows] = await pool.execute(
         "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",

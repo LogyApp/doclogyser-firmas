@@ -103,11 +103,15 @@ async function computarAccesoActas(usuarioId) {
   if (accesoCode === 3 || accesoCode === 6) {
     const tieneDispositivo = dispositivo && dispositivo.trim() !== '';
     if (tieneDispositivo) {
-      const [rows] = await pool.execute(
-        "SELECT DISTINCT OPERACIÓN FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA = ? OR MODALIDAD = ?) AND REGIONAL != 'INACTIVO'",
-        [dispositivo, dispositivo]
-      );
-      acceso.operacionesFiltro = rows.map(r => r.OPERACIÓN).filter(Boolean);
+      const dispositivos = dispositivo.split(',').map(d => d.trim()).filter(Boolean);
+      if (dispositivos.length) {
+        const ph = dispositivos.map(() => '?').join(',');
+        const [rows] = await pool.execute(
+          `SELECT DISTINCT OPERACIÓN FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA IN (${ph}) OR MODALIDAD IN (${ph})) AND REGIONAL != 'INACTIVO'`,
+          [...dispositivos, ...dispositivos]
+        );
+        acceso.operacionesFiltro = rows.map(r => r.OPERACIÓN).filter(Boolean);
+      }
     } else if (operacion) {
       acceso.operacionesFiltro = [operacion];
     }
@@ -152,11 +156,15 @@ async function computarConfigCreacionActa(usuarioId) {
   } else if (accesoCode === 3 || accesoCode === 6) {
     const tieneDispositivo = dispositivo && dispositivo.trim() !== '';
     if (tieneDispositivo) {
-      const [rows] = await pool.execute(
-        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA = ? OR MODALIDAD = ?) AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-        [dispositivo, dispositivo]
-      );
-      opRows = rows;
+      const dispositivos = dispositivo.split(',').map(d => d.trim()).filter(Boolean);
+      if (dispositivos.length) {
+        const ph = dispositivos.map(() => '?').join(',');
+        const [rows] = await pool.execute(
+          `SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA IN (${ph}) OR MODALIDAD IN (${ph})) AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN`,
+          [...dispositivos, ...dispositivos]
+        );
+        opRows = rows;
+      }
     } else if (operacion) {
       const [rows] = await pool.execute(
         "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",

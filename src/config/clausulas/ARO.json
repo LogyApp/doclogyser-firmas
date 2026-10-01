@@ -1,0 +1,124 @@
+{
+  "prefijo": "ARO",
+  "nombre": "Análisis de Riesgo por Oficio — Descargue y Cargue de Mercancía",
+  "codigo": "SST-FM-054",
+  "version": "4",
+  "fecha_version": "2026-01-12",
+  "tabla_registro": "Digital_ARO",
+  "categoria": "Seguridad y salud",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "cargo",
+    "operacion",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Análisis de Riesgo por Oficio — Descargue y Cargue de Mercancía",
+    "codigo_doc": "SST-FM-054",
+    "version_doc": "04",
+    "pagina": "1 de 3"
+  },
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": "Área de aplicación",
+      "texto": "ÁREA: Bodegas y Muelle de carga\nCARGO: Auxiliar logístico"
+    },
+    {
+      "numero": 2,
+      "titulo": "Elementos de protección personal",
+      "texto": "• Casco con Barbuquejo (Según Cliente)\n• Guantes (Durante la jornada laboral)\n• Botas de Seguridad (Durante la jornada laboral)\n• Dotación - Buso Reflectivo (Durante la jornada laboral)\n• Protección Auditiva (Según operación)\n• Protección Respiratoria (Según operación)\n• Protección visual (Según operación)\n• Chaleco Reflectivo (Según operación)"
+    },
+    {
+      "numero": 3,
+      "titulo": "Factores de riesgo potencial",
+      "texto": "• Sintomatología osteomuscular (rotación de actividad durante turno laboral)\n• Ingreso de partículas (Uso de gafas de seguridad, para mercancía que lo requiera)\n• Contusiones, traumatismos, fracturas, amputaciones\n• Cortes y heridas\n• Esguinces (control en uso correcto de Botas)\n• Caídas a nivel y a diferente nivel (evita posiciones cerca a desnivel y vacíos)\n• Atrapamiento: cumplir normas de operación en manipulación de equipos, herramientas y mercancías\n• Atropellamiento: Cumplir con normas de seguridad vial"
+    },
+    {
+      "numero": 4,
+      "titulo": "Equipos autorizados",
+      "texto": "• Estibador de carga manual\n• Estibador eléctrico (solo personal con certificación)\n• Carro para movilización de carga tipo Planchón o Rolling\n• Escaleras tijera, banco y tipo avión\n• Rampa en muelle, puertas tipo cortinas (solo se activan en caso de falla; no intervenir y dar aviso al cliente)"
+    },
+    {
+      "numero": 5,
+      "titulo": "Pasos básicos de la tarea",
+      "texto": "- Descarpe de vehículo usando escalera para acceder a 2Mts para recoger y enrollar carpa de vehículo y colocar encima de carrocería de este.\n- Disponer de estibas en cada muelle con altura menor a 1,70Mts, la cual debe ubicarse en zona de cargue; no se deben ingresar a los vehículos los arrumes de estibas.\n- Conformación de estiba con peso y altura según el producto máximo 1T y 1,80Mts.\n- Vinipelado de estiba deber ser firme iniciando de abajo hacia arriba con 4 vueltas para dar firmeza adicional; lo anterior para evitar caída durante el desplazamiento por rampa.\n- Para destellar el producto, se debe clasificar según orden entregada.\n- Traslado de mercancía para movilizar cargas pesadas o especiales siempre debe realizarse entre dos personas o tres según necesidad; para evitar que la carga de desnivele, pierda la verticalidad o gane en velocidad en los desplazamientos por terrenos inclinados o con desniveles de piso; toda movilización o desplazamiento de mercancía se realiza con ayuda mecánica.\n- Para el personal de auxiliar de maquila de ruta, urbanos o ruteros, las entregas de mercancía que pasen de 50Kg se debe realizar entre dos personas y las entregas se realizan hasta 5Piso; este último aplica para entregas con mercancía de línea Blanca; adicional los vehículos deben estar dotados de Carros tipo carretilla vertical, rollines.\n- Las puertas de vehículos y container no están autorizadas para abrirlas y cerrarlas; estas tareas son del conductor."
+    },
+    {
+      "numero": 6,
+      "titulo": "Condiciones de uso de muelle y equipos",
+      "texto": "El uso de 'Rampas Niveladoras de carga, puertas tipo cortinas de muelle y las puertas de vehículos o container' son equipos que generan alto riesgo para peligro mecánico por lo anterior, los auxiliares logísticos y líderes solo están autorizados a:\n- Las rampas niveladoras y puertas de muelles solo se activan, en caso de que estas presentes fallas, o condiciones inseguras, el auxiliar y/o líder deberá detener el cargue o descargue, pasar el vehículo a otro muelle y avisar a la cuadrilla completa para evitar su uso y al mismo tiempo dar aviso al cliente para el mantenimiento o ajuste necesario.\n- En caso de que un auxiliar identifique las fallas o condiciones inseguras, debe: notificar al guarde de seguridad de puertas - personal del cliente; notificar al líder y/o encargado de operación y/o coordinador logístico; entregar ficha de reporte de condiciones al jefe - personal de LOGYSER; notificar en Charlas de seguridad o de inicio de operación las condiciones de trabajo inseguras y reportar de forma diaria condiciones de salud."
+    },
+    {
+      "numero": 7,
+      "titulo": "Desviaciones a normas SST",
+      "texto": "• Distracción: uso de elementos como celular, manos libres y otros elementos de distracción y que no son contemplados como herramientas, dotación y/o EPPS.\n• Mal uso, no uso o inadecuada selección del equipo de protección personal.\n• Peso (mayor a 25 kg) para estos pesos como bultos el auxiliar debe movilizar la carga entre dos personas.\n• Manipular Mercancías con volumen o dificultad de sujetar, por manipulación de dos o mas unidades generando la condición insegura.\n• Realizar las tareas con mala actividad, exceso de confianza o manipular mercancía generando riesgo para sí mismo y con probabilidad de daño a la mercancía.\n• Falta de aptitud y realizar las tareas con malas prácticas de trabajo no seguir directrices de líderes y/o coordinadores y/o SST."
+    },
+    {
+      "numero": 8,
+      "titulo": "Plan de acción",
+      "texto": "Capacitación en:\n• Uso correcto de rampa, puerta de muelles\n• Higiene Postural\n• Manipulación de mercancía, agarres seguros\n• Pausas activas\n• Fortalecimiento de Espalda, tronco, miembro superior e inferior\n• Manejo seguro de Herramientas y Equipos\n• Manejo de Estibas\n• Traslado de mercancía con ayudas mecánicas"
+    },
+    {
+      "numero": 9,
+      "titulo": "Declaración de conocimiento",
+      "texto": "Manifiesto que he recibido la información sobre los riesgos asociados a mi cargo, los equipos de protección personal requeridos, los pasos básicos para la ejecución segura de mis tareas y los planes de acción establecidos por APOYO LOGÍSTICO Y OPERATIVO S.A.S. Me comprometo a cumplir con todas las normas de seguridad descritas en el presente análisis de riesgo."
+    }
+  ],
+  "revisado_por": "Coordinador SG-SST",
+  "aprobado_por": "Carlos Gomez — Gerente de Operaciones",
+  "campos_firma": [
+    {
+      "id": "municipio",
+      "label": "Municipio",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "dia",
+      "label": "Día",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "mes",
+      "label": "Mes",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "anio",
+      "label": "Año",
+      "tipo": "text",
+      "maxlength": 4,
+      "requerido": true
+    },
+    {
+      "id": "nombres",
+      "label": "Nombres y apellidos",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "Número de identificación",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cargo",
+      "label": "Cargo",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "operacion",
+      "label": "Operación",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}

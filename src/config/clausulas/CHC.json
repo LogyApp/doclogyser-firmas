@@ -1,0 +1,95 @@
+{
+  "prefijo": "CHC",
+  "nombre": "Consentimiento Informado para Prueba de Alcohol y Detección de Consumo de Sustancias Psicoactivas",
+  "codigo": "SST-FM-036",
+  "version": "1",
+  "fecha_version": "2024-01-03",
+  "tabla_registro": "Digital_CHC",
+  "categoria": "Seguridad y salud",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "cargo",
+    "operacion",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Consentimiento Informado para Prueba de Alcohol y Detección de Consumo de Sustancias Psicoactivas",
+    "codigo_doc": "SST-FM-036",
+    "version_doc": "01",
+    "pagina": "1 de 1"
+  },
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": null,
+      "texto": "APOYO LOGISTICO Y OPERATIVO SAS comprometidos en prevenir la accidentalidad laboral asociada al consumo de sustancias Psicoactivas legales y/o ilegales en el trabajo y preservar el derecho a la vida e integridad personal de los mismos trabajadores implementa de manera aleatoria y sin vulnerar los derechos fundamentales de las personas, las pruebas de toxicología a los empleados, ya sea con equipos y personal propio o de terceros y que estos a su vez aceptan dicha directriz."
+    },
+    {
+      "numero": 2,
+      "titulo": "Declaración del trabajador",
+      "texto": "Yo, {{nombre_completo}}, identificado con tipo de documento CC No. {{identificacion}}, en calidad de trabajador de la empresa, manifiesto de manera expresa, libre y voluntaria AUTORIZO a que se me realice la toma de la Prueba de toxicología conforme a directrices de la empresa y/o el cliente {{operacion}}."
+    },
+    {
+      "numero": 3,
+      "titulo": "Declaración de conocimiento",
+      "texto": "Declaro haber recibido y entendido la política de prevención de Sustancias Psicoactivas, normas y directrices de la compañía, así como aplicación de pruebas y proceso disciplinario por LOGYSER."
+    },
+    {
+      "numero": 4,
+      "titulo": "Conocimiento de riesgos",
+      "texto": "Manifiesto, además, conocer y entender los riesgos a los que voy a estar expuesto y las medidas de control que el empleador considere necesarias durante la relación laboral."
+    },
+    {
+      "numero": 5,
+      "titulo": "Compromiso de cumplimiento",
+      "texto": "En concordancia con lo anterior, me obligo y me comprometo a cumplir con las normas y procedimientos establecidos por la empresa y otros que sean necesarios para el buen desempeño de mi trabajo y/o durante la permanencia en la compañía."
+    },
+    {
+      "numero": 6,
+      "titulo": "Conocimiento de sanciones",
+      "texto": "Por último, manifiesto que conozco las sanciones disciplinarias, a las cuales me encuentro expuesto en caso de incumplimiento de lo anteriormente mencionado, de acuerdo con la reglamentación legal vigente, al igual que las dispuestas en el reglamento interno de trabajo."
+    }
+  ],
+  "campos_firma": [
+    {
+      "id": "municipio",
+      "label": "Ciudad",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "dia",
+      "label": "Día",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "mes",
+      "label": "Mes",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "anio",
+      "label": "Año",
+      "tipo": "text",
+      "maxlength": 4,
+      "requerido": true
+    },
+    {
+      "id": "nombres",
+      "label": "Nombre y apellidos",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "# Identificación",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "prefijo": "ACTCON",
+  "nombre": "Acta de conocimiento de condiciones",
+  "codigo": "TH-R-026",
+  "version": "2",
+  "fecha_version": "2025-09-25",
+  "tabla_registro": "Digital_ACTCON",
+  "categoria": "Selección y vinculación",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "cargo",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Acta de Conocimiento de Condiciones",
+    "codigo_doc": "TH-R-026",
+    "version_doc": "2",
+    "pagina": "1 de 1"
+  },
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": null,
+      "texto": "• Funciones principales del cargo de {{cargo}}.\n• Salario y forma de pago.\n• Horarios, turnos y condiciones de la labor.\n• Normas de seguridad y reglamento interno."
+    }
+  ],
+  "campos_firma": [
+    {
+      "id": "municipio",
+      "label": "Municipio",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "dia",
+      "label": "Día",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "mes",
+      "label": "Mes",
+      "tipo": "text",
+      "maxlength": 2,
+      "requerido": true
+    },
+    {
+      "id": "anio",
+      "label": "Año",
+      "tipo": "text",
+      "maxlength": 4,
+      "requerido": true
+    },
+    {
+      "id": "nombres",
+      "label": "Nombres y apellidos",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "Cédula",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}

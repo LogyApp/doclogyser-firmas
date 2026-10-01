@@ -1,0 +1,64 @@
+{
+  "prefijo": "CPC",
+  "nombre": "Autorización para el Acceso a Historia Clínica y Tratamiento de Datos Personales",
+  "codigo": "TH-R-025",
+  "version": "1",
+  "fecha_version": "2025-09-25",
+  "tabla_registro": "Digital_CPC",
+  "categoria": "Contratación",
+  "campos_prellenado": [
+    "identificacion",
+    "nombre_completo",
+    "cargo",
+    "operacion",
+    "eps",
+    "firma_url"
+  ],
+  "encabezado": {
+    "titulo_politica": "Autorización para el Acceso a Historia Clínica y Tratamiento de Datos Personales",
+    "codigo_doc": "TH-R-025",
+    "version_doc": "1",
+    "pagina": "1 de 1"
+  },
+  "clausulas": [
+    {
+      "numero": 1,
+      "titulo": "Señores",
+      "texto": "{{eps}} (Indicar nombre de EPS o compañía de medicina prepagada)\n\nCordial saludo."
+    },
+    {
+      "numero": 2,
+      "titulo": "Declaración de autorización",
+      "texto": "Por medio de la suscripción de la presente autorización de tratamiento de datos personales, yo {{nombre_completo}}, identificado con cédula de ciudadanía o documento número {{identificacion}}, en mi calidad de empleado o aspirante en proceso de selección, manifiesto que autorizo a la empresa APOYO LOGÍSTICO Y OPERATIVO S.A.S. para que acceda de forma permanente a mi historia clínica médica y/u odontológica y efectúe el tratamiento (recolección, almacenamiento, uso, circulación o supresión) de mis datos personales que se deriven directamente de la prestación del desarrollo de mis funciones o que en mi calidad de aspirante tengan relación directa con el proceso de selección y el ejercicio del cargo de {{cargo}} al que aspiro ser contratado."
+    },
+    {
+      "numero": 3,
+      "titulo": "Marco legal",
+      "texto": "Dicha autorización la realizo teniendo en cuenta la regulación existente actual sobre la protección de datos personales, esto es: Ley 1266 de 2008, Ley 1581 de 2012, Decreto 1075 de 2015 y demás normas que modifiquen, complementen o sustituyan la materia."
+    },
+    {
+      "numero": 4,
+      "titulo": "Derechos del titular",
+      "texto": "Adicionalmente, informo que, como titular de los datos personales, conozco tener los derechos de aclaración, eliminación, corrección y actualización de estos, así como las demás condiciones establecidas en la Ley 1581 de 2012, que he leído previamente, dentro de las cuales se encuentran:\n- Acceder en forma gratuita a los datos proporcionados que hayan sido objeto de tratamiento.\n- Solicitar la actualización y rectificación de mi información frente a datos parciales, inexactos, incompletos, fraccionados, que induzcan a error, o a aquellos cuyo tratamiento esté prohibido o no haya sido autorizado.\n- Solicitar prueba de la autorización otorgada.\n- Presentar ante la Superintendencia de Industria y Comercio (SIC) quejas por infracciones a lo dispuesto en la normatividad vigente.\n- Revocar la autorización y/o solicitar la supresión del dato, a menos que exista un deber legal o contractual que haga imperativo conservar la información.\n- La posibilidad de abstenerse de responder las preguntas sobre datos sensibles o sobre datos de las niñas y niños y adolescentes."
+    },
+    {
+      "numero": 5,
+      "titulo": "Aceptación",
+      "texto": "Acepto la finalidad antes indicada: SI ✓"
+    }
+  ],
+  "campos_firma": [
+    {
+      "id": "nombres",
+      "label": "Nombre completo",
+      "tipo": "text",
+      "requerido": true
+    },
+    {
+      "id": "cedula",
+      "label": "Cédula",
+      "tipo": "text",
+      "requerido": true
+    }
+  ]
+}
