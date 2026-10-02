@@ -2430,7 +2430,48 @@ async function notificarTransferenciaRecibida({ operacionOrigen, operacionDestin
   });
 }
 
+async function enviarCorreoPortalAspirante({ correo, nombreAspirante, portalUrl }) {
+  const asunto = `Acceso a tu Portal de Selección y Contratación — LOG&SER S.A.S.`;
+  const cuerpo = `
+    <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+      <div style="background:#1B2A5E;padding:24px;text-align:center">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px;object-fit:contain" alt="LOG&amp;SER">
+      </div>
+      <div style="padding:32px 24px;color:#0F172A;line-height:1.6">
+        <h2 style="color:#1B2A5E;margin-top:0;font-size:20px;font-weight:800">¡Hola, ${nombreAspirante}!</h2>
+        <p style="font-size:14px;color:#475569">
+          Te damos la bienvenida al proceso de vinculación y contratación de <strong>LOG&SER S.A.S.</strong>
+        </p>
+        <p style="font-size:14px;color:#475569">
+          Hemos habilitado tu portal personal donde podrás cargar tus documentos de soporte y gestionar la firma digital de tus documentos contractuales de forma ágil y segura.
+        </p>
+        <div style="text-align:center;margin:32px 0">
+          <a href="${portalUrl}" target="_blank" 
+             style="background:#F15A22;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:bold;font-size:14px;display:inline-block;box-shadow:0 4px 12px rgba(241,90,34,0.3)">
+            Ingresar a mi Portal del Aspirante ➔
+          </a>
+        </div>
+        <p style="font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:16px">
+          Si tienes problemas con el botón, copia y pega el siguiente enlace en tu navegador:<br>
+          <a href="${portalUrl}" style="color:#2563eb;word-break:break-all">${portalUrl}</a>
+        </p>
+      </div>
+      <div style="background:#f8fafc;padding:16px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0">
+        LOG&SER S.A.S. — Sistema de Gestión Documental y Talento Humano
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"LOG&SER Selección" <${EMAIL_FROM}>`,
+    to: correo,
+    subject: asunto,
+    html: cuerpo,
+  });
+}
+
 module.exports = {
+  enviarCorreoPortalAspirante,
   notificarConfirmacionInventario,
   notificarTransferenciaDespachada,
   notificarTransferenciaRecibida,

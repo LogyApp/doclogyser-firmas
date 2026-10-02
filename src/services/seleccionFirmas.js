@@ -19,6 +19,16 @@ const DOCS_FIRMA_SELECCION = [
   { id: 33, prefijo: 'ITAL',   nombre: 'Formatos Específicos Operación (Italcol)' }
 ];
 
+function obtenerDocsFirmaParaOperacion(operacion) {
+  const esItalcolLaEstrella = (operacion || '').toString().trim().toLowerCase() === 'italcol la estrella';
+  return DOCS_FIRMA_SELECCION.filter(d => {
+    if (d.id === 33) {
+      return esItalcolLaEstrella;
+    }
+    return true;
+  });
+}
+
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
@@ -31,6 +41,13 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
   );
   if (!aspRows.length) return null;
   const aspirante = aspRows[0];
+
+  if (!aspirante.IdRequisicion) {
+    throw new Error("El aspirante no tiene una requisición vinculada.");
+  }
+  if (aspirante.estado_proceso !== 'En proceso' && aspirante.estado_proceso !== 'contratado') {
+    throw new Error("El aspirante no se encuentra en estado 'En proceso'.");
+  }
 
   const docItem = DOCS_FIRMA_SELECCION.find(d => d.id === Number(idConfigDoc));
   const prefijo = docItem ? docItem.prefijo : null;
@@ -48,6 +65,14 @@ async function obtenerDatosAspiranteParaFirma(idAspirante, idConfigDoc) {
       cargo = reqRows[0]['Cargo Requerido'] || cargo;
       operacion = reqRows[0]['Operación'] || operacion;
       regional = reqRows[0]['Regional'] || regional;
+    }
+  }
+
+  // Validación: Documento 33 (Formatos Italcol) solo para "Italcol La Estrella"
+  if (Number(idConfigDoc) === 33) {
+    const esItalcol = (operacion || '').toString().trim().toLowerCase() === 'italcol la estrella';
+    if (!esItalcol) {
+      throw new Error("El documento Formatos Italcol solo aplica para la operación 'Italcol La Estrella'");
     }
   }
 
@@ -567,6 +592,7 @@ async function procesarFirmaDocumento({ idAspirante, idConfigDoc, firmaBase64, e
 
 module.exports = {
   DOCS_FIRMA_SELECCION,
+  obtenerDocsFirmaParaOperacion,
   obtenerDatosAspiranteParaFirma,
   generarHtmlVistaFirma,
   procesarFirmaDocumento

@@ -5,9 +5,10 @@ const multer = require('multer');
 const { Storage } = require('@google-cloud/storage');
 const { GoogleAuth } = require('google-auth-library');
 const pool = require('../services/db');
-const { notificarBloqueoAspirante } = require('../services/email');
+const { notificarBloqueoAspirante, enviarCorreoPortalAspirante } = require('../services/email');
 const {
   DOCS_FIRMA_SELECCION,
+  obtenerDocsFirmaParaOperacion,
   obtenerDatosAspiranteParaFirma,
   generarHtmlVistaFirma,
   procesarFirmaDocumento
@@ -343,7 +344,7 @@ router.get('/portal/:uuid', async (req, res) => {
 
   try {
     const [ [aspiranteRows], [cargados] ] = await Promise.all([
-      pool.execute('SELECT primer_nombre, pdf_public_url, estado_proceso FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
+      pool.execute('SELECT primer_nombre, pdf_public_url, estado_proceso, IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?', [uuid]),
       pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid])
     ]);
 
@@ -355,12 +356,26 @@ router.get('/portal/:uuid', async (req, res) => {
     const nombre = asp.primer_nombre || 'Aspirante';
     const pdfUrl = (asp.pdf_public_url || '').trim();
 
+    let operacionAspirante = '';
+    const tieneRequisicion = !!(asp.IdRequisicion && String(asp.IdRequisicion).trim());
+    if (tieneRequisicion) {
+      const [reqRows] = await pool.execute(
+        'SELECT `Operación` FROM Dynamic_Requisiciones WHERE IdRequisicion = ? LIMIT 1',
+        [asp.IdRequisicion]
+      );
+      if (reqRows.length > 0) {
+        operacionAspirante = (reqRows[0]['Operación'] || '').toString().trim();
+      }
+    }
+
+    const docsFirmaFiltrados = obtenerDocsFirmaParaOperacion(operacionAspirante);
+
     const mapaDocs = {};
     cargados.forEach(c => {
       mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path };
     });
 
-    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, DOCS_FIRMA_SELECCION));
+    res.send(generarHtmlPortal(uuid, nombre, docsAspirante, mapaDocs, pdfUrl, usuario, asp.estado_proceso, docsFirmaFiltrados, tieneRequisicion));
   } catch (error) {
     console.error("Error en Portal Aspirante:", error);
     res.status(500).send("Error interno al cargar el portal");
@@ -382,13 +397,13 @@ router.get('/admin/:uuid', async (req, res) => {
     { id: 8, nombre: "Manipulación alimentos" }, 
     { id: 53, nombre: "Verificación referencias" }
   ];
-  const docsFirmar = DOCS_FIRMA_SELECCION;
 
   try {
     const [[aspiranteRows], [cargados]] = await Promise.all([
       pool.execute(
         `SELECT primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, 
-                identificacion, estado_proceso, IdRequisicion, pdf_public_url 
+                identificacion, estado_proceso, IdRequisicion, pdf_public_url,
+                telefono, correo_electronico 
          FROM Dynamic_hv_aspirante WHERE id_aspirante = ?`, 
         [uuid]
       ),
@@ -424,12 +439,25 @@ router.get('/admin/:uuid', async (req, res) => {
       }
     }
 
+    const docsFirmar = obtenerDocsFirmaParaOperacion(operacionSugerida);
+
     const mapaDocs = {};
     cargados.forEach(c => { mapaDocs[c.id_config_doc] = { estado: c.estado, path: c.gcs_path }; });
 
     res.send(generarHtmlAdmin(
       uuid,
-      { nombreCompleto, identificacion: a.identificacion, IdRequisicion: a.IdRequisicion, pdfUrl, requisicionInfo, regionalSugerida, operacionSugerida, estadoProceso: a.estado_proceso },
+      {
+        nombreCompleto,
+        identificacion: a.identificacion,
+        IdRequisicion: a.IdRequisicion,
+        pdfUrl,
+        requisicionInfo,
+        regionalSugerida,
+        operacionSugerida,
+        estadoProceso: a.estado_proceso,
+        telefono: a.telefono || '',
+        correoElectronico: a.correo_electronico || ''
+      },
       docsAspiranteIds, nombresAsp, docsTecnicos, docsFirmar, mapaDocs, 
       a.estado_proceso === 'contratado',
       usuario
@@ -437,6 +465,75 @@ router.get('/admin/:uuid', async (req, res) => {
   } catch (error) {
     console.error("Error en Admin Panel:", error);
     res.status(500).send("Error interno al cargar el panel administrativo");
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// Rutas de Contacto y Comunicación del Aspirante
+// ══════════════════════════════════════════════════════════════
+
+// Actualizar teléfono y correo del aspirante desde el Admin Panel
+router.post('/actualizar-contacto', async (req, res) => {
+  const { id_aspirante, telefono, correo_electronico } = req.body;
+  try {
+    if (!id_aspirante) {
+      return res.status(400).json({ ok: false, error: 'Falta id_aspirante' });
+    }
+    await pool.execute(
+      'UPDATE Dynamic_hv_aspirante SET telefono = ?, correo_electronico = ? WHERE id_aspirante = ?',
+      [(telefono || '').trim(), (correo_electronico || '').trim(), id_aspirante]
+    );
+    res.json({ ok: true, mensaje: 'Datos de contacto actualizados correctamente' });
+  } catch (error) {
+    console.error('Error al actualizar contacto aspirante:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Enviar correo con enlace del portal al aspirante
+router.post('/enviar-correo-portal', async (req, res) => {
+  const { id_aspirante, correo } = req.body;
+  try {
+    if (!id_aspirante) {
+      return res.status(400).json({ ok: false, error: 'Falta id_aspirante' });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, correo_electronico
+       FROM Dynamic_hv_aspirante WHERE id_aspirante = ?`,
+      [id_aspirante]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ ok: false, error: 'Aspirante no encontrado' });
+    }
+
+    const a = rows[0];
+    const destino = (correo || a.correo_electronico || '').trim();
+    if (!destino) {
+      return res.status(400).json({ ok: false, error: 'El aspirante no tiene un correo electrónico registrado' });
+    }
+
+    // Si enviaron un correo modificado, actualizarlo en la BD
+    if (correo && correo.trim() !== (a.correo_electronico || '').trim()) {
+      await pool.execute('UPDATE Dynamic_hv_aspirante SET correo_electronico = ? WHERE id_aspirante = ?', [destino, id_aspirante]);
+    }
+
+    const nombreCompleto = [a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido]
+      .filter(n => n && n.trim() !== '').join(' ') || 'Aspirante';
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const portalUrl = `${baseUrl}/seleccion/portal/${id_aspirante}`;
+
+    await enviarCorreoPortalAspirante({
+      correo: destino,
+      nombreAspirante: nombreCompleto,
+      portalUrl
+    });
+
+    res.json({ ok: true, mensaje: `Correo de acceso enviado con éxito a ${destino}` });
+  } catch (error) {
+    console.error('Error al enviar correo del portal:', error);
+    res.status(500).json({ ok: false, error: error.message });
   }
 });
 
@@ -516,6 +613,16 @@ router.post('/cambiar-estado-proceso', async (req, res) => {
     const estadosValidos = ['Registro', 'En proceso'];
     if (!estadosValidos.includes(nuevo_estado)) {
       return res.status(400).send('Estado no permitido');
+    }
+
+    if (nuevo_estado === 'En proceso') {
+      const [aspRows] = await pool.execute(
+        'SELECT IdRequisicion FROM Dynamic_hv_aspirante WHERE id_aspirante = ?',
+        [id_aspirante]
+      );
+      if (!aspRows.length || !aspRows[0].IdRequisicion) {
+        return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('No es posible pasar a "En proceso": El aspirante no tiene una requisición vinculada.')}`);
+      }
     }
 
     await pool.execute(
@@ -1216,7 +1323,7 @@ router.post('/finalizar-contratacion', async (req, res) => {
 // Plantillas HTML Inline (Ajustadas para prefijo /seleccion y query params)
 // ══════════════════════════════════════════════════════════════
 
-function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = []) {
+function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estadoProceso, docsFirma = [], tieneRequisicion = false) {
   if (estadoProceso === 'bloqueado') {
     return `
     <!DOCTYPE html>
@@ -1261,8 +1368,95 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
     </script>
   `;
 
-  // Check if all documents are uploaded
+  // Condición: Firmas activas solo si está En Proceso o Contratado Y tiene Requisición vinculada
+  const estadoHabilitado = (estadoProceso === 'En proceso' || estadoProceso === 'contratado') && tieneRequisicion;
   const allUploaded = docs.every(doc => mapaDocs[doc.id]);
+  const totalCargados = docs.filter(d => mapaDocs[d.id]).length;
+  const totalFirmados = docsFirma.filter(d => mapaDocs[d.id] && mapaDocs[d.id].estado === 'Firmado').length;
+
+  const renderDocSoporte = (doc) => {
+    const data = mapaDocs[doc.id];
+    const estaAprobado = data && data.estado === 'Aprobado';
+    const estaCargado = data && !estaAprobado;
+    
+    const tieneCedula = !!mapaDocs[11];
+    const esCedula = doc.id === 11;
+    const estaBloqueado = !esCedula && !tieneCedula;
+
+    return `
+    <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaAprobado ? 'border-green-200 bg-green-50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} ${estaBloqueado ? 'opacity-50 select-none' : ''} rounded-2xl shadow-sm">
+      <div class="flex items-center space-x-3 flex-1">
+        <div class="${estaAprobado ? 'text-green-500' : (estaCargado ? 'text-blue-500' : 'text-slate-300')}">
+          ${estaBloqueado ? 
+            '<svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>' : 
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+          }
+        </div>
+        <span class="text-sm font-semibold text-slate-700">${doc.nombre}</span>
+      </div>
+      <div class="flex items-center gap-2 mt-2 md:mt-0">
+        ${estaBloqueado ? 
+          '<span class="text-[10px] font-black text-slate-400 border border-slate-200 px-3 py-1 rounded-lg bg-white uppercase flex items-center gap-1">🔒 Cédula Requerida</span>' :
+          (estaAprobado ? 
+            '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>' : 
+            (estaCargado ? 
+              `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
+               <button type="button" onclick="confirmarEliminar('${doc.id}', '${doc.nombre}')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : 
+              `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${doc.id}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`
+            )
+          )
+        }
+      </div>
+    </div>`;
+  };
+
+  const renderDocFirma = (doc, idx) => {
+    const data = mapaDocs[doc.id];
+    const estaFirmado = data && data.estado === 'Firmado';
+    const estaCargado = data && !estaFirmado;
+
+    return `
+    <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaFirmado ? 'border-emerald-200 bg-emerald-50/50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} rounded-2xl shadow-xs transition-all hover:border-slate-200">
+      <div class="flex items-center space-x-3 flex-1">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${estaFirmado ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}">
+          ${estaFirmado ? '✓' : (idx + 1)}
+        </div>
+        <div>
+          <span class="text-sm font-bold text-slate-800 block">${doc.nombre}</span>
+          <span class="text-[10px] font-semibold text-slate-400 font-mono">${doc.prefijo || ''}</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 mt-3 md:mt-0">
+        ${estaFirmado ? `
+          <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">✓ Firmado</span>
+          <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
+            class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
+            Ver PDF ↗
+          </a>
+          <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+            class="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline">
+            Volver a firmar
+          </a>
+        ` : (estaCargado ? `
+          <span class="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide">Cargado</span>
+          <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
+            class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
+            Ver ↗
+          </a>
+          <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+            class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs">
+            Firmar Digitalmente →
+          </a>
+        ` : `
+          <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
+            class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5">
+            <span>✍️</span> Abrir y Firmar →
+          </a>
+        `)}
+      </div>
+    </div>`;
+  };
 
   return `
   <!DOCTYPE html>
@@ -1279,24 +1473,141 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
   </head>
   <body class="bg-slate-50 p-4 md:p-8">
     <div class="max-w-3xl mx-auto">
-      <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="h-24 w-auto object-contain">
-        <div class="flex flex-col items-end gap-2">
-          <a href="https://curriculum-compact-594761951101.europe-west1.run.app" target="_blank" class="text-blue-600 font-semibold text-sm hover:underline">
+      <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="h-20 w-auto object-contain">
+        <div class="flex flex-col items-end gap-1.5">
+          <a href="https://curriculum-compact-594761951101.europe-west1.run.app" target="_blank" class="text-blue-600 font-semibold text-xs md:text-sm hover:underline">
             📝 Revisar o Editar mi Hoja de Vida
           </a>
           ${pdfUrl ? `
-          <a href="${pdfUrl}" target="_blank" class="text-slate-600 font-semibold text-sm hover:underline">
+          <a href="${pdfUrl}" target="_blank" class="text-slate-600 font-semibold text-xs md:text-sm hover:underline">
             📄 Ver PDF de mi Hoja de Vida
           </a>
           ` : ``}
         </div>
       </div>
 
+      <!-- Saludo Superior Permanente -->
+      <div class="bg-white shadow-xl rounded-3xl p-6 md:p-8 mb-6 border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl md:text-3xl font-black text-slate-800 italic">¡Hola, ${nombre}!</h2>
+          <p class="text-slate-500 text-xs md:text-sm font-medium mt-1">
+            ${estadoHabilitado 
+              ? 'Has avanzado a la fase de vinculación. Puedes gestionar tus documentos y firmas digitales en las secciones a continuación.' 
+              : 'Bienvenido al proceso de selección. Sube y gestiona tus documentos de soporte requeridos.'}
+          </p>
+        </div>
+        ${estadoHabilitado ? `
+          <div class="flex items-center gap-2 self-start md:self-auto bg-purple-50 border border-purple-200 px-4 py-2 rounded-2xl shrink-0">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
+            <span class="text-xs font-black text-purple-800 uppercase tracking-wide">Fase: En Proceso</span>
+          </div>
+        ` : `
+          <div class="flex items-center gap-2 self-start md:self-auto bg-blue-50 border border-blue-200 px-4 py-2 rounded-2xl shrink-0">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+            <span class="text-xs font-black text-blue-800 uppercase tracking-wide">Fase: Registro Inicial</span>
+          </div>
+        `}
+      </div>
+
+      ${estadoHabilitado ? `
+      <!-- Secciones agrupadas y plegables / desplegables en estado "En Proceso" -->
+      
+      <!-- Sección 1: Documentos de Soporte (Acordeón Plegable) -->
+      <div class="bg-white shadow-xl rounded-3xl overflow-hidden border border-slate-100 mb-6 transition-all">
+        <button type="button" onclick="toggleSeccion('secSoporte')" 
+          class="w-full p-6 md:p-8 text-left bg-white hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 font-black text-sm flex items-center justify-center shrink-0">
+              1
+            </div>
+            <div>
+              <h3 class="text-lg md:text-xl font-black text-slate-800 uppercase italic tracking-tight">
+                Documentos de Soporte
+              </h3>
+              <p class="text-xs text-slate-400 font-medium">Cédula, Antecedentes, EPS, Certificados laborales y bancarios</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 self-end sm:self-auto">
+            <span class="text-xs font-black px-3.5 py-1.5 rounded-xl border ${totalCargados === docs.length ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}">
+              ${totalCargados} de ${docs.length} cargados
+            </span>
+            <div id="secSoporteChevron" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center transition-transform duration-300">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+        </button>
+
+        <div id="secSoporteContenido" class="hidden p-6 md:p-8 border-t border-slate-100 bg-slate-50/30">
+          <p class="text-slate-500 mb-6 text-xs md:text-sm font-medium">
+            Sube o actualiza los documentos de soporte requeridos. 
+            <span class="text-red-500 block mt-1">Los documentos aprobados no podrán ser modificados. El sistema procesará cada documento con Inteligencia Artificial al subirlo.</span>
+          </p>
+
+          ${allUploaded ? `
+          <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6 text-center">
+            <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+            </div>
+            <h4 class="text-sm font-bold text-slate-800">¡Documentos de Soporte Completados!</h4>
+            <p class="text-[11px] text-slate-500">Has subido todos los documentos requeridos de esta sección.</p>
+          </div>
+          ` : ''}
+
+          <div class="space-y-3">
+            ${docs.map(renderDocSoporte).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección 2: Documentos para Firma Digital (Acordeón Plegable, Inicia Desplegado) -->
+      <div class="bg-white shadow-xl rounded-3xl overflow-hidden border border-slate-100 mb-8 transition-all">
+        <button type="button" onclick="toggleSeccion('secFirmas')" 
+          class="w-full p-6 md:p-8 text-left bg-white hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 font-black text-sm flex items-center justify-center shrink-0">
+              2
+            </div>
+            <div>
+              <h3 class="text-lg md:text-xl font-black text-slate-800 uppercase italic tracking-tight flex items-center gap-2">
+                Documentos para Firma Digital
+                <span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+              </h3>
+              <p class="text-xs text-slate-400 font-medium">Contratos laborales, acuerdos de confidencialidad y autorizaciones</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 self-end sm:self-auto">
+            <span class="text-xs font-black px-3.5 py-1.5 rounded-xl border ${totalFirmados === docsFirma.length ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-orange-50 text-orange-700 border-orange-200'}">
+              ${totalFirmados} de ${docsFirma.length} firmados
+            </span>
+            <div id="secFirmasChevron" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center transition-transform duration-300 rotate-180">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+        </button>
+
+        <div id="secFirmasContenido" class="p-6 md:p-8 border-t border-slate-100">
+          <p class="text-slate-500 text-xs md:text-sm mb-6 font-medium">
+            Por favor lee cuidadosamente y estampa tu firma digital en cada uno de los siguientes documentos obligatorios para formalizar tu vinculación.
+          </p>
+
+          <!-- Barra de Progreso -->
+          <div class="w-full bg-slate-100 h-2.5 rounded-full mb-6 overflow-hidden">
+            <div class="bg-orange-500 h-full rounded-full transition-all duration-500" 
+              style="width: ${Math.round((totalFirmados / (docsFirma.length || 1)) * 100)}%"></div>
+          </div>
+
+          <div class="space-y-3">
+            ${docsFirma.map(renderDocFirma).join('')}
+          </div>
+        </div>
+      </div>
+      ` : `
+      <!-- Vista normal no plegable en fase de Registro -->
       <div class="bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-100 p-8 md:p-12 mb-8">
-        <h2 class="text-3xl font-black text-slate-800 mb-2 italic">¡Hola, ${nombre}!</h2>
-        <p class="text-slate-500 mb-10 text-sm font-medium">
-          Bienvenido al proceso de selección. Sube y gestiona los documentos requeridos a continuación. 
+        <h3 class="text-xl font-black text-slate-800 mb-2 uppercase italic">Documentos Requeridos</h3>
+        <p class="text-slate-500 mb-8 text-sm font-medium">
+          Sube y gestiona los documentos requeridos a continuación. 
           <span class="text-red-500 block mt-1">Los documentos aprobados no podrán ser modificados. El sistema procesará cada documento con Inteligencia Artificial al subirlo.</span>
         </p>
 
@@ -1309,121 +1620,12 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           <p class="text-xs text-slate-500">Has subido todos los documentos requeridos. El equipo de Selección y Contratación los revisará a la brevedad.</p>
         </div>
         ` : ''}
-        
-        <div class="space-y-3">
-          ${docs.map(doc => {
-            const data = mapaDocs[doc.id];
-            const estaAprobado = data && data.estado === 'Aprobado';
-            const estaCargado = data && !estaAprobado;
-            
-            const tieneCedula = !!mapaDocs[11];
-            const esCedula = doc.id === 11;
-            const estaBloqueado = !esCedula && !tieneCedula;
 
-            return `
-            <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaAprobado ? 'border-green-200 bg-green-50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} ${estaBloqueado ? 'opacity-50 select-none' : ''} rounded-2xl shadow-sm">
-              <div class="flex items-center space-x-3 flex-1">
-                <div class="${estaAprobado ? 'text-green-500' : (estaCargado ? 'text-blue-500' : 'text-slate-300')}">
-                  ${estaBloqueado ? 
-                    '<svg class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>' : 
-                    '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
-                  }
-                </div>
-                <span class="text-sm font-semibold text-slate-700">${doc.nombre}</span>
-              </div>
-              <div class="flex items-center gap-2 mt-2 md:mt-0">
-                ${estaBloqueado ? 
-                  '<span class="text-[10px] font-black text-slate-400 border border-slate-200 px-3 py-1 rounded-lg bg-white uppercase flex items-center gap-1">🔒 Cédula Requerida</span>' :
-                  (estaAprobado ? 
-                    '<span class="text-[10px] font-black text-green-600 border border-green-200 px-3 py-1 rounded-lg bg-white uppercase">Aprobado</span>' : 
-                    (estaCargado ? 
-                      `<a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" class="text-xs font-bold text-blue-600 px-3 hover:underline">Ver</a>
-                       <button type="button" onclick="confirmarEliminar('${doc.id}', '${doc.nombre}')" class="text-xs font-bold text-red-400 hover:text-red-600 italic">Eliminar</button>` : 
-                      `<input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="uploadAndProcess('${doc.id}', this)" class="block w-full text-[11px] text-slate-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 font-bold hover:file:bg-blue-100 uppercase">`
-                    )
-                  )
-                }
-              </div>
-            </div>`;
-          }).join('')}
+        <div class="space-y-3">
+          ${docs.map(renderDocSoporte).join('')}
         </div>
       </div>
 
-      ${(estadoProceso === 'En proceso' || estadoProceso === 'contratado') ? `
-      <!-- Sección de Documentos para Firma Digital -->
-      <div class="bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-100 p-8 md:p-12 mb-8">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full bg-orange-500 animate-pulse"></span>
-              <h3 class="text-xl font-black text-slate-800 uppercase italic tracking-tight">Fase de Vinculación: Documentos para Firma Digital</h3>
-            </div>
-            <p class="text-slate-500 text-xs mt-1 font-medium">
-              Por favor lee cuidadosamente y estampa tu firma digital en cada uno de los siguientes documentos obligatorios.
-            </p>
-          </div>
-          <div class="bg-orange-50 border border-orange-200 px-4 py-2 rounded-2xl text-xs font-black text-orange-700 whitespace-nowrap self-start md:self-auto">
-            ${docsFirma.filter(d => mapaDocs[d.id] && mapaDocs[d.id].estado === 'Firmado').length} de ${docsFirma.length} firmados
-          </div>
-        </div>
-
-        <!-- Barra de Progreso -->
-        <div class="w-full bg-slate-100 h-2.5 rounded-full mb-8 overflow-hidden">
-          <div class="bg-orange-500 h-full rounded-full transition-all duration-500" 
-            style="width: ${Math.round((docsFirma.filter(d => mapaDocs[d.id] && mapaDocs[d.id].estado === 'Firmado').length / (docsFirma.length || 1)) * 100)}%"></div>
-        </div>
-
-        <div class="space-y-3">
-          ${docsFirma.map((doc, idx) => {
-            const data = mapaDocs[doc.id];
-            const estaFirmado = data && data.estado === 'Firmado';
-            const estaCargado = data && !estaFirmado;
-
-            return `
-            <div class="flex flex-col md:flex-row md:items-center justify-between p-4 border ${estaFirmado ? 'border-emerald-200 bg-emerald-50/50' : (estaCargado ? 'border-blue-100 bg-blue-50/30' : 'border-slate-100 bg-white')} rounded-2xl shadow-xs transition-all hover:border-slate-200">
-              <div class="flex items-center space-x-3 flex-1">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${estaFirmado ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}">
-                  ${estaFirmado ? '✓' : (idx + 1)}
-                </div>
-                <div>
-                  <span class="text-sm font-bold text-slate-800 block">${doc.nombre}</span>
-                  <span class="text-[10px] font-semibold text-slate-400 font-mono">${doc.prefijo || ''}</span>
-                </div>
-              </div>
-
-              <div class="flex items-center gap-2 mt-3 md:mt-0">
-                ${estaFirmado ? `
-                  <span class="text-[10px] font-black text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg uppercase tracking-wide">✓ Firmado</span>
-                  <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
-                    class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
-                    Ver PDF ↗
-                  </a>
-                  <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
-                    class="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline">
-                    Volver a firmar
-                  </a>
-                ` : (estaCargado ? `
-                  <span class="text-[10px] font-black text-blue-700 bg-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide">Cargado</span>
-                  <a href="https://storage.googleapis.com/${BUCKET_ASPIRANTES}/${data.path}" target="_blank" 
-                    class="text-xs font-extrabold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all">
-                    Ver ↗
-                  </a>
-                  <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
-                    class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs">
-                    Firmar Digitalmente →
-                  </a>
-                ` : `
-                  <a href="/seleccion/firmar/${uuid}/${doc.id}?usuario=${usuario}" 
-                    class="text-xs font-black text-white bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5">
-                    <span>✍️</span> Abrir y Firmar →
-                  </a>
-                `)}
-              </div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-      ` : `
       <!-- Card informativo cuando está en fase de Registro -->
       <div class="bg-white/80 border border-slate-200/80 rounded-3xl p-6 text-center mb-8 shadow-xs">
         <div class="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-slate-100 text-slate-400 mb-2">
@@ -1431,10 +1633,11 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
         </div>
         <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Fase 2: Documentos para Firma Digital (Pendiente de Activación)</h4>
         <p class="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
-          Una vez subas y el equipo de Selección valide tus documentos de soporte iniciales, tu estado pasará a <strong>'En Proceso'</strong> y se habilitará aquí la lista de contratos y formatos para firmar digitalmente.
+          Una vez subas y el equipo de Selección valide tus documentos de soporte iniciales y se vincule tu requisición, tu estado pasará a <strong>'En Proceso'</strong> y se habilitará aquí la lista de contratos y formatos para firmar digitalmente.
         </p>
       </div>
       `}
+    </div>
     </div>
 
     <!-- Spinner Overlay -->
@@ -2127,6 +2330,19 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
           alert('Error de red al confirmar cédula');
         });
       }
+
+      function toggleSeccion(secId) {
+        const cont = document.getElementById(secId + 'Contenido');
+        const chev = document.getElementById(secId + 'Chevron');
+        if (!cont) return;
+        if (cont.classList.contains('hidden')) {
+          cont.classList.remove('hidden');
+          if (chev) chev.classList.add('rotate-180');
+        } else {
+          cont.classList.add('hidden');
+          if (chev) chev.classList.remove('rotate-180');
+        }
+      }
     </script>
     ${scriptFeedback}
   </body>
@@ -2171,6 +2387,10 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
       if (params.get('msg') === 'success') {
         const info = params.get('info') || 'Proceso completado';
         alert(info);
+      }
+      if (params.get('msg') === 'error') {
+        const info = params.get('info') || 'Ocurrió un error en la solicitud';
+        alert('⚠️ ' + info);
       }
       if (params.get('msg') === 'aprobado') alert('Documento aprobado con éxito');
       if (params.get('msg') === 'deleted') alert('Documento eliminado del sistema');
@@ -2225,7 +2445,8 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
             <div class="pt-2 flex justify-center md:justify-end">
               ${asp.estadoProceso === 'Registro' ? `
                 <button type="button" onclick="cambiarEstado('En proceso')" 
-                  class="bg-purple-600 hover:bg-purple-700 text-white font-black text-[11px] uppercase tracking-wider py-2 px-4 rounded-xl shadow-sm transition-all inline-flex items-center gap-1.5">
+                  class="${asp.IdRequisicion ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} font-black text-[11px] uppercase tracking-wider py-2 px-4 rounded-xl transition-all inline-flex items-center gap-1.5"
+                  title="${asp.IdRequisicion ? 'Habilitar Fase de Firmas' : 'Requiere una Requisición vinculada'}">
                   <span>✍️</span> Habilitar Fase de Firmas (Poner 'En Proceso')
                 </button>
               ` : `
@@ -2236,6 +2457,63 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
               `}
             </div>
           ` : ''}
+        </div>
+      </div>
+
+      <!-- Barra de Contacto y Acciones Rápidas del Aspirante -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 mb-8">
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <!-- Edición de Teléfono y Correo -->
+          <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <span>📱</span> Teléfono / WhatsApp
+              </label>
+              <input type="text" id="inputTelefono" value="${asp.telefono || ''}" placeholder="Ej: 3001234567" 
+                     class="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <span>✉️</span> Correo Electrónico
+              </label>
+              <input type="email" id="inputCorreo" value="${asp.correoElectronico || ''}" placeholder="aspirante@ejemplo.com" 
+                     class="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+            </div>
+          </div>
+
+          <!-- Botón Guardar Contacto -->
+          <div class="shrink-0 flex items-center">
+            <button type="button" onclick="guardarContacto()" id="btnGuardarContacto"
+                    class="w-full lg:w-auto bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 h-[40px]">
+              <span>💾</span> Guardar Contacto
+            </button>
+          </div>
+        </div>
+
+        <!-- Botones de Acción para Copiar Vínculo o Enviar -->
+        <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-3">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Acciones del Aspirante:</span>
+          
+          <!-- Botón a: Copiar Vínculo -->
+          <button type="button" onclick="copiarVinculoPortal()" id="btnCopiarVinculo"
+                  class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-black px-4 py-2 rounded-xl transition-all inline-flex items-center gap-2 shadow-xs">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+            <span id="txtCopiar">Copiar Vínculo</span>
+          </button>
+
+          <!-- Botón b: Enviar WhatsApp -->
+          <button type="button" onclick="enviarWhatsAppPortal()" id="btnWhatsApp"
+                  class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-4 py-2 rounded-xl transition-all inline-flex items-center gap-2 shadow-xs">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            <span>Enviar a WhatsApp</span>
+          </button>
+
+          <!-- Botón c: Enviar al Correo -->
+          <button type="button" onclick="enviarCorreoPortal()" id="btnEnviarCorreo"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black px-4 py-2 rounded-xl transition-all inline-flex items-center gap-2 shadow-xs">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            <span id="txtCorreo">Enviar al Correo</span>
+          </button>
         </div>
       </div>
 
@@ -2338,6 +2616,110 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
     <script>
       const regionalSugerida = ${JSON.stringify(asp.regionalSugerida || '')};
       const operacionSugerida = ${JSON.stringify(asp.operacionSugerida || '')};
+      const tieneRequisicion = ${!!(asp.IdRequisicion && String(asp.IdRequisicion).trim())};
+      const portalUrl = window.location.origin + '/seleccion/portal/${uuid}';
+
+      function copiarVinculoPortal() {
+        navigator.clipboard.writeText(portalUrl).then(() => {
+          const txt = document.getElementById('txtCopiar');
+          const original = txt.innerText;
+          txt.innerText = '¡Vínculo Copiado! ✓';
+          setTimeout(() => { txt.innerText = original; }, 2500);
+        }).catch(err => {
+          prompt('Copia este enlace para el aspirante:', portalUrl);
+        });
+      }
+
+      function enviarWhatsAppPortal() {
+        let tel = (document.getElementById('inputTelefono').value || '').trim();
+        if (!tel) {
+          alert('Por favor digita primero el número de teléfono del aspirante.');
+          document.getElementById('inputTelefono').focus();
+          return;
+        }
+        tel = tel.replace(/\D/g, '');
+        if (tel.length === 10 && tel.startsWith('3')) {
+          tel = '57' + tel;
+        }
+        const nombreAsp = ${JSON.stringify(asp.nombreCompleto || 'Aspirante')};
+        const mensaje = 'Hola ' + nombreAsp + ', te saludamos de LOG&SER S.A.S. Para continuar con tu proceso de selección y contratación, por favor ingresa a tu portal personal en el siguiente enlace: ' + portalUrl;
+        window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(mensaje), '_blank');
+      }
+
+      async function guardarContacto() {
+        const tel = (document.getElementById('inputTelefono').value || '').trim();
+        const cor = (document.getElementById('inputCorreo').value || '').trim();
+        const btn = document.getElementById('btnGuardarContacto');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span>⏳</span> Guardando...';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch('/seleccion/actualizar-contacto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id_aspirante: '${uuid}',
+              telefono: tel,
+              correo_electronico: cor
+            })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            btn.innerHTML = '<span>✓</span> ¡Guardado!';
+            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+          } else {
+            alert('Error al guardar contacto: ' + (data.error || 'Error desconocido'));
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+          }
+        } catch (e) {
+          alert('Error de red al guardar: ' + e.message);
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
+      }
+
+      async function enviarCorreoPortal() {
+        const cor = (document.getElementById('inputCorreo').value || '').trim();
+        if (!cor) {
+          alert('Por favor digita primero el correo electrónico del aspirante.');
+          document.getElementById('inputCorreo').focus();
+          return;
+        }
+
+        if (!confirm('¿Deseas enviar el correo con el enlace del portal a: ' + cor + '?')) {
+          return;
+        }
+
+        const btn = document.getElementById('btnEnviarCorreo');
+        const txt = document.getElementById('txtCorreo');
+        const origText = txt.innerText;
+        txt.innerText = 'Enviando...';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch('/seleccion/enviar-correo-portal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id_aspirante: '${uuid}',
+              correo: cor
+            })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            alert('✓ ' + data.mensaje);
+          } else {
+            alert('Error al enviar correo: ' + (data.error || 'Error desconocido'));
+          }
+        } catch (e) {
+          alert('Error de conexión al enviar correo: ' + e.message);
+        } finally {
+          txt.innerText = origText;
+          btn.disabled = false;
+        }
+      }
 
       function eliminar(id, nombre) {
         if(confirm('¿Deseas eliminar permanentemente el documento: ' + nombre + '?')) {
@@ -2390,8 +2772,12 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
         });
 
       function cambiarEstado(nuevoEstado) {
+        if (nuevoEstado === 'En proceso' && !tieneRequisicion) {
+          alert('⚠️ No es posible habilitar la fase de firmas: el aspirante debe tener una Requisición vinculada.');
+          return;
+        }
         const msg = nuevoEstado === 'En proceso' 
-          ? '¿Deseas activar la fase de firmas? El aspirante podrá ver y firmar digitalmente los 11 documentos en su portal.'
+          ? '¿Deseas activar la fase de firmas? El aspirante podrá ver y firmar digitalmente los ' + ${docsFir.length} + ' documentos en su portal.'
           : '¿Deseas regresar el aspirante al estado Registro?';
         if (confirm(msg)) {
           const f = document.createElement('form'); f.method='POST'; f.action='/seleccion/cambiar-estado-proceso?usuario=${usuario}';
