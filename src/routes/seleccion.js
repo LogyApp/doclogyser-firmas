@@ -399,7 +399,7 @@ router.get('/admin/:uuid', async (req, res) => {
   ];
 
   try {
-    const [[aspiranteRows], [cargados]] = await Promise.all([
+    const [[aspiranteRows], [cargados], [todasRequisiciones]] = await Promise.all([
       pool.execute(
         `SELECT primer_nombre, segundo_nombre, primer_apellido, segundo_apellido, 
                 identificacion, estado_proceso, IdRequisicion, pdf_public_url,
@@ -407,7 +407,12 @@ router.get('/admin/:uuid', async (req, res) => {
          FROM Dynamic_hv_aspirante WHERE id_aspirante = ?`, 
         [uuid]
       ),
-      pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid])
+      pool.execute('SELECT id_config_doc, estado, gcs_path FROM Dynamic_hv_documentos WHERE id_aspirante = ?', [uuid]),
+      pool.execute(`
+        SELECT IdRequisicion, \`Requisición\`, \`Operación\`, \`Cargo Requerido\`, \`N° Personas Requeridas\`, Estado 
+        FROM Dynamic_Requisiciones 
+        ORDER BY CASE WHEN LOWER(Estado) = 'en proceso' THEN 0 ELSE 1 END, \`Fecha Requisición\` DESC, IdRequisicion DESC
+      `)
     ]);
 
     if (aspiranteRows.length === 0) return res.status(404).send("Aspirante no encontrado");
@@ -460,7 +465,8 @@ router.get('/admin/:uuid', async (req, res) => {
       },
       docsAspiranteIds, nombresAsp, docsTecnicos, docsFirmar, mapaDocs, 
       a.estado_proceso === 'contratado',
-      usuario
+      usuario,
+      todasRequisiciones
     ));
   } catch (error) {
     console.error("Error en Admin Panel:", error);
@@ -469,8 +475,41 @@ router.get('/admin/:uuid', async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
-// Rutas de Contacto y Comunicación del Aspirante
+// Rutas de Vinculación y Comunicación del Aspirante
 // ══════════════════════════════════════════════════════════════
+
+// Vincular o desvincular Requisición al aspirante desde el Admin Panel
+router.post('/vincular-requisicion', async (req, res) => {
+  const { id_aspirante, id_requisicion } = req.body;
+  const usuario = req.query.usuario || req.body.usuario || '';
+  try {
+    if (!id_aspirante) {
+      if (req.headers['content-type']?.includes('application/json')) {
+        return res.status(400).json({ ok: false, error: 'Falta id_aspirante' });
+      }
+      return res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=error&info=${encodeURIComponent('Falta id_aspirante')}`);
+    }
+
+    const valorIdReq = id_requisicion && String(id_requisicion).trim() !== '' ? String(id_requisicion).trim() : null;
+
+    await pool.execute(
+      'UPDATE Dynamic_hv_aspirante SET IdRequisicion = ? WHERE id_aspirante = ?',
+      [valorIdReq, id_aspirante]
+    );
+
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.json({ ok: true, mensaje: 'Requisición vinculada correctamente' });
+    }
+
+    res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent('Requisición vinculada con éxito')}`);
+  } catch (error) {
+    console.error('Error al vincular requisición:', error);
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ ok: false, error: error.message });
+    }
+    res.status(500).send('Error al vincular requisición: ' + error.message);
+  }
+});
 
 // Actualizar teléfono y correo del aspirante desde el Admin Panel
 router.post('/actualizar-contacto', async (req, res) => {
@@ -2349,7 +2388,17 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
   </html>`;
 }
 
-function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa, bloqueado, usuario) {
+function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa, bloqueado, usuario, requisiciones = []) {
+  const reqsEnProceso = requisiciones.filter(r => (r.Estado || '').toString().trim().toLowerCase() === 'en proceso');
+  const reqsOtras = requisiciones.filter(r => (r.Estado || '').toString().trim().toLowerCase() !== 'en proceso');
+
+  const renderOpcionReq = (r) => {
+    const isSelected = String(r.IdRequisicion) === String(asp.IdRequisicion);
+    const nPersonas = (r['N° Personas Requeridas'] !== null && r['N° Personas Requeridas'] !== undefined) ? ` - ${r['N° Personas Requeridas']}` : '';
+    const texto = `${r['Requisición'] || 'S/R'} - ${r['Operación'] || 'S/O'} - ${r['Cargo Requerido'] || 'S/C'}${nPersonas}`;
+    return `<option value="${r.IdRequisicion}" ${isSelected ? 'selected' : ''}>${texto}</option>`;
+  };
+
   const renderFilaSeleccion = (doc) => {
     const data = mapa[doc.id];
     const estaFirmado = data && data.estado === 'Firmado';
@@ -2457,6 +2506,55 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
               `}
             </div>
           ` : ''}
+        </div>
+      </div>
+
+      <!-- Barra de Vinculación de Requisición -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 mb-6">
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <div class="flex-1">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <label class="block text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <span>📋</span> Requisición Vinculada
+              </label>
+              ${asp.IdRequisicion ? `
+                <span class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wider">
+                  ✓ Requisición Vinculada
+                </span>
+              ` : `
+                <span class="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full uppercase tracking-wider">
+                  ⚠️ Sin Requisición (Requerida para Habilitar Fase de Firmas)
+                </span>
+              `}
+            </div>
+            <select id="selectRequisicionAspirante" 
+                    class="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+              <option value="">-- Seleccionar Requisición para Vincular --</option>
+              ${reqsEnProceso.length > 0 ? `
+                <optgroup label="Requisiciones Activas (En Proceso)">
+                  ${reqsEnProceso.map(renderOpcionReq).join('')}
+                </optgroup>
+              ` : ''}
+              ${reqsOtras.length > 0 ? `
+                <optgroup label="Histórico de Requisiciones">
+                  ${reqsOtras.map(renderOpcionReq).join('')}
+                </optgroup>
+              ` : ''}
+            </select>
+          </div>
+          <div class="shrink-0 flex items-center gap-2">
+            <button type="button" onclick="vincularRequisicion()" id="btnVincularReq"
+                    class="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 h-[42px]">
+              <span>🔗</span> Vincular Requisición
+            </button>
+            ${asp.IdRequisicion ? `
+              <button type="button" onclick="desvincularRequisicion()" 
+                      class="bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 border border-slate-200 text-xs font-bold px-3.5 rounded-xl transition-all h-[42px]"
+                      title="Desvincular requisición de este aspirante">
+                ✕
+              </button>
+            ` : ''}
+          </div>
         </div>
       </div>
 
@@ -2617,6 +2715,44 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
       const regionalSugerida = ${JSON.stringify(asp.regionalSugerida || '')};
       const operacionSugerida = ${JSON.stringify(asp.operacionSugerida || '')};
       const tieneRequisicion = ${!!(asp.IdRequisicion && String(asp.IdRequisicion).trim())};
+      async function vincularRequisicion() {
+        const idReq = document.getElementById('selectRequisicionAspirante').value;
+        const btn = document.getElementById('btnVincularReq');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<span>⏳</span> Guardando...';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch('/seleccion/vincular-requisicion?usuario=${usuario}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id_aspirante: '${uuid}',
+              id_requisicion: idReq
+            })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            btn.innerHTML = '<span>✓</span> ¡Guardado!';
+            window.location.reload();
+          } else {
+            alert('Error al vincular requisición: ' + (data.error || 'Error desconocido'));
+            btn.innerHTML = orig;
+            btn.disabled = false;
+          }
+        } catch (e) {
+          alert('Error de conexión al vincular: ' + e.message);
+          btn.innerHTML = orig;
+          btn.disabled = false;
+        }
+      }
+
+      async function desvincularRequisicion() {
+        if (!confirm('¿Deseas desvincular la requisición de este aspirante?')) return;
+        document.getElementById('selectRequisicionAspirante').value = '';
+        await vincularRequisicion();
+      }
+
       const portalUrl = window.location.origin + '/seleccion/portal/${uuid}';
 
       function copiarVinculoPortal() {
