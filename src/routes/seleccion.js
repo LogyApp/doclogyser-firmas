@@ -411,7 +411,8 @@ router.get('/admin/:uuid', async (req, res) => {
       pool.execute(`
         SELECT IdRequisicion, \`Requisición\`, \`Operación\`, \`Cargo Requerido\`, \`N° Personas Requeridas\`, Estado 
         FROM Dynamic_Requisiciones 
-        ORDER BY CASE WHEN LOWER(Estado) = 'en proceso' THEN 0 ELSE 1 END, \`Fecha Requisición\` DESC, IdRequisicion DESC
+        WHERE UPPER(TRIM(Estado)) = 'EN PROCESO'
+        ORDER BY \`Fecha Requisición\` DESC, IdRequisicion DESC
       `)
     ]);
 
@@ -428,7 +429,7 @@ router.get('/admin/:uuid', async (req, res) => {
 
     if (a.IdRequisicion) {
       const [reqRows] = await pool.execute(
-        'SELECT `Requisición`, `Operación`, `Cargo Requerido`, `Fecha Requisición`, `Regional` FROM Dynamic_Requisiciones WHERE IdRequisicion = ? LIMIT 1',
+        'SELECT IdRequisicion, `Requisición`, `Operación`, `Cargo Requerido`, `Fecha Requisición`, `Regional`, `Estado`, `N° Personas Requeridas` FROM Dynamic_Requisiciones WHERE IdRequisicion = ? LIMIT 1',
         [a.IdRequisicion]
       );
 
@@ -441,6 +442,11 @@ router.get('/admin/:uuid', async (req, res) => {
 
         requisicionInfo = [r['Requisición'], r['Operación'], r['Cargo Requerido'], fecStr]
                           .filter(x => x).map(x => String(x).trim()).join(' | ');
+
+        const yaEnLista = todasRequisiciones.some(req => String(req.IdRequisicion) === String(a.IdRequisicion));
+        if (!yaEnLista) {
+          todasRequisiciones.unshift(r);
+        }
       }
     }
 
@@ -2389,9 +2395,6 @@ function generarHtmlPortal(uuid, nombre, docs, mapaDocs, pdfUrl, usuario, estado
 }
 
 function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa, bloqueado, usuario, requisiciones = []) {
-  const reqsEnProceso = requisiciones.filter(r => (r.Estado || '').toString().trim().toLowerCase() === 'en proceso');
-  const reqsOtras = requisiciones.filter(r => (r.Estado || '').toString().trim().toLowerCase() !== 'en proceso');
-
   const renderOpcionReq = (r) => {
     const isSelected = String(r.IdRequisicion) === String(asp.IdRequisicion);
     const nPersonas = (r['N° Personas Requeridas'] !== null && r['N° Personas Requeridas'] !== undefined) ? ` - ${r['N° Personas Requeridas']}` : '';
@@ -2471,147 +2474,153 @@ function generarHtmlAdmin(uuid, asp, idsAsp, nombresAsp, docsTec, docsFir, mapa,
   </head>
   <body class="bg-slate-100 p-4 md:p-6">
     <div class="max-w-7xl mx-auto ${bloqueado ? 'interfaz-bloqueada' : ''}">
-      <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-3xl shadow-sm border border-slate-200 gap-4">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="h-16 w-auto object-contain">
-        <div class="text-center md:text-right space-y-1">
-          <div class="flex flex-wrap items-center justify-center md:justify-end gap-2 mb-1">
-            <h1 class="text-xl font-black text-slate-800 uppercase leading-tight">${asp.nombreCompleto}</h1>
-            ${asp.estadoProceso === 'En proceso' 
-              ? '<span class="bg-purple-100 text-purple-800 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider border border-purple-200">En Proceso (Fase de Firmas)</span>' 
-              : (asp.estadoProceso === 'contratado' 
-                ? '<span class="bg-emerald-100 text-emerald-800 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-200">✓ Contratado</span>'
-                : (asp.estadoProceso === 'bloqueado'
-                  ? '<span class="bg-red-100 text-red-800 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider border border-red-200">Bloqueado</span>'
-                  : '<span class="bg-amber-100 text-amber-800 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider border border-amber-200">En Registro</span>'
-                ))}
+      <!-- Consola Unificada de Control y Acciones del Aspirante -->
+      <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-200 mb-6">
+        <!-- Fila 1: Identificación y Estado Principal -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-3.5">
+            <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" class="h-9 md:h-10 w-auto object-contain shrink-0">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h1 class="text-base md:text-lg font-black text-slate-800 uppercase tracking-tight leading-tight">${asp.nombreCompleto}</h1>
+                ${asp.estadoProceso === 'En proceso' 
+                  ? '<span class="bg-purple-100 text-purple-800 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-purple-200">En Proceso (Fase de Firmas)</span>' 
+                  : (asp.estadoProceso === 'contratado' 
+                    ? '<span class="bg-emerald-100 text-emerald-800 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200">✓ Contratado</span>'
+                    : (asp.estadoProceso === 'bloqueado'
+                      ? '<span class="bg-red-100 text-red-800 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-red-200">Bloqueado</span>'
+                      : '<span class="bg-amber-100 text-amber-800 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-amber-200">En Registro</span>'
+                    ))}
+              </div>
+              <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5">
+                <span class="font-mono font-bold text-slate-600">C.C. ${asp.identificacion}</span>
+                ${asp.pdfUrl ? `
+                  <span class="text-slate-300">•</span>
+                  <a class="text-blue-600 font-bold hover:underline inline-flex items-center gap-1 text-[11px]" href="${asp.pdfUrl}" target="_blank">
+                    <span>📄</span> Ver Hoja de Vida (PDF)
+                  </a>
+                ` : ''}
+                ${asp.requisicionInfo ? `
+                  <span class="text-slate-300">•</span>
+                  <span class="bg-slate-100 text-[10px] py-0.5 px-2 rounded-md text-slate-600 font-bold" title="Requisición vinculada">
+                    📋 ${asp.requisicionInfo}
+                  </span>
+                ` : ''}
+              </div>
+            </div>
           </div>
-          <p class="text-xs text-slate-400 font-mono italic">C.C. ${asp.identificacion}</p>
-          ${asp.requisicionInfo ? `<p class="bg-slate-100 text-[10px] py-1 px-3 rounded-full text-slate-600 inline-block font-bold">${asp.requisicionInfo}</p>` : ``}
-          ${asp.pdfUrl ? `<p class="text-xs mt-1"><a class="text-blue-600 font-bold underline" href="${asp.pdfUrl}" target="_blank">VER HOJA DE VIDA (PDF)</a></p>` : ``}
-          
-          <!-- Botón para avanzar o revertir estado En Proceso -->
+
+          <!-- Botón de Estado / Fase -->
           ${!bloqueado && asp.estadoProceso !== 'contratado' ? `
-            <div class="pt-2 flex justify-center md:justify-end">
+            <div class="shrink-0 flex items-center justify-end">
               ${asp.estadoProceso === 'Registro' ? `
                 <button type="button" onclick="cambiarEstado('En proceso')" 
-                  class="${asp.IdRequisicion ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} font-black text-[11px] uppercase tracking-wider py-2 px-4 rounded-xl transition-all inline-flex items-center gap-1.5"
+                  class="${asp.IdRequisicion ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} font-black text-[11px] uppercase tracking-wider py-1.5 px-3.5 rounded-xl transition-all inline-flex items-center gap-1.5"
                   title="${asp.IdRequisicion ? 'Habilitar Fase de Firmas' : 'Requiere una Requisición vinculada'}">
                   <span>✍️</span> Habilitar Fase de Firmas (Poner 'En Proceso')
                 </button>
               ` : `
                 <button type="button" onclick="cambiarEstado('Registro')" 
-                  class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-[10px] uppercase py-1.5 px-3 rounded-xl transition-all inline-flex items-center gap-1">
-                  <span>↩</span> Regresar a estado 'Registro'
+                  class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] uppercase py-1.5 px-3 rounded-xl transition-all inline-flex items-center gap-1 border border-slate-200">
+                  <span>↩</span> Regresar a 'Registro'
                 </button>
               `}
             </div>
           ` : ''}
         </div>
-      </div>
 
-      <!-- Barra de Vinculación de Requisición -->
-      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 mb-6">
-        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-          <div class="flex-1">
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <label class="block text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <span>📋</span> Requisición Vinculada
+        <!-- Fila 2: Gestión de Requisición + Contacto + Acciones en Cuadrícula Compacta -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 pt-3 items-end">
+          <!-- Columna Requisición (lg:col-span-5) -->
+          <div class="lg:col-span-5 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                <span>📋</span> Requisición (En Proceso)
               </label>
               ${asp.IdRequisicion ? `
-                <span class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wider">
-                  ✓ Requisición Vinculada
+                <span class="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                  ✓ Vinculada
                 </span>
               ` : `
-                <span class="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full uppercase tracking-wider">
-                  ⚠️ Sin Requisición (Requerida para Habilitar Fase de Firmas)
+                <span class="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                  ⚠️ Sin Vincular
                 </span>
               `}
             </div>
-            <select id="selectRequisicionAspirante" 
-                    class="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
-              <option value="">-- Seleccionar Requisición para Vincular --</option>
-              ${reqsEnProceso.length > 0 ? `
-                <optgroup label="Requisiciones Activas (En Proceso)">
-                  ${reqsEnProceso.map(renderOpcionReq).join('')}
-                </optgroup>
-              ` : ''}
-              ${reqsOtras.length > 0 ? `
-                <optgroup label="Histórico de Requisiciones">
-                  ${reqsOtras.map(renderOpcionReq).join('')}
-                </optgroup>
-              ` : ''}
-            </select>
-          </div>
-          <div class="shrink-0 flex items-center gap-2">
-            <button type="button" onclick="vincularRequisicion()" id="btnVincularReq"
-                    class="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 h-[42px]">
-              <span>🔗</span> Vincular Requisición
-            </button>
-            ${asp.IdRequisicion ? `
-              <button type="button" onclick="desvincularRequisicion()" 
-                      class="bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 border border-slate-200 text-xs font-bold px-3.5 rounded-xl transition-all h-[42px]"
-                      title="Desvincular requisición de este aspirante">
-                ✕
+            <div class="flex items-center gap-1.5">
+              <select id="selectRequisicionAspirante" 
+                      class="flex-1 min-w-0 px-2.5 py-1.5 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none transition-all truncate">
+                <option value="">-- Seleccionar Requisición (EN PROCESO) --</option>
+                ${requisiciones.map(renderOpcionReq).join('')}
+              </select>
+              <button type="button" onclick="vincularRequisicion()" id="btnVincularReq"
+                      class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1"
+                      title="Guardar / Vincular Requisición">
+                <span>🔗</span> Vincular
               </button>
-            ` : ''}
-          </div>
-        </div>
-      </div>
-
-      <!-- Barra de Contacto y Acciones Rápidas del Aspirante -->
-      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 mb-8">
-        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-          <!-- Edición de Teléfono y Correo -->
-          <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <span>📱</span> Teléfono / WhatsApp
-              </label>
-              <input type="text" id="inputTelefono" value="${asp.telefono || ''}" placeholder="Ej: 3001234567" 
-                     class="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
-            </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <span>✉️</span> Correo Electrónico
-              </label>
-              <input type="email" id="inputCorreo" value="${asp.correoElectronico || ''}" placeholder="aspirante@ejemplo.com" 
-                     class="w-full px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all">
+              ${asp.IdRequisicion ? `
+                <button type="button" onclick="desvincularRequisicion()" 
+                        class="shrink-0 bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 text-xs font-bold px-2 py-1.5 rounded-lg transition-all"
+                        title="Desvincular Requisición">
+                  ✕
+                </button>
+              ` : ''}
             </div>
           </div>
 
-          <!-- Botón Guardar Contacto -->
-          <div class="shrink-0 flex items-center">
-            <button type="button" onclick="guardarContacto()" id="btnGuardarContacto"
-                    class="w-full lg:w-auto bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 h-[40px]">
-              <span>💾</span> Guardar Contacto
-            </button>
+          <!-- Columna Contacto y Acciones del Aspirante (lg:col-span-7) -->
+          <div class="lg:col-span-7 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                <span>📱</span> Contacto y Enlaces del Portal
+              </label>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div class="flex-1 flex items-center gap-1.5">
+                <div class="relative w-32 shrink-0">
+                  <input type="text" id="inputTelefono" value="${asp.telefono || ''}" placeholder="Tel / WhatsApp" 
+                         class="w-full pl-6 pr-2 py-1.5 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none transition-all"
+                         title="Teléfono o WhatsApp del aspirante">
+                  <span class="absolute left-1.5 top-1.5 text-slate-400 text-xs">📱</span>
+                </div>
+                <div class="relative flex-1 min-w-0">
+                  <input type="email" id="inputCorreo" value="${asp.correoElectronico || ''}" placeholder="correo@ejemplo.com" 
+                         class="w-full pl-6 pr-2 py-1.5 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:bg-white outline-none transition-all truncate"
+                         title="Correo electrónico del aspirante">
+                  <span class="absolute left-1.5 top-1.5 text-slate-400 text-xs">✉️</span>
+                </div>
+                <button type="button" onclick="guardarContacto()" id="btnGuardarContacto"
+                        class="shrink-0 bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all shadow-xs flex items-center gap-1"
+                        title="Guardar Teléfono y Correo">
+                  <span>💾</span> Guardar
+                </button>
+              </div>
+
+              <!-- Acciones Rápidas -->
+              <div class="shrink-0 flex items-center gap-1.5">
+                <button type="button" onclick="copiarVinculoPortal()" id="btnCopiarVinculo"
+                        class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1"
+                        title="Copiar enlace del portal del aspirante">
+                  <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                  <span id="txtCopiar">Copiar</span>
+                </button>
+
+                <button type="button" onclick="enviarWhatsAppPortal()" id="btnWhatsApp"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1"
+                        title="Enviar enlace por WhatsApp">
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                  <span>WhatsApp</span>
+                </button>
+
+                <button type="button" onclick="enviarCorreoPortal()" id="btnEnviarCorreo"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all inline-flex items-center gap-1"
+                        title="Enviar enlace por Correo">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                  <span id="txtCorreo">Correo</span>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-
-        <!-- Botones de Acción para Copiar Vínculo o Enviar -->
-        <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-3">
-          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Acciones del Aspirante:</span>
-          
-          <!-- Botón a: Copiar Vínculo -->
-          <button type="button" onclick="copiarVinculoPortal()" id="btnCopiarVinculo"
-                  class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-black px-4 py-2 rounded-xl transition-all inline-flex items-center gap-2 shadow-xs">
-            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-            <span id="txtCopiar">Copiar Vínculo</span>
-          </button>
-
-          <!-- Botón b: Enviar WhatsApp -->
-          <button type="button" onclick="enviarWhatsAppPortal()" id="btnWhatsApp"
-                  class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-4 py-2 rounded-xl transition-all inline-flex items-center gap-2 shadow-xs">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-            <span>Enviar a WhatsApp</span>
-          </button>
-
-          <!-- Botón c: Enviar al Correo -->
-          <button type="button" onclick="enviarCorreoPortal()" id="btnEnviarCorreo"
-                  class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black px-4 py-2 rounded-xl transition-all inline-flex items-center gap-2 shadow-xs">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-            <span id="txtCorreo">Enviar al Correo</span>
-          </button>
         </div>
       </div>
 
