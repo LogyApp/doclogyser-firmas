@@ -15,6 +15,27 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const HTML_PATH = path.join(__dirname, '../views/inventario/index.html');
 
+// Cache en memoria de los catálogos de /api/kardex-lookups (Artículos, Operaciones, Regionales,
+// Categorías): son los mismos para todos los usuarios (el filtrado por acceso de cada uno se
+// aplica después, en memoria), y antes se volvían a leer completos de la base de datos en cada
+// apertura de la pestaña Kardex. 5 minutos de TTL, igual patrón que cachedImpuestos en facturacion.js.
+let cachedLookupsBase = null;
+let lastLookupsBaseFetch = 0;
+async function getLookupsBase() {
+  const now = Date.now();
+  if (cachedLookupsBase && (now - lastLookupsBaseFetch < 300000)) {
+    return cachedLookupsBase;
+  }
+  const [artRows] = await pool.execute('SELECT Id, Articulo, Categoria, Costo, Talla, Referencia FROM Dynamic_Articulos ORDER BY Articulo');
+  const [opRows] = await pool.execute("SELECT DISTINCT `OPERACIÓN` AS operacion, REGIONAL AS regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN`");
+  const [regRows] = await pool.execute("SELECT DISTINCT Regional FROM Config_Regionales WHERE Operacion_Principal IS NOT NULL AND Operacion_Principal != '' ORDER BY Regional");
+  const [catRows] = await pool.execute("SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE (Condicion != 'No aplica' OR Condicion IS NULL) AND Categoria IS NOT NULL ORDER BY Categoria");
+
+  cachedLookupsBase = { artRows, opRows, regionales: regRows.map((r) => r.Regional), categorias: catRows.map((c) => c.Categoria) };
+  lastLookupsBaseFetch = now;
+  return cachedLookupsBase;
+}
+
 const ROLES_SIN_FILTRO = [
   'AdmSst', 'Archivo', 'Calidad', 'Contabilidad', 'Control',
   'Cuentas', 'Facturación', 'Juridica', 'Jurídica', 'Nomina', 'Nómina', 'LiderSst',
@@ -37,6 +58,25 @@ async function resolverDestinatariosTransferencia(operacionDestino, regionalDest
         [operacionDestino]
       );
       opRows.forEach(r => emails.push(r.Email));
+
+      // Fallback por SOCIODEMOGRAFICA de Maestro_Operaciones -> Dispositivo en Maestro_Usuarios
+      if (!emails.length) {
+        const [moRows] = await pool.execute(
+          'SELECT SOCIODEMOGRAFICA FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+          [operacionDestino]
+        );
+        const sociodemografica = moRows.length ? (moRows[0].SOCIODEMOGRAFICA || '').trim() : '';
+        if (sociodemografica) {
+          const [dispRows] = await pool.execute(
+            `SELECT Email FROM Maestro_Usuarios
+             WHERE LOWER(Dispositivo) LIKE ?
+               AND Rol IN ("Auxiliar", "Coordinador", "AuxiliarR", "CoordinadorR")
+               AND Email IS NOT NULL AND Email != ""`,
+            [`%${sociodemografica.toLowerCase()}%`]
+          );
+          dispRows.forEach(r => emails.push(r.Email));
+        }
+      }
     }
     if (!emails.length && regionalDestino) {
       const [regRows] = await pool.execute(
@@ -78,6 +118,16 @@ router.get('/', async (req, res) => {
 });
 
 // API para devolver los datos filtrados
+//
+// OPTIMIZACIÓN (antes: 6 consultas en paralelo contra Vista_Inventario, una por el listado,
+// cuatro por los contadores de cada filtro y una por las estadísticas). Vista_Inventario agrupa
+// TODO Dynamic_Kardex+Dynamic_Articulos con HAVING, lo que obliga a MySQL a materializarla
+// completa ANTES de poder aplicar cualquier WHERE de la consulta externa — medido en ~3.4s para
+// la empresa completa sin filtro, y la vista se mandaba a ejecutar 6 veces por cada carga/filtro.
+// Como el universo completo de filas de la vista es pequeño (unos pocos miles, no millones), la
+// trajimos UNA sola vez (solo con el filtro de seguridad por rol) y replicamos exactamente la
+// misma semántica de "conteo por faceta excluyendo su propio filtro" en memoria. Mismo resultado,
+// una sola consulta a la base de datos en vez de seis.
 router.get('/api/datos', async (req, res) => {
   try {
     const { usuario, regional, operacion, clasificacion, categoria, search } = req.query;
@@ -110,37 +160,12 @@ router.get('/api/datos', async (req, res) => {
       securityParams.push(...acceso.operacionesFiltro);
     }
 
-    // Build filter objects
-    const fReg = regional ? { cond: '`Regional` = ?', param: regional } : null;
-    const fOp = operacion ? { cond: '`Operacion` = ?', param: operacion } : null;
-    const fCls = clasificacion ? { cond: '`Clasificación` = ?', param: clasificacion } : null;
-    const fCat = categoria ? { cond: '`Categoria` = ?', param: categoria } : null;
-    const fSearch = search ? { cond: '(LOWER(`Articulo`) LIKE LOWER(?) OR LOWER(`Referencia`) LIKE LOWER(?))', param: `%${search}%` } : null;
+    const securityWhere = securityConds.length ? `WHERE ${securityConds.join(' AND ')}` : '';
 
-    // Helper to join filters safely
-    const buildWhere = (filtersList) => {
-      const c = [...securityConds];
-      const p = [...securityParams];
-      filtersList.forEach(f => {
-        if (f) {
-          c.push(f.cond);
-          if (f.cond.includes('LIKE')) {
-            p.push(f.param, f.param);
-          } else {
-            p.push(f.param);
-          }
-        }
-      });
-      return {
-        where: c.length ? `WHERE ${c.join(' AND ')}` : '',
-        params: p
-      };
-    };
-
-    // 1. Fetch filtered items (limit 500 rows for speed)
-    const listFilter = buildWhere([fReg, fOp, fCls, fCat, fSearch]);
-    const listQuery = `
-      SELECT 
+    // Única consulta a la base de datos: todo el universo accesible por el usuario (solo
+    // filtro de seguridad, sin los filtros interactivos de la UI).
+    const [base] = await pool.execute(`
+      SELECT
         \`Regional\`,
         \`Operacion\` AS \`Operacion\`,
         \`Origen\` AS \`Origen\`,
@@ -156,54 +181,57 @@ router.get('/api/datos', async (req, res) => {
         \`Observaciones\` AS \`Observaciones\`,
         \`Placa\` AS \`Placa\`
       FROM Vista_Inventario
-      ${listFilter.where}
-      ORDER BY Regional, Operacion, Articulo
-      LIMIT 500
-    `;
-    // 1. Prepare parallel queries for items, faceted counts, and consolidated stats
-    const cReg = buildWhere([fOp, fCls, fCat, fSearch]);
-    const cOp = buildWhere([fReg, fCls, fCat, fSearch]);
-    const cCls = buildWhere([fReg, fOp, fCat, fSearch]);
-    const cCat = buildWhere([fReg, fOp, fCls, fSearch]);
+      ${securityWhere}
+    `, securityParams);
 
-    const statsQuery = `
-      SELECT 
-        COUNT(DISTINCT \`IdArticulo\`) AS distinctArticles,
-        SUM(\`Stock Disponible\`) AS totalStock,
-        SUM(\`Valor Stock\`) AS totalValue
-      FROM Vista_Inventario
-      ${listFilter.where}
-    `;
+    // Predicados equivalentes a los filtros SQL originales, evaluados en memoria.
+    const searchLower = search ? String(search).toLowerCase() : null;
+    const matchReg = (r) => !regional || r.Regional === regional;
+    const matchOp = (r) => !operacion || r.Operacion === operacion;
+    const matchCls = (r) => !clasificacion || r.Clasificacion === clasificacion;
+    const matchCat = (r) => !categoria || r.Categoria === categoria;
+    const matchSearch = (r) => !searchLower ||
+      (r.Articulo && String(r.Articulo).toLowerCase().includes(searchLower)) ||
+      (r.Referencia && String(r.Referencia).toLowerCase().includes(searchLower));
 
-    const [
-      [results],
-      [regRows],
-      [opRows],
-      [clsRows],
-      [catRows],
-      [[statsRow]]
-    ] = await Promise.all([
-      pool.execute(listQuery, listFilter.params),
-      pool.execute(`SELECT \`Regional\`, IFNULL(SUM(\`Stock Disponible\`), 0) as total FROM Vista_Inventario ${cReg.where} GROUP BY \`Regional\``, cReg.params),
-      pool.execute(`SELECT \`Operacion\`, IFNULL(SUM(\`Stock Disponible\`), 0) as total FROM Vista_Inventario ${cOp.where} GROUP BY \`Operacion\``, cOp.params),
-      pool.execute(`SELECT \`Clasificación\` AS Clasificacion, IFNULL(SUM(\`Stock Disponible\`), 0) as total FROM Vista_Inventario ${cCls.where} GROUP BY \`Clasificación\``, cCls.params),
-      pool.execute(`SELECT \`Categoria\`, IFNULL(SUM(\`Stock Disponible\`), 0) as total FROM Vista_Inventario ${cCat.where} GROUP BY \`Categoria\``, cCat.params),
-      pool.execute(statsQuery, listFilter.params)
-    ]);
+    // Filas que cumplen TODOS los filtros activos (equivalente a listQuery/statsQuery originales).
+    const allFiltered = base.filter((r) => matchReg(r) && matchOp(r) && matchCls(r) && matchCat(r) && matchSearch(r));
 
-    const regCounts = {};
-    regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = Number(r.total); });
+    const sumBy = (rows, keyFn) => {
+      const acc = {};
+      rows.forEach((r) => {
+        const key = keyFn(r);
+        if (key === null || key === undefined) return;
+        acc[key] = (acc[key] || 0) + Number(r.StockDisponible || 0);
+      });
+      return acc;
+    };
 
-    const opCounts = {};
-    opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = Number(r.total); });
+    // Cada faceta se calcula excluyendo su propio filtro (misma semántica que las 4 consultas
+    // cReg/cOp/cCls/cCat originales), pero sobre los datos ya traídos en memoria.
+    const regCounts = sumBy(base.filter((r) => matchOp(r) && matchCls(r) && matchCat(r) && matchSearch(r)), (r) => r.Regional);
+    const opCounts = sumBy(base.filter((r) => matchReg(r) && matchCls(r) && matchCat(r) && matchSearch(r)), (r) => r.Operacion);
+    const clsCounts = sumBy(base.filter((r) => matchReg(r) && matchOp(r) && matchCat(r) && matchSearch(r)), (r) => r.Clasificacion);
+    const catCounts = sumBy(base.filter((r) => matchReg(r) && matchOp(r) && matchCls(r) && matchSearch(r)), (r) => r.Categoria);
 
-    const clsCounts = {};
-    clsRows.forEach(r => { if (r.Clasificacion !== null) clsCounts[r.Clasificacion] = Number(r.total); });
+    let totalStock = 0;
+    let totalValue = 0;
+    const distinctArticles = new Set();
+    allFiltered.forEach((r) => {
+      totalStock += Number(r.StockDisponible || 0);
+      totalValue += Number(r.ValorStock || 0);
+      distinctArticles.add(r.IdArticulo);
+    });
 
-    const catCounts = {};
-    catRows.forEach(r => { if (r.Categoria !== null) catCounts[r.Categoria] = Number(r.total); });
-
-    const stats = statsRow || {};
+    // Mismo orden y mismo límite de 500 filas que la consulta original.
+    const results = allFiltered
+      .slice()
+      .sort((a, b) =>
+        String(a.Regional).localeCompare(String(b.Regional)) ||
+        String(a.Operacion).localeCompare(String(b.Operacion)) ||
+        String(a.Articulo).localeCompare(String(b.Articulo))
+      )
+      .slice(0, 500);
 
     res.json({
       results,
@@ -214,9 +242,9 @@ router.get('/api/datos', async (req, res) => {
         categorias: catCounts
       },
       stats: {
-        distinctArticles: stats.distinctArticles || 0,
-        totalStock: stats.totalStock || 0,
-        totalValue: stats.totalValue || 0
+        distinctArticles: distinctArticles.size,
+        totalStock,
+        totalValue
       }
     });
   } catch (err) {
@@ -625,106 +653,46 @@ router.get('/api/confirmaciones', async (req, res) => {
       securityParams.push(...acceso.operacionesFiltro);
     }
 
-    // Build filters
-    const fReg = regional ? { cond: `(SELECT DISTINCT o.REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = c.operacion LIMIT 1) = ?`, param: regional } : null;
-    const fOp = operacion ? { cond: 'c.operacion = ?', param: operacion } : null;
-    const fPer = periodo ? { cond: 'c.mes = ?', param: periodo } : null;
-    const fCat = categoria ? { cond: 'c.categoria = ?', param: categoria } : null;
+    const securityWhere = securityConds.length ? `WHERE ${securityConds.join(' AND ')}` : '';
 
-    const buildWhere = (filtersList) => {
-      const c = [...securityConds];
-      const p = [...securityParams];
-      filtersList.forEach(f => {
-        if (f) {
-          c.push(f.cond);
-          p.push(f.param);
-        }
-      });
-      return {
-        where: c.length ? `WHERE ${c.join(' AND ')}` : '',
-        params: p
-      };
-    };
-
-    // 1. Fetch filtered rows
-    const listFilter = buildWhere([fReg, fOp, fPer, fCat]);
-    const listQuery = `
-      SELECT 
-        c.id,
-        c.area,
-        c.periodo,
-        c.usuario,
-        u.Nombre AS usuarioNombre,
-        c.observaciones,
-        c.operacion,
-        (SELECT DISTINCT o.REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = c.operacion LIMIT 1) AS regional,
-        c.categoria,
-        c.mes,
-        c.fecha_confirmacion AS fechaConfirmacion,
-        c.firma_url AS firmaUrl,
-        c.pdf_url AS pdfUrl
+    // OPTIMIZACIÓN: la subconsulta correlacionada para resolver el Regional (repetida en el
+    // SELECT, el WHERE y el GROUP BY de distintas consultas) se reemplaza por un LEFT JOIN. Y los
+    // 4 contadores de filtro + el conteo total, que antes eran 5 consultas secuenciales (sin
+    // Promise.all), ahora se calculan en memoria a partir de una sola consulta.
+    const [base] = await pool.execute(`
+      SELECT
+        c.id, c.area, c.periodo, c.usuario, u.Nombre AS usuarioNombre, c.observaciones, c.operacion,
+        mo.REGIONAL AS regional, c.categoria, c.mes, c.fecha_confirmacion AS fechaConfirmacion,
+        c.firma_url AS firmaUrl, c.pdf_url AS pdfUrl
       FROM Maestro_Confirmacion c
       LEFT JOIN Maestro_Usuarios u ON c.usuario = u.ID
-      ${listFilter.where}
+      LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = c.operacion
+      ${securityWhere}
       ORDER BY c.fecha_confirmacion DESC
-      LIMIT 500
-    `;
-    const [results] = await pool.execute(listQuery, listFilter.params);
+    `, securityParams);
 
-    // 2. Faceted counts
-    // regional count (exclude regional filter)
-    const cReg = buildWhere([fOp, fPer, fCat]);
-    const [regRows] = await pool.execute(`
-      SELECT 
-        (SELECT DISTINCT o.REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = c.operacion LIMIT 1) AS regional,
-        COUNT(*) as total 
-      FROM Maestro_Confirmacion c 
-      ${cReg.where} 
-      GROUP BY regional
-    `, cReg.params);
-    const regCounts = {};
-    regRows.forEach(r => { if (r.regional !== null && r.regional !== undefined) regCounts[r.regional] = r.total; });
+    const matchReg = (r) => !regional || r.regional === regional;
+    const matchOp = (r) => !operacion || r.operacion === operacion;
+    const matchPer = (r) => !periodo || r.mes === periodo;
+    const matchCat = (r) => !categoria || r.categoria === categoria;
 
-    // operacion count (exclude operacion filter)
-    const cOp = buildWhere([fReg, fPer, fCat]);
-    const [opRows] = await pool.execute(`
-      SELECT c.operacion, COUNT(*) as total 
-      FROM Maestro_Confirmacion c 
-      ${cOp.where} 
-      GROUP BY c.operacion
-    `, cOp.params);
-    const opCounts = {};
-    opRows.forEach(r => { if (r.operacion !== null) opCounts[r.operacion] = r.total; });
+    const allFiltered = base.filter((r) => matchReg(r) && matchOp(r) && matchPer(r) && matchCat(r));
+    const results = allFiltered.slice(0, 500);
 
-    // periodo count (exclude periodo filter)
-    const cPer = buildWhere([fReg, fOp, fCat]);
-    const [perRows] = await pool.execute(`
-      SELECT c.mes, COUNT(*) as total 
-      FROM Maestro_Confirmacion c 
-      ${cPer.where} 
-      GROUP BY c.mes
-    `, cPer.params);
-    const perCounts = {};
-    perRows.forEach(r => { if (r.mes !== null) perCounts[r.mes] = r.total; });
+    const countBy = (rows, keyFn) => {
+      const acc = {};
+      rows.forEach((r) => {
+        const key = keyFn(r);
+        if (key === null || key === undefined) return;
+        acc[key] = (acc[key] || 0) + 1;
+      });
+      return acc;
+    };
 
-    // categoria count (exclude categoria filter)
-    const cCat = buildWhere([fReg, fOp, fPer]);
-    const [catRows] = await pool.execute(`
-      SELECT c.categoria, COUNT(*) as total 
-      FROM Maestro_Confirmacion c 
-      ${cCat.where} 
-      GROUP BY c.categoria
-    `, cCat.params);
-    const catCounts = {};
-    catRows.forEach(r => { if (r.categoria !== null) catCounts[r.categoria] = r.total; });
-
-    // 3. Consolidated stats
-    const statsQuery = `
-      SELECT COUNT(*) AS totalConfirmaciones
-      FROM Maestro_Confirmacion c
-      ${listFilter.where}
-    `;
-    const [[stats]] = await pool.execute(statsQuery, listFilter.params);
+    const regCounts = countBy(base.filter((r) => matchOp(r) && matchPer(r) && matchCat(r)), (r) => r.regional);
+    const opCounts = countBy(base.filter((r) => matchReg(r) && matchPer(r) && matchCat(r)), (r) => r.operacion);
+    const perCounts = countBy(base.filter((r) => matchReg(r) && matchOp(r) && matchCat(r)), (r) => r.mes);
+    const catCounts = countBy(base.filter((r) => matchReg(r) && matchOp(r) && matchPer(r)), (r) => r.categoria);
 
     res.json({
       results,
@@ -735,7 +703,7 @@ router.get('/api/confirmaciones', async (req, res) => {
         categorias: catCounts
       },
       stats: {
-        totalConfirmaciones: stats.totalConfirmaciones || 0
+        totalConfirmaciones: allFiltered.length
       }
     });
 
@@ -813,7 +781,7 @@ router.get('/api/kardex/datos', async (req, res) => {
     // 1. Fetch filtered items (limit 500 rows for speed)
     const listFilter = buildKardexWhere([fReg, fOp, fOpDest, fCat, fMov, fIdArt, fSearch]);
     const listQuery = `
-      SELECT 
+      SELECT
         k.IdKardex,
         k.FechaMovimiento,
         k.TipoMovimiento,
@@ -844,51 +812,70 @@ router.get('/api/kardex/datos', async (req, res) => {
       ORDER BY k.FechaRegistro DESC
       LIMIT 500
     `;
-    // Prepare parallel queries for list, faceted counts, and consolidated stats
-    const cReg = buildKardexWhere([fOp, fOpDest, fCat, fMov, fIdArt, fSearch]);
-    const cOp = buildKardexWhere([fReg, fOpDest, fCat, fMov, fIdArt, fSearch]);
-    const cCat = buildKardexWhere([fReg, fOp, fOpDest, fMov, fIdArt, fSearch]);
-    const cMov = buildKardexWhere([fReg, fOp, fOpDest, fCat, fIdArt, fSearch]);
 
-    const statsQuery = `
-      SELECT 
-        COUNT(*) AS totalMov,
-        SUM(CASE WHEN k.Cantidad > 0 THEN 1 ELSE 0 END) AS totalEnt,
-        SUM(CASE WHEN k.Cantidad < 0 THEN 1 ELSE 0 END) AS totalSal
-      FROM Dynamic_Kardex k
-      LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
-      ${listFilter.where}
-    `;
-
-    const [
-      [results],
-      [regRows],
-      [opRows],
-      [catRows],
-      [movRows],
-      [[statsRow]]
-    ] = await Promise.all([
-      pool.execute(listQuery, listFilter.params),
-      pool.execute(`SELECT k.\`Regional\`, IFNULL(SUM(ABS(k.Cantidad)), 0) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cReg.where} GROUP BY k.\`Regional\``, cReg.params),
-      pool.execute(`SELECT k.\`Operación\` AS Operacion, IFNULL(SUM(ABS(k.Cantidad)), 0) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cOp.where} GROUP BY k.\`Operación\``, cOp.params),
-      pool.execute(`SELECT k.\`Categoria\`, IFNULL(SUM(ABS(k.Cantidad)), 0) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cCat.where} GROUP BY k.\`Categoria\``, cCat.params),
-      pool.execute(`SELECT k.\`TipoMovimiento\`, IFNULL(SUM(ABS(k.Cantidad)), 0) as total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${cMov.where} GROUP BY k.\`TipoMovimiento\``, cMov.params),
-      pool.execute(statsQuery, listFilter.params)
+    // OPTIMIZACIÓN: antes los 4 contadores de filtro + las estadísticas eran 5 consultas
+    // independientes, cada una re-escaneando y re-uniendo Dynamic_Kardex con Dynamic_Articulos
+    // desde cero. Ahora se traen en una sola consulta "liviana" (solo las columnas que hacen
+    // falta para filtrar/agrupar) con el filtro de seguridad, y los 4 contadores + las
+    // estadísticas se calculan en memoria replicando exactamente la misma semántica de "excluir
+    // el propio filtro" que tenían las consultas originales.
+    const securityWhereOnly = securityConds.length ? `WHERE ${securityConds.join(' AND ')}` : '';
+    const [[facetBase], [results]] = await Promise.all([
+      pool.execute(`
+        SELECT
+          k.Regional, k.\`Operación\` AS Operacion, k.\`OperaciónDestino\` AS OperacionDestino,
+          k.Categoria, k.TipoMovimiento, k.IdArticulo, k.Cantidad,
+          k.UsuarioAsignado, k.Acta, k.Observaciones, k.UsuarioRegistro,
+          a.Articulo, a.Referencia
+        FROM Dynamic_Kardex k
+        LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
+        ${securityWhereOnly}
+      `, securityParams),
+      pool.execute(listQuery, listFilter.params)
     ]);
 
-    const regCounts = {};
-    regRows.forEach(r => { if (r.Regional !== null) regCounts[r.Regional] = Number(r.total); });
+    // Los campos de texto en Dynamic_Kardex/Dynamic_Articulos usan collation _bin (sensible a
+    // mayúsculas), igual que el `LIKE` original sin LOWER() — se replica tal cual con .includes().
+    const matchReg = (r) => !regional || r.Regional === regional;
+    const matchOp = (r) => !operacion || r.Operacion === operacion;
+    const matchOpDest = (r) => !operacionDestino || r.OperacionDestino === operacionDestino;
+    const matchCat = (r) => !categoria || r.Categoria === categoria;
+    const matchMov = (r) => !tipoMovimiento || r.TipoMovimiento === tipoMovimiento;
+    const matchIdArt = (r) => !idArticulo || String(r.IdArticulo) === String(idArticulo);
+    const matchSearch = (r) => !search ||
+      (r.Articulo && r.Articulo.includes(search)) ||
+      (r.Referencia && r.Referencia.includes(search)) ||
+      (r.UsuarioAsignado && r.UsuarioAsignado.includes(search)) ||
+      (r.Acta && r.Acta.includes(search)) ||
+      (r.Observaciones && r.Observaciones.includes(search)) ||
+      (r.UsuarioRegistro && r.UsuarioRegistro.includes(search));
 
-    const opCounts = {};
-    opRows.forEach(r => { if (r.Operacion !== null) opCounts[r.Operacion] = Number(r.total); });
+    const allFiltered = facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r));
 
-    const catCounts = {};
-    catRows.forEach(r => { if (r.Categoria !== null) catCounts[r.Categoria] = Number(r.total); });
+    const sumAbsBy = (rows, keyFn) => {
+      const acc = {};
+      rows.forEach((r) => {
+        const key = keyFn(r);
+        if (key === null || key === undefined) return;
+        acc[key] = (acc[key] || 0) + Math.abs(Number(r.Cantidad || 0));
+      });
+      return acc;
+    };
 
-    const movCounts = {};
-    movRows.forEach(r => { if (r.TipoMovimiento !== null) movCounts[r.TipoMovimiento] = Number(r.total); });
+    const regCounts = sumAbsBy(facetBase.filter((r) => matchOp(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r)), (r) => r.Regional);
+    const opCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r)), (r) => r.Operacion);
+    const catCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchMov(r) && matchIdArt(r) && matchSearch(r)), (r) => r.Categoria);
+    const movCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchCat(r) && matchIdArt(r) && matchSearch(r)), (r) => r.TipoMovimiento);
 
-    const stats = statsRow || {};
+    let totalMov = 0;
+    let totalEnt = 0;
+    let totalSal = 0;
+    allFiltered.forEach((r) => {
+      totalMov += 1;
+      const cant = Number(r.Cantidad || 0);
+      if (cant > 0) totalEnt += 1;
+      else if (cant < 0) totalSal += 1;
+    });
 
     res.json({
       results,
@@ -898,11 +885,7 @@ router.get('/api/kardex/datos', async (req, res) => {
         categorias: catCounts,
         movimientos: movCounts
       },
-      stats: {
-        totalMov: stats.totalMov || 0,
-        totalEnt: stats.totalEnt || 0,
-        totalSal: stats.totalSal || 0
-      }
+      stats: { totalMov, totalEnt, totalSal }
     });
   } catch (err) {
     console.error('[inventario] GET /api/kardex/datos error:', err);
@@ -1168,88 +1151,68 @@ router.get('/api/articulos/datos', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    const conds = [];
-    const params = [];
-
-    // Restringir categorías si aplica (Acceso 4, 5, 6)
-    if (acceso.filtroCategorias) {
-      const ph = acceso.filtroCategorias.map(() => '?').join(',');
-      conds.push(`a.Categoria IN (${ph})`);
-      params.push(...acceso.filtroCategorias);
-    }
-
-    // Filters
-    if (categoria) {
-      conds.push('a.Categoria = ?');
-      params.push(categoria);
-    }
-    if (clasificacion) {
-      conds.push('a.ClaseArticulo = ?');
-      params.push(clasificacion);
-    }
-    if (search) {
-      conds.push('(LOWER(a.Articulo) LIKE LOWER(?) OR LOWER(a.Referencia) LIKE LOWER(?) OR LOWER(a.Elemento) LIKE LOWER(?) OR CAST(a.Id AS CHAR) LIKE ?)');
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
-    }
-
-    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
-
-    const listQuery = `
-      SELECT 
-        Id,
-        Imagen,
-        Elemento,
-        Talla,
-        Referencia,
-        Articulo,
+    // OPTIMIZACIÓN: la versión anterior traía Stock/KardexCount/ActasCount con 3 subconsultas
+    // correlacionadas POR FILA, y además repetía esas mismas subconsultas sobre TODA la tabla de
+    // artículos (sin límite) dos veces más solo para los contadores de los filtros — miles de
+    // subconsultas por carga. Ahora Stock/KardexCount/ActasCount se calculan con un JOIN a tablas
+    // derivadas (una sola pasada agregada sobre Dynamic_Kardex / Dynamic_Actas_Items), y los
+    // contadores de filtro se calculan en memoria a partir de esa misma consulta.
+    //
+    // NOTA DE FIDELIDAD: igual que en el código original, los contadores de Categoría/Clasificación
+    // NO aplican la restricción filtroCategorias (Acceso 4/5/6) — solo el listado la aplica. Se
+    // conserva ese comportamiento tal cual para no alterar la lógica existente.
+    const [base] = await pool.execute(`
+      SELECT
+        a.Id,
+        a.Imagen,
+        a.Elemento,
+        a.Talla,
+        a.Referencia,
+        a.Articulo,
         a.Categoria,
-        Proveedor,
-        Costo,
-        \`Fecha Registro\` AS fechaRegistro,
-        Usuario,
-        ClaseArticulo,
-        Placa,
+        a.Proveedor,
+        a.Costo,
+        a.\`Fecha Registro\` AS fechaRegistro,
+        a.Usuario,
+        a.ClaseArticulo,
+        a.Placa,
         cci.Condicion,
-        (SELECT IFNULL(SUM(k.Cantidad), 0) FROM Dynamic_Kardex k WHERE k.IdArticulo = a.Id) AS Stock,
-        (SELECT COUNT(*) FROM Dynamic_Kardex k WHERE k.IdArticulo = a.Id) AS KardexCount,
-        (SELECT COUNT(DISTINCT i.IdActa) FROM Dynamic_Actas_Items i WHERE i.IdArticulo = a.Id) AS ActasCount
+        IFNULL(ks.Stock, 0) AS Stock,
+        IFNULL(ks.KardexCount, 0) AS KardexCount,
+        IFNULL(ai.ActasCount, 0) AS ActasCount
       FROM Dynamic_Articulos a
       LEFT JOIN Config_Categoria_Inventario cci ON cci.Categoria = a.Categoria
-      ${where}
-      ORDER BY Id DESC
-      LIMIT 500
-    `;
+      LEFT JOIN (SELECT IdArticulo, SUM(Cantidad) AS Stock, COUNT(*) AS KardexCount FROM Dynamic_Kardex GROUP BY IdArticulo) ks ON ks.IdArticulo = a.Id
+      LEFT JOIN (SELECT IdArticulo, COUNT(DISTINCT IdActa) AS ActasCount FROM Dynamic_Actas_Items GROUP BY IdArticulo) ai ON ai.IdArticulo = a.Id
+      ORDER BY a.Id DESC
+    `);
 
-    // Faceted Counts
-    // Categoria count
-    const condsCat = [];
-    const paramsCat = [];
-    if (clasificacion) { condsCat.push('ClaseArticulo = ?'); paramsCat.push(clasificacion); }
-    if (search) { condsCat.push('(LOWER(Articulo) LIKE LOWER(?) OR LOWER(Referencia) LIKE LOWER(?) OR LOWER(Elemento) LIKE LOWER(?) OR CAST(Id AS CHAR) LIKE ?)'); paramsCat.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
-    const whereCat = condsCat.length ? `WHERE ${condsCat.join(' AND ')}` : '';
+    const searchLower = search ? String(search).toLowerCase() : null;
+    const matchFiltroCategorias = (r) => !acceso.filtroCategorias || acceso.filtroCategorias.includes(r.Categoria);
+    const matchCat = (r) => !categoria || r.Categoria === categoria;
+    const matchCls = (r) => !clasificacion || r.ClaseArticulo === clasificacion;
+    const matchSearch = (r) => !searchLower ||
+      (r.Articulo && String(r.Articulo).toLowerCase().includes(searchLower)) ||
+      (r.Referencia && String(r.Referencia).toLowerCase().includes(searchLower)) ||
+      (r.Elemento && String(r.Elemento).toLowerCase().includes(searchLower)) ||
+      String(r.Id).includes(searchLower);
 
-    // ClaseArticulo count
-    const condsCls = [];
-    const paramsCls = [];
-    if (categoria) { condsCls.push('Categoria = ?'); paramsCls.push(categoria); }
-    if (search) { condsCls.push('(LOWER(Articulo) LIKE LOWER(?) OR LOWER(Referencia) LIKE LOWER(?) OR LOWER(Elemento) LIKE LOWER(?) OR CAST(Id AS CHAR) LIKE ?)'); paramsCls.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
-    const whereCls = condsCls.length ? `WHERE ${condsCls.join(' AND ')}` : '';
+    const results = base
+      .filter((r) => matchFiltroCategorias(r) && matchCat(r) && matchCls(r) && matchSearch(r))
+      .slice(0, 500);
 
-    const [
-      [results],
-      [catRows],
-      [clsRows]
-    ] = await Promise.all([
-      pool.execute(listQuery, params),
-      pool.execute(`SELECT Categoria, IFNULL(SUM((SELECT IFNULL(SUM(Cantidad), 0) FROM Dynamic_Kardex WHERE IdArticulo = Dynamic_Articulos.Id)), 0) as total FROM Dynamic_Articulos ${whereCat} GROUP BY Categoria`, paramsCat),
-      pool.execute(`SELECT ClaseArticulo, IFNULL(SUM((SELECT IFNULL(SUM(Cantidad), 0) FROM Dynamic_Kardex WHERE IdArticulo = Dynamic_Articulos.Id)), 0) as total FROM Dynamic_Articulos ${whereCls} GROUP BY ClaseArticulo`, paramsCls)
-    ]);
+    const sumStockBy = (rows, keyFn) => {
+      const acc = {};
+      rows.forEach((r) => {
+        const key = keyFn(r);
+        if (!key) return;
+        acc[key] = (acc[key] || 0) + Number(r.Stock || 0);
+      });
+      return acc;
+    };
 
-    const catCounts = {};
-    catRows.forEach(r => { if (r.Categoria) catCounts[r.Categoria] = Number(r.total); });
-
-    const clsCounts = {};
-    clsRows.forEach(r => { if (r.ClaseArticulo) clsCounts[r.ClaseArticulo] = Number(r.total); });
+    const catCounts = sumStockBy(base.filter((r) => matchCls(r) && matchSearch(r)), (r) => r.Categoria);
+    const clsCounts = sumStockBy(base.filter((r) => matchCat(r) && matchSearch(r)), (r) => r.ClaseArticulo);
 
     res.json({
       results,
@@ -1346,6 +1309,7 @@ router.post('/api/articulos/guardar', upload.single('imagenArchivo'), async (req
         parseInt(id)
       ];
       await pool.execute(query, params);
+      cachedLookupsBase = null; // invalidar cache de kardex-lookups (cambió un Articulo)
       res.json({ success: true, message: 'Artículo actualizado exitosamente.', url: publicUrl });
     } else {
       // Crear
@@ -1367,6 +1331,7 @@ router.post('/api/articulos/guardar', upload.single('imagenArchivo'), async (req
         placaFinal
       ];
       await pool.execute(query, params);
+      cachedLookupsBase = null; // invalidar cache de kardex-lookups (nuevo Articulo)
       res.json({ success: true, message: 'Artículo creado exitosamente.' });
     }
   } catch (err) {
@@ -1431,6 +1396,7 @@ router.post('/api/articulos/guardar-masivo', async (req, res) => {
     }
 
     await conn.commit();
+    cachedLookupsBase = null; // invalidar cache de kardex-lookups (alta masiva de Artículos)
     res.json({ success: true, message: `${articulos.length} artículos guardados exitosamente en la base de datos.` });
 
   } catch (err) {
@@ -1467,6 +1433,7 @@ router.post('/api/articulos/eliminar', async (req, res) => {
     const query = `DELETE FROM Dynamic_Articulos WHERE Id IN (${placeholders})`;
     await pool.execute(query, ids.map(id => parseInt(id)));
 
+    cachedLookupsBase = null; // invalidar cache de kardex-lookups (Artículos eliminados)
     res.json({ success: true, message: `${ids.length} artículos eliminados exitosamente.` });
   } catch (err) {
     console.error('[inventario] POST /api/articulos/eliminar error:', err);
@@ -1704,13 +1671,10 @@ router.get('/api/kardex-lookups', async (req, res) => {
     const acceso = await computarAccesoInventario(usuario, 'Kardex');
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const [artRows] = await pool.execute('SELECT Id, Articulo, Categoria, Costo, Talla, Referencia FROM Dynamic_Articulos ORDER BY Articulo');
-    const [opRows] = await pool.execute("SELECT DISTINCT `OPERACIÓN` AS operacion, REGIONAL AS regional FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN`");
-    const [regRows] = await pool.execute("SELECT DISTINCT Regional FROM Config_Regionales WHERE Operacion_Principal IS NOT NULL AND Operacion_Principal != '' ORDER BY Regional");
-    const [catRows] = await pool.execute("SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE (Condicion != 'No aplica' OR Condicion IS NULL) AND Categoria IS NOT NULL ORDER BY Categoria");
+    const { artRows, opRows, regionales: todosRegionales, categorias } = await getLookupsBase();
 
     let operaciones = opRows;
-    let regionales = regRows.map(r => r.Regional);
+    let regionales = todosRegionales;
 
     if (!acceso.sinFiltro) {
       const operacionesPermitidas = new Set(acceso.operacionesFiltro);
@@ -1727,7 +1691,7 @@ router.get('/api/kardex-lookups', async (req, res) => {
       // Operación Destino de una TRANSFERENCIA: cualquier usuario puede transferir a cualquier
       // operación de su misma Regional, aunque su acceso de origen esté limitado a una sola.
       operacionesTodas: opRows,
-      categorias: catRows.map(c => c.Categoria)
+      categorias
     });
   } catch (err) {
     console.error('[inventario] GET /api/kardex-lookups error:', err);
@@ -1790,19 +1754,31 @@ async function generarYGuardarActaRecepcionTransferencia({
 
   // Resolver el nombre del trabajador por cada Identificación asignada (Maestro_Vinculación,
   // misma vinculación-más-reciente-gana que se usa en el resto del módulo).
+  //
+  // OPTIMIZACIÓN: antes esto era una consulta POR cada colaborador distinto (N+1, secuencial).
+  // Ahora es una sola consulta con ROW_NUMBER() que trae la vinculación más reciente de todos
+  // los colaboradores del lote de una vez.
   const nombresAsignados = {};
-  for (const key of gruposMap.keys()) {
-    if (key === SIN_ASIGNAR_KEY) continue;
+  const keysAsignados = Array.from(gruposMap.keys()).filter((key) => key !== SIN_ASIGNAR_KEY);
+  if (keysAsignados.length) {
     try {
-      const [[vRow]] = await pool.execute(
-        'SELECT Trabajador FROM `Maestro_Vinculación` WHERE `Identificación` = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-        [key]
+      const ph = keysAsignados.map(() => '?').join(',');
+      const [vRows] = await pool.execute(
+        `SELECT \`Identificación\`, Trabajador FROM (
+           SELECT \`Identificación\`, Trabajador,
+                  ROW_NUMBER() OVER (PARTITION BY \`Identificación\` ORDER BY \`Fecha de Ingreso\` DESC) AS rn
+           FROM \`Maestro_Vinculación\`
+           WHERE \`Identificación\` IN (${ph})
+         ) t WHERE rn = 1`,
+        keysAsignados
       );
-      nombresAsignados[key] = (vRow && vRow.Trabajador) || key;
+      vRows.forEach((r) => { nombresAsignados[r['Identificación']] = r.Trabajador; });
     } catch (errNom) {
-      console.warn('[inventario] Error resolviendo nombre de asignado:', errNom.message);
-      nombresAsignados[key] = key;
+      console.warn('[inventario] Error resolviendo nombres de asignados:', errNom.message);
     }
+    keysAsignados.forEach((key) => {
+      if (!nombresAsignados[key]) nombresAsignados[key] = key;
+    });
   }
 
   const gruposOrdenados = Array.from(gruposMap.keys()).sort((a, b) => {
@@ -3423,119 +3399,98 @@ router.get('/api/reportes/resumen-operaciones', async (req, res) => {
 
     const whereClause = securityConds.length ? `WHERE ${securityConds.join(' AND ')}` : '';
 
-    // Ejecutar consultas en paralelo
-    const [kpisRows, porOperacion, porCategoria, porRegional, topArticulos] = await Promise.all([
-      // 1. KPIs Generales
-      pool.execute(`
-        SELECT 
-          COUNT(DISTINCT \`Operacion\`) AS totalOperaciones,
-          COUNT(DISTINCT \`IdArticulo\`) AS totalArticulos,
-          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
-          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
-        FROM Vista_Inventario
-        ${whereClause}
-      `, securityParams).then(([r]) => r),
+    // OPTIMIZACIÓN: antes esto eran 5 consultas separadas contra Vista_Inventario (KPIs, por
+    // Operación, por Categoría, por Regional, Top 10), cada una recalculando desde cero la
+    // agregación completa de la vista (ver nota en GET /api/datos). Con una sola consulta y los
+    // 5 desgloses calculados en memoria se obtiene exactamente el mismo resultado.
+    const [rows] = await pool.execute(`
+      SELECT
+        \`Regional\`, \`Operacion\`, \`IdArticulo\`, \`Articulo\`, \`Referencia\`, \`Categoria\`,
+        IFNULL(\`Stock Disponible\`, 0) AS StockDisponible,
+        IFNULL(\`Valor Stock\`, 0) AS ValorStock
+      FROM Vista_Inventario
+      ${whereClause}
+    `, securityParams);
 
-      // 2. Resumen por Operación
-      pool.execute(`
-        SELECT 
-          IFNULL(\`Regional\`, 'SIN REGIONAL') AS Regional,
-          \`Operacion\`,
-          COUNT(DISTINCT \`IdArticulo\`) AS articulosCount,
-          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
-          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
-        FROM Vista_Inventario
-        ${whereClause}
-        GROUP BY \`Regional\`, \`Operacion\`
-        ORDER BY totalStock DESC
-      `, securityParams).then(([r]) => r),
+    const operacionesSet = new Set();
+    const articulosSet = new Set();
+    let totalStock = 0;
+    let totalValor = 0;
 
-      // 3. Resumen por Categoría
-      pool.execute(`
-        SELECT 
-          IFNULL(\`Categoria\`, 'OTRO') AS Categoria,
-          COUNT(DISTINCT \`IdArticulo\`) AS articulosCount,
-          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
-          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
-        FROM Vista_Inventario
-        ${whereClause}
-        GROUP BY \`Categoria\`
-        ORDER BY totalStock DESC
-      `, securityParams).then(([r]) => r),
+    const opMap = new Map();
+    const catMap = new Map();
+    const regMap = new Map();
+    const artMap = new Map();
 
-      // 4. Resumen por Regional
-      pool.execute(`
-        SELECT 
-          IFNULL(\`Regional\`, 'SIN REGIONAL') AS Regional,
-          COUNT(DISTINCT \`Operacion\`) AS totalOperaciones,
-          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
-          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
-        FROM Vista_Inventario
-        ${whereClause}
-        GROUP BY \`Regional\`
-        ORDER BY totalStock DESC
-      `, securityParams).then(([r]) => r),
+    rows.forEach((r) => {
+      const stock = Number(r.StockDisponible || 0);
+      const valor = Number(r.ValorStock || 0);
+      const regionalKey = r.Regional || 'SIN REGIONAL';
+      const categoriaKey = r.Categoria || 'OTRO';
 
-      // 5. Top 10 Artículos con mayor stock
-      pool.execute(`
-        SELECT 
-          \`IdArticulo\`,
-          \`Articulo\`,
-          \`Referencia\`,
-          \`Categoria\`,
-          IFNULL(SUM(\`Stock Disponible\`), 0) AS totalStock,
-          IFNULL(SUM(\`Valor Stock\`), 0) AS totalValor
-        FROM Vista_Inventario
-        ${whereClause}
-        GROUP BY \`IdArticulo\`, \`Articulo\`, \`Referencia\`, \`Categoria\`
-        ORDER BY totalStock DESC
-        LIMIT 10
-      `, securityParams).then(([r]) => r)
-    ]);
+      operacionesSet.add(r.Operacion);
+      articulosSet.add(r.IdArticulo);
+      totalStock += stock;
+      totalValor += valor;
 
-    const kpiData = kpisRows[0] || { totalOperaciones: 0, totalArticulos: 0, totalStock: 0, totalValor: 0 };
+      const opKey = `${regionalKey}|||${r.Operacion}`;
+      if (!opMap.has(opKey)) opMap.set(opKey, { Regional: regionalKey, Operacion: r.Operacion, articulos: new Set(), totalStock: 0, totalValor: 0 });
+      const op = opMap.get(opKey);
+      op.articulos.add(r.IdArticulo);
+      op.totalStock += stock;
+      op.totalValor += valor;
+
+      if (!catMap.has(categoriaKey)) catMap.set(categoriaKey, { Categoria: categoriaKey, articulos: new Set(), totalStock: 0, totalValor: 0 });
+      const cat = catMap.get(categoriaKey);
+      cat.articulos.add(r.IdArticulo);
+      cat.totalStock += stock;
+      cat.totalValor += valor;
+
+      if (!regMap.has(regionalKey)) regMap.set(regionalKey, { Regional: regionalKey, operaciones: new Set(), totalStock: 0, totalValor: 0 });
+      const reg = regMap.get(regionalKey);
+      reg.operaciones.add(r.Operacion);
+      reg.totalStock += stock;
+      reg.totalValor += valor;
+
+      const artKey = `${r.IdArticulo}|||${r.Articulo}|||${r.Referencia}|||${r.Categoria}`;
+      if (!artMap.has(artKey)) artMap.set(artKey, { IdArticulo: r.IdArticulo, Articulo: r.Articulo, Referencia: r.Referencia, Categoria: r.Categoria, totalStock: 0, totalValor: 0 });
+      const art = artMap.get(artKey);
+      art.totalStock += stock;
+      art.totalValor += valor;
+    });
+
+    const porOperacion = Array.from(opMap.values())
+      .map((e) => ({ Regional: e.Regional, Operacion: e.Operacion, articulosCount: e.articulos.size, totalStock: e.totalStock, totalValor: e.totalValor }))
+      .sort((a, b) => b.totalStock - a.totalStock);
+    const porCategoria = Array.from(catMap.values())
+      .map((e) => ({ Categoria: e.Categoria, articulosCount: e.articulos.size, totalStock: e.totalStock, totalValor: e.totalValor }))
+      .sort((a, b) => b.totalStock - a.totalStock);
+    const porRegional = Array.from(regMap.values())
+      .map((e) => ({ Regional: e.Regional, totalOperaciones: e.operaciones.size, totalStock: e.totalStock, totalValor: e.totalValor }))
+      .sort((a, b) => b.totalStock - a.totalStock);
+    const topArticulos = Array.from(artMap.values())
+      .sort((a, b) => b.totalStock - a.totalStock)
+      .slice(0, 10);
+
     const topOp = porOperacion.length ? porOperacion[0] : null;
 
     res.json({
       kpis: {
-        totalOperaciones: Number(kpiData.totalOperaciones || 0),
-        totalArticulos: Number(kpiData.totalArticulos || 0),
-        totalStock: Number(kpiData.totalStock || 0),
-        totalValor: Number(kpiData.totalValor || 0),
+        totalOperaciones: operacionesSet.size,
+        totalArticulos: articulosSet.size,
+        totalStock,
+        totalValor,
         topOperacion: topOp ? {
           Operacion: topOp.Operacion,
           Regional: topOp.Regional,
-          totalStock: Number(topOp.totalStock || 0),
-          totalValor: Number(topOp.totalValor || 0)
+          totalStock: topOp.totalStock,
+          totalValor: topOp.totalValor
         } : null
       },
-      porOperacion: porOperacion.map(r => ({
-        Regional: r.Regional,
-        Operacion: r.Operacion,
-        articulosCount: Number(r.articulosCount || 0),
-        totalStock: Number(r.totalStock || 0),
-        totalValor: Number(r.totalValor || 0)
-      })),
-      porCategoria: porCategoria.map(r => ({
-        Categoria: r.Categoria,
-        articulosCount: Number(r.articulosCount || 0),
-        totalStock: Number(r.totalStock || 0),
-        totalValor: Number(r.totalValor || 0)
-      })),
-      porRegional: porRegional.map(r => ({
-        Regional: r.Regional,
-        totalOperaciones: Number(r.totalOperaciones || 0),
-        totalStock: Number(r.totalStock || 0),
-        totalValor: Number(r.totalValor || 0)
-      })),
-      topArticulos: topArticulos.map(r => ({
-        IdArticulo: r.IdArticulo,
-        Articulo: r.Articulo,
-        Referencia: r.Referencia,
-        Categoria: r.Categoria,
-        totalStock: Number(r.totalStock || 0),
-        totalValor: Number(r.totalValor || 0)
-      }))
+      porOperacion,
+      porCategoria,
+      porRegional,
+      topArticulos
     });
 
   } catch (err) {
