@@ -96,19 +96,23 @@ function obtenerCondicionesClasificacion(isSstOnly) {
   return { whereFirma, whereVinc };
 }
 
-// Servir la vista principal HTML
-router.get('/', verificarAcceso, (req, res) => {
-  try {
-    if (!fs.existsSync(HTML_PATH)) {
-      return res.status(404).send('<h2>Error: Vista del biométrico no encontrada</h2>');
-    }
-    const html = fs.readFileSync(HTML_PATH, 'utf8');
-    const config = JSON.stringify(req.usuarioInfo).replace(/<\/script>/gi, '<\\/script>');
-    res.send(html.replace('__CONFIG__', config));
-  } catch (err) {
-    console.error('[biometrico] Error sirviendo la vista:', err);
-    res.status(500).send('<h2>Error interno sirviendo la vista</h2>');
+// Módulo Biométrico independiente deshabilitado — trasladado a Nómina
+router.get('/', (req, res) => {
+  const usuarioId = req.query.usuario || req.body?.usuario;
+  if (usuarioId) {
+    return res.redirect(302, `/nomina?usuario=${encodeURIComponent(usuarioId)}&tab=biometrico`);
   }
+  return res.status(403).send(`
+    <!DOCTYPE html>
+    <html lang="es">
+    <head><meta charset="utf-8"><title>Módulo Trasladado</title>
+    <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f4f7f6}div{background:#fff;padding:2rem;border-radius:10px;text-align:center;box-shadow:0 4px 15px rgba(0,0,0,.08);max-width:440px}h2{color:#0f766e;margin-top:0}p{color:#555}a{display:inline-block;margin-top:10px;background:#0f766e;color:#fff;padding:8px 16px;text-decoration:none;border-radius:6px;font-weight:600}</style></head>
+    <body><div>
+      <h2>Módulo Trasladado</h2>
+      <p>El módulo Biométrico ha sido integrado como una pestaña dentro del <strong>Módulo de Nómina</strong>.</p>
+      <a href="/nomina">Ir a Nómina</a>
+    </div></body></html>
+  `);
 });
 
 // API: Listar trabajadores clasificados

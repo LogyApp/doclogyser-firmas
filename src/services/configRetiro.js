@@ -136,17 +136,36 @@ async function estaRetiroLegalizado(datos) {
 }
 
 // ── Responsables de un trabajador para notificaciones de retiro ────────────
-// Busca Auxiliar/Coordinador de su Operación; si no hay ninguno configurado,
-// cae a AuxiliarR/CoordinadorR de su Regional. Devuelve [] si no hay nadie.
+// Busca Auxiliar/Coordinador/AuxiliarR/CoordinadorR de su Operación; si no hay
+// ninguno configurado, busca por SOCIODEMOGRAFICA en Maestro_Operaciones contra
+// la columna Dispositivo de Maestro_Usuarios. Si aún no hay nadie, cae a
+// AuxiliarR/CoordinadorR de su Regional. Devuelve [] si no hay nadie.
 async function obtenerResponsablesOperacionRegional(operacion, regional) {
   if (operacion) {
     const [rowsOp] = await pool.execute(
       `SELECT Email, Nombre, Rol FROM Maestro_Usuarios
-       WHERE Rol IN ('Auxiliar','Coordinador') AND \`Operación\` = ?
+       WHERE Rol IN ('Auxiliar','Coordinador','AuxiliarR','CoordinadorR') AND \`Operación\` = ?
          AND Email IS NOT NULL AND Email <> ''`,
       [operacion]
     );
     if (rowsOp.length) return rowsOp;
+
+    // Fallback por SOCIODEMOGRAFICA de Maestro_Operaciones -> Dispositivo en Maestro_Usuarios
+    const [moRows] = await pool.execute(
+      'SELECT SOCIODEMOGRAFICA FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+      [operacion]
+    );
+    const sociodemografica = moRows.length ? (moRows[0].SOCIODEMOGRAFICA || '').trim() : '';
+    if (sociodemografica) {
+      const [rowsDisp] = await pool.execute(
+        `SELECT Email, Nombre, Rol FROM Maestro_Usuarios
+         WHERE LOWER(Dispositivo) LIKE ?
+           AND Rol IN ('Auxiliar','Coordinador','AuxiliarR','CoordinadorR')
+           AND Email IS NOT NULL AND Email <> ''`,
+        [`%${sociodemografica.toLowerCase()}%`]
+      );
+      if (rowsDisp.length) return rowsDisp;
+    }
   }
   if (!regional) return [];
   const [rowsReg] = await pool.execute(

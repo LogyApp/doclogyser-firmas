@@ -60,12 +60,23 @@ router.get('/', async (req, res) => {
     const accesoRetiro = await computarAccesoNomina(usuario, 'Retiro');
     const accesoActivo = await computarAccesoNomina(usuario, 'Activo');
     const accesoBloqueo = await computarAccesoNomina(usuario, 'Bloqueo_datos');
-    if (!accesoRetiro && !accesoActivo && !accesoBloqueo) {
+    let accesoBiometrico = await computarAccesoNomina(usuario, 'Biometrico');
+
+    // Respaldo de roles autorizados para biométrico si no está configurado en DB
+    if (!accesoBiometrico) {
+      const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+      if (uRows.length && ['Nomina', 'Sistema', 'Control', 'Juridica', 'AdmSst', 'LiderSst', 'Asistencial'].includes(uRows[0].Rol)) {
+        accesoBiometrico = { sinFiltro: true, rol: uRows[0].Rol };
+      }
+    }
+
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo || accesoBloqueo;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico;
     const puedeGenerarDocs = puedeGenerarDocumentosRetiro(base.rol, base.regional);
+    const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
     const template = fs.readFileSync(NOMINA_HTML, 'utf8');
     const config = JSON.stringify({
@@ -73,10 +84,12 @@ router.get('/', async (req, res) => {
       usuarioNombre: base.usuarioNombre,
       rol:           base.rol,
       puedeGenerarDocs,
+      isSstOnly,
       tabs: {
         retiro: resumenAcceso(accesoRetiro),
         activo: resumenAcceso(accesoActivo),
         bloqueo: resumenAcceso(accesoBloqueo),
+        biometrico: accesoBiometrico ? { sinFiltro: accesoBiometrico.sinFiltro, isSstOnly } : null,
       },
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -618,6 +631,569 @@ router.post('/api/vinculacion/:id/liberar', async (req, res) => {
   } catch (err) {
     console.error('[nomina] POST /api/vinculacion/:id/liberar', err);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── MÓDULO BIOMÉTRICO (Pestaña Nómina) ───────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  const p1 = parseFloat(lat1), l1 = parseFloat(lon1);
+  const p2 = parseFloat(lat2), l2 = parseFloat(lon2);
+  if (isNaN(p1) || isNaN(l1) || isNaN(p2) || isNaN(l2)) return null;
+
+  const R = 6371e3; // Radio de la Tierra en metros
+  const toRad = deg => (deg * Math.PI) / 180;
+  const dLat = toRad(p2 - p1);
+  const dLon = toRad(l2 - l1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(p1)) * Math.cos(toRad(p2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
+function obtenerCondicionesClasificacionBiometrico(isSstOnly) {
+  let whereFirma = "area IN ('sst', 'coordinadores', 'auxiliares_administrativos')";
+  let whereVinc = "v.Cargo IN ('AUXILIAR LOGISTICO', 'APRENDIZ')";
+
+  if (isSstOnly) {
+    whereFirma = "area = 'sst'";
+    whereVinc = "1 = 0";
+  }
+
+  return { whereFirma, whereVinc };
+}
+
+async function verificarAccesoBiometricoAPI(req, res, next) {
+  try {
+    const usuarioId = req.query.usuario || req.body?.usuario;
+    if (!usuarioId) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const [uRows] = await pool.execute(
+      'SELECT ID, Nombre, Rol, Regional FROM Maestro_Usuarios WHERE ID = ?',
+      [usuarioId]
+    );
+
+    if (!uRows.length) {
+      return res.status(403).json({ error: 'Usuario no registrado' });
+    }
+
+    const u = uRows[0];
+    const isSstOnly = ['AdmSst', 'LiderSst'].includes(u.Rol);
+    const accesoBio = await computarAccesoNomina(usuarioId, 'Biometrico');
+
+    if (!accesoBio && !['Juridica', 'Sistema', 'Control', 'Nomina', 'AdmSst', 'LiderSst', 'Asistencial'].includes(u.Rol)) {
+      return res.status(403).json({ error: 'Rol no autorizado para biométrico' });
+    }
+
+    req.usuarioInfo = {
+      usuarioId: u.ID,
+      usuarioNombre: u.Nombre || u.ID,
+      rol: u.Rol,
+      regional: u.Regional,
+      isSstOnly
+    };
+
+    next();
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en autorización:', err);
+    res.status(500).json({ error: 'Error interno en autorización biométrico' });
+  }
+}
+
+// ── GET /api/biometrico/trabajadores ─────────────────────────────────────────
+router.get('/api/biometrico/trabajadores', verificarAccesoBiometricoAPI, async (req, res) => {
+  try {
+    const { isSstOnly } = req.usuarioInfo;
+    const { whereFirma, whereVinc } = obtenerCondicionesClasificacionBiometrico(isSstOnly);
+
+    const query = `
+      SELECT 
+        Identificacion AS identificacion, 
+        MAX(Trabajador) AS nombre, 
+        MAX(cargo) AS cargo, 
+        MAX(operacion) AS operacion, 
+        MAX(regional) AS regional, 
+        'firma_corporativa' AS origen,
+        CASE 
+          WHEN MAX(area) = 'sst' THEN 'sst'
+          WHEN MAX(area) = 'coordinadores' THEN 'coordinadores'
+          WHEN MAX(area) = 'auxiliares_administrativos' THEN 'auxiliares_administrativos'
+          ELSE NULL
+        END AS clasificacion
+      FROM Maestro_firma_corporativa
+      WHERE ${whereFirma}
+      GROUP BY Identificacion
+
+      UNION ALL
+
+      SELECT 
+        v.Identificación AS identificacion, 
+        MAX(v.Trabajador) AS nombre, 
+        MAX(v.Cargo) AS cargo, 
+        MAX(v.\`Operación\`) AS operacion, 
+        MAX(v.Regional) AS regional, 
+        'vinculacion' AS origen,
+        CASE 
+          WHEN MAX(v.Cargo) = 'AUXILIAR LOGISTICO' THEN 'auxiliares_logisticos'
+          WHEN MAX(v.Cargo) = 'APRENDIZ' THEN 'aprendices'
+          ELSE NULL
+        END AS clasificacion
+      FROM Maestro_Vinculación v
+      WHERE ${whereVinc}
+        AND v.Identificación IS NOT NULL
+        AND v.Identificación NOT IN (
+          SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
+        )
+      GROUP BY v.Identificación
+      ORDER BY nombre ASC
+    `;
+
+    const [rows] = await pool.execute(query);
+    res.json({ ok: true, trabajadores: rows });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en trabajadores:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/biometrico/marcaciones ──────────────────────────────────────────
+// Incluye cálculo de distancia a la Operación asignada más reciente de Maestro_Vinculación
+router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (req, res) => {
+  try {
+    const { isSstOnly } = req.usuarioInfo;
+    const { whereFirma, whereVinc } = obtenerCondicionesClasificacionBiometrico(isSstOnly);
+    
+    const { startDate, endDate, search, clasificacion } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'Parámetros startDate y endDate requeridos' });
+    }
+
+    const startStr = `${startDate} 00:00:00`;
+    const endStr = `${endDate} 23:59:59`;
+
+    let filterSql = '';
+    const filterParams = [];
+    if (search) {
+      filterSql += ' AND (m.identificacion LIKE ? OR m.trabajador LIKE ?)';
+      filterParams.push(`%${search}%`, `%${search}%`);
+    }
+    if (clasificacion) {
+      filterSql += ' AND w.clasificacion = ?';
+      filterParams.push(clasificacion);
+    }
+
+    const wSubquery = `
+      SELECT
+        Identificacion AS identificacion,
+        CASE
+          WHEN MAX(area) = 'sst' THEN 'sst'
+          WHEN MAX(area) = 'coordinadores' THEN 'coordinadores'
+          WHEN MAX(area) = 'auxiliares_administrativos' THEN 'auxiliares_administrativos'
+          ELSE NULL
+        END AS clasificacion,
+        MAX(cargo) AS cargo,
+        MAX(operacion) AS operacion,
+        MAX(regional) AS regional
+      FROM Maestro_firma_corporativa
+      WHERE ${whereFirma}
+      GROUP BY Identificacion
+
+      UNION ALL
+
+      SELECT
+        v.Identificación AS identificacion,
+        CASE
+          WHEN MAX(v.Cargo) = 'AUXILIAR LOGISTICO' THEN 'auxiliares_logisticos'
+          WHEN MAX(v.Cargo) = 'APRENDIZ' THEN 'aprendices'
+          ELSE NULL
+        END AS clasificacion,
+        MAX(v.Cargo) AS cargo,
+        MAX(v.\`Operación\`) AS operacion,
+        MAX(v.Regional) AS regional
+      FROM Maestro_Vinculación v
+      WHERE ${whereVinc}
+        AND v.Identificación IS NOT NULL
+        AND v.Identificación NOT IN (
+          SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
+        )
+      GROUP BY v.Identificación
+    `;
+
+    const vOpSubquery = `
+      SELECT mv.Identificación, MAX(mv.\`Operación\`) AS operacion_asignada
+      FROM Maestro_Vinculación mv
+      INNER JOIN (
+        SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS maxFecha
+        FROM Maestro_Vinculación
+        WHERE Identificación IS NOT NULL
+        GROUP BY Identificación
+      ) ult ON mv.Identificación = ult.Identificación AND mv.\`Fecha de Ingreso\` = ult.maxFecha
+      GROUP BY mv.Identificación
+    `;
+
+    const query = `
+      SELECT * FROM (
+        SELECT
+          m.id,
+          m.identificacion,
+          m.trabajador,
+          m.tipo,
+          m.score,
+          m.latitud,
+          m.longitud,
+          m.precision_gps,
+          m.es_manual,
+          m.motivo,
+          m.device_fingerprint,
+          m.ip,
+          m.fecha_hora,
+          w.clasificacion,
+          w.cargo,
+          w.operacion,
+          w.regional,
+          v_op.operacion_asignada,
+          op_asig.LATITUD AS op_lat,
+          op_asig.LONGITUD AS op_lng
+        FROM facial_marcaciones m
+        INNER JOIN (${wSubquery}) w ON m.identificacion = w.identificacion
+        LEFT JOIN (${vOpSubquery}) v_op ON m.identificacion = v_op.Identificación
+        LEFT JOIN Maestro_Operaciones op_asig ON TRIM(v_op.operacion_asignada) = TRIM(op_asig.\`OPERACIÓN\`)
+        WHERE m.fecha_hora >= ? AND m.fecha_hora <= ?
+        ${filterSql}
+
+        UNION ALL
+
+        SELECT
+          m.id,
+          m.identificacion,
+          m.trabajador,
+          'SALIDA' AS tipo,
+          NULL AS score,
+          m.latitud_salida AS latitud,
+          m.longitud_salida AS longitud,
+          m.precision_gps_salida AS precision_gps,
+          m.es_manual_salida AS es_manual,
+          m.motivo_salida AS motivo,
+          m.device_fingerprint,
+          m.ip,
+          m.fecha_salida AS fecha_hora,
+          w.clasificacion,
+          w.cargo,
+          w.operacion,
+          w.regional,
+          v_op.operacion_asignada,
+          op_asig.LATITUD AS op_lat,
+          op_asig.LONGITUD AS op_lng
+        FROM facial_marcaciones m
+        INNER JOIN (${wSubquery}) w ON m.identificacion = w.identificacion
+        LEFT JOIN (${vOpSubquery}) v_op ON m.identificacion = v_op.Identificación
+        LEFT JOIN Maestro_Operaciones op_asig ON TRIM(v_op.operacion_asignada) = TRIM(op_asig.\`OPERACIÓN\`)
+        WHERE m.fecha_hora >= ? AND m.fecha_hora <= ?
+          AND m.fecha_salida IS NOT NULL
+        ${filterSql}
+      ) marcaciones
+      ORDER BY fecha_hora DESC
+    `;
+
+    const params = [
+      startStr, endStr, ...filterParams,
+      startStr, endStr, ...filterParams
+    ];
+
+    const [rows] = await pool.execute(query, params);
+
+    const marcacionesConDistancia = rows.map(r => {
+      const distM = calcularDistanciaMetros(r.latitud, r.longitud, r.op_lat, r.op_lng);
+      return {
+        ...r,
+        distancia_metros: distM,
+      };
+    });
+
+    res.json({ ok: true, marcaciones: marcacionesConDistancia });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en marcaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/biometrico/movimientos ──────────────────────────────────────────
+router.get('/api/biometrico/movimientos', verificarAccesoBiometricoAPI, async (req, res) => {
+  try {
+    const { isSstOnly } = req.usuarioInfo;
+    const { whereFirma, whereVinc } = obtenerCondicionesClasificacionBiometrico(isSstOnly);
+    
+    const { startDate, endDate, search, clasificacion } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'Parámetros startDate y endDate requeridos' });
+    }
+
+    const startStr = `${startDate} 00:00:00`;
+    const endStr = `${endDate} 23:59:59`;
+
+    const params = [startStr, endStr];
+
+    let filterSql = '';
+    if (search) {
+      filterSql += ' AND (mov.identificacion LIKE ? OR mov.trabajador LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    if (clasificacion) {
+      filterSql += ' AND w.clasificacion = ?';
+      params.push(clasificacion);
+    }
+
+    const query = `
+      SELECT 
+        mov.id,
+        mov.identificacion,
+        mov.trabajador,
+        mov.tipo,
+        mov.estado,
+        mov.lat_inicio,
+        mov.lng_inicio,
+        mov.lat_destino,
+        mov.lng_destino,
+        mov.direccion_destino,
+        mov.ruta_dist_km,
+        mov.ruta_tiempo_min,
+        mov.fecha_inicio,
+        mov.fecha_fin,
+        mov.duracion_min,
+        mov.distancia_real_km,
+        mov.desvio_max_km,
+        mov.velocidad_max_kmh,
+        mov.velocidad_prom_kmh,
+        mov.total_waypoints,
+        mov.llego_destino,
+        mov.device_fingerprint,
+        mov.ip,
+        mov.requiere_regreso,
+        mov.tiempo_en_destino_min,
+        w.clasificacion,
+        w.cargo,
+        w.operacion,
+        w.regional
+      FROM facial_movimientos mov
+      INNER JOIN (
+        SELECT 
+          Identificacion AS identificacion, 
+          CASE 
+            WHEN MAX(area) = 'sst' THEN 'sst'
+            WHEN MAX(area) = 'coordinadores' THEN 'coordinadores'
+            WHEN MAX(area) = 'auxiliares_administrativos' THEN 'auxiliares_administrativos'
+            ELSE NULL
+          END AS clasificacion,
+          MAX(cargo) AS cargo, 
+          MAX(operacion) AS operacion, 
+          MAX(regional) AS regional
+        FROM Maestro_firma_corporativa
+        WHERE ${whereFirma}
+        GROUP BY Identificacion
+        
+        UNION ALL
+        
+        SELECT 
+          v.Identificación AS identificacion, 
+          CASE 
+            WHEN MAX(v.Cargo) = 'AUXILIAR LOGISTICO' THEN 'auxiliares_logisticos'
+            WHEN MAX(v.Cargo) = 'APRENDIZ' THEN 'aprendices'
+            ELSE NULL
+          END AS clasificacion,
+          MAX(v.Cargo) AS cargo, 
+          MAX(v.\`Operación\`) AS operacion, 
+          MAX(v.Regional) AS regional
+        FROM Maestro_Vinculación v
+        WHERE ${whereVinc}
+          AND v.Identificación IS NOT NULL
+          AND v.Identificación NOT IN (
+            SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
+          )
+        GROUP BY v.Identificación
+      ) w ON mov.identificacion = w.identificacion
+      WHERE mov.fecha_inicio >= ? AND mov.fecha_inicio <= ?
+      ${filterSql}
+      ORDER BY mov.fecha_inicio DESC
+    `;
+
+    const [rows] = await pool.execute(query, params);
+    res.json({ ok: true, movimientos: rows });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en movimientos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/biometrico/movimientos/:id/waypoints ────────────────────────────
+router.get('/api/biometrico/movimientos/:id/waypoints', verificarAccesoBiometricoAPI, async (req, res) => {
+  try {
+    const { isSstOnly } = req.usuarioInfo;
+    const { whereFirma, whereVinc } = obtenerCondicionesClasificacionBiometrico(isSstOnly);
+    const movimientoId = req.params.id;
+
+    const query = `
+      SELECT wp.*
+      FROM facial_movimientos_waypoints wp
+      INNER JOIN facial_movimientos mov ON wp.movimiento_id = mov.id
+      INNER JOIN (
+        SELECT Identificacion AS identificacion
+        FROM Maestro_firma_corporativa
+        WHERE ${whereFirma}
+        GROUP BY Identificacion
+        
+        UNION ALL
+        
+        SELECT v.Identificación AS identificacion
+        FROM Maestro_Vinculación v
+        WHERE ${whereVinc}
+          AND v.Identificación IS NOT NULL
+          AND v.Identificación NOT IN (
+            SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
+          )
+        GROUP BY v.Identificación
+      ) w ON mov.identificacion = w.identificacion
+      WHERE wp.movimiento_id = ?
+      ORDER BY wp.secuencia ASC
+    `;
+
+    const [rows] = await pool.execute(query, [movimientoId]);
+    res.json({ ok: true, waypoints: rows });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en waypoints:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/biometrico/sin-salida ───────────────────────────────────────────
+// Incluye cálculo de distancia a la Operación asignada más reciente de Maestro_Vinculación
+router.get('/api/biometrico/sin-salida', verificarAccesoBiometricoAPI, async (req, res) => {
+  try {
+    const { isSstOnly } = req.usuarioInfo;
+    const { whereFirma, whereVinc } = obtenerCondicionesClasificacionBiometrico(isSstOnly);
+    const { date, search, clasificacion } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ error: 'Parámetro date (YYYY-MM-DD) requerido' });
+    }
+
+    const startStr = `${date} 00:00:00`;
+    const endStr = `${date} 23:59:59`;
+
+    const params = [startStr, endStr];
+    
+    let filterSql = '';
+    if (search) {
+      filterSql += ' AND (m.identificacion LIKE ? OR m.trabajador LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    if (clasificacion) {
+      filterSql += ' AND w.clasificacion = ?';
+      params.push(clasificacion);
+    }
+
+    const wSubquery = `
+      SELECT 
+        Identificacion AS identificacion, 
+        CASE 
+          WHEN MAX(area) = 'sst' THEN 'sst'
+          WHEN MAX(area) = 'coordinadores' THEN 'coordinadores'
+          WHEN MAX(area) = 'auxiliares_administrativos' THEN 'auxiliares_administrativos'
+          ELSE NULL
+        END AS clasificacion,
+        MAX(cargo) AS cargo, 
+        MAX(operacion) AS operacion, 
+        MAX(regional) AS regional
+      FROM Maestro_firma_corporativa
+      WHERE ${whereFirma}
+      GROUP BY Identificacion
+      
+      UNION ALL
+      
+      SELECT 
+        v.Identificación AS identificacion, 
+        CASE 
+          WHEN MAX(v.Cargo) = 'AUXILIAR LOGISTICO' THEN 'auxiliares_logisticos'
+          WHEN MAX(v.Cargo) = 'APRENDIZ' THEN 'aprendices'
+          ELSE NULL
+        END AS clasificacion,
+        MAX(v.Cargo) AS cargo, 
+        MAX(v.\`Operación\`) AS operacion, 
+        MAX(v.Regional) AS regional
+      FROM Maestro_Vinculación v
+      WHERE ${whereVinc}
+        AND v.Identificación IS NOT NULL
+        AND v.Identificación NOT IN (
+          SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
+        )
+      GROUP BY v.Identificación
+    `;
+
+    const vOpSubquery = `
+      SELECT mv.Identificación, MAX(mv.\`Operación\`) AS operacion_asignada
+      FROM Maestro_Vinculación mv
+      INNER JOIN (
+        SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS maxFecha
+        FROM Maestro_Vinculación
+        WHERE Identificación IS NOT NULL
+        GROUP BY Identificación
+      ) ult ON mv.Identificación = ult.Identificación AND mv.\`Fecha de Ingreso\` = ult.maxFecha
+      GROUP BY mv.Identificación
+    `;
+
+    const query = `
+      SELECT 
+        m.id,
+        m.identificacion,
+        m.trabajador,
+        m.tipo,
+        m.score,
+        m.latitud,
+        m.longitud,
+        m.precision_gps,
+        m.es_manual,
+        m.motivo,
+        m.fecha_hora,
+        m.fecha_entrada,
+        w.clasificacion,
+        w.cargo,
+        w.operacion,
+        w.regional,
+        v_op.operacion_asignada,
+        op_asig.LATITUD AS op_lat,
+        op_asig.LONGITUD AS op_lng
+      FROM facial_marcaciones m
+      INNER JOIN (${wSubquery}) w ON m.identificacion = w.identificacion
+      LEFT JOIN (${vOpSubquery}) v_op ON m.identificacion = v_op.Identificación
+      LEFT JOIN Maestro_Operaciones op_asig ON TRIM(v_op.operacion_asignada) = TRIM(op_asig.\`OPERACIÓN\`)
+      WHERE m.tipo = 'ENTRADA'
+        AND m.fecha_entrada >= ? AND m.fecha_entrada <= ?
+        AND m.fecha_salida IS NULL
+        ${filterSql}
+      ORDER BY m.fecha_entrada DESC
+    `;
+
+    const [rows] = await pool.execute(query, params);
+
+    const sinSalidaConDistancia = rows.map(r => {
+      const distM = calcularDistanciaMetros(r.latitud, r.longitud, r.op_lat, r.op_lng);
+      return {
+        ...r,
+        distancia_metros: distM,
+      };
+    });
+
+    res.json({ ok: true, trabajadores: sinSalidaConDistancia });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en turnos sin salida:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

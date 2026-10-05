@@ -34,6 +34,28 @@ async function obtenerCcEmails(usuarioId, identificacion, idConfigDoc) {
           opRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
           foundOperacionCc = true;
         }
+
+        // 2b. Fallback por SOCIODEMOGRAFICA de Maestro_Operaciones -> Dispositivo en Maestro_Usuarios
+        if (!foundOperacionCc) {
+          const [moRows] = await pool.execute(
+            'SELECT SOCIODEMOGRAFICA FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+            [operacionTrabajador]
+          );
+          const sociodemografica = moRows.length ? (moRows[0].SOCIODEMOGRAFICA || '').trim() : '';
+          if (sociodemografica) {
+            const [dispRows] = await pool.execute(
+              `SELECT Email, Dispositivo FROM Maestro_Usuarios
+               WHERE LOWER(Dispositivo) LIKE ?
+                 AND Rol IN ("Auxiliar", "Coordinador", "AuxiliarR", "CoordinadorR")
+                 AND Email IS NOT NULL AND Email <> ''`,
+              [`%${sociodemografica.toLowerCase()}%`]
+            );
+            if (dispRows.length) {
+              dispRows.forEach(r => { if (r.Email) ccList.push(r.Email); });
+              foundOperacionCc = true;
+            }
+          }
+        }
       }
 
       // 3. Fallback: AuxiliarR y CoordinadorR por Regional del trabajador
