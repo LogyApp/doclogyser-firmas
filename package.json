@@ -4,6 +4,7 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
+    "dev:facturacion": "node scripts/dev-facturacion.js",
     "scan:watch": "node scripts/scanner-document-inbox.js"
   },
   "dependencies": {

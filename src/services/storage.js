@@ -294,11 +294,21 @@ module.exports = {
     const ext = path.extname(originalName) || '.pdf';
     const timestamp = Date.now();
     const cleanPrefix = prefix ? String(prefix).trim().replace(/\//g, '_') : 'DOC';
-    const nombre = identificacion 
+    const nombre = identificacion
       ? `${identificacion}/${identificacion}.${cleanPrefix}.${timestamp}${ext}`
       : `general/${cleanPrefix}.${timestamp}${ext}`;
     const file = storage.bucket(BUCKET_PDFS).file(nombre);
     await file.save(buffer, { contentType: contentType || 'application/pdf' });
+    return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+  },
+  // Fotos de Dynamic_Servicios (Foto Documento / Foto Evidencia / Foto Transferencia):
+  // nombre = {Prefijo}.{IdServicio}.{ext}, bucket talenthub_central/general/.
+  subirFotoServicio: async function (prefix, idServicio, buffer, originalName, contentType) {
+    const ext = path.extname(originalName) || '.jpg';
+    const cleanPrefix = String(prefix).trim().replace(/\//g, '_');
+    const nombre = `general/${cleanPrefix}.${idServicio}${ext}`;
+    const file = storage.bucket(BUCKET_PDFS).file(nombre);
+    await file.save(buffer, { contentType: contentType || 'image/jpeg' });
     return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
   }
 };

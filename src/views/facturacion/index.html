@@ -909,6 +909,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
         <span>Clientes Crédito</span>
       </li>
+      <li class="nav-item" id="navTickets" onclick="switchMainTab('tickets')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
+        <span>Tickets</span>
+      </li>
       <li class="nav-item" id="navBloqueo" onclick="switchMainTab('bloqueo')">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         <span>Bloqueo de Datos</span>
@@ -1198,6 +1202,9 @@
             <div class="page-title">Facturación · Recibos</div>
             <div class="page-sub">Consulta de recibos consolidados, desglose de impuestos y validación operativa</div>
           </div>
+          <button class="btn-primary" onclick="abrirModalRecibo('crear')">
+            ➕ Agregar Recibo
+          </button>
         </div>
 
         <!-- Barra de Botones de Modalidad con Toggle de Sumas -->
@@ -1354,19 +1361,35 @@
           <div style="display: flex; align-items: center; gap: 10px;">
             <span id="det-recib-estado-badge" style="padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;">-</span>
             <span id="det-recib-consecutivo-badge" style="background: #f3e8ff; border: 1px solid #d8b4fe; color: var(--primary); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
+            <button type="button" id="btn-editar-recibo" class="btn-secondary" onclick="abrirModalRecibo('editar')" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: white;" title="Editar este recibo">
+              ✏️ Editar
+            </button>
+            <button type="button" id="btn-eliminar-recibo" onclick="eliminarRecibo()" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer; border-radius: 8px; border: 1.5px solid #fca5a5; color: #dc2626; background: #fef2f2;" title="Eliminar este recibo (solo rol Sistema)">
+              🗑️ Eliminar
+            </button>
           </div>
         </div>
 
         <div class="detail-container">
           <div class="detail-header-card">
             <div>
-              <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Id Recibo</div>
-              <div id="det-recib-id" style="font-size: 1.35rem; font-weight: 800; color: var(--primary);">-</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Recibo</div>
+              <div id="det-recib-consecutivo" style="font-size: 1.6rem; font-weight: 800; color: var(--primary);">-</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">IdRecibo (consulta): <span id="det-recib-id" style="font-family: monospace;">-</span></div>
             </div>
             <div style="text-align: right;">
               <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Liquidación</div>
               <div id="det-recib-total-header" style="font-size: 1.8rem; font-weight: 800; color: var(--primary);">$ 0</div>
             </div>
+          </div>
+
+          <div id="det-recib-acciones-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+            <a id="btn-ver-recibo-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid var(--primary-light); background:#faf5ff; color:var(--primary); text-decoration:none;">
+              👁️ Ver Recibo del Cliente
+            </a>
+            <a id="btn-whatsapp-recibo" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:none; color:#fff; text-decoration:none;">
+              💬 Enviar por WhatsApp
+            </a>
           </div>
 
           <div class="detail-grid">
@@ -1408,11 +1431,15 @@
           <div style="margin-top: 24px;">
             <div style="font-size: 0.95rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
               <span><span>📦</span> Servicios del Recibo (<span id="det-recib-servicios-count">0</span>)</span>
+              <button type="button" id="btn-agregar-servicio" class="btn-primary" style="display:none; padding: 7px 14px; font-size: 0.82rem;" onclick="abrirModalServicio('crear')">
+                ➕ Agregar Servicio
+              </button>
             </div>
             <div class="table-container">
               <table class="data-table" id="tabla-det-recibo-servicios">
                 <thead>
                   <tr>
+                    <th style="width:90px;">Estado</th>
                     <th>Id Servicio</th>
                     <th>Hora Inicio</th>
                     <th>Actividad</th>
@@ -1422,10 +1449,11 @@
                     <th>Valor Unitario</th>
                     <th>Valor Base</th>
                     <th>Total Pago</th>
+                    <th style="width:90px;">Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="det-recib-servicios-tbody">
-                  <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">Cargando servicios...</td></tr>
+                  <tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 16px;">Cargando servicios...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1598,6 +1626,93 @@
           </thead>
           <tbody id="tabla-clientes-body">
             <tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando clientes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 3: TICKETS (Dynamic_Tickets, modulo = 'Servicios')
+    ────────────────────────────────────────────────────────── -->
+    <div id="tab-content-tickets" style="display: none;">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Facturación · Tickets</div>
+          <div class="page-sub">Gestión de solicitudes y novedades reportadas sobre el módulo de Servicios</div>
+        </div>
+      </div>
+
+      <!-- Chips de Estado -->
+      <div class="card" style="padding: 16px; margin-bottom: 16px;">
+        <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+          <span>🎫</span> Estado del Ticket
+        </div>
+        <div id="tickets-estado-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="category-chip" onclick="seleccionarEstadoTicket('En Proceso')">
+            <span class="chip-title">🔵 En Proceso</span>
+            <span class="chip-sub">Cargando...</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros de Búsqueda -->
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="filtros-toggle" id="tkFiltrosToggle" onclick="toggleFiltrosTickets()">
+          <span class="filtros-toggle-left">
+            🔍 Filtros de Búsqueda
+            <span class="filtros-badge" id="tkFiltrosBadge">0</span>
+          </span>
+          <span class="filtros-chevron" id="tkFiltrosChevron">▸</span>
+        </div>
+        <div class="filtros-body" id="tkFiltrosBody" style="display: none;">
+          <div style="margin-bottom: 14px;">
+            <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Ticket, IdRecibo o Usuario (Solicitante)</label>
+            <div style="position: relative;">
+              <input type="text" id="tk-filtro-q" placeholder="Ej: TK-00123, 305-06854, Juan Pérez..." oninput="onTicketSearchInput(this.value)" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none; transition: border-color 0.2s;">
+              <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+            </div>
+          </div>
+
+          <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="filtro-field">
+              <label>Regional</label>
+              <select id="tk-filtro-regional" onchange="onTicketRegionalChange()">
+                <option value="">Todas las regionales</option>
+              </select>
+            </div>
+            <div class="filtro-field">
+              <label>Operación</label>
+              <select id="tk-filtro-operacion" onchange="onTicketFilterChange()">
+                <option value="">Todas las operaciones</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
+            <button type="button" class="btn-reset" onclick="resetFiltrosTickets()">↺ Limpiar filtros</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Tickets -->
+      <div class="table-container">
+        <table class="data-table" id="tabla-tickets">
+          <thead>
+            <tr>
+              <th style="width:120px" data-sort="estado">Estado<span id="tkSort-estado" class="sort-indicator"></span></th>
+              <th style="width:120px" data-sort="ticket">Ticket<span id="tkSort-ticket" class="sort-indicator"></span></th>
+              <th style="width:150px" data-sort="operacion">Operación<span id="tkSort-operacion" class="sort-indicator"></span></th>
+              <th style="width:140px" data-sort="fecha_registro" class="sorted">Fecha Registro<span id="tkSort-fecha_registro" class="sort-indicator"> ▼</span></th>
+              <th style="width:160px" data-sort="motivo">Motivo<span id="tkSort-motivo" class="sort-indicator"></span></th>
+              <th style="width:130px" data-sort="idrecibo">IdRecibo<span id="tkSort-idrecibo" class="sort-indicator"></span></th>
+              <th style="width:220px">Descripción</th>
+              <th style="width:150px" data-sort="solicitante">Solicitante<span id="tkSort-solicitante" class="sort-indicator"></span></th>
+              <th style="width:220px">Respuesta (Observaciones)</th>
+              <th style="width:140px" data-sort="fecha_finalizacion">Fecha Finalización<span id="tkSort-fecha_finalizacion" class="sort-indicator"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-tickets-body">
+            <tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando tickets...</td></tr>
           </tbody>
         </table>
       </div>
@@ -1847,6 +1962,388 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 4: GESTIÓN DE TICKET
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-ticket-overlay">
+    <div class="modal-card" style="max-width: 560px;">
+      <div class="modal-header">
+        <span>🎫 Ticket <span id="tk-modal-ticket"></span></span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalTicket()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+          <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Estado Actual:</span>
+          <span id="tk-modal-estado-actual" class="badge">-</span>
+        </div>
+
+        <div class="detail-section" style="margin-bottom:16px;">
+          <div class="detail-item"><span class="detail-label">Operación:</span><span class="detail-value" id="tk-modal-operacion">-</span></div>
+          <div class="detail-item"><span class="detail-label">Solicitante:</span><span class="detail-value" id="tk-modal-solicitante">-</span></div>
+          <div class="detail-item"><span class="detail-label">Teléfono:</span><span class="detail-value" id="tk-modal-telefono">-</span></div>
+          <div class="detail-item"><span class="detail-label">Motivo:</span><span class="detail-value" id="tk-modal-motivo">-</span></div>
+          <div class="detail-item"><span class="detail-label">Descripción:</span><span class="detail-value" id="tk-modal-descripcion">-</span></div>
+          <div class="detail-item"><span class="detail-label">Fecha Registro:</span><span class="detail-value" id="tk-modal-fecha">-</span></div>
+          <div class="detail-item" id="tk-modal-idrecibo-row" style="display:none;">
+            <span class="detail-label">IdRecibo:</span>
+            <span class="detail-value"><a id="tk-modal-idrecibo-link" href="#" target="_blank" style="color: var(--primary); font-weight:700;">-</a></span>
+          </div>
+          <div class="detail-item" id="tk-modal-evidencia-row" style="display:none;">
+            <span class="detail-label">Evidencia:</span>
+            <span class="detail-value"><a id="tk-modal-evidencia-link" href="#" target="_blank" style="color: var(--primary); font-weight:700;">Ver evidencia</a></span>
+          </div>
+        </div>
+
+        <form id="form-ticket" onsubmit="event.preventDefault(); guardarAccionTicket();">
+          <div class="form-group">
+            <label>Acción a Ejecutar *</label>
+            <div class="btn-grupo">
+              <button type="button" class="btn-grupo-opt" id="btn-tk-accion-pendiente" onclick="setAccionTicket('pendiente')">🟡 Pendiente</button>
+              <button type="button" class="btn-grupo-opt" id="btn-tk-accion-rechazado" onclick="setAccionTicket('rechazado')">🔴 Rechazado</button>
+              <button type="button" class="btn-grupo-opt" id="btn-tk-accion-resuelto" onclick="setAccionTicket('resuelto')">🟢 Resuelto</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Observaciones (Respuesta para el solicitante) *</label>
+            <textarea id="tk-observaciones" rows="3" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; color:var(--text); resize:vertical;">Sincronizar y validar</textarea>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalTicket()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-ticket" onclick="guardarAccionTicket()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 5: AGREGAR / EDITAR RECIBO
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-recibo-overlay">
+    <div class="modal-card" style="max-width: 640px;">
+      <div class="modal-header">
+        <span id="mr-titulo">➕ Agregar Recibo</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalRecibo()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="form-recibo" onsubmit="event.preventDefault(); guardarRecibo();">
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Regional *</label>
+              <select id="mr-regional" onchange="onModalRecioRegionalChange()">
+                <option value="">— Seleccione Regional —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Operación *</label>
+              <select id="mr-operacion" onchange="onModalRecioOperacionChange()">
+                <option value="">— Seleccione Operación —</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Modalidad *</label>
+            <div class="btn-grupo">
+              <button type="button" class="btn-grupo-opt" id="btn-mr-modalidad-recaudo" onclick="setModalidadRecibo('RECAUDO')">RECAUDO</button>
+              <button type="button" class="btn-grupo-opt" id="btn-mr-modalidad-credito" onclick="setModalidadRecibo('CREDITO')">CREDITO</button>
+            </div>
+          </div>
+
+          <!-- Bloque CREDITO -->
+          <div id="mr-bloque-credito" style="display: none;">
+            <div class="form-group">
+              <label>Cliente a Facturar *</label>
+              <select id="mr-cliente-facturar" onchange="onModalRecioClienteFacturarChange()">
+                <option value="">— Seleccione Cliente a Facturar —</option>
+              </select>
+            </div>
+            <div class="form-group" id="mr-categoria-wrap" style="display:none;">
+              <label>Categoría</label>
+              <select id="mr-categoria">
+                <option value="">— Sin categoría —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Bloque RECAUDO -->
+          <div id="mr-bloque-recaudo" style="display: none;">
+            <div id="mr-cliente-sin-servicios" style="display:none; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #92400e; font-size: 0.85rem; margin-bottom: 16px;">
+              ℹ️ El cliente podrá seleccionarse una vez el recibo tenga servicios registrados.
+            </div>
+            <div id="mr-cliente-con-servicios" style="display:none;">
+              <div id="mr-clientes-sugeridos-wrap" style="display:none; margin-bottom: 12px;">
+                <label style="display:block; font-size: 0.78rem; font-weight:700; color:#334155; margin-bottom: 6px; text-transform:uppercase;">Clientes sugeridos (según la placa más reciente)</label>
+                <div id="mr-clientes-sugeridos" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+              </div>
+              <div class="form-group autocomplete-wrapper">
+                <label>Cliente</label>
+                <input type="text" id="mr-nit" placeholder="Buscar por nombre o NIT..." autocomplete="off" oninput="buscarClienteNitRecibo(this.value)">
+                <div class="autocomplete-list" id="mr-nit-autocomplete-list"></div>
+                <small id="mr-nit-razon-social" style="color: var(--text-muted); font-size: 0.78rem;"></small>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label>Teléfono</label>
+                <input type="text" id="mr-telefono" placeholder="Teléfono de contacto">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="text" id="mr-email" placeholder="Email de contacto">
+              </div>
+            </div>
+          </div>
+
+          <div id="mr-retenciones-wrap" style="display:none; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; background: #fafafa;">
+            <label style="display:block; font-size: 0.78rem; font-weight:700; color:#334155; margin-bottom: 8px; text-transform:uppercase;">Retenciones</label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
+                <input type="checkbox" id="mr-retefuente" style="width:16px;height:16px;"> Aplica Retefuente
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
+                <input type="checkbox" id="mr-reteiva" style="width:16px;height:16px;"> Aplica ReteIVA
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
+                <input type="checkbox" id="mr-reteica" style="width:16px;height:16px;"> Aplica ReteICA
+              </label>
+            </div>
+            <small style="color: var(--text-muted); font-size: 0.76rem; display:block; margin-top:6px;">Se calculan automáticamente según el cliente, la operación y el subtotal del recibo.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Observaciones</label>
+            <textarea id="mr-observaciones" rows="2" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; color:var(--text); resize:vertical;"></textarea>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalRecibo()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-recibo" onclick="guardarRecibo()">Crear Recibo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 6: AGREGAR / EDITAR SERVICIO
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-servicio-overlay">
+    <div class="modal-card" style="max-width: 760px;">
+      <div class="modal-header">
+        <span id="ms-titulo">➕ Agregar Servicio</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalServicio()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="form-servicio" onsubmit="event.preventDefault(); guardarServicio();">
+
+          <div class="form-group" id="ms-idrecibo-wrap">
+            <label>Recibo</label>
+            <div id="ms-idrecibo-info" style="padding:9px 12px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; font-size:0.88rem;">-</div>
+            <select id="ms-idrecibo-select" style="display:none; margin-top:6px;"></select>
+          </div>
+
+          <div class="form-group">
+            <label>Estado *</label>
+            <div class="btn-grupo">
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-green" style="color:#15803d;" onclick="setEstadoServicio('Green')">🟢 Verde</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-yellow" style="color:#b45309;" onclick="setEstadoServicio('Yellow')">🟡 Amarillo</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-red" style="color:#b91c1c;" onclick="setEstadoServicio('Red')">🔴 Rojo</button>
+            </div>
+            <small style="color: var(--text-muted); font-size: 0.76rem;">Verde requiere Cantidad, Valor Unitario y Forma de Pago (y Foto de Transferencia si la Forma de Pago es Transferencia).</small>
+          </div>
+
+          <div class="form-group">
+            <label>Área</label>
+            <div id="ms-area-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Actividad</label>
+            <div id="ms-actividad-buttons" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group autocomplete-wrapper">
+              <label>Transportadora</label>
+              <input type="text" id="ms-transportadora-input" placeholder="Buscar o crear..." autocomplete="off" oninput="buscarTransportadora(this.value)">
+              <div class="autocomplete-list" id="ms-transportadora-list"></div>
+            </div>
+            <div class="form-group">
+              <label>Vehículo</label>
+              <select id="ms-vehiculo"><option value="">— Seleccione —</option></select>
+            </div>
+          </div>
+
+          <div class="form-group autocomplete-wrapper">
+            <label>Proveedor (puede elegir varios)</label>
+            <input type="text" id="ms-proveedor-input" placeholder="Buscar o crear..." autocomplete="off" oninput="buscarProveedor(this.value)">
+            <div class="autocomplete-list" id="ms-proveedor-list"></div>
+            <div id="ms-proveedor-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group autocomplete-wrapper">
+              <label>Placa</label>
+              <input type="text" id="ms-pl1-input" placeholder="Buscar o crear..." autocomplete="off" oninput="buscarPlaca(this.value)">
+              <div class="autocomplete-list" id="ms-pl1-list"></div>
+              <small id="ms-pl1-info" style="color: var(--text-muted); font-size: 0.78rem;"></small>
+            </div>
+            <div class="form-group">
+              <label>Remolque</label>
+              <input type="text" id="ms-remolque">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Unidad</label>
+              <select id="ms-unidad"><option value="">— Seleccione —</option></select>
+            </div>
+            <div class="form-group">
+              <label>Cantidad</label>
+              <input type="number" id="ms-cantidad" step="0.001" min="0">
+            </div>
+            <div class="form-group">
+              <label>Valor Unitario</label>
+              <input type="number" id="ms-valor-unitario" step="0.001" min="0">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Origen</label>
+              <input type="text" id="ms-origen">
+            </div>
+            <div class="form-group">
+              <label>Destino</label>
+              <input type="text" id="ms-destino">
+            </div>
+          </div>
+
+          <div class="form-group" id="ms-manifiesto-wrap" style="display:none;">
+            <label>Manifiesto</label>
+            <input type="text" id="ms-manifiesto">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Etapa</label>
+              <input type="text" id="ms-etapa">
+            </div>
+            <div class="form-group">
+              <label>Muelle</label>
+              <input type="text" id="ms-muelle">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Hora Inicio</label>
+              <input type="datetime-local" id="ms-hora-inicio" onchange="recalcularHorasServicioUI()">
+            </div>
+            <div class="form-group">
+              <label>Duración</label>
+              <select id="ms-duracion" onchange="onDuracionServicioChange()"><option value="">— Seleccione —</option></select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Hora Final</label>
+              <input type="datetime-local" id="ms-hora-final" disabled onchange="recalcularHorasServicioUI()">
+            </div>
+            <div class="form-group">
+              <label>Total Hora</label>
+              <input type="text" id="ms-total-hora" disabled style="background:#f1f5f9;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Grupo Dtjo</label>
+            <div class="btn-grupo">
+              <button type="button" class="btn-grupo-opt" id="btn-ms-grupo-grupal" onclick="setGrupoDtjoServicio('GRUPAL')">GRUPAL</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-grupo-individual" onclick="setGrupoDtjoServicio('INDIVIDUAL')">INDIVIDUAL</button>
+            </div>
+          </div>
+
+          <div class="form-group autocomplete-wrapper">
+            <label>Auxiliares</label>
+            <input type="text" id="ms-auxiliares-input" placeholder="Buscar trabajador activo..." autocomplete="off" oninput="buscarAuxiliar(this.value)">
+            <div class="autocomplete-list" id="ms-auxiliares-list"></div>
+            <div id="ms-auxiliares-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Forma De Pago</label>
+            <div id="ms-forma-pago-wrap" class="btn-grupo">
+              <button type="button" class="btn-grupo-opt" id="btn-ms-fp-1" onclick="setFormaPagoServicio(1)">EFECTIVO</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-fp-2" onclick="setFormaPagoServicio(2)">TRANSFERENCIA</button>
+            </div>
+            <div id="ms-forma-pago-credito" style="display:none; padding:9px 12px; background:#f1f5f9; border-radius:6px; color:var(--text-muted); font-weight:600; font-size:0.85rem;">CREDITO (automático)</div>
+          </div>
+
+          <div id="ms-transferencia-wrap" style="display:none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label>Foto Transferencia *</label>
+                <input type="file" id="ms-foto-transferencia" accept="image/*,application/pdf">
+                <small id="ms-foto-transferencia-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
+              </div>
+              <div class="form-group">
+                <label>Fecha Transferencia</label>
+                <input type="datetime-local" id="ms-fecha-transferencia">
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Foto Documento</label>
+              <input type="file" id="ms-foto-documento" accept="image/*,application/pdf">
+              <small id="ms-foto-documento-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
+            </div>
+            <div class="form-group">
+              <label>Foto Evidencia</label>
+              <input type="file" id="ms-foto-evidencia" accept="image/*,application/pdf">
+              <small id="ms-foto-evidencia-actual" style="color: var(--text-muted); font-size: 0.76rem;"></small>
+            </div>
+          </div>
+
+          <div class="form-group" id="ms-telefono-wrap" style="display:none;">
+            <label>Teléfono</label>
+            <input type="text" id="ms-telefono">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Notas</label>
+              <textarea id="ms-notas" rows="2" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; color:var(--text); resize:vertical;"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Observaciones</label>
+              <textarea id="ms-observaciones" rows="2" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; color:var(--text); resize:vertical;"></textarea>
+            </div>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalServicio()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-servicio" onclick="guardarServicio()">Crear Servicio</button>
+      </div>
+    </div>
+  </div>
+
 <script>
     const CONFIG = __CONFIG__;
     let allBloqueos = [];
@@ -1856,6 +2353,14 @@
 
     let sortBloqueosState = { col: 'fechaRegistro', order: 'desc' };
     let sortClientesState = { col: 'clienteAFacturar', order: 'asc' };
+
+    let allTickets = [];
+    let metricasTickets = null;
+    let activeEstadoTicket = 'En Proceso';
+    let searchDebounceTimeoutTickets = null;
+    let ticketModalData = null;
+    let ticketAccionSeleccionada = null;
+    let sortTicketsState = { col: 'fecha_registro', order: 'desc' };
 
     let formState = {
       criterio: 'Quincena',
@@ -1945,7 +2450,7 @@
       }
 
       // Cargar datos iniciales
-      await Promise.all([cargarServicios(), cargarMetricasServicios(), cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo()]);
+      await Promise.all([cargarServicios(), cargarMetricasServicios(), cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo(), cargarTickets(), cargarMetricasTickets()]);
 
       // Listeners de ordenamiento en tabla de servicios
       document.querySelectorAll('#tabla-servicios thead th[data-sort]').forEach(th => {
@@ -1977,7 +2482,22 @@
         });
       });
 
-      // Navegación directa por parámetro ?tab=servicios | ?tab=recibos | ?tab=clientescredito | ?tab=bloqueo
+      // Listeners de ordenamiento en tabla de tickets
+      document.querySelectorAll('#tabla-tickets thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortTicketsState.col === col) {
+            sortTicketsState.order = sortTicketsState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortTicketsState.col = col;
+            sortTicketsState.order = 'asc';
+          }
+          cargarTickets();
+        });
+      });
+
+      // Navegación directa por parámetro ?tab=servicios | ?tab=recibos | ?tab=clientescredito | ?tab=bloqueo | ?tab=tickets
       const paramsUrl = new URLSearchParams(window.location.search);
       const tabParam = (paramsUrl.get('tab') || '').toLowerCase().trim();
       const idServicioParam = paramsUrl.get('idservicio');
@@ -1995,6 +2515,8 @@
         switchMainTab('clientescredito');
       } else if (tabParam === 'bloqueo' || tabParam === 'bloqueos') {
         switchMainTab('bloqueo');
+      } else if (tabParam === 'tickets' || tabParam === 'ticket') {
+        switchMainTab('tickets');
       } else {
         switchMainTab('servicios');
       }
@@ -2004,6 +2526,7 @@
       makeTableResizable(document.getElementById('tabla-recibos'));
       makeTableResizable(document.getElementById('tabla-bloqueos'));
       makeTableResizable(document.getElementById('tabla-clientes'));
+      makeTableResizable(document.getElementById('tabla-tickets'));
     });
 
     // ──────────────────────────────────────────────────────────
@@ -2073,12 +2596,14 @@
       document.getElementById('navRecibos')?.classList.toggle('active', tab === 'recibos');
       document.getElementById('navClientes')?.classList.toggle('active', tab === 'clientescredito' || tab === 'clientes');
       document.getElementById('navBloqueo')?.classList.toggle('active', tab === 'bloqueo');
+      document.getElementById('navTickets')?.classList.toggle('active', tab === 'tickets');
 
       document.getElementById('tab-content-servicios').style.display = tab === 'servicios' ? 'block' : 'none';
       document.getElementById('tab-content-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
       document.getElementById('tab-content-clientes').style.display = (tab === 'clientescredito' || tab === 'clientes') ? 'block' : 'none';
       document.getElementById('tab-content-bloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
-      
+      document.getElementById('tab-content-tickets').style.display = tab === 'tickets' ? 'block' : 'none';
+
       toggleMobileSidebar(false);
 
       // Sincronizar URL
@@ -2102,6 +2627,8 @@
         }
       } else if (tab === 'bloqueo') {
         makeTableResizable(document.getElementById('tabla-bloqueos'));
+      } else if (tab === 'tickets') {
+        makeTableResizable(document.getElementById('tabla-tickets'));
       } else {
         makeTableResizable(document.getElementById('tabla-clientes'));
       }
@@ -3321,6 +3848,11 @@
     let searchRecibDebounceTimeout = null;
     let recibosCargados = false;
 
+    // CRUD de Recibos (Agregar / Editar / Eliminar)
+    let reciboDetalleActual = null; // { recibo, servicios, totales, estadoColor }
+    let modalRecibo = { modo: 'crear' }; // 'crear' | 'editar'
+    const ROLES_EDICION_LIBRE_RECIBOS_FRONT = ['Facturación', 'Sistema'];
+
     let sortRecibosState = {
       col: 'fecha_registro',
       order: 'desc'
@@ -3689,19 +4221,57 @@
         url.searchParams.set('idrecibo', idRecibo);
         history.pushState(null, '', url);
 
-        // Header info
+        // Header info — el Consecutivo Recibo es el identificador principal (visual, cliente e interno);
+        // el IdRecibo (UUID) queda como dato secundario solo para consulta.
+        document.getElementById('det-recib-consecutivo').textContent = r['Consecutivo Recibo'] || r.IdRecibo;
         document.getElementById('det-recib-id').textContent = r.IdRecibo;
         document.getElementById('det-recib-total-header').textContent = '$ ' + formatMiles(tots.total);
 
         const badgeEstado = document.getElementById('det-recib-estado-badge');
-        let col = '#4b5563', bg = '#f3f4f6';
-        if (srvs.some(s => s.Validacion === 2)) { col = '#d97706'; bg = '#fef3c7'; badgeEstado.textContent = 'Yellow'; }
-        else if (srvs.some(s => s.Validacion === 1)) { col = '#16a34a'; bg = '#dcfce7'; badgeEstado.textContent = 'Green'; }
-        else { col = '#dc2626'; bg = '#fee2e2'; badgeEstado.textContent = 'Red'; }
+        let col = '#4b5563', bg = '#f3f4f6', estadoColor = 'Red';
+        if (srvs.some(s => s.Validacion === 2)) { col = '#d97706'; bg = '#fef3c7'; estadoColor = 'Yellow'; }
+        else if (srvs.some(s => s.Validacion === 1)) { col = '#16a34a'; bg = '#dcfce7'; estadoColor = 'Green'; }
+        badgeEstado.textContent = estadoColor;
         badgeEstado.style.color = col;
         badgeEstado.style.background = bg;
 
         document.getElementById('det-recib-consecutivo-badge').textContent = 'Recibo: ' + (r['Consecutivo Recibo'] || 'S/N');
+
+        // Guardar detalle actual para el modal de edición/eliminación
+        reciboDetalleActual = { recibo: r, servicios: srvs, totales: tots, estadoColor };
+
+        // Gating de Editar/Eliminar: Facturación y Sistema editan siempre;
+        // los demás roles solo si el recibo no está validado (Green).
+        const rolPrivilegiado = ROLES_EDICION_LIBRE_RECIBOS_FRONT.includes(CONFIG.rol);
+        const btnEditar = document.getElementById('btn-editar-recibo');
+        const puedeEditar = rolPrivilegiado || estadoColor !== 'Green';
+        btnEditar.style.display = puedeEditar ? 'inline-flex' : 'none';
+
+        const btnEliminar = document.getElementById('btn-eliminar-recibo');
+        btnEliminar.style.display = (CONFIG.rol === 'Sistema') ? 'inline-flex' : 'none';
+
+        // Ver Recibo del Cliente: solo Modalidad RECAUDO. Para Facturación/Sistema basta con
+        // RECAUDO; para los demás roles además se requiere que todos los servicios estén en Green.
+        const btnVerRecibo = document.getElementById('btn-ver-recibo-cliente');
+        const puedeVerRecibo = (r.Modalidad === 'RECAUDO') && (rolPrivilegiado || estadoColor === 'Green');
+        if (puedeVerRecibo) {
+          btnVerRecibo.href = `https://recibo-logyser-594761951101.us-central1.run.app/recibo/${encodeURIComponent(r.IdRecibo)}`;
+          btnVerRecibo.style.display = 'inline-flex';
+        } else {
+          btnVerRecibo.style.display = 'none';
+        }
+
+        // WhatsApp: solo Modalidad RECAUDO y con Teléfono registrado. Amarillo+mensaje "pendiente"
+        // si falta algún servicio por validar, verde+mensaje "completo" si todos están en Green.
+        const btnWhatsapp = document.getElementById('btn-whatsapp-recibo');
+        if (r.Modalidad === 'RECAUDO' && r.Telefono) {
+          const mensaje = construirMensajeWhatsAppRecibo(r, tots, estadoColor);
+          btnWhatsapp.href = `https://wa.me/57${r.Telefono}/?text=${encodeURIComponent(mensaje)}`;
+          btnWhatsapp.style.background = (estadoColor === 'Green') ? '#16a34a' : '#d97706';
+          btnWhatsapp.style.display = 'inline-flex';
+        } else {
+          btnWhatsapp.style.display = 'none';
+        }
 
         // Liquidación
         document.getElementById('det-recib-subtotal').textContent = '$ ' + formatMiles(tots.subtotal);
@@ -3727,15 +4297,23 @@
         document.getElementById('det-recib-fecha').textContent = formatFechaBogota(r.Fecha);
         document.getElementById('det-recib-observaciones').textContent = r.Observaciones || '-';
 
+        // Botón Agregar Servicio: misma regla que Editar Recibo (Facturación/Sistema siempre;
+        // los demás roles solo si el recibo no está validado en Green).
+        document.getElementById('btn-agregar-servicio').style.display = puedeEditar ? 'inline-flex' : 'none';
+
         // Servicios table
         document.getElementById('det-recib-servicios-count').textContent = srvs.length;
         const tbodySrv = document.getElementById('det-recib-servicios-tbody');
         if (!srvs.length) {
-          tbodySrv.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 16px;">No hay servicios registrados para este recibo.</td></tr>';
+          tbodySrv.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 16px;">No hay servicios registrados para este recibo.</td></tr>';
         } else {
-          tbodySrv.innerHTML = srvs.map(s => `
-            <tr onclick="abrirDetalleServicioDesdeRecibo('${esc(s.IdServicio)}', '${esc(r.IdRecibo)}')" style="cursor: pointer;" title="Clic para ver detalle completo de este servicio">
-              <td style="font-family: monospace; font-size: 0.8rem; color: var(--primary); font-weight: 700; text-decoration: underline;">${esc(s.IdServicio)}</td>
+          tbodySrv.innerHTML = srvs.map(s => {
+            const sc = estadoServicioColores(s.Estado);
+            const puedeEliminarSrv = CONFIG.rol === 'Sistema';
+            return `
+            <tr onclick="abrirModalServicio('editar', '${esc(s.IdServicio)}')" style="cursor: pointer;" title="Clic para editar este servicio">
+              <td><span class="badge" style="background:${sc.bg}; color:${sc.color};">${esc(s.Estado || '-')}</span></td>
+              <td style="font-family: monospace; font-size: 0.78rem;">${esc(s.IdServicio)}</td>
               <td>${formatFechaBogota(s['Hora Inicio'])}</td>
               <td>${esc(s.actividadNombre || s.Actividad || '-')}</td>
               <td><strong>${esc(s.placaNombre || s.PL1 || '-')}</strong></td>
@@ -3744,8 +4322,13 @@
               <td>$ ${formatMiles(s['Valor Unitario'])}</td>
               <td style="font-weight: 600;">$ ${formatMiles(s.valorBase)}</td>
               <td style="font-weight: 700; color: var(--primary);">$ ${formatMiles(s.totalPago)}</td>
+              <td>
+                <button type="button" onclick="event.stopPropagation(); abrirModalServicio('editar', '${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Editar">✏️</button>
+                ${puedeEliminarSrv ? `<button type="button" onclick="event.stopPropagation(); eliminarServicio('${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Eliminar (Sistema)">🗑️</button>` : ''}
+              </td>
             </tr>
-          `).join('');
+          `;
+          }).join('');
         }
       } catch (err) {
         console.error('[verDetalleRecibo]', err);
@@ -3765,6 +4348,1279 @@
       history.pushState(null, '', url);
 
       makeTableResizable(document.getElementById('tabla-recibos'));
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // LÓGICA DE TICKETS (Dynamic_Tickets, modulo = 'Servicios')
+    // ══════════════════════════════════════════════════════════
+
+    function estadoTicketColors(estado) {
+      switch (estado) {
+        case 'En Proceso': return { bg: '#dbeafe', color: '#1d4ed8' };
+        case 'Pendiente':  return { bg: '#fef3c7', color: '#b45309' };
+        case 'Resuelto':   return { bg: '#dcfce7', color: '#15803d' };
+        case 'Rechazado':  return { bg: '#fee2e2', color: '#b91c1c' };
+        default:           return { bg: '#f1f5f9', color: '#475569' };
+      }
+    }
+
+    function estadoServicioColores(estado) {
+      switch (estado) {
+        case 'Green':  return { bg: '#dcfce7', color: '#15803d' };
+        case 'Yellow': return { bg: '#fef3c7', color: '#b45309' };
+        default:       return { bg: '#fee2e2', color: '#b91c1c' };
+      }
+    }
+
+    function toggleFiltrosTickets() {
+      const body = document.getElementById('tkFiltrosBody');
+      const chevron = document.getElementById('tkFiltrosChevron');
+      const isVisible = body.style.display === 'block';
+      body.style.display = isVisible ? 'none' : 'block';
+      chevron.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+    }
+
+    function seleccionarEstadoTicket(estado) {
+      activeEstadoTicket = estado;
+      renderEstadoTicketButtons();
+      cargarTickets();
+      cargarMetricasTickets();
+    }
+
+    function onTicketSearchInput(val) {
+      if (searchDebounceTimeoutTickets) clearTimeout(searchDebounceTimeoutTickets);
+      searchDebounceTimeoutTickets = setTimeout(() => {
+        cargarTickets();
+        cargarMetricasTickets();
+      }, 350);
+    }
+
+    function onTicketFilterChange() {
+      cargarTickets();
+      cargarMetricasTickets();
+    }
+
+    function onTicketRegionalChange() {
+      const regSel = document.getElementById('tk-filtro-regional').value;
+      const opSel = document.getElementById('tk-filtro-operacion');
+      if (CONFIG.opsPorRegional && CONFIG.opsPorRegional[regSel]) {
+        opSel.innerHTML = '<option value="">Todas las operaciones</option>' +
+          CONFIG.opsPorRegional[regSel].map(op => `<option value="${esc(op)}">${esc(op)}</option>`).join('');
+      }
+      cargarTickets();
+      cargarMetricasTickets();
+    }
+
+    function resetFiltrosTickets() {
+      document.getElementById('tk-filtro-q').value = '';
+      document.getElementById('tk-filtro-regional').value = '';
+      document.getElementById('tk-filtro-operacion').value = '';
+      cargarTickets();
+      cargarMetricasTickets();
+    }
+
+    async function cargarTickets() {
+      const tbody = document.getElementById('tabla-tickets-body');
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando tickets...</td></tr>';
+
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuario,
+          estado: activeEstadoTicket,
+          regional: document.getElementById('tk-filtro-regional')?.value || '',
+          operacion: document.getElementById('tk-filtro-operacion')?.value || '',
+          q: document.getElementById('tk-filtro-q')?.value || '',
+          sortCol: sortTicketsState.col,
+          sortDir: sortTicketsState.order,
+          limit: 500
+        });
+
+        const resp = await fetch(`/facturacion/api/tickets?${params.toString()}`);
+        if (!resp.ok) throw new Error('Error en el servidor al cargar tickets');
+        const data = await resp.json();
+        allTickets = data.rows || [];
+        renderTicketsTable();
+      } catch (err) {
+        console.error('[cargarTickets]', err);
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #e53e3e; padding: 24px;">Error al cargar tickets.</td></tr>';
+      }
+    }
+
+    function renderTicketsTable() {
+      const tbody = document.getElementById('tabla-tickets-body');
+      if (!allTickets.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron tickets con los filtros actuales.</td></tr>';
+        return;
+      }
+
+      document.querySelectorAll('#tabla-tickets thead th[data-sort]').forEach(th => {
+        const ind = th.querySelector('.sort-indicator');
+        if (!ind) return;
+        const col = th.getAttribute('data-sort');
+        if (sortTicketsState.col === col) {
+          ind.textContent = sortTicketsState.order === 'asc' ? ' ▲' : ' ▼';
+          th.classList.add('sorted');
+        } else {
+          ind.textContent = '';
+          th.classList.remove('sorted');
+        }
+      });
+
+      tbody.innerHTML = allTickets.map(t => {
+        const colors = estadoTicketColors(t.estado);
+        const idReciboHtml = t.idrecibo
+          ? `<a href="/facturacion?usuario=${encodeURIComponent(CONFIG.usuario)}&tab=recibos&idrecibo=${encodeURIComponent(t.idrecibo)}" target="_blank" onclick="event.stopPropagation()" style="color: var(--primary); font-weight:700; text-decoration: underline;">${esc(t.idrecibo)}</a>`
+          : '-';
+
+        return `
+          <tr onclick="abrirModalTicket('${esc(t.ticket)}')" style="cursor: pointer;" title="Clic para gestionar este ticket">
+            <td><span class="badge" style="background:${colors.bg}; color:${colors.color};">${esc(t.estado || '-')}</span></td>
+            <td style="font-weight:700;">${esc(t.ticket)}</td>
+            <td>${esc(t.operacion || '-')}</td>
+            <td>${formatFechaBogota(t.fechaRegistro)}</td>
+            <td title="${esc(t.motivo || '')}">${esc(t.motivo || '-')}</td>
+            <td>${idReciboHtml}</td>
+            <td title="${esc(t.descripcion || '')}">${esc(t.descripcion || '-')}</td>
+            <td>${esc(t.solicitante || '-')}</td>
+            <td title="${esc(t.observaciones || '')}">${esc(t.observaciones || '-')}</td>
+            <td>${t.fechaFinalizacion ? formatFechaBogota(t.fechaFinalizacion) : '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      makeTableResizable(document.getElementById('tabla-tickets'));
+    }
+
+    async function cargarMetricasTickets() {
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuario,
+          estado: activeEstadoTicket,
+          regional: document.getElementById('tk-filtro-regional')?.value || '',
+          operacion: document.getElementById('tk-filtro-operacion')?.value || '',
+          q: document.getElementById('tk-filtro-q')?.value || ''
+        });
+
+        const resp = await fetch(`/facturacion/api/tickets/metricas?${params.toString()}`);
+        if (!resp.ok) return;
+        metricasTickets = await resp.json();
+
+        renderEstadoTicketButtons();
+        popularFiltrosDropdownsTickets();
+      } catch (err) {
+        console.error('[cargarMetricasTickets]', err);
+      }
+    }
+
+    function renderEstadoTicketButtons() {
+      const container = document.getElementById('tickets-estado-buttons');
+      if (!container || !metricasTickets) return;
+
+      const estados = metricasTickets.estados || [];
+      const countFor = (nombre) => {
+        const item = estados.find(e => e.estado === nombre);
+        return item ? Number(item.totalCount || 0) : 0;
+      };
+
+      const defs = [
+        { key: 'En Proceso', label: '🔵 En Proceso', showCount: true },
+        { key: 'Pendiente', label: '🟡 Pendiente', showCount: true },
+        { key: 'Resuelto', label: '🟢 Resuelto', showCount: false },
+        { key: 'Rechazado', label: '🔴 Rechazado', showCount: false }
+      ];
+
+      container.innerHTML = defs.map(d => {
+        const activeClass = activeEstadoTicket === d.key ? 'active' : '';
+        const sub = d.showCount ? `${formatMiles(countFor(d.key))} tickets` : '&nbsp;';
+        return `
+          <button type="button" class="category-chip ${activeClass}" onclick="seleccionarEstadoTicket('${d.key}')">
+            <span class="chip-title">${d.label}</span>
+            <span class="chip-sub">${sub}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function popularFiltrosDropdownsTickets() {
+      if (!metricasTickets) return;
+
+      const regSel = document.getElementById('tk-filtro-regional');
+      const curReg = regSel.value;
+      const regMap = {};
+      (metricasTickets.regionalesOps || []).forEach(r => {
+        if (!r.regional) return;
+        regMap[r.regional] = (regMap[r.regional] || 0) + Number(r.totalCount || 0);
+      });
+      let regOpts = '<option value="">Todas las regionales</option>';
+      Object.keys(regMap).sort().forEach(reg => {
+        regOpts += `<option value="${esc(reg)}" ${curReg === reg ? 'selected' : ''}>${esc(reg)} (${formatMiles(regMap[reg])})</option>`;
+      });
+      regSel.innerHTML = regOpts;
+
+      const opSel = document.getElementById('tk-filtro-operacion');
+      const curOp = opSel.value;
+      let opOpts = '<option value="">Todas las operaciones</option>';
+      (metricasTickets.regionalesOps || []).forEach(o => {
+        if (!o.operacion) return;
+        opOpts += `<option value="${esc(o.operacion)}" ${curOp === o.operacion ? 'selected' : ''}>${esc(o.operacion)} (${formatMiles(o.totalCount)})</option>`;
+      });
+      opSel.innerHTML = opOpts;
+    }
+
+    function abrirModalTicket(ticket) {
+      const t = allTickets.find(x => String(x.ticket) === String(ticket));
+      if (!t) return;
+      ticketModalData = t;
+      ticketAccionSeleccionada = null;
+
+      document.getElementById('tk-modal-ticket').textContent = t.ticket || '-';
+
+      const estColors = estadoTicketColors(t.estado);
+      const estBadge = document.getElementById('tk-modal-estado-actual');
+      estBadge.textContent = t.estado || '-';
+      estBadge.style.background = estColors.bg;
+      estBadge.style.color = estColors.color;
+
+      document.getElementById('tk-modal-operacion').textContent = t.operacion || '-';
+      document.getElementById('tk-modal-solicitante').textContent = t.solicitante || '-';
+      document.getElementById('tk-modal-telefono').textContent = t.telefono || '-';
+      document.getElementById('tk-modal-motivo').textContent = t.motivo || '-';
+      document.getElementById('tk-modal-descripcion').textContent = t.descripcion || '-';
+      document.getElementById('tk-modal-fecha').textContent = formatFechaBogota(t.fechaRegistro);
+
+      const idRecRow = document.getElementById('tk-modal-idrecibo-row');
+      if (t.idrecibo) {
+        idRecRow.style.display = '';
+        const link = document.getElementById('tk-modal-idrecibo-link');
+        link.href = `/facturacion?usuario=${encodeURIComponent(CONFIG.usuario)}&tab=recibos&idrecibo=${encodeURIComponent(t.idrecibo)}`;
+        link.textContent = t.idrecibo;
+      } else {
+        idRecRow.style.display = 'none';
+      }
+
+      const evidRow = document.getElementById('tk-modal-evidencia-row');
+      if (t.evidencia) {
+        evidRow.style.display = '';
+        document.getElementById('tk-modal-evidencia-link').href = t.evidencia;
+      } else {
+        evidRow.style.display = 'none';
+      }
+
+      ['pendiente', 'rechazado', 'resuelto'].forEach(a => {
+        document.getElementById('btn-tk-accion-' + a).classList.remove('sel');
+      });
+      document.getElementById('tk-observaciones').value = 'Sincronizar y validar';
+
+      document.getElementById('modal-ticket-overlay').classList.add('open');
+    }
+
+    function cerrarModalTicket() {
+      document.getElementById('modal-ticket-overlay').classList.remove('open');
+    }
+
+    function setAccionTicket(accion) {
+      ticketAccionSeleccionada = accion;
+      ['pendiente', 'rechazado', 'resuelto'].forEach(a => {
+        document.getElementById('btn-tk-accion-' + a).classList.toggle('sel', a === accion);
+      });
+    }
+
+    async function guardarAccionTicket() {
+      if (!ticketModalData) return;
+      if (!ticketAccionSeleccionada) {
+        alert('Seleccione una acción: Pendiente, Rechazado o Resuelto.');
+        return;
+      }
+
+      const estadoMap = { pendiente: 'Pendiente', rechazado: 'Rechazado', resuelto: 'Resuelto' };
+      const estadoNuevo = estadoMap[ticketAccionSeleccionada];
+      const obs = (document.getElementById('tk-observaciones').value || '').trim();
+
+      const btn = document.getElementById('btn-guardar-ticket');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const resp = await fetch(`/facturacion/api/tickets/${encodeURIComponent(ticketModalData.ticket)}/estado?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: estadoNuevo, observaciones: obs })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          cerrarModalTicket();
+          await Promise.all([cargarTickets(), cargarMetricasTickets()]);
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo actualizar el ticket.'));
+        }
+      } catch (e) {
+        alert('Error de conexión al actualizar el ticket.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar';
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CRUD DE RECIBOS (Agregar / Editar / Eliminar)
+    // ══════════════════════════════════════════════════════════
+    let mrNitFlagsActual = {};
+    let mrSearchNitTimeout = null;
+    let mrServiciosCount = 0;
+
+    function rolPuedeEditarRetenciones() {
+      return ROLES_EDICION_LIBRE_RECIBOS_FRONT.includes(CONFIG.rol);
+    }
+
+    function abrirModalRecibo(modo) {
+      if (modo === 'editar' && !reciboDetalleActual) return;
+
+      modalRecibo.modo = modo;
+      mrNitFlagsActual = {};
+      mrServiciosCount = (modo === 'editar') ? (reciboDetalleActual.servicios || []).length : 0;
+
+      const idTitulo = (modo === 'editar') ? (reciboDetalleActual.recibo['Consecutivo Recibo'] || reciboDetalleActual.recibo.IdRecibo) : '';
+      document.getElementById('mr-titulo').textContent = (modo === 'crear') ? '➕ Agregar Recibo' : `✏️ Editar Recibo — ${idTitulo}`;
+      document.getElementById('btn-guardar-recibo').textContent = (modo === 'crear') ? 'Crear Recibo' : 'Guardar Cambios';
+
+      // Regional / Operación (reutiliza el scope del usuario ya calculado en CONFIG)
+      const regSel = document.getElementById('mr-regional');
+      regSel.innerHTML = '<option value="">— Seleccione Regional —</option>' +
+        (CONFIG.regionalesFiltro || []).map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+
+      const opSel = document.getElementById('mr-operacion');
+      opSel.innerHTML = '<option value="">— Seleccione Operación —</option>';
+
+      // Cliente a Facturar (reutiliza allClientes ya cargado para la pestaña Clientes Crédito)
+      const cfSel = document.getElementById('mr-cliente-facturar');
+      cfSel.innerHTML = '<option value="">— Seleccione Cliente a Facturar —</option>' +
+        (allClientes || []).map(c => `<option value="${esc(c.clienteAFacturar)}">${esc(c.clienteAFacturar)}</option>`).join('');
+
+      document.getElementById('mr-categoria').innerHTML = '<option value="">— Sin categoría —</option>';
+      document.getElementById('mr-categoria-wrap').style.display = 'none';
+      document.getElementById('mr-nit').value = '';
+      document.getElementById('mr-nit-razon-social').textContent = '';
+      document.getElementById('mr-nit-autocomplete-list').style.display = 'none';
+      document.getElementById('mr-clientes-sugeridos').innerHTML = '';
+      document.getElementById('mr-clientes-sugeridos-wrap').style.display = 'none';
+      document.getElementById('mr-telefono').value = '';
+      document.getElementById('mr-email').value = '';
+      document.getElementById('mr-observaciones').value = '';
+      document.getElementById('mr-retefuente').checked = false;
+      document.getElementById('mr-reteiva').checked = false;
+      document.getElementById('mr-reteica').checked = false;
+
+      const puedeRetenciones = rolPuedeEditarRetenciones();
+      ['mr-retefuente', 'mr-reteiva', 'mr-reteica'].forEach(id => {
+        document.getElementById(id).disabled = !puedeRetenciones;
+      });
+      document.getElementById('mr-retenciones-wrap').style.opacity = puedeRetenciones ? '1' : '0.7';
+
+      ['btn-mr-modalidad-recaudo', 'btn-mr-modalidad-credito'].forEach(id => document.getElementById(id).classList.remove('sel'));
+
+      if (modo === 'editar') {
+        const r = reciboDetalleActual.recibo;
+        const regionalDelOp = (CONFIG.opsPorRegional && Object.keys(CONFIG.opsPorRegional).find(reg => (CONFIG.opsPorRegional[reg] || []).includes(r['Operación']))) || '';
+        regSel.value = regionalDelOp;
+        onModalRecioRegionalChange(r['Operación']);
+
+        setModalidadRecibo(r.Modalidad || 'RECAUDO', true);
+
+        if (r.Modalidad === 'CREDITO') {
+          cfSel.value = r['Cliente a Facturar'] || '';
+          cargarCategoriasModalRecibo(r.Categoria || '');
+        } else if (r.Nit) {
+          document.getElementById('mr-nit').value = r.Nit;
+          document.getElementById('mr-nit-razon-social').textContent = r.razonSocial || '';
+        }
+
+        if (r.Modalidad !== 'CREDITO' && mrServiciosCount > 0) {
+          cargarClientesSugeridosModalRecibo();
+        }
+
+        document.getElementById('mr-telefono').value = r.Telefono || '';
+        document.getElementById('mr-email').value = r.Email || '';
+        document.getElementById('mr-observaciones').value = r.Observaciones || '';
+        document.getElementById('mr-retefuente').checked = r.Retefuente === 'V';
+        document.getElementById('mr-reteiva').checked = r.ReteIVA === 'V';
+        document.getElementById('mr-reteica').checked = r.ReteICA === 'V';
+      } else {
+        setModalidadRecibo(null, true);
+      }
+
+      document.getElementById('modal-recibo-overlay').classList.add('open');
+    }
+
+    function cerrarModalRecibo() {
+      document.getElementById('modal-recibo-overlay').classList.remove('open');
+    }
+
+    function onModalRecioRegionalChange(operacionPreseleccionada) {
+      const regional = document.getElementById('mr-regional').value;
+      const opSel = document.getElementById('mr-operacion');
+      const opciones = (CONFIG.opsPorRegional && CONFIG.opsPorRegional[regional]) || [];
+      opSel.innerHTML = '<option value="">— Seleccione Operación —</option>' +
+        opciones.map(op => `<option value="${esc(op)}">${esc(op)}</option>`).join('');
+      if (operacionPreseleccionada) opSel.value = operacionPreseleccionada;
+      onModalRecioOperacionChange();
+    }
+
+    function onModalRecioOperacionChange() {
+      if (modalRecibo.modoActual === 'CREDITO') {
+        cargarCategoriasModalRecibo();
+      }
+      recalcularSugerenciaRetenciones();
+    }
+
+    // Muestra el bloque de Retenciones (solo RECAUDO) y, dentro del bloque RECAUDO,
+    // habilita la selección de Cliente solo si el recibo ya tiene servicios (punto 5).
+    function setModalidadRecibo(modalidad, silencioso) {
+      modalRecibo.modoActual = modalidad;
+      document.getElementById('btn-mr-modalidad-recaudo').classList.toggle('sel', modalidad === 'RECAUDO');
+      document.getElementById('btn-mr-modalidad-credito').classList.toggle('sel', modalidad === 'CREDITO');
+      document.getElementById('mr-bloque-credito').style.display = (modalidad === 'CREDITO') ? 'block' : 'none';
+      document.getElementById('mr-bloque-recaudo').style.display = (modalidad === 'RECAUDO') ? 'block' : 'none';
+      document.getElementById('mr-retenciones-wrap').style.display = (modalidad === 'RECAUDO') ? 'block' : 'none';
+
+      if (modalidad === 'RECAUDO') {
+        const hayServicios = mrServiciosCount > 0;
+        document.getElementById('mr-cliente-sin-servicios').style.display = hayServicios ? 'none' : 'block';
+        document.getElementById('mr-cliente-con-servicios').style.display = hayServicios ? 'block' : 'none';
+      }
+
+      if (!silencioso && modalidad === 'CREDITO') cargarCategoriasModalRecibo();
+      if (!silencioso) recalcularSugerenciaRetenciones();
+    }
+
+    function onModalRecioClienteFacturarChange() {
+      cargarCategoriasModalRecibo();
+    }
+
+    // El campo Categoría solo se muestra si hay combinaciones válidas para ese
+    // Cliente a Facturar + Operación (replica el Show_If de AppSheet: punto 2).
+    async function cargarCategoriasModalRecibo(categoriaPreseleccionada) {
+      const catSel = document.getElementById('mr-categoria');
+      const wrap = document.getElementById('mr-categoria-wrap');
+      const clienteAFacturar = document.getElementById('mr-cliente-facturar').value;
+      const operacion = document.getElementById('mr-operacion').value;
+      if (!clienteAFacturar || !operacion) {
+        catSel.innerHTML = '<option value="">— Sin categoría —</option>';
+        wrap.style.display = 'none';
+        return;
+      }
+      try {
+        const params = new URLSearchParams({ usuario: CONFIG.usuario, clienteAFacturar, operacion });
+        const resp = await fetch(`/facturacion/api/categorias?${params.toString()}`);
+        const data = resp.ok ? await resp.json() : [];
+        if (!data.length) {
+          catSel.innerHTML = '<option value="">— Sin categoría —</option>';
+          wrap.style.display = 'none';
+          return;
+        }
+        catSel.innerHTML = '<option value="">— Sin categoría —</option>' +
+          data.map(c => `<option value="${esc(c.id)}">${esc(c.categoria)}</option>`).join('');
+        if (categoriaPreseleccionada) catSel.value = categoriaPreseleccionada;
+        wrap.style.display = 'block';
+      } catch (e) {
+        catSel.innerHTML = '<option value="">— Sin categoría —</option>';
+        wrap.style.display = 'none';
+      }
+    }
+
+    // Clientes sugeridos según la placa del servicio más reciente del recibo (punto 5)
+    async function cargarClientesSugeridosModalRecibo() {
+      if (!reciboDetalleActual) return;
+      const wrap = document.getElementById('mr-clientes-sugeridos-wrap');
+      const cont = document.getElementById('mr-clientes-sugeridos');
+      try {
+        const resp = await fetch(`/facturacion/api/recibos/${encodeURIComponent(reciboDetalleActual.recibo.IdRecibo)}/clientes-sugeridos?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const clientes = data.clientes || [];
+        if (!clientes.length) {
+          wrap.style.display = 'none';
+          return;
+        }
+        cont.innerHTML = clientes.map(c => `
+          <button type="button" class="category-chip" style="min-width:auto; padding:6px 12px;" onclick="seleccionarClienteSugeridoRecibo(${c.nit}, '${esc((c.razonSocial || '').replace(/'/g, "\\'"))}')">
+            <span class="chip-title" style="font-size:0.78rem;">${esc(c.nit)}</span>
+            <span class="chip-sub">${esc(c.razonSocial || 'Sin nombre registrado')}</span>
+          </button>
+        `).join('');
+        wrap.style.display = 'block';
+      } catch (e) {
+        console.error('[cargarClientesSugeridosModalRecibo]', e);
+      }
+    }
+
+    function seleccionarClienteSugeridoRecibo(nit, razonSocial) {
+      document.getElementById('mr-nit').value = nit;
+      document.getElementById('mr-nit-razon-social').textContent = razonSocial || '';
+      document.getElementById('mr-nit-autocomplete-list').style.display = 'none';
+      buscarClienteDetalleParaFlags(nit);
+    }
+
+    async function buscarClienteDetalleParaFlags(nit) {
+      try {
+        const resp = await fetch(`/facturacion/api/clientes/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(nit)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const match = data.find(c => String(c.codigo) === String(nit));
+        if (match) {
+          document.getElementById('mr-telefono').value = match.telefono || '';
+          document.getElementById('mr-email').value = match.correoFE || '';
+          mrNitFlagsActual = { RTSERVIC: match.rtservic, RTIVA: match.rtiva, RTICA: match.rtica };
+        }
+      } catch (e) { /* no-op */ }
+      recalcularSugerenciaRetenciones();
+    }
+
+    // Cliente: búsqueda libre por Razón Social o Nit/Código, con lista de coincidencias.
+    function buscarClienteNitRecibo(q) {
+      clearTimeout(mrSearchNitTimeout);
+      const listEl = document.getElementById('mr-nit-autocomplete-list');
+      if (!q || q.trim().length < 2) {
+        listEl.style.display = 'none';
+        return;
+      }
+      mrSearchNitTimeout = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/clientes/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
+          if (!resp.ok) return;
+          const data = await resp.json();
+          listEl.innerHTML = '';
+          if (!data.length) {
+            listEl.innerHTML = '<div style="padding: 8px 12px; color: #a0aec0; font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
+          } else {
+            data.forEach(c => {
+              const row = document.createElement('div');
+              row.className = 'autocomplete-item';
+              row.innerHTML = `<strong>${esc(c.codigo)}</strong> — ${esc(c.razonSocial)}`;
+              row.onclick = () => {
+                document.getElementById('mr-nit').value = c.codigo;
+                document.getElementById('mr-nit-razon-social').textContent = c.razonSocial;
+                document.getElementById('mr-telefono').value = c.telefono || '';
+                document.getElementById('mr-email').value = c.correoFE || '';
+                mrNitFlagsActual = { RTSERVIC: c.rtservic, RTIVA: c.rtiva, RTICA: c.rtica };
+                listEl.style.display = 'none';
+                recalcularSugerenciaRetenciones();
+              };
+              listEl.appendChild(row);
+            });
+          }
+          listEl.style.display = 'block';
+        } catch (e) {
+          console.error(e);
+        }
+      }, 250);
+    }
+
+    // Se recalcula automáticamente (punto 3) cada vez que cambian Nit/Operación/Modalidad.
+    // Cualquier rol ve el valor calculado; solo Facturación/Sistema pueden luego override-arlo
+    // a mano (checkboxes habilitados únicamente para ellos).
+    async function recalcularSugerenciaRetenciones() {
+      const modalidad = modalRecibo.modoActual;
+      const operacion = document.getElementById('mr-operacion').value;
+      if (!operacion || modalidad !== 'RECAUDO') return;
+
+      const nit = document.getElementById('mr-nit').value || '';
+      const subtotal = (modalRecibo.modo === 'editar' && reciboDetalleActual) ? (reciboDetalleActual.totales.subtotal || 0) : 0;
+
+      try {
+        const params = new URLSearchParams({ usuario: CONFIG.usuario, nit, operacion, subtotal });
+        const resp = await fetch(`/facturacion/api/recibos/sugerir-retenciones?${params.toString()}`);
+        if (!resp.ok) return;
+        const sugerencia = await resp.json();
+        document.getElementById('mr-retefuente').checked = sugerencia.retefuente === 'V';
+        document.getElementById('mr-reteiva').checked = sugerencia.reteiva === 'V';
+        document.getElementById('mr-reteica').checked = sugerencia.reteica === 'V';
+      } catch (e) {
+        console.error('[recalcularSugerenciaRetenciones]', e);
+      }
+    }
+
+    async function guardarRecibo() {
+      const operacion = document.getElementById('mr-operacion').value;
+      const modalidad = modalRecibo.modoActual;
+
+      if (!operacion) return alert('Debe seleccionar la Operación.');
+      if (!modalidad) return alert('Debe seleccionar la Modalidad (RECAUDO o CREDITO).');
+
+      const payload = {
+        operacion,
+        modalidad,
+        observaciones: document.getElementById('mr-observaciones').value,
+      };
+
+      if (modalidad === 'RECAUDO' && rolPuedeEditarRetenciones()) {
+        payload.retefuente = document.getElementById('mr-retefuente').checked ? 'V' : '';
+        payload.reteiva = document.getElementById('mr-reteiva').checked ? 'V' : '';
+        payload.reteica = document.getElementById('mr-reteica').checked ? 'V' : '';
+      }
+
+      if (modalidad === 'CREDITO') {
+        const clienteAFacturar = document.getElementById('mr-cliente-facturar').value;
+        if (!clienteAFacturar) return alert('Debe seleccionar el Cliente a Facturar.');
+        payload.clienteAFacturar = clienteAFacturar;
+        payload.categoria = document.getElementById('mr-categoria').value || null;
+      } else {
+        // Teléfono y Email solo aplican para RECAUDO.
+        payload.telefono = document.getElementById('mr-telefono').value;
+        payload.email = document.getElementById('mr-email').value;
+        if (mrServiciosCount > 0) {
+          // El Nit solo se envía (y solo es editable) si el recibo ya tiene servicios registrados.
+          payload.nit = document.getElementById('mr-nit').value || null;
+        }
+      }
+
+      const btn = document.getElementById('btn-guardar-recibo');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const modo = modalRecibo.modo;
+        const url = (modo === 'crear')
+          ? `/facturacion/api/recibos?usuario=${encodeURIComponent(CONFIG.usuario)}`
+          : `/facturacion/api/recibos/${encodeURIComponent(reciboDetalleActual.recibo.IdRecibo)}?usuario=${encodeURIComponent(CONFIG.usuario)}`;
+
+        const resp = await fetch(url, {
+          method: (modo === 'crear') ? 'POST' : 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+
+        if (resp.ok && data.ok) {
+          cerrarModalRecibo();
+          await Promise.all([cargarRecibos(), cargarMetricasRecibos()]);
+          if (modo === 'crear') {
+            verDetalleRecibo(data.idRecibo);
+          } else {
+            verDetalleRecibo(reciboDetalleActual.recibo.IdRecibo);
+          }
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo guardar el recibo.'));
+        }
+      } catch (e) {
+        alert('Error de conexión al guardar el recibo.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = (modalRecibo.modo === 'crear') ? 'Crear Recibo' : 'Guardar Cambios';
+      }
+    }
+
+    async function eliminarRecibo() {
+      if (!reciboDetalleActual) return;
+      const idRecibo = reciboDetalleActual.recibo.IdRecibo;
+      const consecutivo = reciboDetalleActual.recibo['Consecutivo Recibo'] || idRecibo;
+
+      if (!confirm(`¿Está seguro de que desea eliminar el recibo "${consecutivo}"?\n\nEsta acción también eliminará TODOS los servicios asociados a este recibo y no se puede deshacer.`)) return;
+
+      try {
+        const resp = await fetch(`/facturacion/api/recibos/${encodeURIComponent(idRecibo)}?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'DELETE'
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert('🗑️ Recibo eliminado exitosamente.');
+          volverAListadoRecibos();
+          await Promise.all([cargarRecibos(), cargarMetricasRecibos()]);
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo eliminar el recibo.'));
+        }
+      } catch (e) {
+        alert('Error de conexión al eliminar el recibo.');
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CRUD DE SERVICIOS (Dynamic_Servicios) — solo desde el Recibo
+    // ══════════════════════════════════════════════════════════
+    let modalServicio = { modo: 'crear', idRecibo: null, idServicio: null };
+    let msContexto = {};
+    let msServicioExistente = null;
+    let msEstadoActual = 'Yellow';
+    let msGrupoDtjoActual = 'GRUPAL';
+    let msFormaPagoActual = null;
+    let msAreaSeleccionada = null;
+    let msActividadSeleccionada = null;
+    let msTransportadoraId = null;
+    let msProveedorSeleccionados = [];
+    let msPl1Id = null;
+    let msAuxiliaresSeleccionados = [];
+    let msDuracionesCache = [];
+    let msSearchTransportadoraTimeout = null;
+    let msSearchProveedorTimeout = null;
+    let msSearchPlacaTimeout = null;
+    let msSearchAuxiliarTimeout = null;
+    const ROLES_EDITAR_IDRECIBO_SERVICIO_FRONT = ['Sistema', 'Facturación', 'Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR'];
+
+    function toDatetimeLocalBogota(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return '';
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+      });
+      const parts = fmt.formatToParts(d);
+      const get = (t) => parts.find(p => p.type === t).value;
+      return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+    }
+    function ahoraDatetimeLocalBogota() {
+      return toDatetimeLocalBogota(new Date());
+    }
+    function toDatetimeLocalFromMs(ms) {
+      const d = new Date(ms);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    function msToHHMMSSClient(ms) {
+      const totalSeconds = Math.max(0, Math.round(ms / 1000));
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    async function abrirModalServicio(modo, idServicio) {
+      if (!reciboDetalleActual) return;
+      modalServicio.modo = modo;
+      modalServicio.idRecibo = reciboDetalleActual.recibo.IdRecibo;
+      modalServicio.idServicio = idServicio || null;
+      msContexto = {
+        operacion: reciboDetalleActual.recibo['Operación'],
+        modalidad: reciboDetalleActual.recibo.Modalidad,
+        clienteAFacturar: reciboDetalleActual.recibo['Cliente a Facturar'],
+        nit: reciboDetalleActual.recibo.Nit
+      };
+
+      const existente = (modo === 'editar') ? (reciboDetalleActual.servicios || []).find(s => s.IdServicio === idServicio) : null;
+      msServicioExistente = existente || null;
+
+      document.getElementById('ms-titulo').textContent = (modo === 'crear') ? '➕ Agregar Servicio' : `✏️ Editar Servicio — ${idServicio}`;
+      document.getElementById('btn-guardar-servicio').textContent = (modo === 'crear') ? 'Crear Servicio' : 'Guardar Cambios';
+
+      msTransportadoraId = existente ? existente.Transportadora : null;
+      msProveedorSeleccionados = [];
+      msPl1Id = existente ? existente.PL1 : null;
+      msAuxiliaresSeleccionados = existente && existente.Auxiliares ? existente.Auxiliares.split(',').map(s => s.trim()).filter(Boolean) : [];
+      msAreaSeleccionada = existente ? existente.Area : null;
+      msActividadSeleccionada = existente ? existente.Actividad : null;
+
+      document.getElementById('ms-transportadora-input').value = existente?.transportadoraNombre || '';
+      document.getElementById('ms-pl1-input').value = existente?.placaNombre || '';
+      document.getElementById('ms-pl1-info').textContent = '';
+      document.getElementById('ms-remolque').value = existente?.Remolque || '';
+      document.getElementById('ms-origen').value = existente?.Origen || '';
+      document.getElementById('ms-destino').value = existente?.Destino || '';
+      document.getElementById('ms-manifiesto').value = existente?.Manifiesto || '';
+      document.getElementById('ms-etapa').value = existente?.Etapa || '';
+      document.getElementById('ms-muelle').value = existente?.Muelle || '';
+      document.getElementById('ms-cantidad').value = (existente && existente.Cantidad !== null && existente.Cantidad !== undefined) ? existente.Cantidad : '';
+      document.getElementById('ms-valor-unitario').value = (existente && existente['Valor Unitario'] !== null && existente['Valor Unitario'] !== undefined) ? existente['Valor Unitario'] : '';
+      document.getElementById('ms-notas').value = existente?.Notas || '';
+      document.getElementById('ms-observaciones').value = existente?.Observaciones || '';
+      document.getElementById('ms-telefono').value = existente?.Telefono || '';
+      document.getElementById('ms-foto-documento').value = '';
+      document.getElementById('ms-foto-evidencia').value = '';
+      document.getElementById('ms-foto-transferencia').value = '';
+      document.getElementById('ms-foto-documento-actual').innerHTML = existente?.['Foto Documento'] ? `<a href="${esc(existente['Foto Documento'])}" target="_blank">Ver archivo actual</a>` : 'Sin archivo';
+      document.getElementById('ms-foto-evidencia-actual').innerHTML = existente?.['Foto Evidencia'] ? `<a href="${esc(existente['Foto Evidencia'])}" target="_blank">Ver archivo actual</a>` : 'Sin archivo';
+      document.getElementById('ms-foto-transferencia-actual').innerHTML = existente?.['Foto Transferencia'] ? `<a href="${esc(existente['Foto Transferencia'])}" target="_blank">Ver archivo actual</a>` : 'Sin archivo';
+
+      document.getElementById('ms-hora-inicio').value = existente?.['Hora Inicio'] ? toDatetimeLocalBogota(existente['Hora Inicio']) : ahoraDatetimeLocalBogota();
+      document.getElementById('ms-fecha-transferencia').value = existente?.['Fecha Transferencia'] ? toDatetimeLocalBogota(existente['Fecha Transferencia']) : ahoraDatetimeLocalBogota();
+
+      document.getElementById('ms-idrecibo-info').textContent = (reciboDetalleActual.recibo['Consecutivo Recibo'] || modalServicio.idRecibo) + ' — ' + (msContexto.operacion || '');
+      const puedeReasignar = modo === 'editar' && ROLES_EDITAR_IDRECIBO_SERVICIO_FRONT.includes(CONFIG.rol);
+      const selRecibo = document.getElementById('ms-idrecibo-select');
+      if (puedeReasignar) {
+        selRecibo.style.display = 'block';
+        selRecibo.innerHTML = (allRecibos || []).map(r => `<option value="${esc(r.idrecibo)}" ${r.idrecibo === modalServicio.idRecibo ? 'selected' : ''}>${esc(r.consecutivo_recibo || r.idrecibo)} — ${esc(r.operacion)}</option>`).join('');
+      } else {
+        selRecibo.style.display = 'none';
+      }
+
+      document.getElementById('ms-manifiesto-wrap').style.display = (msContexto.modalidad === 'CREDITO') ? 'block' : 'none';
+      document.getElementById('ms-telefono-wrap').style.display = (msContexto.modalidad === 'CREDITO') ? 'block' : 'none';
+
+      if (msContexto.modalidad === 'CREDITO') {
+        document.getElementById('ms-forma-pago-wrap').style.display = 'none';
+        document.getElementById('ms-forma-pago-credito').style.display = 'block';
+        setFormaPagoServicio(3);
+      } else {
+        document.getElementById('ms-forma-pago-wrap').style.display = 'flex';
+        document.getElementById('ms-forma-pago-credito').style.display = 'none';
+        setFormaPagoServicio(existente ? existente['Forma De Pago'] : null);
+      }
+
+      setEstadoServicio(existente ? existente.Estado : 'Yellow');
+      setGrupoDtjoServicio(existente ? (existente['Grupo Dtjo'] || 'GRUPAL') : 'GRUPAL');
+
+      renderAuxiliaresChips();
+
+      await Promise.all([
+        cargarAreasServicio(msAreaSeleccionada),
+        cargarActividadesServicio(msActividadSeleccionada),
+        cargarVehiculosServicio(existente?.Vehiculo),
+        cargarUnidadesServicio(existente?.Unidad),
+        cargarDuracionesServicio(existente?.['Duración'])
+      ]);
+
+      msProveedorSeleccionados = [];
+      if (existente && existente.Proveedor) {
+        const ids = existente.Proveedor.split(',').map(s => s.trim()).filter(Boolean);
+        const nombres = (existente.proveedorNombres || '').split(',').map(s => s.trim());
+        ids.forEach((id, idx) => msProveedorSeleccionados.push({ id, proveedor: nombres[idx] || id }));
+      }
+      renderProveedorChips();
+
+      document.getElementById('ms-hora-final').value = existente?.['Hora Final'] ? toDatetimeLocalBogota(existente['Hora Final']) : '';
+      onDuracionServicioChange();
+      if (existente?.['Total Hora']) document.getElementById('ms-total-hora').value = existente['Total Hora'];
+
+      document.getElementById('modal-servicio-overlay').classList.add('open');
+    }
+
+    function cerrarModalServicio() {
+      document.getElementById('modal-servicio-overlay').classList.remove('open');
+    }
+
+    function setEstadoServicio(estado) {
+      msEstadoActual = estado;
+      ['green', 'yellow', 'red'].forEach(k => document.getElementById('btn-ms-estado-' + k).classList.toggle('sel', k === String(estado || '').toLowerCase()));
+    }
+    function setGrupoDtjoServicio(valor) {
+      msGrupoDtjoActual = valor;
+      document.getElementById('btn-ms-grupo-grupal').classList.toggle('sel', valor === 'GRUPAL');
+      document.getElementById('btn-ms-grupo-individual').classList.toggle('sel', valor === 'INDIVIDUAL');
+    }
+    function setFormaPagoServicio(valor) {
+      msFormaPagoActual = valor ? Number(valor) : null;
+      document.getElementById('btn-ms-fp-1')?.classList.toggle('sel', msFormaPagoActual === 1);
+      document.getElementById('btn-ms-fp-2')?.classList.toggle('sel', msFormaPagoActual === 2);
+      document.getElementById('ms-transferencia-wrap').style.display = (msFormaPagoActual === 2) ? 'block' : 'none';
+    }
+
+    async function cargarAreasServicio(areaSeleccionada) {
+      const cont = document.getElementById('ms-area-buttons');
+      cont.innerHTML = '<span style="color:var(--text-muted); font-size:0.82rem;">Cargando...</span>';
+      try {
+        const params = new URLSearchParams({ usuario: CONFIG.usuario, operacion: msContexto.operacion || '' });
+        const resp = await fetch(`/facturacion/api/config/areas?${params.toString()}`);
+        const data = resp.ok ? await resp.json() : [];
+        if (!data.length) { cont.innerHTML = '<span style="color:var(--text-muted); font-size:0.82rem;">Sin áreas operativas configuradas para esta Operación.</span>'; return; }
+        cont.innerHTML = data.map(a => `
+          <button type="button" class="btn-grupo-opt ms-area-btn ${String(areaSeleccionada) === String(a.id) ? 'sel' : ''}" data-id="${a.id}" style="flex:none; padding:7px 14px;" onclick="seleccionarAreaServicio(${a.id})">${esc(a.area)}</button>
+        `).join('');
+      } catch (e) { cont.innerHTML = ''; }
+    }
+    function seleccionarAreaServicio(id) {
+      msAreaSeleccionada = id;
+      document.querySelectorAll('.ms-area-btn').forEach(b => b.classList.toggle('sel', Number(b.dataset.id) === Number(id)));
+    }
+
+    async function cargarActividadesServicio(actividadSeleccionada) {
+      const cont = document.getElementById('ms-actividad-buttons');
+      cont.innerHTML = '<span style="color:var(--text-muted); font-size:0.82rem;">Cargando...</span>';
+      try {
+        const params = new URLSearchParams({ usuario: CONFIG.usuario, operacion: msContexto.operacion || '' });
+        const resp = await fetch(`/facturacion/api/config/actividades?${params.toString()}`);
+        const data = resp.ok ? await resp.json() : [];
+        if (!data.length) { cont.innerHTML = '<span style="color:var(--text-muted); font-size:0.82rem;">Sin actividades configuradas para esta Operación.</span>'; return; }
+        cont.innerHTML = data.map(a => `
+          <button type="button" class="btn-grupo-opt ms-actividad-btn ${String(actividadSeleccionada) === String(a.id) ? 'sel' : ''}" data-id="${a.id}" style="flex:none; padding:7px 14px;" onclick="seleccionarActividadServicio(${a.id})">${esc(a.actividad)}</button>
+        `).join('');
+      } catch (e) { cont.innerHTML = ''; }
+    }
+    function seleccionarActividadServicio(id) {
+      msActividadSeleccionada = id;
+      document.querySelectorAll('.ms-actividad-btn').forEach(b => b.classList.toggle('sel', Number(b.dataset.id) === Number(id)));
+    }
+
+    async function cargarVehiculosServicio(seleccionado) {
+      const sel = document.getElementById('ms-vehiculo');
+      try {
+        const resp = await fetch(`/facturacion/api/config/vehiculos?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        const data = resp.ok ? await resp.json() : [];
+        sel.innerHTML = '<option value="">— Seleccione —</option>' + data.map(v => `<option value="${esc(v.vehiculo)}">${esc(v.vehiculo)}</option>`).join('');
+        if (seleccionado) sel.value = seleccionado;
+      } catch (e) {}
+    }
+    async function cargarUnidadesServicio(seleccionado) {
+      const sel = document.getElementById('ms-unidad');
+      try {
+        const resp = await fetch(`/facturacion/api/config/unidades?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        const data = resp.ok ? await resp.json() : [];
+        sel.innerHTML = '<option value="">— Seleccione —</option>' + data.map(u => `<option value="${esc(u.unidad)}">${esc(u.unidad)}</option>`).join('');
+        if (seleccionado) sel.value = seleccionado;
+      } catch (e) {}
+    }
+    async function cargarDuracionesServicio(seleccionada) {
+      const sel = document.getElementById('ms-duracion');
+      try {
+        const resp = await fetch(`/facturacion/api/config/duraciones?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        msDuracionesCache = resp.ok ? await resp.json() : [];
+        sel.innerHTML = '<option value="">— Seleccione —</option>' + msDuracionesCache.map(d => `<option value="${esc(d.duracion)}">${esc(d.duracion)}</option>`).join('');
+        if (seleccionada) sel.value = seleccionada;
+      } catch (e) {}
+    }
+
+    function onDuracionServicioChange() {
+      const duracion = document.getElementById('ms-duracion').value;
+      const horaFinalInput = document.getElementById('ms-hora-final');
+      if (!duracion || duracion === 'Otro') {
+        horaFinalInput.disabled = false;
+        if (!horaFinalInput.value) horaFinalInput.value = ahoraDatetimeLocalBogota();
+      } else {
+        horaFinalInput.disabled = true;
+      }
+      recalcularHorasServicioUI();
+    }
+
+    function recalcularHorasServicioUI() {
+      const horaInicioVal = document.getElementById('ms-hora-inicio').value;
+      const duracion = document.getElementById('ms-duracion').value;
+      if (!horaInicioVal) return;
+
+      const inicioMs = new Date(horaInicioVal).getTime();
+      let finalMs;
+
+      if (duracion && duracion !== 'Otro') {
+        const dur = msDuracionesCache.find(d => d.duracion === duracion);
+        if (dur && dur.tiempo) {
+          const [h, m, s] = String(dur.tiempo).split(':').map(Number);
+          finalMs = inicioMs + ((h * 3600 + m * 60 + (s || 0)) * 1000);
+          document.getElementById('ms-hora-final').value = toDatetimeLocalFromMs(finalMs);
+        }
+      } else {
+        const horaFinalVal = document.getElementById('ms-hora-final').value;
+        finalMs = horaFinalVal ? new Date(horaFinalVal).getTime() : inicioMs;
+      }
+
+      if (typeof finalMs === 'number' && !isNaN(finalMs)) {
+        document.getElementById('ms-total-hora').value = msToHHMMSSClient(Math.max(0, finalMs - inicioMs));
+      }
+    }
+
+    // ── Transportadora (único, creable) ──────────────────────────────────────
+    function buscarTransportadora(q) {
+      clearTimeout(msSearchTransportadoraTimeout);
+      const listEl = document.getElementById('ms-transportadora-list');
+      if (!q || q.trim().length < 2) { listEl.style.display = 'none'; return; }
+      msSearchTransportadoraTimeout = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/transportadoras/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
+          const data = resp.ok ? await resp.json() : [];
+          listEl.innerHTML = '';
+          const nuevoRow = document.createElement('div');
+          nuevoRow.className = 'autocomplete-item';
+          nuevoRow.style.cssText = 'font-weight:700; color:var(--primary);';
+          nuevoRow.textContent = `+ Nuevo "${q.trim()}"`;
+          nuevoRow.onclick = () => crearTransportadoraNueva(q.trim());
+          listEl.appendChild(nuevoRow);
+          data.forEach(t => {
+            const row = document.createElement('div');
+            row.className = 'autocomplete-item';
+            row.textContent = t.transportadora;
+            row.onclick = () => {
+              document.getElementById('ms-transportadora-input').value = t.transportadora;
+              msTransportadoraId = t.id;
+              listEl.style.display = 'none';
+            };
+            listEl.appendChild(row);
+          });
+          listEl.style.display = 'block';
+        } catch (e) {}
+      }, 250);
+    }
+    async function crearTransportadoraNueva(nombre) {
+      try {
+        const resp = await fetch(`/facturacion/api/transportadoras?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transportadora: nombre })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          document.getElementById('ms-transportadora-input').value = data.transportadora;
+          msTransportadoraId = data.id;
+          document.getElementById('ms-transportadora-list').style.display = 'none';
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo crear la transportadora.'));
+        }
+      } catch (e) { alert('Error de conexión al crear la transportadora.'); }
+    }
+
+    // ── Proveedor (múltiple, creable) ────────────────────────────────────────
+    function buscarProveedor(q) {
+      clearTimeout(msSearchProveedorTimeout);
+      const listEl = document.getElementById('ms-proveedor-list');
+      if (!q || q.trim().length < 2) { listEl.style.display = 'none'; return; }
+      msSearchProveedorTimeout = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/proveedores/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
+          const data = resp.ok ? await resp.json() : [];
+          listEl.innerHTML = '';
+          const nuevoRow = document.createElement('div');
+          nuevoRow.className = 'autocomplete-item';
+          nuevoRow.style.cssText = 'font-weight:700; color:var(--primary);';
+          nuevoRow.textContent = `+ Nuevo "${q.trim()}"`;
+          nuevoRow.onclick = () => crearProveedorNuevo(q.trim());
+          listEl.appendChild(nuevoRow);
+          data.forEach(p => {
+            if (msProveedorSeleccionados.some(sel => sel.id === p.id)) return;
+            const row = document.createElement('div');
+            row.className = 'autocomplete-item';
+            row.textContent = p.proveedor;
+            row.onclick = () => {
+              agregarProveedorChip(p);
+              document.getElementById('ms-proveedor-input').value = '';
+              listEl.style.display = 'none';
+            };
+            listEl.appendChild(row);
+          });
+          listEl.style.display = 'block';
+        } catch (e) {}
+      }, 250);
+    }
+    async function crearProveedorNuevo(nombre) {
+      try {
+        const resp = await fetch(`/facturacion/api/proveedores?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proveedor: nombre })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          agregarProveedorChip(data);
+          document.getElementById('ms-proveedor-input').value = '';
+          document.getElementById('ms-proveedor-list').style.display = 'none';
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo crear el proveedor.'));
+        }
+      } catch (e) { alert('Error de conexión al crear el proveedor.'); }
+    }
+    function agregarProveedorChip(p) {
+      if (msProveedorSeleccionados.some(x => x.id === p.id)) return;
+      msProveedorSeleccionados.push(p);
+      renderProveedorChips();
+    }
+    function quitarProveedorChip(id) {
+      msProveedorSeleccionados = msProveedorSeleccionados.filter(x => x.id !== id);
+      renderProveedorChips();
+    }
+    function renderProveedorChips() {
+      document.getElementById('ms-proveedor-chips').innerHTML = msProveedorSeleccionados.map(p => `
+        <span style="display:inline-flex; align-items:center; gap:6px; background:#faf5ff; border:1px solid #d8b4fe; color:var(--primary); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
+          ${esc(p.proveedor)}
+          <span style="cursor:pointer; font-weight:800;" onclick="quitarProveedorChip('${esc(p.id)}')">&times;</span>
+        </span>
+      `).join('');
+    }
+
+    // ── Placas / PL1 (único, creable con lógica Tipo Cliente) ───────────────
+    function buscarPlaca(q) {
+      clearTimeout(msSearchPlacaTimeout);
+      const listEl = document.getElementById('ms-pl1-list');
+      if (!q || q.trim().length < 2) { listEl.style.display = 'none'; return; }
+      msSearchPlacaTimeout = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/placas/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
+          const data = resp.ok ? await resp.json() : [];
+          listEl.innerHTML = '';
+          const nuevoRow = document.createElement('div');
+          nuevoRow.className = 'autocomplete-item';
+          nuevoRow.style.cssText = 'font-weight:700; color:var(--primary);';
+          nuevoRow.textContent = `+ Nueva Placa "${q.trim().toUpperCase()}"`;
+          nuevoRow.onclick = () => crearPlacaNueva(q.trim().toUpperCase());
+          listEl.appendChild(nuevoRow);
+          data.forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'autocomplete-item';
+            const etiquetaCliente = p.tipoCliente === 'CREDITO' ? (p.clienteCredito || '—') : (p.razonSocial || p.nit || '—');
+            row.innerHTML = `<strong>${esc(p.placa)}</strong> — ${esc(p.tipoCliente || '')}: ${esc(etiquetaCliente)}`;
+            row.onclick = () => {
+              document.getElementById('ms-pl1-input').value = p.placa;
+              msPl1Id = p.id;
+              document.getElementById('ms-pl1-info').textContent = `${p.tipoCliente || ''}: ${etiquetaCliente}`;
+              listEl.style.display = 'none';
+            };
+            listEl.appendChild(row);
+          });
+          listEl.style.display = 'block';
+        } catch (e) {}
+      }, 250);
+    }
+    async function crearPlacaNueva(placa) {
+      let nit = null;
+      if (msContexto.modalidad === 'RECAUDO') {
+        const respuesta = prompt('NIT del cliente para esta placa (opcional, puede dejarlo vacío):');
+        if (respuesta && respuesta.trim()) nit = respuesta.trim();
+      }
+      try {
+        const resp = await fetch(`/facturacion/api/placas?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ placa, idRecibo: modalServicio.idRecibo, nit })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          document.getElementById('ms-pl1-input').value = data.placa;
+          msPl1Id = data.id;
+          const etiqueta = data.tipoCliente === 'CREDITO' ? (data.clienteCredito || '—') : (data.nit || '—');
+          document.getElementById('ms-pl1-info').textContent = `${data.tipoCliente}: ${etiqueta}`;
+          document.getElementById('ms-pl1-list').style.display = 'none';
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo crear la placa.'));
+        }
+      } catch (e) { alert('Error de conexión al crear la placa.'); }
+    }
+
+    // ── Auxiliares (múltiple) ────────────────────────────────────────────────
+    function buscarAuxiliar(q) {
+      clearTimeout(msSearchAuxiliarTimeout);
+      const listEl = document.getElementById('ms-auxiliares-list');
+      if (!q || q.trim().length < 2) { listEl.style.display = 'none'; return; }
+      msSearchAuxiliarTimeout = setTimeout(async () => {
+        try {
+          const params = new URLSearchParams({ usuario: CONFIG.usuario, operacion: msContexto.operacion || '', q });
+          const resp = await fetch(`/facturacion/api/auxiliares/buscar?${params.toString()}`);
+          const data = resp.ok ? await resp.json() : [];
+          listEl.innerHTML = '';
+          data.forEach(a => {
+            if (msAuxiliaresSeleccionados.includes(a.trabajador)) return;
+            const row = document.createElement('div');
+            row.className = 'autocomplete-item';
+            row.textContent = a.trabajador;
+            row.onclick = () => {
+              msAuxiliaresSeleccionados.push(a.trabajador);
+              renderAuxiliaresChips();
+              document.getElementById('ms-auxiliares-input').value = '';
+              listEl.style.display = 'none';
+            };
+            listEl.appendChild(row);
+          });
+          listEl.style.display = data.length ? 'block' : 'none';
+        } catch (e) {}
+      }, 250);
+    }
+    function quitarAuxiliarChip(nombre) {
+      msAuxiliaresSeleccionados = msAuxiliaresSeleccionados.filter(x => x !== nombre);
+      renderAuxiliaresChips();
+    }
+    function renderAuxiliaresChips() {
+      document.getElementById('ms-auxiliares-chips').innerHTML = msAuxiliaresSeleccionados.map(nombre => `
+        <span style="display:inline-flex; align-items:center; gap:6px; background:#faf5ff; border:1px solid #d8b4fe; color:var(--primary); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
+          ${esc(nombre)}
+          <span style="cursor:pointer; font-weight:800;" onclick="quitarAuxiliarChip('${esc(nombre).replace(/'/g, "\\'")}')">&times;</span>
+        </span>
+      `).join('');
+    }
+
+    async function guardarServicio() {
+      if (!modalServicio.idRecibo) return;
+
+      const formaDePago = (msContexto.modalidad === 'CREDITO') ? 3 : msFormaPagoActual;
+
+      if (msEstadoActual === 'Green') {
+        const cantidadVal = document.getElementById('ms-cantidad').value;
+        const valorUnitarioVal = document.getElementById('ms-valor-unitario').value;
+        if (cantidadVal === '' || valorUnitarioVal === '' || !formaDePago) {
+          return alert('Para marcar el servicio en Verde debe diligenciar Cantidad, Valor Unitario y Forma de Pago.');
+        }
+        if (Number(formaDePago) === 2) {
+          const hayFotoNueva = document.getElementById('ms-foto-transferencia').files.length > 0;
+          const hayFotoActual = msServicioExistente && msServicioExistente['Foto Transferencia'];
+          if (!hayFotoNueva && !hayFotoActual) {
+            return alert('Para marcar el servicio en Verde con Forma de Pago Transferencia, debe adjuntar la Foto de Transferencia.');
+          }
+        }
+      }
+
+      const fd = new FormData();
+      fd.append('estado', msEstadoActual);
+      if (msAreaSeleccionada) fd.append('area', msAreaSeleccionada);
+      if (msActividadSeleccionada) fd.append('actividad', msActividadSeleccionada);
+      if (msTransportadoraId) fd.append('transportadora', msTransportadoraId);
+      fd.append('proveedor', msProveedorSeleccionados.map(p => p.id).join(','));
+      fd.append('vehiculo', document.getElementById('ms-vehiculo').value);
+      fd.append('remolque', document.getElementById('ms-remolque').value);
+      if (msPl1Id) fd.append('pl1', msPl1Id);
+      fd.append('unidad', document.getElementById('ms-unidad').value);
+      fd.append('cantidad', document.getElementById('ms-cantidad').value);
+      fd.append('valorUnitario', document.getElementById('ms-valor-unitario').value);
+      fd.append('origen', document.getElementById('ms-origen').value);
+      fd.append('destino', document.getElementById('ms-destino').value);
+      if (msContexto.modalidad === 'CREDITO') fd.append('manifiesto', document.getElementById('ms-manifiesto').value);
+      fd.append('etapa', document.getElementById('ms-etapa').value);
+      fd.append('muelle', document.getElementById('ms-muelle').value);
+      fd.append('horaInicio', document.getElementById('ms-hora-inicio').value);
+      fd.append('duracion', document.getElementById('ms-duracion').value);
+      fd.append('horaFinal', document.getElementById('ms-hora-final').value);
+      fd.append('grupoDtjo', msGrupoDtjoActual);
+      fd.append('auxiliares', msAuxiliaresSeleccionados.join(', '));
+      fd.append('notas', document.getElementById('ms-notas').value);
+      if (formaDePago) fd.append('formaDePago', formaDePago);
+      if (msContexto.modalidad !== 'CREDITO' && Number(formaDePago) === 2) {
+        fd.append('fechaTransferencia', document.getElementById('ms-fecha-transferencia').value);
+      }
+      fd.append('observaciones', document.getElementById('ms-observaciones').value);
+      if (msContexto.modalidad === 'CREDITO') fd.append('telefono', document.getElementById('ms-telefono').value);
+
+      const fileDoc = document.getElementById('ms-foto-documento').files[0];
+      const fileEvi = document.getElementById('ms-foto-evidencia').files[0];
+      const fileTrans = document.getElementById('ms-foto-transferencia').files[0];
+      if (fileDoc) fd.append('fotoDocumento', fileDoc);
+      if (fileEvi) fd.append('fotoEvidencia', fileEvi);
+      if (fileTrans) fd.append('fotoTransferencia', fileTrans);
+
+      if (modalServicio.modo === 'editar') {
+        const idReciboSel = document.getElementById('ms-idrecibo-select');
+        if (idReciboSel.style.display !== 'none' && idReciboSel.value) {
+          fd.append('idRecibo', idReciboSel.value);
+        }
+      }
+
+      const btn = document.getElementById('btn-guardar-servicio');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const url = (modalServicio.modo === 'crear')
+          ? `/facturacion/api/recibos/${encodeURIComponent(modalServicio.idRecibo)}/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`
+          : `/facturacion/api/servicios/${encodeURIComponent(modalServicio.idServicio)}?usuario=${encodeURIComponent(CONFIG.usuario)}`;
+
+        const resp = await fetch(url, {
+          method: (modalServicio.modo === 'crear') ? 'POST' : 'PUT',
+          body: fd
+        });
+        const data = await resp.json();
+
+        if (resp.ok && data.ok) {
+          cerrarModalServicio();
+          await verDetalleRecibo(modalServicio.idRecibo);
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo guardar el servicio.'));
+        }
+      } catch (e) {
+        alert('Error de conexión al guardar el servicio.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = (modalServicio.modo === 'crear') ? 'Crear Servicio' : 'Guardar Cambios';
+      }
+    }
+
+    async function eliminarServicio(idServicio) {
+      if (!confirm(`¿Está seguro de que desea eliminar el servicio "${idServicio}"?\n\nEsta acción no se puede deshacer.`)) return;
+      const idRecibo = reciboDetalleActual ? reciboDetalleActual.recibo.IdRecibo : null;
+      try {
+        const resp = await fetch(`/facturacion/api/servicios/${encodeURIComponent(idServicio)}?usuario=${encodeURIComponent(CONFIG.usuario)}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          if (idRecibo) await verDetalleRecibo(idRecibo);
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo eliminar el servicio.'));
+        }
+      } catch (e) {
+        alert('Error de conexión al eliminar el servicio.');
+      }
     }
 
     function formatMiles(num) {
@@ -3788,6 +5644,49 @@
       } catch (e) {
         return String(dtStr);
       }
+    }
+
+    function formatFechaCorta(dtStr) {
+      if (!dtStr) return '-';
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const d = new Date(dtStr);
+      if (isNaN(d.getTime())) return String(dtStr);
+      return `${String(d.getDate()).padStart(2, '0')} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    // Mensajes de WhatsApp para el recibo (punto 9): "pendiente" (amarillo, falta validar
+    // servicios) o "completo" (verde, todos los servicios en Green).
+    function construirMensajeWhatsAppRecibo(r, tots, estadoColor) {
+      const recibo = r['Consecutivo Recibo'] || r.IdRecibo;
+      const cliente = r.buscarCliente || r.razonSocial || '';
+      const placa = r.Placa || '';
+      const operacion = r['Operación'] || '';
+      const totalTexto = formatMiles(tots.total);
+      const fechaTexto = formatFechaCorta(r.Fecha);
+
+      if (estadoColor === 'Green') {
+        return '🟦🟧 *LOGYSER Nit: 900.318.733-1*\n\n' +
+          'Hola, abre aquí para ver el detalle de tu servicio:\n\n' +
+          `🔗reciboprovisional.logyser.com/recibo/${r.IdRecibo}\n\n` +
+          `*${operacion}*\n` +
+          `- *Cliente:* _${cliente}_\n` +
+          `- *Placa:* ${placa} 🚚\n` +
+          `✅ *Total Pago:* *${totalTexto}*\n` +
+          `- *Fecha:* ${fechaTexto}\n` +
+          `- *Recibo:* ${recibo}\n\n` +
+          '🧾 Recuerda que puedes solicitar tu factura aqui:\n' +
+          'wa.me/573173645618';
+      }
+
+      return '🟧🟦 *LOGYSER Nit: 900.318.733-1*✍🏻\n\n' +
+        'Hola, estos son los datos de tu servicio:\n\n' +
+        `*${operacion}*\n` +
+        `- *Cliente:* _${cliente}_\n` +
+        `- *Placa:* ${placa} 🚛\n` +
+        `📌 *Total Pago:* *${totalTexto}*\n` +
+        `- *Fecha:* ${fechaTexto}\n` +
+        `- *Recibo:* ${recibo}\n` +
+        '*Estado:* *PENDIENTE* 🚫';
     }
 
   </script>
