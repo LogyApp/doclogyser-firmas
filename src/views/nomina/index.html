@@ -526,13 +526,16 @@
         <button type="button" class="bio-subnav-btn" id="btnBioTabRutas" onclick="switchBioSubTab('rutas')">
           <span>📍</span> Recorridos GPS
         </button>
-        <button type="button" class="bio-subnav-btn" id="btnBioTabSinSalida" onclick="switchBioSubTab('sinsalida')">
-          <span>⚠️</span> Turnos sin Salida
+        <button type="button" class="bio-subnav-btn" id="btnBioTabReportes" onclick="switchBioSubTab('reportes')">
+          <span>📊</span> Reportes
+        </button>
+        <button type="button" class="bio-subnav-btn" id="btnBioTabCoords" style="display:none" onclick="switchBioSubTab('coordenadas')">
+          <span>🗺️</span> Direcciones y Coordenadas
         </button>
       </div>
 
       <!-- Filtros Globales Biométrico -->
-      <div class="card" style="margin-bottom: 16px;">
+      <div class="card" style="margin-bottom: 16px;" id="bioGlobalFilters">
         <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between;">
           <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
             <div id="bioFilterGroupRange" style="display:flex; gap:8px; align-items:center;">
@@ -543,12 +546,6 @@
               <div class="filtro-field" style="margin-bottom:0">
                 <label style="font-size:.72rem">Hasta</label>
                 <input type="date" id="bioFilterEndDate" style="padding:6px 10px; font-size:.82rem;">
-              </div>
-            </div>
-            <div id="bioFilterGroupSingle" style="display:none; gap:8px; align-items:center;">
-              <div class="filtro-field" style="margin-bottom:0">
-                <label style="font-size:.72rem">Fecha de Consulta</label>
-                <input type="date" id="bioFilterSingleDate" style="padding:6px 10px; font-size:.82rem;">
               </div>
             </div>
             <div class="filtro-field" style="margin-bottom:0; min-width:230px;">
@@ -590,16 +587,15 @@
             <table class="retiros-table" id="bioAsistenciaTable">
               <thead>
                 <tr>
-                  <th style="width:200px">Trabajador</th>
-                  <th style="width:140px">Cargo</th>
-                  <th style="width:150px">Operación Asignada</th>
-                  <th style="width:140px">Distancia a Sede</th>
-                  <th style="width:120px">Clasificación</th>
-                  <th style="width:90px">Tipo</th>
-                  <th style="width:140px">Fecha / Hora</th>
-                  <th style="width:80px">Score</th>
-                  <th style="width:90px">Método</th>
-                  <th style="width:90px; text-align:center">GPS</th>
+                  <th style="width:100px; text-align:center" data-sort="gps">GPS<span id="asiSort-gps" class="sort-indicator"></span></th>
+                  <th style="width:220px" data-sort="trabajador">Trabajador<span id="asiSort-trabajador" class="sort-indicator"></span></th>
+                  <th style="width:90px" data-sort="tipo">Tipo<span id="asiSort-tipo" class="sort-indicator"></span></th>
+                  <th style="width:140px" data-sort="fecha_hora">Fecha / Hora<span id="asiSort-fecha_hora" class="sort-indicator"></span></th>
+                  <th style="width:100px" data-sort="metodo">Método<span id="asiSort-metodo" class="sort-indicator"></span></th>
+                  <th style="width:90px" data-sort="score">Score<span id="asiSort-score" class="sort-indicator"></span></th>
+                  <th style="width:130px" data-sort="clasificacion">Clasificación<span id="asiSort-clasificacion" class="sort-indicator"></span></th>
+                  <th style="width:200px" data-sort="dist_asignada">Operación Asignada<span id="asiSort-dist_asignada" class="sort-indicator"></span></th>
+                  <th style="width:200px" data-sort="dist_cercana">Operación más Cercana<span id="asiSort-dist_cercana" class="sort-indicator"></span></th>
                 </tr>
               </thead>
               <tbody id="bioAsistenciaBody"></tbody>
@@ -638,43 +634,185 @@
         </div>
       </div>
 
-      <!-- Subpanel 3: Turnos sin Salida -->
-      <div id="bioSubpanelSinSalida" style="display:none">
-        <div class="bio-kpis-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-          <div class="bio-kpi-card">
-            <div class="bio-kpi-val" style="color:var(--retiro);" id="bioStatSinSalidaCount">0</div>
-            <div class="bio-kpi-lbl">Turnos Activos sin Cierre</div>
+      <!-- Subpanel 3: Reportes -->
+      <div id="bioSubpanelReportes" style="display:none">
+        <div class="bio-pills-group" style="margin-bottom:14px;">
+          <button type="button" class="bio-pill active" id="btnBioRepCierres" onclick="switchBioReporte('cierres')">Salida no marcada (cierre automático)</button>
+          <button type="button" class="bio-pill" id="btnBioRepSinReg" onclick="switchBioReporte('sinregistro')">Sin registro de asistencia</button>
+        </div>
+
+        <div id="bioRepCierres">
+          <div class="bio-kpis-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="bio-kpi-card">
+              <div class="bio-kpi-val" style="color:var(--retiro);" id="bioStatCierresTotal">0</div>
+              <div class="bio-kpi-lbl">Turnos sin salida marcada</div>
+            </div>
+            <div class="bio-kpi-card">
+              <div class="bio-kpi-val" id="bioStatCierresTrab">0</div>
+              <div class="bio-kpi-lbl">Trabajadores involucrados</div>
+            </div>
           </div>
-          <div class="bio-kpi-card">
-            <div class="bio-kpi-val" id="bioStatIngresosDia">0</div>
-            <div class="bio-kpi-lbl">Total Ingresos Registrados en la Fecha</div>
+          <div class="card">
+            <div class="contador-resultados" id="bioCierresContador"></div>
+            <div class="table-container">
+              <table class="retiros-table" id="bioCierresTable">
+                <thead>
+                  <tr>
+                    <th style="width:230px" data-sort="trabajador">Trabajador<span id="repSort-cierres-trabajador" class="sort-indicator"></span></th>
+                    <th style="width:160px" data-sort="cargo">Cargo<span id="repSort-cierres-cargo" class="sort-indicator"></span></th>
+                    <th style="width:150px" data-sort="clasificacion">Clasificación<span id="repSort-cierres-clasificacion" class="sort-indicator"></span></th>
+                    <th style="width:170px" data-sort="fecha_entrada">Entrada<span id="repSort-cierres-fecha_entrada" class="sort-indicator"></span></th>
+                    <th style="width:170px" data-sort="fecha_salida">Salida registrada<span id="repSort-cierres-fecha_salida" class="sort-indicator"></span></th>
+                    <th style="width:170px" class="no-sort">Resultado</th>
+                  </tr>
+                </thead>
+                <tbody id="bioCierresBody"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="bioCierresEmpty" style="display:none">No hay turnos con cierre automático en el rango seleccionado.</div>
+          </div>
+        </div>
+
+        <div id="bioRepSinReg" style="display:none">
+          <div class="bio-kpis-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="bio-kpi-card">
+              <div class="bio-kpi-val" style="color:var(--retiro);" id="bioStatSinRegDias">0</div>
+              <div class="bio-kpi-lbl">Días sin registro</div>
+            </div>
+            <div class="bio-kpi-card">
+              <div class="bio-kpi-val" id="bioStatSinRegTrab">0</div>
+              <div class="bio-kpi-lbl">Trabajadores con días sin registro</div>
+            </div>
+            <div class="bio-kpi-card">
+              <div class="bio-kpi-val" id="bioStatSinRegEval">0</div>
+              <div class="bio-kpi-lbl">Trabajadores evaluados</div>
+            </div>
+          </div>
+          <div class="bio-pills-group" style="margin-bottom:12px;">
+            <button type="button" class="bio-pill active" id="btnBioSinRegResumen" onclick="switchBioSinRegVista('resumen')">Resumen por trabajador</button>
+            <button type="button" class="bio-pill" id="btnBioSinRegDetalle" onclick="switchBioSinRegVista('detalle')">Detalle por día</button>
+          </div>
+
+          <div class="card" id="bioSinRegResumenCard">
+            <div class="contador-resultados" id="bioSinRegResContador"></div>
+            <div class="table-container">
+              <table class="retiros-table" id="bioSinRegResTable">
+                <thead>
+                  <tr>
+                    <th style="width:230px" data-sort="trabajador">Trabajador<span id="repSort-resumen-trabajador" class="sort-indicator"></span></th>
+                    <th style="width:160px" data-sort="cargo">Cargo<span id="repSort-resumen-cargo" class="sort-indicator"></span></th>
+                    <th style="width:150px" data-sort="clasificacion">Clasificación<span id="repSort-resumen-clasificacion" class="sort-indicator"></span></th>
+                    <th style="width:160px" data-sort="operacion">Operación<span id="repSort-resumen-operacion" class="sort-indicator"></span></th>
+                    <th style="width:130px" data-sort="diasSinRegistro">Días sin registro<span id="repSort-resumen-diasSinRegistro" class="sort-indicator"></span></th>
+                    <th style="width:130px" data-sort="diasEvaluados">Días evaluados<span id="repSort-resumen-diasEvaluados" class="sort-indicator"></span></th>
+                    <th style="width:320px" class="no-sort">Fechas sin registro</th>
+                  </tr>
+                </thead>
+                <tbody id="bioSinRegResBody"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="bioSinRegResEmpty" style="display:none">Todos los trabajadores tienen asistencia o novedad en el rango seleccionado.</div>
+          </div>
+
+          <div class="card" id="bioSinRegDetalleCard" style="display:none">
+            <div class="contador-resultados" id="bioSinRegContador"></div>
+            <div class="table-container">
+              <table class="retiros-table" id="bioSinRegTable">
+                <thead>
+                  <tr>
+                    <th style="width:230px" data-sort="trabajador">Trabajador<span id="repSort-sinreg-trabajador" class="sort-indicator"></span></th>
+                    <th style="width:160px" data-sort="cargo">Cargo<span id="repSort-sinreg-cargo" class="sort-indicator"></span></th>
+                    <th style="width:150px" data-sort="clasificacion">Clasificación<span id="repSort-sinreg-clasificacion" class="sort-indicator"></span></th>
+                    <th style="width:160px" data-sort="operacion">Operación<span id="repSort-sinreg-operacion" class="sort-indicator"></span></th>
+                    <th style="width:200px" data-sort="dia">Día<span id="repSort-sinreg-dia" class="sort-indicator"></span></th>
+                    <th style="width:190px" class="no-sort">Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="bioSinRegBody"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="bioSinRegEmpty" style="display:none">Todos los trabajadores tienen asistencia o novedad en el rango seleccionado.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subpanel 4: Direcciones y Coordenadas de Operaciones -->
+      <div id="bioSubpanelCoords" style="display:none">
+        <div class="card">
+          <div class="filtros-toggle" id="cooFiltrosToggle">
+            <span class="filtros-toggle-left">
+              &#128269; Filtros de Consulta
+              <span class="filtros-badge" id="cooFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="cooFiltrosChevron">&#9656;</span>
+          </div>
+          <div class="filtros-body" id="cooFiltrosBody" style="display:none">
+            <div class="filtros-grid">
+              <div class="filtro-field"><label>Regional</label><select id="cooFilterRegional"></select></div>
+              <div class="filtro-field"><label>Operación</label><select id="cooFilterOperacion"></select></div>
+              <div class="filtro-field"><label>Buscar</label><input type="text" id="cooFilterBusqueda" placeholder="Operación, Cod Siesa o dirección..."></div>
+            </div>
+            <button type="button" class="btn-reset" onclick="resetFiltrosCoords()">&#8635; Limpiar filtros</button>
           </div>
         </div>
 
         <div class="card">
+          <div class="contador-resultados" id="cooContador"></div>
           <div class="table-container">
-            <table class="retiros-table" id="bioSinSalidaTable">
+            <table class="retiros-table" id="cooTable">
               <thead>
                 <tr>
-                  <th style="width:200px">Trabajador</th>
-                  <th style="width:140px">Cargo</th>
-                  <th style="width:150px">Operación Asignada</th>
-                  <th style="width:140px">Distancia a Sede</th>
-                  <th style="width:120px">Clasificación</th>
-                  <th style="width:110px">Hora Entrada</th>
-                  <th style="width:130px">Tiempo Transcurrido</th>
-                  <th style="width:90px; text-align:center">GPS</th>
+                  <th style="width:90px" class="no-sort">Acciones</th>
+                  <th style="width:130px" data-sort="regional">Regional<span id="cooSort-regional" class="sort-indicator"></span></th>
+                  <th style="width:180px" data-sort="operacion">Operación<span id="cooSort-operacion" class="sort-indicator"></span></th>
+                  <th style="width:110px" data-sort="codSiesa">Cod Siesa<span id="cooSort-codSiesa" class="sort-indicator"></span></th>
+                  <th style="width:300px" data-sort="direccion">Dirección<span id="cooSort-direccion" class="sort-indicator"></span></th>
+                  <th style="width:120px" data-sort="latitud">Latitud<span id="cooSort-latitud" class="sort-indicator"></span></th>
+                  <th style="width:120px" data-sort="longitud">Longitud<span id="cooSort-longitud" class="sort-indicator"></span></th>
                 </tr>
               </thead>
-              <tbody id="bioSinSalidaBody"></tbody>
+              <tbody id="cooBody"></tbody>
             </table>
           </div>
-          <div class="empty-state" id="bioSinSalidaEmpty" style="display:none">Todos los ingresos de esta fecha cuentan con salida registrada.</div>
+          <div class="empty-state" id="cooEmpty" style="display:none">No hay operaciones con los filtros seleccionados.</div>
         </div>
       </div>
     </div>
 
   </div>
+
+<!-- Modal edición de dirección y coordenadas de una operación -->
+<div class="modal-full-overlay" id="cooModalOverlay">
+  <div class="modal-full" style="max-width: 760px; height: auto; max-height: 94vh;">
+    <div class="modal-full-header">
+      <span id="cooModalTitulo">Editar operación</span>
+      <button type="button" onclick="cerrarCooModal()">&#10005; Cerrar</button>
+    </div>
+    <div class="modal-ficha-body">
+      <div class="ficha-field" style="margin-bottom:12px">
+        <label>Dirección</label>
+        <div style="display:flex; gap:8px">
+          <input type="text" id="cooInpDireccion" maxlength="255" placeholder="Ej: Calle 10 # 20-30, Medellín">
+          <button type="button" class="btn-tomo-cargo" style="margin:0; white-space:nowrap" onclick="buscarDireccionCoo()">🔎 Ubicar</button>
+        </div>
+      </div>
+      <div class="ficha-grid" style="margin-bottom:10px">
+        <div class="ficha-field"><label>Latitud</label><input type="text" id="cooInpLat" inputmode="decimal" placeholder="6.2442"></div>
+        <div class="ficha-field"><label>Longitud</label><input type="text" id="cooInpLng" inputmode="decimal" placeholder="-75.5812"></div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px">
+        <button type="button" class="btn-reset" onclick="usarMiUbicacionCoo()">📍 Usar mi ubicación</button>
+        <button type="button" class="btn-reset" onclick="limpiarCoordenadasCoo()">Quitar coordenadas</button>
+        <span style="font-size:.76rem; color:var(--text-muted)">Haga clic en el mapa o arrastre el marcador para fijar la posición.</span>
+      </div>
+      <div id="cooMap" style="width:100%; height:340px; border:1px solid var(--border); border-radius:8px;"></div>
+    </div>
+    <div class="ficha-footer">
+      <button type="button" class="btn-reset" onclick="cerrarCooModal()">Cancelar</button>
+      <button type="button" class="btn-guardar-ficha" id="cooBtnGuardar" onclick="guardarCoo()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal GPS Biométrico (Ubicación de marcación y distancia a sede asignada) -->
 <div class="modal-full-overlay" id="bioGPSModalOverlay">
@@ -1733,7 +1871,7 @@
     selectedClas: '',
     asistenciaData: [],
     rutasData: [],
-    sinSalidaData: [],
+    asistSort: { col: 'fecha_hora', order: 'desc' },
     debounceTimer: null
   };
 
@@ -1748,14 +1886,15 @@
     _bioState.activeSubTab = subTab;
     document.getElementById('btnBioTabAsistencia').classList.toggle('active', subTab === 'asistencia');
     document.getElementById('btnBioTabRutas').classList.toggle('active', subTab === 'rutas');
-    document.getElementById('btnBioTabSinSalida').classList.toggle('active', subTab === 'sinsalida');
+    document.getElementById('btnBioTabReportes').classList.toggle('active', subTab === 'reportes');
+    document.getElementById('btnBioTabCoords').classList.toggle('active', subTab === 'coordenadas');
 
     document.getElementById('bioSubpanelAsistencia').style.display = subTab === 'asistencia' ? 'block' : 'none';
     document.getElementById('bioSubpanelRutas').style.display = subTab === 'rutas' ? 'block' : 'none';
-    document.getElementById('bioSubpanelSinSalida').style.display = subTab === 'sinsalida' ? 'block' : 'none';
+    document.getElementById('bioSubpanelReportes').style.display = subTab === 'reportes' ? 'block' : 'none';
+    document.getElementById('bioSubpanelCoords').style.display = subTab === 'coordenadas' ? 'block' : 'none';
+    document.getElementById('bioGlobalFilters').style.display = subTab === 'coordenadas' ? 'none' : 'block';
 
-    document.getElementById('bioFilterGroupRange').style.display = subTab === 'sinsalida' ? 'none' : 'flex';
-    document.getElementById('bioFilterGroupSingle').style.display = subTab === 'sinsalida' ? 'flex' : 'none';
 
     if (subTab === 'rutas') {
       setTimeout(initBioMainMap, 120);
@@ -1773,14 +1912,12 @@
 
     const startDateEl = document.getElementById('bioFilterStartDate');
     const endDateEl = document.getElementById('bioFilterEndDate');
-    const singleDateEl = document.getElementById('bioFilterSingleDate');
     const searchEl = document.getElementById('bioFilterWorkerSearch');
 
     if (startDateEl) startDateEl.value = toIso(sevenDaysAgo);
     if (endDateEl) endDateEl.value = toIso(today);
-    if (singleDateEl) singleDateEl.value = toIso(today);
 
-    if (CONFIG.isSstOnly) {
+    if (_cfg.isSstOnly) {
       _bioState.selectedClas = 'sst';
       document.querySelectorAll('#bioClassificationPills .bio-pill').forEach(btn => {
         if (btn.getAttribute('data-clas') !== 'sst') {
@@ -1795,7 +1932,6 @@
 
     if (startDateEl) startDateEl.addEventListener('change', () => fetchBiometricoData());
     if (endDateEl) endDateEl.addEventListener('change', () => fetchBiometricoData());
-    if (singleDateEl) singleDateEl.addEventListener('change', () => fetchBiometricoData());
 
     if (searchEl) {
       searchEl.addEventListener('input', () => {
@@ -1806,7 +1942,7 @@
 
     document.querySelectorAll('#bioClassificationPills .bio-pill').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (CONFIG.isSstOnly) return;
+        if (_cfg.isSstOnly) return;
         document.querySelectorAll('#bioClassificationPills .bio-pill').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         _bioState.selectedClas = btn.getAttribute('data-clas');
@@ -1873,15 +2009,12 @@
     if (distM == null) {
       return '<span class="badge-legal badge-dist-nocoord">Sin coords sede</span>';
     }
-    if (distM <= 100) {
-      return `<span class="badge-legal badge-dist-cerca" title="A ${distM} m de la operación asignada">📍 ${distM} m (En sede)</span>`;
+    const txt = distM >= 1000 ? `${(distM / 1000).toFixed(1)} km` : `${Math.round(distM)} m`;
+    if (distM <= 300) {
+      return `<span class="badge-legal badge-dist-cerca" title="A ${txt} de la operación">📍 ${txt} (En sede)</span>`;
     }
-    if (distM <= 1000) {
-      return `<span class="badge-legal badge-dist-media" title="A ${distM} m de la operación asignada">📍 ${distM} m</span>`;
-    }
-    const km = (distM / 1000).toFixed(1);
-    const cls = distM > 10000 ? 'badge-dist-lejos' : 'badge-dist-media';
-    return `<span class="badge-legal ${cls}" title="A ${km} km de la operación asignada">📍 ${km} km</span>`;
+    const cls = distM <= 3000 ? 'badge-dist-media' : 'badge-dist-lejos';
+    return `<span class="badge-legal ${cls}" title="A ${txt} de la operación">📍 ${txt}</span>`;
   }
 
   async function fetchBiometricoData() {
@@ -1890,8 +2023,10 @@
       await fetchBioAsistencia();
     } else if (_bioState.activeSubTab === 'rutas') {
       await fetchBioRutas();
-    } else if (_bioState.activeSubTab === 'sinsalida') {
-      await fetchBioSinSalida();
+    } else if (_bioState.activeSubTab === 'reportes') {
+      await fetchBioReporte();
+    } else if (_bioState.activeSubTab === 'coordenadas') {
+      await fetchBioCoords();
     }
   }
 
@@ -1923,11 +2058,49 @@
     }
   }
 
-  function renderBioMarcaciones(list) {
+  function bioNombreLimpio(t) { return t && t.includes('**') ? t.split('**')[1].trim() : (t || ''); }
+
+  function bioAsistenciaSortValue(m, col) {
+    switch (col) {
+      case 'gps': return m.latitud && m.longitud ? 1 : 0;
+      case 'trabajador': return bioNombreLimpio(m.trabajador).toLowerCase();
+      case 'tipo': return m.tipo || '';
+      case 'fecha_hora': return m.fecha_hora ? new Date(m.fecha_hora).getTime() : null;
+      case 'metodo': return m.es_manual ? 'MANUAL' : 'FACIAL';
+      case 'score': return m.score != null ? parseFloat(m.score) : null;
+      case 'clasificacion': return m.clasificacion || '';
+      case 'dist_asignada': return m.distancia_metros;
+      case 'dist_cercana': return m.operacion_cercana_dist;
+      default: return null;
+    }
+  }
+
+  function sortAsistencia(list) {
+    const { col, order } = _bioState.asistSort;
+    const dir = order === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => {
+      const x = bioAsistenciaSortValue(a, col), y = bioAsistenciaSortValue(b, col);
+      const vx = x == null || x === '', vy = y == null || y === '';
+      if (vx || vy) return vx && vy ? 0 : vx ? 1 : -1; // vacíos siempre al final
+      if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
+      return String(x).localeCompare(String(y), 'es') * dir;
+    });
+  }
+
+  function renderBioMarcaciones(listaOriginal) {
     const tbody = document.getElementById('bioAsistenciaBody');
     const empty = document.getElementById('bioAsistenciaEmpty');
     const contador = document.getElementById('bioAsistenciaContador');
     if (!tbody) return;
+
+    const list = sortAsistencia(listaOriginal);
+    ['gps', 'trabajador', 'tipo', 'fecha_hora', 'metodo', 'score', 'clasificacion', 'dist_asignada', 'dist_cercana'].forEach(k => {
+      const span = document.getElementById('asiSort-' + k);
+      if (!span) return;
+      const activa = _bioState.asistSort.col === k;
+      span.textContent = activa ? (_bioState.asistSort.order === 'asc' ? ' ▲' : ' ▼') : '';
+      span.style.color = activa ? 'var(--primary)' : '';
+    });
 
     tbody.innerHTML = '';
     contador.textContent = `${list.length} marcación(es) encontrada(s)`;
@@ -1940,7 +2113,7 @@
 
     list.forEach(m => {
       const tr = document.createElement('tr');
-      const nombreLimpio = m.trabajador.includes('**') ? m.trabajador.split('**')[1].trim() : m.trabajador;
+      const nombreLimpio = bioNombreLimpio(m.trabajador);
       const isEntrada = m.tipo === 'ENTRADA';
       const fechaHoraStr = m.fecha_hora ? new Date(m.fecha_hora).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '—';
       const scoreVal = m.score != null ? parseFloat(m.score) : null;
@@ -1952,27 +2125,39 @@
         : '<span class="badge-legal badge-dist-media">FACIAL</span>';
 
       const opAsignadaStr = m.operacion_asignada || m.operacion || '—';
-      const distBadgeHtml = formatDistanciaBadge(m.distancia_metros);
 
       const gpsBtnHtml = (m.latitud && m.longitud)
         ? `<button type="button" class="btn-tomo-cargo" style="padding:4px 8px; font-size:.72rem; margin:0;" onclick="openBioGPSModal(${m.latitud}, ${m.longitud}, '${esc(nombreLimpio)}', '${m.tipo}', '${esc(opAsignadaStr)}', ${m.op_lat || 'null'}, ${m.op_lng || 'null'}, ${m.distancia_metros || 'null'})">📍 Ver Mapa</button>`
         : '<span style="color:#94a3b8; font-size:.75rem;">Sin GPS</span>';
 
+      const cercanaHtml = m.operacion_cercana
+        ? `<strong style="color:#b45309; font-size:.82rem;">${esc(m.operacion_cercana)}</strong><br>${formatDistanciaBadge(m.operacion_cercana_dist)}`
+        : '<span style="color:#94a3b8;">—</span>';
+
       tr.innerHTML = `
-        <td><strong>${esc(nombreLimpio)}</strong><br><small style="color:var(--text-muted);">${esc(m.identificacion)}</small></td>
-        <td><span>${esc(m.cargo || '—')}</span></td>
-        <td><strong style="color:var(--primary); font-size:.82rem;">${esc(opAsignadaStr)}</strong><br><small style="color:#94a3b8;">${esc(m.regional || '')}</small></td>
-        <td>${distBadgeHtml}</td>
-        <td>${getClasBadge(m.clasificacion)}</td>
+        <td style="text-align:center;">${gpsBtnHtml}</td>
+        <td><strong>${esc(nombreLimpio)}</strong><br><small style="color:var(--text-muted);">${esc(m.identificacion)}${m.cargo ? ' · ' + esc(m.cargo) : ''}</small></td>
         <td><span class="badge-legal ${isEntrada ? 'badge-dist-cerca' : 'badge-dist-media'}">${m.tipo}</span></td>
         <td style="font-size:.8rem;">${fechaHoraStr}</td>
-        <td>${scoreHtml}</td>
         <td>${metodoHtml}</td>
-        <td style="text-align:center;">${gpsBtnHtml}</td>
+        <td>${scoreHtml}</td>
+        <td>${getClasBadge(m.clasificacion)}</td>
+        <td><strong style="color:var(--primary); font-size:.82rem;">${esc(opAsignadaStr)}</strong><br>${formatDistanciaBadge(m.distancia_metros)}</td>
+        <td>${cercanaHtml}</td>
       `;
       tbody.appendChild(tr);
     });
   }
+
+  document.querySelectorAll('#bioAsistenciaTable thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', (e) => {
+      if (e.target.classList.contains('th-resize')) return;
+      const col = th.getAttribute('data-sort');
+      if (_bioState.asistSort.col === col) _bioState.asistSort.order = _bioState.asistSort.order === 'asc' ? 'desc' : 'asc';
+      else _bioState.asistSort = { col, order: 'asc' };
+      renderBioMarcaciones(_bioState.asistenciaData);
+    });
+  });
 
   function computeBioMarcacionesStats(list) {
     document.getElementById('bioStatTotalMarcaciones').textContent = list.length;
@@ -2013,6 +2198,20 @@
     }
   }
 
+  function bioEtiquetaPunto(info, hayCoords) {
+    if (!hayCoords) return { texto: 'Sin dato', html: '<span style="color:#94a3b8">Sin dato</span>', esOp: false };
+    if (info) return { texto: info.operacion, html: `<strong style="color:#15803d">${esc(info.operacion)}</strong> <span style="color:#94a3b8">(${info.dist} m)</span>`, esOp: true };
+    return { texto: 'Otro lugar (no registrado)', html: '<span style="color:#b45309">Otro lugar (no registrado)</span>', esOp: false };
+  }
+
+  function bioPuntosMov(mov) {
+    const sale = bioEtiquetaPunto(mov.origen, mov.punto_ini_lat != null && mov.punto_ini_lng != null);
+    const llega = mov.estado === 'ACTIVO'
+      ? { texto: 'En curso', html: '<span style="color:#0369a1">En curso</span>', esOp: false }
+      : bioEtiquetaPunto(mov.llegada, mov.punto_fin_lat != null && mov.punto_fin_lng != null);
+    return { sale, llega };
+  }
+
   function renderBioRoutes(list) {
     const container = document.getElementById('bioRoutesList');
     if (!container) return;
@@ -2032,10 +2231,15 @@
       card.className = 'bio-route-card';
       const nombreLimpio = mov.trabajador.includes('**') ? mov.trabajador.split('**')[1].trim() : mov.trabajador;
       const fechaStr = mov.fecha_inicio ? new Date(mov.fecha_inicio).toLocaleDateString('es-CO') : '—';
+      const { sale, llega } = bioPuntosMov(mov);
 
       card.innerHTML = `
         <div style="font-weight:700; color:var(--text); margin-bottom:2px;">${esc(nombreLimpio)}</div>
         <div style="font-size:.74rem; color:var(--primary); font-weight:600;">ID: ${esc(mov.identificacion)} · ${esc(mov.clasificacion?.toUpperCase() || '')}</div>
+        <div style="font-size:.74rem; margin-top:6px; line-height:1.5;">
+          <div>🟢 Sale de: ${sale.html}</div>
+          <div>🔴 Llega a: ${llega.html}</div>
+        </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:.72rem; color:var(--text-muted);">
           <span>📅 ${fechaStr}</span>
           <span class="badge-legal ${mov.estado === 'ACTIVO' ? 'badge-dist-cerca' : 'badge-dist-media'}">${mov.estado}</span>
@@ -2059,12 +2263,13 @@
     document.getElementById('bioRouteMetrics').style.display = 'flex';
 
     if (bioMainMapLayerGroup) bioMainMapLayerGroup.clearLayers();
+    _bioRouteToken++;
 
     try {
       const res = await fetch(`/nomina/api/biometrico/movimientos/${mov.id}/waypoints?usuario=${encodeURIComponent(usuario)}`);
       const data = await res.json();
       if (data.ok && data.waypoints && data.waypoints.length > 0) {
-        plotBioWaypoints(data.waypoints);
+        plotBioWaypoints(data.waypoints, bioPuntosMov(mov));
       } else if (mov.lat_inicio && mov.lng_inicio) {
         const startLatLng = [parseFloat(mov.lat_inicio), parseFloat(mov.lng_inicio)];
         L.marker(startLatLng).addTo(bioMainMapLayerGroup).bindPopup('Inicio del recorrido').openPopup();
@@ -2075,13 +2280,48 @@
     }
   }
 
-  function plotBioWaypoints(waypoints) {
+  // El recorrido real solo trae los puntos que el dispositivo alcanzó a registrar; si son pocos se estima el trayecto por vías.
+  let _bioRouteToken = 0;
+  function bioRecorridoEsEscaso(wps) {
+    if (wps.length <= 3) return true;
+    return wps.some((wp, i) => i > 0 && bioHaversineKm(wps[i - 1], wp) > 1);
+  }
+  function bioHaversineKm(a, b) {
+    const R = 6371, rad = d => d * Math.PI / 180;
+    const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  async function trazarRutaEstimadaBio(waypoints, token) {
+    const pts = waypoints.map(wp => ({ lat: parseFloat(wp.lat), lng: parseFloat(wp.lng) }));
+    let usados = pts;
+    if (pts.length > 25) { // límite razonable de coordenadas por consulta
+      const paso = (pts.length - 1) / 24;
+      usados = Array.from({ length: 25 }, (_, i) => pts[Math.round(i * paso)]);
+    }
+    const coords = usados.map(p => `${p.lng},${p.lat}`).join(';');
+    try {
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+      const data = await res.json();
+      if (token !== _bioRouteToken || data.code !== 'Ok' || !data.routes?.length) return;
+      const linea = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      L.polyline(linea, { color: '#0f766e', weight: 5, opacity: 0.9 }).addTo(bioMainMapLayerGroup)
+        .bindPopup(`Ruta estimada por vías: ${(data.routes[0].distance / 1000).toFixed(2)} km`);
+      document.getElementById('bioActiveRouteWorker').textContent += ' · ruta estimada por vías (el dispositivo registró pocos puntos)';
+    } catch (err) {
+      console.error('[Biométrico] No se pudo estimar la ruta por vías:', err);
+    }
+  }
+
+  function plotBioWaypoints(waypoints, puntos) {
     const latlngs = waypoints.map(wp => [parseFloat(wp.lat), parseFloat(wp.lng)]);
-    const polyline = L.polyline(latlngs, {
-      color: '#0f766e',
-      weight: 4,
-      opacity: 0.85
-    }).addTo(bioMainMapLayerGroup);
+    const escaso = bioRecorridoEsEscaso(latlngs.map(([lat, lng]) => ({ lat, lng })));
+    const polyline = L.polyline(latlngs, escaso
+      ? { color: '#94a3b8', weight: 2, opacity: 0.9, dashArray: '4, 8' }
+      : { color: '#0f766e', weight: 4, opacity: 0.85 }
+    ).addTo(bioMainMapLayerGroup);
+    if (escaso && latlngs.length > 1) trazarRutaEstimadaBio(waypoints, _bioRouteToken);
 
     const startWp = waypoints[0];
     L.marker([parseFloat(startWp.lat), parseFloat(startWp.lng)], {
@@ -2090,7 +2330,7 @@
         html: "<div style='background-color:#15803d; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow: 0 0 10px rgba(21, 128, 61, 0.6);'></div>",
         iconSize: [14, 14]
       })
-    }).addTo(bioMainMapLayerGroup).bindPopup(`<strong>Inicio</strong><br>${new Date(startWp.fecha_hora).toLocaleTimeString('es-CO')}`);
+    }).addTo(bioMainMapLayerGroup).bindPopup(`<strong>Inicio</strong>${puntos ? '<br>Sale de: ' + esc(puntos.sale.texto) : ''}<br>${new Date(startWp.fecha_hora).toLocaleTimeString('es-CO')}`);
 
     const endWp = waypoints[waypoints.length - 1];
     L.marker([parseFloat(endWp.lat), parseFloat(endWp.lng)], {
@@ -2099,7 +2339,7 @@
         html: "<div style='background-color:#b91c1c; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow: 0 0 10px rgba(185, 28, 28, 0.6);'></div>",
         iconSize: [14, 14]
       })
-    }).addTo(bioMainMapLayerGroup).bindPopup(`<strong>Fin</strong><br>${new Date(endWp.fecha_hora).toLocaleTimeString('es-CO')}`);
+    }).addTo(bioMainMapLayerGroup).bindPopup(`<strong>Fin</strong>${puntos ? '<br>Llega a: ' + esc(puntos.llega.texto) : ''}<br>${new Date(endWp.fecha_hora).toLocaleTimeString('es-CO')}`);
 
     waypoints.forEach((wp, index) => {
       if (index > 0 && index < waypoints.length - 1 && parseFloat(wp.velocidad_kmh) > 60) {
@@ -2116,84 +2356,411 @@
     bioMainMap.fitBounds(polyline.getBounds(), { padding: [30, 30] });
   }
 
-  async function fetchBioSinSalida() {
-    const date = document.getElementById('bioFilterSingleDate')?.value;
+  // ── Reportes (cierres automáticos y días sin registro) ───────────────────
+  const _bioRep = {
+    activo: 'cierres',
+    cierres: [],
+    sinreg: [],
+    sinregResumen: [],
+    sort: { cierres: { col: 'fecha_entrada', order: 'desc' }, sinreg: { col: 'dia', order: 'desc' }, resumen: { col: 'diasSinRegistro', order: 'desc' } }
+  };
+
+  function switchBioSinRegVista(vista) {
+    document.getElementById('btnBioSinRegResumen').classList.toggle('active', vista === 'resumen');
+    document.getElementById('btnBioSinRegDetalle').classList.toggle('active', vista === 'detalle');
+    document.getElementById('bioSinRegResumenCard').style.display = vista === 'resumen' ? 'block' : 'none';
+    document.getElementById('bioSinRegDetalleCard').style.display = vista === 'detalle' ? 'block' : 'none';
+  }
+
+  function switchBioReporte(rep) {
+    _bioRep.activo = rep;
+    document.getElementById('btnBioRepCierres').classList.toggle('active', rep === 'cierres');
+    document.getElementById('btnBioRepSinReg').classList.toggle('active', rep === 'sinregistro');
+    document.getElementById('bioRepCierres').style.display = rep === 'cierres' ? 'block' : 'none';
+    document.getElementById('bioRepSinReg').style.display = rep === 'sinregistro' ? 'block' : 'none';
+    fetchBioReporte();
+  }
+
+  async function fetchBioReporte() {
+    const startDate = document.getElementById('bioFilterStartDate')?.value;
+    const endDate = document.getElementById('bioFilterEndDate')?.value;
     const search = document.getElementById('bioFilterWorkerSearch')?.value?.trim();
+    if (!startDate || !endDate) return;
 
-    if (!date) return;
-
-    const params = new URLSearchParams({
-      usuario,
-      date
-    });
+    const params = new URLSearchParams({ usuario, startDate, endDate });
     if (_bioState.selectedClas) params.set('clasificacion', _bioState.selectedClas);
     if (search) params.set('search', search);
 
+    const esCierres = _bioRep.activo === 'cierres';
     try {
-      const res = await fetch(`/nomina/api/biometrico/sin-salida?${params.toString()}`);
+      const res = await fetch(`/nomina/api/biometrico/reportes/${esCierres ? 'cierres-automaticos' : 'sin-registro'}?${params.toString()}`);
       const data = await res.json();
-      if (data.ok) {
-        _bioState.sinSalidaData = data.trabajadores || [];
-        renderBioSinSalida(_bioState.sinSalidaData);
-        document.getElementById('bioStatSinSalidaCount').textContent = _bioState.sinSalidaData.length;
-
-        // Total ingresos del día
-        const resTotal = await fetch(`/nomina/api/biometrico/marcaciones?usuario=${encodeURIComponent(usuario)}&startDate=${date}&endDate=${date}`);
-        const dataTotal = await resTotal.json();
-        if (dataTotal.ok) {
-          const entradas = (dataTotal.marcaciones || []).filter(m => m.tipo === 'ENTRADA');
-          document.getElementById('bioStatIngresosDia').textContent = entradas.length;
-        }
+      if (!res.ok) { alert('Error: ' + (data.error || 'No se pudo cargar el reporte')); return; }
+      if (esCierres) {
+        _bioRep.cierres = data.cierres || [];
+        renderBioCierres();
+      } else {
+        _bioRep.sinreg = data.dias || [];
+        _bioRep.sinregResumen = data.porTrabajador || [];
+        const r = data.resumen || {};
+        document.getElementById('bioStatSinRegDias').textContent = r.diasSinRegistro || 0;
+        document.getElementById('bioStatSinRegTrab').textContent = r.trabajadores || 0;
+        document.getElementById('bioStatSinRegEval').textContent = r.trabajadoresEvaluados || 0;
+        renderBioSinReg();
       }
     } catch (err) {
-      console.error('[Biométrico] Error al cargar sin salida:', err);
+      console.error('[Biométrico] Error al cargar reporte:', err);
     }
   }
 
-  function renderBioSinSalida(list) {
-    const tbody = document.getElementById('bioSinSalidaBody');
-    const empty = document.getElementById('bioSinSalidaEmpty');
-    if (!tbody) return;
+  function bioOrdenar(lista, { col, order }) {
+    const dir = order === 'asc' ? 1 : -1;
+    const valor = r => col === 'trabajador' ? bioNombreLimpio(r.trabajador).toLowerCase() : r[col];
+    return [...lista].sort((a, b) => {
+      const x = valor(a), y = valor(b);
+      const vx = x == null || x === '', vy = y == null || y === '';
+      if (vx || vy) return vx && vy ? 0 : vx ? 1 : -1;
+      if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
+      return String(x).localeCompare(String(y), 'es') * dir;
+    });
+  }
 
+  function bioMarcarOrden(clave, cols) {
+    const { col, order } = _bioRep.sort[clave];
+    cols.forEach(k => {
+      const span = document.getElementById(`repSort-${clave}-${k}`);
+      if (!span) return;
+      span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
+      span.style.color = col === k ? 'var(--primary)' : '';
+    });
+  }
+
+  function bioFechaHoraBogota(v) {
+    return v ? new Date(v).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '—';
+  }
+
+  function bioCeldaTrabajador(r) {
+    return `<td><strong>${esc(bioNombreLimpio(r.trabajador))}</strong><br><small style="color:var(--text-muted);">${esc(r.identificacion)}</small></td>`;
+  }
+
+  function renderBioCierres() {
+    const lista = bioOrdenar(_bioRep.cierres, _bioRep.sort.cierres);
+    bioMarcarOrden('cierres', ['trabajador', 'cargo', 'clasificacion', 'fecha_entrada', 'fecha_salida']);
+    document.getElementById('bioStatCierresTotal').textContent = lista.length;
+    document.getElementById('bioStatCierresTrab').textContent = new Set(lista.map(r => r.identificacion)).size;
+    document.getElementById('bioCierresContador').textContent = `${lista.length} turno(s) con cierre automático`;
+    document.getElementById('bioCierresEmpty').style.display = lista.length ? 'none' : 'block';
+
+    const tbody = document.getElementById('bioCierresBody');
     tbody.innerHTML = '';
-    if (!list.length) {
-      empty.style.display = 'block';
-      return;
-    }
-    empty.style.display = 'none';
-
-    list.forEach(w => {
+    lista.forEach(r => {
       const tr = document.createElement('tr');
-      const nombreLimpio = w.trabajador.includes('**') ? w.trabajador.split('**')[1].trim() : w.trabajador;
-      const horaStr = w.fecha_entrada ? new Date(w.fecha_entrada).toLocaleTimeString('es-CO', { timeZone: 'America/Bogota' }) : '—';
-
-      const diffMin = w.fecha_entrada ? Math.floor((new Date() - new Date(w.fecha_entrada)) / 60000) : 0;
-      const h = Math.floor(diffMin / 60);
-      const m = diffMin % 60;
-      const esExcesivo = h >= 12;
-
-      const opAsignadaStr = w.operacion_asignada || w.operacion || '—';
-      const distBadgeHtml = formatDistanciaBadge(w.distancia_metros);
-
-      const gpsBtnHtml = (w.latitud && w.longitud)
-        ? `<button type="button" class="btn-tomo-cargo" style="padding:4px 8px; font-size:.72rem; margin:0;" onclick="openBioGPSModal(${w.latitud}, ${w.longitud}, '${esc(nombreLimpio)}', 'ENTRADA', '${esc(opAsignadaStr)}', ${w.op_lat || 'null'}, ${w.op_lng || 'null'}, ${w.distancia_metros || 'null'})">📍 Ver Mapa</button>`
-        : '<span style="color:#94a3b8; font-size:.75rem;">Sin GPS</span>';
-
       tr.innerHTML = `
-        <td><strong>${esc(nombreLimpio)}</strong><br><small style="color:var(--text-muted);">${esc(w.identificacion)}</small></td>
-        <td>${esc(w.cargo || '—')}</td>
-        <td><strong style="color:var(--primary); font-size:.82rem;">${esc(opAsignadaStr)}</strong><br><small style="color:#94a3b8;">${esc(w.regional || '')}</small></td>
-        <td>${distBadgeHtml}</td>
-        <td>${getClasBadge(w.clasificacion)}</td>
-        <td style="font-size:.8rem;">${horaStr}</td>
-        <td>
-          <span style="font-weight:700; color:${esExcesivo ? 'var(--retiro)' : 'var(--text)'}">${h}h ${m}m</span>
-          ${esExcesivo ? '<span class="badge-legal badge-dist-lejos" style="font-size:.65rem; margin-left:4px;">EXCESIVO</span>' : ''}
-        </td>
-        <td style="text-align:center;">${gpsBtnHtml}</td>
-      `;
+        ${bioCeldaTrabajador(r)}
+        <td>${esc(r.cargo || '—')}</td>
+        <td>${getClasBadge(r.clasificacion)}</td>
+        <td style="font-size:.8rem;">${bioFechaHoraBogota(r.fecha_entrada)}</td>
+        <td style="font-size:.8rem;">${bioFechaHoraBogota(r.fecha_salida)}</td>
+        <td><span class="badge-legal badge-dist-lejos" title="${esc(r.motivo_salida)}">No marcó salida</span></td>`;
       tbody.appendChild(tr);
     });
+  }
+
+  function renderBioSinRegResumen() {
+    const lista = bioOrdenar(_bioRep.sinregResumen, _bioRep.sort.resumen);
+    bioMarcarOrden('resumen', ['trabajador', 'cargo', 'clasificacion', 'operacion', 'diasSinRegistro', 'diasEvaluados']);
+    document.getElementById('bioSinRegResContador').textContent = `${lista.length} trabajador(es) con días sin registro`;
+    document.getElementById('bioSinRegResEmpty').style.display = lista.length ? 'none' : 'block';
+
+    const tbody = document.getElementById('bioSinRegResBody');
+    tbody.innerHTML = '';
+    lista.forEach(r => {
+      const fechas = r.fechas.map(f => `${f.slice(8, 10)}/${f.slice(5, 7)}`).join(', ');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        ${bioCeldaTrabajador(r)}
+        <td>${esc(r.cargo || '—')}</td>
+        <td>${getClasBadge(r.clasificacion)}</td>
+        <td>${esc(r.operacion || '—')}</td>
+        <td><span class="badge-legal badge-dist-lejos">${r.diasSinRegistro}</span></td>
+        <td>${r.diasEvaluados}</td>
+        <td title="${esc(fechas)}" style="font-size:.8rem;">${esc(fechas)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderBioSinReg() {
+    renderBioSinRegResumen();
+    const lista = bioOrdenar(_bioRep.sinreg, _bioRep.sort.sinreg);
+    bioMarcarOrden('sinreg', ['trabajador', 'cargo', 'clasificacion', 'operacion', 'dia']);
+    document.getElementById('bioSinRegContador').textContent = `${lista.length} día(s) sin registro`;
+    document.getElementById('bioSinRegEmpty').style.display = lista.length ? 'none' : 'block';
+
+    const tbody = document.getElementById('bioSinRegBody');
+    tbody.innerHTML = '';
+    lista.forEach(r => {
+      const dia = new Date(`${r.dia}T00:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        ${bioCeldaTrabajador(r)}
+        <td>${esc(r.cargo || '—')}</td>
+        <td>${getClasBadge(r.clasificacion)}</td>
+        <td>${esc(r.operacion || '—')}</td>
+        <td>${esc(dia)}</td>
+        <td><span class="badge-legal badge-dist-lejos">Sin registro</span></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  [['bioCierresTable', 'cierres', renderBioCierres], ['bioSinRegTable', 'sinreg', renderBioSinReg], ['bioSinRegResTable', 'resumen', renderBioSinRegResumen]].forEach(([tablaId, clave, render]) => {
+    document.querySelectorAll(`#${tablaId} thead th[data-sort]`).forEach(th => {
+      th.addEventListener('click', (e) => {
+        if (e.target.classList.contains('th-resize')) return;
+        const col = th.getAttribute('data-sort');
+        const s = _bioRep.sort[clave];
+        if (s.col === col) s.order = s.order === 'asc' ? 'desc' : 'asc';
+        else { s.col = col; s.order = 'asc'; }
+        render();
+      });
+    });
+  });
+
+  // ── Direcciones y Coordenadas de Operaciones (Maestro_Operaciones) ───────
+  const _cooState = { all: [], sortCol: 'regional', sortOrder: 'asc', editando: null };
+  const cooFilterRegional  = document.getElementById('cooFilterRegional');
+  const cooFilterOperacion = document.getElementById('cooFilterOperacion');
+  const cooFilterBusqueda  = document.getElementById('cooFilterBusqueda');
+  let cooMap = null, cooMarker = null;
+
+  (function () {
+    const toggle = document.getElementById('cooFiltrosToggle');
+    const body = document.getElementById('cooFiltrosBody');
+    const chevron = document.getElementById('cooFiltrosChevron');
+    let abierto = false;
+    toggle.addEventListener('click', () => {
+      abierto = !abierto;
+      body.style.display = abierto ? 'block' : 'none';
+      chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+  })();
+
+  function cooNorm(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+
+  function cooFiltrar({ ignorarRegional = false, ignorarOperacion = false } = {}) {
+    const reg = cooFilterRegional.value, op = cooFilterOperacion.value, q = cooNorm(cooFilterBusqueda.value.trim());
+    return _cooState.all.filter(r =>
+      (ignorarRegional || !reg || r.regional === reg) &&
+      (ignorarOperacion || !op || r.operacion === op) &&
+      (!q || cooNorm(`${r.operacion} ${r.codSiesa} ${r.direccion}`).includes(q))
+    );
+  }
+
+  function cooActualizarFiltros() {
+    const selReg = cooFilterRegional.value, selOp = cooFilterOperacion.value;
+    const regCounts = {}, opCounts = {};
+    cooFiltrar({ ignorarRegional: true }).forEach(r => { regCounts[r.regional] = (regCounts[r.regional] || 0) + 1; });
+    cooFiltrar({ ignorarOperacion: true }).forEach(r => { opCounts[r.operacion] = (opCounts[r.operacion] || 0) + 1; });
+
+    const regionales = [...new Set(_cooState.all.map(r => r.regional).filter(Boolean))].sort();
+    const totalReg = Object.values(regCounts).reduce((a, b) => a + b, 0);
+    cooFilterRegional.innerHTML = `<option value="">Todas las regionales (${totalReg})</option>` +
+      regionales.map(r => `<option value="${esc(r)}"${r === selReg ? ' selected' : ''}>${esc(r)} (${regCounts[r] || 0})</option>`).join('');
+
+    const ops = [...new Set(_cooState.all.filter(r => !selReg || r.regional === selReg).map(r => r.operacion).filter(Boolean))].sort();
+    const totalOp = Object.values(opCounts).reduce((a, b) => a + b, 0);
+    cooFilterOperacion.innerHTML = `<option value="">Todas las operaciones (${totalOp})</option>` +
+      ops.map(o => `<option value="${esc(o)}"${o === selOp ? ' selected' : ''}>${esc(o)} (${opCounts[o] || 0})</option>`).join('');
+
+    let n = 0;
+    if (cooFilterRegional.value) n++;
+    if (cooFilterOperacion.value) n++;
+    if (cooFilterBusqueda.value.trim()) n++;
+    const badge = document.getElementById('cooFiltrosBadge');
+    badge.textContent = n;
+    badge.style.display = n ? 'flex' : 'none';
+  }
+
+  function cooAplicar() { cooActualizarFiltros(); cooRender(); }
+
+  function resetFiltrosCoords() {
+    cooFilterRegional.value = ''; cooFilterOperacion.value = ''; cooFilterBusqueda.value = '';
+    cooAplicar();
+  }
+
+  cooFilterRegional.addEventListener('change', () => { cooFilterOperacion.value = ''; cooAplicar(); });
+  cooFilterOperacion.addEventListener('change', cooAplicar);
+  cooFilterBusqueda.addEventListener('input', cooAplicar);
+
+  document.querySelectorAll('#cooTable thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', (e) => {
+      if (e.target.classList.contains('th-resize')) return;
+      const col = th.getAttribute('data-sort');
+      if (_cooState.sortCol === col) _cooState.sortOrder = _cooState.sortOrder === 'asc' ? 'desc' : 'asc';
+      else { _cooState.sortCol = col; _cooState.sortOrder = 'asc'; }
+      cooRender();
+    });
+  });
+
+  async function fetchBioCoords() {
+    try {
+      const res = await fetch(`/nomina/api/biometrico/operaciones?usuario=${encodeURIComponent(usuario)}`);
+      const data = await res.json();
+      if (!res.ok) { alert('Error: ' + (data.error || 'No se pudo cargar la información')); return; }
+      _cooState.all = data.operaciones || [];
+      cooAplicar();
+    } catch { alert('Error de conexión al cargar las operaciones.'); }
+  }
+
+  function cooRender() {
+    const col = _cooState.sortCol, dir = _cooState.sortOrder === 'asc' ? 1 : -1;
+    const numerica = col === 'latitud' || col === 'longitud';
+    const lista = cooFiltrar().sort((a, b) => {
+      let x = a[col], y = b[col];
+      const vx = x == null || x === '', vy = y == null || y === '';
+      if (vx || vy) return vx && vy ? 0 : vx ? 1 : -1; // vacíos siempre al final
+      if (numerica) return (Number(x) - Number(y)) * dir;
+      return cooNorm(x).localeCompare(cooNorm(y), 'es', { numeric: true }) * dir;
+    });
+
+    ['regional', 'operacion', 'codSiesa', 'direccion', 'latitud', 'longitud'].forEach(k => {
+      const span = document.getElementById('cooSort-' + k);
+      span.textContent = col === k ? (_cooState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+      span.style.color = col === k ? 'var(--primary)' : '';
+    });
+
+    document.getElementById('cooContador').textContent = `${lista.length} operación(es)`;
+    document.getElementById('cooEmpty').style.display = lista.length ? 'none' : 'block';
+    const body = document.getElementById('cooBody');
+    body.innerHTML = '';
+    lista.forEach(r => {
+      const tr = document.createElement('tr');
+      const sinCoords = r.latitud == null || r.longitud == null;
+      tr.innerHTML = `
+        <td></td>
+        <td>${esc(r.regional)}</td>
+        <td>${esc(r.operacion)}</td>
+        <td>${esc(r.codSiesa)}</td>
+        <td title="${esc(r.direccion)}">${esc(r.direccion) || '<span style="color:#94a3b8">—</span>'}</td>
+        <td>${sinCoords ? '<span class="badge-legal badge-dist-nocoord">Sin coords</span>' : esc(r.latitud)}</td>
+        <td>${sinCoords ? '<span class="badge-legal badge-dist-nocoord">Sin coords</span>' : esc(r.longitud)}</td>`;
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'btn-tomo-cargo'; btn.style.margin = '0'; btn.textContent = 'Editar';
+      btn.onclick = (e) => { e.stopPropagation(); abrirCooModal(r); };
+      tr.firstElementChild.appendChild(btn);
+      tr.addEventListener('click', () => abrirCooModal(r));
+      body.appendChild(tr);
+    });
+  }
+
+  function cooParse(v) {
+    const t = String(v).trim().replace(',', '.');
+    if (t === '') return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function cooPonerMarcador(lat, lng, centrar) {
+    if (!cooMap) return;
+    if (cooMarker) cooMap.removeLayer(cooMarker);
+    cooMarker = L.marker([lat, lng], { draggable: true }).addTo(cooMap);
+    cooMarker.on('dragend', () => { const p = cooMarker.getLatLng(); cooEscribirInputs(p.lat, p.lng); });
+    if (centrar) cooMap.setView([lat, lng], Math.max(cooMap.getZoom(), 16));
+  }
+
+  function cooEscribirInputs(lat, lng) {
+    document.getElementById('cooInpLat').value = lat.toFixed(7);
+    document.getElementById('cooInpLng').value = lng.toFixed(7);
+  }
+
+  function cooSincronizarDesdeInputs() {
+    const lat = cooParse(document.getElementById('cooInpLat').value);
+    const lng = cooParse(document.getElementById('cooInpLng').value);
+    if (lat !== null && lng !== null && !Number.isNaN(lat) && !Number.isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      cooPonerMarcador(lat, lng, true);
+    }
+  }
+
+  function abrirCooModal(row) {
+    _cooState.editando = row;
+    document.getElementById('cooModalTitulo').textContent = `${row.operacion} · ${row.regional || ''}`;
+    document.getElementById('cooInpDireccion').value = row.direccion || '';
+    document.getElementById('cooInpLat').value = row.latitud != null ? row.latitud : '';
+    document.getElementById('cooInpLng').value = row.longitud != null ? row.longitud : '';
+    document.getElementById('cooModalOverlay').classList.add('open');
+
+    setTimeout(() => {
+      if (!cooMap) {
+        cooMap = L.map('cooMap').setView([4.5709, -74.2973], 6);
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Maps'
+        }).addTo(cooMap);
+        cooMap.on('click', (e) => { cooEscribirInputs(e.latlng.lat, e.latlng.lng); cooPonerMarcador(e.latlng.lat, e.latlng.lng, false); });
+        document.getElementById('cooInpLat').addEventListener('change', cooSincronizarDesdeInputs);
+        document.getElementById('cooInpLng').addEventListener('change', cooSincronizarDesdeInputs);
+      }
+      cooMap.invalidateSize();
+      if (cooMarker) { cooMap.removeLayer(cooMarker); cooMarker = null; }
+      if (row.latitud != null && row.longitud != null) cooPonerMarcador(Number(row.latitud), Number(row.longitud), true);
+      else cooMap.setView([4.5709, -74.2973], 6);
+    }, 200);
+  }
+
+  function cerrarCooModal() {
+    document.getElementById('cooModalOverlay').classList.remove('open');
+    _cooState.editando = null;
+  }
+
+  function limpiarCoordenadasCoo() {
+    document.getElementById('cooInpLat').value = '';
+    document.getElementById('cooInpLng').value = '';
+    if (cooMarker && cooMap) { cooMap.removeLayer(cooMarker); cooMarker = null; }
+  }
+
+  function usarMiUbicacionCoo() {
+    if (!navigator.geolocation) { alert('Este navegador no soporta geolocalización.'); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { cooEscribirInputs(pos.coords.latitude, pos.coords.longitude); cooPonerMarcador(pos.coords.latitude, pos.coords.longitude, true); },
+      () => alert('No se pudo obtener la ubicación. Verifique los permisos del navegador.')
+    );
+  }
+
+  async function buscarDireccionCoo() {
+    const dir = document.getElementById('cooInpDireccion').value.trim();
+    if (!dir) { alert('Escriba una dirección para ubicarla en el mapa.'); return; }
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=co&q=' + encodeURIComponent(dir);
+      const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+      const data = await res.json();
+      if (!data.length) { alert('No se encontró la dirección. Ajuste el texto o marque la posición en el mapa.'); return; }
+      const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+      cooEscribirInputs(lat, lng);
+      cooPonerMarcador(lat, lng, true);
+    } catch { alert('No se pudo consultar el servicio de búsqueda de direcciones.'); }
+  }
+
+  async function guardarCoo() {
+    const row = _cooState.editando;
+    if (!row) return;
+    const lat = cooParse(document.getElementById('cooInpLat').value);
+    const lng = cooParse(document.getElementById('cooInpLng').value);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) { alert('Latitud y longitud deben ser numéricas.'); return; }
+    if ((lat === null) !== (lng === null)) { alert('Diligencie latitud y longitud juntas, o deje ambas vacías.'); return; }
+    if (lat !== null && (Math.abs(lat) > 90 || Math.abs(lng) > 180)) { alert('Coordenadas fuera de rango.'); return; }
+
+    const btn = document.getElementById('cooBtnGuardar');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/nomina/api/biometrico/operaciones?usuario=${encodeURIComponent(usuario)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operacion: row.operacion, direccion: document.getElementById('cooInpDireccion').value, latitud: lat, longitud: lng })
+      });
+      const data = await res.json();
+      if (!res.ok) { alert('Error: ' + (data.error || 'No se pudo guardar')); return; }
+      cerrarCooModal();
+      fetchBioCoords();
+    } catch { alert('Error de conexión al guardar.'); }
+    finally { btn.disabled = false; }
   }
 
   function openBioGPSModal(lat, lng, workerName, markType, opNombre, opLat, opLng, distM) {
@@ -2262,6 +2829,14 @@
     const navBio = document.getElementById('navBiometrico');
     if (navBio) navBio.style.display = 'flex';
     initBio();
+    if (tabs.biometrico.puedeEditarCoordenadas) {
+      document.getElementById('btnBioTabCoords').style.display = 'flex';
+      makeTableResizable(document.getElementById('cooTable'));
+    }
+    makeTableResizable(document.getElementById('bioAsistenciaTable'));
+    makeTableResizable(document.getElementById('bioCierresTable'));
+    makeTableResizable(document.getElementById('bioSinRegTable'));
+    makeTableResizable(document.getElementById('bioSinRegResTable'));
   }
   makeTableResizable(document.getElementById('retirosTable'));
   makeTableResizable(document.getElementById('activosTable'));

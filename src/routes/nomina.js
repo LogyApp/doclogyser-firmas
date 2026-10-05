@@ -39,6 +39,10 @@ function filtroBusqueda(busqueda) {
   };
 }
 
+function esOperacionAdministracion(operacion) {
+  return String(operacion || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'administracion';
+}
+
 function resumenAcceso(acceso) {
   if (!acceso) return null;
   return {
@@ -61,6 +65,8 @@ router.get('/', async (req, res) => {
     const accesoActivo = await computarAccesoNomina(usuario, 'Activo');
     const accesoBloqueo = await computarAccesoNomina(usuario, 'Bloqueo_datos');
     let accesoBiometrico = await computarAccesoNomina(usuario, 'Biometrico');
+    // Solo con Sección 'Biometrico' en Maestro_Menu_Nomina (no el respaldo por rol) y Operación Administración
+    const puedeEditarCoordenadas = !!accesoBiometrico && esOperacionAdministracion(accesoBiometrico.operacion);
 
     // Respaldo de roles autorizados para biométrico si no está configurado en DB
     if (!accesoBiometrico) {
@@ -89,7 +95,7 @@ router.get('/', async (req, res) => {
         retiro: resumenAcceso(accesoRetiro),
         activo: resumenAcceso(accesoActivo),
         bloqueo: resumenAcceso(accesoBloqueo),
-        biometrico: accesoBiometrico ? { sinFiltro: accesoBiometrico.sinFiltro, isSstOnly } : null,
+        biometrico: accesoBiometrico ? { sinFiltro: accesoBiometrico.sinFiltro, isSstOnly, puedeEditarCoordenadas } : null,
       },
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -655,6 +661,39 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   return Math.round(R * c);
 }
 
+const RADIO_EN_SEDE_M = 300;
+
+async function cargarOperacionesGeo() {
+  const [rows] = await pool.execute(
+    "SELECT `OPERACIÓN` AS operacion, LATITUD AS lat, LONGITUD AS lng FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' AND LATITUD IS NOT NULL AND LONGITUD IS NOT NULL"
+  );
+  return rows;
+}
+
+// Operación registrada a RADIO_EN_SEDE_M o menos del punto; null si es otro lugar (banco, almacén...).
+function operacionEnPunto(lat, lng, ops) {
+  let mejor = null, mejorDist = Infinity;
+  for (const op of ops) {
+    const d = calcularDistanciaMetros(lat, lng, op.lat, op.lng);
+    if (d != null && d < mejorDist) { mejorDist = d; mejor = op; }
+  }
+  return mejor && mejorDist <= RADIO_EN_SEDE_M ? { operacion: mejor.operacion, dist: Math.round(mejorDist) } : null;
+}
+
+// Null si el trabajador está en su operación asignada (o ella misma es la más cercana).
+function operacionMasCercana(r, distAsignadaM, ops) {
+  const vacio = { operacion_cercana: null, operacion_cercana_dist: null };
+  if (distAsignadaM != null && distAsignadaM <= RADIO_EN_SEDE_M) return vacio;
+  let mejor = null, mejorDist = Infinity;
+  for (const op of ops) {
+    const d = calcularDistanciaMetros(r.latitud, r.longitud, op.lat, op.lng);
+    if (d != null && d < mejorDist) { mejorDist = d; mejor = op; }
+  }
+  if (!mejor) return vacio;
+  if (String(mejor.operacion).trim() === String(r.operacion_asignada || '').trim()) return vacio;
+  return { operacion_cercana: mejor.operacion, operacion_cercana_dist: mejorDist };
+}
+
 function obtenerCondicionesClasificacionBiometrico(isSstOnly) {
   let whereFirma = "area IN ('sst', 'coordinadores', 'auxiliares_administrativos')";
   let whereVinc = "v.Cargo IN ('AUXILIAR LOGISTICO', 'APRENDIZ')";
@@ -705,6 +744,68 @@ async function verificarAccesoBiometricoAPI(req, res, next) {
     res.status(500).json({ error: 'Error interno en autorización biométrico' });
   }
 }
+
+// ── Coordenadas de operaciones (Maestro_Operaciones) ─────────────────────────
+async function verificarAccesoCoordenadas(req, res, next) {
+  try {
+    const usuarioId = req.query.usuario || req.body?.usuario;
+    if (!usuarioId) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    const acceso = await computarAccesoNomina(usuarioId, 'Biometrico');
+    if (!acceso || !esOperacionAdministracion(acceso.operacion)) {
+      return res.status(403).json({ error: 'No autorizado para gestionar coordenadas de operaciones' });
+    }
+    req.usuarioInfo = { usuarioId: acceso.usuarioId, usuarioNombre: acceso.usuarioNombre };
+    next();
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en autorización de coordenadas:', err);
+    res.status(500).json({ error: 'Error interno en autorización' });
+  }
+}
+
+router.get('/api/biometrico/operaciones', verificarAccesoCoordenadas, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT REGIONAL AS regional, \`OPERACIÓN\` AS operacion, \`CODIGO CO SIESA\` AS codSiesa,
+              DIRECCION AS direccion, LATITUD AS latitud, LONGITUD AS longitud
+       FROM Maestro_Operaciones
+       WHERE REGIONAL != 'INACTIVO'
+       ORDER BY REGIONAL, \`OPERACIÓN\``
+    );
+    res.json({ ok: true, operaciones: rows });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en operaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/api/biometrico/operaciones', verificarAccesoCoordenadas, async (req, res) => {
+  try {
+    const { operacion, direccion } = req.body;
+    if (!operacion) return res.status(400).json({ error: 'operacion requerida' });
+
+    const parseCoord = (v, min, max) => {
+      if (v === null || v === undefined || String(v).trim() === '') return null;
+      const n = Number(String(v).replace(',', '.'));
+      return Number.isFinite(n) && n >= min && n <= max ? n : NaN;
+    };
+    const lat = parseCoord(req.body.latitud, -90, 90);
+    const lng = parseCoord(req.body.longitud, -180, 180);
+    if (Number.isNaN(lat)) return res.status(400).json({ error: 'Latitud inválida (rango -90 a 90)' });
+    if (Number.isNaN(lng)) return res.status(400).json({ error: 'Longitud inválida (rango -180 a 180)' });
+    if ((lat === null) !== (lng === null)) return res.status(400).json({ error: 'Latitud y longitud deben diligenciarse juntas' });
+
+    const dir = direccion && String(direccion).trim() ? String(direccion).trim().slice(0, 255) : null;
+    const [result] = await pool.execute(
+      'UPDATE Maestro_Operaciones SET DIRECCION = ?, LATITUD = ?, LONGITUD = ? WHERE `OPERACIÓN` = ?',
+      [dir, lat, lng, operacion]
+    );
+    if (!result.affectedRows) return res.status(404).json({ error: 'Operación no encontrada' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error al guardar coordenadas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── GET /api/biometrico/trabajadores ─────────────────────────────────────────
 router.get('/api/biometrico/trabajadores', verificarAccesoBiometricoAPI, async (req, res) => {
@@ -781,7 +882,7 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
     let filterSql = '';
     const filterParams = [];
     if (search) {
-      filterSql += ' AND (m.identificacion LIKE ? OR m.trabajador LIKE ?)';
+      filterSql += ' AND (m.identificacion LIKE ? OR m.trabajador COLLATE utf8mb4_0900_ai_ci LIKE ?)';
       filterParams.push(`%${search}%`, `%${search}%`);
     }
     if (clasificacion) {
@@ -908,12 +1009,14 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
     ];
 
     const [rows] = await pool.execute(query, params);
+    const opsGeo = await cargarOperacionesGeo();
 
     const marcacionesConDistancia = rows.map(r => {
       const distM = calcularDistanciaMetros(r.latitud, r.longitud, r.op_lat, r.op_lng);
       return {
         ...r,
         distancia_metros: distM,
+        ...operacionMasCercana(r, distM, opsGeo),
       };
     });
 
@@ -943,7 +1046,7 @@ router.get('/api/biometrico/movimientos', verificarAccesoBiometricoAPI, async (r
 
     let filterSql = '';
     if (search) {
-      filterSql += ' AND (mov.identificacion LIKE ? OR mov.trabajador LIKE ?)';
+      filterSql += ' AND (mov.identificacion LIKE ? OR mov.trabajador COLLATE utf8mb4_0900_ai_ci LIKE ?)';
       params.push(`%${search}%`, `%${search}%`);
     }
     if (clasificacion) {
@@ -978,6 +1081,10 @@ router.get('/api/biometrico/movimientos', verificarAccesoBiometricoAPI, async (r
         mov.ip,
         mov.requiere_regreso,
         mov.tiempo_en_destino_min,
+        COALESCE((SELECT wp.lat FROM facial_movimientos_waypoints wp WHERE wp.movimiento_id = mov.id ORDER BY wp.secuencia ASC LIMIT 1), mov.lat_inicio) AS punto_ini_lat,
+        COALESCE((SELECT wp.lng FROM facial_movimientos_waypoints wp WHERE wp.movimiento_id = mov.id ORDER BY wp.secuencia ASC LIMIT 1), mov.lng_inicio) AS punto_ini_lng,
+        COALESCE((SELECT wp.lat FROM facial_movimientos_waypoints wp WHERE wp.movimiento_id = mov.id ORDER BY wp.secuencia DESC LIMIT 1), mov.lat_destino) AS punto_fin_lat,
+        COALESCE((SELECT wp.lng FROM facial_movimientos_waypoints wp WHERE wp.movimiento_id = mov.id ORDER BY wp.secuencia DESC LIMIT 1), mov.lng_destino) AS punto_fin_lng,
         w.clasificacion,
         w.cargo,
         w.operacion,
@@ -1025,7 +1132,13 @@ router.get('/api/biometrico/movimientos', verificarAccesoBiometricoAPI, async (r
     `;
 
     const [rows] = await pool.execute(query, params);
-    res.json({ ok: true, movimientos: rows });
+    const opsGeo = await cargarOperacionesGeo();
+    const movimientos = rows.map(r => ({
+      ...r,
+      origen: operacionEnPunto(r.punto_ini_lat, r.punto_ini_lng, opsGeo),
+      llegada: operacionEnPunto(r.punto_fin_lat, r.punto_fin_lng, opsGeo),
+    }));
+    res.json({ ok: true, movimientos });
   } catch (err) {
     console.error('[nomina Biometrico API] Error en movimientos:', err);
     res.status(500).json({ error: err.message });
@@ -1072,26 +1185,37 @@ router.get('/api/biometrico/movimientos/:id/waypoints', verificarAccesoBiometric
   }
 });
 
-// ── GET /api/biometrico/sin-salida ───────────────────────────────────────────
-// Incluye cálculo de distancia a la Operación asignada más reciente de Maestro_Vinculación
-router.get('/api/biometrico/sin-salida', verificarAccesoBiometricoAPI, async (req, res) => {
+// ── Reportes de asistencia biométrica ────────────────────────────────────────
+const MOTIVO_CIERRE_AUTO = 'Cierre automático del sistema: turno prolongado sin registrar salida.';
+const AREAS_REPORTE_ASISTENCIA = ['sst', 'coordinadores', 'auxiliares_administrativos'];
+const FECHA_ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function sumarDiasISO(iso, n) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function normalizarTexto(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+// ── GET /api/biometrico/reportes/cierres-automaticos ─────────────────────────
+// Turnos cuya salida fue puesta por el sistema a las 23:59:59 porque el trabajador no marcó salida.
+router.get('/api/biometrico/reportes/cierres-automaticos', verificarAccesoBiometricoAPI, async (req, res) => {
   try {
     const { isSstOnly } = req.usuarioInfo;
     const { whereFirma, whereVinc } = obtenerCondicionesClasificacionBiometrico(isSstOnly);
-    const { date, search, clasificacion } = req.query;
+    const { startDate, endDate, search, clasificacion } = req.query;
 
-    if (!date) {
-      return res.status(400).json({ error: 'Parámetro date (YYYY-MM-DD) requerido' });
+    if (!FECHA_ISO_RE.test(startDate || '') || !FECHA_ISO_RE.test(endDate || '')) {
+      return res.status(400).json({ error: 'Parámetros startDate y endDate (YYYY-MM-DD) requeridos' });
     }
 
-    const startStr = `${date} 00:00:00`;
-    const endStr = `${date} 23:59:59`;
-
-    const params = [startStr, endStr];
-    
+    const params = [`${startDate} 00:00:00`, `${endDate} 23:59:59`, MOTIVO_CIERRE_AUTO];
     let filterSql = '';
     if (search) {
-      filterSql += ' AND (m.identificacion LIKE ? OR m.trabajador LIKE ?)';
+      filterSql += ' AND (m.identificacion LIKE ? OR m.trabajador COLLATE utf8mb4_0900_ai_ci LIKE ?)';
       params.push(`%${search}%`, `%${search}%`);
     }
     if (clasificacion) {
@@ -1099,100 +1223,172 @@ router.get('/api/biometrico/sin-salida', verificarAccesoBiometricoAPI, async (re
       params.push(clasificacion);
     }
 
-    const wSubquery = `
-      SELECT 
-        Identificacion AS identificacion, 
-        CASE 
-          WHEN MAX(area) = 'sst' THEN 'sst'
-          WHEN MAX(area) = 'coordinadores' THEN 'coordinadores'
-          WHEN MAX(area) = 'auxiliares_administrativos' THEN 'auxiliares_administrativos'
-          ELSE NULL
-        END AS clasificacion,
-        MAX(cargo) AS cargo, 
-        MAX(operacion) AS operacion, 
-        MAX(regional) AS regional
-      FROM Maestro_firma_corporativa
-      WHERE ${whereFirma}
-      GROUP BY Identificacion
-      
-      UNION ALL
-      
-      SELECT 
-        v.Identificación AS identificacion, 
-        CASE 
-          WHEN MAX(v.Cargo) = 'AUXILIAR LOGISTICO' THEN 'auxiliares_logisticos'
-          WHEN MAX(v.Cargo) = 'APRENDIZ' THEN 'aprendices'
-          ELSE NULL
-        END AS clasificacion,
-        MAX(v.Cargo) AS cargo, 
-        MAX(v.\`Operación\`) AS operacion, 
-        MAX(v.Regional) AS regional
-      FROM Maestro_Vinculación v
-      WHERE ${whereVinc}
-        AND v.Identificación IS NOT NULL
-        AND v.Identificación NOT IN (
-          SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
-        )
-      GROUP BY v.Identificación
-    `;
-
-    const vOpSubquery = `
-      SELECT mv.Identificación, MAX(mv.\`Operación\`) AS operacion_asignada
-      FROM Maestro_Vinculación mv
-      INNER JOIN (
-        SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS maxFecha
-        FROM Maestro_Vinculación
-        WHERE Identificación IS NOT NULL
-        GROUP BY Identificación
-      ) ult ON mv.Identificación = ult.Identificación AND mv.\`Fecha de Ingreso\` = ult.maxFecha
-      GROUP BY mv.Identificación
-    `;
-
     const query = `
-      SELECT 
+      SELECT
         m.id,
         m.identificacion,
         m.trabajador,
-        m.tipo,
-        m.score,
-        m.latitud,
-        m.longitud,
-        m.precision_gps,
-        m.es_manual,
-        m.motivo,
-        m.fecha_hora,
-        m.fecha_entrada,
+        COALESCE(m.fecha_entrada, m.fecha_hora) AS fecha_entrada,
+        m.fecha_salida,
+        m.motivo_salida,
         w.clasificacion,
         w.cargo,
         w.operacion,
-        w.regional,
-        v_op.operacion_asignada,
-        op_asig.LATITUD AS op_lat,
-        op_asig.LONGITUD AS op_lng
+        w.regional
       FROM facial_marcaciones m
-      INNER JOIN (${wSubquery}) w ON m.identificacion = w.identificacion
-      LEFT JOIN (${vOpSubquery}) v_op ON m.identificacion = v_op.Identificación
-      LEFT JOIN Maestro_Operaciones op_asig ON TRIM(v_op.operacion_asignada) = TRIM(op_asig.\`OPERACIÓN\`)
-      WHERE m.tipo = 'ENTRADA'
-        AND m.fecha_entrada >= ? AND m.fecha_entrada <= ?
-        AND m.fecha_salida IS NULL
+      INNER JOIN (
+        SELECT
+          Identificacion AS identificacion,
+          MAX(area) AS clasificacion,
+          MAX(cargo) AS cargo,
+          MAX(operacion) AS operacion,
+          MAX(regional) AS regional
+        FROM Maestro_firma_corporativa
+        WHERE ${whereFirma}
+        GROUP BY Identificacion
+
+        UNION ALL
+
+        SELECT
+          v.Identificación AS identificacion,
+          CASE
+            WHEN MAX(v.Cargo) = 'AUXILIAR LOGISTICO' THEN 'auxiliares_logisticos'
+            WHEN MAX(v.Cargo) = 'APRENDIZ' THEN 'aprendices'
+            ELSE NULL
+          END AS clasificacion,
+          MAX(v.Cargo) AS cargo,
+          MAX(v.\`Operación\`) AS operacion,
+          MAX(v.Regional) AS regional
+        FROM Maestro_Vinculación v
+        WHERE ${whereVinc}
+          AND v.Identificación IS NOT NULL
+          AND v.Identificación NOT IN (
+            SELECT Identificacion FROM Maestro_firma_corporativa WHERE Identificacion IS NOT NULL
+          )
+        GROUP BY v.Identificación
+      ) w ON m.identificacion = w.identificacion
+      WHERE m.fecha_hora >= ? AND m.fecha_hora <= ?
+        AND m.fecha_salida IS NOT NULL
+        AND TIME(m.fecha_salida) = '23:59:59'
+        AND m.motivo_salida = ?
         ${filterSql}
-      ORDER BY m.fecha_entrada DESC
+      ORDER BY m.fecha_hora DESC
     `;
 
     const [rows] = await pool.execute(query, params);
-
-    const sinSalidaConDistancia = rows.map(r => {
-      const distM = calcularDistanciaMetros(r.latitud, r.longitud, r.op_lat, r.op_lng);
-      return {
-        ...r,
-        distancia_metros: distM,
-      };
-    });
-
-    res.json({ ok: true, trabajadores: sinSalidaConDistancia });
+    res.json({ ok: true, cierres: rows });
   } catch (err) {
-    console.error('[nomina Biometrico API] Error en turnos sin salida:', err);
+    console.error('[nomina Biometrico API] Error en cierres automáticos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/biometrico/reportes/sin-registro ────────────────────────────────
+// Días sin registro en Dynamic_Asistencia (ni asistencia ni novedad) para SST, coordinadores y
+// auxiliares administrativos (lista de Maestro_firma_corporativa). Solo cuenta días entre el
+// ingreso y el retiro del trabajador (Maestro_Vinculación), anteriores al día de hoy y que no sean
+// domingo ni festivo (Maestro_Fechas.Estado = 'Festivo').
+router.get('/api/biometrico/reportes/sin-registro', verificarAccesoBiometricoAPI, async (req, res) => {
+  try {
+    const { isSstOnly } = req.usuarioInfo;
+    const { startDate, endDate, search, clasificacion } = req.query;
+
+    if (!FECHA_ISO_RE.test(startDate || '') || !FECHA_ISO_RE.test(endDate || '') || startDate > endDate) {
+      return res.status(400).json({ error: 'Rango de fechas inválido' });
+    }
+    if ((new Date(endDate) - new Date(startDate)) / 86400000 > 92) {
+      return res.status(400).json({ error: 'El rango máximo del reporte es de 93 días' });
+    }
+
+    const hoy = fechaHoraBogota().slice(0, 10);
+    const ultimoDia = endDate < hoy ? endDate : sumarDiasISO(hoy, -1);
+    const vacio = { ok: true, dias: [], porTrabajador: [], resumen: { trabajadoresEvaluados: 0, trabajadores: 0, diasSinRegistro: 0, hasta: ultimoDia } };
+
+    let areas = isSstOnly ? ['sst'] : AREAS_REPORTE_ASISTENCIA;
+    if (clasificacion) areas = areas.filter(a => a === clasificacion);
+    if (!areas.length || ultimoDia < startDate) return res.json(vacio);
+
+    const [workers] = await pool.execute(
+      `SELECT Identificacion AS identificacion, MAX(COALESCE(nombre, Trabajador)) AS trabajador,
+              MAX(cargo) AS cargo, MAX(operacion) AS operacion, MAX(regional) AS regional, MAX(area) AS clasificacion
+       FROM Maestro_firma_corporativa
+       WHERE area IN (${areas.map(() => '?').join(',')}) AND Identificacion IS NOT NULL
+       GROUP BY Identificacion`,
+      areas
+    );
+
+    const q = normalizarTexto((search || '').trim());
+    const lista = workers.filter(w => !q || normalizarTexto(`${w.identificacion} ${w.trabajador}`).includes(q));
+    if (!lista.length) return res.json(vacio);
+
+    const ids = lista.map(w => w.identificacion);
+    const ph = ids.map(() => '?').join(',');
+
+    // Vinculación más reciente de cada trabajador (ingreso y retiro acotan los días evaluados)
+    const [vincs] = await pool.execute(
+      `SELECT v.Identificación AS identificacion, v.Estado AS estado,
+              DATE_FORMAT(v.\`Fecha de Ingreso\`, '%Y-%m-%d') AS ingreso,
+              DATE_FORMAT(v.\`Fecha de Retiro\`, '%Y-%m-%d') AS retiro
+       FROM Maestro_Vinculación v
+       WHERE v.Identificación IN (${ph})
+       ORDER BY v.\`Fecha de Ingreso\` DESC`,
+      ids
+    );
+    const vincPorId = new Map();
+    vincs.forEach(v => { if (!vincPorId.has(v.identificacion)) vincPorId.set(v.identificacion, v); });
+
+    const [reg] = await pool.execute(
+      `SELECT DISTINCT \`Cédula\` AS cedula, DATE_FORMAT(\`Día\`, '%Y-%m-%d') AS dia
+       FROM Dynamic_Asistencia
+       WHERE \`Cédula\` IN (${ph}) AND \`Día\` BETWEEN ? AND ?`,
+      [...ids, startDate, ultimoDia]
+    );
+    const conRegistro = new Set(reg.map(r => `${r.cedula}|${r.dia}`));
+
+    const [fest] = await pool.execute(
+      "SELECT DATE_FORMAT(Fecha, '%Y-%m-%d') AS dia FROM Maestro_Fechas WHERE Estado = 'Festivo' AND Fecha BETWEEN ? AND ?",
+      [startDate, ultimoDia]
+    );
+    const festivos = new Set(fest.map(f => f.dia));
+    const esNoLaborable = iso => festivos.has(iso) || new Date(`${iso}T00:00:00Z`).getUTCDay() === 0;
+
+    const dias = [];
+    const porTrabajador = [];
+    for (const w of lista) {
+      const v = vincPorId.get(w.identificacion);
+      let desde = startDate, hasta = ultimoDia;
+      if (v?.ingreso && v.ingreso > desde) desde = v.ingreso;
+      if (v?.estado === 'Retirado' && v.retiro && v.retiro < hasta) hasta = v.retiro;
+
+      let evaluados = 0;
+      const faltantes = [];
+      for (let d = desde; d <= hasta; d = sumarDiasISO(d, 1)) {
+        if (esNoLaborable(d)) continue;
+        evaluados++;
+        if (!conRegistro.has(`${w.identificacion}|${d}`)) faltantes.push(d);
+      }
+      if (!faltantes.length) continue;
+
+      const base = {
+        identificacion: w.identificacion,
+        trabajador: w.trabajador,
+        cargo: w.cargo,
+        operacion: w.operacion,
+        regional: w.regional,
+        clasificacion: w.clasificacion,
+      };
+      faltantes.forEach(dia => dias.push({ ...base, dia }));
+      porTrabajador.push({ ...base, diasSinRegistro: faltantes.length, diasEvaluados: evaluados, fechas: faltantes });
+    }
+
+    res.json({
+      ok: true,
+      dias,
+      porTrabajador,
+      resumen: { trabajadoresEvaluados: lista.length, trabajadores: porTrabajador.length, diasSinRegistro: dias.length, hasta: ultimoDia },
+    });
+  } catch (err) {
+    console.error('[nomina Biometrico API] Error en reporte sin registro:', err);
     res.status(500).json({ error: err.message });
   }
 });
