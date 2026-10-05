@@ -787,7 +787,8 @@ router.post('/api/responder/:id', async (req, res) => {
     // 7. Notify completion
     const [segRows] = await pool.execute('SELECT Email FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1', [ev.identificacion]);
     if (segRows.length && segRows[0].Email) {
-      await notificarEvaluacionSSTCompletada({
+      // Sin await: ya se guardó el resultado y el documento.
+      notificarEvaluacionSSTCompletada({
         email: segRows[0].Email,
         nombreTrabajador: vin.Trabajador,
         tipo: ev.tipo,

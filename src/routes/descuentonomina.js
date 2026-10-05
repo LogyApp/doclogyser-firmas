@@ -676,7 +676,8 @@ router.post('/api/crear', async (req, res) => {
 
     if (enviar_correo && emailTrabajador) {
       const urlFirma = `${req.protocol}://${req.get('host')}/descuentonomina/firmar?item=${id_descuento}&token=${token_firma}`;
-      await notificarFirmaDescuentoNomina({
+      // Sin await: el registro ya quedó creado, el correo no debe retrasar la respuesta.
+      notificarFirmaDescuentoNomina({
         email: emailTrabajador,
         nombreTrabajador: cleanNombreTrabajador,
         tipoDescuento: tipo_descuento,
@@ -848,7 +849,8 @@ router.post('/api/firmar-asistente', async (req, res) => {
     const emailUsuario = usuRows.length ? usuRows[0].Email : null;
 
     if (emailUsuario) {
-      await notificarDescuentoNominaFirmada({
+      // Sin await: el PDF y el registro ya quedaron guardados, el aviso al creador es secundario.
+      notificarDescuentoNominaFirmada({
         nombreTrabajador: c.nombre_trabajador,
         identificacion: c.identificacion,
         tipoDescuento: c.tipo_descuento,

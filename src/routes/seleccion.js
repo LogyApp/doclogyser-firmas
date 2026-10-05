@@ -1119,8 +1119,8 @@ router.post('/api/block-process', async (req, res) => {
       }
     }
 
-    // 4. Enviar correo de bloqueo
-    await notificarBloqueoAspirante({
+    // 4. Enviar correo de bloqueo (sin await: el bloqueo ya quedó guardado arriba)
+    notificarBloqueoAspirante({
       emailUsuario,
       nombreAspirante,
       registeredID: registeredID || '',

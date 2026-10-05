@@ -538,12 +538,18 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         `;
       }
 
-      await transporter.sendMail({
+      // No se espera (await) el envío: el registro ya quedó guardado en Dynamic_Logysign, así
+      // que el éxito de la operación para el usuario no depende de que el correo salga en ese
+      // instante. Evita que una respuesta lenta del SMTP (ver nota en email.js) bloquee esta
+      // petición — que además incluye la subida del PDF — hasta que el navegador la corte.
+      transporter.sendMail({
         from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
         to: emailTrabajador,
         cc: ccEmails.length ? ccEmails.join(', ') : undefined,
         subject: mailSubject,
         html: mailBody
+      }).catch(err => {
+        console.error(`[logysign] Error enviando email de notificación para ${uuid} (no bloqueante):`, err.message);
       });
     }
 
@@ -770,11 +776,16 @@ router.post('/api/firmar', async (req, res) => {
       </div>
     `;
 
-    await transporter.sendMail({
+    // Sin await: el documento firmado ya quedó guardado (PDF + registro), el aviso por correo
+    // a los destinatarios en copia es secundario y no debe retrasar la confirmación al
+    // colaborador que acaba de firmar.
+    transporter.sendMail({
       from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
       to: ccEmails.join(', '),
       subject: `LOG&SER: Documento firmado completado (${logysign.nombre_documento || logysign.prefijo}) — ${logysign.nombre_trabajador}`,
       html: mailBody
+    }).catch(err => {
+      console.error(`[logysign] Error enviando email de documento firmado para ${logysign.id} (no bloqueante):`, err.message);
     });
 
     // 10. Conservar el PDF temporal original como respaldo de auditoría

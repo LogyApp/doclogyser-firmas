@@ -898,7 +898,9 @@ router.post('/api/responder/:id', async (req, res) => {
     // 9. Enviar correo de notificación de completado
     const [segRows] = await pool.execute('SELECT Email FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1', [ev.identificacion]);
     if (segRows.length && segRows[0].Email) {
-      await notificarCapacitacionSSTCompletada({
+      // Sin await: ya se guardó el resultado y el documento, el correo es secundario y no
+      // debe hacer esperar al trabajador que está respondiendo la evaluación.
+      notificarCapacitacionSSTCompletada({
         email: segRows[0].Email,
         nombreTrabajador: vin.Trabajador,
         tema: ev.tema,

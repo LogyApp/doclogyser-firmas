@@ -144,31 +144,36 @@ router.post('/:idPz', async (req, res) => {
     const nombreTrabajador = limpiarNombre(pz.Trabajador);
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 
-    for (const area of areasRequeridas) {
-      try {
-        console.log(`[pazysalvo POST] Generando token para área: ${area}`);
-        const tokenArea = await generarTokenPZ(idPz, `token_${area}`, `token_${area}_expira`);
-        const urlFirmaArea = `${baseUrl}/pazysalvo-area/${area}/${idPz}?token=${encodeURIComponent(tokenArea)}`;
-        // CC 1117517812 permanece en modo prueba; el resto usa correos reales por área
-        const esPrueba = String(pz.identificacion) === '1117517812';
-        const destinatarios = esPrueba ? ['admin@logyser.com'] : (EMAILS_AREA[area] || []);
-        console.log(`[pazysalvo POST] Enviando email ${area} a:`, destinatarios);
-        if (destinatarios.length) {
-          await notificarAreaPazYSalvo({
-            area,
-            destinatarios,
-            trabajador: nombreTrabajador,
-            identificacion: pz.identificacion,
-            cargo: pz.Cargo || '',
-            operacion: pz['Operación'] || '',
-            urlFirma: urlFirmaArea,
-          });
-          console.log(`[pazysalvo POST] Email ${area} enviado OK`);
+    // La firma del trabajador ya quedó guardada arriba. Generar los tokens por área y enviar
+    // los correos puede tardar (varias áreas = varios envíos secuenciales), así que se hace en
+    // segundo plano para no retrasar la confirmación al trabajador que acaba de firmar.
+    (async () => {
+      for (const area of areasRequeridas) {
+        try {
+          console.log(`[pazysalvo POST] Generando token para área: ${area}`);
+          const tokenArea = await generarTokenPZ(idPz, `token_${area}`, `token_${area}_expira`);
+          const urlFirmaArea = `${baseUrl}/pazysalvo-area/${area}/${idPz}?token=${encodeURIComponent(tokenArea)}`;
+          // CC 1117517812 permanece en modo prueba; el resto usa correos reales por área
+          const esPrueba = String(pz.identificacion) === '1117517812';
+          const destinatarios = esPrueba ? ['admin@logyser.com'] : (EMAILS_AREA[area] || []);
+          console.log(`[pazysalvo POST] Enviando email ${area} a:`, destinatarios);
+          if (destinatarios.length) {
+            await notificarAreaPazYSalvo({
+              area,
+              destinatarios,
+              trabajador: nombreTrabajador,
+              identificacion: pz.identificacion,
+              cargo: pz.Cargo || '',
+              operacion: pz['Operación'] || '',
+              urlFirma: urlFirmaArea,
+            });
+            console.log(`[pazysalvo POST] Email ${area} enviado OK`);
+          }
+        } catch (eArea) {
+          console.error(`[pazysalvo POST] Error notificando área ${area}:`, eArea.message);
         }
-      } catch (eArea) {
-        console.error(`[pazysalvo POST] Error notificando área ${area}:`, eArea.message);
       }
-    }
+    })();
 
     res.json({ ok: true });
   } catch (err) {

@@ -832,7 +832,8 @@ router.post('/api/firmar-asistente', async (req, res) => {
     const emailUsuario = usuRows.length ? usuRows[0].Email : null;
 
     if (emailUsuario) {
-      await notificarPruebaConsumoFirmada({
+      // Sin await: el PDF y el registro ya quedaron guardados.
+      notificarPruebaConsumoFirmada({
         nombreTrabajador: c.nombre_trabajador,
         identificacion: c.identificacion,
         cliente: c.cliente,

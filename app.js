@@ -1,6 +1,19 @@
 require('dotenv').config();
 const express = require('express');
 
+// Red de seguridad: la app corre ~10 tareas en segundo plano (setInterval) para
+// notificaciones (documentos por vencer, confirmaciones, etc.). Sin estos manejadores,
+// un error no controlado en CUALQUIERA de esas tareas (o en cualquier otro lugar del
+// proceso) tumba el servidor completo — afectando a todos los usuarios conectados en
+// ese momento, no solo la tarea que falló. Con esto, el error queda registrado en los
+// logs pero el servidor sigue funcionando para todos los demás.
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException] Error no controlado (el servidor sigue activo):', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection] Promesa rechazada sin manejar (el servidor sigue activo):', reason);
+});
+
 const reportesRoutes                 = require('./src/routes/reportes');
 const adminRoutes                    = require('./src/routes/admin');
 const firmaRoutes                    = require('./src/routes/firma');

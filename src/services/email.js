@@ -9,6 +9,14 @@ const transporter = nodemailer.createTransport({
   port:   parseInt(process.env.SMTP_PORT) || 587,
   secure: process.env.SMTP_SECURE === 'true',
   auth:   authConfig,
+  // Sin estos límites, nodemailer espera hasta 2 min para conectar y hasta 10 min de
+  // inactividad en el socket antes de fallar. Si Office 365 responde lento (medido ~11s
+  // solo para el saludo SMTP), cualquier endpoint que haga `await transporter.sendMail(...)`
+  // antes de responder queda colgado minutos — tiempo suficiente para que Cloud Run o el
+  // navegador corten la conexión (ERR_CONNECTION_CLOSED), sin que el usuario vea un error claro.
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 30000,
 });
 
 // NOTIFICACIONES POR CORREO ACTIVAS
