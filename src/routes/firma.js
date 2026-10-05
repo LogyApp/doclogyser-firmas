@@ -20,6 +20,10 @@ const {
   resolverTipoDocumentoActa,
   registrarDocumentoTrabajadorActa,
 } = require('../services/actas');
+const {
+  construirDatosPlantillaCasoMedico,
+  registrarDocumentoTrabajadorCasoMedico,
+} = require('../services/casosmedicos_actas');
 
 const router = express.Router();
 
@@ -34,6 +38,8 @@ function paginaError(mensaje) {
 const TITULOS_PROCESO = {
   traslado: 'DOCUMENTO DE TRASLADO',
   acta_entrega: 'ACTA DE ENTREGA',
+  acta_apertura_cm: 'ACTA DE APERTURA CASO MÉDICO',
+  acta_cierre_cm: 'ACTA DE CIERRE CASO MÉDICO',
 };
 
 function buildConfig(token, proceso, id, firmaPrevia, documentoHtml) {
@@ -51,8 +57,19 @@ router.get('/:proceso/:id', async (req, res) => {
 
     if (!token) return res.status(401).send(paginaError('Token no proporcionado'));
 
+    const proc = proceso.toLowerCase();
+    let colToken = 'token_firma';
+    let colExpira = 'token_expira';
+    if (proc === 'acta_apertura_cm') {
+      colToken = 'token_apertura';
+      colExpira = 'token_apertura_expira';
+    } else if (proc === 'acta_cierre_cm') {
+      colToken = 'token_cierre';
+      colExpira = 'token_cierre_expira';
+    }
+
     const plantilla = await obtenerPlantilla(proceso);
-    const resultado = await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id);
+    const resultado = await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id, colToken, colExpira);
 
     if (!resultado.valido) return res.status(401).send(paginaError('Token inválido o expirado'));
 
@@ -66,8 +83,11 @@ router.get('/:proceso/:id', async (req, res) => {
     const datos = rows[0];
 
     let documentoHtml;
-    if (proceso.toLowerCase() === 'acta_entrega') {
+    if (proc === 'acta_entrega') {
       const { datos: datosPlantilla } = await construirDatosPlantilla(id, { firmaHtml: '' });
+      documentoHtml = reemplazarVariables(plantilla.contenido_html || '', datosPlantilla);
+    } else if (proc === 'acta_apertura_cm' || proc === 'acta_cierre_cm') {
+      const { datos: datosPlantilla } = await construirDatosPlantillaCasoMedico(id, proc, { firmaHtml: '' });
       documentoHtml = reemplazarVariables(plantilla.contenido_html || '', datosPlantilla);
     } else {
       let htmlDoc = plantilla.contenido_html || '';
@@ -97,8 +117,19 @@ router.post('/:proceso/:id', async (req, res) => {
     const { proceso, id } = req.params;
     const { token, firma_base64, es_nueva_firma } = req.body;
 
+    const proc = proceso.toLowerCase();
+    let colToken = 'token_firma';
+    let colExpira = 'token_expira';
+    if (proc === 'acta_apertura_cm') {
+      colToken = 'token_apertura';
+      colExpira = 'token_apertura_expira';
+    } else if (proc === 'acta_cierre_cm') {
+      colToken = 'token_cierre';
+      colExpira = 'token_cierre_expira';
+    }
+
     const plantilla = await obtenerPlantilla(proceso);
-    const resultado = await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id);
+    const resultado = await validarToken(token, plantilla.tabla_datos, plantilla.id_campo_fk, id, colToken, colExpira);
 
     if (!resultado.valido) return res.status(401).json({ ok: false, error: 'Token inválido o expirado' });
 
@@ -111,7 +142,77 @@ router.post('/:proceso/:id', async (req, res) => {
 
     const t = rows[0];
 
-    if (proceso.toLowerCase() === 'acta_entrega') {
+    if (proc === 'acta_apertura_cm' || proc === 'acta_cierre_cm') {
+      const esApertura = proc === 'acta_apertura_cm';
+      const urlActaExistente = esApertura ? t.url_acta_apertura : t.url_acta_cierre;
+      if (urlActaExistente) {
+        return res.status(409).json({ ok: false, error: `El acta de ${esApertura ? 'apertura' : 'cierre'} ya fue firmada previamente` });
+      }
+
+      let urlFirma;
+      if (es_nueva_firma) {
+        const base64Data = firma_base64.replace(/^data:image\/png;base64,/, '');
+        const bufferPng = Buffer.from(base64Data, 'base64');
+        urlFirma = await subirFirma(t.identificacion, bufferPng);
+      } else {
+        urlFirma = await obtenerUrlFirmaReciente(t.identificacion);
+      }
+
+      const nowBogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+      const dd = String(nowBogota.getDate()).padStart(2, '0');
+      const mm = String(nowBogota.getMonth() + 1).padStart(2, '0');
+      const yyyy = nowBogota.getFullYear();
+      const hh = String(nowBogota.getHours()).padStart(2, '0');
+      const min = String(nowBogota.getMinutes()).padStart(2, '0');
+      const fechaFirmaTexto = `Firmado: ${dd}/${mm}/${yyyy} ${hh}:${min}`;
+
+      const firmaHtml = `
+        <div style="display:inline-block;text-align:center;">
+          <img src="${firma_base64}" style="max-height:85px;max-width:260px;display:block;margin:0 auto;" alt="Firma colaborador"/>
+          <div style="font-size:7pt;color:#555;margin-top:2px;font-family:Arial,sans-serif;">${fechaFirmaTexto}</div>
+        </div>
+      `;
+
+      const { datos: datosPlantilla } = await construirDatosPlantillaCasoMedico(id, proc, { firmaHtml });
+      const htmlFinal = reemplazarVariables(plantilla.contenido_html || '', datosPlantilla);
+
+      const pdfBuffer = await generarPDFDesdeHTML(htmlFinal);
+
+      const prefijo = esApertura ? 'AACM' : 'ACCM';
+      const tipoDocumento = esApertura ? '94' : '95';
+      const urlActa = await subirPDFActa(t.identificacion, prefijo, id, pdfBuffer);
+
+      if (esApertura) {
+        await pool.execute(
+          `UPDATE Maestro_casosmedicos
+           SET url_firma_apertura = ?, firma_apertura = ?, url_acta_apertura = ?, fecha_firma_apertura = NOW(),
+               token_apertura = NULL, token_apertura_expira = NULL
+           WHERE id = ?`,
+          [urlFirma, firma_base64, urlActa, id]
+        );
+      } else {
+        await pool.execute(
+          `UPDATE Maestro_casosmedicos
+           SET url_firma_cierre = ?, firma_cierre = ?, url_acta_cierre = ?, fecha_firma_cierre = NOW(),
+               token_cierre = NULL, token_cierre_expira = NULL
+           WHERE id = ?`,
+          [urlFirma, firma_base64, urlActa, id]
+        );
+      }
+
+      await registrarDocumentoTrabajadorCasoMedico({
+        caso: t,
+        tipoDocumento,
+        prefijo,
+        urlActa,
+        usuario: t.usuario,
+        tipoActa: esApertura ? 'apertura' : 'cierre',
+      });
+
+      return res.json({ ok: true, url_doc: urlActa });
+    }
+
+    if (proc === 'acta_entrega') {
       if (t.Estado !== 'Pendiente') {
         return res.status(409).json({ ok: false, error: 'El acta no está disponible para firma' });
       }

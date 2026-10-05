@@ -1,6 +1,11 @@
 const express = require('express');
 const pool = require('../services/db');
 const { computarAccesoSST } = require('./sst');
+const { generarToken } = require('../services/token');
+const {
+  construirDatosPlantillaCasoMedico,
+  notificarActaCasoMedico,
+} = require('../services/casosmedicos_actas');
 
 const router = express.Router();
 
@@ -869,6 +874,347 @@ router.post('/api/crear', async (req, res) => {
     });
   } catch (err) {
     console.error('[casosmedicos] Error en /api/crear:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// API: PUT /api/caso/:id
+// Actualiza un caso médico en Maestro_casosmedicos
+// ══════════════════════════════════════════════════════════════
+router.put('/api/caso/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      usuario,
+      tipo_caso_id,
+      estado_general_id,
+      prioridad_id,
+      es_continuacion,
+      caso_anterior_id,
+      regional_id,
+      operacion,
+      fecha_ingreso,
+      numero_anos_empresa,
+      fecha_nacimiento,
+      edad,
+      eps_id,
+      afp_id,
+      diagnostico,
+      tipo_evento_id,
+      tipo_accidente_transito_id,
+      fecha_evento,
+      dias_incapacidad,
+      pcl_porcentaje,
+      recomendaciones,
+      fecha_inicio,
+      fecha_fin,
+      actividad_actual,
+      historial_anterior,
+      responsable_sst,
+      responsable_operacion,
+      proxima_accion,
+      fecha_compromiso,
+      ultimo_seguimiento,
+      estado_gestion,
+      fecha_cierre,
+      motivo_cierre
+    } = req.body;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const acceso = await computarAccesoSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado en el módulo SST' });
+    }
+
+    // Verificar si existe el caso
+    const [cRows] = await pool.execute('SELECT * FROM Maestro_casosmedicos WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (!cRows.length) {
+      return res.status(404).json({ error: 'Caso médico no encontrado' });
+    }
+
+    const casoExistente = cRows[0];
+    const creador = String(casoExistente.usuario || '').trim().toLowerCase();
+    const esAdmin = acceso.rol === 'Sistema' || acceso.rol === 'AdmSst' || acceso.rol === 'LiderSst';
+    const esCreador = creador === String(usuario).trim().toLowerCase();
+
+    if (!esAdmin && !esCreador) {
+      return res.status(403).json({ error: 'No tienes permisos para editar este caso médico' });
+    }
+
+    // Validar fechas de recomendaciones
+    if (fecha_inicio && fecha_fin) {
+      if (new Date(fecha_fin) < new Date(fecha_inicio)) {
+        return res.status(400).json({ error: 'La fecha de fin no puede ser anterior a la fecha de inicio' });
+      }
+    }
+
+    // Alertas automáticas
+    let alertaVencimiento = casoExistente.alerta_vencimiento || 'SIN FECHA';
+    const fFinVal = fecha_fin !== undefined ? fecha_fin : casoExistente.fecha_fin;
+    if (fFinVal) {
+      const hoy = new Date();
+      const ff = new Date(fFinVal);
+      const diffDays = Math.ceil((ff - hoy) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) alertaVencimiento = 'VENCIDO';
+      else if (diffDays <= 7) alertaVencimiento = 'POR VENCER';
+      else alertaVencimiento = 'VIGENTE';
+    } else {
+      alertaVencimiento = 'SIN FECHA';
+    }
+
+    let alertaSeguimiento = casoExistente.alerta_seguimiento || 'SIN SEGUIMIENTO';
+    let diasSinSeguimiento = casoExistente.dias_sin_seguimiento;
+    const uSegVal = ultimo_seguimiento !== undefined ? ultimo_seguimiento : casoExistente.ultimo_seguimiento;
+    if (uSegVal) {
+      const hoy = new Date();
+      const us = new Date(uSegVal);
+      diasSinSeguimiento = Math.max(0, Math.floor((hoy - us) / (1000 * 60 * 60 * 24)));
+      if (diasSinSeguimiento <= 15) alertaSeguimiento = 'AL DÍA';
+      else if (diasSinSeguimiento <= 30) alertaSeguimiento = 'PENDIENTE';
+      else alertaSeguimiento = 'CRÍTICO';
+    }
+
+    const estadoGenFinal = estado_general_id !== undefined ? Number(estado_general_id) : casoExistente.estado_general_id;
+    let fechaCierreFinal = fecha_cierre !== undefined ? fecha_cierre : casoExistente.fecha_cierre;
+    let motivoCierreFinal = motivo_cierre !== undefined ? motivo_cierre : casoExistente.motivo_cierre;
+
+    // Si cambió a cerrado y no tiene fecha_cierre, asignar hoy
+    if (estadoGenFinal === 2 && !fechaCierreFinal) {
+      fechaCierreFinal = new Date().toISOString().slice(0, 10);
+      if (!motivoCierreFinal) motivoCierreFinal = 'Cierre de caso médico';
+    } else if (estadoGenFinal === 1) {
+      // Si se reabre
+      fechaCierreFinal = null;
+      motivoCierreFinal = null;
+    }
+
+    const esContFinal = es_continuacion !== undefined ? Number(es_continuacion) : casoExistente.es_continuacion;
+    const casoAntIdFinal = (esContFinal === 1 && caso_anterior_id) ? caso_anterior_id : null;
+    const tipoEvVal = tipo_evento_id !== undefined ? Number(tipo_evento_id) : casoExistente.tipo_evento_id;
+    const tipoAccFinal = (tipoEvVal === 4 && tipo_accidente_transito_id) ? tipo_accidente_transito_id : null;
+
+    // Actualizar campos
+    await pool.execute(`
+      UPDATE Maestro_casosmedicos
+      SET
+        tipo_caso_id = COALESCE(?, tipo_caso_id),
+        estado_general_id = ?,
+        prioridad_id = COALESCE(?, prioridad_id),
+        es_continuacion = ?,
+        caso_anterior_id = ?,
+        regional_id = COALESCE(?, regional_id),
+        operacion = ?,
+        fecha_ingreso = COALESCE(?, fecha_ingreso),
+        numero_anos_empresa = ?,
+        fecha_nacimiento = ?,
+        edad = ?,
+        eps_id = ?,
+        afp_id = ?,
+        diagnostico = ?,
+        tipo_evento_id = COALESCE(?, tipo_evento_id),
+        tipo_accidente_transito_id = ?,
+        fecha_evento = ?,
+        dias_incapacidad = ?,
+        pcl_porcentaje = ?,
+        recomendaciones = ?,
+        fecha_inicio = ?,
+        fecha_fin = ?,
+        actividad_actual = ?,
+        historial_anterior = ?,
+        responsable_sst = ?,
+        responsable_operacion = ?,
+        proxima_accion = ?,
+        fecha_compromiso = ?,
+        ultimo_seguimiento = ?,
+        dias_sin_seguimiento = ?,
+        alerta_vencimiento = ?,
+        alerta_seguimiento = ?,
+        estado_gestion = COALESCE(?, estado_gestion),
+        fecha_cierre = ?,
+        motivo_cierre = ?,
+        fecha_actualizacion = NOW()
+      WHERE id = ?
+    `, [
+      tipo_caso_id || null,
+      estadoGenFinal,
+      prioridad_id || null,
+      esContFinal,
+      casoAntIdFinal,
+      regional_id || null,
+      operacion || null,
+      fecha_ingreso || null,
+      numero_anos_empresa || null,
+      fecha_nacimiento || null,
+      edad || null,
+      eps_id || null,
+      afp_id || null,
+      diagnostico || null,
+      tipo_evento_id || null,
+      tipoAccFinal,
+      fecha_evento || null,
+      dias_incapacidad != null ? dias_incapacidad : null,
+      pcl_porcentaje != null ? pcl_porcentaje : null,
+      recomendaciones || null,
+      fecha_inicio || null,
+      fecha_fin || null,
+      actividad_actual || null,
+      historial_anterior || null,
+      responsable_sst || null,
+      responsable_operacion || null,
+      proxima_accion || null,
+      fecha_compromiso || null,
+      ultimo_seguimiento || null,
+      diasSinSeguimiento,
+      alertaVencimiento,
+      alertaSeguimiento,
+      estado_gestion || null,
+      fechaCierreFinal,
+      motivoCierreFinal,
+      id
+    ]);
+
+    res.json({
+      ok: true,
+      id,
+      codigo_caso: casoExistente.codigo_caso,
+      message: `Caso médico ${casoExistente.codigo_caso || '#' + id} actualizado exitosamente`
+    });
+  } catch (err) {
+    console.error('[casosmedicos] Error en PUT /api/caso/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// API: POST /api/caso/:id/generar-acta-apertura
+// Genera token y enlace de firma para Acta de Apertura (solo en ABIERTO)
+// ══════════════════════════════════════════════════════════════
+router.post('/api/caso/:id/generar-acta-apertura', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const acceso = await computarAccesoSST(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const [rows] = await pool.execute('SELECT * FROM Maestro_casosmedicos WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Caso médico no encontrado' });
+
+    const caso = rows[0];
+    if (Number(caso.estado_general_id) !== 1) {
+      return res.status(400).json({ error: 'El acta de apertura solo puede generarse cuando el estado general del caso está en ABIERTO' });
+    }
+
+    const token = await generarToken('Maestro_casosmedicos', 'id', id, 'token_apertura', 'token_apertura_expira');
+    const url = `${req.protocol}://${req.get('host')}/doclogyser/acta_apertura_cm/${id}?token=${encodeURIComponent(token)}`;
+
+    res.json({ ok: true, url, token });
+  } catch (err) {
+    console.error('[casosmedicos] POST /api/caso/:id/generar-acta-apertura:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// API: POST /api/caso/:id/generar-acta-cierre
+// Genera token y enlace de firma para Acta de Cierre (solo en CERRADO)
+// ══════════════════════════════════════════════════════════════
+router.post('/api/caso/:id/generar-acta-cierre', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const acceso = await computarAccesoSST(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const [rows] = await pool.execute('SELECT * FROM Maestro_casosmedicos WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Caso médico no encontrado' });
+
+    const caso = rows[0];
+    if (Number(caso.estado_general_id) !== 2) {
+      return res.status(400).json({ error: 'El acta de cierre solo puede generarse cuando el estado general del caso está en CERRADO' });
+    }
+
+    const token = await generarToken('Maestro_casosmedicos', 'id', id, 'token_cierre', 'token_cierre_expira');
+    const url = `${req.protocol}://${req.get('host')}/doclogyser/acta_cierre_cm/${id}?token=${encodeURIComponent(token)}`;
+
+    res.json({ ok: true, url, token });
+  } catch (err) {
+    console.error('[casosmedicos] POST /api/caso/:id/generar-acta-cierre:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// API: POST /api/caso/:id/enviar-acta-correo
+// Envía el enlace de firma del acta (apertura o cierre) por correo al trabajador
+// ══════════════════════════════════════════════════════════════
+router.post('/api/caso/:id/enviar-acta-correo', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, tipo, url, email } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    if (!tipo) return res.status(400).json({ error: 'Tipo de acta (apertura/cierre) requerido' });
+
+    const acceso = await computarAccesoSST(usuario);
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const [rows] = await pool.execute('SELECT * FROM Maestro_casosmedicos WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Caso médico no encontrado' });
+
+    const caso = rows[0];
+    let urlFirma = url;
+
+    if (tipo === 'apertura') {
+      if (Number(caso.estado_general_id) !== 1) {
+        return res.status(400).json({ error: 'El caso no está en estado ABIERTO' });
+      }
+      if (!urlFirma) {
+        const token = await generarToken('Maestro_casosmedicos', 'id', id, 'token_apertura', 'token_apertura_expira');
+        urlFirma = `${req.protocol}://${req.get('host')}/doclogyser/acta_apertura_cm/${id}?token=${encodeURIComponent(token)}`;
+      }
+    } else {
+      if (Number(caso.estado_general_id) !== 2) {
+        return res.status(400).json({ error: 'El caso no está en estado CERRADO' });
+      }
+      if (!urlFirma) {
+        const token = await generarToken('Maestro_casosmedicos', 'id', id, 'token_cierre', 'token_cierre_expira');
+        urlFirma = `${req.protocol}://${req.get('host')}/doclogyser/acta_cierre_cm/${id}?token=${encodeURIComponent(token)}`;
+      }
+    }
+
+    // Buscar email si no viene en body
+    let emailDestino = email && email.trim();
+    if (!emailDestino) {
+      const [segRows] = await pool.execute('SELECT Email, Trabajador FROM `Maestro_Segmentación` WHERE Identificación = ? LIMIT 1', [caso.identificacion]);
+      if (segRows.length && segRows[0].Email) {
+        emailDestino = segRows[0].Email;
+      }
+    }
+
+    if (!emailDestino) {
+      return res.status(400).json({ error: 'El trabajador no tiene correo electrónico registrado en el sistema' });
+    }
+
+    const { datos } = await construirDatosPlantillaCasoMedico(id, tipo === 'apertura' ? 'acta_apertura_cm' : 'acta_cierre_cm');
+
+    await notificarActaCasoMedico({
+      email: emailDestino,
+      nombreTrabajador: datos.nombre_trabajador,
+      tipoActa: tipo,
+      codigoCaso: caso.codigo_caso || '#' + id,
+      urlFirma,
+    });
+
+    res.json({ ok: true, mensaje: `Enlace de acta de ${tipo} enviado al correo ${emailDestino}` });
+  } catch (err) {
+    console.error('[casosmedicos] POST /api/caso/:id/enviar-acta-correo:', err);
     res.status(500).json({ error: err.message });
   }
 });

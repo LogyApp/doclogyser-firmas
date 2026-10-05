@@ -146,9 +146,16 @@ async function computarAccesoEVSST(usuarioId) {
   return acceso;
 }
 
-// ═════ SERVIR INTERFAZ (Dashboard o Formulario del Evaluador) ═════
+// ═════ REDIRECCIÓN A SST HUB O FORMULARIO ═════
 router.get('/', async (req, res) => {
   try {
+    const isForm = (req.baseUrl || '').toLowerCase().includes('/formevaluacionsst');
+    if (!isForm) {
+      const q = new URLSearchParams(req.query);
+      if (!q.has('tab')) q.set('tab', 'evaluacion');
+      return res.redirect(302, `/sst?${q.toString()}`);
+    }
+
     const { usuario } = req.query;
     if (!usuario) {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
@@ -159,17 +166,12 @@ router.get('/', async (req, res) => {
       return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
     }
 
-    const initialView = (req.baseUrl || '').toLowerCase().includes('/formevaluacionsst')
-      ? 'formulario'
-      : 'listado';
-
-    const pathTemplate = initialView === 'formulario' ? HTML_FORM_PATH : HTML_INDEX_PATH;
-    const html = fs.readFileSync(pathTemplate, 'utf8');
+    const html = fs.readFileSync(HTML_FORM_PATH, 'utf8');
 
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
-      initialView,
+      initialView: 'formulario',
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -360,17 +362,13 @@ router.get('/api/conteos-filtros', async (req, res) => {
       }
     }
 
-    // 1. Regionales (Excluye regional)
-    const regConds = [...baseConds, ...sharedConds];
-    const regParams = [...baseParams, ...sharedParams];
-    if (operacion) {
-      regConds.push('vin.Operación = ?');
-      regParams.push(operacion);
-    }
-    const regWhere = regConds.length ? 'WHERE ' + regConds.join(' AND ') : '';
+    // Consulta consolidada para Regionales y Operaciones
+    const combConds = [...baseConds, ...sharedConds];
+    const combParams = [...baseParams, ...sharedParams];
+    const combWhere = combConds.length ? 'WHERE ' + combConds.join(' AND ') : '';
 
-    const [regRows] = await pool.execute(
-      `SELECT vin.Regional, COUNT(*) AS total
+    const [combRows] = await pool.execute(
+      `SELECT vin.Regional, vin.\`Operación\` AS operacion, COUNT(*) AS total
        FROM Maestro_evaluacionsst ev
        LEFT JOIN (
          SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
@@ -381,45 +379,25 @@ router.get('/api/conteos-filtros', async (req, res) => {
            GROUP BY Identificación
          ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
        ) vin ON ev.identificacion = vin.Identificación
-       ${regWhere}
-       GROUP BY vin.Regional`,
-      regParams
-    );
-
-    // 2. Operaciones (Excluye operacion)
-    const opConds = [...baseConds, ...sharedConds];
-    const opParams = [...baseParams, ...sharedParams];
-    if (regional) {
-      opConds.push('vin.Regional = ?');
-      opParams.push(regional);
-    }
-    const opWhere = opConds.length ? 'WHERE ' + opConds.join(' AND ') : '';
-
-    const [opRows] = await pool.execute(
-      `SELECT vin.Operación AS operacion, COUNT(*) AS total
-       FROM Maestro_evaluacionsst ev
-       LEFT JOIN (
-         SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
-         FROM Maestro_Vinculación t1
-         INNER JOIN (
-           SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
-           FROM Maestro_Vinculación
-           GROUP BY Identificación
-         ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
-       ) vin ON ev.identificacion = vin.Identificación
-       ${opWhere}
-       GROUP BY vin.Operación`,
-      opParams
+       ${combWhere}
+       GROUP BY vin.Regional, vin.\`Operación\``,
+      combParams
     );
 
     const regionales = {};
-    regRows.forEach(r => {
-      if (r.Regional) regionales[r.Regional] = r.total;
-    });
-
     const operaciones = {};
-    opRows.forEach(o => {
-      if (o.operacion) operaciones[o.operacion] = o.total;
+
+    combRows.forEach(r => {
+      if (!operacion || r.operacion === operacion) {
+        if (r.Regional) {
+          regionales[r.Regional] = (regionales[r.Regional] || 0) + r.total;
+        }
+      }
+      if (!regional || r.Regional === regional) {
+        if (r.operacion) {
+          operaciones[r.operacion] = (operaciones[r.operacion] || 0) + r.total;
+        }
+      }
     });
 
     res.json({ regionales, operaciones });

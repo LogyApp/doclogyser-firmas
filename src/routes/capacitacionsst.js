@@ -146,9 +146,17 @@ async function computarAccesoCAPSST(usuarioId) {
   return acceso;
 }
 
-// ═════ SERVIR INTERFAZ ═════
+// ═════ REDIRECCIÓN A SST HUB O PANELES ESPECÍFICOS ═════
 router.get('/', async (req, res) => {
   try {
+    const lowerBaseUrl = (req.baseUrl || '').toLowerCase();
+    const isSpecial = lowerBaseUrl.includes('/admin/capacitacionsst') || lowerBaseUrl.includes('/formcapacitacionsst');
+    if (!isSpecial) {
+      const q = new URLSearchParams(req.query);
+      if (!q.has('tab')) q.set('tab', 'capacitacion');
+      return res.redirect(302, `/sst?${q.toString()}`);
+    }
+
     const { usuario } = req.query;
     if (!usuario) {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
@@ -162,7 +170,6 @@ router.get('/', async (req, res) => {
     let initialView = 'listado';
     let pathTemplate = HTML_INDEX_PATH;
 
-    const lowerBaseUrl = (req.baseUrl || '').toLowerCase();
     if (lowerBaseUrl.includes('/admin/capacitacionsst')) {
       if (!['LiderSst', 'Sistema'].includes(acceso.rol)) {
         return res.status(403).send('<h2>Error: Solo Líder SST o Sistema pueden acceder a este panel.</h2>');
@@ -391,17 +398,13 @@ router.get('/api/conteos-filtros', async (req, res) => {
       }
     }
 
-    // 1. Regionales (Excluye regional)
-    const regConds = [...baseConds, ...sharedConds];
-    const regParams = [...baseParams, ...sharedParams];
-    if (operacion) {
-      regConds.push('vin.Operación = ?');
-      regParams.push(operacion);
-    }
-    const regWhere = regConds.length ? 'WHERE ' + regConds.join(' AND ') : '';
+    // Consulta consolidada para Regionales y Operaciones
+    const combConds = [...baseConds, ...sharedConds];
+    const combParams = [...baseParams, ...sharedParams];
+    const combWhere = combConds.length ? 'WHERE ' + combConds.join(' AND ') : '';
 
-    const [regRows] = await pool.execute(
-      `SELECT vin.Regional, COUNT(*) AS total
+    const [combRows] = await pool.execute(
+      `SELECT vin.Regional, vin.\`Operación\` AS operacion, COUNT(*) AS total
        FROM Maestro_capacitacionsst c
        LEFT JOIN (
          SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
@@ -412,45 +415,25 @@ router.get('/api/conteos-filtros', async (req, res) => {
            GROUP BY Identificación
          ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
        ) vin ON c.identificacion = vin.Identificación
-       ${regWhere}
-       GROUP BY vin.Regional`,
-      regParams
-    );
-
-    // 2. Operaciones (Excluye operacion)
-    const opConds = [...baseConds, ...sharedConds];
-    const opParams = [...baseParams, ...sharedParams];
-    if (regional) {
-      opConds.push('vin.Regional = ?');
-      opParams.push(regional);
-    }
-    const opWhere = opConds.length ? 'WHERE ' + opConds.join(' AND ') : '';
-
-    const [opRows] = await pool.execute(
-      `SELECT vin.Operación AS operacion, COUNT(*) AS total
-       FROM Maestro_capacitacionsst c
-       LEFT JOIN (
-         SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
-         FROM Maestro_Vinculación t1
-         INNER JOIN (
-           SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha
-           FROM Maestro_Vinculación
-           GROUP BY Identificación
-         ) t2 ON t1.Identificación = t2.Identificación AND t1.\`Fecha de Ingreso\` = t2.MaxFecha
-       ) vin ON c.identificacion = vin.Identificación
-       ${opWhere}
-       GROUP BY vin.Operación`,
-      opParams
+       ${combWhere}
+       GROUP BY vin.Regional, vin.\`Operación\``,
+      combParams
     );
 
     const regionales = {};
-    regRows.forEach(r => {
-      if (r.Regional) regionales[r.Regional] = r.total;
-    });
-
     const operaciones = {};
-    opRows.forEach(o => {
-      if (o.operacion) operaciones[o.operacion] = o.total;
+
+    combRows.forEach(r => {
+      if (!operacion || r.operacion === operacion) {
+        if (r.Regional) {
+          regionales[r.Regional] = (regionales[r.Regional] || 0) + r.total;
+        }
+      }
+      if (!regional || r.Regional === regional) {
+        if (r.operacion) {
+          operaciones[r.operacion] = (operaciones[r.operacion] || 0) + r.total;
+        }
+      }
     });
 
     res.json({ regionales, operaciones });
@@ -509,7 +492,7 @@ router.get('/api/capacitaciones', async (req, res) => {
     const whereClause = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
 
     const query = `
-      SELECT c.id_capacitacion, c.fecha, c.identificacion, c.usuario, c.tema, c.objetivo, c.url_doc, 
+      SELECT c.id_capacitacion, c.fecha, c.identificacion, c.usuario, c.tema, c.url_doc, 
              c.token_firma, c.token_expira, c.puntaje, c.resultado, c.fecha_registro,
              vin.Trabajador AS nombre_trabajador, vin.Cargo, vin.\`Operación\` AS operacion, vin.Regional,
              seg.Email AS email_trabajador, seg.Celular AS celular_trabajador,

@@ -167,9 +167,16 @@ function agruparOperacionesPorRegional(opRows) {
   return map;
 }
 
-// ═════ SERVIR INTERFAZ ═════
+// ═════ REDIRECCIÓN A SST HUB O FORMULARIO ═════
 router.get('/', async (req, res) => {
   try {
+    const isForm = (req.baseUrl || '').toLowerCase().includes('/formpruebaconsumo');
+    if (!isForm) {
+      const q = new URLSearchParams(req.query);
+      if (!q.has('tab')) q.set('tab', 'pruebaconsumo');
+      return res.redirect(302, `/sst?${q.toString()}`);
+    }
+
     const { usuario } = req.query;
     if (!usuario) {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
@@ -180,17 +187,12 @@ router.get('/', async (req, res) => {
       return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
     }
 
-    const initialView = (req.baseUrl || '').toLowerCase().includes('/formpruebaconsumo')
-      ? 'formulario'
-      : 'listado';
-
-    const pathTemplate = initialView === 'formulario' ? HTML_FORM_PATH : HTML_INDEX_PATH;
-    const html = fs.readFileSync(pathTemplate, 'utf8');
+    const html = fs.readFileSync(HTML_FORM_PATH, 'utf8');
 
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
-      initialView,
+      initialView: 'formulario',
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -370,50 +372,34 @@ router.get('/api/conteos-filtros', async (req, res) => {
       }
     }
 
-    // 1. Regionales (Excluye regional)
-    const regConds = [...baseConds, ...sharedConds];
-    const regParams = [...baseParams, ...sharedParams];
-    if (operacion) {
-      regConds.push('v.Operación = ?');
-      regParams.push(operacion);
-    }
-    const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
+    // Consulta consolidada para Regionales y Operaciones
+    const combConds = [...baseConds, ...sharedConds];
+    const combParams = [...baseParams, ...sharedParams];
+    const combWhere = combConds.length ? `WHERE ${combConds.join(' AND ')}` : '';
 
-    const [regRows] = await pool.execute(
-      `SELECT v.Regional, COUNT(*) AS total
+    const [combRows] = await pool.execute(
+      `SELECT v.Regional, v.Operación AS operacion, COUNT(*) AS total
        FROM Dynamic_pruebaconsumo a
        LEFT JOIN \`Maestro_Vinculación\` v ON a.identificacion = v.Identificación AND v.Estado = 'Activo'
-       ${regWhere}
-       GROUP BY v.Regional`,
-      regParams
-    );
-
-    // 2. Operaciones (Excluye operacion)
-    const opConds = [...baseConds, ...sharedConds];
-    const opParams = [...baseParams, ...sharedParams];
-    if (regional) {
-      opConds.push('v.Regional = ?');
-      opParams.push(regional);
-    }
-    const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
-
-    const [opRows] = await pool.execute(
-      `SELECT v.Operación AS operacion, COUNT(*) AS total
-       FROM Dynamic_pruebaconsumo a
-       LEFT JOIN \`Maestro_Vinculación\` v ON a.identificacion = v.Identificación AND v.Estado = 'Activo'
-       ${opWhere}
-       GROUP BY v.Operación`,
-      opParams
+       ${combWhere}
+       GROUP BY v.Regional, v.Operación`,
+      combParams
     );
 
     const regionales = {};
-    regRows.forEach(r => {
-      if (r.Regional) regionales[r.Regional] = r.total;
-    });
-
     const operaciones = {};
-    opRows.forEach(o => {
-      if (o.operacion) operaciones[o.operacion] = o.total;
+
+    combRows.forEach(r => {
+      if (!operacion || r.operacion === operacion) {
+        if (r.Regional) {
+          regionales[r.Regional] = (regionales[r.Regional] || 0) + r.total;
+        }
+      }
+      if (!regional || r.Regional === regional) {
+        if (r.operacion) {
+          operaciones[r.operacion] = (operaciones[r.operacion] || 0) + r.total;
+        }
+      }
     });
 
     res.json({ regionales, operaciones });

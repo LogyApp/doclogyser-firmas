@@ -2457,6 +2457,7 @@
       <div style="flex: 1; overflow-y: auto; padding: 20px;">
         <form id="form-cm-crear" onsubmit="guardarCasoMedico(event)">
           <input type="hidden" id="cm-hidden-identificacion">
+          <input type="hidden" id="cm-hidden-caso-id">
 
           <!-- 1. SELECCIÓN / DATOS DEL TRABAJADOR -->
           <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
@@ -2543,7 +2544,7 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Estado General *</label>
-                <select class="form-control" id="cm-select-estado-general" required>
+                <select class="form-control" id="cm-select-estado-general" required onchange="onEstadoGeneralChange()">
                   <option value="">Cargando estados...</option>
                 </select>
               </div>
@@ -2564,6 +2565,21 @@
                 <select class="form-control" id="cm-select-accidente-transito">
                   <option value="">Selecciona origen...</option>
                 </select>
+              </div>
+              <div class="form-group" id="cm-group-cierre" style="display: none; grid-column: 1 / -1; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 10px 12px; margin-top: 4px;">
+                <div style="font-weight: 700; color: #9f1239; font-size: 0.82rem; margin-bottom: 8px;">
+                  🔒 Información de Cierre del Caso
+                </div>
+                <div class="filters-grid" style="grid-template-columns: 1fr 2fr; gap: 10px;">
+                  <div>
+                    <label class="form-label">Fecha de Cierre</label>
+                    <input type="date" class="form-control" id="cm-input-fecha-cierre">
+                  </div>
+                  <div>
+                    <label class="form-label">Motivo de Cierre</label>
+                    <input type="text" class="form-control" id="cm-input-motivo-cierre" placeholder="Motivo o justificación de cierre...">
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -3004,7 +3020,10 @@
       actualizarIconosOrdenSst('cm');
       actualizarIconosOrdenSst('inc');
       inicializarCanvasCsst();
-      switchTab('evaluacion');
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialTab = urlParams.get('tab');
+      const validTabs = ['evaluacion', 'capacitacion', 'pruebaconsumo', 'participacion', 'compromiso', 'gestionmedica'];
+      switchTab(validTabs.includes(initialTab) ? initialTab : 'evaluacion');
     });
 
     function initSidebarUser() {
@@ -3148,6 +3167,14 @@
       });
       const activePane = document.getElementById(`pane-${tabId}`);
       if (activePane) activePane.style.display = 'block';
+
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('tab') !== tabId) {
+          url.searchParams.set('tab', tabId);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch (e) {}
 
       if (window.innerWidth <= 900) {
         toggleMobileSidebar(false);
@@ -5300,6 +5327,9 @@
           return;
         }
 
+        window._casosMedicosExpediente = casos;
+        window._trabajadorActualExpediente = trab;
+
         const casesHtml = casos.map(c => {
           const estadoBadge = c.estado_general_id === 1
             ? '<span class="badge badge-warning">Abierto</span>'
@@ -5339,12 +5369,13 @@
           const fUltimoSegFmt = c.ultimo_seguimiento ? c.ultimo_seguimiento.slice(0, 10).split('-').reverse().join('/') : '—';
           const fRegFmt = c.fecha_registro ? c.fecha_registro.slice(0, 10).split('-').reverse().join('/') : '—';
 
-          // Permiso de eliminación del caso
+          // Permiso de edición y eliminación del caso
           const creador = String(c.usuario || '').trim().toLowerCase();
           const usuId = String(CONFIG.usuarioId || '').trim().toLowerCase();
           const usuNombre = String(CONFIG.usuarioNombre || '').trim().toLowerCase();
           const esAdmin = ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
           const puedeEliminarCaso = esAdmin || (creador && (creador === usuId || creador === usuNombre));
+          const puedeEditarCaso = puedeCrearCaso() || (creador && (creador === usuId || creador === usuNombre));
 
           // Bitácoras hijas del caso
           const bitacoras = Array.isArray(c.bitacoras) ? c.bitacoras : [];
@@ -5435,13 +5466,18 @@
               </summary>
 
               <div class="cm-case-body">
-                ${puedeEliminarCaso ? `
-                  <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px;">
+                  ${puedeEditarCaso ? `
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); abrirModalEditarCaso(${c.id})" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer; font-weight:600;" title="Editar este caso">
+                      ✏️ Editar Caso
+                    </button>
+                  ` : ''}
+                  ${puedeEliminarCaso ? `
                     <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); eliminarCasoMedico(${c.id}, '${identificacion}')" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Eliminar este caso">
                       🗑 Eliminar Caso
                     </button>
-                  </div>
-                ` : ''}
+                  ` : ''}
+                </div>
                 <!-- Diagnóstico CIE-10 -->
                 <div class="cm-diagnostico-box" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:0.85rem; color:#1e40af;">
                   <strong>🩺 Diagnóstico CIE-10:</strong> [${c.diagnostico || '—'}] ${c.diagnostico_desc || 'Sin descripción'}
@@ -5483,6 +5519,119 @@
                   <div>
                     <span class="lbl" style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:600; display:block;">Último Seguimiento</span>
                     <span class="val" style="font-weight:600;">${fUltimoSegFmt} ${alertaSegBadge}</span>
+                  </div>
+                </div>
+
+                <!-- Sección de Gestión Documental y Actas SST -->
+                <div class="cm-actas-container" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin-top:12px;">
+                  <div style="font-weight:700; color:var(--primary); font-size:0.85rem; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                    <span>📄</span> Actas y Firmas Digitales del Caso
+                  </div>
+
+                  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+                    <!-- Bloque 1: Acta de Apertura (Doc 94 - AACM) -->
+                    <div style="background:#ffffff; border:1px solid ${c.estado_general_id === 1 ? '#bfdbfe' : '#e2e8f0'}; border-radius:8px; padding:12px; opacity:${c.estado_general_id === 1 ? '1' : '0.65'};">
+                      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div>
+                          <div style="font-weight:700; font-size:0.85rem; color:#1e40af;">Acta de Apertura (Doc 94 - AACM)</div>
+                          <div style="font-size:0.72rem; color:var(--text-muted);">Habilitada únicamente en estado ABIERTO</div>
+                        </div>
+                        ${c.url_acta_apertura ? `
+                          <span class="badge badge-success" style="font-size:0.7rem;">✓ Firmada</span>
+                        ` : c.estado_general_id === 1 ? `
+                          <span class="badge badge-warning" style="font-size:0.7rem;">Pendiente</span>
+                        ` : `
+                          <span class="badge badge-secondary" style="font-size:0.7rem;">No disponible</span>
+                        `}
+                      </div>
+
+                      ${c.url_acta_apertura ? `
+                        <div style="margin-bottom:8px;">
+                          <a href="${c.url_acta_apertura}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.75rem; padding:4px 10px; text-decoration:none; font-weight:600; border-radius:5px;">
+                            <span>📄</span> Ver Acta de Apertura Firmada
+                          </a>
+                          <span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
+                            Firmado el: ${c.fecha_firma_apertura ? c.fecha_firma_apertura.slice(0, 10).split('-').reverse().join('/') : '—'}
+                          </span>
+                        </div>
+                      ` : c.estado_general_id === 1 ? `
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-sm" id="btn-gen-apertura-${c.id}" onclick="generarEnlaceActa(${c.id}, 'apertura')" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              📄 Generar Enlace
+                            </button>
+                            <button type="button" class="btn btn-sm" onclick="copiarEnlaceActa(${c.id}, 'apertura')" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              📋 Copiar Enlace
+                            </button>
+                            <button type="button" class="btn btn-sm" onclick="enviarWhatsAppActa(${c.id}, 'apertura', '${trab.celular || ''}', '${nombreEscapado}', '${c.codigo_caso}')" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              📲 WhatsApp
+                            </button>
+                            <button type="button" class="btn btn-sm" onclick="enviarCorreoActa(${c.id}, 'apertura', '${trab.email || ''}')" style="background:#faf5ff; color:#7e22ce; border:1px solid #d8b4fe; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              ✉️ Correo
+                            </button>
+                          </div>
+                          <div id="wrap-link-apertura-${c.id}" style="${c.token_apertura ? 'display:block;' : 'display:none;'} margin-top:4px;">
+                            <input type="text" readonly id="input-link-apertura-${c.id}" value="${c.token_apertura ? `${window.location.origin}/doclogyser/acta_apertura_cm/${c.id}?token=${encodeURIComponent(c.token_apertura)}` : ''}" style="width:100%; font-size:0.72rem; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc; color:#475569;" onclick="this.select();">
+                          </div>
+                        </div>
+                      ` : `
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">
+                          El acta de apertura solo puede emitirse cuando el caso se encuentra en estado ABIERTO.
+                        </div>
+                      `}
+                    </div>
+
+                    <!-- Bloque 2: Acta de Cierre (Doc 95 - ACCM) -->
+                    <div style="background:#ffffff; border:1px solid ${c.estado_general_id === 2 ? '#bbf7d0' : '#e2e8f0'}; border-radius:8px; padding:12px; opacity:${c.estado_general_id === 2 ? '1' : '0.65'};">
+                      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div>
+                          <div style="font-weight:700; font-size:0.85rem; color:#15803d;">Acta de Cierre (Doc 95 - ACCM)</div>
+                          <div style="font-size:0.72rem; color:var(--text-muted);">Habilitada únicamente en estado CERRADO</div>
+                        </div>
+                        ${c.url_acta_cierre ? `
+                          <span class="badge badge-success" style="font-size:0.7rem;">✓ Firmada</span>
+                        ` : c.estado_general_id === 2 ? `
+                          <span class="badge badge-warning" style="font-size:0.7rem;">Pendiente</span>
+                        ` : `
+                          <span class="badge badge-secondary" style="font-size:0.7rem;">No disponible</span>
+                        `}
+                      </div>
+
+                      ${c.url_acta_cierre ? `
+                        <div style="margin-bottom:8px;">
+                          <a href="${c.url_acta_cierre}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.75rem; padding:4px 10px; text-decoration:none; font-weight:600; border-radius:5px;">
+                            <span>📄</span> Ver Acta de Cierre Firmada
+                          </a>
+                          <span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
+                            Firmado el: ${c.fecha_firma_cierre ? c.fecha_firma_cierre.slice(0, 10).split('-').reverse().join('/') : '—'}
+                          </span>
+                        </div>
+                      ` : c.estado_general_id === 2 ? `
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-sm" id="btn-gen-cierre-${c.id}" onclick="generarEnlaceActa(${c.id}, 'cierre')" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              📄 Generar Enlace
+                            </button>
+                            <button type="button" class="btn btn-sm" onclick="copiarEnlaceActa(${c.id}, 'cierre')" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              📋 Copiar Enlace
+                            </button>
+                            <button type="button" class="btn btn-sm" onclick="enviarWhatsAppActa(${c.id}, 'cierre', '${trab.celular || ''}', '${nombreEscapado}', '${c.codigo_caso}')" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              📲 WhatsApp
+                            </button>
+                            <button type="button" class="btn btn-sm" onclick="enviarCorreoActa(${c.id}, 'cierre', '${trab.email || ''}')" style="background:#faf5ff; color:#7e22ce; border:1px solid #d8b4fe; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                              ✉️ Correo
+                            </button>
+                          </div>
+                          <div id="wrap-link-cierre-${c.id}" style="${c.token_cierre ? 'display:block;' : 'display:none;'} margin-top:4px;">
+                            <input type="text" readonly id="input-link-cierre-${c.id}" value="${c.token_cierre ? `${window.location.origin}/doclogyser/acta_cierre_cm/${c.id}?token=${encodeURIComponent(c.token_cierre)}` : ''}" style="width:100%; font-size:0.72rem; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc; color:#475569;" onclick="this.select();">
+                          </div>
+                        </div>
+                      ` : `
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">
+                          El acta de cierre solo puede emitirse cuando el caso se encuentra en estado CERRADO.
+                        </div>
+                      `}
+                    </div>
                   </div>
                 </div>
 
@@ -5732,6 +5881,19 @@
       }
     }
 
+    function onEstadoGeneralChange() {
+      const estVal = document.getElementById('cm-select-estado-general').value;
+      const grpCierre = document.getElementById('cm-group-cierre');
+      if (String(estVal) === '2') { // 2 = Cerrado
+        grpCierre.style.display = 'block';
+        if (!document.getElementById('cm-input-fecha-cierre').value) {
+          document.getElementById('cm-input-fecha-cierre').value = new Date().toISOString().slice(0, 10);
+        }
+      } else {
+        grpCierre.style.display = 'none';
+      }
+    }
+
     async function abrirModalAgregarCaso(identificacion) {
       showLoading('Cargando información del colaborador...');
       try {
@@ -5826,11 +5988,16 @@
     }
 
     function resetCamposCasoModal() {
+      document.getElementById('cm-hidden-caso-id').value = '';
       document.getElementById('cm-select-es-continuacion').value = '2';
       onEsContinuacionChange();
 
       document.getElementById('cm-select-tipo-caso').value = '';
       document.getElementById('cm-select-estado-general').value = '1';
+      document.getElementById('cm-input-fecha-cierre').value = '';
+      document.getElementById('cm-input-motivo-cierre').value = '';
+      onEstadoGeneralChange();
+
       document.getElementById('cm-select-prioridad').value = '3';
       document.getElementById('cm-select-tipo-evento').value = '';
       onTipoEventoChange();
@@ -5858,6 +6025,7 @@
       document.getElementById('cm-input-proxima-accion').value = '';
       document.getElementById('cm-input-fecha-compromiso').value = '';
       document.getElementById('cm-input-ultimo-seguimiento').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('btn-cm-guardar').innerText = '💾 Guardar Caso Médico';
     }
 
     function buscarTrabajadorGlobal(q) {
@@ -5950,6 +6118,9 @@
     async function guardarCasoMedico(e) {
       e.preventDefault();
 
+      const casoId = document.getElementById('cm-hidden-caso-id').value.trim();
+      const isEdit = Boolean(casoId);
+
       const identificacion = document.getElementById('cm-hidden-identificacion').value.trim();
       if (!identificacion) {
         showToast('Debes seleccionar un colaborador válido', 'error');
@@ -6020,35 +6191,241 @@
         estado_gestion: document.getElementById('cm-select-estado-gestion').value,
         proxima_accion: document.getElementById('cm-input-proxima-accion').value.trim() || null,
         fecha_compromiso: document.getElementById('cm-input-fecha-compromiso').value || null,
-        ultimo_seguimiento: document.getElementById('cm-input-ultimo-seguimiento').value || null
+        ultimo_seguimiento: document.getElementById('cm-input-ultimo-seguimiento').value || null,
+        fecha_cierre: String(estadoGeneralId) === '2' ? (document.getElementById('cm-input-fecha-cierre').value || null) : null,
+        motivo_cierre: String(estadoGeneralId) === '2' ? (document.getElementById('cm-input-motivo-cierre').value.trim() || null) : null
       };
 
       const btnGuardar = document.getElementById('btn-cm-guardar');
       btnGuardar.disabled = true;
-      btnGuardar.innerText = 'Guardando caso...';
-      showLoading('Registrando caso médico...');
+      btnGuardar.innerText = isEdit ? 'Actualizando caso...' : 'Guardando caso...';
+      showLoading(isEdit ? 'Actualizando caso médico...' : 'Registrando caso médico...');
 
       try {
-        const res = await fetch('/casosmedicos/api/crear', {
-          method: 'POST',
+        const urlEndpoint = isEdit ? `/casosmedicos/api/caso/${casoId}` : '/casosmedicos/api/crear';
+        const methodEndpoint = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetch(urlEndpoint, {
+          method: methodEndpoint,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (res.ok && data.ok) {
-          showToast(data.message || 'Caso médico registrado exitosamente', 'success');
+          showToast(data.message || (isEdit ? 'Caso médico actualizado exitosamente' : 'Caso médico registrado exitosamente'), 'success');
           cerrarModalAgregarCaso();
           await cargarCasosMedicos();
-          abrirDetalleCasosMedicos(identificacion);
+          abrirExpedienteTrabajador(identificacion);
         } else {
-          showToast(data.error || 'Error al registrar caso médico', 'error');
+          showToast(data.error || (isEdit ? 'Error al actualizar caso médico' : 'Error al registrar caso médico'), 'error');
         }
       } catch (err) {
         console.error('Error guardando caso médico:', err);
         showToast('Error de red al guardar el caso', 'error');
       } finally {
         btnGuardar.disabled = false;
-        btnGuardar.innerText = '💾 Guardar Caso Médico';
+        btnGuardar.innerText = isEdit ? '💾 Actualizar Caso Médico' : '💾 Guardar Caso Médico';
+        hideLoading();
+      }
+    }
+
+    async function abrirModalEditarCaso(idCaso) {
+      showLoading('Cargando información del caso...');
+      try {
+        await cargarCatalogosCasosMedicos();
+        let caso = (window._casosMedicosExpediente || []).find(c => c.id == idCaso);
+        if (!caso && currentExpedienteTrabajadorId) {
+          const rCasos = await fetch(`/casosmedicos/api/casos-trabajador/${encodeURIComponent(currentExpedienteTrabajadorId)}`);
+          const list = await rCasos.json();
+          caso = (list || []).find(c => c.id == idCaso);
+        }
+        if (!caso) {
+          showToast('No se encontró la información del caso médico', 'error');
+          return;
+        }
+
+        let trab = window._trabajadorActualExpediente;
+        if (!trab || !trab.identificacion) {
+          const rTrab = await fetch(`/casosmedicos/api/trabajador-info/${encodeURIComponent(caso.identificacion)}`);
+          trab = await rTrab.json();
+          window._trabajadorActualExpediente = trab;
+        }
+
+        poblarDatosTrabajadorModal(trab);
+        document.getElementById('cm-worker-search-container').style.display = 'none';
+
+        // Set Hidden Caso Id
+        document.getElementById('cm-hidden-caso-id').value = caso.id;
+
+        // Poblar campos del caso
+        document.getElementById('cm-select-es-continuacion').value = caso.es_continuacion ? String(caso.es_continuacion) : '2';
+        onEsContinuacionChange();
+        if (caso.caso_anterior_id) {
+          document.getElementById('cm-select-caso-anterior').value = caso.caso_anterior_id;
+        }
+
+        document.getElementById('cm-select-tipo-caso').value = caso.tipo_caso_id || '';
+        document.getElementById('cm-select-estado-general').value = caso.estado_general_id || '1';
+        onEstadoGeneralChange();
+
+        document.getElementById('cm-input-fecha-cierre').value = caso.fecha_cierre ? caso.fecha_cierre.slice(0, 10) : '';
+        document.getElementById('cm-input-motivo-cierre').value = caso.motivo_cierre || '';
+
+        document.getElementById('cm-select-prioridad').value = caso.prioridad_id || '3';
+        document.getElementById('cm-select-tipo-evento').value = caso.tipo_evento_id || '';
+        onTipoEventoChange();
+        if (caso.tipo_accidente_transito_id) {
+          document.getElementById('cm-select-accidente-transito').value = caso.tipo_accidente_transito_id;
+        }
+
+        // Diagnóstico
+        if (caso.diagnostico) {
+          seleccionarDiagnostico(caso.diagnostico, caso.diagnostico_desc || caso.diagnostico);
+        } else {
+          document.getElementById('cm-input-diag-search').value = '';
+          document.getElementById('cm-hidden-diagnostico').value = '';
+          document.getElementById('cm-selected-diag-badge').style.display = 'none';
+        }
+
+        document.getElementById('cm-input-fecha-evento').value = caso.fecha_evento ? caso.fecha_evento.slice(0, 10) : '';
+        document.getElementById('cm-input-dias-incapacidad').value = caso.dias_incapacidad != null ? caso.dias_incapacidad : '';
+        document.getElementById('cm-input-pcl').value = caso.pcl_porcentaje != null ? caso.pcl_porcentaje : '';
+
+        document.getElementById('cm-textarea-recomendaciones').value = caso.recomendaciones || '';
+        document.getElementById('cm-input-fecha-inicio').value = caso.fecha_inicio ? caso.fecha_inicio.slice(0, 10) : '';
+        document.getElementById('cm-input-fecha-fin').value = caso.fecha_fin ? caso.fecha_fin.slice(0, 10) : '';
+
+        document.getElementById('cm-textarea-actividad').value = caso.actividad_actual || '';
+        document.getElementById('cm-textarea-historial').value = caso.historial_anterior || '';
+
+        document.getElementById('cm-input-resp-sst').value = caso.responsable_sst || '';
+        document.getElementById('cm-input-resp-operacion').value = caso.responsable_operacion || '';
+        document.getElementById('cm-select-estado-gestion').value = caso.estado_gestion || 'REQUIERE ACCIÓN';
+        document.getElementById('cm-input-proxima-accion').value = caso.proxima_accion || '';
+        document.getElementById('cm-input-fecha-compromiso').value = caso.fecha_compromiso ? caso.fecha_compromiso.slice(0, 10) : '';
+        document.getElementById('cm-input-ultimo-seguimiento').value = caso.ultimo_seguimiento ? caso.ultimo_seguimiento.slice(0, 10) : '';
+
+        document.getElementById('modal-cm-title').innerText = `Editar Caso Médico: ${caso.codigo_caso || '#' + caso.id}`;
+        document.getElementById('btn-cm-guardar').innerText = '💾 Actualizar Caso Médico';
+        document.getElementById('modal-cm-crear').style.display = 'flex';
+      } catch (err) {
+        console.error('Error abriendo modal editar:', err);
+        showToast('Error al preparar edición del caso', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function generarEnlaceActa(idCaso, tipo) {
+      showLoading(`Generando enlace de Acta de ${tipo === 'apertura' ? 'Apertura' : 'Cierre'}...`);
+      try {
+        const res = await fetch(`/casosmedicos/api/caso/${idCaso}/generar-acta-${tipo}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo generar el enlace', 'error');
+          return null;
+        }
+
+        const wrap = document.getElementById(`wrap-link-${tipo}-${idCaso}`);
+        const input = document.getElementById(`input-link-${tipo}-${idCaso}`);
+        if (input && wrap) {
+          input.value = data.url;
+          wrap.style.display = 'block';
+        }
+
+        if (Array.isArray(window._casosMedicosExpediente)) {
+          const c = window._casosMedicosExpediente.find(x => x.id == idCaso);
+          if (c) {
+            if (tipo === 'apertura') c.token_apertura = data.token;
+            else c.token_cierre = data.token;
+          }
+        }
+
+        showToast(`Enlace de Acta de ${tipo === 'apertura' ? 'Apertura' : 'Cierre'} generado exitosamente`, 'success');
+        return data.url;
+      } catch (e) {
+        console.error(e);
+        showToast('Error de conexión al generar enlace', 'error');
+        return null;
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function copiarEnlaceActa(idCaso, tipo) {
+      const input = document.getElementById(`input-link-${tipo}-${idCaso}`);
+      let url = input ? input.value.trim() : '';
+      if (!url) {
+        url = await generarEnlaceActa(idCaso, tipo);
+      }
+      if (url) {
+        copiarPortapapeles(url);
+      }
+    }
+
+    async function enviarWhatsAppActa(idCaso, tipo, tel, nombre, codigoCaso) {
+      const input = document.getElementById(`input-link-${tipo}-${idCaso}`);
+      let url = input ? input.value.trim() : '';
+      if (!url) {
+        url = await generarEnlaceActa(idCaso, tipo);
+      }
+      if (!url) return;
+
+      const tipoTexto = tipo === 'apertura' ? 'Apertura' : 'Cierre';
+      const mensaje = `Hola ${nombre || 'Colaborador'}, por favor ingresa al siguiente enlace para firmar tu Acta de ${tipoTexto} de Caso Médico (${codigoCaso}):\n${url}`;
+
+      let telefonoLimpio = String(tel || '').replace(/\D/g, '');
+      if (telefonoLimpio.length === 10) {
+        telefonoLimpio = '57' + telefonoLimpio;
+      }
+      if (!telefonoLimpio) {
+        const telManual = prompt('El colaborador no tiene teléfono registrado. Ingrese el número de WhatsApp (ej: 3001234567):');
+        if (!telManual) return;
+        telefonoLimpio = telManual.replace(/\D/g, '');
+        if (telefonoLimpio.length === 10) telefonoLimpio = '57' + telefonoLimpio;
+      }
+
+      const waUrl = `https://api.whatsapp.com/send?phone=${telefonoLimpio}&text=${encodeURIComponent(mensaje)}`;
+      window.open(waUrl, '_blank');
+    }
+
+    async function enviarCorreoActa(idCaso, tipo, emailTrabajador) {
+      let emailDestino = emailTrabajador && emailTrabajador.trim();
+      if (!emailDestino) {
+        emailDestino = prompt('Ingrese el correo electrónico del trabajador:');
+        if (!emailDestino || !emailDestino.trim()) return;
+        emailDestino = emailDestino.trim();
+      }
+
+      showLoading(`Enviando Acta de ${tipo === 'apertura' ? 'Apertura' : 'Cierre'} por correo...`);
+      try {
+        const input = document.getElementById(`input-link-${tipo}-${idCaso}`);
+        const urlFirma = input ? input.value.trim() : null;
+
+        const res = await fetch(`/casosmedicos/api/caso/${idCaso}/enviar-acta-correo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            tipo,
+            url: urlFirma,
+            email: emailDestino
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast(data.mensaje || 'Correo enviado exitosamente', 'success');
+        } else {
+          showToast(data.error || 'No se pudo enviar el correo', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showToast('Error de red al enviar el correo', 'error');
+      } finally {
         hideLoading();
       }
     }
