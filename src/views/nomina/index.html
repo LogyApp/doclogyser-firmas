@@ -263,6 +263,35 @@
     .bio-routes-sidebar { width: 100%; max-height: 240px; }
     .bio-map-box { height: 380px; }
   }
+
+  /* ── Estilos Traslados Integrado en Nómina ─────────────────────────────── */
+  .btn-nuevo-traslado {
+    background: #e67e22; color: #fff; border: none; text-decoration: none;
+    padding: 9px 18px; border-radius: 7px; font-size: .85rem; font-weight: 700; cursor: pointer;
+  }
+  .btn-nuevo-traslado:hover { background: #d4720f; }
+  .tras-top-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+  .ba {
+    border: none; border-radius: 5px; padding: 5px 9px;
+    font-size: .76rem; cursor: pointer; font-weight: 600;
+    transition: opacity .15s; margin: 2px; white-space: nowrap; display: inline-block;
+  }
+  .ba:hover { opacity: .8; }
+  .bv   { background: #eaf3ff; color: #1a5fa8; }
+  .br   { background: #fff3e0; color: #a04000; }
+  .ban  { background: #fdedec; color: #a93226; }
+  .bver { background: #eafaf1; color: #1a7a4a; text-decoration: none; }
+  .be   { background: #f5f5f5; color: #555; }
+  .bwa  { background: #e7f9ee; color: #128C7E; font-weight: 700; }
+  .bem  { background: #eef3ff; color: #1a5fa8; font-weight: 700; }
+  .bprev { background: #f5f0ff; color: #6c3fc5; font-weight: 700; text-decoration: none; }
+  .bnf   { background: #e67e22; color: #fff; font-weight: 700; }
+  .tras-modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+  .tras-url-input {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 6px;
+    font-size: .8rem; font-family: monospace; background: #f8f9fb; color: #333; cursor: pointer;
+  }
+  .tras-copiado { color: #27ae60; font-size: .8rem; margin-top: 8px; display: none; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -301,17 +330,13 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         <span>Bloqueo de Datos</span>
       </li>
-      <li class="nav-item disabled" title="Próximamente">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-        <span>Vacaciones</span>
-      </li>
-      <li class="nav-item disabled" title="Próximamente">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-        <span>Permisos</span>
-      </li>
       <li class="nav-item" id="navBiometrico" onclick="switchTab('biometrico')" style="display:none">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M12 2a5 5 0 0 0-5 5v3a5 5 0 0 0 10 0V7a5 5 0 0 0-5-5z"></path><path d="M3 13a9 9 0 0 0 18 0"></path><path d="M12 17v4"></path><path d="M8 21h8"></path></svg>
         <span>Biométrico</span>
+      </li>
+      <li class="nav-item" id="navTraslados" onclick="switchTab('traslados')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M17 3h4v4"></path><path d="M21 3 9 15"></path><path d="M9 3H3v18h18v-6"></path></svg>
+        <span>Traslados</span>
       </li>
     </ul>
     <div class="sidebar-user" id="sidebarUser"></div>
@@ -779,7 +804,136 @@
       </div>
     </div>
 
+    <!-- ══════════════ Pestaña: Traslados ══════════════ -->
+    <div id="panelTraslados" style="display:none">
+      <div class="page-hd">
+        <div class="page-title">Nómina · Traslados</div>
+        <div class="page-sub">Documentos de traslado de operación de los trabajadores</div>
+      </div>
+
+      <div class="bio-subnav">
+        <button type="button" class="bio-subnav-btn active" id="btnTrasTabListado" onclick="switchTrasladosSubTab('listado')">
+          <span>📋</span> Listado
+        </button>
+        <button type="button" class="bio-subnav-btn" id="btnTrasTabPlantilla" style="display:none" onclick="switchTrasladosSubTab('plantilla')">
+          <span>✏️</span> Editar Plantilla
+        </button>
+      </div>
+
+      <!-- Subpanel: Listado -->
+      <div id="trasSubpanelListado">
+        <div class="tras-top-actions">
+          <button type="button" class="btn-nuevo-traslado" onclick="abrirModalNuevoTraslado()">+ Nuevo Traslado</button>
+        </div>
+
+        <div class="card">
+          <div class="filtros-toggle" id="trasFiltrosToggle">
+            <span class="filtros-toggle-left">
+              &#128269; Filtros de Consulta
+              <span class="filtros-badge" id="trasFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="trasFiltrosChevron">&#9656;</span>
+          </div>
+          <div class="filtros-body" id="trasFiltrosBody" style="display:none">
+            <div class="bio-pills-group" id="trasEstadoPills" style="margin-bottom:14px;"></div>
+            <div class="filtros-grid">
+              <div class="filtro-field" id="trasFilterRegionalWrap" style="display:none"><label>Regional</label><select id="trasFilterRegional"></select></div>
+              <div class="filtro-field"><label>Operación origen</label><select id="trasFilterOperacion"></select></div>
+              <div class="filtro-field"><label>Buscar</label><input type="text" id="trasFilterBuscar" placeholder="Trabajador, identificación, operación, observaciones..."></div>
+            </div>
+            <button type="button" class="btn-reset" onclick="resetFiltrosTraslados()">&#8635; Limpiar filtros</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="contador-resultados" id="trasContador"></div>
+          <div class="table-container">
+            <table class="retiros-table" id="trasladosTable">
+              <thead>
+                <tr>
+                  <th style="width:230px" class="no-sort">Acciones</th>
+                  <th style="width:110px" data-sort="estado_doc">Estado<span id="trasSort-estado_doc" class="sort-indicator"></span></th>
+                  <th style="width:220px" data-sort="Trabajador">Trabajador<span id="trasSort-Trabajador" class="sort-indicator"></span></th>
+                  <th style="width:200px" data-sort="operacion_origen">Origen &#8594; Destino<span id="trasSort-operacion_origen" class="sort-indicator"></span></th>
+                  <th style="width:180px" class="no-sort">Teléfono / Email</th>
+                  <th style="width:120px" data-sort="fecha_traslado">Fecha traslado<span id="trasSort-fecha_traslado" class="sort-indicator"></span></th>
+                  <th style="width:150px" data-sort="Fecha_Registro">Registrado<span id="trasSort-Fecha_Registro" class="sort-indicator"></span></th>
+                  <th style="width:110px" data-sort="Usuario">Usuario<span id="trasSort-Usuario" class="sort-indicator"></span></th>
+                  <th style="width:220px" data-sort="observaciones">Observaciones<span id="trasSort-observaciones" class="sort-indicator"></span></th>
+                </tr>
+              </thead>
+              <tbody id="trasladosBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="trasEmptyState" style="display:none">No hay traslados que coincidan con los filtros.</div>
+        </div>
+      </div>
+
+      <!-- Subpanel: Editar Plantilla -->
+      <div id="trasSubpanelPlantilla" style="display:none">
+        <div class="card" style="padding:0; height:78vh;">
+          <iframe id="trasPlantillaIframe" src="about:blank" style="width:100%; height:100%; border:none; border-radius:var(--radius);"></iframe>
+        </div>
+      </div>
+    </div>
+
   </div>
+
+<!-- Modal: Nuevo Traslado (iframe sobre formtraslado existente) -->
+<div class="modal-full-overlay" id="trasladosModalOverlay">
+  <div class="modal-full" style="max-width: 780px;">
+    <div class="modal-full-header">
+      <span>Nuevo Traslado</span>
+      <button type="button" onclick="cerrarModalNuevoTraslado()">&#10005; Cerrar</button>
+    </div>
+    <iframe id="trasladosIframe" src="about:blank"></iframe>
+  </div>
+</div>
+
+<!-- Modal: Editar registro de traslado -->
+<div class="modal-full-overlay" id="trasEditModalOverlay">
+  <div class="modal-full" style="max-width:600px; height:auto; max-height:92vh;">
+    <div class="modal-full-header">
+      <span>Editar registro de traslado</span>
+      <button type="button" onclick="cerrarEditarTraslado()">&#10005; Cerrar</button>
+    </div>
+    <div class="modal-ficha-body">
+      <div class="ficha-grid">
+        <div class="ficha-field" style="grid-column:1/-1"><label>Trabajador</label><input type="text" id="tras_e_trabajador" disabled></div>
+        <div class="ficha-field"><label>Identificación</label><input type="text" id="tras_e_identificacion" disabled></div>
+        <div class="ficha-field"><label>Operación origen</label><input type="text" id="tras_e_op_origen"></div>
+        <div class="ficha-field" style="grid-column:1/-1"><label>Operación destino *</label><select id="tras_e_op_destino"></select></div>
+        <div class="ficha-field" style="grid-column:1/-1"><label>Dirección destino</label><input type="text" id="tras_e_direccion" placeholder="Se completa al cambiar operación destino"></div>
+        <div class="ficha-field"><label>Fecha de traslado *</label><input type="date" id="tras_e_fecha"></div>
+        <div class="ficha-field"><label>Hora de traslado</label><input type="time" id="tras_e_hora"></div>
+        <div class="ficha-field"><label>Celular</label><input type="tel" id="tras_e_celular"></div>
+        <div class="ficha-field"><label>Correo electrónico</label><input type="email" id="tras_e_email"></div>
+      </div>
+    </div>
+    <div class="ficha-footer">
+      <button type="button" class="btn-guardar-ficha" onclick="guardarEdicionTraslado()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Enlace de firma generado -->
+<div class="modal-full-overlay" id="trasEnlaceModalOverlay">
+  <div class="modal-full" style="max-width:520px; height:auto; max-height:92vh;">
+    <div class="modal-full-header">
+      <span>Enlace de firma generado</span>
+      <button type="button" onclick="cerrarModalEnlaceTraslado()">&#10005; Cerrar</button>
+    </div>
+    <div class="modal-ficha-body">
+      <p style="font-size:.83rem; color:var(--text-muted); margin-bottom:12px;">Comparte este enlace con el trabajador. Puedes copiarlo y enviarlo por WhatsApp o correo. Es válido por 48 horas.</p>
+      <input type="text" class="tras-url-input" id="trasUrlInput" readonly onclick="this.select()">
+      <div class="tras-modal-btns">
+        <button type="button" class="btn-guardar-ficha" onclick="copiarUrlTraslado()">📋 Copiar enlace</button>
+      </div>
+      <div class="tras-copiado" id="trasCopiadoMsg">✓ Copiado al portapapeles</div>
+      <div id="trasCorreoEnviadoMsg" style="display:none;margin-top:10px;padding:8px 12px;background:#eafaf1;border-left:4px solid #27ae60;border-radius:0 4px 4px 0;font-size:.82rem;color:#1a7a4a;font-weight:600"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Modal edición de dirección y coordenadas de una operación -->
 <div class="modal-full-overlay" id="cooModalOverlay">
@@ -1036,20 +1190,33 @@
   }
 
   // ── Cambio de pestaña ────────────────────────────────────────────────────
+  // Refleja la pestaña (y la subpestaña de Biométrico) en la URL para compartir o recargar el enlace.
+  function sincronizarUrlPestana(tab, subTab) {
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tab);
+    if ((tab === 'biometrico' || tab === 'traslados') && subTab) url.searchParams.set('subtab', subTab);
+    else url.searchParams.delete('subtab');
+    history.replaceState(null, '', url);
+  }
+
   function switchTab(tab) {
     _tabActual = tab;
+    sincronizarUrlPestana(tab, tab === 'traslados' ? _trasState.activeSubTab : _bioState.activeSubTab);
     document.getElementById('navRetiros').classList.toggle('active', tab === 'retiros');
     document.getElementById('navActivos').classList.toggle('active', tab === 'activos');
     if (document.getElementById('navBloqueo')) document.getElementById('navBloqueo').classList.toggle('active', tab === 'bloqueo');
     if (document.getElementById('navBiometrico')) document.getElementById('navBiometrico').classList.toggle('active', tab === 'biometrico');
+    if (document.getElementById('navTraslados')) document.getElementById('navTraslados').classList.toggle('active', tab === 'traslados');
     document.getElementById('panelRetiros').style.display = tab === 'retiros' ? 'block' : 'none';
     document.getElementById('panelActivos').style.display = tab === 'activos' ? 'block' : 'none';
     if (document.getElementById('panelBloqueo')) document.getElementById('panelBloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
     if (document.getElementById('panelBiometrico')) document.getElementById('panelBiometrico').style.display = tab === 'biometrico' ? 'block' : 'none';
+    if (document.getElementById('panelTraslados')) document.getElementById('panelTraslados').style.display = tab === 'traslados' ? 'block' : 'none';
     if (tab === 'retiros' && !_retirosState.cargado) fetchDataRetiros();
     if (tab === 'activos' && !_activosState.cargado) fetchDataActivos();
     if (tab === 'bloqueo' && !_bloqueoNominaState.cargado) fetchDataBloqueoNomina();
     if (tab === 'biometrico' && !_bioState.cargado) fetchBiometricoData();
+    if (tab === 'traslados' && !_trasState.cargado) fetchTrasladosData();
     toggleMobileSidebar(false);
   }
 
@@ -1084,6 +1251,17 @@
       chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
     });
   })('act');
+  (function initFiltrosPlegables(prefix) {
+    const toggle  = document.getElementById(prefix + 'FiltrosToggle');
+    const body    = document.getElementById(prefix + 'FiltrosBody');
+    const chevron = document.getElementById(prefix + 'FiltrosChevron');
+    let abierto = false;
+    toggle.addEventListener('click', () => {
+      abierto = !abierto;
+      body.style.display = abierto ? 'block' : 'none';
+      chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+  })('tras');
 
   function actualizarBadgeFiltrosRetiros() {
     let n = 0;
@@ -1884,6 +2062,7 @@
 
   function switchBioSubTab(subTab) {
     _bioState.activeSubTab = subTab;
+    sincronizarUrlPestana('biometrico', subTab);
     document.getElementById('btnBioTabAsistencia').classList.toggle('active', subTab === 'asistencia');
     document.getElementById('btnBioTabRutas').classList.toggle('active', subTab === 'rutas');
     document.getElementById('btnBioTabReportes').classList.toggle('active', subTab === 'reportes');
@@ -2823,6 +3002,474 @@
     document.getElementById('bioGPSModalOverlay').classList.remove('open');
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ── Pestaña TRASLADOS (Frontend Controller) ───────────────────────────────
+  // Las acciones (validar/enlace/correo/editar/estado/no-firma) llaman directo
+  // a los endpoints ya existentes de /admin/traslados/:id/..., igual que el
+  // panel viejo (src/views/admin/traslados.html) — sin duplicar esa lógica aquí.
+  // ═══════════════════════════════════════════════════════════════════════════
+  const _trasState = {
+    cargado: false,
+    activeSubTab: 'listado',
+    allData: [],
+    estadoActivo: '',
+    sortCol: 'Fecha_Registro',
+    sortOrder: 'desc',
+    editandoId: null,
+  };
+  const trasFilterRegional  = document.getElementById('trasFilterRegional');
+  const trasFilterOperacion = document.getElementById('trasFilterOperacion');
+  const trasFilterBuscar    = document.getElementById('trasFilterBuscar');
+
+  const TRAS_ESTADOS = [
+    { key: 'pendiente', label: 'Pendiente' },
+    { key: 'validado',  label: 'Validado' },
+    { key: 'revisar',   label: 'Revisar' },
+    { key: 'anulado',   label: 'Anulado' },
+    { key: 'generado',  label: 'Generado' },
+  ];
+  const TRAS_BADGE = {
+    pendiente: ['#b7860b', '#fffbea', '#f0d060'],
+    validado:  ['#1a5fa8', '#eaf3ff', '#7ab3f0'],
+    firmado:   ['#1a7a4a', '#eafaf1', '#6dcf9e'],
+    generado:  ['#0e6655', '#e8f8f5', '#48c9b0'],
+    revisar:   ['#a04000', '#fff3e0', '#f0a060'],
+    anulado:   ['#a93226', '#fdedec', '#f1948a'],
+  };
+  function badgeTraslado(estado) {
+    const [c, bg, border] = TRAS_BADGE[estado] || ['#666', '#f0f0f0', '#ccc'];
+    const label = { pendiente:'Pendiente', validado:'Validado', firmado:'Firmado',
+      generado:'Generado', revisar:'Revisar', anulado:'Anulado' }[estado] || estado;
+    return `<span style="background:${bg};color:${c};border:1px solid ${border};border-radius:12px;padding:3px 10px;font-size:.73rem;font-weight:700;white-space:nowrap">${label}</span>`;
+  }
+
+  function switchTrasladosSubTab(subTab) {
+    _trasState.activeSubTab = subTab;
+    sincronizarUrlPestana('traslados', subTab);
+    document.getElementById('btnTrasTabListado').classList.toggle('active', subTab === 'listado');
+    document.getElementById('btnTrasTabPlantilla').classList.toggle('active', subTab === 'plantilla');
+    document.getElementById('trasSubpanelListado').style.display = subTab === 'listado' ? 'block' : 'none';
+    document.getElementById('trasSubpanelPlantilla').style.display = subTab === 'plantilla' ? 'block' : 'none';
+    if (subTab === 'plantilla') {
+      const ifr = document.getElementById('trasPlantillaIframe');
+      if (ifr.src === 'about:blank' || !ifr.src) ifr.src = '/admin/plantillas/editar/traslado';
+    }
+  }
+
+  function actualizarBadgeFiltrosTraslados() {
+    let n = 0;
+    if (_trasState.estadoActivo) n++;
+    if (trasFilterRegional.value) n++;
+    if (trasFilterOperacion.value) n++;
+    if (trasFilterBuscar.value.trim()) n++;
+    const badge = document.getElementById('trasFiltrosBadge');
+    badge.textContent = n;
+    badge.style.display = n ? 'flex' : 'none';
+  }
+
+  function resetFiltrosTraslados() {
+    _trasState.estadoActivo = '';
+    trasFilterRegional.value = '';
+    trasFilterOperacion.value = '';
+    trasFilterBuscar.value = '';
+    renderEstadoChipsTraslados();
+    updateFilterOptionsWithCountsTraslados();
+    sortAndRenderTraslados();
+  }
+
+  function renderEstadoChipsTraslados() {
+    const cont = document.getElementById('trasEstadoPills');
+    if (!cont) return;
+    const counts = {};
+    _trasState.allData.forEach(r => { counts[r.estado_doc] = (counts[r.estado_doc] || 0) + 1; });
+    const total = _trasState.allData.length;
+    let html = `<button type="button" class="bio-pill${_trasState.estadoActivo === '' ? ' active' : ''}" data-estado="">Todos (${total})</button>`;
+    TRAS_ESTADOS.forEach(e => {
+      html += `<button type="button" class="bio-pill${_trasState.estadoActivo === e.key ? ' active' : ''}" data-estado="${e.key}">${e.label} (${counts[e.key] || 0})</button>`;
+    });
+    if (counts.firmado) {
+      html += `<button type="button" class="bio-pill${_trasState.estadoActivo === 'firmado' ? ' active' : ''}" data-estado="firmado">Firmado (${counts.firmado})</button>`;
+    }
+    cont.innerHTML = html;
+    cont.querySelectorAll('.bio-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _trasState.estadoActivo = btn.dataset.estado;
+        renderEstadoChipsTraslados();
+        actualizarBadgeFiltrosTraslados();
+        sortAndRenderTraslados();
+      });
+    });
+  }
+
+  function updateFilterOptionsWithCountsTraslados() {
+    const t = tabs.traslados;
+    if (!t) return;
+    const selectedReg = trasFilterRegional.value;
+    const selectedOp  = trasFilterOperacion.value;
+    const opCounts = {};
+    _trasState.allData.forEach(r => { opCounts[r.operacion_origen] = (opCounts[r.operacion_origen] || 0) + 1; });
+
+    document.getElementById('trasFilterRegionalWrap').style.display = t.sinFiltro ? '' : 'none';
+
+    if (t.sinFiltro) {
+      const regCounts = {};
+      Object.keys(t.opsPorRegional || {}).forEach(reg => {
+        regCounts[reg] = (t.opsPorRegional[reg] || []).reduce((sum, op) => sum + (opCounts[op] || 0), 0);
+      });
+      trasFilterRegional.innerHTML = '';
+      const totalReg = Object.values(regCounts).reduce((a, b) => Number(a) + Number(b), 0);
+      const optAllR = document.createElement('option');
+      optAllR.value = ''; optAllR.textContent = `Todas las regionales (${totalReg})`;
+      trasFilterRegional.appendChild(optAllR);
+      Object.keys(t.opsPorRegional || {}).sort().forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r; opt.textContent = `${r} (${regCounts[r] || 0})`;
+        if (r === selectedReg) opt.selected = true;
+        trasFilterRegional.appendChild(opt);
+      });
+
+      let allowedOps = [];
+      if (selectedReg) allowedOps = t.opsPorRegional[selectedReg] || [];
+      else { const set = new Set(); Object.values(t.opsPorRegional || {}).forEach(ops => ops.forEach(o => set.add(o))); allowedOps = Array.from(set).sort(); }
+      trasFilterOperacion.innerHTML = '';
+      const totalOp = Object.values(opCounts).reduce((a, b) => Number(a) + Number(b), 0);
+      const optAllO = document.createElement('option');
+      optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${totalOp})`;
+      trasFilterOperacion.appendChild(optAllO);
+      allowedOps.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.textContent = `${op} (${opCounts[op] || 0})`;
+        if (op === selectedOp) opt.selected = true;
+        trasFilterOperacion.appendChild(opt);
+      });
+    } else {
+      trasFilterOperacion.innerHTML = '';
+      const totalOp = (t.operacionesFiltro || []).reduce((sum, op) => sum + (opCounts[op] || 0), 0);
+      const optAllO = document.createElement('option');
+      optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${totalOp})`;
+      trasFilterOperacion.appendChild(optAllO);
+      (t.operacionesFiltro || []).forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op; opt.textContent = `${op} (${opCounts[op] || 0})`;
+        if (op === selectedOp) opt.selected = true;
+        trasFilterOperacion.appendChild(opt);
+      });
+    }
+  }
+
+  if (tabs.traslados) {
+    trasFilterRegional.addEventListener('change', () => { updateFilterOptionsWithCountsTraslados(); actualizarBadgeFiltrosTraslados(); sortAndRenderTraslados(); });
+    trasFilterOperacion.addEventListener('change', () => { actualizarBadgeFiltrosTraslados(); sortAndRenderTraslados(); });
+    let debounceTras = null;
+    trasFilterBuscar.addEventListener('input', () => { clearTimeout(debounceTras); debounceTras = setTimeout(() => { actualizarBadgeFiltrosTraslados(); sortAndRenderTraslados(); }, 300); });
+  }
+
+  async function fetchTrasladosData() {
+    try {
+      const resp = await fetch('/admin/traslados/datos?Usuario=' + encodeURIComponent(usuario));
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) { alert('Error: ' + (data.error || 'No se pudo cargar la información')); return; }
+      _trasState.allData = data.rows || [];
+      _trasState.cargado = true;
+      renderEstadoChipsTraslados();
+      updateFilterOptionsWithCountsTraslados();
+      actualizarBadgeFiltrosTraslados();
+      sortAndRenderTraslados();
+    } catch { alert('Error de conexión al cargar los traslados.'); }
+  }
+
+  function datosFiltradosTraslados() {
+    const q = (trasFilterBuscar.value || '').toLowerCase().trim();
+    const opSel = trasFilterOperacion.value;
+    return _trasState.allData.filter(r => {
+      if (_trasState.estadoActivo && r.estado_doc !== _trasState.estadoActivo) return false;
+      if (opSel && String(r.operacion_origen || '') !== opSel) return false;
+      if (q) {
+        const hay = [r.Trabajador, r['Identificación'], r.operacion_origen, r.operacion_destino, r.direccion_destino, r.celular_trabajador, r.email_trabajador, r.observaciones, r.Usuario]
+          .map(v => String(v == null ? '' : v).toLowerCase()).join(' ');
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  const TRAS_DATE_COLS = ['fecha_traslado', 'Fecha_Registro'];
+  function sortAndRenderTraslados() {
+    const filtrados = datosFiltradosTraslados();
+    const col = _trasState.sortCol;
+    if (col) {
+      const esFecha = TRAS_DATE_COLS.includes(col);
+      filtrados.sort((a, b) => {
+        let valA = a[col], valB = b[col];
+        if (valA === undefined || valA === null) valA = '';
+        if (valB === undefined || valB === null) valB = '';
+        if (esFecha) {
+          const ta = valA ? new Date(valA).getTime() : 0, tb = valB ? new Date(valB).getTime() : 0;
+          return _trasState.sortOrder === 'asc' ? ta - tb : tb - ta;
+        }
+        valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase();
+        if (valA < valB) return _trasState.sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return _trasState.sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    ['estado_doc','Trabajador','operacion_origen','fecha_traslado','Fecha_Registro','Usuario','observaciones'].forEach(k => {
+      const span = document.getElementById('trasSort-' + k);
+      if (!span) return;
+      span.textContent = _trasState.sortCol === k ? (_trasState.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+      if (_trasState.sortCol === k) span.style.color = 'var(--primary)';
+    });
+    renderTablaTraslados(filtrados);
+  }
+
+  document.querySelectorAll('#trasladosTable thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', (e) => {
+      if (e.target.classList.contains('th-resize')) return;
+      const col = th.getAttribute('data-sort');
+      if (_trasState.sortCol === col) _trasState.sortOrder = _trasState.sortOrder === 'asc' ? 'desc' : 'asc';
+      else { _trasState.sortCol = col; _trasState.sortOrder = 'asc'; }
+      sortAndRenderTraslados();
+    });
+  });
+
+  function accionesTraslado(row) {
+    const t = tabs.traslados;
+    const id = row.IdTraslado;
+    const btnEditar = `<button class="ba be" title="Editar" onclick="abrirEditarTraslado('${id}')">✏️ Editar</button>`;
+    const btnValidar = t.puedeValidar ? `<button class="ba bv" onclick="validarTraslado('${id}')">✓ Validar</button>` : '';
+    const btnRevisar = t.puedeValidar ? `<button class="ba br" onclick="cambiarEstadoTraslado('${id}','revisar')">↩ Revisar</button>` : '';
+    const btnAnular  = t.puedeValidar ? `<button class="ba ban" onclick="cambiarEstadoTraslado('${id}','anulado')">✗ Anular</button>` : '';
+    const btnPreview = t.puedePrevisualizar ? `<a class="ba bprev" href="/admin/traslados/${id}/preview?Usuario=${encodeURIComponent(usuario)}" target="_blank">👁 Ver doc</a>` : '';
+    const btnNoFirma = t.puedeValidar ? `<button class="ba bnf" onclick="marcarNoFirmaTraslado('${id}')" title="Generar documento con soporte (No Firma)">📋 No Firma</button>` : '';
+
+    switch (row.estado_doc) {
+      case 'pendiente': return `${btnPreview}${btnEditar}${btnValidar}${btnRevisar}${btnAnular}${btnNoFirma}`;
+      case 'validado': {
+        const btnWA = row.celular_trabajador ? `<button class="ba bwa" onclick="abrirWhatsAppTraslado('${id}')">📱 WhatsApp</button>` : '';
+        return `${btnWA}<button class="ba bv" onclick="enlaceTraslado('${id}')">🔗 Enlace</button>${btnEditar}${btnRevisar}${btnAnular}${btnNoFirma}`;
+      }
+      case 'revisar': return `${btnEditar}${btnValidar}${btnAnular}`;
+      case 'firmado':
+      case 'generado': return row.url_doc ? `<a class="ba bver" href="${esc(row.url_doc)}" target="_blank">📄 Ver</a>` : '—';
+      default: return '—';
+    }
+  }
+
+  function renderTablaTraslados(rows) {
+    const body = document.getElementById('trasladosBody');
+    body.innerHTML = '';
+    document.getElementById('trasContador').textContent = `${rows.length} de ${_trasState.allData.length} registro(s)`;
+    document.getElementById('trasEmptyState').style.display = rows.length ? 'none' : 'block';
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.dataset.id = row.IdTraslado;
+      tr.innerHTML = `
+        <td></td>
+        <td>${badgeTraslado(row.estado_doc)}</td>
+        <td title="${esc(row.Trabajador)}">${esc(row.Trabajador)}</td>
+        <td style="font-size:.82rem"><span style="color:#999">${esc(row.operacion_origen)}</span><br>&#8594; <strong>${esc(row.operacion_destino)}</strong></td>
+        <td style="font-size:.8rem">${row.celular_trabajador ? `<div>${esc(row.celular_trabajador)}</div>` : '<span style="color:#ccc">—</span>'}${row.email_trabajador ? `<div style="color:#1a5fa8">${esc(row.email_trabajador)}</div>` : ''}</td>
+        <td>${formatFechaCorta(row.fecha_traslado)}</td>
+        <td>${celdaFechaHora(row.Fecha_Registro)}</td>
+        <td>${esc(row.Usuario)}</td>
+        <td style="white-space:normal">${esc(row.observaciones) || '<span style="color:#ccc">—</span>'}</td>
+      `;
+      tr.firstElementChild.className = 'celda-acciones';
+      tr.firstElementChild.innerHTML = accionesTraslado(row);
+      body.appendChild(tr);
+    });
+  }
+
+  // ── Modal "Nuevo Traslado" (iframe sobre /formtraslado existente) ────────
+  function abrirModalNuevoTraslado() {
+    document.getElementById('trasladosIframe').src = '/formtraslado?usuario=' + encodeURIComponent(usuario);
+    document.getElementById('trasladosModalOverlay').classList.add('open');
+  }
+  function cerrarModalNuevoTraslado() {
+    document.getElementById('trasladosModalOverlay').classList.remove('open');
+    document.getElementById('trasladosIframe').src = 'about:blank';
+    fetchTrasladosData();
+  }
+
+  // ── Modal "Enlace generado" ───────────────────────────────────────────────
+  function mostrarModalEnlaceTraslado(url, correoEnviado) {
+    document.getElementById('trasUrlInput').value = url;
+    document.getElementById('trasCopiadoMsg').style.display = 'none';
+    const msgCorreo = document.getElementById('trasCorreoEnviadoMsg');
+    if (correoEnviado) {
+      msgCorreo.textContent = '✅ El enlace fue generado y se envió el correo al trabajador.';
+      msgCorreo.style.display = 'block';
+    } else {
+      msgCorreo.style.display = 'none';
+    }
+    document.getElementById('trasEnlaceModalOverlay').classList.add('open');
+  }
+  function cerrarModalEnlaceTraslado() {
+    document.getElementById('trasEnlaceModalOverlay').classList.remove('open');
+  }
+  function copiarUrlTraslado() {
+    const val = document.getElementById('trasUrlInput').value;
+    navigator.clipboard.writeText(val)
+      .catch(() => { document.getElementById('trasUrlInput').select(); document.execCommand('copy'); })
+      .finally(() => { document.getElementById('trasCopiadoMsg').style.display = 'block'; });
+  }
+
+  // ── Acciones (llaman directo a /admin/traslados/:id/..., igual que el panel viejo) ──
+  async function validarTraslado(id) {
+    if (!confirm('¿Validar este traslado y generar el enlace de firma?')) return;
+    try {
+      const r = await fetch(`/admin/traslados/${id}/validar?Usuario=${encodeURIComponent(usuario)}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) { mostrarModalEnlaceTraslado(d.url, d.correoEnviado); fetchTrasladosData(); }
+      else alert('Error: ' + d.error);
+    } catch { alert('Error de conexión'); }
+  }
+
+  async function abrirCorreoTraslado(id) {
+    if (!confirm('¿Enviar correo de notificación al trabajador?')) return;
+    try {
+      const r = await fetch(`/admin/traslados/${id}/correo?Usuario=${encodeURIComponent(usuario)}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.ok && d.correoEnviado) alert('✅ Correo enviado correctamente al trabajador.');
+      else if (d.ok && !d.correoEnviado) alert('⚠️ El enlace se generó, pero el correo no pudo enviarse. Intenta de nuevo o comparte el enlace manualmente.');
+      else alert('Error: ' + d.error);
+    } catch { alert('Error de conexión'); }
+  }
+
+  async function abrirWhatsAppTraslado(id) {
+    try {
+      const r = await fetch(`/admin/traslados/${id}/enlace?Usuario=${encodeURIComponent(usuario)}`, { method: 'POST' });
+      const d = await r.json();
+      if (!d.ok) { alert('Error al generar enlace: ' + d.error); return; }
+
+      const tr = document.querySelector(`#trasladosBody tr[data-id="${id}"]`);
+      const fila = _trasState.allData.find(x => String(x.IdTraslado) === String(id));
+      const celular = String((fila && fila.celular_trabajador) || '').replace(/\D/g, '');
+      const nombre  = (fila && fila.Trabajador) || 'trabajador/a';
+
+      let phone = celular;
+      if (phone.length === 10 && !phone.startsWith('57')) phone = '57' + phone;
+
+      const partes = nombre.split(' ** ');
+      const nombreCorto = partes.length > 1 ? partes[1].trim() : nombre;
+
+      const msg = encodeURIComponent(
+        `Estimado/a ${nombreCorto}, le informamos que tiene un documento de traslado laboral pendiente de su firma.\n\n` +
+        `Por favor ingrese al siguiente enlace para firmarlo:\n\n${d.url}\n\n` +
+        `El enlace tiene una validez de 48 horas.\n\nGracias,\nLOG&SER S.A.S.`
+      );
+
+      if (phone) window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+      else mostrarModalEnlaceTraslado(d.url);
+    } catch { alert('Error de conexión'); }
+  }
+
+  async function enlaceTraslado(id) {
+    try {
+      const r = await fetch(`/admin/traslados/${id}/enlace?Usuario=${encodeURIComponent(usuario)}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) mostrarModalEnlaceTraslado(d.url);
+      else alert('Error: ' + d.error);
+    } catch { alert('Error de conexión'); }
+  }
+
+  const trasSelOpDestino = document.getElementById('tras_e_op_destino');
+  trasSelOpDestino.addEventListener('change', async function() {
+    if (!this.value) return;
+    try {
+      const r = await fetch('/formtraslado/api/operacion?nombre=' + encodeURIComponent(this.value));
+      const d = await r.json();
+      if (d.direccion) document.getElementById('tras_e_direccion').value = d.direccion;
+    } catch {}
+  });
+
+  async function abrirEditarTraslado(id) {
+    _trasState.editandoId = id;
+    try {
+      const r = await fetch(`/admin/traslados/${id}/datos?Usuario=${encodeURIComponent(usuario)}`);
+      const d = await r.json();
+      if (!d.ok) { alert('No se pudo cargar el registro'); return; }
+      const t = d.datos;
+
+      trasSelOpDestino.innerHTML = '';
+      const todasOps = new Set();
+      Object.values(tabs.traslados.opsPorRegional || {}).forEach(ops => ops.forEach(o => todasOps.add(o)));
+      (tabs.traslados.operacionesFiltro || []).forEach(o => todasOps.add(o));
+      if (t.operacion_destino) todasOps.add(t.operacion_destino);
+      Array.from(todasOps).sort().forEach(op => {
+        const o = document.createElement('option'); o.value = op; o.textContent = op;
+        trasSelOpDestino.appendChild(o);
+      });
+
+      document.getElementById('tras_e_trabajador').value     = t.Trabajador || '';
+      document.getElementById('tras_e_identificacion').value = t['Identificación'] || '';
+      document.getElementById('tras_e_op_origen').value      = t.operacion_origen || '';
+      document.getElementById('tras_e_direccion').value      = t.direccion_destino || '';
+      document.getElementById('tras_e_fecha').value          = t.fecha_traslado ? String(t.fecha_traslado).slice(0, 10) : '';
+      document.getElementById('tras_e_hora').value           = t.hora_traslado || '';
+      document.getElementById('tras_e_celular').value        = t.celular_trabajador || '';
+      document.getElementById('tras_e_email').value          = t.email_trabajador || '';
+      trasSelOpDestino.value = t.operacion_destino || '';
+
+      document.getElementById('trasEditModalOverlay').classList.add('open');
+    } catch { alert('Error de conexión'); }
+  }
+
+  function cerrarEditarTraslado() {
+    document.getElementById('trasEditModalOverlay').classList.remove('open');
+    _trasState.editandoId = null;
+  }
+
+  async function guardarEdicionTraslado() {
+    if (!_trasState.editandoId) return;
+    try {
+      const body = {
+        operacion_origen:   document.getElementById('tras_e_op_origen').value || null,
+        operacion_destino:  trasSelOpDestino.value,
+        direccion_destino:  document.getElementById('tras_e_direccion').value || null,
+        fecha_traslado:     document.getElementById('tras_e_fecha').value,
+        hora_traslado:      document.getElementById('tras_e_hora').value || null,
+        celular_trabajador: document.getElementById('tras_e_celular').value || null,
+        email_trabajador:   document.getElementById('tras_e_email').value || null,
+      };
+      const r = await fetch(`/admin/traslados/${_trasState.editandoId}/editar?Usuario=${encodeURIComponent(usuario)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.ok) { cerrarEditarTraslado(); fetchTrasladosData(); }
+      else alert('Error: ' + d.error);
+    } catch { alert('Error de conexión'); }
+  }
+
+  async function cambiarEstadoTraslado(id, estado) {
+    const msg = { revisar: 'marcar como "Revisar"', anulado: 'anular este traslado', pendiente: 'regresar a Pendiente' };
+    if (!confirm(`¿Desea ${msg[estado] || estado}?`)) return;
+    try {
+      const r = await fetch(`/admin/traslados/${id}/estado?Usuario=${encodeURIComponent(usuario)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado })
+      });
+      const d = await r.json();
+      if (d.ok) fetchTrasladosData();
+      else alert('Error: ' + d.error);
+    } catch { alert('Error de conexión'); }
+  }
+
+  async function marcarNoFirmaTraslado(id) {
+    const anotacion = prompt(
+      "Ingrese el texto de la anotación de soporte que saldrá en la firma (por ejemplo: 'El trabajador no firma, se soporta por correo electrónico'):",
+      "El trabajador no firma,\nse soporta por correo electrónico"
+    );
+    if (anotacion === null) return;
+    try {
+      const r = await fetch(`/admin/traslados/${id}/no-firma?Usuario=${encodeURIComponent(usuario)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ anotacion })
+      });
+      const d = await r.json();
+      if (d.ok) { alert('✅ Documento de soporte generado exitosamente.'); fetchTrasladosData(); }
+      else alert('Error: ' + (d.error || 'No se pudo generar el documento'));
+    } catch { alert('Error de conexión al generar documento de soporte'); }
+  }
+
   if (tabs.retiro) updateFilterOptionsWithCountsRetiros();
   if (tabs.activo) updateFilterOptionsWithCountsActivos();
   if (tabs.biometrico) {
@@ -2837,6 +3484,12 @@
     makeTableResizable(document.getElementById('bioCierresTable'));
     makeTableResizable(document.getElementById('bioSinRegTable'));
     makeTableResizable(document.getElementById('bioSinRegResTable'));
+  }
+  if (tabs.traslados) {
+    const navTras = document.getElementById('navTraslados');
+    if (navTras) navTras.style.display = 'flex';
+    if (tabs.traslados.puedeEditarPlantilla) document.getElementById('btnTrasTabPlantilla').style.display = 'flex';
+    makeTableResizable(document.getElementById('trasladosTable'));
   }
   makeTableResizable(document.getElementById('retirosTable'));
   makeTableResizable(document.getElementById('activosTable'));
@@ -2871,6 +3524,8 @@
     tabDestino = 'bloqueo';
   } else if (tabParam === 'biometrico' || tabParam === 'asistencia') {
     tabDestino = 'biometrico';
+  } else if (tabParam === 'traslados' || tabParam === 'traslado') {
+    tabDestino = 'traslados';
   } else if (busquedaParam) {
     tabDestino = tabs.activo ? 'activos' : 'retiros';
   } else if (idVinculacionParam) {
@@ -2883,6 +3538,8 @@
     tabDestino = 'bloqueo';
   } else if (tabs.biometrico) {
     tabDestino = 'biometrico';
+  } else if (tabs.traslados) {
+    tabDestino = 'traslados';
   }
 
   // Aplicar filtros en la pestaña correspondiente
@@ -2913,9 +3570,16 @@
       const bioSearch = document.getElementById('bioFilterWorkerSearch');
       if (bioSearch) bioSearch.value = busquedaParam;
     }
+    const subParam = (paramsUrl.get('subtab') || '').toLowerCase().trim();
+    const subValida = ['rutas', 'reportes'].includes(subParam) || (subParam === 'coordenadas' && tabs.biometrico.puedeEditarCoordenadas);
+    if (subValida) switchBioSubTab(subParam);
     switchTab('biometrico');
+  } else if (tabDestino === 'traslados' && tabs.traslados) {
+    const subParamTras = (paramsUrl.get('subtab') || '').toLowerCase().trim();
+    if (subParamTras === 'plantilla' && tabs.traslados.puedeEditarPlantilla) switchTrasladosSubTab('plantilla');
+    switchTab('traslados');
   } else {
-    switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : 'biometrico')));
+    switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : 'traslados'))));
   }
 </script>
 </body>

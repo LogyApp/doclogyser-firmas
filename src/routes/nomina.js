@@ -52,6 +52,14 @@ function resumenAcceso(acceso) {
   };
 }
 
+// Roles que pueden Validar/Revisar/Anular/No-Firma y editar la plantilla de
+// Traslados — condición aparte de "quién ve la pestaña" (eso ya lo cubre
+// Maestro_Menu_Nomina vía computarAccesoNomina, igual que Retiro/Activo).
+// Misma condición que ya tenía el panel /admin/traslados.
+const ROLES_VALIDAR_TRASLADOS   = ['Juridica', 'Sistema'];
+const ROLES_PLANTILLA_TRASLADOS = ['Juridica', 'Sistema'];
+const ROLES_PREVIEW_TRASLADOS   = ['Juridica', 'Sistema'];
+
 // ── GET / ────────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
@@ -76,11 +84,13 @@ router.get('/', async (req, res) => {
       }
     }
 
-    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico) {
+    const accesoTraslados = await computarAccesoNomina(usuario, 'Traslados');
+
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados;
     const puedeGenerarDocs = puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
@@ -96,6 +106,14 @@ router.get('/', async (req, res) => {
         activo: resumenAcceso(accesoActivo),
         bloqueo: resumenAcceso(accesoBloqueo),
         biometrico: accesoBiometrico ? { sinFiltro: accesoBiometrico.sinFiltro, isSstOnly, puedeEditarCoordenadas } : null,
+        traslados: accesoTraslados ? {
+          puedeValidar:         ROLES_VALIDAR_TRASLADOS.includes(accesoTraslados.rol),
+          puedeEditarPlantilla: ROLES_PLANTILLA_TRASLADOS.includes(accesoTraslados.rol),
+          puedePrevisualizar:   ROLES_PREVIEW_TRASLADOS.includes(accesoTraslados.rol),
+          sinFiltro:            accesoTraslados.sinFiltro,
+          operacionesFiltro:    accesoTraslados.operacionesFiltro,
+          opsPorRegional:       accesoTraslados.opsPorRegional,
+        } : null,
       },
     }).replace(/<\/script>/gi, '<\\/script>');
 

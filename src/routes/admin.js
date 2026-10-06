@@ -275,6 +275,43 @@ router.get('/traslados', async (req, res) => {
   }
 });
 
+// Variante JSON de GET /traslados, sin filtro de estado (se usa desde la pestaña
+// de Traslados en Nómina, que calcula los conteos por estado en el cliente).
+router.get('/traslados/datos', async (req, res) => {
+  try {
+    const usuarioId = req.query.Usuario;
+    if (!usuarioId) return res.status(403).json({ ok: false, error: 'Usuario requerido' });
+
+    const acceso = await computarAcceso(usuarioId);
+    if (!acceso) return res.status(403).json({ ok: false, error: 'No autorizado' });
+
+    let rows;
+    if (acceso.sinFiltro) {
+      [rows] = await pool.execute('SELECT * FROM Dynamic_traslados_trabajador ORDER BY Fecha_Registro DESC LIMIT 300');
+    } else if (acceso.filtroSQL.length > 0) {
+      const ph = acceso.filtroSQL.map(() => '?').join(',');
+      [rows] = await pool.execute(`SELECT * FROM Dynamic_traslados_trabajador WHERE operacion_origen IN (${ph}) ORDER BY Fecha_Registro DESC LIMIT 300`, acceso.filtroSQL);
+    } else {
+      rows = [];
+    }
+
+    const rolConfig = {
+      usuarioId: acceso.usuarioId,
+      puedeValidar: acceso.puedeValidar,
+      puedeEditarPlantilla: acceso.puedeEditarPlantilla,
+      puedePrevisualizar: acceso.puedePrevisualizar,
+      sinFiltro: acceso.sinFiltro,
+      operacionesFiltro: acceso.operacionesFiltro,
+      opsPorRegional: acceso.opsPorRegional,
+    };
+
+    res.json({ ok: true, rows, rolConfig });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Error al cargar traslados' });
+  }
+});
+
 // ── Previsualización del documento ─────────────────────────────────────────
 
 const URL_FIRMA_REPRESENTANTE_PREV =
