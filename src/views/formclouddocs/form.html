@@ -881,9 +881,9 @@
           <div class="file-drop-area" id="file-drop-zone" onclick="document.getElementById('input-file').click()">
             <div class="file-drop-icon">📁</div>
             <div class="file-drop-inner">Arrastra tu archivo aquí o haz clic para buscar</div>
-            <div class="file-drop-hint">Máximo 10MB — PDF, imagen (JPG/PNG/WEBP) o Word (DOC/DOCX)</div>
+            <div class="file-drop-hint">Máximo 10MB — PDF, imagen (JPG/PNG/WEBP), Word (DOC/DOCX) o Excel (XLS/XLSX)</div>
           </div>
-          <input type="file" id="input-file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display: none;" onchange="onFileSelected()">
+          <input type="file" id="input-file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display: none;" onchange="onFileSelected()">
 
           <!-- File Selected Preview -->
           <div class="file-preview" id="file-preview-zone">
@@ -951,7 +951,7 @@
   <script>
     const CONFIG = __CONFIG__;
 
-    // Tipos de archivo permitidos para adjuntar (PDF, imágenes y Word)
+    // Tipos de archivo permitidos para adjuntar (PDF, imágenes, Word y Excel)
     const ARCHIVOS_MIME_PERMITIDOS = [
       'application/pdf',
       'image/jpeg',
@@ -959,9 +959,11 @@
       'image/webp',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ];
-    const ARCHIVOS_EXT_PERMITIDAS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx'];
-    const MENSAJE_ARCHIVO_NO_PERMITIDO = 'Solo se aceptan archivos PDF, imágenes (JPG, PNG, WEBP) o Word (DOC, DOCX).';
+    const ARCHIVOS_EXT_PERMITIDAS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx', '.xls', '.xlsx'];
+    const MENSAJE_ARCHIVO_NO_PERMITIDO = 'Solo se aceptan archivos PDF, imágenes (JPG, PNG, WEBP), Word (DOC, DOCX) o Excel (XLS, XLSX).';
 
     function esArchivoPermitido(file) {
       if (ARCHIVOS_MIME_PERMITIDOS.includes(file.type)) return true;
@@ -1593,7 +1595,7 @@
               <div class="file-drop-icon">📄</div>
               <div>
                 <div class="file-drop-inner" style="margin:0;">Arrastra el archivo o haz clic para adjuntar</div>
-                <div class="file-drop-hint" style="margin-top:2px;">PDF, imagen o Word — máx. 10MB</div>
+                <div class="file-drop-hint" style="margin-top:2px;">PDF, imagen, Word o Excel — máx. 10MB</div>
               </div>
             </div>
             <div class="zone-staged" id="${zoneId}-staged" style="${docState.file ? 'display:flex;' : ''}">
@@ -1615,7 +1617,7 @@
               ${docState.existingDoc.Url ? `<a class="existing-doc-link" href="${esc(docState.existingDoc.Url)}" target="_blank" rel="noopener">Ver documento</a>` : ''}
             </div>
           ` : ''}
-          <input type="file" id="input-file-${doc.Id}" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" onchange="onWorkerDocSelected(${doc.Id})">
+          <input type="file" id="input-file-${doc.Id}" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none;" onchange="onWorkerDocSelected(${doc.Id})">
         </div>
       `;
     }
