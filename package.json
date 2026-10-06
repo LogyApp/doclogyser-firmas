@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node app.js",
     "dev:facturacion": "node scripts/dev-facturacion.js",
-    "scan:watch": "node scripts/scanner-document-inbox.js"
+    "scan:watch": "node scripts/scanner-document-inbox.js",
+    "build:css:seleccion": "tailwindcss -i ./public/css/seleccion.input.css -o ./public/css/seleccion.css --minify"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.0.0",
@@ -18,5 +19,9 @@
     "pdf-lib": "^1.17.1",
     "puppeteer": "^24.0.0",
     "uuid": "^11.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
   }
 }

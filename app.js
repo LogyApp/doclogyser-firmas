@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 
 // Red de seguridad: la app corre ~10 tareas en segundo plano (setInterval) para
@@ -69,6 +70,10 @@ app.set('trust proxy', 1);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Archivos estáticos propios (ej. CSS de Selección compilado localmente, en vez de
+// depender del script en vivo de cdn.tailwindcss.com — ver public/css/README.md).
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/reportes', reportesRoutes);
 app.use('/admin', adminRoutes);
