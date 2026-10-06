@@ -5983,6 +5983,26 @@
       };
       window.desactivarTodasLasPestañas = desactivarTodasLasPestanas;
 
+      // Refleja la pestaña activa en la URL (?tab=) para poder compartir o recargar el enlace.
+      [
+        [tabBtnInventario, 'inventario'],
+        [tabBtnReportes, 'reportes'],
+        [tabBtnPendienteRecibirMain, 'pendienterecibir'],
+        [tabBtnKardex, 'kardex'],
+        [tabBtnArticulos, 'articulos'],
+        [tabBtnSolicitudes, 'solicitudes'],
+        [tabBtnActas, 'actas'],
+        [tabBtnDotacionLey, 'dotacionley'],
+        [document.getElementById('tab-btn-historial'), 'historial']
+      ].forEach(([btn, nombre]) => {
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+          const url = new URL(window.location);
+          url.searchParams.set('tab', nombre);
+          history.replaceState(null, '', url);
+        });
+      });
+
       if (tabBtnInventario) {
         tabBtnInventario.addEventListener('click', () => {
           desactivarTodasLasPestanas();
@@ -12236,7 +12256,7 @@
       const destPool = kardexLookups.operacionesTodas || kardexLookups.operaciones;
       const allowedDestOps = isPrivileged
         ? destPool
-        : destPool.filter(o => o.regional === regional || o.operacion === 'ADMINISTRACION');
+        : destPool.filter(o => o.regional === regional || (o.operacion || '').normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase() === 'ADMINISTRACION');
       opDestSel.innerHTML = '<option value="">Seleccione</option>' + allowedDestOps.map(o => `<option value="${o.operacion}">${o.operacion}</option>`).join('');
     }
 
@@ -12581,7 +12601,7 @@
         if (destOpCache[key] !== undefined) return destOpCache[key];
         let allowed = isPrivileged
           ? destPool
-          : destPool.filter(o => o.regional === reg || o.operacion === 'ADMINISTRACION');
+          : destPool.filter(o => o.regional === reg || (o.operacion || '').normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase() === 'ADMINISTRACION');
         destOpCache[key] = allowed.map(o => `<option value="${o.operacion}"></option>`).join('');
         return destOpCache[key];
       };
