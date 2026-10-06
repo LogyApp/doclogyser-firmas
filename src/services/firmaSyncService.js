@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const { nuevaPagina } = require('./renderer');
 const pool = require('./db');
 const { storage } = require('./storage');
 
@@ -204,18 +204,14 @@ async function generarFirmaPNG(datos) {
     </html>
   `;
 
-  const browser = await puppeteer.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
-
+  const page = await nuevaPagina();
   try {
-    const page = await browser.newPage();
     await page.setViewport({ width: 1444, height: 519, deviceScaleFactor: 1 });
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
     const buffer = await page.screenshot({ type: 'png', omitBackground: true });
     return buffer;
   } finally {
-    await browser.close();
+    await page.close().catch(() => {});
   }
 }
 

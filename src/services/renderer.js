@@ -17,6 +17,44 @@ const CSS_PDF = `
   div { max-width: 100%; }
 `;
 
+const LAUNCH_ARGS = ['--no-sandbox', '--disable-setuid-sandbox'];
+
+let browserInstance = null;
+let launchingPromise = null;
+
+// Reutiliza un único Chrome para todo el proceso en vez de lanzar uno nuevo en
+// cada PDF/firma: levantar Chrome tarda 1-2s y consume CPU/RAM de forma
+// notoria, y esta función la usan ~28 flujos de firma distintos — en un
+// contenedor de 1 sola instancia eso se nota mucho si coinciden varias firmas.
+// Si el navegador se desconecta (crash, sin memoria), se relanza solo al
+// siguiente uso.
+async function getBrowser() {
+  if (browserInstance && browserInstance.isConnected()) return browserInstance;
+  if (launchingPromise) return launchingPromise;
+
+  launchingPromise = puppeteer.launch({ args: LAUNCH_ARGS })
+    .then((browser) => {
+      browserInstance = browser;
+      browser.once('disconnected', () => {
+        if (browserInstance === browser) browserInstance = null;
+      });
+      return browser;
+    })
+    .finally(() => { launchingPromise = null; });
+
+  return launchingPromise;
+}
+
+// Abre una pestaña nueva sobre el navegador compartido. Quien la use es
+// responsable de cerrarla (page.close()) al terminar; el navegador en sí
+// nunca se cierra entre llamadas. Exportada para que otros servicios que
+// también usan Puppeteer (ej. firmaSyncService) compartan el mismo Chrome
+// en vez de abrir uno adicional por su cuenta.
+async function nuevaPagina() {
+  const browser = await getBrowser();
+  return browser.newPage();
+}
+
 async function generarPDF(htmlContenido, options = {}) {
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -24,11 +62,8 @@ async function generarPDF(htmlContenido, options = {}) {
 <body>${htmlContenido}</body>
 </html>`;
 
-  const browser = await puppeteer.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  const page = await nuevaPagina();
   try {
-    const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
     const buffer = await page.pdf({
       format: 'A4',
@@ -38,16 +73,13 @@ async function generarPDF(htmlContenido, options = {}) {
     });
     return buffer;
   } finally {
-    await browser.close();
+    await page.close().catch(() => {});
   }
 }
 
 async function generarPDFDesdeHTML(htmlCompleto) {
-  const browser = await puppeteer.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  const page = await nuevaPagina();
   try {
-    const page = await browser.newPage();
     await page.setContent(htmlCompleto, { waitUntil: 'networkidle2', timeout: 30000 });
     const buffer = await page.pdf({
       format: 'A4',
@@ -55,8 +87,8 @@ async function generarPDFDesdeHTML(htmlCompleto) {
     });
     return buffer;
   } finally {
-    await browser.close();
+    await page.close().catch(() => {});
   }
 }
 
-module.exports = { generarPDF, generarPDFDesdeHTML };
+module.exports = { generarPDF, generarPDFDesdeHTML, nuevaPagina };
