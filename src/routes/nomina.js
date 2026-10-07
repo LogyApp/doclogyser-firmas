@@ -888,7 +888,7 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
     const { isSstOnly } = req.usuarioInfo;
     const { whereFirma, whereVinc } = obtenerCondicionesClasificacionBiometrico(isSstOnly);
     
-    const { startDate, endDate, search, clasificacion } = req.query;
+    const { startDate, endDate, search, clasificacion, regional, operacion } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ error: 'Parámetros startDate y endDate requeridos' });
@@ -903,11 +903,6 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
       filterSql += ' AND (m.identificacion LIKE ? OR m.trabajador COLLATE utf8mb4_0900_ai_ci LIKE ?)';
       filterParams.push(`%${search}%`, `%${search}%`);
     }
-    if (clasificacion) {
-      filterSql += ' AND w.clasificacion = ?';
-      filterParams.push(clasificacion);
-    }
-
     const wSubquery = `
       SELECT
         Identificacion AS identificacion,
@@ -978,6 +973,7 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
           w.operacion,
           w.regional,
           v_op.operacion_asignada,
+          op_asig.REGIONAL AS regional_asignada,
           op_asig.LATITUD AS op_lat,
           op_asig.LONGITUD AS op_lng
         FROM facial_marcaciones m
@@ -1008,6 +1004,7 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
           w.operacion,
           w.regional,
           v_op.operacion_asignada,
+          op_asig.REGIONAL AS regional_asignada,
           op_asig.LATITUD AS op_lat,
           op_asig.LONGITUD AS op_lng
         FROM facial_marcaciones m
@@ -1027,9 +1024,30 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
     ];
 
     const [rows] = await pool.execute(query, params);
+    const enOperacionFiltrada = rows.filter(r => !operacion || r.operacion_asignada === operacion);
+    const enRegionalFiltrada = rows.filter(r => !regional || (r.regional_asignada || r.regional) === regional);
+    const contarPor = (lista, campo) => lista.reduce((acc, r) => {
+      const valor = campo === 'regional' ? (r.regional_asignada || r.regional) : r.operacion_asignada;
+      if (valor) acc[valor] = (acc[valor] || 0) + 1;
+      return acc;
+    }, {});
+    const regionales = contarPor(enOperacionFiltrada.filter(r => !clasificacion || r.clasificacion === clasificacion), 'regional');
+    const operaciones = contarPor(enRegionalFiltrada.filter(r => !clasificacion || r.clasificacion === clasificacion), 'operacion');
+    const trabajadoresPorClasificacion = {};
+    rows.filter(r => (!regional || (r.regional_asignada || r.regional) === regional) &&
+      (!operacion || r.operacion_asignada === operacion)).forEach(r => {
+      if (!trabajadoresPorClasificacion[r.clasificacion]) trabajadoresPorClasificacion[r.clasificacion] = new Set();
+      trabajadoresPorClasificacion[r.clasificacion].add(String(r.identificacion));
+    });
+    const clasificaciones = Object.fromEntries(Object.entries(trabajadoresPorClasificacion).map(([k, ids]) => [k, ids.size]));
+    const filasVisibles = rows.filter(r =>
+      (!clasificacion || r.clasificacion === clasificacion) &&
+      (!regional || (r.regional_asignada || r.regional) === regional) &&
+      (!operacion || r.operacion_asignada === operacion)
+    );
     const opsGeo = await cargarOperacionesGeo();
 
-    const marcacionesConDistancia = rows.map(r => {
+    const marcacionesConDistancia = filasVisibles.map(r => {
       const distM = calcularDistanciaMetros(r.latitud, r.longitud, r.op_lat, r.op_lng);
       return {
         ...r,
@@ -1038,7 +1056,7 @@ router.get('/api/biometrico/marcaciones', verificarAccesoBiometricoAPI, async (r
       };
     });
 
-    res.json({ ok: true, marcaciones: marcacionesConDistancia });
+    res.json({ ok: true, marcaciones: marcacionesConDistancia, counts: { regionales, operaciones, clasificaciones } });
   } catch (err) {
     console.error('[nomina Biometrico API] Error en marcaciones:', err);
     res.status(500).json({ error: err.message });

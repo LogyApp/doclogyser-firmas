@@ -221,6 +221,11 @@
     background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px;
     box-shadow: 0 1px 3px rgba(0,0,0,.04); display: flex; flex-direction: column; justify-content: center;
   }
+  .bio-kpis-compact { display: flex; gap: 22px; margin-top: 12px; }
+  .bio-kpis-compact .bio-kpi-card { border: 0; box-shadow: none; background: transparent; padding: 0; min-width: 130px; }
+  .bio-kpis-compact .bio-kpi-val { font-size: 1.05rem; color: var(--text-main); margin: 0; }
+  .bio-kpis-compact .bio-kpi-lbl { font-size: .68rem; }
+  .bio-pill-count { margin-left: 4px; opacity: .8; font-variant-numeric: tabular-nums; }
   .bio-kpi-val { font-size: 1.6rem; font-weight: 700; color: var(--primary); line-height: 1.1; margin-bottom: 4px; }
   .bio-kpi-lbl { font-size: .78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
 
@@ -577,35 +582,35 @@
               <label style="font-size:.72rem">Buscar Colaborador</label>
               <input type="text" id="bioFilterWorkerSearch" placeholder="Cédula o nombre..." style="padding:6px 10px; font-size:.82rem;">
             </div>
+            <div id="bioRegionalOpFilters" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              <div class="filtro-field" style="margin-bottom:0; min-width:170px;">
+                <label style="font-size:.72rem">Regional asignada</label>
+                <select id="bioFilterRegional" style="padding:6px 10px; font-size:.82rem"><option value="">Todas las regionales (0)</option></select>
+              </div>
+              <div class="filtro-field" style="margin-bottom:0; min-width:210px;">
+                <label style="font-size:.72rem">Operación asignada</label>
+                <select id="bioFilterOperacion" style="padding:6px 10px; font-size:.82rem"><option value="">Todas las operaciones (0)</option></select>
+              </div>
+            </div>
           </div>
           <div class="bio-pills-group" id="bioClassificationPills">
             <button type="button" class="bio-pill active" data-clas="">Todas</button>
-            <button type="button" class="bio-pill" data-clas="sst">SST</button>
-            <button type="button" class="bio-pill" data-clas="coordinadores">Coordinadores</button>
-            <button type="button" class="bio-pill" data-clas="auxiliares_administrativos">Aux. Administrativos</button>
-            <button type="button" class="bio-pill" data-clas="auxiliares_logisticos">Aux. Logísticos</button>
-            <button type="button" class="bio-pill" data-clas="aprendices">Aprendices</button>
+            <button type="button" class="bio-pill" data-clas="sst">SST <span class="bio-pill-count" id="bioCount-sst">0</span></button>
+            <button type="button" class="bio-pill" data-clas="coordinadores">Coordinadores <span class="bio-pill-count" id="bioCount-coordinadores">0</span></button>
+            <button type="button" class="bio-pill" data-clas="auxiliares_administrativos">Aux. Administrativos <span class="bio-pill-count" id="bioCount-auxiliares_administrativos">0</span></button>
+            <button type="button" class="bio-pill" data-clas="auxiliares_logisticos">Aux. Logísticos <span class="bio-pill-count" id="bioCount-auxiliares_logisticos">0</span></button>
+            <button type="button" class="bio-pill" data-clas="aprendices">Aprendices <span class="bio-pill-count" id="bioCount-aprendices">0</span></button>
+          </div>
+          <div class="bio-kpis-grid bio-kpis-compact" id="bioAsistenciaStats">
+            <div class="bio-kpi-card"><div class="bio-kpi-val" id="bioStatTotalMarcaciones">0</div><div class="bio-kpi-lbl">Total Marcaciones</div></div>
+            <div class="bio-kpi-card"><div class="bio-kpi-val" id="bioStatManuales">0</div><div class="bio-kpi-lbl">Marcaciones Manuales</div></div>
           </div>
         </div>
+        <button type="button" class="btn-reset" id="bioResetFiltros" onclick="resetFiltrosBiometrico()">&#8635; Limpiar filtros</button>
       </div>
 
       <!-- Subpanel 1: Asistencia -->
       <div id="bioSubpanelAsistencia">
-        <div class="bio-kpis-grid">
-          <div class="bio-kpi-card">
-            <div class="bio-kpi-val" id="bioStatTotalMarcaciones">0</div>
-            <div class="bio-kpi-lbl">Total Marcaciones</div>
-          </div>
-          <div class="bio-kpi-card">
-            <div class="bio-kpi-val" id="bioStatScorePromedio">0.00</div>
-            <div class="bio-kpi-lbl">Score Promedio Facial</div>
-          </div>
-          <div class="bio-kpi-card">
-            <div class="bio-kpi-val" id="bioStatManuales">0</div>
-            <div class="bio-kpi-lbl">Marcaciones Manuales</div>
-          </div>
-        </div>
-
         <div class="card">
           <div class="contador-resultados" id="bioAsistenciaContador"></div>
           <div class="table-container">
@@ -2047,6 +2052,7 @@
     cargado: false,
     activeSubTab: 'asistencia',
     selectedClas: '',
+    filterCounts: { regionales: {}, operaciones: {}, clasificaciones: {} },
     asistenciaData: [],
     rutasData: [],
     asistSort: { col: 'fecha_hora', order: 'desc' },
@@ -2073,6 +2079,8 @@
     document.getElementById('bioSubpanelReportes').style.display = subTab === 'reportes' ? 'block' : 'none';
     document.getElementById('bioSubpanelCoords').style.display = subTab === 'coordenadas' ? 'block' : 'none';
     document.getElementById('bioGlobalFilters').style.display = subTab === 'coordenadas' ? 'none' : 'block';
+    document.getElementById('bioRegionalOpFilters').style.display = subTab === 'asistencia' ? 'flex' : 'none';
+    document.getElementById('bioAsistenciaStats').style.display = subTab === 'asistencia' ? 'flex' : 'none';
 
 
     if (subTab === 'rutas') {
@@ -2092,6 +2100,8 @@
     const startDateEl = document.getElementById('bioFilterStartDate');
     const endDateEl = document.getElementById('bioFilterEndDate');
     const searchEl = document.getElementById('bioFilterWorkerSearch');
+    const regionalEl = document.getElementById('bioFilterRegional');
+    const operacionEl = document.getElementById('bioFilterOperacion');
 
     if (startDateEl) startDateEl.value = toIso(sevenDaysAgo);
     if (endDateEl) endDateEl.value = toIso(today);
@@ -2111,6 +2121,11 @@
 
     if (startDateEl) startDateEl.addEventListener('change', () => fetchBiometricoData());
     if (endDateEl) endDateEl.addEventListener('change', () => fetchBiometricoData());
+    if (regionalEl) regionalEl.addEventListener('change', () => {
+      if (operacionEl) operacionEl.value = '';
+      fetchBiometricoData();
+    });
+    if (operacionEl) operacionEl.addEventListener('change', () => fetchBiometricoData());
 
     if (searchEl) {
       searchEl.addEventListener('input', () => {
@@ -2128,6 +2143,26 @@
         fetchBiometricoData();
       });
     });
+  }
+
+  function resetFiltrosBiometrico() {
+    const hoy = new Date();
+    const desde = new Date();
+    desde.setDate(hoy.getDate() - 7);
+    const pad = n => String(n).padStart(2, '0');
+    const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    document.getElementById('bioFilterStartDate').value = iso(desde);
+    document.getElementById('bioFilterEndDate').value = iso(hoy);
+    document.getElementById('bioFilterWorkerSearch').value = '';
+    document.getElementById('bioFilterRegional').value = '';
+    document.getElementById('bioFilterOperacion').value = '';
+    _bioState.selectedClas = _cfg.isSstOnly ? 'sst' : '';
+    document.querySelectorAll('#bioClassificationPills .bio-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-clas') === _bioState.selectedClas);
+    });
+    clearTimeout(_bioState.debounceTimer);
+    fetchBiometricoData();
   }
 
   function initBioMainMap() {
@@ -2223,18 +2258,47 @@
     });
     if (_bioState.selectedClas) params.set('clasificacion', _bioState.selectedClas);
     if (search) params.set('search', search);
+    const regional = document.getElementById('bioFilterRegional')?.value;
+    const operacion = document.getElementById('bioFilterOperacion')?.value;
+    if (regional) params.set('regional', regional);
+    if (operacion) params.set('operacion', operacion);
 
     try {
       const res = await fetch(`/nomina/api/biometrico/marcaciones?${params.toString()}`);
       const data = await res.json();
       if (data.ok) {
         _bioState.asistenciaData = data.marcaciones || [];
+        _bioState.filterCounts = data.counts || { regionales: {}, operaciones: {}, clasificaciones: {} };
+        actualizarFiltrosBio(_bioState.filterCounts);
         renderBioMarcaciones(_bioState.asistenciaData);
-        computeBioMarcacionesStats(_bioState.asistenciaData);
+        computeBioMarcacionesStats(_bioState.asistenciaData, _bioState.filterCounts.clasificaciones);
       }
     } catch (err) {
       console.error('[Biométrico] Error al cargar marcaciones:', err);
     }
+  }
+
+  function actualizarFiltrosBio(counts) {
+    const regionalEl = document.getElementById('bioFilterRegional');
+    const operacionEl = document.getElementById('bioFilterOperacion');
+    if (!regionalEl || !operacionEl) return;
+    const regional = regionalEl.value, operacion = operacionEl.value;
+    const regs = counts.regionales || {}, ops = counts.operaciones || {};
+    const totalReg = Object.values(regs).reduce((a, b) => a + Number(b), 0);
+    const totalOp = Object.values(ops).reduce((a, b) => a + Number(b), 0);
+    regionalEl.innerHTML = `<option value="">Todas las regionales (${totalReg})</option>` +
+      Object.keys(regs).sort((a, b) => a.localeCompare(b, 'es')).map(r =>
+        `<option value="${esc(r)}"${r === regional ? ' selected' : ''}>${esc(r)} (${regs[r]})</option>`
+      ).join('');
+    operacionEl.innerHTML = `<option value="">Todas las operaciones (${totalOp})</option>` +
+      Object.keys(ops).sort((a, b) => a.localeCompare(b, 'es')).map(o =>
+        `<option value="${esc(o)}"${o === operacion ? ' selected' : ''}>${esc(o)} (${ops[o]})</option>`
+      ).join('');
+    document.querySelectorAll('#bioClassificationPills [data-clas]').forEach(btn => {
+      const clas = btn.getAttribute('data-clas');
+      const count = document.getElementById(`bioCount-${clas}`);
+      if (count) count.textContent = Number((counts.clasificaciones || {})[clas] || 0);
+    });
   }
 
   function bioNombreLimpio(t) { return t && t.includes('**') ? t.split('**')[1].trim() : (t || ''); }
@@ -2340,13 +2404,10 @@
 
   function computeBioMarcacionesStats(list) {
     document.getElementById('bioStatTotalMarcaciones').textContent = list.length;
-    let scoreSum = 0, scoreCount = 0, manualCount = 0;
+    let manualCount = 0;
     list.forEach(m => {
-      if (m.score != null) { scoreSum += parseFloat(m.score); scoreCount++; }
       if (m.es_manual) manualCount++;
     });
-    const avgScore = scoreCount > 0 ? (scoreSum / scoreCount) : 0;
-    document.getElementById('bioStatScorePromedio').textContent = avgScore.toFixed(4);
     document.getElementById('bioStatManuales').textContent = manualCount;
   }
 

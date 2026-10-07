@@ -3020,10 +3020,130 @@
       actualizarIconosOrdenSst('cm');
       actualizarIconosOrdenSst('inc');
       inicializarCanvasCsst();
+
+      // ── Sincronización de pestaña inicial por URL (?tab=... / /sst/:tab) ──
       const urlParams = new URLSearchParams(window.location.search);
-      const initialTab = urlParams.get('tab');
-      const validTabs = ['evaluacion', 'capacitacion', 'pruebaconsumo', 'participacion', 'compromiso', 'gestionmedica'];
-      switchTab(validTabs.includes(initialTab) ? initialTab : 'evaluacion');
+      let rawTab = (urlParams.get('tab') || CONFIG.tabRuta || '').toLowerCase().trim();
+      if (!rawTab) {
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        if (pathParts.length > 1 && pathParts[0] === 'sst') {
+          rawTab = pathParts[1].toLowerCase().trim();
+        }
+      }
+
+      const rawSubtab = (urlParams.get('subtab') || '').toLowerCase().trim();
+      const idParam = urlParams.get('id') || urlParams.get('idevaluacion') || urlParams.get('idcapacitacion') || urlParams.get('idprueba') || urlParams.get('idasistencia') || urlParams.get('idcompromiso');
+      const identificacionParam = urlParams.get('identificacion') || urlParams.get('cedula');
+
+      // Mapeo flexible de pestañas y alias
+      let targetTab = 'evaluacion';
+      let targetSubtab = null;
+
+      if (['evaluacion', 'evaluacionsst', 'evaluaciones', 'ev'].includes(rawTab)) {
+        targetTab = 'evaluacion';
+      } else if (['capacitacion', 'capacitacionsst', 'capacitaciones', 'cap'].includes(rawTab)) {
+        targetTab = 'capacitacion';
+        targetSubtab = ['temas', 'tema'].includes(rawSubtab) ? 'temas' : 'evals';
+      } else if (['pruebaconsumo', 'prueba', 'consumo', 'pc'].includes(rawTab)) {
+        targetTab = 'pruebaconsumo';
+      } else if (['participacion', 'asistencia', 'part'].includes(rawTab)) {
+        targetTab = 'participacion';
+      } else if (['compromiso', 'compromisosst', 'csst'].includes(rawTab)) {
+        targetTab = 'compromiso';
+      } else if (['gestionmedica', 'medica', 'casosmedicos', 'casos', 'incapacidades', 'incapacidad', 'cm', 'inc'].includes(rawTab)) {
+        targetTab = 'gestionmedica';
+        if (['incapacidades', 'incapacidad', 'inc'].includes(rawTab) || rawSubtab === 'incapacidades') {
+          targetSubtab = 'incapacidades';
+        } else {
+          targetSubtab = 'casosmedicos';
+        }
+      }
+
+      if (targetTab === 'gestionmedica') {
+        subtabGestionMedica = targetSubtab || 'casosmedicos';
+      }
+      if (targetTab === 'capacitacion' && targetSubtab === 'temas') {
+        switchCapSubtab('temas');
+      }
+
+      switchTab(targetTab, { id: idParam, identificacion: identificacionParam });
+
+      // Si venía con identificacion (expediente de casos médicos)
+      if (targetTab === 'gestionmedica' && (!targetSubtab || targetSubtab === 'casosmedicos') && identificacionParam) {
+        setTimeout(() => {
+          abrirExpedienteTrabajador(identificacionParam);
+        }, 400);
+      }
+      // Si venía con id de detalle
+      if (idParam) {
+        setTimeout(async () => {
+          if (targetTab === 'evaluacion') {
+            if (!dataStore.ev.length) await cargarDatos('ev');
+            abrirDetalleEvaluacion(idParam);
+          } else if (targetTab === 'capacitacion') {
+            if (!dataStore.cap.length) await cargarDatos('cap');
+            abrirDetalleCapacitacion(idParam);
+          } else if (targetTab === 'pruebaconsumo') {
+            if (!dataStore.pc.length) await cargarDatos('pc');
+            abrirDetallePrueba(idParam);
+          } else if (targetTab === 'participacion') {
+            abrirDetalleParticipacion(idParam);
+          } else if (targetTab === 'compromiso') {
+            if (!dataStore.csst.length) await cargarDatos('csst');
+            abrirDetalleCompromiso(idParam);
+          }
+        }, 600);
+      }
+    });
+
+    // Soporte para botones Atrás/Adelante del navegador (popstate)
+    window.addEventListener('popstate', () => {
+      isHandlingPopstate = true;
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const t = p.get('tab') || 'evaluacion';
+        const st = p.get('subtab');
+        const ident = p.get('identificacion') || p.get('cedula');
+        const id = p.get('id') || p.get('idevaluacion') || p.get('idcapacitacion') || p.get('idprueba') || p.get('idasistencia') || p.get('idcompromiso');
+
+        if (t !== currentTab) {
+          switchTab(t);
+        }
+        if (t === 'gestionmedica' && st && st !== subtabGestionMedica) {
+          switchGestionMedicaSubtab(st);
+        }
+        if (t === 'capacitacion' && st) {
+          switchCapSubtab(st);
+        }
+        if (t === 'gestionmedica') {
+          if (ident && (!currentExpedienteTrabajadorId || currentExpedienteTrabajadorId !== ident)) {
+            abrirExpedienteTrabajador(ident);
+          } else if (!ident && document.getElementById('cm-view-expediente')?.style.display === 'flex') {
+            document.getElementById('cm-view-expediente').style.display = 'none';
+            document.getElementById('cm-view-listado').style.display = 'block';
+            currentExpedienteTrabajadorId = null;
+          }
+        }
+        if (!id) {
+          ['ev', 'cap', 'pc', 'part', 'csst'].forEach(k => {
+            const det = document.getElementById(`detail-${k}`);
+            if (det && det.style.display !== 'none') {
+              const lay = document.getElementById(`layout-${k}`);
+              if (lay) lay.classList.remove('detail-active');
+              det.style.display = 'none';
+              selectedItems[k] = null;
+            }
+          });
+        } else {
+          if (t === 'evaluacion') abrirDetalleEvaluacion(id);
+          else if (t === 'capacitacion') abrirDetalleCapacitacion(id);
+          else if (t === 'pruebaconsumo') abrirDetallePrueba(id);
+          else if (t === 'participacion') abrirDetalleParticipacion(id);
+          else if (t === 'compromiso') abrirDetalleCompromiso(id);
+        }
+      } finally {
+        isHandlingPopstate = false;
+      }
     });
 
     function initSidebarUser() {
@@ -3154,8 +3274,80 @@
       }
     }
 
+    // ═════ SINCRONIZACIÓN DE PESTAÑAS EN URL (Estilo Facturación / Nómina) ═════
+    let isHandlingPopstate = false;
+
+    function sincronizarUrlPestana(tab, subTab, options = {}) {
+      if (isHandlingPopstate) return;
+      try {
+        const url = new URL(window.location.href);
+        if (url.pathname.startsWith('/sst')) {
+          url.pathname = '/sst';
+        }
+        url.searchParams.set('tab', tab);
+
+        // Subtabs para Gestión Médica y Capacitación
+        if (tab === 'gestionmedica') {
+          const st = subTab || subtabGestionMedica || 'casosmedicos';
+          url.searchParams.set('subtab', st);
+        } else if (tab === 'capacitacion') {
+          const isTemas = document.getElementById('subtab-btn-cap-temas')?.classList.contains('active');
+          const st = subTab || (isTemas ? 'temas' : 'evals');
+          url.searchParams.set('subtab', st);
+        } else {
+          url.searchParams.delete('subtab');
+        }
+
+        // Limpiar parámetros de detalle al cambiar o resetear
+        const st = tab === 'gestionmedica' ? (subTab || subtabGestionMedica || 'casosmedicos') : null;
+        if (tab !== 'gestionmedica' || st === 'incapacidades' || options.identificacion === null) {
+          url.searchParams.delete('identificacion');
+          url.searchParams.delete('cedula');
+        }
+        if (tab !== 'evaluacion' || options.id === null) {
+          url.searchParams.delete('idevaluacion');
+        }
+        if (tab !== 'capacitacion' || options.id === null) {
+          url.searchParams.delete('idcapacitacion');
+        }
+        if (tab !== 'pruebaconsumo' || options.id === null) {
+          url.searchParams.delete('idprueba');
+        }
+        if (tab !== 'participacion' || options.id === null) {
+          url.searchParams.delete('idasistencia');
+        }
+        if (tab !== 'compromiso' || options.id === null) {
+          url.searchParams.delete('idcompromiso');
+        }
+        if (options.id === null) {
+          url.searchParams.delete('id');
+        }
+
+        // Parámetros específicos de detalle si aplican
+        if (options.identificacion) {
+          url.searchParams.set('identificacion', options.identificacion);
+        }
+        if (options.id) {
+          if (tab === 'evaluacion') url.searchParams.set('idevaluacion', options.id);
+          else if (tab === 'capacitacion') url.searchParams.set('idcapacitacion', options.id);
+          else if (tab === 'pruebaconsumo') url.searchParams.set('idprueba', options.id);
+          else if (tab === 'participacion') url.searchParams.set('idasistencia', options.id);
+          else if (tab === 'compromiso') url.searchParams.set('idcompromiso', options.id);
+          else url.searchParams.set('id', options.id);
+        }
+
+        if (options.push) {
+          window.history.pushState(null, '', url);
+        } else {
+          window.history.replaceState(null, '', url);
+        }
+      } catch (e) {
+        console.error('Error sincronizando URL de pestaña:', e);
+      }
+    }
+
     // ═════ NAVEGACIÓN ENTRE PESTAÑAS ═════
-    function switchTab(tabId) {
+    function switchTab(tabId, options = null) {
       currentTab = tabId;
 
       document.querySelectorAll('.nav-item').forEach(item => {
@@ -3168,26 +3360,50 @@
       const activePane = document.getElementById(`pane-${tabId}`);
       if (activePane) activePane.style.display = 'block';
 
-      try {
-        const url = new URL(window.location.href);
-        if (url.searchParams.get('tab') !== tabId) {
-          url.searchParams.set('tab', tabId);
-          window.history.replaceState({}, '', url.toString());
-        }
-      } catch (e) {}
-
       if (window.innerWidth <= 900) {
         toggleMobileSidebar(false);
       }
 
-      if (tabId === 'gestionmedica' && typeof actualizarPermisosBotonesCm === 'function') {
-        actualizarPermisosBotonesCm();
-      }
+      const syncOpts = options || { id: null, identificacion: null };
 
       if (tabId === 'gestionmedica') {
-        switchGestionMedicaSubtab(subtabGestionMedica);
+        sincronizarUrlPestana('gestionmedica', subtabGestionMedica, syncOpts);
+        if (typeof actualizarPermisosBotonesCm === 'function') {
+          actualizarPermisosBotonesCm();
+        }
+        switchGestionMedicaSubtab(subtabGestionMedica, syncOpts);
         return;
       }
+
+      const isTemas = (tabId === 'capacitacion') && document.getElementById('subtab-btn-cap-temas')?.classList.contains('active');
+      const capSub = (tabId === 'capacitacion') ? (isTemas ? 'temas' : 'evals') : null;
+      sincronizarUrlPestana(tabId, capSub, syncOpts);
+
+      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
+      actualizarIconosOrdenSst(key);
+      inicializarRedimensionColumnasSst();
+      if (!dataStore[key].length) {
+        cargarDatos(key);
+      }
+    }
+
+    function switchGestionMedicaSubtab(subtab, options = null) {
+      subtabGestionMedica = subtab === 'incapacidades' ? 'incapacidades' : 'casosmedicos';
+      const esCasos = subtabGestionMedica === 'casosmedicos';
+      document.getElementById('subtab-btn-gestion-casos').classList.toggle('active', esCasos);
+      document.getElementById('subtab-btn-gestion-casos').setAttribute('aria-selected', String(esCasos));
+      document.getElementById('subtab-btn-gestion-incapacidades').classList.toggle('active', !esCasos);
+      document.getElementById('subtab-btn-gestion-incapacidades').setAttribute('aria-selected', String(!esCasos));
+      document.getElementById('pane-casosmedicos').style.display = esCasos ? 'block' : 'none';
+      document.getElementById('pane-incapacidades').style.display = esCasos ? 'none' : 'block';
+
+      if (!esCasos && document.getElementById('cm-view-expediente')?.style.display === 'flex') {
+        document.getElementById('cm-view-expediente').style.display = 'none';
+        document.getElementById('cm-view-listado').style.display = 'block';
+        currentExpedienteTrabajadorId = null;
+      }
+
+      sincronizarUrlPestana('gestionmedica', subtabGestionMedica, options || {});
 
       const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
       actualizarIconosOrdenSst(key);
@@ -3206,6 +3422,8 @@
       document.getElementById('subtab-btn-gestion-incapacidades').setAttribute('aria-selected', String(!esCasos));
       document.getElementById('pane-casosmedicos').style.display = esCasos ? 'block' : 'none';
       document.getElementById('pane-incapacidades').style.display = esCasos ? 'none' : 'block';
+
+      sincronizarUrlPestana('gestionmedica', subtabGestionMedica);
 
       const key = esCasos ? 'cm' : 'inc';
       actualizarIconosOrdenSst(key);
@@ -3227,6 +3445,8 @@
       document.getElementById('subtab-btn-cap-temas').classList.toggle('active', !isEvals);
       document.getElementById('cap-subview-evals').style.display = isEvals ? 'block' : 'none';
       document.getElementById('cap-subview-temas').style.display = isEvals ? 'none' : 'block';
+
+      sincronizarUrlPestana('capacitacion', isEvals ? 'evals' : 'temas');
 
       if (!isEvals) cargarTemasCapacitacion();
     }
@@ -3610,6 +3830,7 @@
       document.getElementById('detail-ev-body').innerHTML = bodyHtml;
       document.getElementById('layout-ev').classList.add('detail-active');
       document.getElementById('detail-ev').style.display = 'block';
+      sincronizarUrlPestana('evaluacion', null, { id: item.id_evaluacion, push: true });
     }
 
     async function reenviarFirmaEvaluacion(id) {
@@ -3807,6 +4028,7 @@
       document.getElementById('detail-cap-body').innerHTML = bodyHtml;
       document.getElementById('layout-cap').classList.add('detail-active');
       document.getElementById('detail-cap').style.display = 'block';
+      sincronizarUrlPestana('capacitacion', 'evals', { id: item.id_capacitacion, push: true });
     }
 
     async function reenviarFirmaCapacitacion(id) {
@@ -4029,6 +4251,7 @@
       document.getElementById('detail-pc-body').innerHTML = bodyHtml;
       document.getElementById('layout-pc').classList.add('detail-active');
       document.getElementById('detail-pc').style.display = 'block';
+      sincronizarUrlPestana('pruebaconsumo', null, { id: item.idprueba, push: true });
     }
 
     async function enviarEnlacePrueba(id) {
@@ -4339,6 +4562,7 @@
         document.getElementById('detail-part-body').innerHTML = bodyHtml;
         document.getElementById('layout-part').classList.add('detail-active');
         document.getElementById('detail-part').style.display = 'block';
+        sincronizarUrlPestana('participacion', null, { id: data.id_asistencia, push: true });
 
       } catch (err) {
         console.error('Error al cargar detalle de participación:', err);
@@ -4606,6 +4830,7 @@
     async function abrirDetalleCompromiso(id) {
       selectedCompromisoCsstId = id;
       firmaPrellenadaCsst = null;
+      sincronizarUrlPestana('compromiso', null, { id: id, push: true });
 
       document.querySelectorAll('#tbody-csst tr').forEach(r => r.classList.remove('selected'));
       const row = document.getElementById(`row-csst-${id}`);
@@ -5222,9 +5447,12 @@
     }
 
     function volverListadoCm() {
+      currentExpedienteTrabajadorId = null;
+      selectedItems.cm = null;
       document.getElementById('cm-view-expediente').style.display = 'none';
       document.getElementById('cm-view-listado').style.display = 'block';
       inicializarRedimensionColumnasSst();
+      sincronizarUrlPestana('gestionmedica', 'casosmedicos', { identificacion: null, push: true });
     }
 
     function abrirModalAgregarCasoDesdeExpediente() {
@@ -5241,6 +5469,7 @@
       if (!identificacion) return;
       currentExpedienteTrabajadorId = String(identificacion);
       selectedItems.cm = String(identificacion);
+      sincronizarUrlPestana('gestionmedica', 'casosmedicos', { identificacion: identificacion, push: true });
 
       // Resaltar fila seleccionada en tabla si existe
       document.querySelectorAll('#tbody-cm tr').forEach(r => r.classList.remove('selected'));
@@ -6511,6 +6740,9 @@
       if (det) det.style.display = 'none';
       selectedItems[modKey] = null;
       document.querySelectorAll(`#tbody-${modKey} tr`).forEach(tr => tr.classList.remove('selected'));
+      const tabMap = { ev: 'evaluacion', cap: 'capacitacion', pc: 'pruebaconsumo', part: 'participacion', csst: 'compromiso' };
+      const currentTabName = tabMap[modKey] || currentTab;
+      sincronizarUrlPestana(currentTabName, null, { id: null, push: true });
     }
 
     // ══════════════════════════════════════════════════════════

@@ -64,6 +64,48 @@
       z-index: 100;
       border-right: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow: 4px 0 15px rgba(0, 11, 89, 0.08);
+      transition: transform 0.3s ease;
+    }
+
+    /* Header móvil (mismo patrón que SST/Nómina) */
+    .mobile-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .mobile-menu-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 4px;
+    }
+
+    .mobile-title {
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mobile-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 95;
     }
     
     .sidebar-brand {
@@ -468,13 +510,26 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
+      body { flex-direction: column; overflow: visible; height: auto; }
+      .mobile-header { display: flex; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-backdrop.open { display: block; }
+      .main-content {
+        margin-left: 0;
+        padding: 16px;
+        height: auto;
+        min-height: calc(100vh - 56px);
+        overflow-y: visible;
+      }
       header { flex-direction: column; text-align: center; padding: 20px; }
       .brand-lockup { margin-bottom: 10px; }
       .tabs-bar { width: 100%; justify-content: stretch; }
       .tab-btn { flex: 1; text-align: center; padding: 8px 10px; font-size: 0.85rem; }
       .modal-content { max-height: 95vh; height: 95vh; border-radius: 12px; }
       .filters-grid { grid-template-columns: 1fr; }
+      .permisos-layout { grid-template-columns: 1fr !important; }
     }
 
     .role-card {
@@ -597,8 +652,18 @@
     </div>
   </div>
 
+  <!-- Backdrop móvil -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Header móvil -->
+  <header class="mobile-header">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
+    <div class="mobile-title"><span>☁️ Cloud Docs</span></div>
+    <span id="mobile-user-badge" style="font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;"></span>
+  </header>
+
   <!-- Sidebar -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-lockup">
         <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
@@ -1188,6 +1253,7 @@
     // Initialize Page
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('user-badge-name').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
+      document.getElementById('mobile-user-badge').innerText = CONFIG.rol;
       document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
       document.getElementById('btn-logysign').href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
@@ -1545,6 +1611,19 @@
       } else {
         filtrar();
       }
+
+      if (window.innerWidth <= 900) {
+        toggleMobileSidebar(false);
+      }
+    }
+
+    // Menú lateral en móvil (mismo patrón que SST/Nómina)
+    function toggleMobileSidebar(forceState) {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('mobile-backdrop');
+      const shouldOpen = forceState !== undefined ? forceState : !sb.classList.contains('open');
+      sb.classList.toggle('open', shouldOpen);
+      bd.classList.toggle('open', shouldOpen);
     }
 
     // Reset filters

@@ -100,10 +100,12 @@ async function computarAccesoSST(usuarioId) {
   return acceso;
 }
 
-// Servir la vista unificada de SST
-router.get('/', async (req, res) => {
+// Servir la vista unificada de SST (soportando tanto /sst como /sst/:tab)
+router.get(['/', '/:tab'], async (req, res) => {
   try {
     const { usuario } = req.query;
+    const tabRuta = req.params.tab || null;
+
     if (!usuario) {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
     }
@@ -121,6 +123,7 @@ router.get('/', async (req, res) => {
 
     const config = JSON.stringify({
       ...acceso,
+      tabRuta,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
     }).replace(/<\/script>/gi, '<\\/script>');
 
