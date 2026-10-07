@@ -300,7 +300,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
         SELECT cm.identificacion, COALESCE(v.Regional, cm.regional_id) AS Regional
         FROM Maestro_casosmedicos cm
         LEFT JOIN (
-          SELECT Identificación, Regional, \`Operación\`, \`Fecha de Ingreso\`,
+          SELECT Identificación, Trabajador, Regional, \`Operación\`, \`Fecha de Ingreso\`,
                  ROW_NUMBER() OVER(PARTITION BY Identificación ORDER BY \`Fecha de Ingreso\` DESC) as rn
           FROM \`Maestro_Vinculación\`
         ) v ON cm.identificacion = v.Identificación AND v.rn = 1
@@ -326,7 +326,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
         SELECT cm.identificacion, COALESCE(cm.operacion, v.Operación, s.Operación) AS Operacion
         FROM Maestro_casosmedicos cm
         LEFT JOIN (
-          SELECT Identificación, Regional, \`Operación\`, \`Fecha de Ingreso\`,
+          SELECT Identificación, Trabajador, Regional, \`Operación\`, \`Fecha de Ingreso\`,
                  ROW_NUMBER() OVER(PARTITION BY Identificación ORDER BY \`Fecha de Ingreso\` DESC) as rn
           FROM \`Maestro_Vinculación\`
         ) v ON cm.identificacion = v.Identificación AND v.rn = 1
@@ -344,7 +344,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
         SUM(CASE WHEN cm.estado_general_id = 2 THEN 1 ELSE 0 END) AS cerrados
       FROM Maestro_casosmedicos cm
       LEFT JOIN (
-        SELECT Identificación, Regional, \`Operación\`, \`Fecha de Ingreso\`,
+        SELECT Identificación, Trabajador, Regional, \`Operación\`, \`Fecha de Ingreso\`,
                ROW_NUMBER() OVER(PARTITION BY Identificación ORDER BY \`Fecha de Ingreso\` DESC) as rn
         FROM \`Maestro_Vinculación\`
       ) v ON cm.identificacion = v.Identificación AND v.rn = 1

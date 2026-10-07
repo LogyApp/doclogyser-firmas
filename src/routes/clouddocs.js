@@ -184,6 +184,33 @@ router.get('/api/trabajador/:id/documentos', async (req, res) => {
   }
 });
 
+// Caché en memoria para conteos de trabajadores por tipo de documento (TTL: 60s)
+let docTrabajadoresCountCache = {
+  data: null,
+  expiresAt: 0
+};
+
+async function getCachedTrabajadorCounts(dbPool) {
+  const now = Date.now();
+  if (docTrabajadoresCountCache.data && now < docTrabajadoresCountCache.expiresAt) {
+    return docTrabajadoresCountCache.data;
+  }
+  const [rows] = await dbPool.execute(`
+    SELECT TipoDocumento, COUNT(DISTINCT Identificación) AS trabajador_count
+    FROM Maestro_docTrabajador
+    GROUP BY TipoDocumento
+  `);
+  const map = {};
+  rows.forEach(r => {
+    map[String(r.TipoDocumento)] = r.trabajador_count;
+  });
+  docTrabajadoresCountCache = {
+    data: map,
+    expiresAt: now + 60 * 1000
+  };
+  return map;
+}
+
 // API: Listado de tipos de documentos (Vista Documentos)
 router.get('/api/documentos', async (req, res) => {
   try {
@@ -195,12 +222,12 @@ router.get('/api/documentos', async (req, res) => {
 
     const filtroTipo = tipoDoc || tipoRegistro;
 
-    let sql = '';
+    let rows = [];
     const params = [];
 
     if (buscarTrabajador) {
       const whereTipo = filtroTipo ? 'WHERE c.tipo_doc = ?' : '';
-      sql = `
+      const sql = `
         SELECT 
           c.Id,
           c.Documento,
@@ -222,30 +249,30 @@ router.get('/api/documentos', async (req, res) => {
       `;
       params.push(`%${buscarTrabajador}%`);
       if (filtroTipo) params.push(filtroTipo);
+      const [dbRows] = await pool.execute(sql, params);
+      rows = dbRows;
     } else {
       const whereTipo = filtroTipo ? 'WHERE c.tipo_doc = ?' : '';
-      sql = `
+      const sql = `
         SELECT 
           c.Id,
           c.Documento,
           c.Clasificacion,
           c.Prefijo,
           c.tipo_doc,
-          c.duplicados,
-          COALESCE(t.trabajador_count, 0) AS Trabajadores
+          c.duplicados
         FROM Config_Doc_Trabajador c
-        LEFT JOIN (
-          SELECT TipoDocumento, COUNT(DISTINCT Identificación) AS trabajador_count
-          FROM Maestro_docTrabajador
-          GROUP BY TipoDocumento
-        ) t ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
         ${whereTipo}
         ORDER BY c.Clasificacion ASC, c.Documento ASC
       `;
       if (filtroTipo) params.push(filtroTipo);
+      const [cRows] = await pool.execute(sql, params);
+      const countMap = await getCachedTrabajadorCounts(pool);
+      rows = cRows.map(r => ({
+        ...r,
+        Trabajadores: countMap[String(r.Id)] || 0
+      }));
     }
-
-    const [rows] = await pool.execute(sql, params);
 
     // Filtrar por permisos del Rol
     const p = acceso.permisos;
@@ -875,10 +902,11 @@ router.get('/api/conteos', async (req, res) => {
         regParams.push(operacion);
       }
       const regWhere = regConds.length ? `WHERE ${regConds.join(' AND ')}` : '';
+      const joinRegSeg = buscar ? 'LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación' : '';
       const [regRows] = await pool.execute(
         `SELECT t.Regional, COUNT(*) AS total
          FROM Maestro_docTrabajador t
-         LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
+         ${joinRegSeg}
          ${regWhere}
          GROUP BY t.Regional`,
         regParams
@@ -901,10 +929,11 @@ router.get('/api/conteos', async (req, res) => {
         opParams.push(regional);
       }
       const opWhere = opConds.length ? `WHERE ${opConds.join(' AND ')}` : '';
+      const joinOpSeg = buscar ? 'LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación' : '';
       const [opRows] = await pool.execute(
         `SELECT t.Operación, COUNT(*) AS total
          FROM Maestro_docTrabajador t
-         LEFT JOIN Maestro_Segmentación s ON t.Identificación = s.Identificación
+         ${joinOpSeg}
          ${opWhere}
          GROUP BY t.Operación`,
         opParams
@@ -1007,11 +1036,13 @@ router.get('/api/conteos', async (req, res) => {
         return { cT, pT, cG, pG };
       };
 
+      const joinSegTodo = buscar ? 'LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación' : '';
+
       // 1. Regionales (Excluye Regional)
       const rF = buildFiltersTodoLocal(buscar, null, operacion, tipoDocumento, estado, tipoRegistro, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
-          SELECT t.Regional, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${rF.cT.join(' AND ')} GROUP BY t.Regional
+          SELECT t.Regional, COUNT(*) AS total FROM Maestro_docTrabajador t ${joinSegTodo} WHERE ${rF.cT.join(' AND ')} GROUP BY t.Regional
         `, rF.pT);
         rowsT.forEach(r => { if (r.Regional) response.regionales[r.Regional] = (response.regionales[r.Regional] || 0) + r.total; });
       }
@@ -1026,7 +1057,7 @@ router.get('/api/conteos', async (req, res) => {
       const oF = buildFiltersTodoLocal(buscar, regional, null, tipoDocumento, estado, tipoRegistro, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
-          SELECT t.Operación, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${oF.cT.join(' AND ')} GROUP BY t.Operación
+          SELECT t.Operación, COUNT(*) AS total FROM Maestro_docTrabajador t ${joinSegTodo} WHERE ${oF.cT.join(' AND ')} GROUP BY t.Operación
         `, oF.pT);
         rowsT.forEach(r => { if (r.Operación) response.operaciones[r.Operación] = (response.operaciones[r.Operación] || 0) + r.total; });
       }
@@ -1041,7 +1072,7 @@ router.get('/api/conteos', async (req, res) => {
       const eF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, null, tipoRegistro, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
-          SELECT t.Estado, COUNT(DISTINCT t.Identificación) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${eF.cT.join(' AND ')} GROUP BY t.Estado
+          SELECT t.Estado, COUNT(DISTINCT t.Identificación) AS total FROM Maestro_docTrabajador t ${joinSegTodo} WHERE ${eF.cT.join(' AND ')} GROUP BY t.Estado
         `, eF.pT);
         rowsT.forEach(r => { if (r.Estado) response.estados[r.Estado] = r.total; });
       }
@@ -1050,7 +1081,7 @@ router.get('/api/conteos', async (req, res) => {
       const trF = buildFiltersTodoLocal(buscar, regional, operacion, tipoDocumento, estado, null, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
-          SELECT COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${trF.cT.join(' AND ')}
+          SELECT COUNT(*) AS total FROM Maestro_docTrabajador t ${joinSegTodo} WHERE ${trF.cT.join(' AND ')}
         `, trF.pT);
         response.tiposRegistro['Trabajador'] = rowsT[0].total || 0;
       }
@@ -1065,7 +1096,7 @@ router.get('/api/conteos', async (req, res) => {
       const tdF = buildFiltersTodoLocal(buscar, regional, operacion, null, estado, tipoRegistro, validacion);
       if (tipoRegistro !== 'General') {
         const [rowsT] = await pool.execute(`
-          SELECT t.TipoDocumento, COUNT(*) AS total FROM Maestro_docTrabajador t LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación WHERE ${tdF.cT.join(' AND ')} GROUP BY t.TipoDocumento
+          SELECT t.TipoDocumento, COUNT(*) AS total FROM Maestro_docTrabajador t ${joinSegTodo} WHERE ${tdF.cT.join(' AND ')} GROUP BY t.TipoDocumento
         `, tdF.pT);
         rowsT.forEach(r => { if (r.TipoDocumento) response.tiposDocumento[r.TipoDocumento] = (response.tiposDocumento[r.TipoDocumento] || 0) + r.total; });
       }
@@ -1082,7 +1113,7 @@ router.get('/api/conteos', async (req, res) => {
         const [rowsT] = await pool.execute(`
           SELECT COALESCE(t.Validación, 'PEND') AS val, COUNT(*) AS total 
           FROM Maestro_docTrabajador t 
-          LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+          ${joinSegTodo} 
           WHERE ${valF.cT.join(' AND ')} 
           GROUP BY COALESCE(t.Validación, 'PEND')
         `, valF.pT);
@@ -1150,13 +1181,15 @@ router.get('/api/conteos', async (req, res) => {
         return { cT, pT };
       };
 
+      const joinSegRet = buscar ? 'LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación' : '';
+
       // 1. Regionales
       const rF = buildFiltersRetirosLocal(buscar, null, operacion, tipoDocumento, estado, validacion);
       const [rowsReg] = await pool.execute(`
         SELECT t.Regional, COUNT(*) AS total 
         FROM Maestro_docTrabajador t 
         LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
-        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        ${joinSegRet} 
         WHERE ${rF.cT.join(' AND ')} 
         GROUP BY t.Regional
       `, rF.pT);
@@ -1168,7 +1201,7 @@ router.get('/api/conteos', async (req, res) => {
         SELECT t.Operación, COUNT(*) AS total 
         FROM Maestro_docTrabajador t 
         LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
-        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        ${joinSegRet} 
         WHERE ${oF.cT.join(' AND ')} 
         GROUP BY t.Operación
       `, oF.pT);
@@ -1180,7 +1213,7 @@ router.get('/api/conteos', async (req, res) => {
         SELECT t.Estado, COUNT(DISTINCT t.Identificación) AS total 
         FROM Maestro_docTrabajador t 
         LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
-        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        ${joinSegRet} 
         WHERE ${eF.cT.join(' AND ')} 
         GROUP BY t.Estado
       `, eF.pT);
@@ -1192,7 +1225,7 @@ router.get('/api/conteos', async (req, res) => {
         SELECT t.TipoDocumento, COUNT(*) AS total 
         FROM Maestro_docTrabajador t 
         LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
-        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        ${joinSegRet} 
         WHERE ${tdF.cT.join(' AND ')} 
         GROUP BY t.TipoDocumento
       `, tdF.pT);
@@ -1204,7 +1237,7 @@ router.get('/api/conteos', async (req, res) => {
         SELECT COALESCE(t.Validación, 'PEND') AS val, COUNT(*) AS total 
         FROM Maestro_docTrabajador t 
         LEFT JOIN Config_Doc_Trabajador c ON c.Id = CAST(t.TipoDocumento AS UNSIGNED)
-        LEFT JOIN Maestro_Segmentación v ON t.Identificación = v.Identificación 
+        ${joinSegRet} 
         WHERE ${valF.cT.join(' AND ')} 
         GROUP BY COALESCE(t.Validación, 'PEND')
       `, valF.pT);

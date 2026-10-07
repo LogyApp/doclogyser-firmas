@@ -407,7 +407,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
       `SELECT vin.Regional, vin.\`Operación\` AS operacion, COUNT(*) AS total
        FROM Maestro_capacitacionsst c
        LEFT JOIN (
-         SELECT t1.Identificación, t1.Regional, t1.\`Operación\`
+         SELECT t1.Identificación, t1.Regional, t1.\`Operación\`, t1.Trabajador
          FROM Maestro_Vinculación t1
          INNER JOIN (
            SELECT Identificación, MAX(\`Fecha de Ingreso\`) AS MaxFecha

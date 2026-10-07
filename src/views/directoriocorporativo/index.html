@@ -1369,10 +1369,6 @@
         🔄 Sincronizar Vinculación
       </button>
 
-      <!-- Enlace a Generador de Firmas -->
-      <a href="/firma-corporativa" id="btn-nav-firma" class="btn-header">
-        ✍️ Generador de Firmas
-      </a>
     </div>
   </header>
 
@@ -1578,10 +1574,6 @@
               🗑️ Eliminar
             </button>
 
-            <!-- Ver Firma Corporativa -->
-            <a id="m-link-firma" href="#" class="btn-cancel" style="flex: 1; text-align: center; justify-content: center;">
-              ✍️ Ver Firma Corporativa
-            </a>
           </div>
         </div>
       </div>
@@ -1762,12 +1754,6 @@
     const paramUsuario = urlParams.get('usuario') || '';
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // Configurar enlace de firma conservando el usuario
-      const navFirma = document.getElementById('btn-nav-firma');
-      if (paramUsuario) {
-        navFirma.href = `/firma-corporativa?usuario=${encodeURIComponent(paramUsuario)}`;
-      }
-
       inicializarRedimensionColumnas();
       await inicializarUsuario();
       await cargarDirectorio();
@@ -2277,10 +2263,9 @@
               </div>
             </td>
             <td style="font-size: 0.76rem; color: var(--text-muted);">${c.usuario || 'Sistema'}</td>
-            <td onclick="event.stopPropagation()" style="text-align: center; overflow: visible; width: 145px; min-width: 140px;">
+            <td onclick="event.stopPropagation()" style="text-align: center; overflow: visible; width: 110px; min-width: 105px;">
               <div class="table-row-actions">
                 <button type="button" class="btn-row-action" title="Editar Colaborador" onclick="abrirModalEdicionConId('${c.identificacion}')">✏️</button>
-                <a href="/firma-corporativa?id=${c.identificacion}${paramUsuario ? '&usuario=' + encodeURIComponent(paramUsuario) : ''}" class="btn-row-action" title="Ver Firma Corporativa">✍️</a>
                 <button type="button" class="btn-row-action delete" title="Eliminar Colaborador" onclick="confirmarEliminar('${c.identificacion}', '${c.nombre.replace(/'/g, "\\'")}')">🗑️</button>
               </div>
             </td>
@@ -2354,9 +2339,6 @@
       } else {
         btnEliminar.style.display = 'none';
       }
-
-      // Enlace a firma corporativa con usuario
-      document.getElementById('m-link-firma').href = `/firma-corporativa?id=${c.identificacion}${paramUsuario ? '&usuario=' + encodeURIComponent(paramUsuario) : ''}`;
 
       document.getElementById('modal-detalle').style.display = 'flex';
     }
