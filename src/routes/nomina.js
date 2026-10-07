@@ -1,8 +1,11 @@
 const express = require('express');
 const fs      = require('fs');
 const path    = require('path');
+const multer  = require('multer');
 const pool    = require('../services/db');
 const { computarAccesoNomina } = require('../services/accesoNomina');
+const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
+const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
 const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido, obtenerResponsablesOperacionRegional } = require('../services/configRetiro');
 const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
@@ -17,6 +20,8 @@ function fechaHoraBogota() {
 
 const router = express.Router();
 const NOMINA_HTML = path.join(__dirname, '../views/nomina/index.html');
+const uploadFotoPerfil = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const ROLES_BIOMETRICO_FALLBACK = ['Nomina', 'Sistema', 'Control', 'Juridica', 'AdmSst', 'LiderSst', 'Asistencial'];
 
 function paginaError(mensaje) {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Error</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0f0f0}div{background:#fff;padding:2rem;border-radius:8px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.15);max-width:400px;width:90%}h2{color:#e74c3c;margin-top:0}p{color:#666;margin:0}</style></head><body><div><h2>Error</h2><p>${mensaje}</p></div></body></html>`;
@@ -51,6 +56,143 @@ function resumenAcceso(acceso) {
     opsPorRegional:   acceso.opsPorRegional,
   };
 }
+
+async function obtenerPerfilNomina(usuarioId) {
+  if (!usuarioId) return { error: 'Parámetro usuario requerido', status: 400 };
+
+  const [usuarios] = await pool.execute(
+    'SELECT ID, Nombre, Rol, Colaborador FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+    [usuarioId]
+  );
+  if (!usuarios.length) return { error: 'Usuario no registrado', status: 403 };
+
+  const user = usuarios[0];
+  const [menu] = await pool.execute(
+    'SELECT 1 FROM Maestro_Menu_Nomina WHERE Rol = ? LIMIT 1',
+    [user.Rol || '']
+  );
+  if (!menu.length && !ROLES_BIOMETRICO_FALLBACK.includes(user.Rol)) {
+    return { error: 'Usuario no autorizado para Nómina', status: 403 };
+  }
+  if (!user.Colaborador) return { perfil: null, user };
+
+  const [segmentos] = await pool.execute(
+    `SELECT DISTINCT \`Identificación\` AS identificacion
+     FROM \`Maestro_Segmentación\`
+     WHERE TRIM(Trabajador) = TRIM(?) AND \`Identificación\` IS NOT NULL`,
+    [user.Colaborador]
+  );
+  const identificaciones = [...new Set(segmentos.map(row => String(row.identificacion).trim()).filter(Boolean))];
+  if (identificaciones.length > 1) {
+    return { error: 'El usuario está relacionado con más de una identificación; contacte a Nómina.', status: 409 };
+  }
+  if (!identificaciones.length) return { perfil: null, user };
+
+  const [perfiles] = await pool.execute(
+    `SELECT Identificacion AS identificacion, nombre, cargo, regional, operacion,
+            area, direccion, email, celular, foto_url, firma_url
+     FROM Maestro_firma_corporativa
+     WHERE Identificacion = ?
+     LIMIT 1`,
+    [identificaciones[0]]
+  );
+  return { perfil: perfiles[0] || null, user };
+}
+
+router.get('/api/perfil', async (req, res) => {
+  try {
+    const resultado = await obtenerPerfilNomina(req.query.usuario);
+    if (resultado.error) return res.status(resultado.status).json({ error: resultado.error });
+    if (!resultado.perfil) return res.status(404).json({ error: 'No se encontró un perfil corporativo relacionado con este usuario.' });
+    let firmaDigital = null;
+    try {
+      firmaDigital = await obtenerFirmaBase64Reciente(resultado.perfil.identificacion);
+    } catch (err) {
+      console.warn('[nomina] No se pudo leer la firma digital reciente:', err.message);
+    }
+    res.json({ ok: true, perfil: resultado.perfil, firmaDigital });
+  } catch (err) {
+    console.error('[nomina] GET /api/perfil', err);
+    res.status(500).json({ error: 'No se pudo cargar el perfil.' });
+  }
+});
+
+router.post('/api/perfil', (req, res, next) => {
+  uploadFotoPerfil.single('foto')(req, res, err => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'La foto no puede superar 10 MB.' : 'No se pudo recibir la foto.' });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const resultado = await obtenerPerfilNomina(req.body.usuario);
+    if (resultado.error) return res.status(resultado.status).json({ error: resultado.error });
+    if (!resultado.perfil) return res.status(404).json({ error: 'No se encontró un perfil corporativo relacionado con este usuario.' });
+
+    if (req.file && !['image/png', 'image/jpeg', 'image/webp'].includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'La foto debe ser PNG, JPG o WEBP.' });
+    }
+
+    const actual = resultado.perfil;
+    const nombre = String(req.body.nombre || '').trim();
+    if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio.' });
+
+    const campos = {
+      nombre: [nombre, 100],
+      cargo: [String(req.body.cargo || '').trim(), 100],
+      direccion: [String(req.body.direccion || '').trim(), 255],
+      email: [String(req.body.email || '').trim(), 100],
+      celular: [String(req.body.celular || '').trim(), 20],
+    };
+    if (!campos.cargo[0] || !campos.email[0] || !campos.celular[0]) {
+      return res.status(400).json({ error: 'Cargo, correo electrónico y celular son obligatorios para generar la firma.' });
+    }
+    const campoLargo = Object.entries(campos).find(([, [valor, max]]) => valor.length > max);
+    if (campoLargo) return res.status(400).json({ error: `${campoLargo[0]} supera el máximo de ${campoLargo[1][1]} caracteres.` });
+
+    let firmaDigital = null;
+    if (req.body.firmaDigital) {
+      const match = String(req.body.firmaDigital).match(/^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/);
+      if (!match) return res.status(400).json({ error: 'La firma digital dibujada no tiene un formato PNG válido.' });
+      const firmaBuffer = Buffer.from(match[1], 'base64');
+      if (!firmaBuffer.length || firmaBuffer.length > 5 * 1024 * 1024 || firmaBuffer.toString('hex', 0, 8) !== '89504e470d0a1a0a') {
+        return res.status(400).json({ error: 'La firma digital debe ser un PNG válido de máximo 5 MB.' });
+      }
+      await subirFirma(actual.identificacion, firmaBuffer);
+      firmaDigital = req.body.firmaDigital;
+    } else {
+      try {
+        firmaDigital = await obtenerFirmaBase64Reciente(actual.identificacion);
+      } catch (err) {
+        console.warn('[nomina] No se pudo conservar la firma digital reciente:', err.message);
+      }
+    }
+
+    const guardado = await guardarEmpleadoFirma({
+      identificacion: actual.identificacion,
+      nombre: campos.nombre[0],
+      cargo: campos.cargo[0],
+      regional: actual.regional,
+      operacion: actual.operacion,
+      area: actual.area,
+      direccion: campos.direccion[0],
+      email: campos.email[0],
+      celular: campos.celular[0],
+      foto_url: actual.foto_url,
+      usuario: resultado.user.ID,
+    }, req.file, true, resultado.user.ID);
+
+    res.json({ ok: true, perfil: {
+      ...actual,
+      ...Object.fromEntries(Object.entries(campos).map(([k, [v]]) => [k, v])),
+      foto_url: guardado.foto_url,
+      firma_url: guardado.firma_url || actual.firma_url,
+      firma_generada: Boolean(guardado.firma_url),
+    }, firmaDigital });
+  } catch (err) {
+    console.error('[nomina] POST /api/perfil', err);
+    res.status(500).json({ error: err.code === 'EMPLEADO_RETIRADO' ? err.message : 'No se pudieron guardar los cambios del perfil.' });
+  }
+});
 
 // Roles que pueden Validar/Revisar/Anular/No-Firma y editar la plantilla de
 // Traslados — condición aparte de "quién ve la pestaña" (eso ya lo cubre
@@ -117,7 +259,7 @@ router.get('/', async (req, res) => {
       },
     }).replace(/<\/script>/gi, '<\\/script>');
 
-    res.send(template.replace('__CONFIG__', config));
+    res.send(template.replace('__CONFIG__', config).replace(/__USER__/g, encodeURIComponent(usuario)));
   } catch (err) {
     console.error('[nomina GET /]', err);
     res.status(500).send(paginaError('Error interno del servidor'));

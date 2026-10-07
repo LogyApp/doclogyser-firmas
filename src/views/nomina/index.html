@@ -46,6 +46,18 @@
   .brand-logo-company-crop { width: 133px; height: 34px; overflow: hidden; position: relative; }
   .brand-logo-company-crop img { position: absolute; left: -64px; top: -65px; width: 268px; height: 178px; max-width: none; }
   .brand-divider { width: 80%; height: 1.5px; background: rgba(255,255,255,.22); }
+  .nomina-profile { padding: 12px 14px 0; }
+  .nomina-profile-trigger {
+    display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 10px;
+    text-align: left; border: 1px solid rgba(255,255,255,.16); border-radius: 10px;
+    background: rgba(255,255,255,.08); color: #fff; cursor: pointer; transition: background .18s ease;
+  }
+  .nomina-profile-trigger:hover { background: rgba(255,255,255,.15); }
+  .nomina-profile-thumb { width: 42px; height: 42px; border-radius: 50%; border: 2px solid rgba(255,255,255,.75); object-fit: cover; flex: 0 0 auto; }
+  .nomina-profile-label { min-width: 0; flex: 1; }
+  .nomina-profile-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: .82rem; }
+  .nomina-profile-hint { display: block; color: rgba(255,255,255,.68); font-size: .7rem; }
+  .nomina-profile-arrow { color: #7de3d6; font-size: 1.1rem; }
 
   .nav-list { list-style: none; padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; }
   .nav-item {
@@ -66,11 +78,14 @@
   .nav-item.disabled { opacity: .5; cursor: not-allowed !important; }
   .nav-item.disabled:hover { background: transparent; color: rgba(255,255,255,.65); }
 
-  .sidebar-user {
-    margin-top: auto; padding: 16px; border-top: 1px solid rgba(255,255,255,.08);
-    font-size: .78rem; color: rgba(255,255,255,.65);
-  }
-  .sidebar-user strong { display: block; color: #fff; font-size: .85rem; margin-bottom: 2px; }
+  .sidebar-other { margin-top: auto; padding: 10px 14px 14px; border-top: 1px solid rgba(255,255,255,.1); }
+  .sidebar-other summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; color: rgba(255,255,255,.82); font-size: .82rem; font-weight: 700; border-radius: 7px; }
+  .sidebar-other summary::-webkit-details-marker { display: none; }
+  .sidebar-other summary::after { content: '⌄'; color: var(--accent); font-size: 1rem; transition: transform .16s ease; }
+  .sidebar-other[open] summary::after { transform: rotate(180deg); }
+  .sidebar-shortcuts { display: grid; gap: 3px; padding: 4px 0 2px; }
+  .sidebar-shortcut { display: block; padding: 8px 12px 8px 22px; border-radius: 6px; text-decoration: none; color: rgba(255,255,255,.67); font-size: .76rem; line-height: 1.25; }
+  .sidebar-shortcut:hover, .sidebar-shortcut:focus-visible { color: #fff; background: rgba(255,255,255,.1); outline: none; }
 
   /* ── Contenido ──────────────────────────────────────────────────────────── */
   .wrapper { margin-left: 280px; flex: 1; min-width: 0; padding: 24px; height: 100vh; overflow-y: auto; }
@@ -149,6 +164,43 @@
   .modal-full-header button { background: rgba(255,255,255,.15); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; font-size: .82rem; cursor: pointer; }
   .modal-full-header button:hover { background: rgba(255,255,255,.28); }
   .modal-full iframe { flex: 1; border: none; width: 100%; }
+  .profile-modal { width: min(100%, 540px); height: auto; max-height: 92vh; }
+  .profile-modal-body { overflow-y: auto; padding: 24px; background: #fff; }
+  .profile-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 12px 18px; }
+  .profile-photo-large { width: 132px; height: 132px; border: 4px solid #fff; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px rgba(20,184,166,.45), 0 12px 28px rgba(15,118,110,.18); }
+  .profile-view-name { margin-top: 16px; font-size: 1.35rem; line-height: 1.2; font-weight: 700; color: var(--text); }
+  .profile-view-role { margin-top: 5px; color: var(--primary); font-weight: 600; }
+  .profile-details { border-top: 1px solid var(--border); padding-top: 14px; display: grid; gap: 10px; }
+  .profile-detail { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 10px; font-size: .86rem; }
+  .profile-detail-label { color: var(--text-muted); font-weight: 600; }
+  .profile-detail-value { overflow-wrap: anywhere; color: var(--text); }
+    .profile-save-status { margin-top: 14px; padding: 9px 11px; border-radius: 6px; background: #e9f8ef; color: #0c7a43; font-size: .84rem; font-weight: 600; }
+  .profile-edit-form { display: none; }
+  .profile-edit-form .ficha-field { margin-bottom: 12px; }
+  .profile-edit-form input { width: 100%; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); }
+  .profile-edit-form input:focus { outline: none; border-color: var(--primary); }
+  .profile-edit-photo { display: flex; gap: 14px; align-items: center; }
+  .profile-edit-preview { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
+  .profile-signature-panel { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
+  .profile-signature-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .profile-signature-tab { border: 1px solid var(--border); background: #fff; color: var(--text-muted); padding: 7px 11px; border-radius: 6px; font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; }
+  .profile-signature-tab.active { border-color: var(--primary); background: #effaf8; color: var(--primary); }
+  .profile-signature-preview { overflow-x: auto; border: 1px solid var(--border); border-radius: 7px; padding: 12px; background: #f8fafc; }
+  .profile-signature-png { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 110px; }
+  .profile-signature-png img { max-width: 100%; height: auto; border: 1px solid var(--border); background: white; }
+  .profile-signature-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .profile-signature-actions a { color: var(--primary); font-size: .82rem; font-weight: 600; }
+  .profile-digital-signature { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
+  .profile-digital-current { display: flex; align-items: center; gap: 14px; min-height: 76px; }
+  .profile-digital-current img { max-width: 170px; max-height: 72px; object-fit: contain; }
+  .profile-digital-canvas-wrap { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: #f8fafc; }
+  #profileDigitalCanvas { display: block; width: 100%; height: 150px; background: #fff; border: 1px dashed #94a3b8; border-radius: 5px; touch-action: none; cursor: crosshair; }
+  .profile-digital-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
+  .profile-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  @media (max-width: 900px) {
+    .nomina-profile { padding-top: 8px; }
+    .profile-modal-body { padding: 18px; }
+  }
 
   /* Modal de ficha de Vinculación (formulario propio, no iframe) */
   .modal-ficha-body { flex: 1; overflow-y: auto; padding: 20px; background: var(--bg); }
@@ -322,6 +374,16 @@
         </div>
       </div>
     </div>
+    <div class="nomina-profile" id="nominaProfile" style="display:none">
+      <button type="button" class="nomina-profile-trigger" onclick="abrirPerfilNomina()" aria-label="Ver y editar mi perfil">
+        <img class="nomina-profile-thumb" id="nominaProfileThumb" src="" alt="Foto de perfil">
+        <span class="nomina-profile-label">
+          <span class="nomina-profile-name" id="nominaProfileName"></span>
+          <span class="nomina-profile-hint">Mi perfil corporativo</span>
+        </span>
+        <span class="nomina-profile-arrow" aria-hidden="true">›</span>
+      </button>
+    </div>
     <ul class="nav-list">
       <li class="nav-item" id="navActivos" onclick="switchTab('activos')" style="display:none">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -344,7 +406,18 @@
         <span>Traslados</span>
       </li>
     </ul>
-    <div class="sidebar-user" id="sidebarUser"></div>
+    <details class="sidebar-other">
+      <summary>Otros</summary>
+      <nav class="sidebar-shortcuts" aria-label="Accesos a otros módulos">
+        <a class="sidebar-shortcut" href="/inventario?usuario=__USER__&amp;tab=actas">Actas de Entrega</a>
+        <a class="sidebar-shortcut" href="/inventario?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
+        <a class="sidebar-shortcut" href="/cloud-docs?usuario=__USER__&amp;tab=docretiros">Doc Retiros</a>
+        <a class="sidebar-shortcut" href="/cloud-docs?usuario=__USER__&amp;tab=logysign">LogySign</a>
+        <a class="sidebar-shortcut" href="/cloud-docs?usuario=__USER__&amp;tab=trabajador">Doc Trabajadores</a>
+        <a class="sidebar-shortcut" href="/facturacion?usuario=__USER__&amp;tab=servicios">Servicios</a>
+        <a class="sidebar-shortcut" href="/directorio-corporativo?usuario=__USER__">Directorio Corporativo</a>
+      </nav>
+    </details>
   </div>
 
   <div class="wrapper">
@@ -973,6 +1046,95 @@
   </div>
 </div>
 
+<!-- Perfil corporativo del usuario actual -->
+<div class="modal-full-overlay" id="nominaProfileModal" onclick="if(event.target===this)cerrarPerfilNomina()">
+  <div class="modal-full profile-modal" role="dialog" aria-modal="true" aria-labelledby="nominaProfileModalTitle">
+    <div class="modal-full-header">
+      <span id="nominaProfileModalTitle">Mi perfil corporativo</span>
+      <button type="button" onclick="cerrarPerfilNomina()" aria-label="Cerrar perfil">&#10005; Cerrar</button>
+    </div>
+    <div class="profile-modal-body">
+      <div id="nominaProfileView">
+        <div class="profile-hero">
+          <img class="profile-photo-large" id="nominaProfileLarge" src="" alt="Foto de perfil">
+          <div class="profile-view-name" id="nominaProfileViewName"></div>
+          <div class="profile-view-role" id="nominaProfileViewCargo"></div>
+        </div>
+        <div class="profile-details">
+          <div class="profile-detail"><span class="profile-detail-label">Dirección</span><span class="profile-detail-value" id="nominaProfileViewDireccion"></span></div>
+          <div class="profile-detail"><span class="profile-detail-label">Correo</span><span class="profile-detail-value" id="nominaProfileViewEmail"></span></div>
+          <div class="profile-detail"><span class="profile-detail-label">Celular</span><span class="profile-detail-value" id="nominaProfileViewCelular"></span></div>
+        </div>
+        <div class="profile-save-status" id="nominaProfileStatus" role="status" style="display:none"></div>
+        <div class="profile-edit-actions">
+          <button type="button" class="btn-guardar-ficha" onclick="editarPerfilNomina()">&#9998; Editar perfil y firma</button>
+        </div>
+      </div>
+
+      <form class="profile-edit-form" id="nominaProfileForm" onsubmit="guardarPerfilNomina(event)">
+        <div class="aviso-banner">Puedes actualizar tu nombre, cargo, dirección, correo, celular y fotografía corporativa.</div>
+        <div class="ficha-field"><label for="profileEditNombre">Nombre completo *</label><input type="text" id="profileEditNombre" maxlength="100" required></div>
+        <div class="ficha-field"><label for="profileEditCargo">Cargo *</label><input type="text" id="profileEditCargo" maxlength="100" required></div>
+        <div class="ficha-field"><label for="profileEditDireccion">Dirección</label><input type="text" id="profileEditDireccion" maxlength="255"></div>
+        <div class="ficha-field"><label for="profileEditEmail">Correo electrónico *</label><input type="email" id="profileEditEmail" maxlength="100" required></div>
+        <div class="ficha-field"><label for="profileEditCelular">Celular *</label><input type="text" id="profileEditCelular" maxlength="20" required></div>
+        <div class="ficha-field">
+          <label>Fotografía de perfil</label>
+          <div class="profile-edit-photo">
+            <img class="profile-edit-preview" id="profileEditPreview" src="" alt="Previsualización de la foto">
+            <div>
+              <input type="file" id="profileEditFoto" accept="image/png,image/jpeg,image/webp" onchange="previewFotoPerfilNomina(event)">
+              <small style="display:block;color:var(--text-muted);margin-top:5px">PNG, JPG o WEBP. Máximo 10 MB.</small>
+            </div>
+          </div>
+        </div>
+        <div class="profile-signature-panel">
+          <div style="font-weight:700;color:var(--primary);margin-bottom:8px">Firma corporativa</div>
+          <div class="profile-signature-tabs" role="tablist" aria-label="Formato de firma">
+            <button type="button" class="profile-signature-tab active" id="profileFirmaTabHtml" onclick="cambiarVistaFirmaPerfil('html')">Firma para correo</button>
+            <button type="button" class="profile-signature-tab" id="profileFirmaTabPng" onclick="cambiarVistaFirmaPerfil('png')">Imagen PNG</button>
+          </div>
+          <div class="profile-signature-preview" id="profileFirmaHtmlPanel">
+            <div id="profileFirmaHtmlPreview"></div>
+            <div class="profile-signature-actions">
+              <small style="color:var(--text-muted)">La previsualización se actualiza mientras editas los datos.</small>
+              <button type="button" class="btn-reset" style="margin:0" onclick="copiarFirmaPerfilNomina()">Copiar firma HTML</button>
+            </div>
+          </div>
+          <div class="profile-signature-preview profile-signature-png" id="profileFirmaPngPanel" style="display:none">
+            <div id="profileFirmaPngEmpty" style="color:var(--text-muted);font-size:.84rem">Guarda los cambios para generar o actualizar la firma PNG.</div>
+            <img id="profileFirmaPngPreview" src="" alt="Firma corporativa PNG" style="display:none">
+            <div id="profileFirmaPngActions" class="profile-signature-actions" style="display:none;width:100%">
+              <span style="color:var(--text-muted);font-size:.8rem">Firma PNG actualizada</span>
+              <a id="profileFirmaPngDownload" href="#" download="firma_corporativa.png">Descargar PNG</a>
+            </div>
+          </div>
+        </div>
+        <div class="profile-digital-signature">
+          <div style="font-weight:700;color:var(--primary);margin-bottom:8px">Firma digital para documentos</div>
+          <div class="profile-digital-current">
+            <img id="profileDigitalRecent" src="" alt="Firma digital registrada" style="display:none">
+            <span id="profileDigitalEmpty" style="color:var(--text-muted);font-size:.84rem">No hay una firma previa. Puedes dibujarla aquí.</span>
+            <button type="button" class="btn-reset" style="margin:0" id="btnNuevaFirmaDigital" onclick="mostrarCanvasFirmaDigital()">Dibujar nueva firma</button>
+          </div>
+          <div class="profile-digital-canvas-wrap" id="profileDigitalCanvasWrap" style="display:none">
+            <canvas id="profileDigitalCanvas" aria-label="Dibuja aquí tu firma digital"></canvas>
+            <div class="profile-digital-actions">
+              <small style="color:var(--text-muted)">Firma con mouse, lápiz o pantalla táctil.</small>
+              <button type="button" class="btn-reset" style="margin:0" onclick="limpiarCanvasFirmaDigital()">Borrar trazo</button>
+            </div>
+          </div>
+        </div>
+        <div id="nominaProfileError" class="aviso-banner" style="display:none;background:#fff1f0;border-color:#fecaca;color:#b91c1c"></div>
+        <div class="profile-edit-actions">
+          <button type="button" class="btn-reset" onclick="cancelarEdicionPerfilNomina()">Cancelar</button>
+          <button type="submit" class="btn-guardar-ficha" id="btnGuardarPerfilNomina">Guardar y generar firma</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Modal GPS Biométrico (Ubicación de marcación y distancia a sede asignada) -->
 <div class="modal-full-overlay" id="bioGPSModalOverlay">
   <div class="modal-full" style="max-width: 720px; height: 580px;">
@@ -1096,9 +1258,296 @@
 <script>
   const _cfg = __CONFIG__;
   const { usuario, usuarioNombre, rol, puedeGenerarDocs, tabs } = _cfg;
+  const NOMINA_FOTO_DEFAULT = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
+  let _nominaPerfil = null;
+  let _firmaDigitalActual = null;
+  let _firmaDigitalModificada = false;
+  let _firmaDigitalCanvasInicializado = false;
 
-  document.getElementById('sidebarUser').innerHTML = `<strong>${usuarioNombre}</strong>${rol}`;
   document.getElementById('mobile-user-badge').textContent = rol;
+  document.querySelectorAll('.sidebar-shortcut').forEach(link => {
+    link.href = link.href.replace('__USER__', encodeURIComponent(usuario));
+  });
+  cargarPerfilNomina();
+
+  async function cargarPerfilNomina() {
+    try {
+      const res = await fetch(`/nomina/api/perfil?usuario=${encodeURIComponent(usuario)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.ok || !data.perfil) return;
+      _nominaPerfil = data.perfil;
+      _firmaDigitalActual = data.firmaDigital || null;
+      renderPerfilNomina();
+    } catch (err) {
+      console.warn('[Nómina] No se pudo cargar la foto de perfil:', err);
+    }
+  }
+
+  function renderPerfilNomina() {
+    if (!_nominaPerfil) return;
+    const foto = _nominaPerfil.foto_url || NOMINA_FOTO_DEFAULT;
+    const nombre = _nominaPerfil.nombre || usuarioNombre || usuario;
+    document.getElementById('nominaProfileThumb').src = foto;
+    document.getElementById('nominaProfileThumb').onerror = e => { e.currentTarget.src = NOMINA_FOTO_DEFAULT; };
+    document.getElementById('nominaProfileName').textContent = nombre;
+    document.getElementById('nominaProfileLarge').src = foto;
+    document.getElementById('nominaProfileLarge').onerror = e => { e.currentTarget.src = NOMINA_FOTO_DEFAULT; };
+    document.getElementById('nominaProfileViewName').textContent = nombre;
+    document.getElementById('nominaProfileViewCargo').textContent = _nominaPerfil.cargo || 'Cargo no registrado';
+    document.getElementById('nominaProfileViewDireccion').textContent = _nominaPerfil.direccion || 'No registrada';
+    document.getElementById('nominaProfileViewEmail').textContent = _nominaPerfil.email || 'No registrado';
+    document.getElementById('nominaProfileViewCelular').textContent = _nominaPerfil.celular || 'No registrado';
+    document.getElementById('nominaProfile').style.display = 'block';
+  }
+
+  function abrirPerfilNomina() {
+    if (!_nominaPerfil) return;
+    document.getElementById('nominaProfileView').style.display = 'block';
+    document.getElementById('nominaProfileForm').style.display = 'none';
+    document.getElementById('nominaProfileModal').classList.add('open');
+    document.getElementById('nominaProfileStatus').style.display = 'none';
+  }
+
+  function editarPerfilNomina() {
+    if (!_nominaPerfil) return;
+    document.getElementById('profileEditNombre').value = _nominaPerfil.nombre || '';
+    document.getElementById('profileEditCargo').value = _nominaPerfil.cargo || '';
+    document.getElementById('profileEditDireccion').value = _nominaPerfil.direccion || '';
+    document.getElementById('profileEditEmail').value = _nominaPerfil.email || '';
+    document.getElementById('profileEditCelular').value = _nominaPerfil.celular || '';
+    document.getElementById('profileEditFoto').value = '';
+    document.getElementById('profileEditPreview').src = _nominaPerfil.foto_url || NOMINA_FOTO_DEFAULT;
+    _firmaDigitalModificada = false;
+    actualizarFirmaDigitalPerfil(_firmaDigitalActual);
+    document.getElementById('nominaProfileError').style.display = 'none';
+    document.getElementById('nominaProfileView').style.display = 'none';
+    document.getElementById('nominaProfileForm').style.display = 'block';
+    renderFirmaPerfilNomina();
+    mostrarFirmaPngPerfil(_nominaPerfil.firma_url);
+  }
+
+  function cambiarVistaFirmaPerfil(formato) {
+    const htmlActivo = formato === 'html';
+    document.getElementById('profileFirmaTabHtml').classList.toggle('active', htmlActivo);
+    document.getElementById('profileFirmaTabPng').classList.toggle('active', !htmlActivo);
+    document.getElementById('profileFirmaHtmlPanel').style.display = htmlActivo ? 'block' : 'none';
+    document.getElementById('profileFirmaPngPanel').style.display = htmlActivo ? 'none' : 'flex';
+  }
+
+  function renderFirmaPerfilNomina() {
+    const nombre = document.getElementById('profileEditNombre').value.trim() || 'Nombre y Apellido';
+    const cargo = document.getElementById('profileEditCargo').value.trim() || 'Cargo Corporativo';
+    const email = document.getElementById('profileEditEmail').value.trim() || 'colaborador@logyser.com';
+    const celular = document.getElementById('profileEditCelular').value.trim() || '3000000000';
+    const operacion = _nominaPerfil?.operacion || 'Sede Operación';
+    const direccion = document.getElementById('profileEditDireccion').value.trim();
+    const safe = value => esc(value);
+    const logo = 'https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png';
+    const azul = '#1A2E44', naranja = '#E8762B';
+    const textStyle = `margin:0 0 3px 0;font-size:12px;color:${azul};font-family:Arial,Helvetica,sans-serif;`;
+    document.getElementById('profileFirmaHtmlPreview').innerHTML = `
+      <table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;max-width:480px;width:100%;background:#fff;border-collapse:collapse">
+        <tr><td style="padding:16px 20px 12px;border:1px solid #DDE1E8;border-bottom:none">
+          <p style="margin:0 0 2px;font-size:18px;font-weight:700;color:${azul}">${safe(nombre)}</p>
+          <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${naranja}">${safe(cargo)}</p>
+          <p style="${textStyle}">Email: <a href="mailto:${safe(email)}" style="color:#06c;text-decoration:none;font-weight:600">${safe(email)}</a></p>
+          <p style="${textStyle}">Celular: <span style="font-weight:600">+57 ${safe(celular)}</span></p>
+          <p style="${textStyle}"><strong>Sede:</strong> ${safe(operacion)}</p>
+          ${direccion ? `<p style="${textStyle}">${safe(direccion)}</p>` : ''}
+        </td></tr>
+        <tr><td style="padding:6px 20px;border-left:1px solid #DDE1E8;border-right:1px solid #DDE1E8"><img src="${logo}" alt="Logyser S.A.S." width="220" style="display:block;width:220px;height:auto"></td></tr>
+        <tr><td style="background:#F8FAFC;padding:12px 20px;border:1px solid #DDE1E8"><p style="margin:0;color:#64748B;font-size:9px;line-height:1.4;text-align:justify"><strong>AVISO DE CONFIDENCIALIDAD:</strong> La información contenida en este correo es confidencial y para uso exclusivo del destinatario. Si usted ha recibido este mensaje por error, notifique al remitente y elimínelo.</p><p style="margin:6px 0 0;color:#15803D;font-size:9px">Por favor, cuida el medio ambiente antes de imprimir este mensaje.</p></td></tr>
+      </table>`;
+  }
+
+  async function copiarFirmaPerfilNomina() {
+    const html = document.getElementById('profileFirmaHtmlPreview').innerHTML;
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) })]);
+      } else {
+        const range = document.createRange();
+        const preview = document.getElementById('profileFirmaHtmlPreview');
+        range.selectNode(preview);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        window.getSelection().removeAllRanges();
+      }
+      document.getElementById('nominaProfileStatus').textContent = 'Firma HTML copiada. Pégala en Gmail o Outlook.';
+      document.getElementById('nominaProfileStatus').style.display = 'block';
+    } catch {
+      document.getElementById('nominaProfileError').textContent = 'No se pudo copiar automáticamente. Selecciona la firma y cópiala.';
+      document.getElementById('nominaProfileError').style.display = 'block';
+    }
+  }
+
+  function mostrarFirmaPngPerfil(url) {
+    const img = document.getElementById('profileFirmaPngPreview');
+    const link = document.getElementById('profileFirmaPngDownload');
+    const actions = document.getElementById('profileFirmaPngActions');
+    const empty = document.getElementById('profileFirmaPngEmpty');
+    if (!url) {
+      img.style.display = 'none';
+      actions.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+    img.src = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    img.style.display = 'block';
+    link.href = url;
+    actions.style.display = 'flex';
+    empty.style.display = 'none';
+  }
+
+  ['profileEditNombre', 'profileEditCargo', 'profileEditDireccion', 'profileEditEmail', 'profileEditCelular'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderFirmaPerfilNomina);
+  });
+
+  function cancelarEdicionPerfilNomina() {
+    document.getElementById('nominaProfileError').style.display = 'none';
+    document.getElementById('nominaProfileForm').style.display = 'none';
+    document.getElementById('nominaProfileView').style.display = 'block';
+  }
+
+  function cerrarPerfilNomina() {
+    document.getElementById('nominaProfileModal').classList.remove('open');
+    cancelarEdicionPerfilNomina();
+  }
+
+  function previewFotoPerfilNomina(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      event.target.value = '';
+      const message = document.getElementById('nominaProfileError');
+      message.textContent = 'Selecciona una foto PNG, JPG o WEBP de máximo 10 MB.';
+      message.style.display = 'block';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => { document.getElementById('profileEditPreview').src = e.target.result; };
+    reader.readAsDataURL(file);
+  }
+
+  function actualizarFirmaDigitalPerfil(firmaBase64) {
+    _firmaDigitalActual = firmaBase64 || null;
+    const img = document.getElementById('profileDigitalRecent');
+    const empty = document.getElementById('profileDigitalEmpty');
+    img.style.display = _firmaDigitalActual ? 'block' : 'none';
+    empty.style.display = _firmaDigitalActual ? 'none' : 'inline';
+    if (_firmaDigitalActual) img.src = _firmaDigitalActual;
+    limpiarCanvasFirmaDigital();
+    document.getElementById('profileDigitalCanvasWrap').style.display = 'none';
+  }
+
+  function prepararCanvasFirmaDigital() {
+    const canvas = document.getElementById('profileDigitalCanvas');
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * ratio);
+    canvas.height = Math.round(150 * ratio);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.strokeStyle = '#000b59';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    _firmaDigitalCanvasInicializado = true;
+  }
+
+  function mostrarCanvasFirmaDigital() {
+    document.getElementById('profileDigitalCanvasWrap').style.display = 'block';
+    requestAnimationFrame(prepararCanvasFirmaDigital);
+  }
+
+  function limpiarCanvasFirmaDigital() {
+    const canvas = document.getElementById('profileDigitalCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    _firmaDigitalCanvasInicializado = false;
+    _firmaDigitalModificada = false;
+  }
+
+  (() => {
+    const canvas = document.getElementById('profileDigitalCanvas');
+    const ctx = canvas.getContext('2d');
+    let dibujando = false;
+    let ultimo = null;
+    const punto = event => {
+      const rect = canvas.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    };
+    canvas.addEventListener('pointerdown', event => {
+      if (!_firmaDigitalCanvasInicializado) prepararCanvasFirmaDigital();
+      dibujando = true;
+      ultimo = punto(event);
+      canvas.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    canvas.addEventListener('pointermove', event => {
+      if (!dibujando) return;
+      const actual = punto(event);
+      ctx.beginPath();
+      ctx.moveTo(ultimo.x, ultimo.y);
+      ctx.lineTo(actual.x, actual.y);
+      ctx.stroke();
+      ultimo = actual;
+      _firmaDigitalModificada = true;
+      event.preventDefault();
+    });
+    const terminar = () => { dibujando = false; ultimo = null; };
+    canvas.addEventListener('pointerup', terminar);
+    canvas.addEventListener('pointercancel', terminar);
+    canvas.addEventListener('lostpointercapture', terminar);
+  })();
+
+  async function guardarPerfilNomina(event) {
+    event.preventDefault();
+    if (!_nominaPerfil) return;
+    const btn = document.getElementById('btnGuardarPerfilNomina');
+    const message = document.getElementById('nominaProfileError');
+    const formData = new FormData();
+    formData.append('usuario', usuario);
+    formData.append('nombre', document.getElementById('profileEditNombre').value.trim());
+    formData.append('cargo', document.getElementById('profileEditCargo').value.trim());
+    formData.append('direccion', document.getElementById('profileEditDireccion').value.trim());
+    formData.append('email', document.getElementById('profileEditEmail').value.trim());
+    formData.append('celular', document.getElementById('profileEditCelular').value.trim());
+    const foto = document.getElementById('profileEditFoto').files[0];
+    if (foto) formData.append('foto', foto);
+    formData.append('generarPng', 'true');
+    if (_firmaDigitalModificada) {
+      formData.append('firmaDigital', document.getElementById('profileDigitalCanvas').toDataURL('image/png'));
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+    message.style.display = 'none';
+    try {
+      const res = await fetch('/nomina/api/perfil', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudieron guardar los cambios.');
+      _nominaPerfil = data.perfil;
+      actualizarFirmaDigitalPerfil(data.firmaDigital || _firmaDigitalActual);
+      renderPerfilNomina();
+      renderFirmaPerfilNomina();
+      mostrarFirmaPngPerfil(_nominaPerfil.firma_url);
+      const status = document.getElementById('nominaProfileStatus');
+      status.textContent = _nominaPerfil.firma_generada
+        ? 'Perfil guardado y firma PNG generada. Puedes copiar la firma HTML o descargar el PNG.'
+        : 'Perfil guardado, pero no se pudo regenerar la imagen PNG. Puedes copiar la firma HTML y volver a intentar más tarde.';
+      status.style.display = 'block';
+    } catch (err) {
+      message.textContent = err.message || 'No se pudieron guardar los cambios.';
+      message.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Guardar cambios';
+    }
+  }
 
   // ── Sidebar móvil (mismo patrón que Inventario/SST) ──────────────────────
   function toggleMobileSidebar(forceState) {
