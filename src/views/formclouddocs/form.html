@@ -1470,9 +1470,15 @@
           };
         });
 
+        // El backend devuelve TODO el historial de cada tipo de documento (ordenado
+        // FechaRegistro DESC, puede haber varias cargas previas del mismo tipo). Solo
+        // nos interesa la más reciente para mostrar en "Cargado" — por eso se toma
+        // únicamente la PRIMERA coincidencia por tipo (la más nueva) y se ignoran las
+        // siguientes, en vez de sobreescribir con cada una (lo que terminaba mostrando
+        // la carga más antigua del historial, no la más reciente).
         workerExistingDocs.forEach(doc => {
           const match = workerDocsState[String(doc.TipoDocumento)];
-          if (match) {
+          if (match && !match.existingDoc) {
             match.uploaded = true;
             match.status = 'loaded';
             match.serverData = doc;

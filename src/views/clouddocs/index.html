@@ -369,6 +369,10 @@
       margin-bottom: 24px;
     }
 
+    #logysign-container {
+      margin-bottom: 24px;
+    }
+
     .table-container {
       width: 100%;
       max-height: calc(100vh - 330px);
@@ -462,6 +466,18 @@
     .badge-active { background: #d1fae5; border: 1px solid #a7f3d0; color: #065f46; }
     .badge-retired { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; }
     .badge-general { background: #e0f2fe; border: 1px solid #bae6fd; color: #075985; }
+    .badge-firmado { background: #d1fae5; border: 1px solid #a7f3d0; color: #065f46; }
+    .badge-pendiente { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; }
+
+    /* Filtros plegables (pestaña LogySign) */
+    .filtros-toggle { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+    .filtros-toggle-left { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .95rem; color: var(--primary); }
+    .filtros-badge {
+      display: none; align-items: center; justify-content: center; background: var(--primary); color: #fff;
+      border-radius: 999px; font-size: .68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
+    }
+    .filtros-chevron { display: inline-block; transition: transform .2s ease; color: var(--primary); font-size: .95rem; }
+    .filtros-body { overflow: hidden; margin-top: 16px; }
 
     /* Modals */
     .modal-overlay {
@@ -686,9 +702,9 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
         <span>Consolidado (Todo)</span>
       </li>
-      <li class="nav-item" id="tab-btn-docretiros" onclick="switchTab('docretiros')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="17" y1="8" x2="22" y2="13"></line><line x1="22" y1="8" x2="17" y2="13"></line></svg>
-        <span>Doc Retiros</span>
+      <li class="nav-item" id="tab-btn-logysign" onclick="switchTab('logysign')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+        <span>LogySign (Firmas)</span>
       </li>
     </ul>
   </div>
@@ -708,10 +724,13 @@
         <a class="btn btn-submit" id="btn-validar-cap" href="#" style="display: none; background: var(--success); color: #fff; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm);">
           ＋ Validar Carpeta
         </a>
-        <a class="btn btn-submit" id="btn-logysign" href="#" style="background: var(--primary-light); color: #fff; border: 1.5px solid rgba(255,255,255,0.15); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 8px;">
+        <a class="btn btn-submit" id="btn-nueva-firma" href="#" style="display: none; background: var(--primary-light); color: #fff; border: 1.5px solid rgba(255,255,255,0.15); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-          LogySign (Firmas)
+          ＋ Nueva Firma
         </a>
+        <button type="button" class="btn btn-submit" id="btn-nuevo-tipo-doc-cd" style="display: none; background: var(--primary-light); color: #fff; border: 1.5px solid rgba(255,255,255,0.15); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px; cursor: pointer;" onclick="abrirModalNuevoTipoDocCD()">
+          ＋ Nuevo Tipo de Documento
+        </button>
         <div class="user-badge" id="user-badge-name">
           Cargando usuario...
         </div>
@@ -874,6 +893,176 @@
         </div>
       </div>
     </section>
+
+    <!-- LogySign: Registros de firma integrados nativamente (mismo patrón que Trabajadores/Consolidado) -->
+    <section id="logysign-container" style="display: none;">
+      <section class="filters-card">
+        <div class="filtros-toggle" id="logysignFiltrosToggle">
+          <span class="filtros-toggle-left">
+            🔍 Filtros de Búsqueda
+            <span class="filtros-badge" id="logysignFiltrosBadge">0</span>
+          </span>
+          <span class="filtros-chevron" id="logysignFiltrosChevron">▶</span>
+        </div>
+        <div class="filtros-body" id="logysignFiltrosBody" style="display: none;">
+          <div class="filters-grid">
+            <div class="field">
+              <label for="logysign-filter-buscar">Colaborador / Documento</label>
+              <input type="text" id="logysign-filter-buscar" placeholder="Busque por nombre, cédula o documento..." oninput="filtrarLogysign()">
+            </div>
+            <div class="field">
+              <label for="logysign-filter-estado">Estado</label>
+              <select id="logysign-filter-estado" onchange="filtrarLogysign()">
+                <option value="">— Todos —</option>
+                <option value="PENDIENTE">Pendientes de Firma</option>
+                <option value="FIRMADO">Firmados</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="logysign-filter-desde">Desde</label>
+              <input type="date" id="logysign-filter-desde" onchange="filtrarLogysign()">
+            </div>
+            <div class="field">
+              <label for="logysign-filter-hasta">Hasta</label>
+              <input type="date" id="logysign-filter-hasta" onchange="filtrarLogysign()">
+            </div>
+            <div class="field">
+              <label for="logysign-filter-regional">Regional</label>
+              <select id="logysign-filter-regional" onchange="filtrarLogysign()">
+                <option value="">— Todas —</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="logysign-filter-operacion">Operación</label>
+              <select id="logysign-filter-operacion" onchange="filtrarLogysign()">
+                <option value="">— Todas —</option>
+              </select>
+            </div>
+            <div class="field" id="logysign-filter-causa-wrapper" style="display: none;">
+              <label for="logysign-filter-causa">Causa</label>
+              <select id="logysign-filter-causa" onchange="filtrarLogysign()">
+                <option value="">— Todas —</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" class="btn btn-request" onclick="resetFiltrosLogysign()" style="margin-top: 14px;">↺ Limpiar filtros</button>
+        </div>
+      </section>
+
+      <main class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="margin: 0; font-size: 1rem; color: var(--primary);">Lista de Envíos</h3>
+          <span id="logysign-counter" style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">Total: 0</span>
+        </div>
+        <div class="table-container">
+          <table id="logysign-table">
+            <thead id="logysign-thead"></thead>
+            <tbody id="logysign-body">
+              <tr><td style="text-align: center; padding: 40px; color: var(--text-muted);">Cargando registros...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </section>
+  </div>
+
+  <!-- Modal: Detalle de Registro LogySign -->
+  <div class="modal-overlay" id="modal-logysign-detalle">
+    <div class="modal-content" style="max-width: 620px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Detalle del Envío</h3>
+        <button class="modal-close" onclick="closeModal('modal-logysign-detalle')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="logysign-detalle-info" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; margin-bottom: 20px;"></div>
+
+        <div id="logysign-opciones-contacto" style="display: none; border-top: 1.5px solid var(--border); padding-top: 16px; margin-bottom: 16px;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Actualizar Datos de Contacto</div>
+          <div class="field" style="margin-bottom: 12px;">
+            <label for="logysign-contacto-email">Correo Electrónico</label>
+            <input type="email" id="logysign-contacto-email" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="field" style="margin-bottom: 12px;">
+            <label for="logysign-contacto-celular">Celular (WhatsApp)</label>
+            <input type="text" id="logysign-contacto-celular" placeholder="3XXXXXXXXX">
+          </div>
+          <button class="btn btn-request" onclick="actualizarContactoLogysign()" style="width: 100%;">Actualizar Contacto</button>
+        </div>
+
+        <div id="logysign-opciones-control" style="border-top: 1.5px solid var(--border); padding-top: 16px; display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Asignar Causa (LogySign) -->
+  <div class="modal-overlay" id="modal-logysign-causa">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Asignar Causa de Desvinculación</h3>
+        <button class="modal-close" onclick="closeModal('modal-logysign-causa')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="logysign-modal-select-causa">Causa</label>
+          <select id="logysign-modal-select-causa">
+            <option value="">-- Seleccione Causa --</option>
+            <option value="*Nuevo">*Nuevo</option>
+          </select>
+          <input type="text" id="logysign-modal-input-causa-nueva" style="display: none; margin-top: 8px;" placeholder="Escriba la nueva causa...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-request" onclick="closeModal('modal-logysign-causa')">Cancelar</button>
+        <button class="btn btn-submit" id="logysign-btn-guardar-causa">Guardar Causa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Nuevo Tipo de Documento (solo Sistema/Archivo, pestaña Tipos de Documento) -->
+  <div class="modal-overlay" id="modal-nuevo-tipo-doc-cd">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Nuevo Tipo de Documento</h3>
+        <button class="modal-close" onclick="closeModal('modal-nuevo-tipo-doc-cd')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field" style="margin-bottom: 14px;">
+          <label>Tipo</label>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-submit" id="btn-tipo-doc-cd-trabajador" style="flex: 1;" onclick="seleccionarTipoDocCD('Trabajador')">Trabajador</button>
+            <button type="button" class="btn btn-request" id="btn-tipo-doc-cd-general" style="flex: 1;" onclick="seleccionarTipoDocCD('General')">General</button>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom: 14px;">
+          <label for="nt-prefijo">Prefijo (único)</label>
+          <input type="text" id="nt-prefijo" placeholder="Ej. CON, ACT, CERT...">
+        </div>
+        <div class="field" style="margin-bottom: 14px;">
+          <label for="nt-documento">Nombre del Documento</label>
+          <input type="text" id="nt-documento" placeholder="Ej. Certificación Laboral">
+        </div>
+        <div class="field" style="margin-bottom: 14px;">
+          <label for="nt-clasificacion">Clasificación</label>
+          <select id="nt-clasificacion" onchange="onClasificacionCDChange()">
+            <option value="">— Cargando clasificaciones —</option>
+          </select>
+        </div>
+        <div class="field" id="nt-group-clasificacion-nueva" style="display: none; margin-bottom: 14px;">
+          <label for="nt-clasificacion-nueva">Nombre de la Nueva Clasificación</label>
+          <input type="text" id="nt-clasificacion-nueva" placeholder="Ej. 6. Seguridad y Salud">
+        </div>
+        <div class="field">
+          <label for="nt-area">Área Responsable</label>
+          <select id="nt-area">
+            <option value="">— Cargando áreas —</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-request" onclick="closeModal('modal-nuevo-tipo-doc-cd')">Cancelar</button>
+        <button class="btn btn-submit" id="btn-guardar-nuevo-tipo-doc-cd" onclick="guardarNuevoTipoDocCD()">Guardar</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: Worker Documents -->
@@ -1255,11 +1444,26 @@
       document.getElementById('user-badge-name').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
       document.getElementById('mobile-user-badge').innerText = CONFIG.rol;
       document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-      document.getElementById('btn-logysign').href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      document.getElementById('btn-nueva-firma').href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
-      // Render Solicitudes and Validar Cap Tab buttons if role matches
-      if (['Archivo', 'Sistema', 'Asistencial'].includes(CONFIG.rol)) {
-        // Solicitudes
+      // Pestañas gateadas vía Maestro_Menu_Documentos (CONFIG.secciones = Secciones
+      // configuradas para el Rol del usuario, ver computarAccesoCloudDocs)
+      const seccionesPermitidas = CONFIG.secciones || [];
+
+      if (seccionesPermitidas.includes('DocRetiros')) {
+        const tabRet = document.createElement('li');
+        tabRet.className = 'nav-item';
+        tabRet.id = 'tab-btn-docretiros';
+        tabRet.onclick = () => switchTab('docretiros');
+        tabRet.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="17" y1="8" x2="22" y2="13"></line><line x1="22" y1="8" x2="17" y2="13"></line></svg>
+          <span>Doc Retiros</span>
+        `;
+        // Se inserta antes de LogySign para mantener el orden visual de siempre
+        document.getElementById('tabs-container').insertBefore(tabRet, document.getElementById('tab-btn-logysign'));
+      }
+
+      if (seccionesPermitidas.includes('Solicitudes')) {
         const tabLi = document.createElement('li');
         tabLi.className = 'nav-item';
         tabLi.id = 'tab-btn-solicitudes';
@@ -1269,8 +1473,9 @@
           <span>Solicitudes</span>
         `;
         document.getElementById('tabs-container').appendChild(tabLi);
+      }
 
-        // Validar Cap
+      if (seccionesPermitidas.includes('ValidarCap')) {
         const tabCap = document.createElement('li');
         tabCap.className = 'nav-item';
         tabCap.id = 'tab-btn-validarcap';
@@ -1282,8 +1487,7 @@
         document.getElementById('tabs-container').appendChild(tabCap);
       }
 
-      if (['Archivo', 'Sistema'].includes(CONFIG.rol)) {
-        // Permisos
+      if (seccionesPermitidas.includes('Permisos')) {
         const tabPerm = document.createElement('li');
         tabPerm.className = 'nav-item';
         tabPerm.id = 'tab-btn-permisos';
@@ -1293,8 +1497,9 @@
           <span>Permisos</span>
         `;
         document.getElementById('tabs-container').appendChild(tabPerm);
+      }
 
-        // Duplicados
+      if (seccionesPermitidas.includes('Duplicados')) {
         const tabDup = document.createElement('li');
         tabDup.className = 'nav-item';
         tabDup.id = 'tab-btn-duplicados';
@@ -1330,7 +1535,9 @@
       // Auto-prefill regionals & operations if only 1 is allowed
       prellenoAutomaticoFiltros();
 
-      switchTab('trabajador');
+      const tabParam = (new URLSearchParams(window.location.search).get('tab') || '').toLowerCase().trim();
+      const tabSolicitada = document.getElementById(`tab-btn-${tabParam}`) ? tabParam : 'trabajador';
+      switchTab(tabSolicitada);
     });
 
     // Auto-prefill helper for regionals and operations
@@ -1489,6 +1696,10 @@
     // Switch between tabs
     function switchTab(tab) {
       activeTab = tab;
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      history.replaceState(null, '', url);
       
       actualizarOpcionesTipoDocumento(tab);
 
@@ -1504,24 +1715,50 @@
       const filtersCard = document.querySelector('.filters-card');
       const tableCard = document.querySelector('main.card');
       const permisosContainer = document.getElementById('permisos-container');
-      
+      const logysignContainer = document.getElementById('logysign-container');
+
       const regWrapper = document.getElementById('filter-regional-wrapper');
       const opWrapper = document.getElementById('filter-operacion-wrapper');
       const btnCargar = document.getElementById('btn-cargar-doc');
       const btnValidar = document.getElementById('btn-validar-cap');
+      const btnNuevaFirma = document.getElementById('btn-nueva-firma');
+      const btnNuevoTipoDoc = document.getElementById('btn-nuevo-tipo-doc-cd');
 
       if (tab === 'permisos') {
         if (filtersCard) filtersCard.style.display = 'none';
         if (tableCard) tableCard.style.display = 'none';
         if (permisosContainer) permisosContainer.style.display = 'block';
+        if (logysignContainer) logysignContainer.style.display = 'none';
         if (regWrapper) regWrapper.style.display = 'none';
         if (opWrapper) opWrapper.style.display = 'none';
         btnCargar.style.display = 'none';
         btnValidar.style.display = 'none';
+        btnNuevaFirma.style.display = 'none';
+        btnNuevoTipoDoc.style.display = 'none';
+      } else if (tab === 'logysign') {
+        if (filtersCard) filtersCard.style.display = 'none';
+        if (tableCard) tableCard.style.display = 'none';
+        if (permisosContainer) permisosContainer.style.display = 'none';
+        if (logysignContainer) logysignContainer.style.display = 'block';
+        if (regWrapper) regWrapper.style.display = 'none';
+        if (opWrapper) opWrapper.style.display = 'none';
+        btnCargar.style.display = 'none';
+        btnValidar.style.display = 'none';
+        btnNuevaFirma.style.display = 'inline-flex';
+        btnNuevoTipoDoc.style.display = 'none';
+
+        // Registros nativos (mismo patrón que Trabajadores/Consolidado) — solo
+        // cargan la primera vez que se entra a la pestaña.
+        if (!logysignCargado) {
+          fetchLogysignRecords();
+        }
       } else {
         if (filtersCard) filtersCard.style.display = 'block';
         if (tableCard) tableCard.style.display = 'block';
         if (permisosContainer) permisosContainer.style.display = 'none';
+        if (logysignContainer) logysignContainer.style.display = 'none';
+        btnNuevaFirma.style.display = 'none';
+        btnNuevoTipoDoc.style.display = (tab === 'documento' && ['Sistema', 'Archivo'].includes(CONFIG.rol)) ? 'inline-flex' : 'none';
 
         // Hide/Show Regional, Operación dropdowns and Cargar/Validar buttons
         if (tab === 'validarcap') {
@@ -1608,7 +1845,7 @@
 
       if (tab === 'permisos') {
         cargarPermisosPanel();
-      } else {
+      } else if (tab !== 'logysign') {
         filtrar();
       }
 
@@ -2711,6 +2948,624 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
     }
+
+    // --- Modal "Nuevo Tipo de Documento" (pestaña Tipos de Documento, solo Sistema/Archivo) ---
+    let nuevoTipoDocCDSeleccion = 'Trabajador';
+
+    function abrirModalNuevoTipoDocCD() {
+      nuevoTipoDocCDSeleccion = 'Trabajador';
+      document.getElementById('nt-prefijo').value = '';
+      document.getElementById('nt-documento').value = '';
+      document.getElementById('nt-clasificacion-nueva').value = '';
+      document.getElementById('nt-group-clasificacion-nueva').style.display = 'none';
+      actualizarBotonesTipoDocCD();
+      cargarOpcionesTipoDocCD();
+      openModal('modal-nuevo-tipo-doc-cd');
+    }
+
+    function actualizarBotonesTipoDocCD() {
+      const btnT = document.getElementById('btn-tipo-doc-cd-trabajador');
+      const btnG = document.getElementById('btn-tipo-doc-cd-general');
+      btnT.className = 'btn ' + (nuevoTipoDocCDSeleccion === 'Trabajador' ? 'btn-submit' : 'btn-request');
+      btnG.className = 'btn ' + (nuevoTipoDocCDSeleccion === 'General' ? 'btn-submit' : 'btn-request');
+      btnT.style.flex = '1';
+      btnG.style.flex = '1';
+    }
+
+    function seleccionarTipoDocCD(tipo) {
+      nuevoTipoDocCDSeleccion = tipo;
+      actualizarBotonesTipoDocCD();
+      cargarOpcionesTipoDocCD();
+    }
+
+    async function cargarOpcionesTipoDocCD() {
+      const selectClasif = document.getElementById('nt-clasificacion');
+      const selectArea = document.getElementById('nt-area');
+      selectClasif.innerHTML = '<option value="">Cargando clasificaciones...</option>';
+      selectArea.innerHTML = '<option value="">Cargando áreas...</option>';
+
+      try {
+        const res = await fetch(`/formcloud-docs/api/config-doc-options?tipo_doc=${nuevoTipoDocCDSeleccion}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) throw new Error('No se pudieron obtener las opciones');
+        const data = await res.json();
+
+        selectClasif.innerHTML = '<option value="">— Selecciona una clasificación —</option>';
+        (data.classifications || []).forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          selectClasif.appendChild(opt);
+        });
+        const optNew = document.createElement('option');
+        optNew.value = '__NUEVA_CLASIFICACION__';
+        optNew.textContent = '✏️ + Nueva Clasificación...';
+        selectClasif.appendChild(optNew);
+        document.getElementById('nt-group-clasificacion-nueva').style.display = 'none';
+        document.getElementById('nt-clasificacion-nueva').value = '';
+
+        selectArea.innerHTML = '<option value="">— Selecciona el Área —</option>';
+        (data.areas || []).forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a.id;
+          opt.textContent = a.area;
+          selectArea.appendChild(opt);
+        });
+      } catch (err) {
+        showToast('Error al cargar opciones de clasificación/área', 'error');
+      }
+    }
+
+    function onClasificacionCDChange() {
+      const sel = document.getElementById('nt-clasificacion');
+      document.getElementById('nt-group-clasificacion-nueva').style.display = sel.value === '__NUEVA_CLASIFICACION__' ? 'block' : 'none';
+    }
+
+    async function guardarNuevoTipoDocCD() {
+      const prefijo = document.getElementById('nt-prefijo').value.trim();
+      const documento = document.getElementById('nt-documento').value.trim();
+      const selectClasif = document.getElementById('nt-clasificacion');
+      let clasificacion = selectClasif.value;
+      const area = document.getElementById('nt-area').value;
+
+      if (!prefijo || !documento || !clasificacion || !area) {
+        showToast('Por favor completa todos los campos obligatorios.', 'error');
+        return;
+      }
+      if (clasificacion === '__NUEVA_CLASIFICACION__') {
+        const nueva = document.getElementById('nt-clasificacion-nueva').value.trim();
+        if (!nueva) { showToast('Ingresa el nombre de la nueva clasificación.', 'error'); return; }
+        clasificacion = nueva;
+      }
+
+      const btn = document.getElementById('btn-guardar-nuevo-tipo-doc-cd');
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const res = await fetch('/formcloud-docs/api/config-doc/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prefijo, documento, clasificacion, area,
+            tipo_doc: nuevoTipoDocCDSeleccion,
+            usuario: CONFIG.usuarioId
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al guardar');
+
+        showToast('Tipo de documento creado con éxito', 'success');
+        closeModal('modal-nuevo-tipo-doc-cd');
+        if (activeTab === 'documento') filtrar();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+
+    // --- LogySign Tab Controller (nativo, integrado como Trabajadores/Consolidado) ---
+    let logysignRecords = [];
+    let logysignUniqueRegionales = [];
+    let logysignUniqueOperaciones = [];
+    let logysignUniqueCausas = [];
+    let logysignCargado = false;
+    let logysignSort = { key: 'fecha_registro', dir: 'desc' };
+    let logysignCols = [];
+    let logysignSelectedId = null;
+    let logysignSelectedTrabajadorId = null;
+    let logysignEdicionCausaId = null;
+    let logysignEdicionConfigDocId = null;
+
+    function getLogysignColumns() {
+      const cols = [
+        { key: 'colaborador', label: 'Colaborador', width: 220 },
+        { key: 'documento', label: 'Documento', width: 220 },
+        { key: 'fecha_registro', label: 'Fecha de Registro', width: 170 },
+      ];
+      if (['Sistema', 'Contratación', 'Archivo', 'Asistencial'].includes(CONFIG.rol)) {
+        cols.push({ key: 'creador', label: 'Creado por', width: 150 });
+      }
+      if (CONFIG.rol === 'Sistema' || CONFIG.rol === 'Juridica') {
+        cols.push({ key: 'causa', label: 'Causa', width: 170 });
+      }
+      cols.push({ key: 'estado', label: 'Estado', width: 110, align: 'center' });
+      cols.push({ key: 'acciones', label: 'Acciones', width: 260, align: 'center' });
+      return cols;
+    }
+
+    // Filtros plegables (mismo patrón que Traslados/Inventario)
+    (function initFiltrosLogysign() {
+      const toggle = document.getElementById('logysignFiltrosToggle');
+      const body = document.getElementById('logysignFiltrosBody');
+      const chevron = document.getElementById('logysignFiltrosChevron');
+      let abierto = false;
+      toggle.addEventListener('click', () => {
+        abierto = !abierto;
+        body.style.display = abierto ? 'block' : 'none';
+        chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
+      });
+    })();
+
+    function actualizarBadgeFiltrosLogysign() {
+      let n = 0;
+      if (document.getElementById('logysign-filter-buscar').value.trim()) n++;
+      if (document.getElementById('logysign-filter-estado').value) n++;
+      if (document.getElementById('logysign-filter-desde').value) n++;
+      if (document.getElementById('logysign-filter-hasta').value) n++;
+      if (document.getElementById('logysign-filter-regional').value) n++;
+      if (document.getElementById('logysign-filter-operacion').value) n++;
+      const filterCausa = document.getElementById('logysign-filter-causa');
+      if (filterCausa && filterCausa.value) n++;
+      const badge = document.getElementById('logysignFiltrosBadge');
+      badge.textContent = n;
+      badge.style.display = n ? 'flex' : 'none';
+    }
+
+    function resetFiltrosLogysign() {
+      document.getElementById('logysign-filter-buscar').value = '';
+      document.getElementById('logysign-filter-estado').value = '';
+      document.getElementById('logysign-filter-desde').value = '';
+      document.getElementById('logysign-filter-hasta').value = '';
+      document.getElementById('logysign-filter-regional').value = '';
+      document.getElementById('logysign-filter-operacion').value = '';
+      const filterCausa = document.getElementById('logysign-filter-causa');
+      if (filterCausa) filterCausa.value = '';
+      filtrarLogysign();
+    }
+
+    async function fetchLogysignRecords() {
+      showLoader('Cargando registros de LogySign...');
+      try {
+        const res = await fetch(`/registrologysign/api/registros?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) throw new Error('No se pudieron cargar los registros');
+        const data = await res.json();
+
+        // Campos "planos" para que el helper genérico de orden (sortDataArray,
+        // que lee item[key] directo) pueda ordenar por Colaborador/Documento/Creador
+        // igual que las demás columnas.
+        logysignRecords = data.map(r => ({
+          ...r,
+          colaborador: r.nombre_trabajador || '',
+          documento: r.nombre_documento || r.prefijo || '',
+          creador: r.nombre_creador || r.usuario_creador || '',
+        }));
+
+        logysignUniqueRegionales = [...new Set(logysignRecords.map(r => r.regional).filter(Boolean))].sort();
+        logysignUniqueOperaciones = [...new Set(logysignRecords.map(r => r.operacion).filter(Boolean))].sort();
+        logysignUniqueCausas = [...new Set(logysignRecords.map(r => r.causa).filter(Boolean))].sort();
+
+        if (CONFIG.rol === 'Sistema' || CONFIG.rol === 'Juridica') {
+          document.getElementById('logysign-filter-causa-wrapper').style.display = 'flex';
+        }
+
+        logysignCols = getLogysignColumns();
+        logysignCargado = true;
+        filtrarLogysign();
+      } catch (err) {
+        showToast(err.message, 'error');
+        document.getElementById('logysign-body').innerHTML = `<tr><td style="text-align:center;padding:40px;color:var(--text-muted);">Error: ${esc(err.message)}</td></tr>`;
+      } finally {
+        hideLoader();
+      }
+    }
+
+    function filtrarLogysign() {
+      actualizarBadgeFiltrosLogysign();
+
+      const q = norm(document.getElementById('logysign-filter-buscar').value.trim());
+      const status = document.getElementById('logysign-filter-estado').value;
+      const desde = document.getElementById('logysign-filter-desde').value;
+      const hasta = document.getElementById('logysign-filter-hasta').value;
+      const regionalVal = document.getElementById('logysign-filter-regional').value;
+      const operacionVal = document.getElementById('logysign-filter-operacion').value;
+      const filterCausaEl = document.getElementById('logysign-filter-causa');
+      const causaVal = filterCausaEl ? filterCausaEl.value : '';
+
+      const matchBase = (item) => {
+        if (q) {
+          const textMatch =
+            norm(item.nombre_trabajador || '').includes(q) ||
+            norm(String(item.identificacion || '')).includes(q) ||
+            norm(item.documento || '').includes(q);
+          if (!textMatch) return false;
+        }
+        if (status && item.estado !== status) return false;
+        if (item.fecha_registro) {
+          const itemDate = String(item.fecha_registro).split('T')[0];
+          if (desde && itemDate < desde) return false;
+          if (hasta && itemDate > hasta) return false;
+        }
+        return true;
+      };
+
+      // Conteos dinámicos por select, excluyendo únicamente el filtro propio de cada uno
+      const regCounts = {}, opCounts = {}, causaCounts = {};
+      logysignRecords.forEach(item => {
+        if (matchBase(item) && (!operacionVal || item.operacion === operacionVal) && (!causaVal || item.causa === causaVal) && item.regional) {
+          regCounts[item.regional] = (regCounts[item.regional] || 0) + 1;
+        }
+        if (matchBase(item) && (!regionalVal || item.regional === regionalVal) && (!causaVal || item.causa === causaVal) && item.operacion) {
+          opCounts[item.operacion] = (opCounts[item.operacion] || 0) + 1;
+        }
+        if (matchBase(item) && (!regionalVal || item.regional === regionalVal) && (!operacionVal || item.operacion === operacionVal) && item.causa) {
+          causaCounts[item.causa] = (causaCounts[item.causa] || 0) + 1;
+        }
+      });
+
+      const selReg = document.getElementById('logysign-filter-regional');
+      const curReg = selReg.value;
+      selReg.innerHTML = '<option value="">— Todas —</option>' +
+        logysignUniqueRegionales.map(r => `<option value="${esc(r)}"${r === curReg ? ' selected' : ''}>${esc(r)} (${regCounts[r] || 0})</option>`).join('');
+
+      const selOp = document.getElementById('logysign-filter-operacion');
+      const curOp = selOp.value;
+      selOp.innerHTML = '<option value="">— Todas —</option>' +
+        logysignUniqueOperaciones.map(o => `<option value="${esc(o)}"${o === curOp ? ' selected' : ''}>${esc(o)} (${opCounts[o] || 0})</option>`).join('');
+
+      if (filterCausaEl) {
+        const curCausa = filterCausaEl.value;
+        filterCausaEl.innerHTML = '<option value="">— Todas —</option>' +
+          logysignUniqueCausas.map(c => `<option value="${esc(c)}"${c === curCausa ? ' selected' : ''}>${esc(c)} (${causaCounts[c] || 0})</option>`).join('');
+      }
+
+      const filtered = logysignRecords.filter(item => {
+        if (!matchBase(item)) return false;
+        if (regionalVal && item.regional !== regionalVal) return false;
+        if (operacionVal && item.operacion !== operacionVal) return false;
+        if (causaVal && item.causa !== causaVal) return false;
+        return true;
+      });
+
+      renderTableHeader('logysign-thead', logysignCols, logysignSort, () => {
+        sortDataArray(filtered, logysignSort.key, logysignSort.dir);
+        renderLogysignRows(filtered);
+      }, document.getElementById('logysign-table'));
+
+      sortDataArray(filtered, logysignSort.key, logysignSort.dir);
+      renderLogysignRows(filtered);
+    }
+
+    function logysignAccionesHtml(item) {
+      if (item.estado === 'PENDIENTE') {
+        const linkFirma = `${window.location.origin}/logysign/sign/${item.token}`;
+        let msgWaText;
+        if (Number(item.id_config_doc) === 18 && item.auto_id_descuento) {
+          const linkFirmaDescuento = `${window.location.origin}/descuentonomina/firmar?item=${item.auto_id_descuento}&token=${item.auto_token_firma}`;
+          msgWaText = encodeURIComponent(`¡Hola! Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo \n\nPara completar tu proceso de ingreso de forma rápida, puedes firmar tus documentos directamente desde aquí:\n\n📄 1. Contrato de Trabajo:\n👉 ${linkFirma}\n\n📝 2. Autorización de Descuento:\n👉 ${linkFirmaDescuento}\n\nAvísanos por este medio si tienes alguna duda. ¡Muchos éxitos en esta nueva etapa con nosotros!`);
+        } else {
+          msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu documento: ${linkFirma}`);
+        }
+        let cel = String(item.celular_trabajador || '').replace(/\D/g, '');
+        if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
+        const waUrl = cel ? `https://api.whatsapp.com/send?phone=${cel}&text=${msgWaText}` : `https://wa.me/?text=${msgWaText}`;
+
+        return `
+          <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+            <a href="${waUrl}" target="_blank" class="btn" style="background:#25d366;color:#fff;padding:6px 9px;font-size:.78rem;">WhatsApp</a>
+            <button class="btn btn-request" style="padding:6px 9px;font-size:.78rem;" onclick="copiarEnlaceLogysign('${linkFirma}')">Copiar</button>
+            <button class="btn btn-submit" style="padding:6px 9px;font-size:.78rem;" onclick="reenviarCorreoLogysign('${item.id}')">Reenviar</button>
+            <button class="btn" style="background:#e67e22;color:#fff;padding:6px 9px;font-size:.78rem;" onclick="marcarNoFirmaLogysign('${item.id}')" title="Marcar como No Firma (Genera soporte)">No Firma</button>
+          </div>`;
+      }
+      const viewPdfUrl = `/logysign/api/signed-pdf/${item.id}`;
+      return `<a href="${viewPdfUrl}" target="_blank" class="btn btn-submit" style="font-size:.78rem;">Ver PDF Firmado</a>`;
+    }
+
+    function renderLogysignRows(filtered) {
+      const body = document.getElementById('logysign-body');
+      document.getElementById('logysign-counter').textContent = `Total: ${filtered.length}`;
+
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="${logysignCols.length}" style="text-align:center;padding:40px;color:var(--text-muted);">No se encontraron registros.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = filtered.map(item => {
+        const cells = logysignCols.map(col => {
+          switch (col.key) {
+            case 'colaborador':
+              return `<td><strong>${esc(item.nombre_trabajador)}</strong><br><span style="font-size:.8rem;color:var(--text-muted);">C.C. ${esc(item.identificacion)}</span></td>`;
+            case 'documento':
+              return `<td><strong>${esc(item.documento || 'Documento')}</strong><br><span style="font-size:.8rem;color:var(--text-muted);">Cargo: ${esc(item.cargo || '—')}</span></td>`;
+            case 'fecha_registro': {
+              let dateStr = '—';
+              if (item.fecha_registro) {
+                const d = new Date(item.fecha_registro);
+                dateStr = d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) + ' ' + d.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+              }
+              return `<td>${dateStr}</td>`;
+            }
+            case 'creador':
+              return `<td>${esc(item.creador || '—')}</td>`;
+            case 'causa': {
+              const isEditable = Number(item.id_config_doc) === 55;
+              if (isEditable) {
+                return `<td><span class="logysign-causa-editable" onclick="iniciarEdicionCausaLogysign('${item.id}')" style="cursor:pointer;border-bottom:1px dashed var(--primary);padding:2px 4px;font-weight:700;" title="Haga clic para editar Causa">${esc(item.causa || '—')}</span></td>`;
+              }
+              return `<td><strong>${esc(item.causa || '—')}</strong></td>`;
+            }
+            case 'estado': {
+              const cls = item.estado === 'FIRMADO' ? 'badge-firmado' : 'badge-pendiente';
+              const label = item.estado === 'FIRMADO' ? '✓ Firmado' : 'Pendiente';
+              return `<td style="text-align:center;"><span class="badge-status ${cls}">${label}</span></td>`;
+            }
+            case 'acciones':
+              return `<td style="text-align:center;">${logysignAccionesHtml(item)}</td>`;
+            default:
+              return '<td></td>';
+          }
+        }).join('');
+        return `<tr class="logysign-row" data-id="${esc(item.id)}">${cells}</tr>`;
+      }).join('');
+
+      body.querySelectorAll('tr.logysign-row').forEach(tr => {
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', (e) => {
+          if (e.target.closest('.logysign-causa-editable') || e.target.closest('.btn') || e.target.closest('a')) return;
+          abrirDetalleLogysign(tr.dataset.id);
+        });
+      });
+    }
+
+    function copiarEnlaceLogysign(text) {
+      navigator.clipboard.writeText(text)
+        .then(() => showToast('Enlace de firma copiado al portapapeles', 'success'))
+        .catch(() => showToast('No se pudo copiar el enlace', 'error'));
+    }
+
+    async function reenviarCorreoLogysign(id) {
+      showLoader('Reenviando recordatorio de firma...');
+      try {
+        const res = await fetch('/registrologysign/api/reenviar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo reenviar la notificación');
+        showToast('Notificación recordatorio reenviada con éxito', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    async function marcarNoFirmaLogysign(id) {
+      const anotacion = prompt(
+        "Ingrese el texto de la anotación de soporte que saldrá en la firma (por ejemplo: 'El trabajador no firma, se soporta por correo electrónico'):",
+        "El trabajador no firma,\nse soporta por correo electrónico"
+      );
+      if (anotacion === null) return;
+
+      showLoader('Generando documento soporte...');
+      try {
+        const res = await fetch('/registrologysign/api/no-firma', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, anotacion })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo procesar la acción');
+        showToast('Documento soporte generado y finalizado con éxito', 'success');
+        closeModal('modal-logysign-detalle');
+        await fetchLogysignRecords();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    function abrirDetalleLogysign(id) {
+      const item = logysignRecords.find(x => String(x.id) === String(id));
+      if (!item) return;
+
+      logysignSelectedId = id;
+      logysignSelectedTrabajadorId = item.identificacion;
+
+      let fechaFmt = '—';
+      if (item.fecha_registro) {
+        const d = new Date(item.fecha_registro);
+        fechaFmt = d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' }) + ' ' + d.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+      }
+
+      let expiraHtml = '';
+      if (item.estado === 'PENDIENTE') {
+        const expDate = item.token_expira ? new Date(item.token_expira) : null;
+        if (expDate) {
+          const isExpired = expDate < new Date();
+          const color = isExpired ? '#ef4444' : '#10b981';
+          const text = isExpired ? 'Vencido' : `Vence el ${expDate.toLocaleString()}`;
+          expiraHtml = `<p><strong>Vencimiento Enlace:</strong> <span style="color:${color};font-weight:700;">${text}</span></p>`;
+        }
+      }
+
+      document.getElementById('logysign-detalle-info').innerHTML = `
+        <p><strong>Fecha Registro:</strong> ${fechaFmt}</p>
+        <p><strong>Colaborador:</strong> ${esc(item.nombre_trabajador || '—')} (C.C. ${esc(item.identificacion)})</p>
+        <p><strong>Cargo:</strong> ${esc(item.cargo || '—')}</p>
+        <p><strong>Operación:</strong> ${esc(item.operacion || '—')}</p>
+        <p><strong>Regional:</strong> ${esc(item.regional || '—')}</p>
+        <p><strong>Documento:</strong> ${esc(item.documento || '—')}</p>
+        <p><strong>Creador:</strong> ${esc(item.creador || '—')}</p>
+        <p><strong>Estado:</strong> <span class="badge-status ${item.estado === 'FIRMADO' ? 'badge-firmado' : 'badge-pendiente'}">${item.estado === 'FIRMADO' ? '✓ Firmado' : 'Pendiente'}</span></p>
+        ${expiraHtml}
+      `;
+
+      document.getElementById('logysign-contacto-email').value = item.email_trabajador || '';
+      document.getElementById('logysign-contacto-celular').value = item.celular_trabajador || '';
+      document.getElementById('logysign-opciones-contacto').style.display = 'block';
+
+      let optsHtml = '<div style="font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Acciones de Control</div>';
+      if (item.estado === 'PENDIENTE') {
+        optsHtml += logysignAccionesHtml(item).replace('justify-content:center;', 'justify-content:flex-start;');
+      } else {
+        optsHtml += logysignAccionesHtml(item);
+      }
+      if (item.estado !== 'FIRMADO') {
+        optsHtml += `<button class="btn btn-cancel" style="margin-top:8px;" onclick="eliminarRegistroLogysign('${item.id}')">✕ Eliminar Registro</button>`;
+      }
+      document.getElementById('logysign-opciones-control').innerHTML = optsHtml;
+
+      openModal('modal-logysign-detalle');
+    }
+
+    async function actualizarContactoLogysign() {
+      const email = document.getElementById('logysign-contacto-email').value.trim();
+      const celular = document.getElementById('logysign-contacto-celular').value.trim();
+      if (!logysignSelectedTrabajadorId) return;
+
+      showLoader('Actualizando contacto...');
+      try {
+        const res = await fetch('/registrologysign/api/actualizar-contacto', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identificacion: logysignSelectedTrabajadorId, email, celular, usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Contacto actualizado correctamente', 'success');
+          const idx = logysignRecords.findIndex(x => String(x.id) === String(logysignSelectedId));
+          if (idx !== -1) {
+            logysignRecords[idx].email_trabajador = email;
+            logysignRecords[idx].celular_trabajador = celular;
+            abrirDetalleLogysign(logysignSelectedId);
+            filtrarLogysign();
+          }
+        } else {
+          showToast(data.error || 'Error al actualizar contacto', 'error');
+        }
+      } catch (err) {
+        showToast('Error de conexión', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    async function eliminarRegistroLogysign(id) {
+      if (!confirm('¿Está seguro de que desea eliminar este registro? Esta acción es irreversible.')) return;
+      showLoader('Eliminando registro...');
+      try {
+        const res = await fetch(`/registrologysign/api/eliminar/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.ok) {
+          showToast('Registro eliminado con éxito', 'success');
+          closeModal('modal-logysign-detalle');
+          await fetchLogysignRecords();
+        } else {
+          showToast(data.error || 'Error al eliminar registro', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al eliminar registro', 'error');
+      } finally {
+        hideLoader();
+      }
+    }
+
+    async function iniciarEdicionCausaLogysign(id) {
+      const item = logysignRecords.find(r => String(r.id) === String(id));
+      if (!item) return;
+
+      logysignEdicionCausaId = id;
+      logysignEdicionConfigDocId = item.id_config_doc;
+      const causaActual = item.causa || '';
+
+      const modalSelect = document.getElementById('logysign-modal-select-causa');
+      const modalInput = document.getElementById('logysign-modal-input-causa-nueva');
+      modalSelect.innerHTML = '<option value="">-- Seleccione Causa --</option><option value="*Nuevo">*Nuevo</option>';
+      modalInput.style.display = 'none';
+      modalInput.value = '';
+
+      showLoader('Cargando motivos...');
+      try {
+        const res = await fetch(`/logysign/api/motivos?idConfigDoc=${item.id_config_doc}`);
+        if (!res.ok) throw new Error('No se pudieron cargar los motivos');
+        const list = await res.json();
+        list.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.motivo;
+          opt.innerText = m.motivo;
+          modalSelect.appendChild(opt);
+        });
+        const exists = list.some(m => m.motivo === causaActual);
+        if (causaActual && exists) {
+          modalSelect.value = causaActual;
+        } else if (causaActual) {
+          modalSelect.value = '*Nuevo';
+          modalInput.style.display = 'block';
+          modalInput.value = causaActual;
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        hideLoader();
+      }
+
+      openModal('modal-logysign-causa');
+    }
+
+    (function initLogysignCausaModal() {
+      const modalSelectCausa = document.getElementById('logysign-modal-select-causa');
+      const modalInputCausaNueva = document.getElementById('logysign-modal-input-causa-nueva');
+      const btnGuardarCausa = document.getElementById('logysign-btn-guardar-causa');
+
+      modalSelectCausa.addEventListener('change', () => {
+        if (modalSelectCausa.value === '*Nuevo') {
+          modalInputCausaNueva.style.display = 'block';
+          modalInputCausaNueva.focus();
+        } else {
+          modalInputCausaNueva.style.display = 'none';
+          modalInputCausaNueva.value = '';
+        }
+      });
+
+      btnGuardarCausa.addEventListener('click', async () => {
+        if (!logysignEdicionCausaId) return;
+        const selectVal = modalSelectCausa.value;
+        const inputVal = modalInputCausaNueva.value.trim();
+        let causaFinal = selectVal;
+        if (selectVal === '*Nuevo') {
+          if (!inputVal) { showToast('Debe escribir la nueva causa', 'error'); return; }
+          causaFinal = inputVal;
+        }
+
+        showLoader('Guardando causa...');
+        try {
+          const res = await fetch('/registrologysign/api/update-causa', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: logysignEdicionCausaId, idConfigDoc: logysignEdicionConfigDocId, causa: causaFinal || null })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'No se pudo guardar la causa');
+          showToast('Causa guardada con éxito', 'success');
+          closeModal('modal-logysign-causa');
+          await fetchLogysignRecords();
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          hideLoader();
+        }
+      });
+    })();
 
     // --- Permisos Tab Controller ---
     let permisosRoles = [];

@@ -1,8 +1,3 @@
-const ROLES_SIN_FILTRO = ['Sistema', 'AdmSst', 'LiderSst'];
-const ROLES_REGIONAL = ['AuxiliarR', 'CoordinadorR'];
-const ROLES_DISPOSITIVO = ['AuxSst'];
-const ROLES_MODALIDAD = ['AnaSst'];
-
 async function obtenerPermisosRol(pool, rol) {
   if (!rol) return { doc_activo: [], doc_retirado: [], doc_general: [] };
 
@@ -48,6 +43,12 @@ function agruparOperacionesPorRegional(opRows) {
   return map;
 }
 
+// Acceso de Cloud Docs: controlado desde Maestro_Menu_Documentos (Sección/Rol/Acceso),
+// mismo modelo que Maestro_Menu_Inventario/Maestro_Menu_Nomina (1=sin filtro/todas las
+// operaciones, 2=por Regional, 3=por Dispositivo u Operación propia). La Sección 'CloudDocs'
+// agrupa el acceso base + alcance de datos de las pestañas Trabajador/Documento/Todo/LogySign;
+// las demás Secciones (DocRetiros, Solicitudes, ValidarCap, Permisos, Duplicados) son gates
+// de pestaña independientes, sin alcance propio (se insertan con Acceso=1).
 async function computarAccesoCloudDocs(pool, usuarioId) {
   if (!usuarioId) return null;
 
@@ -61,6 +62,18 @@ async function computarAccesoCloudDocs(pool, usuarioId) {
   const usuario = uRows[0];
   const rol = usuario.Rol || '';
 
+  const [menuRows] = await pool.execute(
+    'SELECT `Sección` as seccion, Acceso as acceso FROM Maestro_Menu_Documentos WHERE Rol = ?',
+    [rol]
+  );
+  if (!menuRows.length) return null; // Rol sin ninguna Sección configurada
+
+  const seccionAcceso = {};
+  menuRows.forEach((r) => { seccionAcceso[r.seccion] = r.acceso; });
+
+  if (!('CloudDocs' in seccionAcceso)) return null; // Sin acceso base al módulo
+  const accesoCode = seccionAcceso.CloudDocs;
+
   const acceso = {
     usuarioId: usuario.ID,
     usuarioNombre: usuario.Nombre || usuario.ID,
@@ -69,10 +82,12 @@ async function computarAccesoCloudDocs(pool, usuarioId) {
     regional: usuario.Regional || '',
     dispositivo: usuario.Dispositivo || '',
     operacion: usuario['Operación'] || '',
-    sinFiltro: ROLES_SIN_FILTRO.includes(rol) || (usuario['Operación'] && ['administracion', 'administración'].includes(usuario['Operación'].toLowerCase().trim())),
+    sinFiltro: accesoCode === 1 || (usuario['Operación'] && ['administracion', 'administración'].includes(usuario['Operación'].toLowerCase().trim())),
     operacionesFiltro: [],
     opsPorRegional: {},
     permisos: await obtenerPermisosRol(pool, rol),
+    secciones: Object.keys(seccionAcceso),
+    seccionAcceso,
   };
 
   let opRows = [];
@@ -82,30 +97,42 @@ async function computarAccesoCloudDocs(pool, usuarioId) {
       "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
     );
     opRows = rows;
-  } else if (ROLES_REGIONAL.includes(rol)) {
+  } else if (accesoCode === 2) {
     const [rows] = await pool.execute(
       "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
       [acceso.regional]
     );
     opRows = rows;
-  } else if (ROLES_DISPOSITIVO.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE SOCIODEMOGRAFICA = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (ROLES_MODALIDAD.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE MODALIDAD = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (acceso.operacion) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.operacion]
-    );
-    opRows = rows;
+  } else if (accesoCode === 3) {
+    if (acceso.dispositivo) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE SOCIODEMOGRAFICA = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [acceso.dispositivo]
+      );
+      opRows = rows;
+    } else if (acceso.operacion) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [acceso.operacion]
+      );
+      opRows = rows;
+    }
+  } else if (accesoCode === 6) {
+    // Igual que Acceso 3, pero filtrando por MODALIDAD en vez de SOCIODEMOGRAFICA
+    // (dedicado a roles cuyo valor de Dispositivo corresponde a esa columna, ej. AnaSst).
+    if (acceso.dispositivo) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE MODALIDAD = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [acceso.dispositivo]
+      );
+      opRows = rows;
+    } else if (acceso.operacion) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [acceso.operacion]
+      );
+      opRows = rows;
+    }
   }
 
   acceso.opsPorRegional = agruparOperacionesPorRegional(opRows);

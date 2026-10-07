@@ -216,20 +216,20 @@ router.post('/api/config-doc/crear', async (req, res) => {
       return res.status(403).json({ error: 'No tiene permisos para crear un nuevo tipo de documento.' });
     }
 
-    // Check if prefijo or name already exists
+    // Prefijo es el único valor que debe ser irrepetible
     const [existing] = await pool.execute(
-      'SELECT Id FROM Config_Doc_Trabajador WHERE Prefijo = ? OR Documento = ?',
-      [prefijo.trim(), documento.trim()]
+      'SELECT Id FROM Config_Doc_Trabajador WHERE Prefijo = ?',
+      [prefijo.trim().toUpperCase()]
     );
     if (existing.length) {
-      return res.status(400).json({ error: 'Ya existe un tipo de documento con el mismo prefijo o nombre.' });
+      return res.status(400).json({ error: 'Ya existe un tipo de documento con ese prefijo.' });
     }
 
-    // Save to database
+    // Save to database (Permisos queda NULL: no se gestiona desde esta UI)
     const [insertResult] = await pool.execute(
-      `INSERT INTO Config_Doc_Trabajador 
+      `INSERT INTO Config_Doc_Trabajador
        (Prefijo, Documento, Clasificacion, Permisos, fecha_creacion, usuario, tipo_doc, area)
-       VALUES (?, ?, ?, 'Todos', NOW(), ?, ?, ?)`,
+       VALUES (?, ?, ?, NULL, NOW(), ?, ?, ?)`,
       [
         prefijo.trim().toUpperCase(),
         documento.trim(),

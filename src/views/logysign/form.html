@@ -854,7 +854,9 @@
 
     // Init page info
     userBadge.innerText = CONFIG.usuarioNombre;
-    document.getElementById('btn-ver-registros').href = `/registrologysign?usuario=${CONFIG.usuarioId}`;
+    // Los registros ahora viven integrados en la pestaña LogySign de Cloud Docs
+    // (ver src/views/clouddocs/index.html), no en la vista standalone /registrologysign.
+    document.getElementById('btn-ver-registros').href = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=logysign`;
     document.getElementById('btn-cloud-docs').href = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
     // Show toast message
