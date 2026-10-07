@@ -289,8 +289,13 @@ router.get('/traslados/datos', async (req, res) => {
     if (acceso.sinFiltro) {
       [rows] = await pool.execute('SELECT * FROM Dynamic_traslados_trabajador ORDER BY Fecha_Registro DESC LIMIT 300');
     } else if (acceso.filtroSQL.length > 0) {
+      // Un usuario ve un traslado si su operación es el origen O el destino —
+      // así quien recibe el traslado también lo ve, no solo quien lo envía.
       const ph = acceso.filtroSQL.map(() => '?').join(',');
-      [rows] = await pool.execute(`SELECT * FROM Dynamic_traslados_trabajador WHERE operacion_origen IN (${ph}) ORDER BY Fecha_Registro DESC LIMIT 300`, acceso.filtroSQL);
+      [rows] = await pool.execute(
+        `SELECT * FROM Dynamic_traslados_trabajador WHERE operacion_origen IN (${ph}) OR operacion_destino IN (${ph}) ORDER BY Fecha_Registro DESC LIMIT 300`,
+        [...acceso.filtroSQL, ...acceso.filtroSQL]
+      );
     } else {
       rows = [];
     }

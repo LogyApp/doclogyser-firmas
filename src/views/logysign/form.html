@@ -739,6 +739,14 @@
           <input type="text" id="input-causa-nueva" style="display: none; margin-top: 8px;" placeholder="Escriba la nueva causa...">
         </div>
 
+        <!-- Incluir Autorización de Descuento (Only for Doc ID 18 - Contrato firmado) -->
+        <div class="form-group" id="grp-incluir-descuento" style="display: none;">
+          <label style="display: flex; align-items: center; cursor: pointer; gap: 8px; font-weight: 500; font-size: 0.9rem; color: var(--text);">
+            <input type="checkbox" id="chk-incluir-descuento" checked style="width: 16px; height: 16px; cursor: pointer; margin: 0;">
+            Incluir también Autorización de Descuento por Nómina
+          </label>
+        </div>
+
         <!-- Drag & Drop Upload PDF area -->
         <div class="upload-zone" id="upload-zone">
           <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,8H18A2,2 0 0,0 20,20V8L14,2M13,13V18H11V13H8L12,9L16,13H13M13,9V3.5L18.5,9H13Z"/></svg>
@@ -835,6 +843,8 @@
     const grpCausa = document.getElementById('grp-causa');
     const selectCausa = document.getElementById('select-causa');
     const inputCausaNueva = document.getElementById('input-causa-nueva');
+    const grpIncluirDescuento = document.getElementById('grp-incluir-descuento');
+    const chkIncluirDescuento = document.getElementById('chk-incluir-descuento');
     const uploadZone = document.getElementById('upload-zone');
     const fileInput = document.getElementById('file-input');
     const fileIndicator = document.getElementById('file-indicator');
@@ -972,6 +982,16 @@
         inputCausaNueva.value = '';
         inputCausaNueva.style.display = 'none';
       }
+
+      // Contrato firmado (Id 18): por defecto va agrupado con la Autorización de
+      // Descuento por Nómina, pero se puede desmarcar para enviar solo el contrato.
+      if (val === '18') {
+        grpIncluirDescuento.style.display = 'block';
+        chkIncluirDescuento.checked = true;
+      } else {
+        grpIncluirDescuento.style.display = 'none';
+      }
+
       checkFormValidity();
     });
 
@@ -1442,6 +1462,7 @@
         formData.append('firmasCoordenadas', JSON.stringify(boxesRelative));
         formData.append('fechaProgramada', chkProgramar.checked ? inputFechaProgramacion.value : '');
         formData.append('causa', causaVal);
+        formData.append('incluirDescuento', (idConfigDoc === '18' && chkIncluirDescuento.checked) ? 'true' : 'false');
 
         let res = await fetch('/logysign/api/enviar', {
           method: 'POST',

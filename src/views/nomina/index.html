@@ -38,10 +38,10 @@
     box-shadow: 4px 0 15px rgba(0,11,89,.08);
   }
   .sidebar-brand {
-    padding: 24px 16px; border-bottom: 1px solid rgba(255,255,255,.08);
-    display: flex; justify-content: center; align-items: center;
+    padding: 18px 12px; border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex; justify-content: space-between; align-items: center; position: relative; gap: 6px;
   }
-  .brand-lockup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 18px; flex-shrink: 0; }
+  .brand-lockup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 10px; flex-shrink: 0; }
   .brand-lockup img.brand-logo-app { display: block; object-fit: contain; height: 30px; }
   .brand-logo-company-crop { width: 133px; height: 34px; overflow: hidden; position: relative; }
   .brand-logo-company-crop img { position: absolute; left: -64px; top: -65px; width: 268px; height: 178px; max-width: none; }
@@ -78,14 +78,37 @@
   .nav-item.disabled { opacity: .5; cursor: not-allowed !important; }
   .nav-item.disabled:hover { background: transparent; color: rgba(255,255,255,.65); }
 
-  .sidebar-other { margin-top: auto; padding: 10px 14px 14px; border-top: 1px solid rgba(255,255,255,.1); }
-  .sidebar-other summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; color: rgba(255,255,255,.82); font-size: .82rem; font-weight: 700; border-radius: 7px; }
-  .sidebar-other summary::-webkit-details-marker { display: none; }
-  .sidebar-other summary::after { content: '⌄'; color: var(--accent); font-size: 1rem; transition: transform .16s ease; }
-  .sidebar-other[open] summary::after { transform: rotate(180deg); }
-  .sidebar-shortcuts { display: grid; gap: 3px; padding: 4px 0 2px; }
-  .sidebar-shortcut { display: block; padding: 8px 12px 8px 22px; border-radius: 6px; text-decoration: none; color: rgba(255,255,255,.67); font-size: .76rem; line-height: 1.25; }
-  .sidebar-shortcut:hover, .sidebar-shortcut:focus-visible { color: #fff; background: rgba(255,255,255,.1); outline: none; }
+  .module-launcher { position: relative; flex: 0 0 auto; }
+  .module-launcher-trigger {
+    width: 48px; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0;
+    color: #fff; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.2);
+    border-radius: 8px; cursor: pointer; transition: background .16s ease, border-color .16s ease;
+  }
+  .module-launcher-trigger:hover, .module-launcher-trigger[aria-expanded="true"] { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.4); }
+  .module-launcher-trigger:focus-visible { outline: 2px solid #78e4d6; outline-offset: 2px; }
+  .module-launcher-grid { display: grid; grid-template-columns: repeat(3, 4px); gap: 3px; }
+  .module-launcher-grid i { width: 4px; height: 4px; background: currentColor; border-radius: 1px; }
+  .module-launcher-caption { font-size: .57rem; line-height: 1; font-weight: 700; }
+  .module-launcher-panel {
+    position: absolute; z-index: 160; top: calc(100% + 10px); right: -4px; width: 252px;
+    max-height: min(72vh, 620px); overflow-y: auto; padding: 9px;
+    background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 9px;
+    box-shadow: 0 16px 38px rgba(0,0,0,.24); display: none;
+  }
+  .module-launcher-panel.open { display: block; animation: launcher-in .14s ease-out; }
+  @keyframes launcher-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .module-launcher-heading { padding: 8px 10px 9px; color: var(--text-muted); font-size: .68rem; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid var(--border); margin-bottom: 5px; }
+  .module-launcher-group { border-bottom: 1px solid #edf0f3; }
+  .module-launcher-group:last-child { border-bottom: 0; }
+  .module-launcher-group summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 10px; border-radius: 6px; color: #263442; font-size: .8rem; font-weight: 700; }
+  .module-launcher-group summary::-webkit-details-marker { display: none; }
+  .module-launcher-group summary::after { content: '›'; margin-left: auto; color: #8793a0; font-size: 1.1rem; transition: transform .15s ease; }
+  .module-launcher-group[open] summary { background: #f2f7f7; color: var(--primary); }
+  .module-launcher-group[open] summary::after { transform: rotate(90deg); color: var(--primary); }
+  .module-launcher-symbol { width: 25px; height: 25px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 6px; background: #e8f5f3; color: #0f766e; font-size: .8rem; }
+  .module-launcher-links { display: grid; gap: 2px; padding: 2px 4px 8px 40px; }
+  .module-launcher-link { display: block; padding: 7px 8px; border-radius: 5px; color: #566271; text-decoration: none; font-size: .74rem; line-height: 1.25; }
+  .module-launcher-link:hover, .module-launcher-link:focus-visible { color: #0f766e; background: #eef8f6; outline: none; }
 
   /* ── Contenido ──────────────────────────────────────────────────────────── */
   .wrapper { margin-left: 280px; flex: 1; min-width: 0; padding: 24px; height: 100vh; overflow-y: auto; }
@@ -373,6 +396,67 @@
           <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
         </div>
       </div>
+      <div class="module-launcher">
+        <button type="button" class="module-launcher-trigger" id="moduleLauncherTrigger" aria-label="Abrir otros módulos" aria-expanded="false" aria-controls="moduleLauncherPanel" title="Otros módulos" onclick="toggleModuleLauncher(event)">
+          <span class="module-launcher-grid" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="module-launcher-caption" aria-hidden="true">OTROS</span>
+        </button>
+        <div class="module-launcher-panel" id="moduleLauncherPanel" aria-label="Otros módulos">
+          <div class="module-launcher-heading">Otros módulos</div>
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">▦</span>Inventario</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=inventario">Inventario</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=reportes">Reportes</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=pendienterecibir">Pendiente por recibir</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=kardex">Kardex</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=articulos">Catálogo de artículos</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=actas">Actas de Entrega</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=dotacionley">Dotación de Ley</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=historial">Historial de Confirmaciones</a>
+            </div>
+          </details>
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">▤</span>Cloud Docs</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=trabajador">Doc Trabajadores</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=documento">Documentos</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=todo">Consolidado</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=docretiros">Doc Retiros</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=logysign">LogySign</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=validarcap">Validar Capacitación</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=permisos">Permisos</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=duplicados">Duplicados</a>
+            </div>
+          </details>
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">◷</span>Facturación</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=servicios">Servicios</a>
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=recibos">Recibos</a>
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=clientescredito">Clientes Crédito</a>
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=bloqueo">Bloqueos</a>
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=tickets">Tickets</a>
+            </div>
+          </details>
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">＋</span>SST</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=evaluacion">Evaluación SST</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=capacitacion">Capacitación</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=capacitacion&amp;subtab=temas">Temas de capacitación</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=pruebaconsumo">Prueba de Consumo</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=participacion">Participación</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=compromiso">Compromisos SST</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=gestionmedica&amp;subtab=casosmedicos">Casos Médicos</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=gestionmedica&amp;subtab=incapacidades">Incapacidades</a>
+            </div>
+          </details>
+          <a class="module-launcher-link" data-module-link href="/directorio-corporativo?usuario=__USER__">Directorio Corporativo</a>
+        </div>
+      </div>
     </div>
     <div class="nomina-profile" id="nominaProfile" style="display:none">
       <button type="button" class="nomina-profile-trigger" onclick="abrirPerfilNomina()" aria-label="Ver y editar mi perfil">
@@ -406,18 +490,6 @@
         <span>Traslados</span>
       </li>
     </ul>
-    <details class="sidebar-other">
-      <summary>Otros</summary>
-      <nav class="sidebar-shortcuts" aria-label="Accesos a otros módulos">
-        <a class="sidebar-shortcut" href="/inventario?usuario=__USER__&amp;tab=actas">Actas de Entrega</a>
-        <a class="sidebar-shortcut" href="/inventario?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
-        <a class="sidebar-shortcut" href="/cloud-docs?usuario=__USER__&amp;tab=docretiros">Doc Retiros</a>
-        <a class="sidebar-shortcut" href="/cloud-docs?usuario=__USER__&amp;tab=logysign">LogySign</a>
-        <a class="sidebar-shortcut" href="/cloud-docs?usuario=__USER__&amp;tab=trabajador">Doc Trabajadores</a>
-        <a class="sidebar-shortcut" href="/facturacion?usuario=__USER__&amp;tab=servicios">Servicios</a>
-        <a class="sidebar-shortcut" href="/directorio-corporativo?usuario=__USER__">Directorio Corporativo</a>
-      </nav>
-    </details>
   </div>
 
   <div class="wrapper">
@@ -1265,8 +1337,24 @@
   let _firmaDigitalCanvasInicializado = false;
 
   document.getElementById('mobile-user-badge').textContent = rol;
-  document.querySelectorAll('.sidebar-shortcut').forEach(link => {
+  document.querySelectorAll('.module-launcher-link').forEach(link => {
     link.href = link.href.replace('__USER__', encodeURIComponent(usuario));
+  });
+  document.querySelectorAll('.module-launcher-group').forEach(group => {
+    group.addEventListener('toggle', () => {
+      if (!group.open) return;
+      document.querySelectorAll('.module-launcher-group').forEach(other => {
+        if (other !== group) other.open = false;
+      });
+    });
+  });
+  document.addEventListener('click', event => {
+    const launcher = document.querySelector('.module-launcher');
+    if (launcher && !launcher.contains(event.target)) cerrarModuleLauncher();
+    if (event.target.closest('.module-launcher-link')) cerrarModuleLauncher();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') cerrarModuleLauncher();
   });
   cargarPerfilNomina();
 
@@ -1556,6 +1644,23 @@
     const shouldOpen = forceState !== undefined ? forceState : !sb.classList.contains('open');
     sb.classList.toggle('open', shouldOpen);
     bd.classList.toggle('open', shouldOpen);
+  }
+
+  function toggleModuleLauncher(event) {
+    event.stopPropagation();
+    const panel = document.getElementById('moduleLauncherPanel');
+    const trigger = document.getElementById('moduleLauncherTrigger');
+    const abierto = !panel.classList.contains('open');
+    panel.classList.toggle('open', abierto);
+    trigger.setAttribute('aria-expanded', String(abierto));
+  }
+
+  function cerrarModuleLauncher() {
+    const panel = document.getElementById('moduleLauncherPanel');
+    const trigger = document.getElementById('moduleLauncherTrigger');
+    if (!panel || !trigger) return;
+    panel.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
   }
 
   // ── Helpers compartidos ──────────────────────────────────────────────────
@@ -3617,7 +3722,18 @@
     const selectedReg = trasFilterRegional.value;
     const selectedOp  = trasFilterOperacion.value;
     const opCounts = {};
-    _trasState.allData.forEach(r => { opCounts[r.operacion_origen] = (opCounts[r.operacion_origen] || 0) + 1; });
+    // Un traslado cuenta tanto para su operación de origen como de destino —
+    // así el filtro refleja los traslados que le conciernen a una operación,
+    // ya sea que los envíe o los reciba. El total "Todas" usa la cantidad de
+    // filas real (no la suma de los conteos, que puede duplicar un traslado
+    // cuyo origen y destino caen en operaciones distintas).
+    _trasState.allData.forEach(r => {
+      if (r.operacion_origen) opCounts[r.operacion_origen] = (opCounts[r.operacion_origen] || 0) + 1;
+      if (r.operacion_destino && r.operacion_destino !== r.operacion_origen) {
+        opCounts[r.operacion_destino] = (opCounts[r.operacion_destino] || 0) + 1;
+      }
+    });
+    const totalVisible = _trasState.allData.length;
 
     document.getElementById('trasFilterRegionalWrap').style.display = t.sinFiltro ? '' : 'none';
 
@@ -3627,9 +3743,8 @@
         regCounts[reg] = (t.opsPorRegional[reg] || []).reduce((sum, op) => sum + (opCounts[op] || 0), 0);
       });
       trasFilterRegional.innerHTML = '';
-      const totalReg = Object.values(regCounts).reduce((a, b) => Number(a) + Number(b), 0);
       const optAllR = document.createElement('option');
-      optAllR.value = ''; optAllR.textContent = `Todas las regionales (${totalReg})`;
+      optAllR.value = ''; optAllR.textContent = `Todas las regionales (${totalVisible})`;
       trasFilterRegional.appendChild(optAllR);
       Object.keys(t.opsPorRegional || {}).sort().forEach(r => {
         const opt = document.createElement('option');
@@ -3642,9 +3757,8 @@
       if (selectedReg) allowedOps = t.opsPorRegional[selectedReg] || [];
       else { const set = new Set(); Object.values(t.opsPorRegional || {}).forEach(ops => ops.forEach(o => set.add(o))); allowedOps = Array.from(set).sort(); }
       trasFilterOperacion.innerHTML = '';
-      const totalOp = Object.values(opCounts).reduce((a, b) => Number(a) + Number(b), 0);
       const optAllO = document.createElement('option');
-      optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${totalOp})`;
+      optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${totalVisible})`;
       trasFilterOperacion.appendChild(optAllO);
       allowedOps.forEach(op => {
         const opt = document.createElement('option');
@@ -3654,9 +3768,8 @@
       });
     } else {
       trasFilterOperacion.innerHTML = '';
-      const totalOp = (t.operacionesFiltro || []).reduce((sum, op) => sum + (opCounts[op] || 0), 0);
       const optAllO = document.createElement('option');
-      optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${totalOp})`;
+      optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${totalVisible})`;
       trasFilterOperacion.appendChild(optAllO);
       (t.operacionesFiltro || []).forEach(op => {
         const opt = document.createElement('option');
@@ -3693,7 +3806,7 @@
     const opSel = trasFilterOperacion.value;
     return _trasState.allData.filter(r => {
       if (_trasState.estadoActivo && r.estado_doc !== _trasState.estadoActivo) return false;
-      if (opSel && String(r.operacion_origen || '') !== opSel) return false;
+      if (opSel && String(r.operacion_origen || '') !== opSel && String(r.operacion_destino || '') !== opSel) return false;
       if (q) {
         const hay = [r.Trabajador, r['Identificación'], r.operacion_origen, r.operacion_destino, r.direccion_destino, r.celular_trabajador, r.email_trabajador, r.observaciones, r.Usuario]
           .map(v => String(v == null ? '' : v).toLowerCase()).join(' ');

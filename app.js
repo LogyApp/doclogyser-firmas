@@ -54,6 +54,7 @@ const formvalidarcapRoutes           = require('./src/routes/formvalidarcap');
 const descuentonominaRoutes          = require('./src/routes/descuentonomina');
 const sstRoutes                      = require('./src/routes/sst');
 const directoriocorporativoRoutes    = require('./src/routes/directoriocorporativo');
+const perfilRoutes                    = require('./src/routes/perfil');
 const casosmedicosRoutes             = require('./src/routes/casosmedicos');
 const facturacionRoutes               = require('./src/routes/facturacion');
 
@@ -126,6 +127,7 @@ app.use('/sst', sstRoutes);
 app.use('/casosmedicos', casosmedicosRoutes);
 app.use('/facturacion', facturacionRoutes);
 app.use('/directorio-corporativo', directoriocorporativoRoutes);
+app.use('/perfil', perfilRoutes);
 if (process.env.NODE_ENV !== 'production') {
   const devRoutes = require('./src/routes/dev');
   app.use('/dev', devRoutes);

@@ -303,7 +303,8 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       firmasCoordenadas,
       fechaProgramada,
       causa,
-      force
+      force,
+      incluirDescuento
     } = req.body;
 
     if (!req.file) {
@@ -378,7 +379,10 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
     let idDescuentoAuto = null;
     let tokenFirmaDescuento = null;
 
-    if (Number(idConfigDoc) === 18) {
+    // Contrato firmado (Id 18): por defecto se agrupa con la Autorización de
+    // Descuento por Nómina, pero puede desmarcarse desde el formulario para
+    // enviar únicamente el contrato (incluirDescuento llega como 'false').
+    if (Number(idConfigDoc) === 18 && incluirDescuento !== 'false') {
       let ciudad = '';
       const [ccRows] = await pool.execute(
         'SELECT `C.C.` FROM Maestro_Operaciones WHERE OPERACIÓN = ? LIMIT 1',
