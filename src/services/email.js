@@ -1307,9 +1307,6 @@ async function notificarFirmaPruebaConsumo({ email, nombreTrabajador, cliente, u
             ✍️ Firmar consentimiento ahora
           </a>
         </div>
-        <div style="background:#fffbea;border-left:4px solid #f0d060;padding:12px 16px;border-radius:0 4px 4px 0;font-size:.83rem;color:#7a6000;margin-bottom:24px">
-          ⚠️ Este enlace tiene una validez de <strong>48 horas</strong>.
-        </div>
         <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
           Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
           <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
@@ -1323,7 +1320,6 @@ async function notificarFirmaPruebaConsumo({ email, nombreTrabajador, cliente, u
   await transporter.sendMail({
     from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to: email,
-    cc: emailUsuario || undefined,
     subject: asunto,
     html: cuerpo,
   });
@@ -1491,6 +1487,9 @@ async function enviarCorreoFirmaTrabajadorSST({ email, nombreTrabajador, urlFirm
             ✍️ Firmar compromiso ahora
           </a>
         </div>
+        <div style="background:#fffbea;border-left:4px solid #f0d060;padding:12px 16px;border-radius:0 4px 4px 0;font-size:.83rem;color:#7a6000;margin-bottom:24px">
+          ⚠️ Este enlace tiene una validez de <strong>48 horas</strong>.
+        </div>
         <p style="color:#aaa;font-size:.78rem;margin:0;line-height:1.6">
           Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
           <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
@@ -1504,7 +1503,6 @@ async function enviarCorreoFirmaTrabajadorSST({ email, nombreTrabajador, urlFirm
   await transporter.sendMail({
     from: `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to: email,
-    cc: emailUsuario || undefined,
     subject: asunto,
     html: cuerpo,
   });
@@ -1785,12 +1783,9 @@ async function notificarCapacitacionSSTCompletada({ email, nombreTrabajador, tem
     </div>
   `;
 
-  const ccList = [emailUsuario].filter(Boolean);
-
   await transporter.sendMail({
     from: `"LOG&SER Gestión Documental" <${EMAIL_FROM}>`,
     to: email,
-    cc: ccList.join(', '),
     subject: asunto,
     html: cuerpo,
   });

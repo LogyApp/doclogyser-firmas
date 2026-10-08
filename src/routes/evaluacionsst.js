@@ -6,6 +6,12 @@ const { v4: uuidv4 } = require('uuid');
 const pool    = require('../services/db');
 const { subirFirma, obtenerFirmaBase64Reciente } = require('../services/storage');
 const { notificarFirmaEvaluacionSST, notificarEvaluacionSSTCompletada } = require('../services/email');
+const {
+  crearNotificacionEvaluacionSST,
+  obtenerNotificacionesUsuario,
+  marcarNotificacionesLeidas,
+  marcarTodasLeidas
+} = require('../services/notificacionesService');
 const { renderPDF } = require('../services/evsstPdfGenerator');
 const { subirPDFEvaluacionSST } = require('../services/storage');
 
@@ -798,6 +804,16 @@ router.post('/api/responder/:id', async (req, res) => {
       }).catch(e => console.error('[evaluacionsst] Error sending completed email:', e.message));
     }
 
+    // 8. Crear notificación interna en Maestro_notificaciones para analistas y líderes SST
+    crearNotificacionEvaluacionSST(pool, {
+      id_evaluacion,
+      identificacion: ev.identificacion,
+      tipo: ev.tipo,
+      resultado,
+      puntaje: score,
+      url_doc: urlDoc
+    }).catch(e => console.error('[evaluacionsst] Error creando notificación interna:', e.message));
+
     res.json({ ok: true, urlDoc, resultado, score });
   } catch (err) {
     console.error('[evaluacionsst] POST /api/responder:', err);
@@ -897,6 +913,59 @@ router.delete('/api/evaluacion/:id', async (req, res) => {
     res.json({ ok: true, id_evaluacion: id });
   } catch (err) {
     console.error('[evaluacionsst] DELETE /api/evaluacion/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: NOTIFICACIONES SST (CENTRALIZADAS) ═════
+router.get('/api/notificaciones', async (req, res) => {
+  try {
+    const { usuario, limit } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const data = await obtenerNotificacionesUsuario(pool, {
+      usuarioId: usuario,
+      modulo: 'evaluacionsst',
+      limit
+    });
+
+    res.json(data);
+  } catch (err) {
+    console.error('[evaluacionsst] GET /api/notificaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/notificaciones/marcar-leidas', async (req, res) => {
+  try {
+    const { usuario, ids } = req.body;
+    if (!usuario || !ids) return res.status(400).json({ error: 'usuario e ids requeridos' });
+
+    const result = await marcarNotificacionesLeidas(pool, {
+      usuarioId: usuario,
+      ids
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[evaluacionsst] POST /api/notificaciones/marcar-leidas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/notificaciones/marcar-todas-leidas', async (req, res) => {
+  try {
+    const { usuario } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const result = await marcarTodasLeidas(pool, {
+      usuarioId: usuario,
+      modulo: 'evaluacionsst'
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[evaluacionsst] POST /api/notificaciones/marcar-todas-leidas:', err);
     res.status(500).json({ error: err.message });
   }
 });

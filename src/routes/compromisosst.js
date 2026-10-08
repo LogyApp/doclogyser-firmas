@@ -15,6 +15,12 @@ const {
   enviarCorreoFirmaLiderSST,
   enviarNotificacionCompletadoSST
 } = require('../services/email');
+const {
+  crearNotificacionCompromisoSST,
+  obtenerNotificacionesUsuario,
+  marcarNotificacionesLeidas,
+  marcarTodasLeidas
+} = require('../services/notificacionesService');
 const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
 const { generarPDF } = require('../services/renderer');
 
@@ -924,16 +930,13 @@ router.post('/api/firmar-trabajador', async (req, res) => {
       [firma_base64, urlFirmaTrab, idcsst]
     );
 
-    // Notificar al Analista SST (usuario creador)
-    const [usuRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [c.usuario]);
-    const emailUsuario = usuRows.length ? usuRows[0].Email : null;
-    if (emailUsuario) {
-      await enviarNotificacionTrabajadorFirmoSST({
-        emailUsuario,
-        nombreTrabajador: c.nombre_trabajador,
-        identificacion: c.identificaciontrabajador
-      }).catch(e => console.error('[compromisosst] Error enviando correo al Analista SST:', e.message));
-    }
+    // Notificar en la campana al usuario que creó el registro para que pueda firmar y generar el PDF
+    crearNotificacionCompromisoSST(pool, {
+      idcsst,
+      identificacion: c.identificaciontrabajador,
+      usuarioCreador: c.usuario,
+      nombre_trabajador: c.nombre_trabajador
+    }).catch(e => console.error('[compromisosst] Error creando notificación en campana:', e.message));
 
     res.json({ ok: true });
   } catch (err) {
@@ -1075,17 +1078,13 @@ router.post('/api/firmar-analista', async (req, res) => {
     // 5. Registrar en Maestro_docTrabajador (Tipo 72, Prefijo CSST)
     await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
 
-    // 6. Notificar al Analista SST que el proceso concluyó
-    const [usuRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [c.usuario]);
-    const emailUsuario = usuRows.length ? usuRows[0].Email : null;
-    if (emailUsuario) {
-      await enviarNotificacionCompletadoSST({
-        emailUsuario,
-        nombreTrabajador: c.nombre_trabajador,
-        identificacion: c.identificaciontrabajador,
-        urlDoc
-      }).catch(e => console.error('[compromisosst] Error enviando correo de completado al Analista SST:', e.message));
-    }
+    // 6. Actualizar notificación en la campana con el PDF final generado
+    pool.execute(
+      `UPDATE Maestro_notificaciones 
+       SET resultado = 'COMPLETADO', url_doc = ?, titulo = 'Compromiso SST Completado' 
+       WHERE modulo = 'csst' AND referencia_id = ?`,
+      [urlDoc, idcsst]
+    ).catch(e => console.error('[compromisosst] Error actualizando notificación CSST:', e.message));
 
 
 
@@ -1170,17 +1169,13 @@ router.post('/api/firmar-lider', async (req, res) => {
     // Registrar en Maestro_docTrabajador (Tipo 72, Prefijo CSST)
     await registrarDocumentoTrabajador(c.identificaciontrabajador, urlDoc, c.usuario, 72, 'CSST');
 
-    // Notificar al Analista SST que el proceso concluyó
-    const [usuRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [c.usuario]);
-    const emailUsuario = usuRows.length ? usuRows[0].Email : null;
-    if (emailUsuario) {
-      await enviarNotificacionCompletadoSST({
-        emailUsuario,
-        nombreTrabajador: c.nombre_trabajador,
-        identificacion: c.identificaciontrabajador,
-        urlDoc
-      }).catch(e => console.error('[compromisosst] Error enviando correo de completado al Analista SST:', e.message));
-    }
+    // Actualizar notificación en la campana con el PDF final generado
+    pool.execute(
+      `UPDATE Maestro_notificaciones 
+       SET resultado = 'COMPLETADO', url_doc = ?, titulo = 'Compromiso SST Completado' 
+       WHERE modulo = 'csst' AND referencia_id = ?`,
+      [urlDoc, idcsst]
+    ).catch(e => console.error('[compromisosst] Error actualizando notificación CSST:', e.message));
 
     res.json({ ok: true, urlDoc });
   } catch (err) {
@@ -1474,6 +1469,59 @@ router.delete('/api/compromiso/:id', async (req, res) => {
     res.json({ ok: true, idcsst: id });
   } catch (err) {
     console.error('[compromisosst] DELETE /api/compromiso/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: NOTIFICACIONES SST (CENTRALIZADAS) ═════
+router.get('/api/notificaciones', async (req, res) => {
+  try {
+    const { usuario, limit } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const data = await obtenerNotificacionesUsuario(pool, {
+      usuarioId: usuario,
+      modulo: 'csst',
+      limit
+    });
+
+    res.json(data);
+  } catch (err) {
+    console.error('[compromisosst] GET /api/notificaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/notificaciones/marcar-leidas', async (req, res) => {
+  try {
+    const { usuario, ids } = req.body;
+    if (!usuario || !ids) return res.status(400).json({ error: 'usuario e ids requeridos' });
+
+    const result = await marcarNotificacionesLeidas(pool, {
+      usuarioId: usuario,
+      ids
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[compromisosst] POST /api/notificaciones/marcar-leidas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/notificaciones/marcar-todas-leidas', async (req, res) => {
+  try {
+    const { usuario } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const result = await marcarTodasLeidas(pool, {
+      usuarioId: usuario,
+      modulo: 'csst'
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[compromisosst] POST /api/notificaciones/marcar-todas-leidas:', err);
     res.status(500).json({ error: err.message });
   }
 });

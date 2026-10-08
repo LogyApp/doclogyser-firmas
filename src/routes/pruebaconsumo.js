@@ -10,9 +10,14 @@ const {
   obtenerFirmaBase64Reciente
 } = require('../services/storage');
 const {
-  notificarFirmaPruebaConsumo,
-  notificarPruebaConsumoFirmada
+  notificarFirmaPruebaConsumo
 } = require('../services/email');
+const {
+  crearNotificacionPruebaConsumoSST,
+  obtenerNotificacionesUsuario,
+  marcarNotificacionesLeidas,
+  marcarTodasLeidas
+} = require('../services/notificacionesService');
 const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
 const { generarPDF } = require('../services/renderer');
 
@@ -608,7 +613,7 @@ router.post('/api/crear', async (req, res) => {
 
     const idprueba = uuidv4();
     const tokenFirma = crypto.randomBytes(32).toString('hex');
-    const tokenExpira = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 horas de vigencia
+    const tokenExpira = null; // Sin vencimiento: permanece abierto hasta que se firme
 
     await pool.execute(
       `INSERT INTO Dynamic_pruebaconsumo 
@@ -705,7 +710,7 @@ router.post('/api/crear-masivo', async (req, res) => {
 
       const idprueba = uuidv4();
       const tokenFirma = crypto.randomBytes(32).toString('hex');
-      const tokenExpira = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 horas de vigencia
+      const tokenExpira = null; // Sin vencimiento: permanece abierto hasta que se firme
 
       await conn.execute(
         `INSERT INTO Dynamic_pruebaconsumo 
@@ -827,20 +832,13 @@ router.post('/api/firmar-asistente', async (req, res) => {
     // Registrar en Maestro_docTrabajador
     await registrarDocumentoTrabajador(c.identificacion, urlDoc, c.usuario, 19, 'CPC');
 
-    // Notificar al creador por correo
-    const [usuRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [c.usuario]);
-    const emailUsuario = usuRows.length ? usuRows[0].Email : null;
-
-    if (emailUsuario) {
-      // Sin await: el PDF y el registro ya quedaron guardados.
-      notificarPruebaConsumoFirmada({
-        nombreTrabajador: c.nombre_trabajador,
-        identificacion: c.identificacion,
-        cliente: c.cliente,
-        urlDoc,
-        emailUsuario
-      }).catch(e => console.error('[pruebaconsumo] Error enviando correo al creador:', e.message));
-    }
+    // Crear notificación interna en Maestro_notificaciones para analistas y líderes SST
+    crearNotificacionPruebaConsumoSST(pool, {
+      idprueba,
+      identificacion: c.identificacion,
+      cliente: c.cliente,
+      url_doc: urlDoc
+    }).catch(e => console.error('[pruebaconsumo] Error creando notificación interna:', e.message));
 
     res.json({ ok: true, urlDoc });
   } catch (err) {
@@ -936,19 +934,18 @@ router.post('/api/prueba/:id/regenerar-token', async (req, res) => {
       return res.status(400).json({ error: 'El consentimiento ya está generado y firmado.' });
     }
 
-    // Force generate new token
+    // Force generate new token (permanece abierto sin expiración)
     const token = crypto.randomBytes(32).toString('hex');
-    const expira = new Date(Date.now() + 48 * 60 * 60 * 1000);
     await pool.execute(
-      'UPDATE Dynamic_pruebaconsumo SET token_firma = ?, token_expira = ? WHERE idprueba = ?',
-      [token, expira, id]
+      'UPDATE Dynamic_pruebaconsumo SET token_firma = ?, token_expira = NULL WHERE idprueba = ?',
+      [token, id]
     );
 
     const protocol = req.secure ? 'https' : 'http';
     const host = req.get('host');
     const urlFirma = `${protocol}://${host}/pruebaconsumo/firmar?item=${id}`;
 
-    res.json({ ok: true, urlFirma, token, token_expira: expira });
+    res.json({ ok: true, urlFirma, token, token_expira: null });
   } catch (err) {
     console.error('[pruebaconsumo] POST /api/prueba/:id/regenerar-token:', err);
     res.status(500).json({ error: err.message });
@@ -974,15 +971,13 @@ router.post('/api/prueba/:id/enviar-enlace', async (req, res) => {
       return res.status(400).json({ error: 'El documento ya está generado y firmado.' });
     }
 
-    // Si expiró o es nulo el token, refrescarlo
+    // Si no tiene token, generarlo (sin plazo de vencimiento)
     let token = c.token_firma;
-    let expira = c.token_expira;
-    if (!token || !expira || new Date(expira) < new Date()) {
+    if (!token) {
       token = crypto.randomBytes(32).toString('hex');
-      expira = new Date(Date.now() + 48 * 60 * 60 * 1000);
       await pool.execute(
-        'UPDATE Dynamic_pruebaconsumo SET token_firma = ?, token_expira = ? WHERE idprueba = ?',
-        [token, expira, id]
+        'UPDATE Dynamic_pruebaconsumo SET token_firma = ?, token_expira = NULL WHERE idprueba = ?',
+        [token, id]
       );
     }
 
@@ -1064,6 +1059,59 @@ router.delete('/api/prueba/:id', async (req, res) => {
     res.json({ ok: true, idprueba: id });
   } catch (err) {
     console.error('[pruebaconsumo] DELETE /api/prueba/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: NOTIFICACIONES SST (CENTRALIZADAS) ═════
+router.get('/api/notificaciones', async (req, res) => {
+  try {
+    const { usuario, limit } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const data = await obtenerNotificacionesUsuario(pool, {
+      usuarioId: usuario,
+      modulo: 'pruebaconsumo',
+      limit
+    });
+
+    res.json(data);
+  } catch (err) {
+    console.error('[pruebaconsumo] GET /api/notificaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/notificaciones/marcar-leidas', async (req, res) => {
+  try {
+    const { usuario, ids } = req.body;
+    if (!usuario || !ids) return res.status(400).json({ error: 'usuario e ids requeridos' });
+
+    const result = await marcarNotificacionesLeidas(pool, {
+      usuarioId: usuario,
+      ids
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[pruebaconsumo] POST /api/notificaciones/marcar-leidas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/notificaciones/marcar-todas-leidas', async (req, res) => {
+  try {
+    const { usuario } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const result = await marcarTodasLeidas(pool, {
+      usuarioId: usuario,
+      modulo: 'pruebaconsumo'
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[pruebaconsumo] POST /api/notificaciones/marcar-todas-leidas:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -118,6 +118,7 @@ app.use('/biometrico', biometricoRoutes);
 app.use('/logysign', logysignRoutes);
 app.use('/registrologysign', registrologysignRoutes);
 app.use('/registroslogysign', registrologysignRoutes);
+app.use('/cloud-docs/descuento-nomina', descuentonominaRoutes);
 app.use('/cloud-docs', clouddocsRoutes);
 app.use('/formcloud-docs', formclouddocsRoutes);
 app.use('/bloqueodatos', bloqueodatosRoutes);

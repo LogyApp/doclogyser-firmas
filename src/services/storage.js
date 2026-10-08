@@ -158,6 +158,25 @@ async function subirPDFDescuentoNomina(identificacion, formattedDate, bufferPdf)
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function eliminarPDFDescuentoNomina(url, identificacion) {
+  if (!url || !identificacion) return false;
+
+  const parsed = new URL(url);
+  const partes = parsed.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  if (parsed.protocol !== 'https:' || parsed.hostname !== 'storage.googleapis.com' || parsed.search || parsed.hash) {
+    throw new Error('La URL del PDF de descuento no pertenece a Cloud Storage.');
+  }
+  if (partes.length !== 3 || partes[0] !== BUCKET_PDFS || partes[1] !== String(identificacion)) {
+    throw new Error('El PDF no pertenece al trabajador o bucket esperado.');
+  }
+  if (!partes[2].startsWith(`${identificacion}.DCTO.`) || !partes[2].endsWith('.pdf')) {
+    throw new Error('El objeto no coincide con el patrón de PDF DCTO.');
+  }
+
+  await storage.bucket(BUCKET_PDFS).file(partes.slice(1).join('/')).delete({ ignoreNotFound: true });
+  return true;
+}
+
 async function subirPDFCompromisoSST(identificacion, formattedDate, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.CSST.${formattedDate}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
@@ -290,6 +309,7 @@ module.exports = {
   subirPDFGeneralAsistencia,
   subirPDFPruebaConsumo,
   subirPDFDescuentoNomina,
+  eliminarPDFDescuentoNomina,
   subirPDFCompromisoSST,
   subirPDFEvaluacionSST,
   subirPDFCapacitacionSST,

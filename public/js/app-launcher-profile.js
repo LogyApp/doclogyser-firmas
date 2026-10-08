@@ -10,7 +10,8 @@
     { id: 'nomina', name: 'Nómina', symbol: '▣', tabs: [
       ['Activos', 'activos'], ['Retiros', 'retiros'], ['Bloqueo de Datos', 'bloqueo'],
       ['Biométrico · Asistencia', 'biometrico', 'asistencia'], ['Biométrico · Recorridos GPS', 'biometrico', 'rutas'],
-      ['Biométrico · Reportes', 'biometrico', 'reportes'], ['Traslados', 'traslados']
+      ['Biométrico · Reportes', 'biometrico', 'reportes'], ['Traslados', 'traslados'],
+      ['Incapacidades', 'incapacidades']
     ] },
     { id: 'inventario', name: 'Inventario', symbol: '▦', tabs: [
       ['Inventario', 'inventario'], ['Reportes', 'reportes'], ['Pendiente por recibir', 'pendienterecibir'],
@@ -20,7 +21,8 @@
     { id: 'cloud-docs', name: 'Cloud Docs', symbol: '▤', tabs: [
       ['Doc Trabajadores', 'trabajador'], ['Tipos de Documento', 'documento'], ['Consolidado', 'todo'],
       ['Doc Retiros', 'docretiros'], ['LogySign', 'logysign'], ['Solicitudes', 'solicitudes'],
-      ['Validar Capacitación', 'validarcap'], ['Permisos', 'permisos'], ['Duplicados', 'duplicados']
+      ['Validar Capacitación', 'validarcap'], ['Permisos', 'permisos'], ['Duplicados', 'duplicados'],
+      ['Autorizaciones de Descuento', 'descuentonomina']
     ] },
     { id: 'facturacion', name: 'Facturación', symbol: '◷', tabs: [
       ['Servicios', 'servicios'], ['Recibos', 'recibos'], ['Clientes Crédito', 'clientescredito'],

@@ -7,6 +7,7 @@ const pool = require('../services/db');
 const {
   subirFirma,
   subirPDFDescuentoNomina,
+  eliminarPDFDescuentoNomina,
   obtenerFirmaBase64Reciente
 } = require('../services/storage');
 const {
@@ -15,6 +16,7 @@ const {
 } = require('../services/email');
 const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
 const { generarPDF } = require('../services/renderer');
+const { computarAccesoCloudDocs } = require('../services/clouddocsAccess');
 
 const router = express.Router();
 
@@ -22,15 +24,7 @@ const HTML_INDEX_PATH = path.join(__dirname, '../views/descuentonomina/index.htm
 const HTML_FORM_PATH  = path.join(__dirname, '../views/formdescuentonomina/form.html');
 const HTML_SIGN_PATH  = path.join(__dirname, '../views/descuentonomina/firmar.html');
 
-const ROLES_ACCESO = [
-  'Sistema', 'Control', 'Nomina',
-  'Contratación', 'Archivo', 'Asistencial',
-  'AuxiliarR', 'CoordinadorR',
-  'Auxiliar', 'Coordinador'
-];
-const ROLES_SIN_FILTRO = ['Sistema', 'Control', 'Nomina', 'Contratación', 'Archivo', 'Asistencial'];
-const ROLES_REGIONAL = ['AuxiliarR', 'CoordinadorR'];
-const ROLES_OPERACION = ['Auxiliar', 'Coordinador'];
+const SECCION_MENU_DESCUENTO_NOMINA = 'DescuentoNomina';
 
 function formatTimestamp() {
   const date = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -84,84 +78,48 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
 
 async function computarAccesoDN(usuarioId) {
   if (!usuarioId) return null;
+  const accesoCloudDocs = await computarAccesoCloudDocs(pool, usuarioId);
+  if (!accesoCloudDocs || !accesoCloudDocs.secciones.includes(SECCION_MENU_DESCUENTO_NOMINA)) return null;
 
-  const [uRows] = await pool.execute(
-    'SELECT ID, Nombre, Rol, Regional, Dispositivo, `Operación` FROM Maestro_Usuarios WHERE ID = ?',
-    [usuarioId]
-  );
-  if (!uRows.length) return null;
-
-  const usuario = uRows[0];
-  const rol = usuario.Rol || '';
-
-  if (!ROLES_ACCESO.includes(rol)) return null;
-  
-  const acceso = {
-    usuarioId: usuario.ID,
-    usuarioNombre: usuario.Nombre || usuario.ID,
-    rol,
-    regional: usuario.Regional || '',
-    dispositivo: usuario.Dispositivo || '',
-    operacion: usuario['Operación'] || '',
-    sinFiltro: ROLES_SIN_FILTRO.includes(rol),
-    filtroSQL: [],
-    operacionesFiltro: [],
-    opsPorRegional: {},
-    ciudad: '',
-  };
-
-  let opRows = [];
-  if (acceso.sinFiltro) {
-    const [rows] = await pool.execute(
-      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
-    );
-    opRows = rows;
-  } else if (ROLES_REGIONAL.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.regional]
-    );
-    opRows = rows;
-    acceso.filtroSQL = opRows.map(r => r.OPERACIÓN).filter(Boolean);
-  } else if (ROLES_OPERACION.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.operacion]
-    );
-    opRows = rows;
-    if (opRows.length && !acceso.regional) {
-      acceso.regional = opRows[0].REGIONAL;
-    }
-    acceso.filtroSQL = [acceso.operacion].filter(Boolean);
-  } else {
-    if (acceso.operacion) {
-      const [rows] = await pool.execute(
-        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-        [acceso.operacion]
-      );
-      opRows = rows;
-    }
-    acceso.filtroSQL = opRows.map(r => r.OPERACIÓN).filter(Boolean);
-  }
-
-  // Agrupar por regional para los dropdowns
-  const [allOps] = await pool.execute(
-    "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
-  );
-  acceso.opsPorRegional = agruparOperacionesPorRegional(allOps);
-  acceso.operacionesFiltro = opRows.map((row) => row['OPERACIÓN'] || row['Operación']).filter(Boolean);
-
-  if (usuario['Operación']) {
+  let ciudad = '';
+  if (accesoCloudDocs.operacion) {
     const [ccRows] = await pool.execute(
       'SELECT `C.C.` FROM Maestro_Operaciones WHERE OPERACIÓN = ? LIMIT 1',
-      [usuario['Operación']]
+      [accesoCloudDocs.operacion]
     );
-    if (ccRows.length) {
-      acceso.ciudad = ccRows[0]['C.C.'] || '';
-    }
+    if (ccRows.length) ciudad = ccRows[0]['C.C.'] || '';
   }
 
-  return acceso;
+  return {
+    ...accesoCloudDocs,
+    filtroSQL: accesoCloudDocs.sinFiltro ? [] : accesoCloudDocs.operacionesFiltro,
+    ciudad,
+  };
+}
+
+async function identificacionDentroAlcance(acceso, identificacion) {
+  if (!acceso || !identificacion) return false;
+  if (acceso.sinFiltro) return true;
+  if (!acceso.operacionesFiltro.length) return false;
+
+  const placeholders = acceso.operacionesFiltro.map(() => '?').join(',');
+  const [rows] = await pool.execute(
+    `SELECT 1 FROM \`Maestro_Vinculación\`
+     WHERE Identificación = ? AND Estado = 'Activo' AND \`Operación\` IN (${placeholders})
+     LIMIT 1`,
+    [identificacion, ...acceso.operacionesFiltro]
+  );
+  return rows.length > 0;
+}
+
+async function descuentoDentroAlcance(acceso, id) {
+  const [[descuento]] = await pool.execute(
+    'SELECT identificacion, tipo_descuento FROM Dynamic_descuentonomina WHERE id_descuento = ? LIMIT 1',
+    [id]
+  );
+  if (!descuento) return true;
+  if (['Contratación', 'Archivo', 'Asistencial'].includes(acceso.rol) && descuento.tipo_descuento !== 'Anticipada') return false;
+  return identificacionDentroAlcance(acceso, descuento.identificacion);
 }
 
 function agruparOperacionesPorRegional(opRows) {
@@ -178,8 +136,33 @@ function agruparOperacionesPorRegional(opRows) {
 }
 
 // ═════ SERVIR INTERFAZ ═════
+function apiBaseDesdeMontaje(req) {
+  return (req.baseUrl || '').startsWith('/cloud-docs/descuento-nomina')
+    ? '/cloud-docs/descuento-nomina/api'
+    : '/descuentonomina/api';
+}
+
+async function servirFormulario(req, res) {
+  const { usuario } = req.query;
+  if (!usuario) return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
+  const acceso = await computarAccesoDN(usuario);
+  if (!acceso) return res.status(403).send('<h2>Error: Usuario no autorizado para Autorizaciones de Descuento</h2>');
+
+  const config = JSON.stringify({
+    ...acceso,
+    regionalesFiltro: Object.keys(acceso.opsPorRegional),
+    apiBase: apiBaseDesdeMontaje(req),
+    initialView: 'formulario',
+  }).replace(/<\/script>/gi, '<\\/script>');
+  const html = fs.readFileSync(HTML_FORM_PATH, 'utf8');
+  return res.send(html.replace('__CONFIG__', config));
+}
+
 router.get('/', async (req, res) => {
   try {
+    if ((req.baseUrl || '').toLowerCase() === '/descuentonomina') {
+      return res.status(410).send('<h2>Este módulo ahora está disponible como pestaña autorizada en Cloud Docs.</h2>');
+    }
     const { usuario } = req.query;
     if (!usuario) {
       return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
@@ -200,6 +183,7 @@ router.get('/', async (req, res) => {
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
+      apiBase: apiBaseDesdeMontaje(req),
       initialView,
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -207,6 +191,18 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('[descuentonomina] Error serving page:', err);
     res.status(500).send('<h2>Error interno del servidor</h2>');
+  }
+});
+
+router.get('/form', async (req, res) => {
+  try {
+    if (!(req.baseUrl || '').startsWith('/cloud-docs/descuento-nomina')) {
+      return res.status(410).send('<h2>El formulario ahora se abre desde Cloud Docs.</h2>');
+    }
+    return await servirFormulario(req, res);
+  } catch (err) {
+    console.error('[descuentonomina] Error serving form:', err);
+    return res.status(500).send('<h2>Error interno del servidor</h2>');
   }
 });
 
@@ -259,12 +255,57 @@ router.get('/firmar', async (req, res) => {
   }
 });
 
+router.use('/api', async (req, res, next) => {
+  const urlOriginal = (req.originalUrl || '').toLowerCase();
+  if (urlOriginal.startsWith('/descuentonomina/api/') && !urlOriginal.startsWith('/descuentonomina/api/firmar-asistente')) {
+    return res.status(410).json({ error: 'Las APIs administrativas se movieron a Cloud Docs.' });
+  }
+  if (urlOriginal.startsWith('/descuentonomina/api/firmar-asistente')) {
+    return next();
+  }
+
+  try {
+    const usuario = req.query.usuario || req.body?.usuario;
+    const acceso = await computarAccesoDN(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No tiene habilitada la sección DescuentoNomina en Cloud Docs.' });
+    req.descuentoNominaAccess = acceso;
+    return next();
+  } catch (err) {
+    console.error('[descuentonomina] Error verificando acceso API:', err);
+    return res.status(500).json({ error: 'No fue posible validar el acceso.' });
+  }
+});
+
+router.all('/api/prueba/:id', async (req, res, next) => {
+  try {
+    if (await descuentoDentroAlcance(req.descuentoNominaAccess, req.params.id)) return next();
+    return res.status(403).json({ error: 'No tiene acceso a esta autorización de descuento.' });
+  } catch (err) {
+    console.error('[descuentonomina] Error verificando alcance del registro:', err);
+    return res.status(500).json({ error: 'No fue posible validar el alcance del registro.' });
+  }
+});
+
+router.all('/api/prueba/:id/:accion', async (req, res, next) => {
+  try {
+    if (await descuentoDentroAlcance(req.descuentoNominaAccess, req.params.id)) return next();
+    return res.status(403).json({ error: 'No tiene acceso a esta autorización de descuento.' });
+  } catch (err) {
+    console.error('[descuentonomina] Error verificando alcance de acción:', err);
+    return res.status(500).json({ error: 'No fue posible validar el alcance del registro.' });
+  }
+});
+
 // ═════ API: GET /api/trabajadores-por-operacion ═════
 router.get('/api/trabajadores-por-operacion', async (req, res) => {
   try {
     const { regional, operacion } = req.query;
     if (!regional || !operacion) {
       return res.status(400).json({ error: 'regional y operacion requeridos' });
+    }
+    const acceso = req.descuentoNominaAccess;
+    if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacion)) {
+      return res.status(403).json({ error: 'No tiene acceso a esta operación.' });
     }
 
     const [rows] = await pool.execute(
@@ -286,6 +327,9 @@ router.get('/api/trabajadores-por-operacion', async (req, res) => {
 router.get('/api/contacto/:identificacion', async (req, res) => {
   try {
     const { identificacion } = req.params;
+    if (!await identificacionDentroAlcance(req.descuentoNominaAccess, identificacion)) {
+      return res.status(403).json({ error: 'No tiene acceso a este trabajador.' });
+    }
     const [rows] = await pool.execute(
       'SELECT Email, Celular FROM Maestro_Segmentación WHERE Identificación = ? LIMIT 1',
       [identificacion]
@@ -310,6 +354,9 @@ router.post('/api/actualizar-contacto', async (req, res) => {
     const { identificacion, email, celular } = req.body;
     if (!identificacion) {
       return res.status(400).json({ error: 'identificacion requerida' });
+    }
+    if (!await identificacionDentroAlcance(req.descuentoNominaAccess, identificacion)) {
+      return res.status(403).json({ error: 'No tiene acceso a este trabajador.' });
     }
 
     await pool.execute(
@@ -638,6 +685,12 @@ router.post('/api/crear', async (req, res) => {
     if (tipo_descuento === 'Específica' && (!cuotas || !valor || !motivo)) {
       return res.status(400).json({ error: 'Cuotas, Valor y Motivo son obligatorios para el tipo de descuento Específica' });
     }
+    if (!await identificacionDentroAlcance(req.descuentoNominaAccess, identificacion)) {
+      return res.status(403).json({ error: 'No tiene acceso a la operación de este trabajador.' });
+    }
+    if (['Contratación', 'Archivo', 'Asistencial'].includes(req.descuentoNominaAccess.rol) && tipo_descuento !== 'Anticipada') {
+      return res.status(403).json({ error: 'Este rol solo puede crear autorizaciones anticipadas.' });
+    }
 
     let cleanNombreTrabajador = nombre_trabajador || '';
     if (cleanNombreTrabajador.includes(' ** ')) {
@@ -703,6 +756,7 @@ router.post('/api/crear-masivo', async (req, res) => {
 
     const creados = [];
     const errores = [];
+    const acceso = req.descuentoNominaAccess;
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -713,6 +767,12 @@ router.post('/api/crear-masivo', async (req, res) => {
 
         if (item.tipo_descuento === 'Específica' && (!item.cuotas || !item.valor || !item.motivo)) {
           throw new Error('Cuotas, Valor y Motivo son obligatorios para el tipo de descuento Específica');
+        }
+        if (!await identificacionDentroAlcance(acceso, item.identificacion)) {
+          throw new Error('No tiene acceso a la operación de este trabajador.');
+        }
+        if (['Contratación', 'Archivo', 'Asistencial'].includes(acceso.rol) && item.tipo_descuento !== 'Anticipada') {
+          throw new Error('Este rol solo puede crear autorizaciones anticipadas.');
         }
 
         let cleanNombre = item.nombre_trabajador || '';
@@ -1039,36 +1099,50 @@ router.post('/api/prueba/:id/enviar-enlace', async (req, res) => {
 
 // ═════ API: DELETE /api/prueba/:id ═════
 router.delete('/api/prueba/:id', async (req, res) => {
+  let connection;
   try {
     const { id } = req.params;
-    const { usuario } = req.query;
-
-    const acceso = await computarAccesoDN(usuario);
-    if (!acceso || acceso.rol !== 'Sistema') {
-      return res.status(403).json({ error: 'No autorizado. Solo el rol Sistema puede eliminar registros.' });
+    const acceso = req.descuentoNominaAccess;
+    if (!acceso || !['Sistema', 'Contratación'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'Solo Sistema y Contratación pueden eliminar autorizaciones.' });
+    }
+    if (!await descuentoDentroAlcance(acceso, id)) {
+      return res.status(403).json({ error: 'No tiene acceso a esta autorización de descuento.' });
     }
 
-    const [[c]] = await pool.execute(
-      'SELECT url_doc FROM Dynamic_descuentonomina WHERE id_descuento = ?',
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    const [[descuento]] = await connection.execute(
+      'SELECT id_descuento, identificacion, url_doc FROM Dynamic_descuentonomina WHERE id_descuento = ? FOR UPDATE',
       [id]
     );
-    if (!c) {
+    if (!descuento) {
+      await connection.rollback();
       return res.status(404).json({ error: 'Registro no encontrado' });
     }
 
-    if (c.url_doc) {
-      return res.status(400).json({ error: 'No se puede eliminar un registro que ya ha sido firmado.' });
+    if (descuento.url_doc) {
+      await connection.execute(
+        `DELETE FROM Maestro_docTrabajador
+         WHERE Identificación = ? AND TipoDocumento = 21 AND Prefijo = 'DCTO'
+           AND Doc = ?`,
+        [descuento.identificacion, descuento.url_doc]
+      );
+      await eliminarPDFDescuentoNomina(descuento.url_doc, descuento.identificacion);
     }
-
-    await pool.execute(
-      'DELETE FROM Dynamic_descuentonomina WHERE id_descuento = ?',
-      [id]
-    );
-
+    await connection.execute('DELETE FROM Dynamic_descuentonomina WHERE id_descuento = ?', [id]);
+    await connection.commit();
     res.json({ ok: true });
   } catch (err) {
+    if (connection) {
+      try { await connection.rollback(); } catch (rollbackError) {
+        console.error('[descuentonomina] Error revirtiendo eliminación:', rollbackError.message);
+      }
+    }
     console.error('[descuentonomina] DELETE /api/prueba/:id:', err);
     res.status(500).json({ error: err.message });
+  } finally {
+    if (connection) connection.release();
   }
 });
 

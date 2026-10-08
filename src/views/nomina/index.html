@@ -179,6 +179,75 @@
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: .9rem; }
   .contador-resultados { font-size: .8rem; color: var(--text-muted); margin-bottom: 10px; }
 
+  /* Incapacidades: conservar la misma interfaz que Gestión Médica de SST. */
+  #panelIncapacidades .tab-header {
+    background: #fff; border-radius: var(--radius); padding: 20px 24px; margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.05), 0 2px 4px -2px rgba(0,0,0,.03);
+    border-left: 5px solid #10b981; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  }
+  #panelIncapacidades .tab-header-left { display: flex; flex-direction: column; gap: 4px; }
+  #panelIncapacidades .tab-title { font-size: 1.35rem; font-weight: 700; color: #022c22; display: flex; align-items: center; gap: 10px; }
+  #panelIncapacidades .tab-subtitle { font-size: .85rem; color: #64748b; }
+  #panelIncapacidades .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; }
+  #panelIncapacidades .badge-info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+  #panelIncapacidades .card-filters {
+    background: #fff; border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.05), 0 2px 4px -2px rgba(0,0,0,.03);
+    border: 1px solid #e2e8f0; border-left: 4px solid #14b8a6;
+  }
+  #panelIncapacidades .filtros-toggle {
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none;
+    font-size: .82rem; font-weight: 700; color: #064e3b; text-transform: uppercase; letter-spacing: .8px;
+  }
+  #panelIncapacidades .filtros-toggle-left { display: flex; align-items: center; gap: 10px; font-size: inherit; color: inherit; }
+  #panelIncapacidades .filtros-badge { background: #10b981; min-width: 20px; height: 20px; padding: 0 6px; }
+  #panelIncapacidades .filtros-chevron { color: #064e3b; font-size: .95rem; }
+  #panelIncapacidades .filtros-chevron.open { transform: rotate(90deg); }
+  #panelIncapacidades .filtros-body { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+  #panelIncapacidades .inc-filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; align-items: flex-end; }
+  #panelIncapacidades .inc-form-group { display: flex; flex-direction: column; gap: 4px; }
+  #panelIncapacidades .inc-form-label { font-size: .78rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .5px; }
+  #panelIncapacidades .inc-form-control {
+    width: 100%; padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 6px;
+    font-size: .88rem; color: #0f172a; background: #fff; transition: all .2s cubic-bezier(.4,0,.2,1); font-family: inherit;
+  }
+  #panelIncapacidades .inc-form-control:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
+  #panelIncapacidades .inc-table-card { background: #fff; border-radius: var(--radius); box-shadow: 0 4px 6px -1px rgba(0,0,0,.05), 0 2px 4px -2px rgba(0,0,0,.03); border: 1px solid #e2e8f0; overflow: hidden; }
+  #panelIncapacidades .inc-table-container { width: 100%; overflow-x: auto; max-height: calc(100vh - 290px); }
+  #panelIncapacidades table.data-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; text-align: left; font-size: .88rem; min-width: 820px; }
+  #panelIncapacidades table.data-table thead { position: sticky; top: 0; z-index: 20; }
+  #panelIncapacidades table.data-table th {
+    background: #f8fafc; color: #334155; font-weight: 700; padding: 10px 12px; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;
+    position: sticky; top: 0; z-index: 25; text-transform: uppercase; font-size: .72rem; letter-spacing: .4px; user-select: none; box-shadow: 0 2px 4px rgba(0,0,0,.05);
+  }
+  #panelIncapacidades table.data-table th.sortable { cursor: pointer; transition: background .15s, color .15s; }
+  #panelIncapacidades table.data-table th.sortable:hover { background: #eff6ff; color: #064e3b; }
+  #panelIncapacidades .th-content { display: flex; align-items: center; justify-content: space-between; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #panelIncapacidades .sort-icon { font-size: .75rem; color: #94a3b8; transition: color .15s; flex-shrink: 0; }
+  #panelIncapacidades th.sorted .sort-icon { color: #10b981; font-weight: 800; }
+  #panelIncapacidades .th-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: col-resize; touch-action: none; z-index: 30; }
+  #panelIncapacidades .th-resize:hover, #panelIncapacidades .th-resize.resizing { background: #10b981; opacity: .7; }
+  #panelIncapacidades table.data-table td {
+    padding: 10px 12px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; color: #0f172a;
+    background: #fff; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #panelIncapacidades table.data-table tbody tr { cursor: pointer; transition: background .15s; }
+  #panelIncapacidades table.data-table tbody tr:hover td { background: #f8fafc; }
+  #panelIncapacidades .evento-no-incapacidad { color: #a16207; font-weight: 700; }
+  #panelIncapacidades .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 18px;
+    border-radius: 8px; font-size: .88rem; font-weight: 600; border: 1px solid transparent; cursor: pointer;
+    text-decoration: none; transition: all .2s cubic-bezier(.4,0,.2,1); outline: none;
+  }
+  #panelIncapacidades .btn-secondary { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+  #panelIncapacidades .btn-secondary:hover { background: #e2e8f0; color: #0f172a; }
+  #panelIncapacidades .btn-sm { padding: 5px 10px; font-size: .78rem; border-radius: 6px; }
+  #panelIncapacidades .inc-document-link { display: inline-flex; margin: 2px 4px 2px 0; }
+  @media (max-width: 900px) {
+    #panelIncapacidades .inc-filters-grid { grid-template-columns: 1fr; }
+    #panelIncapacidades .inc-table-container { max-height: 60vh; }
+  }
+
   /* Modal iframe (formretiro / gestionar-retiro) */
   .modal-full-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; align-items: center; justify-content: center; padding: 18px; }
   .modal-full-overlay.open { display: flex; }
@@ -484,6 +553,10 @@
       <li class="nav-item" id="navBiometrico" onclick="switchTab('biometrico')" style="display:none">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M12 2a5 5 0 0 0-5 5v3a5 5 0 0 0 10 0V7a5 5 0 0 0-5-5z"></path><path d="M3 13a9 9 0 0 0 18 0"></path><path d="M12 17v4"></path><path d="M8 21h8"></path></svg>
         <span>Biométrico</span>
+      </li>
+      <li class="nav-item" id="navIncapacidades" onclick="switchTab('incapacidades')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M8 3h8l4 4v14H4V3h4z"></path><path d="M8 3v5h8V3"></path><path d="M12 11v6"></path><path d="M9 14h6"></path></svg>
+        <span>Incapacidades</span>
       </li>
       <li class="nav-item" id="navTraslados" onclick="switchTab('traslados')" style="display:none">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M17 3h4v4"></path><path d="M21 3 9 15"></path><path d="M9 3H3v18h18v-6"></path></svg>
@@ -950,6 +1023,48 @@
             </table>
           </div>
           <div class="empty-state" id="cooEmpty" style="display:none">No hay operaciones con los filtros seleccionados.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panelIncapacidades" role="tabpanel" style="display:none">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title"><span>🩹 Incapacidades</span><span class="badge badge-info" id="badge-total-inc">0 Registros</span></h1>
+          <p class="tab-subtitle">Incapacidades registradas en asistencia</p>
+        </div>
+      </div>
+      <div class="card-filters">
+        <div class="filtros-toggle" onclick="toggleFiltrosIncapacidadesNomina()">
+          <span class="filtros-toggle-left">Filtros de Búsqueda <span class="filtros-badge" id="filtros-badge-inc">0</span></span>
+          <span class="filtros-chevron" id="filtros-chevron-inc">&#9656;</span>
+        </div>
+        <div class="filtros-body" id="filtros-body-inc" style="display:none">
+          <div class="inc-filters-grid">
+            <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-trabajador">Trabajador o Cédula</label><input type="text" class="inc-form-control" id="filtro-inc-trabajador" placeholder="Nombre o cédula..."></div>
+            <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-regional">Regional</label><select class="inc-form-control" id="filtro-inc-regional"><option value="">Todas</option></select></div>
+            <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-operacion">Operación</label><select class="inc-form-control" id="filtro-inc-operacion"><option value="">Todas</option></select></div>
+            <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-desde">Fecha Desde</label><input type="date" class="inc-form-control" id="filtro-inc-desde"></div>
+            <div class="inc-form-group"><label class="inc-form-label" for="filtro-inc-hasta">Fecha Hasta</label><input type="date" class="inc-form-control" id="filtro-inc-hasta"></div>
+            <div class="inc-form-group"><button class="btn btn-secondary btn-sm" onclick="limpiarFiltrosIncapacidadesNomina()" style="height:38px">Limpiar</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="inc-table-card">
+        <div class="inc-table-container">
+          <table class="data-table" id="table-inc">
+            <thead><tr>
+              <th style="width:120px;min-width:100px" class="sortable" onclick="toggleSortIncapacidadesNomina('fecha')"><div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-inc-fecha">▼</span></div></th>
+              <th style="width:220px;min-width:150px" class="sortable" onclick="toggleSortIncapacidadesNomina('trabajador')"><div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-inc-trabajador">↕</span></div></th>
+              <th style="width:130px;min-width:105px" class="sortable" onclick="toggleSortIncapacidadesNomina('identificacion')"><div class="th-content"><span>Identificación</span><span class="sort-icon" id="sort-icon-inc-identificacion">↕</span></div></th>
+              <th style="width:150px;min-width:110px" class="sortable" onclick="toggleSortIncapacidadesNomina('regional')"><div class="th-content"><span>Regional</span><span class="sort-icon" id="sort-icon-inc-regional">↕</span></div></th>
+              <th style="width:170px;min-width:120px" class="sortable" onclick="toggleSortIncapacidadesNomina('operacion')"><div class="th-content"><span>Operación</span><span class="sort-icon" id="sort-icon-inc-operacion">↕</span></div></th>
+              <th style="width:190px;min-width:140px" class="sortable" onclick="toggleSortIncapacidadesNomina('evento')"><div class="th-content"><span>Evento</span><span class="sort-icon" id="sort-icon-inc-evento">↕</span></div></th>
+              <th style="width:150px;min-width:110px" class="sortable" onclick="toggleSortIncapacidadesNomina('diagnostico')"><div class="th-content"><span>Cod Diagnostico</span><span class="sort-icon" id="sort-icon-inc-diagnostico">↕</span></div></th>
+              <th style="width:150px;min-width:110px"><div class="th-content"><span>Documento</span></div></th>
+            </tr></thead>
+            <tbody id="tbody-inc"><tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">Cargando incapacidades...</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1765,16 +1880,19 @@
     document.getElementById('navActivos').classList.toggle('active', tab === 'activos');
     if (document.getElementById('navBloqueo')) document.getElementById('navBloqueo').classList.toggle('active', tab === 'bloqueo');
     if (document.getElementById('navBiometrico')) document.getElementById('navBiometrico').classList.toggle('active', tab === 'biometrico');
+    if (document.getElementById('navIncapacidades')) document.getElementById('navIncapacidades').classList.toggle('active', tab === 'incapacidades');
     if (document.getElementById('navTraslados')) document.getElementById('navTraslados').classList.toggle('active', tab === 'traslados');
     document.getElementById('panelRetiros').style.display = tab === 'retiros' ? 'block' : 'none';
     document.getElementById('panelActivos').style.display = tab === 'activos' ? 'block' : 'none';
     if (document.getElementById('panelBloqueo')) document.getElementById('panelBloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
     if (document.getElementById('panelBiometrico')) document.getElementById('panelBiometrico').style.display = tab === 'biometrico' ? 'block' : 'none';
+    if (document.getElementById('panelIncapacidades')) document.getElementById('panelIncapacidades').style.display = tab === 'incapacidades' ? 'block' : 'none';
     if (document.getElementById('panelTraslados')) document.getElementById('panelTraslados').style.display = tab === 'traslados' ? 'block' : 'none';
     if (tab === 'retiros' && !_retirosState.cargado) fetchDataRetiros();
     if (tab === 'activos' && !_activosState.cargado) fetchDataActivos();
     if (tab === 'bloqueo' && !_bloqueoNominaState.cargado) fetchDataBloqueoNomina();
     if (tab === 'biometrico' && !_bioState.cargado) fetchBiometricoData();
+    if (tab === 'incapacidades' && !_incState.cargado) cargarIncapacidadesNomina();
     if (tab === 'traslados' && !_trasState.cargado) fetchTrasladosData();
     toggleMobileSidebar(false);
   }
@@ -4093,6 +4211,279 @@
     } catch { alert('Error de conexión al generar documento de soporte'); }
   }
 
+  const _incState = { filas: [], cargado: false, sort: { key: 'fecha', dir: 'desc' }, debounce: null };
+
+  function initFiltrosIncapacidadesNomina() {
+    const trabajador = document.getElementById('filtro-inc-trabajador');
+    trabajador.addEventListener('input', filtrarDebounceIncapacidadesNomina);
+    document.getElementById('filtro-inc-regional').addEventListener('change', onRegionalChangeIncapacidadesNomina);
+    ['operacion', 'desde', 'hasta'].forEach(campo => {
+      document.getElementById(`filtro-inc-${campo}`).addEventListener('change', filtrarAutomaticoIncapacidadesNomina);
+    });
+  }
+
+  function toggleFiltrosIncapacidadesNomina() {
+    const body = document.getElementById('filtros-body-inc');
+    const abierto = body.style.display !== 'block';
+    body.style.display = abierto ? 'block' : 'none';
+    document.getElementById('filtros-chevron-inc').classList.toggle('open', abierto);
+  }
+
+  async function cargarIncapacidadesNomina() {
+    const tbody = document.getElementById('tbody-inc');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">Cargando incapacidades...</td></tr>';
+    try {
+      const response = await fetch(`/nomina/api/incapacidades?usuario=${encodeURIComponent(usuario)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'No fue posible cargar las incapacidades');
+      _incState.filas = agruparIncapacidadesNomina(Array.isArray(result) ? result : []);
+      _incState.cargado = true;
+      actualizarFiltrosIncapacidadesNomina();
+      actualizarBadgeFiltrosIncapacidadesNomina();
+      aplicarFiltroYOrdenIncapacidadesNomina();
+    } catch (error) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:#b42318">${esc(error.message)}</td></tr>`;
+    }
+  }
+
+  function fechaClaveNomina(valor) {
+    if (!valor) return '';
+    if (valor instanceof Date) return valor.toISOString().slice(0, 10);
+    const iso = String(valor).match(/^\d{4}-\d{2}-\d{2}/);
+    if (iso) return iso[0];
+    const fecha = new Date(valor);
+    return Number.isNaN(fecha.getTime()) ? '' : fecha.toISOString().slice(0, 10);
+  }
+
+  function agruparIncapacidadesNomina(rows) {
+    const ordenadas = (rows || []).map((row, index) => ({
+      ...row,
+      __fechaClave: fechaClaveNomina(row.sst_fecha),
+      __indiceOriginal: index
+    })).sort((a, b) => String(a.sst_identificacion || '').localeCompare(String(b.sst_identificacion || ''))
+      || a.__fechaClave.localeCompare(b.__fechaClave)
+      || a.__indiceOriginal - b.__indiceOriginal);
+    const grupos = [];
+    let actual = null;
+    ordenadas.forEach((row, index) => {
+      const identificacion = String(row.sst_identificacion || '').trim();
+      const fechaMs = row.__fechaClave ? Date.parse(`${row.__fechaClave}T00:00:00Z`) : NaN;
+      const diferenciaDias = actual && identificacion && row.__fechaClave
+        ? Math.round((fechaMs - actual.__ultimaFechaMs) / 86400000)
+        : Infinity;
+      const continuo = actual && identificacion && row.__fechaClave
+        && actual.sst_identificacion === identificacion && diferenciaDias <= 1;
+
+      if (!continuo) {
+        actual = {
+          ...row,
+          sst_identificacion: identificacion || row.sst_identificacion,
+          sst_fecha_desde: row.__fechaClave,
+          sst_fecha_hasta: row.__fechaClave,
+          sst_dias_continuos: row.__fechaClave ? 1 : 0,
+          sst_cod_diagnosticos: row.sst_cod_diagnostico ? [String(row.sst_cod_diagnostico)] : [],
+          sst_documentos: row.sst_url ? [String(row.sst_url)] : [],
+          __fechasGrupo: row.__fechaClave ? new Set([row.__fechaClave]) : new Set(),
+          __ultimaFechaMs: fechaMs
+        };
+        if (!identificacion || !row.__fechaClave) actual.__filaUnica = index;
+        grupos.push(actual);
+        return;
+      }
+
+      actual.sst_fecha_hasta = row.__fechaClave;
+      actual.sst_fecha = row.__fechaClave;
+      actual.__ultimaFechaMs = fechaMs;
+      actual.sst_trabajador = row.sst_trabajador || actual.sst_trabajador;
+      actual.sst_regional = row.sst_regional || actual.sst_regional;
+      actual.sst_operacion = row.sst_operacion || actual.sst_operacion;
+      actual.sst_evento = row.sst_evento || actual.sst_evento;
+      if (!actual.__fechasGrupo.has(row.__fechaClave)) {
+        actual.__fechasGrupo.add(row.__fechaClave);
+        actual.sst_dias_continuos++;
+      }
+      if (row.sst_cod_diagnostico && !actual.sst_cod_diagnosticos.includes(String(row.sst_cod_diagnostico))) {
+        actual.sst_cod_diagnosticos.push(String(row.sst_cod_diagnostico));
+      }
+      if (row.sst_url && !actual.sst_documentos.includes(String(row.sst_url))) {
+        actual.sst_documentos.push(String(row.sst_url));
+      }
+    });
+    return grupos.map(({ __fechasGrupo, __ultimaFechaMs, __filaUnica, __fechaClave, __indiceOriginal, ...grupo }) => grupo);
+  }
+
+  function actualizarFiltrosIncapacidadesNomina() {
+    const regional = document.getElementById('filtro-inc-regional');
+    const regionalActual = regional.value;
+    const conteos = {};
+    _incState.filas.forEach(row => {
+      if (row.sst_regional) conteos[row.sst_regional] = (conteos[row.sst_regional] || 0) + 1;
+    });
+    regional.innerHTML = '<option value="">Todas</option>';
+    Object.keys(conteos).sort((a, b) => a.localeCompare(b, 'es')).forEach(nombre => {
+      const option = document.createElement('option');
+      option.value = nombre;
+      option.textContent = `${nombre} (${conteos[nombre]})`;
+      option.selected = nombre === regionalActual;
+      regional.appendChild(option);
+    });
+    actualizarOperacionesIncapacidadesNomina();
+  }
+
+  function actualizarOperacionesIncapacidadesNomina() {
+    const regional = document.getElementById('filtro-inc-regional').value;
+    const operacion = document.getElementById('filtro-inc-operacion');
+    const operacionActual = operacion.value;
+    const filas = _incState.filas.filter(row => !regional || row.sst_regional === regional);
+    const conteos = {};
+    filas.forEach(row => {
+      if (row.sst_operacion) conteos[row.sst_operacion] = (conteos[row.sst_operacion] || 0) + 1;
+    });
+    operacion.innerHTML = '<option value="">Todas</option>';
+    Object.keys(conteos).sort((a, b) => a.localeCompare(b, 'es')).forEach(nombre => {
+      const option = document.createElement('option');
+      option.value = nombre;
+      option.textContent = `${nombre} (${conteos[nombre]})`;
+      option.selected = nombre === operacionActual;
+      operacion.appendChild(option);
+    });
+  }
+
+  function onRegionalChangeIncapacidadesNomina() {
+    actualizarOperacionesIncapacidadesNomina();
+    filtrarAutomaticoIncapacidadesNomina();
+  }
+
+  function filtrarDebounceIncapacidadesNomina() {
+    clearTimeout(_incState.debounce);
+    _incState.debounce = setTimeout(filtrarAutomaticoIncapacidadesNomina, 350);
+  }
+
+  function actualizarBadgeFiltrosIncapacidadesNomina() {
+    const filtros = ['trabajador', 'regional', 'operacion', 'desde', 'hasta'];
+    const activos = filtros.filter(campo => {
+      const input = document.getElementById(`filtro-inc-${campo}`);
+      return input && input.value.trim();
+    }).length;
+    const badge = document.getElementById('filtros-badge-inc');
+    badge.textContent = activos;
+    badge.style.display = activos ? 'inline-flex' : 'none';
+  }
+
+  function filtrarAutomaticoIncapacidadesNomina() {
+    actualizarBadgeFiltrosIncapacidadesNomina();
+    aplicarFiltroYOrdenIncapacidadesNomina();
+  }
+
+  function toggleSortIncapacidadesNomina(columna) {
+    if (_incState.sort.key === columna) _incState.sort.dir = _incState.sort.dir === 'asc' ? 'desc' : 'asc';
+    else _incState.sort = { key: columna, dir: 'asc' };
+    actualizarIconosOrdenIncapacidadesNomina();
+    aplicarFiltroYOrdenIncapacidadesNomina();
+  }
+
+  function actualizarIconosOrdenIncapacidadesNomina() {
+    const tabla = document.getElementById('table-inc');
+    if (!tabla) return;
+    tabla.querySelectorAll('th.sortable').forEach(th => {
+      const key = th.getAttribute('onclick').match(/'([^']+)'/)?.[1];
+      const icon = th.querySelector('.sort-icon');
+      if (!icon) return;
+      const activo = key === _incState.sort.key;
+      icon.textContent = activo ? (_incState.sort.dir === 'asc' ? '▲' : '▼') : '↕';
+      icon.style.opacity = activo ? '1' : '.35';
+    });
+  }
+
+  function valorOrdenIncapacidad(row, columna) {
+    switch (columna) {
+      case 'fecha': return row.sst_fecha_desde || row.sst_fecha || '';
+      case 'trabajador': return limpiarNombreIncapacidad(row.sst_trabajador).toLowerCase();
+      case 'identificacion': return String(row.sst_identificacion || '').toLowerCase();
+      case 'regional': return String(row.sst_regional || '').toLowerCase();
+      case 'operacion': return String(row.sst_operacion || '').toLowerCase();
+      case 'evento': return String(row.sst_evento || '').toLowerCase();
+      case 'diagnostico': return (row.sst_cod_diagnosticos || []).join(' ').toLowerCase();
+      default: return String(row[columna] || '').toLowerCase();
+    }
+  }
+
+  function aplicarFiltroYOrdenIncapacidadesNomina() {
+    const buscar = document.getElementById('filtro-inc-trabajador').value.trim().toLocaleLowerCase('es');
+    const regional = document.getElementById('filtro-inc-regional').value;
+    const operacion = document.getElementById('filtro-inc-operacion').value;
+    const fechaDesde = document.getElementById('filtro-inc-desde').value;
+    const fechaHasta = document.getElementById('filtro-inc-hasta').value;
+    const filas = _incState.filas.filter(row => {
+      const texto = [row.sst_trabajador, row.sst_identificacion, row.sst_evento, ...(row.sst_cod_diagnosticos || [])].join(' ').toLocaleLowerCase('es');
+      const desde = row.sst_fecha_desde || '';
+      const hasta = row.sst_fecha_hasta || desde;
+      return (!buscar || texto.includes(buscar)) && (!regional || row.sst_regional === regional)
+        && (!operacion || row.sst_operacion === operacion)
+        && (!fechaDesde || (hasta && hasta >= fechaDesde))
+        && (!fechaHasta || (desde && desde <= fechaHasta));
+    }).sort((a, b) => {
+      const va = valorOrdenIncapacidad(a, _incState.sort.key);
+      const vb = valorOrdenIncapacidad(b, _incState.sort.key);
+      const cmp = String(va).localeCompare(String(vb), 'es', { sensitivity: 'base' });
+      return _incState.sort.dir === 'asc' ? cmp : -cmp;
+    });
+    renderTablaIncapacidadesNomina(filas);
+  }
+
+  function limpiarNombreIncapacidad(valor) {
+    if (!valor) return '—';
+    const nombre = String(valor).trim();
+    return (nombre.includes('**') ? nombre.split('**').pop().trim() : nombre) || '—';
+  }
+
+  function escaparHtmlIncapacidadNomina(valor) {
+    return esc(valor);
+  }
+
+  function renderTablaIncapacidadesNomina(items) {
+    const tbody = document.getElementById('tbody-inc');
+    document.getElementById('badge-total-inc').textContent = `${items.length} Incapacidades`;
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">No se encontraron incapacidades.</td></tr>';
+      makeTableResizable(document.getElementById('table-inc'));
+      return;
+    }
+
+    tbody.innerHTML = items.map(row => {
+      const fechaDesde = row.sst_fecha_desde ? row.sst_fecha_desde.split('-').reverse().join('/') : '—';
+      const fechaHasta = row.sst_fecha_hasta ? row.sst_fecha_hasta.split('-').reverse().join('/') : '—';
+      const rangoFecha = fechaDesde === fechaHasta ? fechaDesde : `${fechaDesde} al ${fechaHasta}`;
+      const evento = String(row.sst_evento || '').trim();
+      const eventoDistinto = evento && evento.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es') !== 'incapacidad';
+      const documentos = row.sst_documentos || [];
+      const enlaces = documentos.length ? documentos.map((url, index) => {
+        const urlSegura = /^https?:\/\//i.test(url) || url.startsWith('/') ? escaparHtmlIncapacidadNomina(url) : '';
+        return urlSegura ? `<a href="${urlSegura}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm inc-document-link" onclick="event.stopPropagation();">📄 ${documentos.length > 1 ? `PDF ${index + 1}` : 'Abrir incapacidad'}</a>` : '';
+      }).join(' ') : '<span style="color:#64748b">Sin documento</span>';
+      const diagnosticos = (row.sst_cod_diagnosticos || []).map(escaparHtmlIncapacidadNomina).join(', ') || '—';
+      return `<tr>
+        <td>${escaparHtmlIncapacidadNomina(rangoFecha)}<br><small>${row.sst_dias_continuos} día(s)</small></td>
+        <td><strong>${escaparHtmlIncapacidadNomina(limpiarNombreIncapacidad(row.sst_trabajador))}</strong></td>
+        <td>${escaparHtmlIncapacidadNomina(row.sst_identificacion || '—')}</td>
+        <td>${escaparHtmlIncapacidadNomina(row.sst_regional || '—')}</td>
+        <td>${escaparHtmlIncapacidadNomina(row.sst_operacion || '—')}</td>
+        <td>${eventoDistinto ? `<span class="evento-no-incapacidad">${escaparHtmlIncapacidadNomina(evento)}</span>` : escaparHtmlIncapacidadNomina(evento || '—')}</td>
+        <td>${diagnosticos}</td>
+        <td>${enlaces}</td>
+      </tr>`;
+    }).join('');
+    makeTableResizable(document.getElementById('table-inc'));
+  }
+
+  function limpiarFiltrosIncapacidadesNomina() {
+    ['trabajador', 'regional', 'operacion', 'desde', 'hasta'].forEach(campo => {
+      document.getElementById(`filtro-inc-${campo}`).value = '';
+    });
+    actualizarOperacionesIncapacidadesNomina();
+    filtrarAutomaticoIncapacidadesNomina();
+  }
+
   if (tabs.retiro) updateFilterOptionsWithCountsRetiros();
   if (tabs.activo) updateFilterOptionsWithCountsActivos();
   if (tabs.biometrico) {
@@ -4107,6 +4498,12 @@
     makeTableResizable(document.getElementById('bioCierresTable'));
     makeTableResizable(document.getElementById('bioSinRegTable'));
     makeTableResizable(document.getElementById('bioSinRegResTable'));
+  }
+  if (tabs.incapacidades) {
+    const navInc = document.getElementById('navIncapacidades');
+    if (navInc) navInc.style.display = 'flex';
+    makeTableResizable(document.getElementById('table-inc'));
+    initFiltrosIncapacidadesNomina();
   }
   if (tabs.traslados) {
     const navTras = document.getElementById('navTraslados');
@@ -4147,6 +4544,8 @@
     tabDestino = 'bloqueo';
   } else if (tabParam === 'biometrico' || tabParam === 'asistencia') {
     tabDestino = 'biometrico';
+  } else if (tabParam === 'incapacidades' || tabParam === 'incapacidad') {
+    tabDestino = 'incapacidades';
   } else if (tabParam === 'traslados' || tabParam === 'traslado') {
     tabDestino = 'traslados';
   } else if (busquedaParam) {
@@ -4197,12 +4596,14 @@
     const subValida = ['rutas', 'reportes'].includes(subParam) || (subParam === 'coordenadas' && tabs.biometrico.puedeEditarCoordenadas);
     if (subValida) switchBioSubTab(subParam);
     switchTab('biometrico');
+  } else if (tabDestino === 'incapacidades' && tabs.incapacidades) {
+    switchTab('incapacidades');
   } else if (tabDestino === 'traslados' && tabs.traslados) {
     const subParamTras = (paramsUrl.get('subtab') || '').toLowerCase().trim();
     if (subParamTras === 'plantilla' && tabs.traslados.puedeEditarPlantilla) switchTrasladosSubTab('plantilla');
     switchTab('traslados');
   } else {
-    switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : 'traslados'))));
+    switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : (tabs.incapacidades ? 'incapacidades' : 'traslados')))));
   }
 </script>
 <script src="/js/app-launcher-profile.js" defer></script>

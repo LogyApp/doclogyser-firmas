@@ -48,6 +48,14 @@ function esOperacionAdministracion(operacion) {
   return String(operacion || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'administracion';
 }
 
+function normalizarNombreColumna(nombre) {
+  return String(nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function citarIdentificador(nombre) {
+  return `\`${String(nombre).replace(/`/g, '``')}\``;
+}
+
 function resumenAcceso(acceso) {
   if (!acceso) return null;
   return {
@@ -248,6 +256,7 @@ router.get('/', async (req, res) => {
         activo: resumenAcceso(accesoActivo),
         bloqueo: resumenAcceso(accesoBloqueo),
         biometrico: accesoBiometrico ? { sinFiltro: accesoBiometrico.sinFiltro, isSstOnly, puedeEditarCoordenadas } : null,
+        incapacidades: Boolean(accesoBiometrico),
         traslados: accesoTraslados ? {
           puedeValidar:         ROLES_VALIDAR_TRASLADOS.includes(accesoTraslados.rol),
           puedeEditarPlantilla: ROLES_PLANTILLA_TRASLADOS.includes(accesoTraslados.rol),
@@ -873,6 +882,7 @@ async function verificarAccesoBiometricoAPI(req, res, next) {
       return res.status(400).json({ error: 'Parámetro usuario requerido' });
     }
 
+
     const [uRows] = await pool.execute(
       'SELECT ID, Nombre, Rol, Regional FROM Maestro_Usuarios WHERE ID = ?',
       [usuarioId]
@@ -904,6 +914,66 @@ async function verificarAccesoBiometricoAPI(req, res, next) {
     res.status(500).json({ error: 'Error interno en autorización biométrico' });
   }
 }
+
+router.get('/api/incapacidades', verificarAccesoBiometricoAPI, async (req, res) => {
+  try {
+    const acceso = await computarAccesoNomina(req.usuarioInfo.usuarioId, 'Biometrico');
+    if (!acceso && !ROLES_BIOMETRICO_FALLBACK.includes(req.usuarioInfo.rol)) {
+      return res.status(403).json({ error: 'Usuario no autorizado para ver incapacidades en Nómina' });
+    }
+
+    const [columnas] = await pool.query('SHOW COLUMNS FROM Dynamic_Asistencia');
+    const encontrarColumna = (...nombres) => {
+      const buscados = nombres.map(normalizarNombreColumna);
+      return columnas.find(col => buscados.includes(normalizarNombreColumna(col.Field)))?.Field || null;
+    };
+    const eventoCol = encontrarColumna('Evento', 'Novedad');
+    const operacionCol = encontrarColumna('Operación', 'Operacion', 'Origen');
+    const regionalCol = encontrarColumna('Regional');
+    const fechaCol = encontrarColumna('Día', 'Dia', 'Fecha');
+    const trabajadorCol = encontrarColumna('Trabajador', 'Nombre');
+    const identificacionCol = encontrarColumna('Cédula', 'Cedula', 'Identificación', 'Identificacion');
+    const diagnosticoCol = encontrarColumna('Cod Diagnostico', 'Código Diagnóstico', 'Codigo Diagnostico');
+    const urlCol = encontrarColumna('Url Incapacidad');
+
+    if (!eventoCol || !urlCol) {
+      return res.status(500).json({ error: 'Dynamic_Asistencia no contiene las columnas de evento y URL de incapacidad requeridas.' });
+    }
+    if (acceso && !acceso.sinFiltro && (!operacionCol || !acceso.operacionesFiltro.length)) return res.json([]);
+
+    const opExpr = operacionCol ? `da.${citarIdentificador(operacionCol)}` : 'NULL';
+    const regionalExpr = regionalCol
+      ? `COALESCE(da.${citarIdentificador(regionalCol)}, mo.REGIONAL)`
+      : (operacionCol ? 'mo.REGIONAL' : 'NULL');
+    const joins = operacionCol ? `LEFT JOIN Maestro_Operaciones mo ON mo.OPERACIÓN = da.${citarIdentificador(operacionCol)}` : '';
+    const where = [`da.${citarIdentificador(eventoCol)} LIKE ?`];
+    const params = ['%Incapacidad%'];
+    if (acceso && !acceso.sinFiltro) {
+      where.push(`da.${citarIdentificador(operacionCol)} IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+      params.push(...acceso.operacionesFiltro);
+    }
+
+    const [rows] = await pool.execute(`
+      SELECT DISTINCT
+        ${fechaCol ? `da.${citarIdentificador(fechaCol)}` : 'NULL'} AS sst_fecha,
+        ${trabajadorCol ? `da.${citarIdentificador(trabajadorCol)}` : 'NULL'} AS sst_trabajador,
+        ${identificacionCol ? `da.${citarIdentificador(identificacionCol)}` : 'NULL'} AS sst_identificacion,
+        ${regionalExpr} AS sst_regional,
+        ${opExpr} AS sst_operacion,
+        da.${citarIdentificador(eventoCol)} AS sst_evento,
+        ${diagnosticoCol ? `da.${citarIdentificador(diagnosticoCol)}` : 'NULL'} AS sst_cod_diagnostico,
+        da.${citarIdentificador(urlCol)} AS sst_url
+      FROM Dynamic_Asistencia da
+      ${joins}
+      WHERE ${where.join(' AND ')}
+      ${fechaCol ? `ORDER BY da.${citarIdentificador(fechaCol)} DESC` : ''}
+    `, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('[nomina] GET /api/incapacidades:', err);
+    res.status(500).json({ error: 'No fue posible cargar las incapacidades.' });
+  }
+});
 
 // ── Coordenadas de operaciones (Maestro_Operaciones) ─────────────────────────
 async function verificarAccesoCoordenadas(req, res, next) {

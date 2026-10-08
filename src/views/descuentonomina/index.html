@@ -103,10 +103,18 @@
     .view-container > * { min-width: 0; }
 
     /* Table styling */
-    .table-container { width: 100%; overflow-x: auto; background: #ffffff; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: .92rem; }
-    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; }
-    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+    #discount-filters-card { position: sticky; top: 0; z-index: 40; background: #fff; }
+    .table-container { width: 100%; max-height: calc(100vh - 500px); min-height: 220px; overflow: auto; background: #fff; border-radius: 8px; }
+    #table-pruebas { width: 100%; min-width: 960px; table-layout: fixed; border-collapse: separate; border-spacing: 0; text-align: left; font-size: .92rem; }
+    #table-pruebas th { position: sticky; top: 0; z-index: 8; background: #f8fafc; color: #475569; font-weight: 700; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; user-select: none; }
+    #table-pruebas th.sortable { cursor: pointer; }
+    #table-pruebas th.sortable:hover { color: var(--primary); background: #eef6fb; }
+    #table-pruebas th .th-content { display: flex; align-items: center; justify-content: space-between; gap: 8px; white-space: nowrap; }
+    #table-pruebas .sort-icon { color: #94a3b8; font-size: .72rem; }
+    #table-pruebas th.sorted .sort-icon { color: var(--primary); }
+    #table-pruebas th .column-resizer { position: absolute; top: 0; right: 0; bottom: 0; width: 8px; cursor: col-resize; touch-action: none; z-index: 12; }
+    #table-pruebas th .column-resizer:hover, #table-pruebas th .column-resizer.resizing { background: rgba(41,128,185,.3); }
+    #table-pruebas td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; }
     tr:hover td { background: #f8fafc; cursor: pointer; }
 
     .status-badge {
@@ -169,7 +177,11 @@
       font-size: .68rem; font-weight: 700; min-width: 18px; height: 18px; padding: 0 5px;
     }
     .filtros-chevron { display: inline-block; transition: transform .2s ease; color: var(--primary); font-size: .85rem; }
+    .filtros-chevron.open { transform: rotate(90deg); }
     #filtros-body { overflow: hidden; }
+    #discount-filters-card { position: sticky; top: 0; z-index: 40; padding: 16px 20px; border-left: 4px solid var(--accent); }
+    #discount-filters-card .discount-filters-toggle { font-size: .82rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .8px; }
+    #discount-filters-card .filtros-body { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 
     /* Sorting and resize columns */
     .th-sortable { position: relative; }
@@ -185,6 +197,7 @@
       .card, .detail-card { padding: 16px; }
       .grid-4 { grid-template-columns: 1fr; gap: 12px; }
       th, td { padding: 10px 8px; font-size: .8rem; }
+      .table-container { max-height: 48vh; min-height: 180px; }
       #btn-limpiar-filtros { width: 100%; }
       .btn { font-size: .85rem; padding: 10px 14px; }
     }
@@ -262,24 +275,20 @@
         </div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <a class="btn btn-secondary" id="btn-registros-logysign" href="#" style="display: none;">
-          <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Historial LogySign
-        </a>
         <button class="btn btn-crear" id="btn-nueva-prueba">+ Crear Autorización</button>
       </div>
     </div>
 
     <!-- Filtros -->
-    <div class="card">
-      <div class="section-title filtros-toggle" id="filtros-toggle">
+    <div class="card" id="discount-filters-card">
+      <div class="filtros-toggle discount-filters-toggle" id="filtros-toggle" role="button" tabindex="0" aria-controls="filtros-body" aria-expanded="false">
         <span class="filtros-toggle-left">
           Filtros de Búsqueda
           <span class="filtros-badge" id="filtros-badge">0</span>
         </span>
         <span class="filtros-chevron" id="filtros-chevron">▸</span>
       </div>
-      <div id="filtros-body">
+      <div id="filtros-body" style="display:none">
         <div class="grid-4" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 16px;">
           <div class="field">
             <label for="filtro-trabajador">Trabajador</label>
@@ -340,12 +349,12 @@
           <table id="table-pruebas">
             <thead>
               <tr>
-                <th style="width: 250px;">Trabajador</th>
-                <th style="width: 140px;">Fecha</th>
-                <th style="width: 150px;">Tipo Descuento</th>
-                <th style="width: 180px;">Detalles Específicos</th>
-                <th style="width: 130px;">Estado</th>
-                <th style="width: 110px;">Documento</th>
+                <th style="width:250px;min-width:180px" class="sortable" data-sort="nombre_trabajador"><div class="th-content"><span>Trabajador</span><span class="sort-icon">↕</span></div></th>
+                <th style="width:140px;min-width:110px" class="sortable" data-sort="fecha"><div class="th-content"><span>Fecha</span><span class="sort-icon">↕</span></div></th>
+                <th style="width:150px;min-width:120px" class="sortable" data-sort="tipo_descuento"><div class="th-content"><span>Tipo Descuento</span><span class="sort-icon">↕</span></div></th>
+                <th style="width:210px;min-width:150px" class="sortable" data-sort="detalles"><div class="th-content"><span>Detalles Específicos</span><span class="sort-icon">↕</span></div></th>
+                <th style="width:130px;min-width:110px" class="sortable" data-sort="estado"><div class="th-content"><span>Estado</span><span class="sort-icon">↕</span></div></th>
+                <th style="width:110px;min-width:90px" class="sortable" data-sort="documento"><div class="th-content"><span>Documento</span><span class="sort-icon">↕</span></div></th>
               </tr>
             </thead>
             <tbody id="tbody-pruebas">
@@ -393,6 +402,7 @@
 
   <script>
     const CONFIG = __CONFIG__;
+    const API_BASE = CONFIG.apiBase || '/descuentonomina/api';
 
     // Elements
     const userBadge = document.getElementById('user-badge-name');
@@ -426,39 +436,107 @@
     });
 
     // Toggle Filtros Plegables
-    let filtrosPlegados = false;
     const filtrosToggle = document.getElementById('filtros-toggle');
     const filtrosChevron = document.getElementById('filtros-chevron');
     const filtrosBody = document.getElementById('filtros-body');
     const filtrosBadge = document.getElementById('filtros-badge');
 
-    filtrosToggle.addEventListener('click', () => {
-      filtrosPlegados = !filtrosPlegados;
-      if (filtrosPlegados) {
-        filtrosBody.style.display = 'none';
-        filtrosChevron.innerText = '◂';
-      } else {
-        filtrosBody.style.display = 'block';
-        filtrosChevron.innerText = '▸';
+    function toggleFiltrosDescuento() {
+      const open = filtrosBody.style.display !== 'block';
+      filtrosBody.style.display = open ? 'block' : 'none';
+      filtrosChevron.classList.toggle('open', open);
+      filtrosToggle.setAttribute('aria-expanded', String(open));
+    }
+    filtrosToggle.addEventListener('click', toggleFiltrosDescuento);
+    filtrosToggle.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleFiltrosDescuento();
       }
     });
 
     // Init page
     userBadge.innerText = CONFIG.usuarioNombre;
-
-    const btnLogySign = document.getElementById('btn-registros-logysign');
-    const ALLOWED_LOGYSIGN_ROLES = ['Contratación', 'Archivo', 'Asistencial', 'Sistema'];
-    if (ALLOWED_LOGYSIGN_ROLES.includes(CONFIG.rol)) {
-      btnLogySign.href = `/registrologysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-      btnLogySign.style.display = 'inline-flex';
-    }
     
     btnNuevaPrueba.addEventListener('click', () => {
-      window.location.href = `/formdescuentonomina?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+      window.location.href = `/cloud-docs/descuento-nomina/form?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
     });
 
     let recordsList = [];
     let selectedPruebaId = null;
+    const tableSort = { key: 'fecha', dir: 'desc' };
+
+    function initTableControls() {
+      const table = document.getElementById('table-pruebas');
+      table.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sort;
+          if (tableSort.key === key) tableSort.dir = tableSort.dir === 'asc' ? 'desc' : 'asc';
+          else { tableSort.key = key; tableSort.dir = 'asc'; }
+          renderTable();
+        });
+
+        const resizer = document.createElement('span');
+        resizer.className = 'column-resizer';
+        resizer.title = 'Arrastra para cambiar el ancho de la columna';
+        th.appendChild(resizer);
+        resizer.addEventListener('pointerdown', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const startX = event.clientX;
+          const startWidth = th.offsetWidth;
+          resizer.classList.add('resizing');
+          resizer.setPointerCapture(event.pointerId);
+          const move = moveEvent => {
+            const width = Math.max(90, startWidth + moveEvent.clientX - startX);
+            th.style.width = `${width}px`;
+            th.style.minWidth = `${width}px`;
+          };
+          const finish = () => {
+            resizer.classList.remove('resizing');
+            resizer.removeEventListener('pointermove', move);
+            resizer.removeEventListener('pointerup', finish);
+            resizer.removeEventListener('pointercancel', finish);
+          };
+          resizer.addEventListener('pointermove', move);
+          resizer.addEventListener('pointerup', finish);
+          resizer.addEventListener('pointercancel', finish);
+        });
+      });
+      updateSortIndicators();
+    }
+
+    function updateSortIndicators() {
+      document.querySelectorAll('#table-pruebas th.sortable').forEach(th => {
+        const active = th.dataset.sort === tableSort.key;
+        th.classList.toggle('sorted', active);
+        th.querySelector('.sort-icon').textContent = active ? (tableSort.dir === 'asc' ? '▲' : '▼') : '↕';
+      });
+    }
+
+    function getSortValue(item, key) {
+      switch (key) {
+        case 'nombre_trabajador': return String(item.nombre_trabajador || '').toLocaleLowerCase('es');
+        case 'fecha': return String(item.fecha || '').slice(0, 10);
+        case 'tipo_descuento': return String(item.tipo_descuento || '').toLocaleLowerCase('es');
+        case 'detalles': return [item.cuotas, item.valor, item.motivo].filter(Boolean).join(' ').toLocaleLowerCase('es');
+        case 'estado': return item.url_doc ? 'firmado' : item.token_firma ? 'pendiente' : 'sin estado';
+        case 'documento': return item.url_doc ? 1 : 0;
+        default: return '';
+      }
+    }
+
+    function ordenarRegistros() {
+      return recordsList.slice().sort((a, b) => {
+        const left = getSortValue(a, tableSort.key);
+        const right = getSortValue(b, tableSort.key);
+        const comparison = typeof left === 'number' && typeof right === 'number'
+          ? left - right
+          : String(left).localeCompare(String(right), 'es', { numeric: true, sensitivity: 'base' });
+        return tableSort.dir === 'asc' ? comparison : -comparison;
+      });
+    }
+    initTableControls();
 
     // Toast alerts
     function showToast(msg, type = 'success') {
@@ -562,14 +640,14 @@
         });
 
         // 1. Fetch counts
-        const rCounts = await fetch(`/descuentonomina/api/conteos-filtros?${qParams.toString()}`);
+        const rCounts = await fetch(`${API_BASE}/conteos-filtros?${qParams.toString()}`);
         if (rCounts.ok) {
           const countsData = await rCounts.json();
           populateFilters(countsData);
         }
 
         // 2. Fetch list
-        const res = await fetch(`/descuentonomina/api/pruebas?${qParams.toString()}`);
+        const res = await fetch(`${API_BASE}/pruebas?${qParams.toString()}`);
         if (!res.ok) throw new Error('No se pudieron obtener registros');
         recordsList = await res.json();
         
@@ -610,7 +688,7 @@
         return;
       }
 
-      recordsList.forEach(item => {
+      ordenarRegistros().forEach(item => {
         const tr = document.createElement('tr');
         tr.onclick = () => verDetalle(item.id_descuento);
 
@@ -658,7 +736,7 @@
       selectedPruebaId = id;
       showLoading('Cargando detalles...');
       try {
-        const res = await fetch(`/descuentonomina/api/prueba/${id}?usuario=${CONFIG.usuarioId}`);
+        const res = await fetch(`${API_BASE}/prueba/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         if (!res.ok) throw new Error('No se pudo obtener el detalle');
         const d = await res.json();
 
@@ -731,9 +809,9 @@
         }
 
         // Delete (role Sistema and not signed)
-        if (CONFIG.rol === 'Sistema' && !d.url_doc) {
+        if (CONFIG.rol === 'Sistema' || (CONFIG.rol === 'Contratación' && d.tipo_descuento === 'Anticipada')) {
           ctrlHtml += `
-            <button class="btn btn-danger" onclick="eliminarPrueba('${d.id_descuento}')" style="width:100%; margin-top: 8px; font-size:.85rem; padding: 10px;">✕ Eliminar Registro</button>
+            <button class="btn btn-danger" onclick="eliminarPrueba('${d.id_descuento}')" style="width:100%; margin-top: 8px; font-size:.85rem; padding: 10px;">✕ Eliminar autorización y PDF</button>
           `;
         }
 
@@ -764,13 +842,13 @@
       showLoading('Actualizando contacto...');
       try {
         // Get worker identification
-        const rDet = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}?usuario=${CONFIG.usuarioId}`);
+        const rDet = await fetch(`${API_BASE}/prueba/${selectedPruebaId}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const det = await rDet.json();
 
-        const res = await fetch('/descuentonomina/api/actualizar-contacto', {
+        const res = await fetch(`${API_BASE}/actualizar-contacto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identificacion: det.identificacion, email, celular })
+          body: JSON.stringify({ identificacion: det.identificacion, email, celular, usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (data.ok) {
@@ -793,10 +871,10 @@
       if (!selectedPruebaId) return;
       showLoading('Enviando enlace por correo...');
       try {
-        const res = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}/enviar-enlace`, {
+        const res = await fetch(`${API_BASE}/prueba/${selectedPruebaId}/enviar-enlace?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ canal: 'email' })
+          body: JSON.stringify({ canal: 'email', usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (res.ok && data.ok) {
@@ -816,7 +894,7 @@
       if (!selectedPruebaId) return;
       showLoading('Cargando datos para editar...');
       try {
-        const res = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}?usuario=${CONFIG.usuarioId}`);
+        const res = await fetch(`${API_BASE}/prueba/${selectedPruebaId}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const d = await res.json();
 
         document.getElementById('edit-ciudad').value = d.ciudad || '';
@@ -868,7 +946,7 @@
 
       showLoading('Guardando cambios...');
       try {
-        const res = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}`, {
+        const res = await fetch(`${API_BASE}/prueba/${selectedPruebaId}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -878,7 +956,8 @@
             cuotas: tipo_descuento === 'Específica' ? cuotas : '',
             valor: tipo_descuento === 'Específica' ? valor : '',
             motivo: tipo_descuento === 'Específica' ? motivo : '',
-            observaciones
+            observaciones,
+            usuario: CONFIG.usuarioId
           })
         });
         const data = await res.json();
@@ -902,7 +981,7 @@
       if (!selectedPruebaId) return;
       showLoading('Regenerando documento PDF...');
       try {
-        const res = await fetch(`/descuentonomina/api/prueba/${selectedPruebaId}/generar-pdf`, {
+        const res = await fetch(`${API_BASE}/prueba/${selectedPruebaId}/generar-pdf?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ force: true })
@@ -924,10 +1003,10 @@
 
     // Delete record
     async function eliminarPrueba(id) {
-      if (!confirm('¿Está seguro de que desea eliminar permanentemente esta autorización? Esta acción no se puede deshacer.')) return;
+      if (!confirm('¿Eliminar permanentemente esta autorización? También se eliminará su documento en Cloud Docs y el PDF firmado del almacenamiento, si existe. Esta acción no se puede deshacer.')) return;
       showLoading('Eliminando registro...');
       try {
-        const res = await fetch(`/descuentonomina/api/prueba/${id}?usuario=${CONFIG.usuarioId}`, {
+        const res = await fetch(`${API_BASE}/prueba/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'DELETE'
         });
         const data = await res.json();

@@ -165,7 +165,7 @@
         <div class="page-sub">Generación de formatos digitales de descuento por nómina</div>
         <div class="badge-user" id="user-badge-name">Cargando usuario...</div>
       </div>
-      <a class="btn btn-secondary" id="btn-volver-listado" href="#">Ver Historial</a>
+      <a class="btn btn-secondary" id="btn-volver-listado" href="#" target="_top">Ver Historial</a>
     </div>
 
     <!-- Formulario -->
@@ -294,13 +294,14 @@
 
       <div style="border-top: 1px solid #e2e8f0; padding-top: 24px; display: flex; gap: 12px; justify-content: center;">
         <button class="btn btn-secondary" onclick="resetForm()">Crear Otra Autorización</button>
-        <a class="btn btn-primary" id="success-btn-volver" href="#">Ir al Historial</a>
+        <a class="btn btn-primary" id="success-btn-volver" href="#" target="_top">Ir al Historial</a>
       </div>
     </div>
   </div>
 
   <script>
     const CONFIG = __CONFIG__;
+    const API_BASE = CONFIG.apiBase || '/descuentonomina/api';
 
     // Elements
     const userBadge = document.getElementById('user-badge-name');
@@ -331,8 +332,8 @@
 
     // Populate user and navigation
     userBadge.innerText = CONFIG.usuarioNombre;
-    btnVolver.href = `/descuentonomina?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-    document.getElementById('success-btn-volver').href = `/descuentonomina?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+    btnVolver.href = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=descuentonomina`;
+    document.getElementById('success-btn-volver').href = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=descuentonomina`;
 
     // Set default values
     document.getElementById('input-fecha').value = new Date().toISOString().slice(0, 10);
@@ -517,7 +518,7 @@
 
       showLoading('Buscando trabajadores...');
       try {
-        const r = await fetch(`/descuentonomina/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+        const r = await fetch(`${API_BASE}/trabajadores-por-operacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}&regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
         const trabajadores = await r.json();
 
         if (!trabajadores.length) {
@@ -649,7 +650,7 @@
           const tNombre = itemEl.querySelector('label').innerText.split('(')[0].trim();
 
           // Fetch worker cargo
-          const rTrab = await fetch(`/descuentonomina/api/trabajadores-por-operacion?regional=${encodeURIComponent(regSelect.value)}&operacion=${encodeURIComponent(opSelect.value)}`);
+          const rTrab = await fetch(`${API_BASE}/trabajadores-por-operacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}&regional=${encodeURIComponent(regSelect.value)}&operacion=${encodeURIComponent(opSelect.value)}`);
           const trabs = await rTrab.json();
           // We can use search or pass to creation. Wait, the creation API will resolve it, but we can pass cargo from segments.
           // Since segment lists cargo, let's fetch cargo or just use general 'Colaborador' or request it dynamically.
@@ -662,7 +663,7 @@
           const currentWorker = trabs.find(w => String(w.identificacion) === String(tId)) || {};
           const cargoVal = currentWorker.Cargo || 'Colaborador';
 
-          const res = await fetch('/descuentonomina/api/crear', {
+          const res = await fetch(`${API_BASE}/crear`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -692,7 +693,7 @@
           // Setup WhatsApp
           const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Autorización de Descuento por Nómina: ${generatedFirmaLink}`);
           // Fetch phone number
-          const rContact = await fetch(`/descuentonomina/api/contacto/${tId}`);
+          const rContact = await fetch(`${API_BASE}/contacto/${tId}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
           const contact = await rContact.json();
           const cleanCel = contact.celular ? String(contact.celular).replace(/\D/g, '') : '';
           let phoneParam = '';
@@ -707,7 +708,7 @@
         } else {
           // Bulk creation
           // Prepare items list
-          const rTrab = await fetch(`/descuentonomina/api/trabajadores-por-operacion?regional=${encodeURIComponent(regSelect.value)}&operacion=${encodeURIComponent(opSelect.value)}`);
+          const rTrab = await fetch(`${API_BASE}/trabajadores-por-operacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}&regional=${encodeURIComponent(regSelect.value)}&operacion=${encodeURIComponent(opSelect.value)}`);
           const trabs = await rTrab.json();
 
           const items = formTrabajadores.map(tId => {
@@ -730,7 +731,7 @@
             };
           });
 
-          const res = await fetch('/descuentonomina/api/crear-masivo', {
+          const res = await fetch(`${API_BASE}/crear-masivo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

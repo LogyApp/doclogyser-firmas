@@ -330,6 +330,22 @@
       box-shadow: var(--shadow-sm);
       border: 1px solid var(--border);
     }
+    .filters-card.card-filters {
+      padding: 16px 20px;
+      border-left: 4px solid var(--accent);
+      box-shadow: var(--shadow-sm);
+    }
+    .filters-card .filtros-toggle {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+    }
+    .filters-card .filtros-toggle-left { gap: 10px; }
+    .filters-card .filtros-chevron.open { transform: rotate(90deg); }
+    .filters-card .filtros-body { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .filters-card .filters-grid { gap: 14px; }
     .filters-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -382,6 +398,20 @@
       border: 1px solid var(--border);
     }
     table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; min-width: 800px; table-layout: fixed; }
+    #main-table { border-collapse: separate; border-spacing: 0; }
+    #main-table th {
+      color: #334155;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border);
+      border-right: 1px solid var(--border);
+      text-transform: uppercase;
+      font-size: .72rem;
+      letter-spacing: .4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.05);
+    }
+    #main-table .th-label { font-weight: inherit; }
+    #main-table .th-sortable:hover { background: #eff6ff; }
+    #main-table .th-resize:hover::after, #main-table .th-resize.resizing::after { background: var(--accent); }
     th {
       position: sticky;
       top: 0;
@@ -738,7 +768,12 @@
     </header>
 
     <!-- Filters Panel -->
-    <section class="filters-card">
+    <section class="filters-card card-filters">
+      <div class="filtros-toggle" id="main-filtros-toggle" role="button" tabindex="0" aria-controls="main-filtros-body" aria-expanded="false">
+        <span class="filtros-toggle-left">Filtros de Búsqueda <span class="filtros-badge" id="main-filtros-badge">0</span></span>
+        <span class="filtros-chevron" id="main-filtros-chevron">▸</span>
+      </div>
+      <div class="filtros-body" id="main-filtros-body" style="display:none">
       <div class="filters-grid">
         <div class="field">
           <label for="filter-buscar" id="label-buscar">Buscar Trabajador</label>
@@ -800,6 +835,7 @@
         <div class="field">
           <button class="btn btn-request" style="height: 40px; width: 100%; border: 1.5px solid #cbd5e1;" onclick="limpiarFiltros()">Limpiar</button>
         </div>
+      </div>
       </div>
     </section>
 
@@ -963,6 +999,10 @@
           </table>
         </div>
       </main>
+    </section>
+
+    <section id="descuento-nomina-container" style="display:none;width:100%;height:calc(100vh - 110px);min-height:680px;">
+      <iframe id="descuento-nomina-frame" title="Autorizaciones de Descuento por Nómina" style="width:100%;height:100%;border:0;border-radius:10px;background:#f8fafc;"></iframe>
     </section>
   </div>
 
@@ -1225,6 +1265,38 @@
     let debounceTimeout = null;
     let debounceModalTimeout = null;
 
+    function toggleMainFilters() {
+      const body = document.getElementById('main-filtros-body');
+      const chevron = document.getElementById('main-filtros-chevron');
+      const toggle = document.getElementById('main-filtros-toggle');
+      const open = body.style.display !== 'block';
+      body.style.display = open ? 'block' : 'none';
+      chevron.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    }
+
+    function actualizarBadgeFiltrosCloudDocs() {
+      const filtros = [
+        ['filter-buscar', null],
+        ['filter-documento', 'filter-documento-wrapper'],
+        ['filter-estado', 'filter-estado-wrapper'],
+        ['filter-registro', 'filter-registro-wrapper'],
+        ['filter-todo-validacion', 'filter-todo-validacion-wrapper'],
+        ['filter-solicitud-estado', 'filter-solicitud-estado-wrapper'],
+        ['filter-regional', 'filter-regional-wrapper'],
+        ['filter-operacion', 'filter-operacion-wrapper'],
+      ];
+      const activos = filtros.reduce((total, [inputId, wrapperId]) => {
+        const input = document.getElementById(inputId);
+        const wrapper = wrapperId ? document.getElementById(wrapperId) : input?.closest('.field');
+        if (!input || !wrapper || getComputedStyle(wrapper).display === 'none') return total;
+        return total + (String(input.value || '').trim() ? 1 : 0);
+      }, 0);
+      const badge = document.getElementById('main-filtros-badge');
+      badge.textContent = activos;
+      badge.style.display = activos ? 'inline-flex' : 'none';
+    }
+
     // Resizing & sorting configurations
     const COLUMNS = {
       trabajador: [
@@ -1441,6 +1513,14 @@
 
     // Initialize Page
     document.addEventListener('DOMContentLoaded', () => {
+      const filtersToggle = document.getElementById('main-filtros-toggle');
+      filtersToggle.addEventListener('click', toggleMainFilters);
+      filtersToggle.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleMainFilters();
+        }
+      });
       document.getElementById('user-badge-name').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
       document.getElementById('mobile-user-badge').innerText = CONFIG.rol;
       document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
@@ -1509,6 +1589,18 @@
           <span>Duplicados</span>
         `;
         document.getElementById('tabs-container').appendChild(tabDup);
+      }
+
+      if (seccionesPermitidas.includes('DescuentoNomina')) {
+        const tabDescuento = document.createElement('li');
+        tabDescuento.className = 'nav-item';
+        tabDescuento.id = 'tab-btn-descuentonomina';
+        tabDescuento.onclick = () => switchTab('descuentonomina');
+        tabDescuento.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="18"></line><path d="M16 9H9.5a2.5 2.5 0 0 0 0 5h5a2.5 2.5 0 0 1 0 5H8"></path></svg>
+          <span>Autorizaciones de Descuento</span>
+        `;
+        document.getElementById('tabs-container').insertBefore(tabDescuento, document.getElementById('tab-btn-logysign'));
       }
 
       // Populate filter dropdowns
@@ -1701,7 +1793,7 @@
       url.searchParams.set('tab', tab);
       history.replaceState(null, '', url);
       
-      actualizarOpcionesTipoDocumento(tab);
+      if (tab !== 'descuentonomina') actualizarOpcionesTipoDocumento(tab);
 
       const docSelectWrapper = document.getElementById('filter-documento-wrapper');
       const estadoWrapper = document.getElementById('filter-estado-wrapper');
@@ -1716,6 +1808,7 @@
       const tableCard = document.querySelector('main.card');
       const permisosContainer = document.getElementById('permisos-container');
       const logysignContainer = document.getElementById('logysign-container');
+      const descuentoContainer = document.getElementById('descuento-nomina-container');
 
       const regWrapper = document.getElementById('filter-regional-wrapper');
       const opWrapper = document.getElementById('filter-operacion-wrapper');
@@ -1724,7 +1817,25 @@
       const btnNuevaFirma = document.getElementById('btn-nueva-firma');
       const btnNuevoTipoDoc = document.getElementById('btn-nuevo-tipo-doc-cd');
 
-      if (tab === 'permisos') {
+      if (descuentoContainer) descuentoContainer.style.display = tab === 'descuentonomina' ? 'block' : 'none';
+
+      if (tab === 'descuentonomina') {
+        if (filtersCard) filtersCard.style.display = 'none';
+        if (tableCard) tableCard.style.display = 'none';
+        if (permisosContainer) permisosContainer.style.display = 'none';
+        if (logysignContainer) logysignContainer.style.display = 'none';
+        if (regWrapper) regWrapper.style.display = 'none';
+        if (opWrapper) opWrapper.style.display = 'none';
+        btnCargar.style.display = 'none';
+        btnValidar.style.display = 'none';
+        btnNuevaFirma.style.display = 'none';
+        btnNuevoTipoDoc.style.display = 'none';
+        const iframe = document.getElementById('descuento-nomina-frame');
+        if (iframe && !iframe.dataset.loaded) {
+          iframe.src = `/cloud-docs/descuento-nomina?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+          iframe.dataset.loaded = 'true';
+        }
+      } else if (tab === 'permisos') {
         if (filtersCard) filtersCard.style.display = 'none';
         if (tableCard) tableCard.style.display = 'none';
         if (permisosContainer) permisosContainer.style.display = 'block';
@@ -1845,7 +1956,7 @@
 
       if (tab === 'permisos') {
         cargarPermisosPanel();
-      } else if (tab !== 'logysign') {
+      } else if (tab !== 'logysign' && tab !== 'descuentonomina') {
         filtrar();
       }
 
@@ -1880,6 +1991,7 @@
 
     // Load data from APIs
     async function filtrar() {
+      actualizarBadgeFiltrosCloudDocs();
       showLoader();
       try {
         const buscar = document.getElementById('filter-buscar').value;

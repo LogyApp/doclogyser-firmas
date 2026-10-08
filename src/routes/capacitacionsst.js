@@ -6,6 +6,12 @@ const { v4: uuidv4 } = require('uuid');
 const pool    = require('../services/db');
 const { subirFirma, obtenerFirmaBase64Reciente } = require('../services/storage');
 const { notificarFirmaCapacitacionSST, notificarCapacitacionSSTCompletada } = require('../services/email');
+const {
+  crearNotificacionCapacitacionSST,
+  obtenerNotificacionesUsuario,
+  marcarNotificacionesLeidas,
+  marcarTodasLeidas
+} = require('../services/notificacionesService');
 const { renderPDF } = require('../services/capacitacionPdfGenerator');
 const { subirPDFCapacitacionSST } = require('../services/storage');
 
@@ -912,6 +918,17 @@ router.post('/api/responder/:id', async (req, res) => {
       }).catch(e => console.error('[capacitacionsst] Error enviando correo de completado:', e.message));
     }
 
+    // 10. Crear notificación interna en Maestro_notificaciones para analistas y líderes SST
+    crearNotificacionCapacitacionSST(pool, {
+      id_capacitacion,
+      identificacion: ev.identificacion,
+      tema: ev.tema,
+      resultado,
+      puntaje: score,
+      totalPreguntas,
+      url_doc: urlDoc
+    }).catch(e => console.error('[capacitacionsst] Error creando notificación interna:', e.message));
+
     res.json({ ok: true, urlDoc, resultado, score });
   } catch (err) {
     console.error('[capacitacionsst] POST /api/responder:', err);
@@ -1214,7 +1231,59 @@ router.delete('/api/plantilla/:id', async (req, res) => {
       conn.release();
     }
   } catch (err) {
-    console.error('[capacitacionsst] DELETE /api/plantilla/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: NOTIFICACIONES SST (CENTRALIZADAS) ═════
+router.get('/api/notificaciones', async (req, res) => {
+  try {
+    const { usuario, limit } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const data = await obtenerNotificacionesUsuario(pool, {
+      usuarioId: usuario,
+      modulo: 'capacitacionsst',
+      limit
+    });
+
+    res.json(data);
+  } catch (err) {
+    console.error('[capacitacionsst] GET /api/notificaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/notificaciones/marcar-leidas', async (req, res) => {
+  try {
+    const { usuario, ids } = req.body;
+    if (!usuario || !ids) return res.status(400).json({ error: 'usuario e ids requeridos' });
+
+    const result = await marcarNotificacionesLeidas(pool, {
+      usuarioId: usuario,
+      ids
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[capacitacionsst] POST /api/notificaciones/marcar-leidas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/api/notificaciones/marcar-todas-leidas', async (req, res) => {
+  try {
+    const { usuario } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'Parámetro usuario requerido' });
+
+    const result = await marcarTodasLeidas(pool, {
+      usuarioId: usuario,
+      modulo: 'capacitacionsst'
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[capacitacionsst] POST /api/notificaciones/marcar-todas-leidas:', err);
     res.status(500).json({ error: err.message });
   }
 });
