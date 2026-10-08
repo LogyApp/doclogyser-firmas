@@ -260,32 +260,6 @@
       color: #fff;
     }
 
-    .sidebar-footer {
-      padding: 10px 16px 14px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(0, 0, 0, 0.15);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .footer-link {
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 0.8rem;
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 8px;
-      border-radius: 6px;
-      transition: var(--transition);
-    }
-
-    .footer-link:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.08);
-    }
-
     /* ══════════════════════════════════════════════════════════
        CONTENEDOR PRINCIPAL
     ══════════════════════════════════════════════════════════ */
@@ -1841,15 +1815,6 @@
       <span id="btn-actualizar-global-label">Actualizar</span>
     </button>
 
-    <!-- Enlaces directos a otros módulos -->
-    <div class="sidebar-footer">
-      <a href="#" id="link-inventario" class="footer-link" title="Ir al módulo de Inventario">
-        <span>📦</span> Ir a Inventario
-      </a>
-      <a href="#" id="link-clouddocs" class="footer-link" title="Ir a Cloud Docs">
-        <span>☁️</span> Ir a Cloud Docs
-      </a>
-    </div>
   </aside>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -3659,8 +3624,6 @@
     }
 
     function initLinks() {
-      document.getElementById('link-inventario').href = `/inventario?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-      document.getElementById('link-clouddocs').href = `/cloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
       const linkAdminCap = document.getElementById('link-admin-cap-full');
       if (linkAdminCap) {
         linkAdminCap.href = `/admin/capacitacionsst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;

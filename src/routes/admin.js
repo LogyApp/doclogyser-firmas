@@ -202,77 +202,14 @@ function acciones(row, puedeValidar, puedePrevisualizar, usuarioId) {
 
 // ── Panel de traslados ──────────────────────────────────────────────────────
 
-router.get('/traslados', async (req, res) => {
-  try {
-    const usuarioId = req.query.Usuario;
-    if (!usuarioId) return res.status(403).send(paginaNoAcceso());
-
-    const acceso = await computarAcceso(usuarioId);
-    if (!acceso) return res.status(403).send(paginaNoAcceso());
-
-    const estado = req.query.estado || '';
-    const template = fs.readFileSync(TRASLADOS_HTML, 'utf8');
-
-    let rows;
-    if (acceso.sinFiltro) {
-      [rows] = estado
-        ? await pool.execute('SELECT * FROM Dynamic_traslados_trabajador WHERE estado_doc = ? ORDER BY Fecha_Registro DESC LIMIT 300', [estado])
-        : await pool.execute('SELECT * FROM Dynamic_traslados_trabajador ORDER BY Fecha_Registro DESC LIMIT 300');
-    } else if (acceso.filtroSQL.length > 0) {
-      const ph = acceso.filtroSQL.map(() => '?').join(',');
-      [rows] = estado
-        ? await pool.execute(`SELECT * FROM Dynamic_traslados_trabajador WHERE operacion_origen IN (${ph}) AND estado_doc = ? ORDER BY Fecha_Registro DESC LIMIT 300`, [...acceso.filtroSQL, estado])
-        : await pool.execute(`SELECT * FROM Dynamic_traslados_trabajador WHERE operacion_origen IN (${ph}) ORDER BY Fecha_Registro DESC LIMIT 300`, acceso.filtroSQL);
-    } else {
-      rows = [];
-    }
-
-    const [opRows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN"
-    );
-    const operaciones = opRows.map(r => r['OPERACIÓN']).filter(Boolean);
-
-    const rowsHtml = rows.length === 0
-      ? `<tr><td colspan="9" style="text-align:center;padding:48px;color:#ccc;font-size:.9rem">Sin registros en este estado</td></tr>`
-      : rows.map(r => `
-        <tr data-origen="${esc(r.operacion_origen)}" data-id="${esc(r.IdTraslado)}" data-celular="${esc(r.celular_trabajador || '')}" data-email="${esc(r.email_trabajador || '')}" data-nombre="${esc(r.Trabajador || '')}">
-          <td>${badge(r.estado_doc)}</td>
-          <td style="min-width:220px;white-space:normal;word-break:break-word" title="${esc(r.Trabajador)}">${esc(r.Trabajador)}</td>
-          <td style="font-size:.82rem"><span style="color:#999">${esc(r.operacion_origen)}</span><br>→ <strong>${esc(r.operacion_destino)}</strong></td>
-          <td style="font-size:.8rem">${r.celular_trabajador ? `<div>${esc(r.celular_trabajador)}</div>` : '<span style="color:#ccc">—</span>'}${r.email_trabajador ? `<div style="color:#1a5fa8">${esc(r.email_trabajador)}</div>` : ''}</td>
-          <td>${formatFecha(r.fecha_traslado)}</td>
-          <td style="font-size:.8rem;color:#888">${formatFechaHora(r.Fecha_Registro)}</td>
-          <td style="font-size:.8rem;color:#555">${esc(r.Usuario)}</td>
-          <td style="font-size:.82rem;max-width:220px;white-space:normal;word-break:break-word;line-height:1.4">${esc(r.observaciones) || '<span style="color:#ccc">—</span>'}</td>
-          <td class="td-acc">${acciones(r, acceso.puedeValidar, acceso.puedePrevisualizar, acceso.usuarioId)}</td>
-        </tr>`).join('');
-
-    const safe = s => JSON.stringify(s).replace(/<\/script>/gi, '<\\/script>');
-    const rolConfig = {
-      usuarioId: acceso.usuarioId,
-      puedeValidar: acceso.puedeValidar,
-      puedeEditarPlantilla: acceso.puedeEditarPlantilla,
-      puedePrevisualizar: acceso.puedePrevisualizar,
-      sinFiltro: acceso.sinFiltro,
-      operacionesFiltro: acceso.operacionesFiltro,
-      opsPorRegional: acceso.opsPorRegional,
-    };
-
-    const usuarioEnc = encodeURIComponent(usuarioId);
-    const html = template
-      .replace(/__USUARIO_PARAM__/g, usuarioEnc)
-      .replace('__ESTADO_ACTIVO__', esc(estado))
-      .replace('__ROWS__', rowsHtml)
-      .replace('__TOTAL__', rows.length)
-      .replace('__OPERACIONES__', safe(operaciones))
-      .replace('__ROL_CONFIG__', safe(rolConfig))
-      .replace('__FILTRO_HTML__', generarFiltroHTML(acceso));
-
-    res.send(html);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error al cargar traslados');
-  }
+// El panel propio de este módulo fue reemplazado por la pestaña Traslados
+// dentro de Nómina (que reutiliza los endpoints /traslados/:id/... de abajo,
+// sin duplicar esa lógica — ver comentario en nomina/index.html). Este acceso
+// viejo solo redirige ahí, preservando el usuario.
+router.get('/traslados', (req, res) => {
+  const usuarioId = req.query.Usuario || req.query.usuario;
+  if (!usuarioId) return res.status(403).send(paginaNoAcceso());
+  res.redirect(`/nomina?usuario=${encodeURIComponent(usuarioId)}&tab=traslados&subtab=listado`);
 });
 
 // Variante JSON de GET /traslados, sin filtro de estado (se usa desde la pestaña
