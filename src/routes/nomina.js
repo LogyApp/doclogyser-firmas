@@ -316,8 +316,8 @@ router.get('/api/retiros', async (req, res) => {
         v.\`Operación\`          AS Operacion,
         v.\`Trabajador\`         AS Trabajador,
         v.\`Cargo\`              AS Cargo,
-        v.\`Fecha de Ingreso\`   AS FechaIngreso,
-        v.\`Fecha de Retiro\`    AS FechaRetiro,
+        DATE_FORMAT(v.\`Fecha de Ingreso\`, '%Y-%m-%d') AS FechaIngreso,
+        DATE_FORMAT(v.\`Fecha de Retiro\`, '%Y-%m-%d') AS FechaRetiro,
         v.\`Motivo del Retiro\`  AS MotivoRetiro,
         v.\`Archivo Vinculación\` AS TipoRenuncia,
         v.ar_ciudad_regional     AS ArCiudadRegional,
@@ -327,7 +327,7 @@ router.get('/api/retiros', async (req, res) => {
         v.\`Fecha Actualización\` AS FechaActualizacion
       FROM \`Maestro_Vinculación\` v
       ${listFilter.where}
-      ORDER BY v.\`Fecha de Retiro\` DESC
+      ORDER BY v.\`Fecha de Retiro\` DESC, v.\`Fecha de Ingreso\` DESC, v.\`Id Vinculación\` DESC
       LIMIT 500
     `;
 
@@ -359,18 +359,25 @@ router.get('/api/retiros', async (req, res) => {
     // tiene el documento de terminación/renuncia requerido (ninguno si es Renuncia Verbal) +
     // Certificado (57) + Examen de egreso (58) válidos (Validación distinta de 'ERROR'), o
     // cuando existe un "Documento de Retiro" (47) que cierra el caso manualmente.
-    const identificaciones = [...new Set(results.map(r => String(r.Identificacion)))];
-    const docsMap = new Map(); // Identificación -> Set(TipoDocumento)
-    if (identificaciones.length) {
-      const ph = identificaciones.map(() => '?').join(',');
+    const fechaEpisodio = value => value instanceof Date
+      ? value.toISOString().slice(0, 10)
+      : String(value || '').slice(0, 10);
+    const episodios = [...new Map(results.map(r => {
+      const fechaIngreso = fechaEpisodio(r.FechaIngreso);
+      return [`${String(r.Identificacion)}|${fechaIngreso}`, { identificacion: String(r.Identificacion), fechaIngreso }];
+    })).values()].filter(r => r.fechaIngreso);
+    const docsMap = new Map(); // Identificación + FechaIngreso -> Set(TipoDocumento)
+    if (episodios.length) {
+      const condicionesEpisodios = episodios.map(() => '(Identificación = ? AND DATE(Fecha_Ingreso) = ?)').join(' OR ');
+      const paramsEpisodios = episodios.flatMap(r => [r.identificacion, r.fechaIngreso]);
       const [docRows] = await pool.execute(
-        `SELECT Identificación, TipoDocumento FROM Maestro_docTrabajador
-         WHERE Identificación IN (${ph}) AND TipoDocumento IN ('47','55','76','77','57','58')
+        `SELECT Identificación, DATE_FORMAT(Fecha_Ingreso, '%Y-%m-%d') AS FechaIngreso, TipoDocumento FROM Maestro_docTrabajador
+         WHERE (${condicionesEpisodios}) AND TipoDocumento IN ('47','55','76','77','57','58')
            AND (Validación IS NULL OR Validación <> 'ERROR')`,
-        identificaciones
+        paramsEpisodios
       );
       docRows.forEach(r => {
-        const key = String(r.Identificación);
+        const key = `${String(r.Identificación)}|${fechaEpisodio(r.FechaIngreso)}`;
         if (!docsMap.has(key)) docsMap.set(key, new Set());
         docsMap.get(key).add(String(r.TipoDocumento));
       });
@@ -381,14 +388,17 @@ router.get('/api/retiros', async (req, res) => {
       const terminaProceso = !!condicion?.TerminaProceso;
       const tieneDocsGenerados = !!(terminaProceso || r.ArCiudadRegional || r.TokenFirmaCt || pzConFirma.has(r.IdVinculacion));
 
-      const docsSet = docsMap.get(String(r.Identificacion)) || new Set();
+      const docsKey = `${String(r.Identificacion)}|${fechaEpisodio(r.FechaIngreso)}`;
+      const docsSet = docsMap.get(docsKey) || new Set();
       const tieneDoc47 = docsSet.has('47');
       const requerido = docTerminacionRequerido(r.MotivoRetiro, condicion, r.TipoRenuncia);
       const tieneLos3Docs = (requerido === null || docsSet.has(requerido)) && docsSet.has('57') && docsSet.has('58');
-      const mismaFechaIngresoRetiro = r.FechaIngreso && r.FechaRetiro &&
-        new Date(r.FechaIngreso).getTime() === new Date(r.FechaRetiro).getTime();
+      const datosRetiroCompletos = !!fechaEpisodio(r.FechaRetiro) && !!String(r.MotivoRetiro || '').trim();
+      const mismaFechaIngresoRetiro = fechaEpisodio(r.FechaIngreso)
+        && fechaEpisodio(r.FechaRetiro)
+        && fechaEpisodio(r.FechaIngreso) === fechaEpisodio(r.FechaRetiro);
 
-      const pendiente = !terminaProceso && !mismaFechaIngresoRetiro && !tieneDoc47 && !tieneLos3Docs;
+      const pendiente = !datosRetiroCompletos || (!terminaProceso && !mismaFechaIngresoRetiro && !tieneDoc47 && !tieneLos3Docs);
       const estadoLegalizacion = !pendiente ? 'legalizado' : (r.FechaLegalizacion ? 'en_proceso' : 'no_iniciado');
 
       return {

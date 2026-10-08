@@ -115,8 +115,9 @@ async function procesarPZVencido(pz, areasRequeridas) {
   // Actualizar o insertar en Maestro_docTrabajador
   const [docRows] = await pool.execute(
     `SELECT id FROM Maestro_docTrabajador
-     WHERE Identificación = ? AND Prefijo = 'PZ' ORDER BY FechaRegistro DESC LIMIT 1`,
-    [String(pz.identificacion)]
+     WHERE Identificación = ? AND Prefijo = 'PZ' AND DATE(Fecha_Ingreso) = DATE(?)
+     ORDER BY FechaRegistro DESC LIMIT 1`,
+    [String(pz.identificacion), toDateStr(pz['Fecha de Ingreso'])]
   );
   if (docRows.length) {
     await pool.execute(

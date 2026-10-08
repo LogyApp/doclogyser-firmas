@@ -135,9 +135,9 @@ async function regenerarPazYSalvoFinal(idVinculacion) {
   await pool.execute('UPDATE Maestro_pazysalvo SET url_pdf_final = ? WHERE id = ?', [urlPdf, pz.id]);
   await pool.execute(
     `UPDATE Maestro_docTrabajador SET Doc = ?
-     WHERE Identificación = ? AND TipoDocumento = '59'
+     WHERE Identificación = ? AND TipoDocumento = '59' AND DATE(Fecha_Ingreso) = DATE(?)
      ORDER BY FechaRegistro DESC LIMIT 1`,
-    [urlPdf, String(pz.identificacion)]
+    [urlPdf, String(pz.identificacion), toDateStr(pz['Fecha de Ingreso'])]
   );
   return urlPdf;
 }

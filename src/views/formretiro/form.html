@@ -359,6 +359,9 @@
         <span class="info-label">Identificación</span><span class="info-value" id="resumenId"></span>
       </div>
       <div class="info-row">
+        <span class="info-label">Id Vinculación</span><span class="info-value" id="resumenIdVinculacion"></span>
+      </div>
+      <div class="info-row">
         <span class="info-label">Fecha de retiro</span><span class="info-value" id="resumenFecha"></span>
       </div>
       <div class="info-row">
@@ -398,7 +401,7 @@
 <script>
   const _cfg = __CONFIG__;
   const {
-    identificacion, usuario, usuarioNombre, rolUsuario,
+    idVinculacion, identificacion, usuario, usuarioNombre, rolUsuario,
     esNominaOSistema, puedeRegistrar, trabajador, cargo, fechaIngreso,
     rawFechaIngreso, motivos, condicionesMotivo,
     yaRetirado, retiroInfo, urlGenerarDocs, puedeGenerarDocs,
@@ -428,6 +431,7 @@
     // Mostrar resumen post-registro
     mostrarExito({
       trabajador:    retiroInfo.trabajador,
+      idVinculacion: retiroInfo.idVinculacion || idVinculacion,
       identificacion: retiroInfo.identificacion,
       fechaRetiro:   retiroInfo.fechaRetiro,
       motivoRetiro:  retiroInfo.motivoRetiro,
@@ -446,6 +450,7 @@
     document.getElementById('seccionExito').style.display   = 'block';
 
     document.getElementById('resumenTrabajador').textContent = data.trabajador;
+    document.getElementById('resumenIdVinculacion').textContent = data.idVinculacion || '—';
     document.getElementById('resumenId').textContent         = data.identificacion;
     document.getElementById('resumenFecha').textContent      = data.fechaRetiro || '—';
     document.getElementById('resumenMotivo').textContent     = data.motivoRetiro + (data.tipoRenuncia ? ` (${data.tipoRenuncia})` : '');
@@ -670,8 +675,12 @@
       document.getElementById('loadingOverlay').classList.remove('open');
 
       if (data.ok) {
+        if (String(data.idVinculacion) !== String(idVinculacion)) {
+          throw new Error('El servidor respondió con una vinculación distinta a la que se abrió. No se mostrará un resumen incorrecto.');
+        }
         mostrarExito({
           trabajador:    data.trabajador,
+          idVinculacion: data.idVinculacion,
           identificacion: data.identificacion,
           fechaRetiro:   data.fechaRetiro,
           motivoRetiro:  data.motivoRetiro,
@@ -683,9 +692,9 @@
         alert('Error: ' + (data.error || 'No se pudo registrar el retiro'));
         document.getElementById('btnEnviar').disabled = false;
       }
-    } catch {
+    } catch (err) {
       document.getElementById('loadingOverlay').classList.remove('open');
-      alert('Error de conexión. Intente nuevamente.');
+      alert(err.message || 'Error de conexión. Intente nuevamente.');
       document.getElementById('btnEnviar').disabled = false;
     }
   }

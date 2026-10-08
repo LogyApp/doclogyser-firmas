@@ -125,9 +125,9 @@ router.get('/:idVinculacion', async (req, res) => {
     const [docRows] = await pool.execute(
       `SELECT Prefijo, Doc, \`Validación\`, TipoDocumento, FechaRegistro
        FROM Maestro_docTrabajador
-       WHERE Identificación = ?
+       WHERE Identificación = ? AND DATE(Fecha_Ingreso) = DATE(?)
        ORDER BY FechaRegistro DESC`,
-      [String(identificacion)]
+      [String(identificacion), toDateStr(vin['Fecha de Ingreso'])]
     );
     const docsMap = {};
     docRows.forEach(r => { if (!docsMap[r.Prefijo]) docsMap[r.Prefijo] = r; });
@@ -460,8 +460,10 @@ router.post('/api/subir-terminacion-contrato', async (req, res) => {
     }
 
     const [docRows] = await pool.execute(
-      'SELECT id, `Validación` FROM Maestro_docTrabajador WHERE Identificación = ? AND TipoDocumento = ? LIMIT 1',
-      [String(identificacion), tipoDoc]
+      `SELECT id, \`Validación\` FROM Maestro_docTrabajador
+       WHERE Identificación = ? AND TipoDocumento = ? AND DATE(Fecha_Ingreso) = DATE(?)
+       ORDER BY FechaRegistro DESC LIMIT 1`,
+      [String(identificacion), tipoDoc, toDateStr(vin['Fecha de Ingreso'])]
     );
     // Un documento "DESACTUALIZADO" (ver /api/actualizar-fecha-retiro) sí puede
     // reemplazarse — es justamente para eso que queda marcado así.
@@ -523,11 +525,12 @@ router.post('/api/actualizar-fecha-retiro', async (req, res) => {
     }
 
     const [vinRows] = await pool.execute(
-      'SELECT `Identificación`, `Fecha de Retiro` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
+      'SELECT `Identificación`, `Fecha de Ingreso`, `Fecha de Retiro` FROM `Maestro_Vinculación` WHERE `Id Vinculación` = ? LIMIT 1',
       [idVinculacion]
     );
     if (!vinRows.length) return res.status(404).json({ ok: false, error: 'Vinculación no encontrada' });
     const identificacion = vinRows[0]['Identificación'];
+    const fechaIngreso = toDateStr(vinRows[0]['Fecha de Ingreso']);
     const fechaAnterior  = toDateStr(vinRows[0]['Fecha de Retiro']);
     if (fechaAnterior === nuevaFecha) return res.json({ ok: true, sinCambios: true });
 
@@ -538,8 +541,9 @@ router.post('/api/actualizar-fecha-retiro', async (req, res) => {
 
     const [docRows] = await pool.execute(
       `SELECT id, Prefijo, FechaRegistro FROM Maestro_docTrabajador
-       WHERE Identificación = ? AND Prefijo IN ('CT','AR','CR','TCR','TCRP')`,
-      [String(identificacion)]
+       WHERE Identificación = ? AND DATE(Fecha_Ingreso) = DATE(?)
+         AND Prefijo IN ('CT','AR','CR','TCR','TCRP')`,
+      [String(identificacion), fechaIngreso]
     );
     const docCT = docRows.find(d => d.Prefijo === 'CT');
     const docAR = docRows.find(d => d.Prefijo === 'AR');

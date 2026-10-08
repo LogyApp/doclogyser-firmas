@@ -116,11 +116,15 @@ router.post('/api/subir-carta-renuncia', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Datos incompletos' });
     }
     const [docRows] = await pool.execute(
-      `SELECT Validación FROM Maestro_docTrabajador
+      `SELECT id, Validación FROM Maestro_docTrabajador
        WHERE Identificación = (
          SELECT Identificación FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1
-       ) AND TipoDocumento = ? ORDER BY FechaRegistro DESC LIMIT 1`,
-      [idVinculacion, ID_DOC_CARTA_RENUNCIA]
+       ) AND TipoDocumento = ?
+         AND DATE(Fecha_Ingreso) = (
+           SELECT DATE(\`Fecha de Ingreso\`) FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1
+         )
+       ORDER BY FechaRegistro DESC LIMIT 1`,
+      [idVinculacion, ID_DOC_CARTA_RENUNCIA, idVinculacion]
     );
     if (docRows.length && docRows[0]['Validación'] === 'OK') {
       return res.status(403).json({ ok: false, error: 'El documento ya fue validado y no puede ser reemplazado' });
@@ -139,9 +143,8 @@ router.post('/api/subir-carta-renuncia', async (req, res) => {
 
     if (docRows.length) {
       await pool.execute(
-        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE TipoDocumento = ?
-         AND Identificación = ? ORDER BY FechaRegistro DESC LIMIT 1`,
-        [url, fechaHoraBogota(), ID_DOC_CARTA_RENUNCIA, String(identificacion)]
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+        [url, fechaHoraBogota(), docRows[0].id]
       );
     } else {
       await registrarDocTrabajador({
@@ -325,8 +328,9 @@ router.post('/api/reemplazar-ed', async (req, res) => {
 
     const [docRows] = await pool.execute(
       `SELECT id, \`Validación\` FROM Maestro_docTrabajador
-       WHERE Identificación = ? AND TipoDocumento = ? ORDER BY FechaRegistro DESC LIMIT 1`,
-      [String(identificacion), ID_DOC_EVALUACION_DESEMPENO]
+       WHERE Identificación = ? AND TipoDocumento = ? AND DATE(Fecha_Ingreso) = DATE(?)
+       ORDER BY FechaRegistro DESC LIMIT 1`,
+      [String(identificacion), ID_DOC_EVALUACION_DESEMPENO, toDateStr(vinRow['Fecha de Ingreso'])]
     );
     if (docRows.length && docRows[0]['Validación'] === 'OK') {
       return res.status(403).json({ ok: false, error: 'El documento ya fue validado y no puede ser reemplazado' });
@@ -380,8 +384,9 @@ router.post('/api/reemplazar-carta-renuncia', async (req, res) => {
 
     const [docRows] = await pool.execute(
       `SELECT id, \`Validación\` FROM Maestro_docTrabajador
-       WHERE Identificación = ? AND TipoDocumento = ? ORDER BY FechaRegistro DESC LIMIT 1`,
-      [String(identificacion), ID_DOC_CARTA_RENUNCIA]
+       WHERE Identificación = ? AND TipoDocumento = ? AND DATE(Fecha_Ingreso) = DATE(?)
+       ORDER BY FechaRegistro DESC LIMIT 1`,
+      [String(identificacion), ID_DOC_CARTA_RENUNCIA, toDateStr(vinRow['Fecha de Ingreso'])]
     );
     if (docRows.length && docRows[0]['Validación'] === 'OK') {
       return res.status(403).json({ ok: false, error: 'El documento ya fue validado y no puede ser reemplazado' });
@@ -661,9 +666,9 @@ router.get('/:idVinculacion', async (req, res) => {
     if (yaRetirado) {
       const [docRows] = await pool.execute(
         `SELECT TipoDocumento, Doc, \`Validación\` FROM Maestro_docTrabajador
-         WHERE Identificación = ? AND TipoDocumento IN (?, ?)
+         WHERE Identificación = ? AND DATE(Fecha_Ingreso) = DATE(?) AND TipoDocumento IN (?, ?)
          ORDER BY FechaRegistro DESC`,
-        [String(identificacion), ID_DOC_CARTA_RENUNCIA, ID_DOC_EVALUACION_DESEMPENO]
+        [String(identificacion), toDateStr(vin['Fecha de Ingreso']), ID_DOC_CARTA_RENUNCIA, ID_DOC_EVALUACION_DESEMPENO]
       );
       const docsMap = {};
       docRows.forEach(r => { if (!docsMap[r.TipoDocumento]) docsMap[r.TipoDocumento] = r; });
@@ -679,6 +684,7 @@ router.get('/:idVinculacion', async (req, res) => {
 
     const template = fs.readFileSync(FORM_HTML, 'utf8');
     const config = JSON.stringify({
+      idVinculacion: idVin,
       identificacion:  String(identificacion),
       usuario,
       usuarioNombre:   usuRows[0].Nombre || usuario,
@@ -836,9 +842,9 @@ router.post('/:idVinculacion', async (req, res) => {
         // Actualizar si ya existe, insertar si no
         const [existeCR] = await pool.execute(
           `SELECT id FROM Maestro_docTrabajador
-           WHERE Identificación = ? AND TipoDocumento = ?
+           WHERE Identificación = ? AND TipoDocumento = ? AND DATE(Fecha_Ingreso) = DATE(?)
            ORDER BY FechaRegistro DESC LIMIT 1`,
-          [String(identificacion), ID_DOC_CARTA_RENUNCIA]
+          [String(identificacion), ID_DOC_CARTA_RENUNCIA, toDateStr(vin['Fecha de Ingreso'])]
         );
         if (existeCR.length) {
           await pool.execute(
@@ -870,9 +876,9 @@ router.post('/:idVinculacion', async (req, res) => {
         const urlED = await subirDocumentoRetiro(identificacion, prefijoED, buffer);
         const [existeED] = await pool.execute(
           `SELECT id FROM Maestro_docTrabajador
-           WHERE Identificación = ? AND TipoDocumento = ?
+           WHERE Identificación = ? AND TipoDocumento = ? AND DATE(Fecha_Ingreso) = DATE(?)
            ORDER BY FechaRegistro DESC LIMIT 1`,
-          [String(identificacion), ID_DOC_EVALUACION_DESEMPENO]
+          [String(identificacion), ID_DOC_EVALUACION_DESEMPENO, toDateStr(vin['Fecha de Ingreso'])]
         );
         if (existeED.length) {
           await pool.execute(

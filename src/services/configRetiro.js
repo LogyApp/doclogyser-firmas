@@ -104,9 +104,15 @@ const NOMBRES_DOC_LEGALIZACION = {
   '58': 'Autorización Examen Médico de Egreso',
 };
 
-// Devuelve { legalizado, pendientes[] }: misma lógica de estaRetiroLegalizado,
-// pero además detalla qué documentos concretos faltan cuando no está legalizado.
+// Devuelve { legalizado, pendientes[] } usando documentos del episodio laboral
+// actual, identificado por Identificación + Fecha_Ingreso. Evita que una
+// legalización previa del mismo trabajador cierre un retiro posterior.
 async function obtenerPendientesLegalizacion({ identificacion, motivoRetiro, fechaIngreso, fechaRetiro, tipoRenuncia }) {
+  const datosPendientes = [];
+  if (!fechaRetiro) datosPendientes.push('Fecha de Retiro');
+  if (!String(motivoRetiro || '').trim()) datosPendientes.push('Motivo del Retiro');
+  if (datosPendientes.length) return { legalizado: false, pendientes: datosPendientes };
+
   const condicion = await obtenerCondicionRetiro(motivoRetiro);
   if (condicion?.TerminaProceso) return { legalizado: true, pendientes: [] };
 
@@ -117,8 +123,9 @@ async function obtenerPendientesLegalizacion({ identificacion, motivoRetiro, fec
   const [docRows] = await pool.execute(
     `SELECT TipoDocumento FROM Maestro_docTrabajador
      WHERE Identificación = ? AND TipoDocumento IN ('47','55','76','77','57','58')
+       AND DATE(Fecha_Ingreso) = DATE(?)
        AND (Validación IS NULL OR Validación <> 'ERROR')`,
-    [String(identificacion)]
+    [String(identificacion), fechaIngreso]
   );
   const docsSet = new Set(docRows.map(r => String(r.TipoDocumento)));
   if (docsSet.has('47')) return { legalizado: true, pendientes: [] };
