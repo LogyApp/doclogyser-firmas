@@ -188,30 +188,41 @@
       overflow-y: auto;
     }
 
-    /* Header styling matching logysign */
-    header {
-      background: var(--primary);
-      border-radius: var(--radius-lg);
-      padding: 14px 24px;
-      color: #fff;
-      margin-bottom: 22px;
-      box-shadow: var(--shadow-lg);
+    /* Header por pestaña (mismo patrón que .tab-header en el módulo SST):
+       tarjeta blanca compacta con ícono + título + contador de registros +
+       subtítulo, en vez de un único banner genérico fijo para todas las
+       pestañas. Se actualiza dinámicamente en switchTab(). */
+    .tab-header {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+      border-left: 5px solid var(--accent);
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       flex-wrap: wrap;
-      gap: 20px;
-      position: relative;
-      overflow: hidden;
+      gap: 16px;
     }
-
-    header::after {
-      content: '';
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 3px;
-      background: var(--accent);
+    .tab-header-left { display: flex; flex-direction: column; gap: 4px; }
+    .tab-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
+    .tab-subtitle { font-size: .85rem; color: var(--text-muted); margin: 0; }
+    .tab-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 4px 10px; border-radius: 20px;
+      font-size: .78rem; font-weight: 700;
+    }
+    .badge-info { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
 
     .brand-lockup {
       display: flex;
@@ -569,7 +580,6 @@
         min-height: calc(100vh - 56px);
         overflow-y: visible;
       }
-      header { flex-direction: column; text-align: center; padding: 20px; }
       .brand-lockup { margin-bottom: 10px; }
       .tabs-bar { width: 100%; justify-content: stretch; }
       .tab-btn { flex: 1; text-align: center; padding: 8px 10px; font-size: 0.85rem; }
@@ -741,31 +751,32 @@
 
   <!-- Main Content Area -->
   <div class="main-content">
-    <!-- Header -->
-    <header>
-      <div class="header-logo" style="text-align: left;">
-        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 750; color: #fff;">Cloud<span class="accent" style="color: var(--accent);">Docs</span></h1>
-        <p style="margin: 2px 0 0 0; font-size: 0.85rem; color: rgba(255,255,255,0.7);">Gestión Documental y Archivo Digital</p>
+    <!-- Header por pestaña (ícono + título + contador de registros + subtítulo), actualizado dinámicamente desde switchTab() -->
+    <div class="tab-header" id="cd-tab-header">
+      <div class="tab-header-left">
+        <h1 class="tab-title">
+          <span id="cd-tab-icon">👥</span>
+          <span id="cd-tab-title-text">Trabajadores</span>
+          <span class="badge badge-info" id="cd-tab-badge">0 Registros</span>
+        </h1>
+        <p class="tab-subtitle" id="cd-tab-subtitle">Gestión documental y archivo digital por trabajador</p>
       </div>
-      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      <div class="tab-actions">
         <a class="btn btn-submit" id="btn-cargar-doc" href="#" style="background: var(--accent); color: #fff; box-shadow: 0 4px 10px rgba(245, 84, 0, 0.2); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm);">
           ＋ Cargar Documento
         </a>
         <a class="btn btn-submit" id="btn-validar-cap" href="#" style="display: none; background: var(--success); color: #fff; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm);">
           ＋ Validar Carpeta
         </a>
-        <a class="btn btn-submit" id="btn-nueva-firma" href="#" style="display: none; background: var(--primary-light); color: #fff; border: 1.5px solid rgba(255,255,255,0.15); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px;">
+        <a class="btn btn-submit" id="btn-nueva-firma" href="#" style="display: none; background: var(--primary-light); color: #fff; border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); text-decoration: none; padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           ＋ Nueva Firma
         </a>
-        <button type="button" class="btn btn-submit" id="btn-nuevo-tipo-doc-cd" style="display: none; background: var(--primary-light); color: #fff; border: 1.5px solid rgba(255,255,255,0.15); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px; cursor: pointer;" onclick="abrirModalNuevoTipoDocCD()">
+        <button type="button" class="btn btn-submit" id="btn-nuevo-tipo-doc-cd" style="display: none; background: var(--primary-light); color: #fff; border: 1.5px solid rgba(0,0,0,0.08); box-shadow: 0 4px 10px rgba(0, 11, 89, 0.15); padding: 10px 18px; border-radius: var(--radius-sm); align-items: center; gap: 8px; cursor: pointer;" onclick="abrirModalNuevoTipoDocCD()">
           ＋ Nuevo Tipo de Documento
         </button>
-        <div class="user-badge" id="user-badge-name">
-          Cargando usuario...
-        </div>
       </div>
-    </header>
+    </div>
 
     <!-- Filters Panel -->
     <section class="filters-card card-filters">
@@ -1265,6 +1276,43 @@
     let debounceTimeout = null;
     let debounceModalTimeout = null;
 
+    // Ícono/título/subtítulo del header por pestaña (mismo patrón que SST).
+    // Cubre tanto las pestañas visibles en el sidebar como las de acceso
+    // directo por enlace (?tab=...) desde el lanzador global de módulos.
+    const TAB_META = {
+      trabajador:       { icon: '👥', title: 'Trabajadores',               subtitle: 'Gestión documental y archivo digital por trabajador' },
+      documento:        { icon: '📄', title: 'Tipos de Documento',         subtitle: 'Catálogo de tipos de documento y sus registros' },
+      todo:             { icon: '📦', title: 'Consolidado (Todo)',         subtitle: 'Vista consolidada de todos los documentos cargados' },
+      docretiros:       { icon: '📤', title: 'Doc Retiros',                subtitle: 'Documentos asociados a procesos de retiro' },
+      solicitudes:      { icon: '📝', title: 'Solicitudes',                subtitle: 'Solicitudes de documentos pendientes y gestionadas' },
+      validarcap:       { icon: '✅', title: 'Validar Capacitación',       subtitle: 'Validación de carpetas de capacitación' },
+      duplicados:       { icon: '🗂️', title: 'Duplicados',                 subtitle: 'Documentos duplicados detectados en el sistema' },
+      logysign:         { icon: '✍️', title: 'LogySign (Firmas)',          subtitle: 'Registros de firma digital integrados' },
+      permisos:         { icon: '🔐', title: 'Permisos',                   subtitle: 'Gestión de permisos de acceso por rol' },
+      descuentonomina:  { icon: '💳', title: 'Autorizaciones de Descuento', subtitle: 'Autorizaciones de descuento de nómina' }
+    };
+
+    function actualizarTabHeaderCD(tab) {
+      const meta = TAB_META[tab] || TAB_META.trabajador;
+      const icon = document.getElementById('cd-tab-icon');
+      const title = document.getElementById('cd-tab-title-text');
+      const subtitle = document.getElementById('cd-tab-subtitle');
+      const badge = document.getElementById('cd-tab-badge');
+      if (icon) icon.textContent = meta.icon;
+      if (title) title.textContent = meta.title;
+      if (subtitle) subtitle.textContent = meta.subtitle;
+      // El contador de registros no aplica a Permisos/Descuento de Nómina
+      // (no son listados tabulares de la misma naturaleza); se oculta ahí.
+      if (badge) badge.style.display = (tab === 'permisos' || tab === 'descuentonomina') ? 'none' : 'inline-flex';
+    }
+
+    function actualizarBadgeRegistrosCD(total) {
+      const badge = document.getElementById('cd-tab-badge');
+      if (!badge) return;
+      const n = Number(total) || 0;
+      badge.textContent = `${n} Registro${n === 1 ? '' : 's'}`;
+    }
+
     function toggleMainFilters() {
       const body = document.getElementById('main-filtros-body');
       const chevron = document.getElementById('main-filtros-chevron');
@@ -1521,7 +1569,6 @@
           toggleMainFilters();
         }
       });
-      document.getElementById('user-badge-name').innerText = `${CONFIG.usuarioNombre} (${CONFIG.rol})`;
       document.getElementById('mobile-user-badge').innerText = CONFIG.rol;
       document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
       document.getElementById('btn-nueva-firma').href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
@@ -1788,6 +1835,7 @@
     // Switch between tabs
     function switchTab(tab) {
       activeTab = tab;
+      actualizarTabHeaderCD(tab);
 
       const url = new URL(window.location.href);
       url.searchParams.set('tab', tab);
@@ -2249,6 +2297,7 @@
     function renderMainTableRows() {
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = '';
+      actualizarBadgeRegistrosCD(currentData.length);
 
       let cols = COLUMNS[activeTab];
       const isRetirosAuth = activeTab === 'docretiros' && ['Archivo', 'Nomina', 'Sistema'].includes(CONFIG.rol);
@@ -3389,6 +3438,7 @@
     function renderLogysignRows(filtered) {
       const body = document.getElementById('logysign-body');
       document.getElementById('logysign-counter').textContent = `Total: ${filtered.length}`;
+      actualizarBadgeRegistrosCD(filtered.length);
 
       if (!filtered.length) {
         body.innerHTML = `<tr><td colspan="${logysignCols.length}" style="text-align:center;padding:40px;color:var(--text-muted);">No se encontraron registros.</td></tr>`;
