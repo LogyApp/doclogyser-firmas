@@ -6,6 +6,11 @@
   const currentModule = window.location.pathname.split('/').filter(Boolean)[0] || '';
   const defaultPhoto = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
   const modules = [
+    { id: 'nomina', name: 'Nómina', symbol: '▣', tabs: [
+      ['Activos', 'activos'], ['Retiros', 'retiros'], ['Bloqueo de Datos', 'bloqueo'],
+      ['Biométrico · Asistencia', 'biometrico', 'asistencia'], ['Biométrico · Recorridos GPS', 'biometrico', 'rutas'],
+      ['Biométrico · Reportes', 'biometrico', 'reportes'], ['Traslados', 'traslados']
+    ] },
     { id: 'inventario', name: 'Inventario', symbol: '▦', tabs: [
       ['Inventario', 'inventario'], ['Reportes', 'reportes'], ['Pendiente por recibir', 'pendienterecibir'],
       ['Kardex', 'kardex'], ['Catálogo de artículos', 'articulos'], ['Solicitudes', 'solicitudes'],
@@ -79,19 +84,21 @@
     brand.style.justifyContent = 'space-between';
     brand.appendChild(launcher);
 
-    const nav = sidebar.querySelector('.nav-list');
-    const profileCard = document.createElement('div');
-    profileCard.className = 'alp-profile';
-    profileCard.innerHTML = `
-      <button type="button" class="alp-profile-trigger" aria-label="Abrir perfil y editar firma">
-        <img class="alp-avatar" alt="Foto de perfil">
-        <span class="alp-profile-meta"><span class="alp-profile-name"></span><span class="alp-profile-caption">Mi perfil corporativo</span></span>
-        <span class="alp-profile-chevron" aria-hidden="true">›</span>
-      </button>`;
-    profileCard.querySelector('button').addEventListener('click', openProfile);
-    if (nav) sidebar.insertBefore(profileCard, nav);
-    else sidebar.insertBefore(profileCard, launcher.nextSibling);
-    return profileCard;
+    if (sidebar) {
+      const nav = sidebar.querySelector('.nav-list');
+      const profileCard = document.createElement('div');
+      profileCard.className = 'alp-profile';
+      profileCard.innerHTML = `
+        <button type="button" class="alp-profile-trigger" aria-label="Abrir perfil y editar firma">
+          <img class="alp-avatar" alt="Foto de perfil">
+          <span class="alp-profile-meta"><span class="alp-profile-name"></span><span class="alp-profile-caption">Mi perfil corporativo</span></span>
+          <span class="alp-profile-chevron" aria-hidden="true">›</span>
+        </button>`;
+      profileCard.querySelector('button').addEventListener('click', openProfile);
+      if (nav) sidebar.insertBefore(profileCard, nav);
+      else sidebar.insertBefore(profileCard, launcher.nextSibling);
+    }
+    return launcher;
   }
 
   function createProfileModal() {
@@ -280,6 +287,7 @@
   function renderProfileCard() {
     if (!profile) return;
     const card = document.querySelector('.alp-profile');
+    if (!card) return;
     const name = profile.nombre || usuario;
     card.querySelector('.alp-avatar').src = profile.foto_url || defaultPhoto;
     card.querySelector('.alp-avatar').onerror = event => { event.currentTarget.src = defaultPhoto; };
@@ -312,11 +320,12 @@
 
   function init() {
     const sidebar = document.querySelector('.sidebar');
-    const brand = sidebar?.querySelector('.sidebar-brand');
-    if (!sidebar || !brand) return;
-    sidebar.querySelector('.sidebar-user')?.remove();
+    const brand = sidebar?.querySelector('.sidebar-brand') || document.querySelector('.brand-lockup-horizontal');
+    if (!brand) return;
+    sidebar?.querySelector('.sidebar-user')?.remove();
     const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '/css/app-launcher-profile.css'; document.head.appendChild(style);
     createLauncher(sidebar, brand);
+    if (!sidebar) return;
     profileModal = createProfileModal();
     loadProfile();
   }
