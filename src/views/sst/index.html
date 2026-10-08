@@ -1865,7 +1865,7 @@
             </div>
           </div>
 
-          <button class="btn btn-accent" onclick="abrirModalCrear('evaluacion')">
+          <button class="btn btn-accent" id="btn-crear-ev" onclick="abrirModalCrear('evaluacion')">
             <span>➕</span> Crear Evaluación
           </button>
         </div>
@@ -2028,7 +2028,7 @@
             </div>
           </div>
 
-          <button class="btn btn-accent" onclick="abrirModalCrear('capacitacion')">
+          <button class="btn btn-accent" id="btn-crear-cap" onclick="abrirModalCrear('capacitacion')">
             <span>➕</span> Nueva Capacitación
           </button>
         </div>
@@ -2213,7 +2213,7 @@
             </div>
           </div>
 
-          <button class="btn btn-accent" onclick="abrirModalCrear('pruebaconsumo')">
+          <button class="btn btn-accent" id="btn-crear-pc" onclick="abrirModalCrear('pruebaconsumo')">
             <span>➕</span> Nueva Prueba de Consumo
           </button>
         </div>
@@ -2471,7 +2471,7 @@
             </div>
           </div>
 
-          <button class="btn btn-accent" onclick="abrirModalCrear('compromiso')">
+          <button class="btn btn-accent" id="btn-crear-csst" onclick="abrirModalCrear('compromiso')">
             <span>➕</span> Nuevo Compromiso
           </button>
         </div>
@@ -3621,6 +3621,23 @@
       if (typeof actualizarPermisosBotonesCm === 'function') {
         actualizarPermisosBotonesCm();
       }
+
+      actualizarPermisosBotonesCrearSst();
+    }
+
+    // Evaluación/Capacitación/Prueba de Consumo/Compromiso SST: los roles que
+    // Maestro_Menu_Sst deja ver pero no crear (Jurídica, Dirección Hseq/
+    // Operaciones/RRHH, Administración, Administrador, Generalista, Calidad)
+    // no deben ver un botón "Crear" que el backend igual va a rechazar (403).
+    // Debe reflejar exactamente ROLES_ESCRITURA_SST en src/services/accesoSst.js.
+    const ROLES_ESCRITURA_SST = ['AdmSst', 'AnaSst', 'AuxSst', 'LiderSst', 'Sistema'];
+    function actualizarPermisosBotonesCrearSst() {
+      const puedeCrear = ROLES_ESCRITURA_SST.includes(CONFIG.rol);
+      if (puedeCrear) return;
+      ['btn-crear-ev', 'btn-crear-cap', 'btn-crear-pc', 'btn-crear-csst'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.style.display = 'none';
+      });
     }
 
     function initLinks() {
@@ -4595,6 +4612,14 @@
       ]);
 
       const [evals, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      if (!rData.ok || !Array.isArray(evals)) {
+        dataStore.ev = [];
+        countsStore.ev = {};
+        showToast((evals && evals.error) || 'No tienes permiso para ver Evaluación SST', 'error');
+        actualizarSelectConteos('ev', {});
+        aplicarFiltroYOrdenEv();
+        return;
+      }
       dataStore.ev = evals;
       countsStore.ev = counts;
 
@@ -4800,6 +4825,14 @@
       ]);
 
       const [caps, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      if (!rData.ok || !Array.isArray(caps)) {
+        dataStore.cap = [];
+        countsStore.cap = {};
+        showToast((caps && caps.error) || 'No tienes permiso para ver Capacitación SST', 'error');
+        actualizarSelectConteos('cap', {});
+        aplicarFiltroYOrdenCap();
+        return;
+      }
       dataStore.cap = caps;
       countsStore.cap = counts;
 
@@ -5031,6 +5064,14 @@
       ]);
 
       const [pruebas, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      if (!rData.ok || !Array.isArray(pruebas)) {
+        dataStore.pc = [];
+        countsStore.pc = {};
+        showToast((pruebas && pruebas.error) || 'No tienes permiso para ver Prueba de Consumo', 'error');
+        actualizarSelectConteos('pc', {});
+        aplicarFiltroYOrdenPc();
+        return;
+      }
       dataStore.pc = pruebas;
       countsStore.pc = counts;
 
@@ -5660,6 +5701,14 @@
       ]);
 
       const [compromisos, counts] = await Promise.all([rData.json(), rCounts.json()]);
+      if (!rData.ok || !Array.isArray(compromisos)) {
+        dataStore.csst = [];
+        countsStore.csst = {};
+        showToast((compromisos && compromisos.error) || 'No tienes permiso para ver Compromiso SST', 'error');
+        actualizarSelectConteos('csst', {});
+        aplicarFiltroYOrdenCsst();
+        return;
+      }
       dataStore.csst = compromisos;
       countsStore.csst = counts;
 

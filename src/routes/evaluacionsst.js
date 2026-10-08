@@ -14,6 +14,7 @@ const {
 } = require('../services/notificacionesService');
 const { renderPDF } = require('../services/evsstPdfGenerator');
 const { subirPDFEvaluacionSST } = require('../services/storage');
+const { computarAccesoSst, ROLES_ESCRITURA_SST } = require('../services/accesoSst');
 
 const router = express.Router();
 
@@ -21,10 +22,7 @@ const HTML_INDEX_PATH = path.join(__dirname, '../views/evaluacionsst/index.html'
 const HTML_FORM_PATH  = path.join(__dirname, '../views/formevaluacionsst/form.html');
 const HTML_SIGN_PATH  = path.join(__dirname, '../views/evaluacionsst/responder.html');
 
-const ROLES_SIN_FILTRO  = ['Sistema', 'AdmSst', 'LiderSst'];
-const ROLES_REGIONAL    = [];
-const ROLES_DISPOSITIVO = ['AuxSst'];
-const ROLES_MODALIDAD   = ['AnaSst'];
+const SECCION_MENU_SST = 'Evaluación SST';
 
 function formatTimestamp() {
   const date = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -76,80 +74,12 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
   }
 }
 
+// Acceso gobernado por Maestro_Menu_Sst (Sección "Evaluación SST"), igual
+// que Nómina/Facturación/Cloud Docs vía su propio Maestro_Menu_<Módulo>.
+// La escritura (crear/responder/eliminar/reenviar firma) queda limitada
+// aparte a ROLES_ESCRITURA_SST donde corresponda — ver accesoSst.js.
 async function computarAccesoEVSST(usuarioId) {
-  if (!usuarioId) return null;
-
-  const [uRows] = await pool.execute(
-    'SELECT ID, Nombre, Rol, Regional, Dispositivo, `Operación` FROM Maestro_Usuarios WHERE ID = ?',
-    [usuarioId]
-  );
-  if (!uRows.length) return null;
-
-  const usuario = uRows[0];
-  const rol = usuario.Rol || '';
-
-  const ALLOWED_ROLES = ['AdmSst', 'AnaSst', 'AuxSst', 'LiderSst', 'Sistema'];
-  if (!ALLOWED_ROLES.includes(rol)) return null;
-  
-  const acceso = {
-    usuarioId: usuario.ID,
-    usuarioNombre: usuario.Nombre || usuario.ID,
-    rol,
-    regional: usuario.Regional || '',
-    dispositivo: usuario.Dispositivo || '',
-    operacion: usuario['Operación'] || '',
-    sinFiltro: ROLES_SIN_FILTRO.includes(rol),
-    operacionesFiltro: [],
-    opsPorRegional: {},
-  };
-
-  let opRows = [];
-  if (acceso.sinFiltro) {
-    const [rows] = await pool.execute(
-      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
-    );
-    opRows = rows;
-  } else if (ROLES_REGIONAL.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.regional]
-    );
-    opRows = rows;
-  } else if (ROLES_DISPOSITIVO.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE SOCIODEMOGRAFICA = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (ROLES_MODALIDAD.includes(rol)) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE MODALIDAD = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (acceso.operacion) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.operacion]
-    );
-    opRows = rows;
-  }
-
-  // Agrupar operaciones por regional
-  const map = {};
-  opRows.forEach((row) => {
-    const reg = row.REGIONAL || row.Regional;
-    const op = row.OPERACIÓN || row.Operación;
-    if (reg && op) {
-      if (!map[reg]) map[reg] = [];
-      map[reg].push(op);
-    }
-  });
-
-  acceso.opsPorRegional = map;
-  acceso.operacionesFiltro = opRows.map((row) => row['OPERACIÓN'] || row['Operación']).filter(Boolean);
-
-  return acceso;
+  return computarAccesoSst(usuarioId, SECCION_MENU_SST);
 }
 
 // ═════ REDIRECCIÓN A SST HUB O FORMULARIO ═════
@@ -514,6 +444,11 @@ router.post('/api/crear', async (req, res) => {
       return res.status(400).json({ error: 'Todos los campos obligatorios deben ser diligenciados' });
     }
 
+    const accesoCrear = await computarAccesoSst(usuario, SECCION_MENU_SST);
+    if (!accesoCrear || !ROLES_ESCRITURA_SST.includes(accesoCrear.rol)) {
+      return res.status(403).json({ error: 'No autorizado para crear evaluaciones.' });
+    }
+
     const id_evaluacion = uuidv4();
     const tokenFirma = crypto.randomBytes(32).toString('hex');
     const tokenExpira = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
@@ -579,6 +514,11 @@ router.post('/api/crear-masivo', async (req, res) => {
 
     if (!fecha || !identificaciones || !identificaciones.length || !tipo || !usuario) {
       return res.status(400).json({ error: 'Todos los campos obligatorios deben ser diligenciados' });
+    }
+
+    const accesoCrearMasivo = await computarAccesoSst(usuario, SECCION_MENU_SST);
+    if (!accesoCrearMasivo || !ROLES_ESCRITURA_SST.includes(accesoCrearMasivo.rol)) {
+      return res.status(403).json({ error: 'No autorizado para crear evaluaciones.' });
     }
 
     const protocol = req.secure ? 'https' : 'http';
