@@ -8,7 +8,11 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
-    .wrapper { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+    /* Esta página solo se visualiza embebida dentro de la pestaña "Autorizaciones
+       de Descuento" de Cloud Docs (acceso directo deshabilitado, ver router).
+       Por eso no lleva max-width propio: debe ocupar todo el ancho disponible
+       del contenedor, igual que las demás pestañas de Cloud Docs. */
+    .wrapper { padding: 4px 0 24px; }
 
     /* Theme Tokens */
     :root {
@@ -19,24 +23,24 @@
       --border: #cbd5e1;
     }
 
-    /* Header */
+    /* Barra superior compacta: el título/subtítulo de esta vista ya lo muestra
+       el header de la pestaña "Autorizaciones de Descuento" en Cloud Docs (la
+       página que la contiene), así que aquí solo van los badges de estado y
+       la acción de crear — sin duplicar título. */
     .header-card {
       background: #ffffff;
       border-radius: var(--radius);
       box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-      padding: 24px;
-      margin-bottom: 20px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      border-top: 5px solid var(--primary);
+      flex-wrap: wrap;
+      border-left: 4px solid var(--primary);
     }
-    .header-card img { height: 48px; flex-shrink: 0; }
-    .header-card .title-box { flex-grow: 1; }
-    .page-title { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
-    .page-sub { font-size: .88rem; color: #64748b; margin-top: 4px; }
-    .badge-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .badge {
       display: inline-flex; align-items: center; gap: 6px;
       border-radius: 20px; padding: 4px 12px;
@@ -104,7 +108,7 @@
 
     /* Table styling */
     #discount-filters-card { position: sticky; top: 0; z-index: 40; background: #fff; }
-    .table-container { width: 100%; max-height: calc(100vh - 500px); min-height: 220px; overflow: auto; background: #fff; border-radius: 8px; }
+    .table-container { width: 100%; max-height: calc(100vh - 260px); min-height: 320px; overflow: auto; background: #fff; border-radius: 8px; }
     #table-pruebas { width: 100%; min-width: 960px; table-layout: fixed; border-collapse: separate; border-spacing: 0; text-align: left; font-size: .92rem; }
     #table-pruebas th { position: sticky; top: 0; z-index: 8; background: #f8fafc; color: #475569; font-weight: 700; padding: 12px 16px; border-bottom: 1.5px solid #e2e8f0; user-select: none; }
     #table-pruebas th.sortable { cursor: pointer; }
@@ -264,19 +268,13 @@
   </div>
 
   <div class="wrapper">
-    <!-- Header -->
+    <!-- Barra de estado + acción (el título ya lo muestra el header de la pestaña en Cloud Docs) -->
     <div class="header-card">
-      <div class="title-box">
-        <div class="page-title">Autorizaciones de Descuento por Nómina</div>
-        <div class="page-sub">Panel de administración y control de firmas de autorizaciones de nómina</div>
-        <div class="badge-row">
-          <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
-          <div class="badge badge-total" id="total-badge-count">Total: 0 registros</div>
-        </div>
+      <div class="badge-row">
+        <div class="badge badge-user" id="user-badge-name">Cargando usuario...</div>
+        <div class="badge badge-total" id="total-badge-count">Total: 0 registros</div>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <button class="btn btn-crear" id="btn-nueva-prueba">+ Crear Autorización</button>
-      </div>
+      <button class="btn btn-crear" id="btn-nueva-prueba">+ Crear Autorización</button>
     </div>
 
     <!-- Filtros -->
