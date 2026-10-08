@@ -4,6 +4,7 @@
   if (!usuario) return;
 
   const currentModule = window.location.pathname.split('/').filter(Boolean)[0] || '';
+  const homeModules = new Set(['nomina', 'inventario', 'sst', 'cloud-docs', 'facturacion', 'directorio-corporativo']);
   const defaultPhoto = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
   const modules = [
     { id: 'nomina', name: 'Nómina', symbol: '▣', tabs: [
@@ -37,6 +38,73 @@
   let recentSignature = null;
   let signatureChanged = false;
   let canvasReady = false;
+  const dirtyForms = new WeakSet();
+
+  function controlPerteneceAFiltro(control) {
+    return Boolean(control.closest('[class*="filter" i], [id*="filter" i], [class*="search" i], [id*="search" i]'));
+  }
+
+  function markFormAsActive(event) {
+    const control = event.target;
+    if (!(control instanceof Element) || controlPerteneceAFiltro(control)) return;
+    const form = control.closest('form');
+    if (form) dirtyForms.add(form);
+  }
+  document.addEventListener('input', markFormAsActive, true);
+  document.addEventListener('change', markFormAsActive, true);
+  document.addEventListener('focusin', markFormAsActive, true);
+  document.addEventListener('reset', event => {
+    if (event.target instanceof HTMLFormElement) dirtyForms.delete(event.target);
+  }, true);
+
+  function visible(element) {
+    if (!element || !element.isConnected) return false;
+    const style = getComputedStyle(element);
+    return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+  }
+
+  function formHasChanges(form) {
+    return dirtyForms.has(form);
+  }
+
+  function processIsActive() {
+    const busyLabels = /guardando|procesando|enviando|cargando|generando|subiendo|actualizando|eliminando/i;
+    const busyButton = [...document.querySelectorAll('button:disabled')].some(button => busyLabels.test(button.textContent || ''));
+    const visibleLoader = [...document.querySelectorAll('.loading-overlay, .loading-screen, #global-loader, #loading-overlay, #loading')].some(visible);
+    const activeModal = [...document.querySelectorAll('.modal-overlay.open, .modal-full-overlay.open, .alp-overlay.alp-visible, .modal-overlay[style*="display: flex"], .modal-overlay[style*="display:flex"]')].some(visible);
+    return busyButton || visibleLoader || activeModal;
+  }
+
+  function confirmarSalidaModulo() {
+    const dirty = [...document.forms].some(formHasChanges);
+    if (!dirty && !processIsActive()) return true;
+    const message = processIsActive()
+      ? 'Hay un formulario abierto o un proceso en curso. Si vuelves al inicio, podrías perder los cambios o interrumpirlo. ¿Deseas continuar?'
+      : 'Hay cambios sin guardar en un formulario. Si vuelves al inicio, se perderán. ¿Deseas continuar?';
+    return window.confirm(message);
+  }
+
+  function volverAlInicioModulo() {
+    if (!homeModules.has(currentModule) || !confirmarSalidaModulo()) return;
+    const destino = new URL(`/${currentModule}`, window.location.origin);
+    destino.searchParams.set('usuario', usuario);
+    window.location.assign(destino.toString());
+  }
+
+  function activarLogoComoInicio(image) {
+    image.style.cursor = 'pointer';
+    image.title = `Volver al inicio de ${modules.find(module => module.id === currentModule)?.name || 'este módulo'}`;
+    image.setAttribute('role', 'link');
+    image.tabIndex = 0;
+    image.setAttribute('aria-label', image.title);
+    image.addEventListener('click', volverAlInicioModulo);
+    image.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        volverAlInicioModulo();
+      }
+    });
+  }
 
   function moduleUrl(module, tab, subtab) {
     const query = new URLSearchParams({ usuario });
@@ -322,8 +390,16 @@
     const sidebar = document.querySelector('.sidebar');
     const brand = sidebar?.querySelector('.sidebar-brand') || document.querySelector('.brand-lockup-horizontal');
     if (!brand) return;
+    brand.querySelectorAll('.brand-logo-app, .brand-logo-company-crop img').forEach(activarLogoComoInicio);
     sidebar?.querySelector('.sidebar-user')?.remove();
-    const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '/css/app-launcher-profile.css'; document.head.appendChild(style);
+    if (currentModule === 'nomina') return;
+    if (!document.querySelector('link[data-app-launcher-profile-style]')) {
+      const style = document.createElement('link');
+      style.rel = 'stylesheet';
+      style.href = '/css/app-launcher-profile.css';
+      style.dataset.appLauncherProfileStyle = 'true';
+      document.head.appendChild(style);
+    }
     createLauncher(sidebar, brand);
     if (!sidebar) return;
     profileModal = createProfileModal();

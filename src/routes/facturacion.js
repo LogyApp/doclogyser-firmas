@@ -10,6 +10,10 @@ const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services
 
 const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
+// Solo estos roles pueden crear/editar/bloquear Clientes Crédito (otros roles con acceso a la
+// sección 'Clientes_credito' solo pueden consultar vía GET /api/clientes-credito).
+const ROLES_GESTION_CLIENTES_CREDITO = ['Facturación', 'Sistema'];
+
 const router = express.Router();
 const FACTURACION_HTML = path.join(__dirname, '../views/facturacion/index.html');
 
@@ -136,7 +140,7 @@ router.get('/', async (req, res) => {
         recibos: resumenAcceso(accesoRecibos || accesoServicios),
         bloqueo: resumenAcceso(accesoBloqueo),
         clientes_credito: resumenAcceso(accesoClientes),
-        tickets: resumenAcceso(accesoTickets || accesoServicios),
+        tickets: resumenAcceso(accesoTickets),
       }
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -202,6 +206,9 @@ router.post('/api/clientes-credito', async (req, res) => {
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!ROLES_GESTION_CLIENTES_CREDITO.includes(acceso.rol)) {
+      return res.status(403).json({ error: 'Solo los roles Facturación y Sistema pueden agregar clientes crédito' });
+    }
 
     if (!clienteAFacturar || !clienteAFacturar.trim()) {
       return res.status(400).json({ error: 'El Cliente a Facturar es obligatorio.' });
@@ -235,6 +242,9 @@ router.post('/api/clientes-credito/toggle', async (req, res) => {
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!ROLES_GESTION_CLIENTES_CREDITO.includes(acceso.rol)) {
+      return res.status(403).json({ error: 'Solo los roles Facturación y Sistema pueden modificar el bloqueo' });
+    }
 
     if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
 
@@ -341,6 +351,9 @@ async function handleActualizarCliente(req, res) {
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!ROLES_GESTION_CLIENTES_CREDITO.includes(acceso.rol)) {
+      return res.status(403).json({ error: 'Solo los roles Facturación y Sistema pueden editar clientes crédito' });
+    }
 
     if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
     if (!clienteAFacturar || !clienteAFacturar.trim()) {
@@ -376,6 +389,9 @@ async function handleEliminarCliente(req, res) {
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!ROLES_GESTION_CLIENTES_CREDITO.includes(acceso.rol)) {
+      return res.status(403).json({ error: 'Solo los roles Facturación y Sistema pueden eliminar clientes crédito' });
+    }
 
     if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
 
@@ -2650,8 +2666,7 @@ router.get('/api/tickets', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoFacturacion(usuario, 'Tickets')
-                || await computarAccesoFacturacion(usuario, 'Servicios');
+    const acceso = await computarAccesoFacturacion(usuario, 'Tickets');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const {
@@ -2763,8 +2778,7 @@ router.get('/api/tickets/metricas', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoFacturacion(usuario, 'Tickets')
-                || await computarAccesoFacturacion(usuario, 'Servicios');
+    const acceso = await computarAccesoFacturacion(usuario, 'Tickets');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const { regional, operacion, q, estado } = req.query;
@@ -2837,8 +2851,7 @@ router.post('/api/tickets/:ticket/estado', async (req, res) => {
     const { estado, observaciones } = req.body;
 
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
-    const acceso = await computarAccesoFacturacion(usuario, 'Tickets')
-                || await computarAccesoFacturacion(usuario, 'Servicios');
+    const acceso = await computarAccesoFacturacion(usuario, 'Tickets');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!ticket) return res.status(400).json({ error: 'ticket requerido' });

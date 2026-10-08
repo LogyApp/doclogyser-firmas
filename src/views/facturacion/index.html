@@ -276,6 +276,32 @@
       margin-top: 2px;
     }
 
+    /* Variante compacta: tarjetas solo informativas, sin protagonismo visual (ej. Clientes Crédito) */
+    .metric-grid-compact {
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric-grid-compact .metric-card {
+      padding: 10px 14px;
+      box-shadow: none;
+    }
+
+    .metric-grid-compact .metric-label {
+      font-size: 0.68rem;
+    }
+
+    .metric-grid-compact .metric-val {
+      font-size: 1.1rem;
+      margin-top: 0;
+    }
+
+    .metric-grid-compact .metric-icon {
+      font-size: 1.1rem !important;
+      opacity: 0.6;
+    }
+
     /* Filtros Plegables / Barra de Filtros */
     .filtros-toggle {
       cursor: pointer;
@@ -1565,33 +1591,33 @@
           <div class="page-title">Facturación · Clientes Crédito</div>
           <div class="page-sub">Administración de clientes y selección predeterminada para bloqueo de datos</div>
         </div>
-        <button class="btn-primary" onclick="abrirModalCliente()">
+        <button class="btn-primary" id="btn-agregar-cliente" onclick="abrirModalCliente()">
           ➕ Agregar Cliente Crédito
         </button>
       </div>
 
-      <!-- Métricas Clientes -->
-      <div class="metric-grid">
+      <!-- Métricas Clientes (informativas, no requieren protagonismo visual) -->
+      <div class="metric-grid metric-grid-compact">
         <div class="metric-card">
           <div>
             <div class="metric-label">Total Clientes Crédito</div>
             <div class="metric-val" id="count-clientes-total">0</div>
           </div>
-          <div style="font-size: 1.8rem; opacity: 0.8;">🏢</div>
+          <div class="metric-icon" style="font-size: 1.8rem; opacity: 0.8;">🏢</div>
         </div>
         <div class="metric-card">
           <div>
             <div class="metric-label">Habilitados para Bloqueo (1)</div>
             <div class="metric-val" style="color: var(--primary-light);" id="count-clientes-activos">0</div>
           </div>
-          <div style="font-size: 1.8rem; opacity: 0.8;">✔</div>
+          <div class="metric-icon" style="font-size: 1.8rem; opacity: 0.8;">✔</div>
         </div>
         <div class="metric-card">
           <div>
             <div class="metric-label">Excluidos (0)</div>
             <div class="metric-val" style="color: var(--text-muted);" id="count-clientes-inactivos">0</div>
           </div>
-          <div style="font-size: 1.8rem; opacity: 0.8;">✖</div>
+          <div class="metric-icon" style="font-size: 1.8rem; opacity: 0.8;">✖</div>
         </div>
       </div>
 
@@ -2346,6 +2372,7 @@
 
 <script>
     const CONFIG = __CONFIG__;
+    const ROLES_GESTION_CLIENTES_CREDITO = ['Facturación', 'Sistema'];
     let allBloqueos = [];
     let allClientes = [];
     let quincenasList = [];
@@ -2377,6 +2404,19 @@
 
       const mobBadge = document.getElementById('mobile-user-badge');
       if (mobBadge) mobBadge.textContent = (CONFIG.usuarioNombre || '').split(' ')[0] || CONFIG.usuario;
+
+      // La pestaña Tickets solo se muestra si el rol tiene acceso explícito (Maestro_Menu_Facturacion, Sección = 'Tickets')
+      if (!CONFIG.tabs?.tickets) {
+        const navTicketsEl = document.getElementById('navTickets');
+        if (navTicketsEl) navTicketsEl.style.display = 'none';
+      }
+
+      // La columna Bloqueo y la edición de Clientes Crédito solo aplican a Facturación/Sistema
+      const puedeGestionarClientesCredito = ROLES_GESTION_CLIENTES_CREDITO.includes(CONFIG.rol);
+      if (!puedeGestionarClientesCredito) {
+        const btnAgregarCliente = document.getElementById('btn-agregar-cliente');
+        if (btnAgregarCliente) btnAgregarCliente.style.display = 'none';
+      }
 
       // Cargar quincenas
       try {
@@ -2592,6 +2632,8 @@
     }
 
     function switchMainTab(tab) {
+      if (tab === 'tickets' && !CONFIG.tabs?.tickets) tab = 'servicios';
+
       document.getElementById('navServicios')?.classList.toggle('active', tab === 'servicios');
       document.getElementById('navRecibos')?.classList.toggle('active', tab === 'recibos');
       document.getElementById('navClientes')?.classList.toggle('active', tab === 'clientescredito' || tab === 'clientes');
@@ -2842,24 +2884,31 @@
         return;
       }
 
+      const puedeGestionar = ROLES_GESTION_CLIENTES_CREDITO.includes(CONFIG.rol);
+
       filtered.forEach(c => {
         const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.title = 'Haz clic para ver, editar o eliminar este cliente';
-        tr.addEventListener('click', (e) => {
-          if (e.target.closest('.switch') || e.target.tagName === 'INPUT') return;
-          abrirModalEditarCliente(c);
-        });
+        if (puedeGestionar) {
+          tr.style.cursor = 'pointer';
+          tr.title = 'Haz clic para ver, editar o eliminar este cliente';
+          tr.addEventListener('click', (e) => {
+            if (e.target.closest('.switch') || e.target.tagName === 'INPUT') return;
+            abrirModalEditarCliente(c);
+          });
+        } else {
+          tr.title = 'Solo los roles Facturación y Sistema pueden editar clientes crédito';
+        }
 
         const isChecked = c.bloqueo === 1 ? 'checked' : '';
         const cFNom = c.clienteAFacturar || c.clienteFacturar || c['Cliente a Facturar'] || '—';
         const usrNom = c.usuario || 'Sistema';
         const fReg = c.fechaRegistro ? c.fechaRegistro.replace('T', ' ').slice(0, 19) : '—';
+        const disabledAttr = puedeGestionar ? '' : 'disabled title="Solo los roles Facturación y Sistema pueden modificar el bloqueo"';
 
         tr.innerHTML = `
           <td style="text-align: center;">
             <label class="switch">
-              <input type="checkbox" ${isChecked} onchange="toggleClienteBloqueo('${c.id}', this.checked)">
+              <input type="checkbox" ${isChecked} ${disabledAttr} onchange="toggleClienteBloqueo('${c.id}', this.checked)">
               <span class="slider"></span>
             </label>
           </td>

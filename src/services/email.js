@@ -1697,12 +1697,9 @@ async function notificarEvaluacionSSTCompletada({ email, nombreTrabajador, tipo,
     </div>
   `;
 
-  const ccList = ['admin@logyser.com', 'sstadmon@logyser.com'];
-
   await transporter.sendMail({
     from: `"LOG&SER Gestión Documental" <${EMAIL_FROM}>`,
     to: email,
-    cc: ccList.join(', '),
     subject: asunto,
     html: cuerpo,
   });
