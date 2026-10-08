@@ -1143,6 +1143,12 @@
             </div>
           </div>
 
+          <div id="det-serv-acciones-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+            <a id="btn-ver-servicio-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid var(--primary-light); background:#faf5ff; color:var(--primary); text-decoration:none;">
+              👁️ Ver Servicio / Firma del Cliente
+            </a>
+          </div>
+
           <!-- Grid de Secciones de Información -->
           <div class="detail-grid">
             <!-- Sección 1: Liquidación Financiera -->
@@ -3785,6 +3791,17 @@
         document.getElementById('det-forma-pago').textContent = s['Forma De Pago'] != null ? `${s['Forma De Pago']}: ${FORMAS_PAGO_NOMBRES[s['Forma De Pago']] || ''}` : '-';
         document.getElementById('det-fecha-transferencia').textContent = s['Fecha Transferencia'] || '-';
 
+        // Ver Servicio / Firma del Cliente: solo si es Forma De Pago 3 (Crédito) y hay
+        // un teléfono diligenciado (propio del servicio o el del recibo asociado).
+        const btnVerServicio = document.getElementById('btn-ver-servicio-cliente');
+        const telefonoServicio = s.Telefono || s.reciboTelefono;
+        if (s['Forma De Pago'] === 3 && telefonoServicio) {
+          btnVerServicio.href = `https://digital.logyser.com/servicio/${encodeURIComponent(idServicio)}`;
+          btnVerServicio.style.display = 'inline-flex';
+        } else {
+          btnVerServicio.style.display = 'none';
+        }
+
         // Sección 2
         document.getElementById('det-hora-inicio').textContent = formatFechaBogota(s['Hora Inicio']);
         document.getElementById('det-hora-final').textContent = formatFechaBogota(s['Hora Final']);
@@ -4304,7 +4321,7 @@
         const btnVerRecibo = document.getElementById('btn-ver-recibo-cliente');
         const puedeVerRecibo = (r.Modalidad === 'RECAUDO') && (rolPrivilegiado || estadoColor === 'Green');
         if (puedeVerRecibo) {
-          btnVerRecibo.href = `https://recibo-logyser-594761951101.us-central1.run.app/recibo/${encodeURIComponent(r.IdRecibo)}`;
+          btnVerRecibo.href = `https://digital.logyser.com/recibo/${encodeURIComponent(r.IdRecibo)}`;
           btnVerRecibo.style.display = 'inline-flex';
         } else {
           btnVerRecibo.style.display = 'none';
@@ -5716,7 +5733,7 @@
       if (estadoColor === 'Green') {
         return '🟦🟧 *LOGYSER Nit: 900.318.733-1*\n\n' +
           'Hola, abre aquí para ver el detalle de tu servicio:\n\n' +
-          `🔗reciboprovisional.logyser.com/recibo/${r.IdRecibo}\n\n` +
+          `🔗digital.logyser.com/recibo/${r.IdRecibo}\n\n` +
           `*${operacion}*\n` +
           `- *Cliente:* _${cliente}_\n` +
           `- *Placa:* ${placa} 🚚\n` +
