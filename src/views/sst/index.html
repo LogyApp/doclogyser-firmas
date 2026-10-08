@@ -3617,10 +3617,18 @@
 
     function initSidebarUser() {
       const uName = CONFIG.usuarioNombre || CONFIG.usuarioId;
-      document.getElementById('sidebar-user-name').innerText = uName;
-      document.getElementById('sidebar-user-avatar').innerText = uName.charAt(0).toUpperCase();
-      document.getElementById('sidebar-user-role').innerText = CONFIG.rol || 'SST';
-      document.getElementById('sidebar-user-reg').innerText = CONFIG.regional || 'Nacional';
+      // El lanzador global de apps (public/js/app-launcher-profile.js) elimina
+      // .sidebar-user para sustituirlo por su propia tarjeta de perfil, y corre
+      // (como script "defer") justo antes de este DOMContentLoaded. Si ya lo quitó,
+      // estos elementos no existen: seguir de largo sin lanzar error para que el
+      // resto de esta función (que carga los datos de la pestaña) sí se ejecute.
+      const elName = document.getElementById('sidebar-user-name');
+      if (elName) {
+        elName.innerText = uName;
+        document.getElementById('sidebar-user-avatar').innerText = uName.charAt(0).toUpperCase();
+        document.getElementById('sidebar-user-role').innerText = CONFIG.rol || 'SST';
+        document.getElementById('sidebar-user-reg').innerText = CONFIG.regional || 'Nacional';
+      }
 
       const mobBadge = document.getElementById('mobile-user-badge');
       if (mobBadge) mobBadge.innerText = `${uName} (${CONFIG.rol || 'SST'})`;
