@@ -1708,6 +1708,26 @@
       margin: 0;
       color: #64748b;
     }
+
+    /* Campana de notificaciones en móvil: en escritorio el panel se posiciona
+       relativo al botón (position: absolute; right: 0; width: 390px), pero en
+       pantallas angostas ese ancho fijo se sale del viewport hacia la izquierda
+       y queda ilegible. Esta regla va DESPUÉS de .notif-dropdown a propósito
+       (misma especificidad: en CSS gana la que aparece última en el archivo),
+       para que sí sobrescriba el ancho/posición de escritorio en móvil. */
+    @media (max-width: 900px) {
+      .notif-dropdown {
+        position: fixed;
+        top: 64px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+        max-width: none;
+      }
+      .notif-dropdown-body {
+        max-height: calc(100vh - 230px);
+      }
+    }
   </style>
 </head>
 <body>
