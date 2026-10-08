@@ -57,6 +57,7 @@ const directoriocorporativoRoutes    = require('./src/routes/directoriocorporati
 const perfilRoutes                    = require('./src/routes/perfil');
 const casosmedicosRoutes             = require('./src/routes/casosmedicos');
 const facturacionRoutes               = require('./src/routes/facturacion');
+const reciboPublicoRoutes             = require('./src/routes/reciboPublico');
 
 const app = express();
 
@@ -126,6 +127,9 @@ app.use('/descuentonomina', descuentonominaRoutes);
 app.use('/sst', sstRoutes);
 app.use('/casosmedicos', casosmedicosRoutes);
 app.use('/facturacion', facturacionRoutes);
+// Vistas públicas de recibo/servicio (reemplazan al servicio aparte recibo-recaudo):
+// BASE_URL/recibo/:idRecibo, BASE_URL/consecutivo/:nro, BASE_URL/servicio/:idServicio
+app.use('/', reciboPublicoRoutes);
 app.use('/directorio-corporativo', directoriocorporativoRoutes);
 app.use('/perfil', perfilRoutes);
 if (process.env.NODE_ENV !== 'production') {

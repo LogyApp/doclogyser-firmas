@@ -43,6 +43,17 @@ async function subirFirma(identificacion, bufferPng) {
   return `https://storage.googleapis.com/${BUCKET_FIRMAS}/${nombre}`;
 }
 
+// Firma del cliente/conductor capturada en la vista pública de un servicio
+// (BASE_URL/servicio/:idServicio). Mantiene la misma ruta que ya usan las firmas
+// históricas guardadas por el servicio recibo-recaudo (credito_<id>/firma_<id>.png)
+// para no romper los enlaces ya persistidos en Dynamic_Servicios.Firma_Recibido.
+async function subirFirmaServicio(idServicio, bufferPng) {
+  const nombre = `credito_${idServicio}/firma_${idServicio}.png`;
+  const file = storage.bucket(BUCKET_FIRMAS).file(nombre);
+  await file.save(bufferPng, { contentType: 'image/png', resumable: false });
+  return `https://storage.googleapis.com/${BUCKET_FIRMAS}/${nombre}`;
+}
+
 async function subirPDF(identificacion, idTraslado, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.TRAS.${idTraslado}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
@@ -265,6 +276,7 @@ module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
   subirFirma,
+  subirFirmaServicio,
   subirPDF,
   subirPDFRetiro,
   subirPDFAceptacionRenuncia,
