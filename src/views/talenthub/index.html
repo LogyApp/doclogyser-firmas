@@ -1,0 +1,3336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TalentHub — LOG&amp;SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Tema Lavanda Oscura Corporativa (Elegante, equilibrada, menor componente azul) */
+      --primary: #4a306d;
+      --primary-hover: #3b2459;
+      --primary-dark: #2d1947;
+      --primary-light: #f3edf8;
+      --primary-subtle: #faf6fd;
+      --accent: #6d489b;
+      --accent-soft: rgba(74, 48, 109, 0.12);
+      --sidebar-bg: #1c132b;
+      --sidebar-active: #3e275d;
+      --sidebar-hover: rgba(255, 255, 255, 0.08);
+      --bg: #f8f6fb;
+      --card-bg: #ffffff;
+      --text: #191424;
+      --text-muted: #5e546e;
+      --border: #e3dced;
+      --border-focus: #6d489b;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --danger-bg: #fef2f2;
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --success: #10b981;
+      --success-bg: #ecfdf5;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 14px -2px rgba(74, 48, 109, 0.14);
+      --shadow-lg: 0 12px 28px -4px rgba(74, 48, 109, 0.20);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      display: flex;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ───────────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 280px;
+      background: var(--sidebar-bg);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 100;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 4px 0 20px rgba(28, 19, 43, 0.35);
+    }
+    .sidebar-brand {
+      padding: 16px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      gap: 6px;
+    }
+    .brand-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      flex-shrink: 0;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.15s ease;
+    }
+    .brand-lockup:hover { opacity: 0.88; }
+    .brand-lockup img.brand-logo-app { display: block; object-fit: contain; height: 30px; }
+    .brand-logo-company-crop { width: 133px; height: 34px; overflow: hidden; position: relative; }
+    .brand-logo-company-crop img { position: absolute; left: -64px; top: -65px; width: 268px; height: 178px; max-width: none; }
+    .brand-divider { width: 80%; height: 1.5px; background: rgba(255,255,255,0.22); }
+
+    /* Module Badge */
+    .module-badge-tag {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.22);
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* User Profile Card in Sidebar (clickable with photo and modal trigger) */
+    .talenthub-profile { padding: 12px 14px 0; }
+    .talenthub-profile-trigger {
+      display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 10px;
+      text-align: left; border: 1px solid rgba(255,255,255,0.16); border-radius: 10px;
+      background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; transition: background 0.18s ease;
+    }
+    .talenthub-profile-trigger:hover { background: rgba(255,255,255,0.15); }
+    .talenthub-profile-thumb { width: 42px; height: 42px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.75); object-fit: cover; flex: 0 0 auto; background: rgba(255,255,255,0.2); }
+    .talenthub-profile-label { min-width: 0; flex: 1; }
+    .talenthub-profile-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 0.82rem; }
+    .talenthub-profile-hint { display: block; color: rgba(255,255,255,0.68); font-size: 0.7rem; }
+    .talenthub-profile-arrow { color: #d8c8ea; font-size: 1.1rem; }
+
+    /* Navigation */
+    .nav-list { list-style: none; padding: 16px 14px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: 8px;
+      color: rgba(255,255,255,0.72);
+      font-weight: 500;
+      font-size: 0.88rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+    .nav-item:hover { color: #fff; background: var(--sidebar-hover); }
+    .nav-item.active {
+      color: #fff;
+      background: var(--sidebar-active);
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      height: 60%;
+      width: 4px;
+      background: #c5a9e8;
+      border-radius: 0 4px 4px 0;
+    }
+    .nav-item-icon { font-size: 1.15rem; width: 22px; text-align: center; }
+
+    /* Module Launcher ("OTROS") */
+    .module-launcher { position: relative; flex: 0 0 auto; }
+    .module-launcher-trigger {
+      width: 48px; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0;
+      color: #fff; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.20);
+      border-radius: 8px; cursor: pointer; transition: background 0.16s ease;
+    }
+    .module-launcher-trigger:hover, .module-launcher-trigger[aria-expanded="true"] { background: rgba(255,255,255,0.22); }
+    .module-launcher-grid { display: grid; grid-template-columns: repeat(3, 4px); gap: 3px; }
+    .module-launcher-grid i { width: 4px; height: 4px; background: currentColor; border-radius: 1px; }
+    .module-launcher-caption { font-size: 0.57rem; line-height: 1; font-weight: 700; }
+    .module-launcher-panel {
+      position: absolute; z-index: 200; top: calc(100% + 10px); right: -4px; width: 260px;
+      max-height: min(74vh, 620px); overflow-y: auto; padding: 9px;
+      background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 16px 38px rgba(0,0,0,0.25); display: none;
+    }
+    .module-launcher-panel.open { display: block; animation: launcher-in 0.14s ease-out; }
+    @keyframes launcher-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .module-launcher-heading { padding: 8px 10px; color: var(--text-muted); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid var(--border); margin-bottom: 5px; }
+    .module-launcher-group { border-bottom: 1px solid #edf0f3; }
+    .module-launcher-group:last-child { border-bottom: 0; }
+    .module-launcher-group summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
+    .module-launcher-group summary::-webkit-details-marker { display: none; }
+    .module-launcher-group summary::after { content: '›'; margin-left: auto; color: #8793a0; font-size: 1.1rem; transition: transform 0.15s ease; }
+    .module-launcher-group[open] summary { background: var(--primary-light); color: var(--primary); }
+    .module-launcher-group[open] summary::after { transform: rotate(90deg); color: var(--primary); }
+    .module-launcher-symbol { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 6px; background: var(--primary-light); color: var(--primary); font-size: 0.8rem; }
+    .module-launcher-links { display: grid; gap: 2px; padding: 2px 4px 8px 40px; }
+    .module-launcher-link { display: block; padding: 6px 8px; border-radius: 5px; color: #566271; text-decoration: none; font-size: 0.74rem; }
+    .module-launcher-link:hover { color: var(--primary); background: var(--primary-light); }
+
+    /* ── Content Wrapper ───────────────────────────────────────────────────── */
+    .wrapper {
+      margin-left: 280px;
+      flex: 1;
+      min-width: 0;
+      padding: 24px 30px;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .page-title-box h1 {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .page-title-box p {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* ── Cards & Panels ────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      padding: 22px 24px;
+      margin-bottom: 22px;
+      transition: box-shadow 0.2s ease;
+    }
+    .card:hover { box-shadow: var(--shadow-md); }
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Forms & Inputs */
+    .search-bar-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .input-group {
+      flex: 1;
+      min-width: 260px;
+      position: relative;
+    }
+    .input-field {
+      width: 100%;
+      padding: 11px 16px;
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.92rem;
+      color: var(--text);
+      transition: all 0.2s;
+    }
+    .input-field:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 12px rgba(74, 48, 109, 0.3);
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: var(--danger-hover);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover:not(:disabled) {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+    .btn-secondary {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: transparent;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #e9def4;
+    }
+
+    /* Worker Info Display */
+    .worker-card {
+      margin-top: 20px;
+      background: var(--primary-subtle);
+      border: 1.5px solid #ded3ee;
+      border-radius: var(--radius);
+      padding: 20px;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .worker-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .meta-box {
+      background: #fff;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .meta-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: block;
+      margin-bottom: 3px;
+    }
+    .meta-val {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* KPI Summary Pills */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+    .kpi-pill {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .kpi-pill-num {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .kpi-pill-lbl {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .worker-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-top: 1px solid #e2d8f0;
+      padding-top: 16px;
+    }
+
+    /* Table container */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.86rem;
+    }
+    th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1.5px solid var(--border);
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #faf9fd; }
+
+    .tag-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .tag-badge-primary { background: var(--primary-light); color: var(--primary); }
+    .tag-badge-danger { background: var(--danger-bg); color: var(--danger); }
+    .tag-badge-success { background: var(--success-bg); color: var(--success); }
+
+    /* Modales */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-box {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      position: relative;
+      animation: modalPop 0.18s ease-out;
+    }
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.96) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-hdr { margin-bottom: 16px; }
+    .modal-hdr h3 { font-size: 1.15rem; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px; }
+    .modal-hdr p { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+    .modal-body { margin-bottom: 20px; font-size: 0.9rem; }
+    .modal-ftr { display: flex; justify-content: flex-end; gap: 10px; }
+
+    /* Modal Full / Profile Modal (Igual que Nómina) */
+    .modal-full-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 2000; padding: 16px;
+    }
+    .modal-full-overlay.open { display: flex; animation: modalPop 0.2s ease-out; }
+    .modal-full {
+      background: #fff; border-radius: 12px; width: 100%; height: 90vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.3); border: 1px solid var(--border);
+    }
+    .modal-full-header {
+      background: var(--primary); color: #fff; padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-weight: 700; font-size: 0.96rem;
+    }
+    .modal-full-header button {
+      background: rgba(255,255,255,0.18); border: none; color: #fff;
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600;
+      transition: background 0.15s ease;
+    }
+    .modal-full-header button:hover { background: rgba(255,255,255,0.28); }
+    
+    .profile-modal { width: min(100%, 540px); height: auto; max-height: 92vh; }
+    .profile-modal-body { overflow-y: auto; padding: 24px; background: #fff; }
+    .profile-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 12px 18px; }
+    .profile-photo-large { width: 132px; height: 132px; border: 4px solid #fff; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px rgba(109, 72, 155, 0.45), 0 12px 28px rgba(74, 48, 109, 0.2); }
+    .profile-view-name { margin-top: 16px; font-size: 1.35rem; line-height: 1.2; font-weight: 800; color: var(--text); }
+    .profile-view-role { margin-top: 5px; color: var(--primary); font-weight: 700; font-size: 0.9rem; }
+    .profile-details { border-top: 1px solid var(--border); padding-top: 14px; display: grid; gap: 10px; }
+    .profile-detail { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 10px; font-size: 0.86rem; }
+    .profile-detail-label { color: var(--text-muted); font-weight: 600; }
+    .profile-detail-value { overflow-wrap: anywhere; color: var(--text); }
+    .profile-save-status { margin-top: 14px; padding: 9px 11px; border-radius: 6px; background: #e9f8ef; color: #0c7a43; font-size: 0.84rem; font-weight: 600; }
+    .profile-edit-form { display: none; }
+    .profile-edit-form .ficha-field { margin-bottom: 12px; }
+    .profile-edit-form label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+    .profile-edit-form input { width: 100%; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); }
+    .profile-edit-form input:focus { outline: none; border-color: var(--primary); }
+    .profile-edit-photo { display: flex; gap: 14px; align-items: center; }
+    .profile-edit-preview { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
+    .profile-signature-panel { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
+    .profile-signature-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .profile-signature-tab { border: 1px solid var(--border); background: #fff; color: var(--text-muted); padding: 7px 11px; border-radius: 6px; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    .profile-signature-tab.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+    .profile-signature-preview { overflow-x: auto; border: 1px solid var(--border); border-radius: 7px; padding: 12px; background: #f8fafc; }
+    .profile-signature-png { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 110px; }
+    .profile-signature-png img { max-width: 100%; height: auto; border: 1px solid var(--border); background: white; }
+    .profile-signature-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .profile-signature-actions a { color: var(--primary); font-size: 0.82rem; font-weight: 600; }
+    .profile-digital-signature { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
+    .profile-digital-current { display: flex; align-items: center; gap: 14px; min-height: 76px; }
+    .profile-digital-current img { max-width: 170px; max-height: 72px; object-fit: contain; }
+    .profile-digital-canvas-wrap { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: #f8fafc; }
+    #profileDigitalCanvas { display: block; width: 100%; height: 150px; background: #fff; border: 1px dashed #94a3b8; border-radius: 5px; touch-action: none; cursor: crosshair; }
+    .profile-digital-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
+    .profile-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    .aviso-banner { background: #fff6e6; border: 1px solid #ffe2ad; color: #a15c00; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; font-weight: 600; }
+
+    /* Toast */
+    .toast-box {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 9999;
+    }
+    .toast-item {
+      padding: 12px 18px;
+      border-radius: 8px;
+      background: #1e293b;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      animation: toastIn 0.2s ease;
+    }
+    .toast-item.error { background: #ef4444; }
+    .toast-item.success { background: #10b981; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Requisiciones Styles ──────────────────────────────────────────────── */
+    .req-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .req-kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .req-kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .req-kpi-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .req-kpi-val {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.1;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .req-kpi-lbl {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.03em;
+      margin-top: 2px;
+    }
+
+    /* Filter Panel */
+    .filter-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .filter-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+    .filter-panel-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filter-panel-body {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .filter-group label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .filter-group select, .filter-group input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font: inherit;
+      font-size: 0.82rem;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+    .filter-group select:focus, .filter-group input:focus {
+      border-color: var(--primary);
+    }
+
+    /* Table sorting & column resize */
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s ease;
+      white-space: nowrap;
+    }
+    th.sortable:hover {
+      background: #ede8f5;
+      color: var(--primary);
+    }
+    th.sortable .sort-indicator {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 0.7rem;
+      opacity: 0.4;
+    }
+    th.sortable.active .sort-indicator {
+      opacity: 1;
+      color: var(--primary);
+      font-weight: 900;
+    }
+
+    /* Status Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .status-badge.en-proceso { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+    .status-badge.finalizado { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .status-badge.suspendido { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .status-badge.cancelado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+    /* Toggle Option Buttons */
+    .btn-group-toggle {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .btn-toggle-option {
+      border: 1.5px solid var(--border);
+      background: #f8fafc;
+      color: var(--text-muted);
+      padding: 7px 13px;
+      border-radius: 7px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      user-select: none;
+    }
+    .btn-toggle-option:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+    .btn-toggle-option.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 3px 8px rgba(74, 48, 109, 0.25);
+    }
+
+    /* Modal Form for Requisición */
+    .modal-box-lg {
+      max-width: 840px;
+      width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .req-section-hdr {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primary);
+      border-bottom: 1.5px solid #ece4f5;
+      padding-bottom: 5px;
+      margin: 18px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .req-section-hdr:first-of-type {
+      margin-top: 0;
+    }
+    .req-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .req-field {
+      display: flex;
+      flex-direction: column;
+    }
+    .req-field label {
+      font-size: 0.73rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .req-field .req-input, .req-field select, .req-field textarea {
+      padding: 8px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font: inherit;
+      font-size: 0.82rem;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+    .req-field .req-input:focus, .req-field select:focus, .req-field textarea:focus {
+      border-color: var(--primary);
+    }
+    .req-field textarea {
+      resize: vertical;
+      min-height: 55px;
+    }
+    .req-field.disabled .req-input, .req-field.disabled select {
+      background: #f1f5f9;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    /* Detalle Requisición */
+    .req-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .req-detail-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+    }
+    .req-detail-lbl {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+    .req-detail-val {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 2px;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── SIDEBAR ───────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <!-- Doble logo corporativo idéntico a Nómina (LogyApp + Logyser recortado) -->
+      <div class="brand-lockup" onclick="window.location.reload()" title="Reiniciar módulo TalentHub">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+
+      <!-- Module Launcher Dropdown ("OTROS") -->
+      <div class="module-launcher">
+        <button type="button" class="module-launcher-trigger" id="moduleLauncherTrigger" aria-label="Abrir otros módulos" aria-expanded="false" onclick="toggleModuleLauncher(event)">
+          <span class="module-launcher-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="module-launcher-caption">OTROS</span>
+        </button>
+        <div class="module-launcher-panel" id="moduleLauncherPanel">
+          <div class="module-launcher-heading">Otros módulos</div>
+
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">💼</span>Nómina</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=activos">Activos</a>
+              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=retiros">Retiros</a>
+              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=bloqueo">Bloqueo de Datos</a>
+              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=biometrico">Biométrico</a>
+              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=incapacidades">Incapacidades</a>
+              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=traslados">Traslados</a>
+            </div>
+          </details>
+
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">▦</span>Inventario</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=inventario">Inventario</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=reportes">Reportes</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=pendienterecibir">Pendiente por recibir</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=kardex">Kardex</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=articulos">Catálogo de artículos</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=actas">Actas de Entrega</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=dotacionley">Dotación de Ley</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=historial">Historial de Confirmaciones</a>
+            </div>
+          </details>
+
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">▤</span>Cloud Docs</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=trabajador">Doc Trabajadores</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=documento">Documentos</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=todo">Consolidado</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=docretiros">Doc Retiros</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=logysign">LogySign</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=validarcap">Validar Capacitación</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=permisos">Permisos</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=duplicados">Duplicados</a>
+            </div>
+          </details>
+
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">◷</span>Facturación</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=servicios">Servicios</a>
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=recibos">Recibos</a>
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=clientescredito">Clientes Crédito</a>
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=bloqueo">Bloqueos</a>
+              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=tickets">Tickets</a>
+            </div>
+          </details>
+
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">＋</span>SST</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=evaluacion">Evaluación SST</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=capacitacion">Capacitación</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=capacitacion&amp;subtab=temas">Temas de capacitación</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=pruebaconsumo">Prueba de Consumo</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=participacion">Participación</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=compromiso">Compromisos SST</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=gestionmedica&amp;subtab=casosmedicos">Casos Médicos</a>
+              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=gestionmedica&amp;subtab=incapacidades">Incapacidades</a>
+            </div>
+          </details>
+
+          <a class="module-launcher-link" data-module-link href="/directorio-corporativo?usuario=__USER__">Directorio Corporativo</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Profile Badge (Clickable para editar perfil y firma) -->
+    <div class="talenthub-profile" id="talenthubProfile" style="display:none;">
+      <button type="button" class="talenthub-profile-trigger" onclick="abrirPerfilTalenthub()" aria-label="Ver y editar mi perfil">
+        <img class="talenthub-profile-thumb" id="talenthubProfileThumb" src="" alt="Foto de perfil">
+        <span class="talenthub-profile-label">
+          <span class="talenthub-profile-name" id="talenthubProfileName">Cargando...</span>
+          <span class="talenthub-profile-hint">Mi perfil corporativo</span>
+        </span>
+        <span class="talenthub-profile-arrow" aria-hidden="true">›</span>
+      </button>
+    </div>
+
+    <!-- Navigation List -->
+    <ul class="nav-list" id="sidebarNavList">
+      <!-- Inyectado dinámicamente según permisos de Maestro_Menu_Talenthub -->
+    </ul>
+
+    <div style="padding: 16px; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
+      <span class="module-badge-tag">❖ TalentHub Suite</span>
+    </div>
+  </aside>
+
+  <!-- ── MAIN WRAPPER ──────────────────────────────────────────────────────── -->
+  <main class="wrapper">
+    <div class="page-header">
+      <div class="page-title-box">
+        <h1 id="pageTitleText">🛡️ Integridad de Datos</h1>
+        <p id="pageSubtitleText">Módulo de Integridad, Depuración y Normalización de Registros</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button type="button" class="btn btn-primary" id="btnHeaderAdministrarId" onclick="abrirModalNuevoProcesoIntegridad()" style="display:none;">
+          <span>➕ Administrar Identificación</span>
+        </button>
+        <button type="button" class="btn btn-primary" id="btnHeaderNuevaRequisicion" onclick="abrirModalCrearRequisicion()" style="display:none;">
+          <span>➕ Nueva Requisición</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── SECCIÓN 1: INTEGRIDAD (TAB ACTIVA) ────────────────────────────────── -->
+    <div id="tabContentIntegridad" style="display: none;">
+      
+      <!-- Card Buscador -->
+      <div class="card">
+        <div class="card-title">
+          <span>🔍</span> Gestión de Integridad y Búsqueda de Colaboradores
+        </div>
+        <div class="search-bar-row">
+          <div class="input-group">
+            <input type="text" id="inputBuscarCedula" class="input-field" placeholder="Ingresa la cédula / identificación del trabajador..." onkeydown="if(event.key==='Enter') buscarTrabajador()">
+          </div>
+          <button type="button" class="btn btn-primary" onclick="buscarTrabajador()">
+            <span>Buscar Trabajador</span>
+          </button>
+        </div>
+
+        <!-- Ficha de Resultados del Trabajador -->
+        <div class="worker-card" id="workerCardResult">
+          <div class="worker-meta-grid">
+            <div class="meta-box">
+              <span class="meta-label">Colaborador</span>
+              <span class="meta-val" id="resNombre">-</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label">Cédula / Identificación</span>
+              <span class="meta-val" id="resIdentificacion" style="font-family:'JetBrains Mono',monospace; color:var(--primary)">-</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label">Operación</span>
+              <span class="meta-val" id="resOperacion">-</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label">Regional</span>
+              <span class="meta-val" id="resRegional">-</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label">Cargo</span>
+              <span class="meta-val" id="resCargo">-</span>
+            </div>
+            <div class="meta-box">
+              <span class="meta-label">Estado</span>
+              <span class="meta-val" id="resEstado">-</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 12px; font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">
+            Registros Vinculados en el Ecosistema:
+          </div>
+          <div class="kpi-grid">
+            <div class="kpi-pill">
+              <div class="kpi-pill-num" id="kpiDocs">0</div>
+              <div class="kpi-pill-lbl">Documentos</div>
+            </div>
+            <div class="kpi-pill">
+              <div class="kpi-pill-num" id="kpiActas">0</div>
+              <div class="kpi-pill-lbl">Actas Entrega</div>
+            </div>
+            <div class="kpi-pill">
+              <div class="kpi-pill-num" id="kpiKardex">0</div>
+              <div class="kpi-pill-lbl">Movs Kardex</div>
+            </div>
+            <div class="kpi-pill">
+              <div class="kpi-pill-num" id="kpiBio">0</div>
+              <div class="kpi-pill-lbl">Marcaciones</div>
+            </div>
+            <div class="kpi-pill">
+              <div class="kpi-pill-num" id="kpiSel">0</div>
+              <div class="kpi-pill-lbl">Selección / HV</div>
+            </div>
+            <div class="kpi-pill">
+              <div class="kpi-pill-num" id="kpiMed">0</div>
+              <div class="kpi-pill-lbl">Casos Médicos</div>
+            </div>
+          </div>
+
+          <div class="worker-actions">
+            <button type="button" class="btn btn-outline" onclick="abrirModalModificar()">
+              <span>✏️ Corregir Identificación</span>
+            </button>
+            <button type="button" class="btn btn-danger" onclick="abrirModalEliminar()">
+              <span>🗑️ Eliminar Trabajador (Purga Completa)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Historial de Auditoría (Maestro_integridad) -->
+      <div class="card">
+        <div class="card-title" style="justify-content: space-between;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>📜</span> Historial de Auditoría de Eliminaciones
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarHistorialAuditoria()">
+            <span>↻ Actualizar</span>
+          </button>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha y Hora</th>
+                <th>Identificación</th>
+                <th>Colaborador</th>
+                <th>Operación</th>
+                <th>Responsable</th>
+                <th>Registros Purgados</th>
+                <th style="text-align:right">Evidencia</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAuditoria">
+              <tr>
+                <td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">Cargando historial de auditoría...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── SECCIÓN: REQUISICIONES DE PERSONAL ────────────────────────────────── -->
+    <div id="tabContentRequisiciones" style="display: none;">
+      
+      <!-- KPIs Grid -->
+      <div class="req-kpi-grid">
+        <div class="req-kpi-card">
+          <div class="req-kpi-icon" style="background:#f1eafa; color:var(--primary)">📋</div>
+          <div>
+            <div class="req-kpi-val" id="kpiReqTotal">0</div>
+            <div class="req-kpi-lbl">Total Requisiciones</div>
+          </div>
+        </div>
+        <div class="req-kpi-card">
+          <div class="req-kpi-icon" style="background:#f3e8ff; color:#7e22ce">⏳</div>
+          <div>
+            <div class="req-kpi-val" id="kpiReqEnProceso" style="color:#7e22ce">0</div>
+            <div class="req-kpi-lbl">En Proceso</div>
+          </div>
+        </div>
+        <div class="req-kpi-card">
+          <div class="req-kpi-icon" style="background:#dcfce7; color:#15803d">✅</div>
+          <div>
+            <div class="req-kpi-val" id="kpiReqFinalizado" style="color:#15803d">0</div>
+            <div class="req-kpi-lbl">Finalizadas</div>
+          </div>
+        </div>
+        <div class="req-kpi-card">
+          <div class="req-kpi-icon" style="background:#fee2e2; color:#b91c1c">⏸️</div>
+          <div>
+            <div class="req-kpi-val" id="kpiReqOtras" style="color:#b91c1c">0</div>
+            <div class="req-kpi-lbl">Suspendidas / Cancel.</div>
+          </div>
+        </div>
+        <div class="req-kpi-card">
+          <div class="req-kpi-icon" style="background:#e0f2fe; color:#0369a1">👥</div>
+          <div>
+            <div class="req-kpi-val" id="kpiReqVacantes" style="color:#0369a1">0</div>
+            <div class="req-kpi-lbl">Personas Requeridas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Filtros Plegables con Conteos -->
+      <div class="filter-panel" id="panelFiltrosRequisiciones">
+        <div class="filter-panel-header" onclick="toggleFiltrosRequisiciones()">
+          <div class="filter-panel-title">
+            <span>🔍</span> Filtros y Búsqueda de Requisiciones
+            <span class="tag-badge tag-badge-primary" id="lblFiltrosActivosCount" style="margin-left:8px; font-size:0.72rem;">Cargando...</span>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltros">
+            <span id="iconToggleFiltros">▼ Ocultar</span>
+          </button>
+        </div>
+        <div class="filter-panel-body" id="bodyFiltrosRequisiciones">
+          <div class="filter-grid">
+            <div class="filter-group" style="grid-column: span 2;">
+              <label>Buscador de Requisiciones</label>
+              <input type="text" id="filtroReqQ" placeholder="Escribe código RQ, Cargo, Solicitante o Ciudad..." onkeydown="if(event.key==='Enter') aplicarFiltrosRequisiciones()">
+            </div>
+            <div class="filter-group">
+              <label>Estado</label>
+              <select id="filtroReqEstado" onchange="aplicarFiltrosRequisiciones()">
+                <option value="todos">Todos los Estados</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Regional</label>
+              <select id="filtroReqRegional" onchange="onFiltroRegionalChange()">
+                <option value="todas">Todas las Regionales</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Operación</label>
+              <select id="filtroReqOperacion" onchange="aplicarFiltrosRequisiciones()">
+                <option value="todas">Todas las Operaciones</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Fecha Desde</label>
+              <input type="date" id="filtroReqDesde" onchange="aplicarFiltrosRequisiciones()">
+            </div>
+            <div class="filter-group">
+              <label>Fecha Hasta</label>
+              <input type="date" id="filtroReqHasta" onchange="aplicarFiltrosRequisiciones()">
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" class="btn btn-primary" onclick="aplicarFiltrosRequisiciones()" style="flex:1;">
+                <span>Filtrar</span>
+              </button>
+              <button type="button" class="btn btn-outline" onclick="limpiarFiltrosRequisiciones()" title="Limpiar filtros">
+                <span>Limpiar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Tabla Maestra de Requisiciones -->
+      <div class="card">
+        <div class="card-title" style="justify-content: space-between; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>📋</span> Lista Maestra de Requisiciones
+            <span id="lblTotalRegistrosReq" style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;"></span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarRequisiciones()">
+              <span>↻ Actualizar</span>
+            </button>
+            <button type="button" class="btn btn-primary" style="padding:6px 14px; font-size:0.78rem;" onclick="abrirModalCrearRequisicion()">
+              <span>➕ Nueva Requisición</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table id="tablaRequisiciones">
+            <thead>
+              <tr>
+                <th class="sortable" onclick="ordenarRequisiciones('Requisición')">
+                  Requisición <span class="sort-indicator" id="sort_Requisición">▲</span>
+                </th>
+                <th class="sortable active" onclick="ordenarRequisiciones('Fecha Requisición')">
+                  Fecha Solicitud <span class="sort-indicator" id="sort_Fecha_Requisición">▼</span>
+                </th>
+                <th class="sortable" onclick="ordenarRequisiciones('Estado')">
+                  Estado <span class="sort-indicator" id="sort_Estado">▲</span>
+                </th>
+                <th class="sortable" onclick="ordenarRequisiciones('Regional')">
+                  Regional <span class="sort-indicator" id="sort_Regional">▲</span>
+                </th>
+                <th class="sortable" onclick="ordenarRequisiciones('Operación')">
+                  Operación <span class="sort-indicator" id="sort_Operación">▲</span>
+                </th>
+                <th class="sortable" onclick="ordenarRequisiciones('Cargo Requerido')">
+                  Cargo Requerido <span class="sort-indicator" id="sort_Cargo_Requerido">▲</span>
+                </th>
+                <th class="sortable" style="text-align:center" onclick="ordenarRequisiciones('N° Personas Requeridas')">
+                  Vacantes <span class="sort-indicator" id="sort_N_Personas_Requeridas">▲</span>
+                </th>
+                <th class="sortable" onclick="ordenarRequisiciones('Solicitante')">
+                  Solicitante <span class="sort-indicator" id="sort_Solicitante">▲</span>
+                </th>
+                <th>Responsable Selección</th>
+                <th style="text-align:right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyRequisiciones">
+              <tr>
+                <td colspan="10" style="text-align:center; color:var(--text-muted); padding:28px;">Cargando requisiciones...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── SECCIÓN PLACEHOLDER: ASPIRANTES ────────────────────────────────────── -->
+    <div id="tabContentAspirantes" style="display: none;">
+      <div class="tab-placeholder-card">
+        <div class="tab-placeholder-icon">👥</div>
+        <div class="tab-placeholder-title">Aspirantes &amp; Hojas de Vida</div>
+        <div class="tab-placeholder-desc">
+          Este submódulo gestionará el reclutamiento a partir de <strong>Dynamic_hv_aspirante</strong> y sus tablas anexas (documentos, estudios, referencias, experiencia).
+        </div>
+        <div style="margin-top: 20px;">
+          <span class="module-badge-tag" style="background:#efe8f7; color:var(--primary); border-color:#d4c5e8;">
+            Próximamente Disponible
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECCIÓN PLACEHOLDER: SOCIODEMOGRÁFICA ─────────────────────────────── -->
+    <div id="tabContentSociodemografica" style="display: none;">
+      <div class="tab-placeholder-card">
+        <div class="tab-placeholder-icon">📊</div>
+        <div class="tab-placeholder-title">Sociodemográfica &amp; Vinculación</div>
+        <div class="tab-placeholder-desc">
+          Este submódulo consolidará la información de <strong>Maestro_Segmentación</strong> combinada con <strong>Maestro_Vinculación</strong>, utilizada por Contratación tras el envío de candidatos aprobados.
+        </div>
+        <div style="margin-top: 20px;">
+          <span class="module-badge-tag" style="background:#efe8f7; color:var(--primary); border-color:#d4c5e8;">
+            Próximamente Disponible
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── MODAL: NUEVO PROCESO DE INTEGRIDAD (ADMINISTRAR IDENTIFICACIÓN) ──────── -->
+  <div class="modal-backdrop" id="modalNuevoProceso">
+    <div class="modal-box" style="max-width: 600px;">
+      <div class="modal-hdr">
+        <h3><span>➕</span> Administrar Identificación</h3>
+        <p>Valida la información del colaborador en el sistema para proceder con la eliminación o la corrección de su documento.</p>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; gap:10px; margin-bottom:14px;">
+          <input type="text" id="inputModalNuevoCedula" class="input-field" placeholder="Ingresa la cédula a procesar..." onkeydown="if(event.key==='Enter') modalConsultarTrabajador()">
+          <button type="button" class="btn btn-primary" onclick="modalConsultarTrabajador()">Consultar</button>
+        </div>
+
+        <div id="modalNuevoFeedback" style="display:none; margin-top:14px;">
+          <div style="background:var(--primary-subtle); border:1px solid #d4c5e8; border-radius:8px; padding:12px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+              <span style="font-weight:700; font-size:1.02rem; color:var(--text);" id="modalNuevoNombre">-</span>
+              <span id="modalNuevoBadgeOrigen" class="tag-badge tag-badge-primary">Sociodemográfica</span>
+            </div>
+            <div style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;" id="modalNuevoMeta">-</div>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:14px; text-align:center;">
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:8px;">
+              <div style="font-weight:800; color:var(--primary); font-size:1.1rem;" id="modalNuevoKpiDocs">0</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Documentos</div>
+            </div>
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:8px;">
+              <div style="font-weight:800; color:var(--primary); font-size:1.1rem;" id="modalNuevoKpiActas">0</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Actas / Dotación</div>
+            </div>
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:8px;">
+              <div style="font-weight:800; color:var(--primary); font-size:1.1rem;" id="modalNuevoKpiBio">0</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Marcaciones</div>
+            </div>
+          </div>
+          <div class="aviso-banner" style="background:#fff6e6; border-color:#ffe2ad; color:#a15c00; margin-bottom:0;">
+            ⚠️ <strong>Atención:</strong> La eliminación borrará permanentemente los datos del trabajador en todos los módulos del sistema, eliminará sus archivos de la nube y dejará constancia certificada para trazabilidad.
+          </div>
+        </div>
+      </div>
+      <div class="modal-ftr">
+        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cerrar</button>
+        <button type="button" class="btn btn-outline" id="btnModalNuevoModificar" style="display:none;" onclick="abrirModalModificarDesdeNuevo()">✏️ Corregir Cédula</button>
+        <button type="button" class="btn btn-danger" id="btnModalNuevoEliminar" style="display:none;" onclick="abrirModalEliminarDesdeNuevo()">🗑️ Proceder a Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: MODIFICAR IDENTIFICACIÓN ───────────────────────────────────── -->
+  <div class="modal-backdrop" id="modalModificar">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h3><span>✏️</span> Corregir Identificación</h3>
+        <p>Esta acción actualizará la cédula en todas las tablas maestras y renombrará las carpetas en Google Cloud Storage.</p>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 14px;">
+          <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Identificación Actual</label>
+          <input type="text" id="modOldId" class="input-field" disabled style="background:#f1f5f9; font-weight:700;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:var(--text); text-transform:uppercase;">Nueva Identificación (Solo Números)</label>
+          <input type="text" id="modNewId" class="input-field" placeholder="Ingresa la nueva cédula..." style="margin-top:4px;">
+        </div>
+      </div>
+      <div class="modal-ftr">
+        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnConfirmModificar" onclick="ejecutarModificacion()">Guardar Cambio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: ELIMINAR TRABAJADOR (PURGA SEGURA) ─────────────────────────── -->
+  <div class="modal-backdrop" id="modalEliminar">
+    <div class="modal-box" style="max-width: 540px;">
+      <div class="modal-hdr">
+        <h3 style="color:var(--danger)"><span>⚠️</span> Confirmar Eliminación</h3>
+        <p>Esta acción es permanente. Se eliminarán los registros del trabajador en los módulos del sistema y sus archivos en la nube, generando un certificado de auditoría para trazabilidad.</p>
+      </div>
+      <div class="modal-body">
+        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:12px; margin-bottom:14px; font-size:0.85rem; color:#991b1b;">
+          Se generará automáticamente un <strong>Certificado de Auditoría</strong> que se almacenará en la nube para trazabilidad y consulta permanente.
+        </div>
+
+        <!-- Opción: Solo Sociodemográfica -->
+        <div class="sociodemo-option-box" id="boxSoloSociodemo" style="margin-bottom:16px; background:#fbf9fd; border:1.5px solid #ded3ee; border-radius:8px; padding:12px 14px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; font-size:0.9rem; color:var(--text); margin-bottom:0;">
+            <input type="checkbox" id="chkSoloSociodemo" onchange="actualizarAclaracionPurga()" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+            <span>Solo Sociodemográfica</span>
+          </label>
+          <div id="lblAclaracionPurga" style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); padding-left:28px;">
+            Se eliminará el trabajador en todas las tablas
+          </div>
+        </div>
+
+        <p style="font-size:0.88rem; margin-bottom:10px;">
+          Para confirmar, por favor escribe exactamente la palabra <strong style="color:var(--danger)">ELIMINAR</strong> o la cédula <strong id="lblConfirmCedula"></strong>:
+        </p>
+        <input type="text" id="inputConfirmText" class="input-field" placeholder="Escribe aquí para confirmar...">
+      </div>
+      <div class="modal-ftr">
+        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmEliminar" onclick="ejecutarEliminacion()">Eliminar Permanentemente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: ÉXITO DE ELIMINACIÓN CON ENLACE DE EVIDENCIA ──────────────── -->
+  <div class="modal-backdrop" id="modalExitoEliminar">
+    <div class="modal-box" style="text-align: center;">
+      <div style="font-size: 3rem; margin-bottom: 8px;">✅</div>
+      <div class="modal-hdr">
+        <h3 style="justify-content: center; color:var(--success)">Trabajador Eliminado</h3>
+        <p id="descExitoEliminar">La purga del trabajador y sus registros dependientes se completó con éxito.</p>
+      </div>
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px; margin-bottom:20px; font-size:0.9rem; color:#166534;">
+        <div style="font-weight:700; margin-bottom:4px;">Certificado de Evidencia Generado</div>
+        <div style="font-size:0.8rem; color:#15803d; margin-bottom:12px;">Se ha guardado una copia inmutable de la auditoría en TalentHub Central.</div>
+        <a id="btnLinkEvidencia" href="#" target="_blank" class="btn btn-primary" style="background:#16a34a; font-size:0.85rem;">
+          <span>📄 Ver Certificado de Evidencia</span>
+        </a>
+      </div>
+      <div class="modal-ftr" style="justify-content: center;">
+        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: PERFIL CORPORATIVO DEL USUARIO (Idéntico a Nómina) ────────── -->
+  <div class="modal-full-overlay" id="talenthubProfileModal" onclick="if(event.target===this)cerrarPerfilTalenthub()">
+    <div class="modal-full profile-modal" role="dialog" aria-modal="true" aria-labelledby="talenthubProfileModalTitle">
+      <div class="modal-full-header">
+        <span id="talenthubProfileModalTitle">Mi perfil corporativo</span>
+        <button type="button" onclick="cerrarPerfilTalenthub()" aria-label="Cerrar perfil">&#10005; Cerrar</button>
+      </div>
+      <div class="profile-modal-body">
+        <div id="talenthubProfileView">
+          <div class="profile-hero">
+            <img class="profile-photo-large" id="talenthubProfileLarge" src="" alt="Foto de perfil">
+            <div class="profile-view-name" id="talenthubProfileViewName"></div>
+            <div class="profile-view-role" id="talenthubProfileViewCargo"></div>
+          </div>
+          <div class="profile-details">
+            <div class="profile-detail"><span class="profile-detail-label">Dirección</span><span class="profile-detail-value" id="talenthubProfileViewDireccion"></span></div>
+            <div class="profile-detail"><span class="profile-detail-label">Correo</span><span class="profile-detail-value" id="talenthubProfileViewEmail"></span></div>
+            <div class="profile-detail"><span class="profile-detail-label">Celular</span><span class="profile-detail-value" id="talenthubProfileViewCelular"></span></div>
+          </div>
+          <div class="profile-save-status" id="talenthubProfileStatus" role="status" style="display:none"></div>
+          <div class="profile-edit-actions">
+            <button type="button" class="btn btn-primary" onclick="editarPerfilTalenthub()">&#9998; Editar perfil y firma</button>
+          </div>
+        </div>
+
+        <form class="profile-edit-form" id="talenthubProfileForm" onsubmit="guardarPerfilTalenthub(event)">
+          <div class="aviso-banner">Puedes actualizar tu nombre, cargo, dirección, correo, celular y fotografía corporativa.</div>
+          <div class="ficha-field"><label for="profileEditNombre">Nombre completo *</label><input type="text" id="profileEditNombre" maxlength="100" required></div>
+          <div class="ficha-field"><label for="profileEditCargo">Cargo *</label><input type="text" id="profileEditCargo" maxlength="100" required></div>
+          <div class="ficha-field"><label for="profileEditDireccion">Dirección</label><input type="text" id="profileEditDireccion" maxlength="255"></div>
+          <div class="ficha-field"><label for="profileEditEmail">Correo electrónico *</label><input type="email" id="profileEditEmail" maxlength="100" required></div>
+          <div class="ficha-field"><label for="profileEditCelular">Celular *</label><input type="text" id="profileEditCelular" maxlength="20" required></div>
+          <div class="ficha-field">
+            <label>Fotografía de perfil</label>
+            <div class="profile-edit-photo">
+              <img class="profile-edit-preview" id="profileEditPreview" src="" alt="Previsualización de la foto">
+              <div>
+                <input type="file" id="profileEditFoto" accept="image/png,image/jpeg,image/webp" onchange="previewFotoPerfilTalenthub(event)">
+                <small style="display:block;color:var(--text-muted);margin-top:5px">PNG, JPG o WEBP. Máximo 10 MB.</small>
+              </div>
+            </div>
+          </div>
+          <div class="profile-signature-panel">
+            <div style="font-weight:700;color:var(--primary);margin-bottom:8px">Firma corporativa</div>
+            <div class="profile-signature-tabs" role="tablist" aria-label="Formato de firma">
+              <button type="button" class="profile-signature-tab active" id="profileFirmaTabHtml" onclick="cambiarVistaFirmaPerfil('html')">Firma para correo</button>
+              <button type="button" class="profile-signature-tab" id="profileFirmaTabPng" onclick="cambiarVistaFirmaPerfil('png')">Imagen PNG</button>
+            </div>
+            <div class="profile-signature-preview" id="profileFirmaHtmlPanel">
+              <div id="profileFirmaHtmlPreview"></div>
+              <div class="profile-signature-actions">
+                <small style="color:var(--text-muted)">La previsualización se actualiza mientras editas los datos.</small>
+                <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="copiarFirmaPerfilTalenthub()">Copiar firma HTML</button>
+              </div>
+            </div>
+            <div class="profile-signature-preview profile-signature-png" id="profileFirmaPngPanel" style="display:none">
+              <div id="profileFirmaPngEmpty" style="color:var(--text-muted);font-size:.84rem">Guarda los cambios para generar o actualizar la firma PNG.</div>
+              <img id="profileFirmaPngPreview" src="" alt="Firma corporativa PNG" style="display:none">
+              <div id="profileFirmaPngActions" class="profile-signature-actions" style="display:none;width:100%">
+                <span style="color:var(--text-muted);font-size:.8rem">Firma PNG actualizada</span>
+                <a id="profileFirmaPngDownload" href="#" download="firma_corporativa.png">Descargar PNG</a>
+              </div>
+            </div>
+          </div>
+          <div class="profile-digital-signature">
+            <div style="font-weight:700;color:var(--primary);margin-bottom:8px">Firma digital para documentos</div>
+            <div class="profile-digital-current">
+              <img id="profileDigitalRecent" src="" alt="Firma digital registrada" style="display:none">
+              <span id="profileDigitalEmpty" style="color:var(--text-muted);font-size:.84rem">No hay una firma previa. Puedes dibujarla aquí.</span>
+              <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" id="btnNuevaFirmaDigital" onclick="mostrarCanvasFirmaDigital()">Dibujar nueva firma</button>
+            </div>
+            <div class="profile-digital-canvas-wrap" id="profileDigitalCanvasWrap" style="display:none">
+              <canvas id="profileDigitalCanvas" aria-label="Dibuja aquí tu firma digital"></canvas>
+              <div class="profile-digital-actions">
+                <small style="color:var(--text-muted)">Firma con mouse, lápiz o pantalla táctil.</small>
+                <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" onclick="limpiarCanvasFirmaDigital()">Borrar trazo</button>
+              </div>
+            </div>
+          </div>
+          <div id="talenthubProfileError" class="aviso-banner" style="display:none;background:#fff1f0;border-color:#fecaca;color:#b91c1c;margin-top:14px;"></div>
+          <div class="profile-edit-actions">
+            <button type="button" class="btn btn-outline" onclick="cancelarEdicionPerfilTalenthub()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btnGuardarPerfilTalenthub">Guardar y generar firma</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  <!-- ── MODAL: FICHA DETALLADA DE REQUISICIÓN ───────────────────────────── -->
+  <div class="modal-backdrop" id="modalDetalleRequisicion">
+    <div class="modal-box modal-box-lg">
+      <div class="modal-hdr" style="border-bottom:1.5px solid var(--border); padding-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span id="detReqCodigo" style="font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.25rem; color:var(--primary)">RQ00000</span>
+              <span id="detReqBadgeEstado" class="status-badge en-proceso">En Proceso</span>
+            </div>
+            <h3 id="detReqCargo" style="margin-top:4px; font-size:1.2rem; font-weight:800; color:var(--text)">-</h3>
+            <p id="detReqUbicacion" style="font-size:0.83rem; color:var(--text-muted); margin-top:2px;">-</p>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:4px 9px;" onclick="cerrarModales()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding:16px 0;">
+        
+        <!-- Sección 1: Parámetros Clave -->
+        <div class="req-section-hdr"><span>📋</span> Resumen de la Solicitud</div>
+        <div class="req-detail-grid">
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Personas Requeridas</div>
+            <div class="req-detail-val" id="detReqPersonas" style="font-size:1.15rem; color:var(--primary); font-weight:800;">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Tipo de Pago</div>
+            <div class="req-detail-val" id="detReqTipoPago">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Salario</div>
+            <div class="req-detail-val" id="detReqSalario">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Turno Requerido</div>
+            <div class="req-detail-val" id="detReqTurno">-</div>
+          </div>
+          <div class="req-detail-box" style="grid-column: span 2;">
+            <div class="req-detail-lbl">Descripción del Turno</div>
+            <div class="req-detail-val" id="detReqDescTurno">-</div>
+          </div>
+        </div>
+
+        <!-- Sección 2: Perfil y Conocimientos -->
+        <div class="req-section-hdr"><span>🎯</span> Perfil y Requisitos</div>
+        <div class="req-detail-grid">
+          <div class="req-detail-box" style="grid-column: span 2;">
+            <div class="req-detail-lbl">Perfil del Cargo</div>
+            <div class="req-detail-val" id="detReqPerfil">-</div>
+          </div>
+          <div class="req-detail-box" style="grid-column: span 2;">
+            <div class="req-detail-lbl">Conocimientos Adicionales</div>
+            <div class="req-detail-val" id="detReqConocimientos">-</div>
+          </div>
+          <div class="req-detail-box" style="grid-column: span 2;">
+            <div class="req-detail-lbl">Experiencia Requerida</div>
+            <div class="req-detail-val" id="detReqExperiencia">-</div>
+          </div>
+        </div>
+
+        <!-- Sección 3: Condiciones y Cursos -->
+        <div class="req-section-hdr"><span>🛡️</span> Dotación, EPP y Condiciones</div>
+        <div class="req-detail-grid">
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Manipulación Alimentos BPM</div>
+            <div class="req-detail-val" id="detReqBPM">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Requiere Curso Cliente</div>
+            <div class="req-detail-val" id="detReqCurso">-</div>
+          </div>
+          <div class="req-detail-box" style="grid-column: span 2;">
+            <div class="req-detail-lbl">Descripción Curso Requerido</div>
+            <div class="req-detail-val" id="detReqDescCurso">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Dotación Requerida</div>
+            <div class="req-detail-val" id="detReqDotacion">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">EPP Requeridos</div>
+            <div class="req-detail-val" id="detReqEPP">-</div>
+          </div>
+        </div>
+
+        <!-- Sección 4: Motivo y Auditoría -->
+        <div class="req-section-hdr"><span>🔍</span> Justificación y Trazabilidad</div>
+        <div class="req-detail-grid">
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Motivo de Solicitud</div>
+            <div class="req-detail-val" id="detReqMotivo">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Detalle Motivo / Temporalidad</div>
+            <div class="req-detail-val" id="detReqMotivoDetalle">-</div>
+          </div>
+          <div class="req-detail-box" style="grid-column: span 2;">
+            <div class="req-detail-lbl">Observaciones Generales</div>
+            <div class="req-detail-val" id="detReqObservaciones">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Solicitante</div>
+            <div class="req-detail-val" id="detReqSolicitante">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Cargo Solicitante</div>
+            <div class="req-detail-val" id="detReqCargoSolicitante">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Responsable Selección</div>
+            <div class="req-detail-val" id="detReqResponsable" style="color:var(--primary); font-weight:700;">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Fecha de Finalización</div>
+            <div class="req-detail-val" id="detReqFechaFin">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Fecha de Solicitud</div>
+            <div class="req-detail-val" id="detReqFechaSol">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Última Actualización</div>
+            <div class="req-detail-val" id="detReqFechaAct">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Usuario Actualización</div>
+            <div class="req-detail-val" id="detReqUsuarioAct">-</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-ftr">
+        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cerrar</button>
+        <button type="button" class="btn btn-primary" id="btnEditarDesdeDetalle" onclick="abrirModalEditarRequisicionActual()">✏️ Editar Requisición</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: FORMULARIO CREAR / EDITAR REQUISICIÓN ──────────────────────── -->
+  <div class="modal-backdrop" id="modalFormRequisicion">
+    <div class="modal-box modal-box-lg">
+      <div class="modal-hdr">
+        <h3 id="formReqTitle"><span>➕</span> Nueva Requisición de Personal</h3>
+        <p id="formReqSubtitle">Completa los campos requeridos para radicar la vacante en el sistema.</p>
+      </div>
+      <form id="formRequisicionActual" onsubmit="guardarRequisicion(event)">
+        <input type="hidden" id="formReqId" value="">
+
+        <div class="modal-body" style="padding:14px 0;">
+          
+          <!-- 1. Ubicación y Cargo -->
+          <div class="req-section-hdr"><span>🏢</span> Ubicación y Cargo Requerido</div>
+          <div class="req-form-grid">
+            <div class="req-field">
+              <label>Operación *</label>
+              <select id="formReqOperacion" required onchange="onOperacionFormChange()">
+                <option value="">Selecciona una operación...</option>
+              </select>
+            </div>
+            <div class="req-field">
+              <label>Regional *</label>
+              <input type="text" id="formReqRegional" class="req-input" readonly style="background:#f1f5f9;">
+            </div>
+            <div class="req-field">
+              <label>Ciudad *</label>
+              <input type="text" id="formReqCiudad" class="req-input" placeholder="Ciudad de la operación" required>
+            </div>
+            <div class="req-field">
+              <label>Cargo Requerido *</label>
+              <select id="formReqCargo" required>
+                <option value="">Selecciona un cargo...</option>
+              </select>
+            </div>
+            <div class="req-field">
+              <label>N° Personas Requeridas *</label>
+              <input type="number" id="formReqPersonas" class="req-input" min="1" max="999" value="1" required>
+            </div>
+          </div>
+
+          <!-- 2. Compensación y Horario -->
+          <div class="req-section-hdr"><span>💰</span> Compensación y Horarios</div>
+          <div class="req-form-grid">
+            <div class="req-field" style="grid-column: span 2;">
+              <label>Tipo de Pago *</label>
+              <div class="btn-group-toggle" id="btnGroupTipoPago">
+                <div class="btn-toggle-option active" data-val="Salario Fijo" onclick="setToggleBtn('TipoPago', 'Salario Fijo')">Salario Fijo</div>
+                <div class="btn-toggle-option" data-val="Hora Hombre" onclick="setToggleBtn('TipoPago', 'Hora Hombre')">Hora Hombre</div>
+                <div class="btn-toggle-option" data-val="Destajo" onclick="setToggleBtn('TipoPago', 'Destajo')">Destajo</div>
+              </div>
+              <input type="hidden" id="formReqTipoPago" value="Salario Fijo">
+            </div>
+
+            <div class="req-field" id="fieldReqSalario">
+              <label>Salario <span id="lockSalario" style="color:#94a3b8; font-size:0.7rem;">🔒 Solo Selección / Sistema</span></label>
+              <input type="number" id="formReqSalario" class="req-input" placeholder="Ej: 1400000" step="1000">
+            </div>
+
+            <div class="req-field" style="grid-column: span 2;">
+              <label>Turno Requerido *</label>
+              <div class="btn-group-toggle" id="btnGroupTurno">
+                <div class="btn-toggle-option active" data-val="Rotativo" onclick="setToggleBtn('Turno', 'Rotativo')">Rotativo</div>
+                <div class="btn-toggle-option" data-val="Fijo" onclick="setToggleBtn('Turno', 'Fijo')">Fijo</div>
+              </div>
+              <input type="hidden" id="formReqTurno" value="Rotativo">
+            </div>
+
+            <div class="req-field" style="grid-column: span 2;">
+              <label>Descripción del Turno</label>
+              <textarea id="formReqDescTurno" placeholder="Detalla horarios, turnos rotativos o jornadas (ej: 6am-2pm / 2pm-10pm)..."></textarea>
+            </div>
+          </div>
+
+          <!-- 3. Perfil y Conocimientos -->
+          <div class="req-section-hdr"><span>🎯</span> Perfil y Requisitos</div>
+          <div class="req-form-grid">
+            <div class="req-field" style="grid-column: span 2;">
+              <label>Perfil del Cargo</label>
+              <textarea id="formReqPerfil" placeholder="Describe brevemente el perfil del candidato..."></textarea>
+            </div>
+            <div class="req-field" style="grid-column: span 2;">
+              <label>Conocimientos Adicionales</label>
+              <textarea id="formReqConocimientos" placeholder="Certificados, cursos o habilidades específicas requeridas..."></textarea>
+            </div>
+            <div class="req-field" style="grid-column: span 2;">
+              <label>Experiencia Requerida</label>
+              <textarea id="formReqExperiencia" placeholder="Tiempo o tipo de experiencia laboral deseada..."></textarea>
+            </div>
+          </div>
+
+          <!-- 4. Condiciones Especiales y Motivo -->
+          <div class="req-section-hdr"><span>🛡️</span> Condiciones Especiales y Motivo</div>
+          <div class="req-form-grid">
+            <div class="req-field">
+              <label>Manipulación Alimentos - BPM</label>
+              <div class="btn-group-toggle" id="btnGroupBPM">
+                <div class="btn-toggle-option" data-val="SI" onclick="setToggleBtn('BPM', 'SI')">SI</div>
+                <div class="btn-toggle-option active" data-val="NO" onclick="setToggleBtn('BPM', 'NO')">NO</div>
+              </div>
+              <input type="hidden" id="formReqBPM" value="NO">
+            </div>
+
+            <div class="req-field">
+              <label>Requiere Curso por el Cliente</label>
+              <div class="btn-group-toggle" id="btnGroupCurso">
+                <div class="btn-toggle-option" data-val="SI" onclick="setToggleBtn('Curso', 'SI'); toggleCampoDescCurso(true)">SI</div>
+                <div class="btn-toggle-option active" data-val="NO" onclick="setToggleBtn('Curso', 'NO'); toggleCampoDescCurso(false)">NO</div>
+              </div>
+              <input type="hidden" id="formReqCurso" value="NO">
+            </div>
+
+            <div class="req-field" id="boxReqDescCurso" style="grid-column: span 2; display:none;">
+              <label>Descripción Curso Requerido *</label>
+              <input type="text" id="formReqDescCurso" class="req-input" placeholder="Indica el curso o inducción obligatoria exigida por el cliente...">
+            </div>
+
+            <div class="req-field" style="grid-column: span 2;">
+              <label>Motivo de la Solicitud *</label>
+              <div class="btn-group-toggle" id="btnGroupMotivo">
+                <div class="btn-toggle-option active" data-val="Ampliación de Personal" onclick="setToggleBtn('Motivo', 'Ampliación de Personal'); toggleCondicionalesMotivo('Ampliación de Personal')">Ampliación de Personal</div>
+                <div class="btn-toggle-option" data-val="Nuevo Cargo" onclick="setToggleBtn('Motivo', 'Nuevo Cargo'); toggleCondicionalesMotivo('Nuevo Cargo')">Nuevo Cargo</div>
+                <div class="btn-toggle-option" data-val="Reemplazo" onclick="setToggleBtn('Motivo', 'Reemplazo'); toggleCondicionalesMotivo('Reemplazo')">Reemplazo</div>
+                <div class="btn-toggle-option" data-val="Temporal" onclick="setToggleBtn('Motivo', 'Temporal'); toggleCondicionalesMotivo('Temporal')">Temporal</div>
+              </div>
+              <input type="hidden" id="formReqMotivo" value="Ampliación de Personal">
+            </div>
+
+            <div class="req-field" id="boxReqMotivoReemplazo" style="grid-column: span 2; display:none;">
+              <label>Motivo del Reemplazo *</label>
+              <input type="text" id="formReqMotivoReemplazo" class="req-input" placeholder="Nombre de la persona reemplazada o causa del reemplazo...">
+            </div>
+
+            <div class="req-field" id="boxReqDuracionTemp" style="grid-column: span 2; display:none;">
+              <label>Duración de la Temporalidad *</label>
+              <input type="text" id="formReqDuracionTemp" class="req-input" placeholder="Ej: 3 meses, temporada decembrina, incapacidad 15 días...">
+            </div>
+          </div>
+
+          <!-- 5. Dotación, EPP y Observaciones -->
+          <div class="req-section-hdr"><span>🦺</span> Dotación, EPP y Observaciones</div>
+          <div class="req-form-grid">
+            <div class="req-field">
+              <label>Dotación Requerida</label>
+              <textarea id="formReqDotacion" placeholder="Camisa, pantalón jean, botas..."></textarea>
+            </div>
+            <div class="req-field">
+              <label>EPP Requeridos</label>
+              <textarea id="formReqEPP" placeholder="Casco, guantes de nitrilo, gafas, protector auditivo..."></textarea>
+            </div>
+            <div class="req-field" style="grid-column: span 2;">
+              <label>Observaciones Adicionales</label>
+              <textarea id="formReqObservaciones" placeholder="Cualquier aclaración relevante para el equipo de selección..."></textarea>
+            </div>
+          </div>
+
+          <!-- 6. Gestión de Selección (Campos de Control) -->
+          <div class="req-section-hdr" id="hdrReqControl"><span>⚙️</span> Gestión y Seguimiento de Selección</div>
+          <div class="req-form-grid">
+            <div class="req-field" id="boxReqEstado">
+              <label>Estado de la Requisición <span id="lockEstado" style="color:#94a3b8; font-size:0.7rem;">🔒 Selección / Sistema</span></label>
+              <select id="formReqEstado">
+                <option value="En Proceso">En Proceso</option>
+                <option value="Suspendido">Suspendido</option>
+                <option value="Finalizado">Finalizado</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
+            </div>
+
+            <div class="req-field" id="boxReqResponsable">
+              <label>Responsable de Selección <span id="lockResponsable" style="color:#94a3b8; font-size:0.7rem;">🔒 Coordinador / Sistema</span></label>
+              <select id="formReqResponsable">
+                <option value="">Sin asignar / Pendiente</option>
+              </select>
+            </div>
+
+            <div class="req-field" id="boxReqFechaFin">
+              <label>Fecha de Finalización <span id="lockFechaFin" style="color:#94a3b8; font-size:0.7rem;">🔒 Selección / Sistema</span></label>
+              <input type="date" id="formReqFechaFin" class="req-input">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-ftr">
+          <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnGuardarRequisicion">Guardar Requisición</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── TOAST NOTIFICATIONS ───────────────────────────────────────────────── -->
+  <div class="toast-box" id="toastContainer"></div>
+
+  <!-- ── SCRIPTS ───────────────────────────────────────────────────────────── -->
+  <script>
+    const CONFIG = __CONFIG__;
+    const TALENTHUB_FOTO_DEFAULT = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
+
+    const TAB_META = {
+      Requisiciones:    { icon: '📋', title: 'Requisiciones de Personal', subtitle: 'Solicitudes y seguimiento de vacantes laborales' },
+      Aspirantes:       { icon: '👥', title: 'Aspirantes & Hojas de Vida', subtitle: 'Catálogo de aspirantes, fases y pruebas de selección' },
+      Sociodemografica: { icon: '📊', title: 'Sociodemográfica y Vinculación', subtitle: 'Consolidado sociodemográfico y formalización contractual' },
+      Integridad:       { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' }
+    };
+
+    let trabajadorActual = null;
+    let _talenthubPerfil = null;
+    let _firmaDigitalActual = null;
+    let _firmaDigitalModificada = false;
+    let _firmaDigitalCanvasInicializado = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Renderizar navegación según secciones autorizadas
+      renderSidebarNav();
+
+      // 2. Activar pestaña configurada
+      switchTab(CONFIG.activeTab || 'Requisiciones');
+
+      // 3. Inicializar según pestaña activa
+      if (CONFIG.activeTab === 'Integridad') {
+        cargarHistorialAuditoria();
+      } else if (CONFIG.activeTab === 'Requisiciones') {
+        inicializarRequisiciones();
+      }
+
+      // 4. Soporte para enlaces en el launcher con el usuario
+      document.querySelectorAll('.module-launcher-link').forEach(link => {
+        link.href = link.href.replace('__USER__', encodeURIComponent(CONFIG.usuarioId));
+      });
+      document.querySelectorAll('.module-launcher-group').forEach(group => {
+        group.addEventListener('toggle', () => {
+          if (!group.open) return;
+          document.querySelectorAll('.module-launcher-group').forEach(other => {
+            if (other !== group) other.open = false;
+          });
+        });
+      });
+
+      // 5. Cargar perfil corporativo del usuario
+      cargarPerfilTalenthub();
+    });
+
+    function renderSidebarNav() {
+      const navList = document.getElementById('sidebarNavList');
+      navList.innerHTML = '';
+
+      const secciones = CONFIG.secciones || ['Requisiciones', 'Aspirantes', 'Sociodemografica'];
+
+      secciones.forEach(sec => {
+        const meta = TAB_META[sec] || { icon: '❖', title: sec };
+        const li = document.createElement('li');
+        li.className = `nav-item ${sec === CONFIG.activeTab ? 'active' : ''}`;
+        li.id = `navItem_${sec}`;
+        li.innerHTML = `
+          <span class="nav-item-icon">${meta.icon}</span>
+          <span>${sec}</span>
+        `;
+        li.onclick = () => switchTab(sec);
+        navList.appendChild(li);
+      });
+    }
+
+    function switchTab(tabName) {
+      CONFIG.activeTab = tabName;
+
+      // Actualizar sidebar active
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const activeNav = document.getElementById(`navItem_${tabName}`);
+      if (activeNav) activeNav.classList.add('active');
+
+      // Ocultar todos los contenidos
+      document.getElementById('tabContentIntegridad').style.display = 'none';
+      document.getElementById('tabContentRequisiciones').style.display = 'none';
+      document.getElementById('tabContentAspirantes').style.display = 'none';
+      document.getElementById('tabContentSociodemografica').style.display = 'none';
+
+      // Actualizar encabezado
+      const meta = TAB_META[tabName] || { icon: '❖', title: tabName, subtitle: '' };
+      document.getElementById('pageTitleText').innerHTML = `${meta.icon} ${meta.title}`;
+      document.getElementById('pageSubtitleText').textContent = meta.subtitle;
+
+      // Mostrar botones superiores según pestaña activa
+      const btnHeaderIntegridad = document.getElementById('btnHeaderAdministrarId');
+      if (btnHeaderIntegridad) {
+        btnHeaderIntegridad.style.display = (tabName === 'Integridad') ? 'inline-flex' : 'none';
+      }
+      const btnHeaderReq = document.getElementById('btnHeaderNuevaRequisicion');
+      if (btnHeaderReq) {
+        btnHeaderReq.style.display = (tabName === 'Requisiciones') ? 'inline-flex' : 'none';
+      }
+
+      // Mostrar contenido activo
+      const contentId = `tabContent${tabName}`;
+      const contentEl = document.getElementById(contentId);
+      if (contentEl) {
+        contentEl.style.display = 'block';
+      }
+
+      if (tabName === 'Integridad') {
+        cargarHistorialAuditoria();
+      } else if (tabName === 'Requisiciones') {
+        inicializarRequisiciones();
+      }
+
+      // Actualizar URL sin recargar
+      const newUrl = `${window.location.pathname}?usuario=${encodeURIComponent(CONFIG.usuarioId)}&tab=${encodeURIComponent(tabName)}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    // ── INTEGRIDAD: BUSCAR TRABAJADOR ───────────────────────────────────────
+    async function buscarTrabajador() {
+      const input = document.getElementById('inputBuscarCedula');
+      const cedula = input.value.trim();
+      if (!cedula) {
+        showToast('Por favor ingresa una cédula para buscar.', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/talenthub/api/integridad/buscar/${encodeURIComponent(cedula)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'Trabajador no encontrado.', 'error');
+          document.getElementById('workerCardResult').style.display = 'none';
+          trabajadorActual = null;
+          return;
+        }
+
+        trabajadorActual = data.trabajador;
+
+        document.getElementById('resNombre').textContent = trabajadorActual.nombre;
+        document.getElementById('resIdentificacion').textContent = trabajadorActual.identificacion;
+        document.getElementById('resOperacion').textContent = trabajadorActual.operacion;
+        document.getElementById('resRegional').textContent = trabajadorActual.regional;
+        document.getElementById('resCargo').textContent = trabajadorActual.cargo;
+        document.getElementById('resEstado').textContent = trabajadorActual.origen === 'aspirante'
+          ? `${trabajadorActual.estado} [Solo Aspirante / No Vinculado]`
+          : trabajadorActual.estado;
+
+        // Conteos KPI
+        const c = trabajadorActual.conteos || {};
+        document.getElementById('kpiDocs').textContent = c.documentos || 0;
+        document.getElementById('kpiActas').textContent = c.actas || 0;
+        document.getElementById('kpiKardex').textContent = c.kardex || 0;
+        document.getElementById('kpiBio').textContent = c.biometrico || 0;
+        document.getElementById('kpiSel').textContent = c.seleccion || 0;
+        document.getElementById('kpiMed').textContent = c.casosMedicos || 0;
+
+        document.getElementById('workerCardResult').style.display = 'block';
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al consultar el trabajador.', 'error');
+      }
+    }
+
+    // ── MODAL: NUEVO PROCESO DE INTEGRIDAD (ADMINISTRAR IDENTIFICACIÓN) ───────
+    function abrirModalNuevoProcesoIntegridad() {
+      document.getElementById('inputModalNuevoCedula').value = '';
+      document.getElementById('modalNuevoFeedback').style.display = 'none';
+      document.getElementById('btnModalNuevoModificar').style.display = 'none';
+      document.getElementById('btnModalNuevoEliminar').style.display = 'none';
+      document.getElementById('modalNuevoProceso').style.display = 'flex';
+    }
+
+    async function modalConsultarTrabajador() {
+      const cedula = document.getElementById('inputModalNuevoCedula').value.trim();
+      if (!cedula) {
+        showToast('Ingresa una identificación para consultar.', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/talenthub/api/integridad/buscar/${encodeURIComponent(cedula)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'Trabajador no encontrado en el sistema.', 'error');
+          document.getElementById('modalNuevoFeedback').style.display = 'none';
+          document.getElementById('btnModalNuevoModificar').style.display = 'none';
+          document.getElementById('btnModalNuevoEliminar').style.display = 'none';
+          return;
+        }
+
+        trabajadorActual = data.trabajador;
+        document.getElementById('modalNuevoNombre').textContent = `${trabajadorActual.nombre} (${trabajadorActual.identificacion})`;
+        
+        const badgeOrigen = document.getElementById('modalNuevoBadgeOrigen');
+        if (badgeOrigen) {
+          if (trabajadorActual.origen === 'aspirante') {
+            badgeOrigen.textContent = 'Modo Aspirante (Sin Vinculación)';
+            badgeOrigen.className = 'tag-badge tag-badge-primary';
+          } else {
+            badgeOrigen.textContent = 'Sociodemográfica';
+            badgeOrigen.className = 'tag-badge tag-badge-success';
+          }
+        }
+
+        document.getElementById('modalNuevoMeta').textContent = `${trabajadorActual.cargo} • ${trabajadorActual.operacion} • ${trabajadorActual.regional} [${trabajadorActual.estado}]`;
+        
+        const c = trabajadorActual.conteos || {};
+        document.getElementById('modalNuevoKpiDocs').textContent = c.documentos || 0;
+        document.getElementById('modalNuevoKpiActas').textContent = c.actas || 0;
+        document.getElementById('modalNuevoKpiBio').textContent = c.biometrico || 0;
+
+        document.getElementById('modalNuevoFeedback').style.display = 'block';
+        document.getElementById('btnModalNuevoModificar').style.display = 'inline-flex';
+        document.getElementById('btnModalNuevoEliminar').style.display = 'inline-flex';
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al consultar el trabajador.', 'error');
+      }
+    }
+
+    function abrirModalModificarDesdeNuevo() {
+      document.getElementById('modalNuevoProceso').style.display = 'none';
+      abrirModalModificar();
+    }
+
+    function abrirModalEliminarDesdeNuevo() {
+      document.getElementById('modalNuevoProceso').style.display = 'none';
+      abrirModalEliminar();
+    }
+
+    // ── INTEGRIDAD: MODIFICAR CÉDULA ────────────────────────────────────────
+    function abrirModalModificar() {
+      if (!trabajadorActual) return;
+      document.getElementById('modOldId').value = trabajadorActual.identificacion;
+      document.getElementById('modNewId').value = '';
+      document.getElementById('modalModificar').style.display = 'flex';
+    }
+
+    async function ejecutarModificacion() {
+      const oldId = document.getElementById('modOldId').value.trim();
+      const newId = document.getElementById('modNewId').value.trim();
+      const btn = document.getElementById('btnConfirmModificar');
+
+      if (!newId || !/^\d+$/.test(newId)) {
+        showToast('La nueva identificación debe contener únicamente dígitos numéricos.', 'error');
+        return;
+      }
+      if (oldId === newId) {
+        showToast('La nueva cédula no puede ser idéntica a la anterior.', 'error');
+        return;
+      }
+
+      try {
+        btn.disabled = true;
+        btn.textContent = 'Actualizando tablas...';
+
+        const res = await fetch('/talenthub/api/integridad/modificar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            oldIdentificacion: oldId,
+            newIdentificacion: newId,
+            usuario: CONFIG.usuarioId
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'Error al actualizar identificación.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Guardar Cambio';
+          return;
+        }
+
+        showToast(data.mensaje || 'Identificación actualizada exitosamente.', 'success');
+        cerrarModales();
+
+        // Actualizar búsqueda con la nueva cédula
+        document.getElementById('inputBuscarCedula').value = newId;
+        buscarTrabajador();
+      } catch (err) {
+        console.error(err);
+        showToast('Error de conexión al modificar la identificación.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar Cambio';
+      }
+    }
+
+    // ── INTEGRIDAD: ELIMINAR TRABAJADOR ─────────────────────────────────────
+    function abrirModalEliminar() {
+      if (!trabajadorActual) return;
+      document.getElementById('lblConfirmCedula').textContent = trabajadorActual.identificacion;
+      document.getElementById('inputConfirmText').value = '';
+
+      const chk = document.getElementById('chkSoloSociodemo');
+      const lbl = document.getElementById('lblAclaracionPurga');
+
+      // Si el trabajador solo está en Aspirante (no en Sociodemográfica)
+      if (trabajadorActual.origen === 'aspirante' || (!trabajadorActual.tieneSociodemografica && trabajadorActual.tieneAspirante)) {
+        chk.checked = false;
+        chk.disabled = true;
+        lbl.textContent = 'El trabajador no está vinculado en Sociodemográfica; se eliminará de Selección / Aspirantes.';
+        lbl.style.color = '#a16207';
+        lbl.style.fontWeight = '600';
+      } else {
+        chk.disabled = false;
+        chk.checked = false;
+        lbl.textContent = 'Se eliminará el trabajador en todas las tablas';
+        lbl.style.color = 'var(--text-muted)';
+        lbl.style.fontWeight = 'normal';
+      }
+
+      document.getElementById('modalEliminar').style.display = 'flex';
+    }
+
+    function actualizarAclaracionPurga() {
+      const chk = document.getElementById('chkSoloSociodemo');
+      const lbl = document.getElementById('lblAclaracionPurga');
+      if (chk.disabled) return;
+      if (chk.checked) {
+        lbl.textContent = 'Se pasará a modo Aspirante (Estado: En proceso)';
+        lbl.style.color = 'var(--primary)';
+        lbl.style.fontWeight = '600';
+      } else {
+        lbl.textContent = 'Se eliminará el trabajador en todas las tablas';
+        lbl.style.color = 'var(--text-muted)';
+        lbl.style.fontWeight = 'normal';
+      }
+    }
+
+    async function ejecutarEliminacion() {
+      if (!trabajadorActual) return;
+      const input = document.getElementById('inputConfirmText').value.trim();
+      const cedulaEsperada = String(trabajadorActual.identificacion).trim();
+      const btn = document.getElementById('btnConfirmEliminar');
+      const soloSociodemo = document.getElementById('chkSoloSociodemo') ? document.getElementById('chkSoloSociodemo').checked : false;
+
+      if (input !== 'ELIMINAR' && input !== cedulaEsperada) {
+        showToast(`Debes escribir "ELIMINAR" o "${cedulaEsperada}" para confirmar.`, 'error');
+        return;
+      }
+
+      try {
+        btn.disabled = true;
+        btn.textContent = 'Purgando registros y generando evidencia...';
+
+        const res = await fetch('/talenthub/api/integridad/eliminar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identificacion: cedulaEsperada,
+            usuario: CONFIG.usuarioId,
+            soloSociodemografica: soloSociodemo
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'Error durante la eliminación del trabajador.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Eliminar Permanentemente';
+          return;
+        }
+
+        cerrarModales();
+
+        // Mostrar modal de éxito con enlace de evidencia
+        if (soloSociodemo) {
+          document.getElementById('descExitoEliminar').innerHTML = `
+            El trabajador <strong>${cedulaEsperada}</strong> fue retirado de Sociodemográfica y restaurado a modo Aspirante (Estado: <em>En proceso</em>).<br>
+            Se eliminaron <strong>${data.totalEliminados} registros</strong> de vinculación y nómina.
+          `;
+        } else {
+          document.getElementById('descExitoEliminar').innerHTML = `
+            El trabajador <strong>${cedulaEsperada}</strong> fue purgado totalmente del sistema.<br>
+            Se eliminaron <strong>${data.totalEliminados} registros</strong> en cascada.
+          `;
+        }
+
+        const linkBtn = document.getElementById('btnLinkEvidencia');
+        if (data.evidenciaUrl) {
+          linkBtn.href = data.evidenciaUrl;
+          linkBtn.style.display = 'inline-flex';
+        } else {
+          linkBtn.style.display = 'none';
+        }
+        document.getElementById('modalExitoEliminar').style.display = 'flex';
+
+        // Limpiar tarjeta del trabajador actual
+        document.getElementById('workerCardResult').style.display = 'none';
+        document.getElementById('inputBuscarCedula').value = '';
+        trabajadorActual = null;
+
+        // Recargar auditoría
+        cargarHistorialAuditoria();
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al ejecutar la eliminación.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Eliminar Permanentemente';
+      }
+    }
+
+    // ── INTEGRIDAD: CARGAR HISTORIAL DE AUDITORÍA ───────────────────────────
+    async function cargarHistorialAuditoria() {
+      const tbody = document.getElementById('tbodyAuditoria');
+      try {
+        const res = await fetch(`/talenthub/api/integridad/historial?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok || !data.historial.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:24px;">No hay registros de purgas de integridad registradas en la base de datos.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.historial.map(row => {
+          const urlLink = row.archivo_evidencia_url
+            ? `<a href="${row.archivo_evidencia_url}" target="_blank" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;"><span>📄 Evidencia</span></a>`
+            : '<span style="color:#94a3b8; font-size:0.75rem;">Sin archivo</span>';
+
+          return `
+            <tr>
+              <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem; color:var(--text-muted)">${row.fecha}</td>
+              <td style="font-weight:700; font-family:'JetBrains Mono',monospace; color:var(--primary)">${row.identificacion}</td>
+              <td style="font-weight:600">${esc(row.nombre_trabajador || 'N/A')}</td>
+              <td>${esc(row.operacion || 'N/A')}</td>
+              <td style="font-size:0.8rem; color:var(--text-muted)">${esc(row.usuario)}</td>
+              <td>
+                <span class="tag-badge tag-badge-primary">${row.total_registros_eliminados} reg.</span>
+              </td>
+              <td style="text-align:right">${urlLink}</td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:20px;">Error al cargar el historial de auditoría.</td></tr>';
+      }
+    }
+
+    // ── PERFIL CORPORATIVO DE USUARIO (Idéntico a Nómina) ───────────────────
+    async function cargarPerfilTalenthub() {
+      try {
+        const res = await fetch(`/talenthub/api/perfil?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) {
+          // Fallback simple si no tiene colaborador asignado
+          renderPerfilFallback();
+          return;
+        }
+        const data = await res.json();
+        if (!data.ok || !data.perfil) {
+          renderPerfilFallback();
+          return;
+        }
+        _talenthubPerfil = data.perfil;
+        _firmaDigitalActual = data.firmaDigital || null;
+        renderPerfilTalenthub();
+      } catch (err) {
+        console.warn('[TalentHub] No se pudo cargar el perfil corporativo:', err);
+        renderPerfilFallback();
+      }
+    }
+
+    function renderPerfilFallback() {
+      const nombre = CONFIG.usuarioNombre || CONFIG.usuarioId || 'Usuario';
+      document.getElementById('talenthubProfileThumb').src = TALENTHUB_FOTO_DEFAULT;
+      document.getElementById('talenthubProfileName').textContent = nombre;
+      document.getElementById('talenthubProfile').style.display = 'block';
+    }
+
+    function renderPerfilTalenthub() {
+      if (!_talenthubPerfil) return;
+      const foto = _talenthubPerfil.foto_url || TALENTHUB_FOTO_DEFAULT;
+      const nombre = _talenthubPerfil.nombre || CONFIG.usuarioNombre || CONFIG.usuarioId;
+      document.getElementById('talenthubProfileThumb').src = foto;
+      document.getElementById('talenthubProfileThumb').onerror = e => { e.currentTarget.src = TALENTHUB_FOTO_DEFAULT; };
+      document.getElementById('talenthubProfileName').textContent = nombre;
+      document.getElementById('talenthubProfileLarge').src = foto;
+      document.getElementById('talenthubProfileLarge').onerror = e => { e.currentTarget.src = TALENTHUB_FOTO_DEFAULT; };
+      document.getElementById('talenthubProfileViewName').textContent = nombre;
+      document.getElementById('talenthubProfileViewCargo').textContent = _talenthubPerfil.cargo || 'Cargo no registrado';
+      document.getElementById('talenthubProfileViewDireccion').textContent = _talenthubPerfil.direccion || 'No registrada';
+      document.getElementById('talenthubProfileViewEmail').textContent = _talenthubPerfil.email || 'No registrado';
+      document.getElementById('talenthubProfileViewCelular').textContent = _talenthubPerfil.celular || 'No registrado';
+      document.getElementById('talenthubProfile').style.display = 'block';
+    }
+
+    function abrirPerfilTalenthub() {
+      if (!_talenthubPerfil) {
+        showToast('Tu usuario no tiene un colaborador o perfil vinculado para editar.', 'info');
+        return;
+      }
+      document.getElementById('talenthubProfileView').style.display = 'block';
+      document.getElementById('talenthubProfileForm').style.display = 'none';
+      document.getElementById('talenthubProfileModal').classList.add('open');
+      document.getElementById('talenthubProfileStatus').style.display = 'none';
+    }
+
+    function editarPerfilTalenthub() {
+      if (!_talenthubPerfil) return;
+      document.getElementById('profileEditNombre').value = _talenthubPerfil.nombre || '';
+      document.getElementById('profileEditCargo').value = _talenthubPerfil.cargo || '';
+      document.getElementById('profileEditDireccion').value = _talenthubPerfil.direccion || '';
+      document.getElementById('profileEditEmail').value = _talenthubPerfil.email || '';
+      document.getElementById('profileEditCelular').value = _talenthubPerfil.celular || '';
+      document.getElementById('profileEditFoto').value = '';
+      document.getElementById('profileEditPreview').src = _talenthubPerfil.foto_url || TALENTHUB_FOTO_DEFAULT;
+      _firmaDigitalModificada = false;
+      actualizarFirmaDigitalPerfil(_firmaDigitalActual);
+      document.getElementById('talenthubProfileError').style.display = 'none';
+      document.getElementById('talenthubProfileView').style.display = 'none';
+      document.getElementById('talenthubProfileForm').style.display = 'block';
+      renderFirmaPerfilTalenthub();
+      mostrarFirmaPngPerfil(_talenthubPerfil.firma_url);
+    }
+
+    function cambiarVistaFirmaPerfil(formato) {
+      const htmlActivo = formato === 'html';
+      document.getElementById('profileFirmaTabHtml').classList.toggle('active', htmlActivo);
+      document.getElementById('profileFirmaTabPng').classList.toggle('active', !htmlActivo);
+      document.getElementById('profileFirmaHtmlPanel').style.display = htmlActivo ? 'block' : 'none';
+      document.getElementById('profileFirmaPngPanel').style.display = htmlActivo ? 'none' : 'flex';
+    }
+
+    function renderFirmaPerfilTalenthub() {
+      const nombre = document.getElementById('profileEditNombre').value.trim() || 'Nombre y Apellido';
+      const cargo = document.getElementById('profileEditCargo').value.trim() || 'Cargo Corporativo';
+      const email = document.getElementById('profileEditEmail').value.trim() || 'colaborador@logyser.com';
+      const celular = document.getElementById('profileEditCelular').value.trim() || '3000000000';
+      const operacion = _talenthubPerfil?.operacion || 'Sede Operación';
+      const direccion = document.getElementById('profileEditDireccion').value.trim();
+      const safe = value => esc(value);
+      const logo = 'https://storage.googleapis.com/logyser-recibo-public/Logyser%20sin%20Nit.png';
+      const azul = '#1A2E44', naranja = '#E8762B';
+      const textStyle = `margin:0 0 3px 0;font-size:12px;color:${azul};font-family:Arial,Helvetica,sans-serif;`;
+      document.getElementById('profileFirmaHtmlPreview').innerHTML = `
+        <table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;max-width:480px;width:100%;background:#fff;border-collapse:collapse">
+          <tr><td style="padding:16px 20px 12px;border:1px solid #DDE1E8;border-bottom:none">
+            <p style="margin:0 0 2px;font-size:18px;font-weight:700;color:${azul}">${safe(nombre)}</p>
+            <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${naranja}">${safe(cargo)}</p>
+            <p style="${textStyle}">Email: <a href="mailto:${safe(email)}" style="color:#06c;text-decoration:none;font-weight:600">${safe(email)}</a></p>
+            <p style="${textStyle}">Celular: <span style="font-weight:600">+57 ${safe(celular)}</span></p>
+            <p style="${textStyle}"><strong>Sede:</strong> ${safe(operacion)}</p>
+            ${direccion ? `<p style="${textStyle}">${safe(direccion)}</p>` : ''}
+          </td></tr>
+          <tr><td style="padding:6px 20px;border-left:1px solid #DDE1E8;border-right:1px solid #DDE1E8"><img src="${logo}" alt="Logyser S.A.S." width="220" style="display:block;width:220px;height:auto"></td></tr>
+          <tr><td style="background:#F8FAFC;padding:12px 20px;border:1px solid #DDE1E8"><p style="margin:0;color:#64748B;font-size:9px;line-height:1.4;text-align:justify"><strong>AVISO DE CONFIDENCIALIDAD:</strong> La información contenida en este correo es confidencial y para uso exclusivo del destinatario. Si usted ha recibido este mensaje por error, notifique al remitente y elimínelo.</p><p style="margin:6px 0 0;color:#15803D;font-size:9px">Por favor, cuida el medio ambiente antes de imprimir este mensaje.</p></td></tr>
+        </table>`;
+    }
+
+    async function copiarFirmaPerfilTalenthub() {
+      const html = document.getElementById('profileFirmaHtmlPreview').innerHTML;
+      try {
+        if (navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) })]);
+        } else {
+          const range = document.createRange();
+          const preview = document.getElementById('profileFirmaHtmlPreview');
+          range.selectNode(preview);
+          window.getSelection().removeAllRanges();
+          window.getSelection().addRange(range);
+          document.execCommand('copy');
+          window.getSelection().removeAllRanges();
+        }
+        document.getElementById('talenthubProfileStatus').textContent = 'Firma HTML copiada. Pégala en Gmail o Outlook.';
+        document.getElementById('talenthubProfileStatus').style.display = 'block';
+      } catch {
+        document.getElementById('talenthubProfileError').textContent = 'No se pudo copiar automáticamente. Selecciona la firma y cópiala.';
+        document.getElementById('talenthubProfileError').style.display = 'block';
+      }
+    }
+
+    function mostrarFirmaPngPerfil(url) {
+      const img = document.getElementById('profileFirmaPngPreview');
+      const link = document.getElementById('profileFirmaPngDownload');
+      const actions = document.getElementById('profileFirmaPngActions');
+      const empty = document.getElementById('profileFirmaPngEmpty');
+      if (!url) {
+        img.style.display = 'none';
+        actions.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+      img.src = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+      img.style.display = 'block';
+      link.href = url;
+      actions.style.display = 'flex';
+      empty.style.display = 'none';
+    }
+
+    ['profileEditNombre', 'profileEditCargo', 'profileEditDireccion', 'profileEditEmail', 'profileEditCelular'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', renderFirmaPerfilTalenthub);
+    });
+
+    function cancelarEdicionPerfilTalenthub() {
+      document.getElementById('talenthubProfileError').style.display = 'none';
+      document.getElementById('talenthubProfileForm').style.display = 'none';
+      document.getElementById('talenthubProfileView').style.display = 'block';
+    }
+
+    function cerrarPerfilTalenthub() {
+      document.getElementById('talenthubProfileModal').classList.remove('open');
+      cancelarEdicionPerfilTalenthub();
+    }
+
+    function previewFotoPerfilTalenthub(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+        event.target.value = '';
+        const message = document.getElementById('talenthubProfileError');
+        message.textContent = 'Selecciona una foto PNG, JPG o WEBP de máximo 10 MB.';
+        message.style.display = 'block';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => { document.getElementById('profileEditPreview').src = e.target.result; };
+      reader.readAsDataURL(file);
+    }
+
+    function actualizarFirmaDigitalPerfil(firmaBase64) {
+      _firmaDigitalActual = firmaBase64 || null;
+      const img = document.getElementById('profileDigitalRecent');
+      const empty = document.getElementById('profileDigitalEmpty');
+      img.style.display = _firmaDigitalActual ? 'block' : 'none';
+      empty.style.display = _firmaDigitalActual ? 'none' : 'inline';
+      if (_firmaDigitalActual) img.src = _firmaDigitalActual;
+      limpiarCanvasFirmaDigital();
+      document.getElementById('profileDigitalCanvasWrap').style.display = 'none';
+    }
+
+    function prepararCanvasFirmaDigital() {
+      const canvas = document.getElementById('profileDigitalCanvas');
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width) return;
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * ratio);
+      canvas.height = Math.round(150 * ratio);
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.strokeStyle = '#000b59';
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      _firmaDigitalCanvasInicializado = true;
+    }
+
+    function mostrarCanvasFirmaDigital() {
+      document.getElementById('profileDigitalCanvasWrap').style.display = 'block';
+      requestAnimationFrame(prepararCanvasFirmaDigital);
+    }
+
+    function limpiarCanvasFirmaDigital() {
+      const canvas = document.getElementById('profileDigitalCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      _firmaDigitalCanvasInicializado = false;
+      _firmaDigitalModificada = false;
+    }
+
+    (() => {
+      const canvas = document.getElementById('profileDigitalCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let dibujando = false;
+      let ultimo = null;
+      const punto = event => {
+        const rect = canvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      };
+      canvas.addEventListener('pointerdown', event => {
+        if (!_firmaDigitalCanvasInicializado) prepararCanvasFirmaDigital();
+        dibujando = true;
+        ultimo = punto(event);
+        canvas.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+      canvas.addEventListener('pointermove', event => {
+        if (!dibujando) return;
+        const actual = punto(event);
+        ctx.beginPath();
+        ctx.moveTo(ultimo.x, ultimo.y);
+        ctx.lineTo(actual.x, actual.y);
+        ctx.stroke();
+        ultimo = actual;
+        _firmaDigitalModificada = true;
+        event.preventDefault();
+      });
+      const terminar = () => { dibujando = false; ultimo = null; };
+      canvas.addEventListener('pointerup', terminar);
+      canvas.addEventListener('pointercancel', terminar);
+      canvas.addEventListener('lostpointercapture', terminar);
+    })();
+
+    async function guardarPerfilTalenthub(event) {
+      event.preventDefault();
+      if (!_talenthubPerfil) return;
+      const btn = document.getElementById('btnGuardarPerfilTalenthub');
+      const message = document.getElementById('talenthubProfileError');
+      const formData = new FormData();
+      formData.append('usuario', CONFIG.usuarioId);
+      formData.append('nombre', document.getElementById('profileEditNombre').value.trim());
+      formData.append('cargo', document.getElementById('profileEditCargo').value.trim());
+      formData.append('direccion', document.getElementById('profileEditDireccion').value.trim());
+      formData.append('email', document.getElementById('profileEditEmail').value.trim());
+      formData.append('celular', document.getElementById('profileEditCelular').value.trim());
+      const foto = document.getElementById('profileEditFoto').files[0];
+      if (foto) formData.append('foto', foto);
+      formData.append('generarPng', 'true');
+      if (_firmaDigitalModificada) {
+        formData.append('firmaDigital', document.getElementById('profileDigitalCanvas').toDataURL('image/png'));
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      message.style.display = 'none';
+      try {
+        const res = await fetch('/talenthub/api/perfil', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudieron guardar los cambios.');
+        _talenthubPerfil = data.perfil;
+        actualizarFirmaDigitalPerfil(data.firmaDigital || _firmaDigitalActual);
+        renderPerfilTalenthub();
+        renderFirmaPerfilTalenthub();
+        mostrarFirmaPngPerfil(_talenthubPerfil.firma_url);
+        const status = document.getElementById('talenthubProfileStatus');
+        status.textContent = _talenthubPerfil.firma_generada
+          ? 'Perfil guardado y firma PNG generada con éxito.'
+          : 'Perfil guardado, puedes copiar la firma HTML corporativa.';
+        status.style.display = 'block';
+      } catch (err) {
+        message.textContent = err.message || 'No se pudieron guardar los cambios.';
+        message.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar y generar firma';
+      }
+    }
+
+    // ── REQUISICIONES DE PERSONAL ───────────────────────────────────────────
+    let _requisiciones = [];
+    let _reqCatalogos = null;
+    let _reqFiltros = {
+      q: '',
+      estado: 'todos',
+      regional: 'todas',
+      operacion: 'todas',
+      desde: '',
+      hasta: ''
+    };
+    let _reqOrden = {
+      columna: 'Fecha Requisición',
+      orden: 'DESC'
+    };
+    let _reqActualDetalle = null;
+    let _reqFormModo = 'crear'; // 'crear' | 'editar'
+
+    async function inicializarRequisiciones() {
+      if (!_reqCatalogos) {
+        await cargarCatalogosRequisiciones();
+      }
+      await cargarRequisiciones();
+    }
+
+    async function cargarCatalogosRequisiciones() {
+      try {
+        const res = await fetch(`/talenthub/api/requisiciones/catalogos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          console.error('[TalentHub] Error al cargar catálogos:', data.error);
+          return;
+        }
+        _reqCatalogos = data;
+
+        // Poblar filtro Estados
+        const selEstado = document.getElementById('filtroReqEstado');
+        if (selEstado) {
+          selEstado.innerHTML = '<option value="todos">Todos los Estados</option>' +
+            (data.estados || []).map(est => `<option value="${esc(est)}">${esc(est)}</option>`).join('');
+        }
+
+        // Poblar filtro Regionales
+        const selReg = document.getElementById('filtroReqRegional');
+        if (selReg) {
+          selReg.innerHTML = '<option value="todas">Todas las Regionales</option>' +
+            (data.regionales || []).map(reg => `<option value="${esc(reg)}">${esc(reg)}</option>`).join('');
+        }
+
+        // Poblar filtro Operaciones
+        const selOp = document.getElementById('filtroReqOperacion');
+        if (selOp) {
+          selOp.innerHTML = '<option value="todas">Todas las Operaciones</option>' +
+            (data.operaciones || []).map(op => `<option value="${esc(op.Operacion)}">${esc(op.Operacion)}</option>`).join('');
+        }
+
+        // Poblar opciones del formulario modal
+        const formOp = document.getElementById('formReqOperacion');
+        if (formOp) {
+          formOp.innerHTML = '<option value="">Selecciona una operación...</option>' +
+            (data.operaciones || []).map(op => `<option value="${esc(op.Operacion)}" data-regional="${esc(op.Regional || '')}" data-ciudad="${esc(op.Ciudad || '')}">${esc(op.Operacion)} (${esc(op.Regional || '')})</option>`).join('');
+        }
+
+        const formCargo = document.getElementById('formReqCargo');
+        if (formCargo) {
+          formCargo.innerHTML = '<option value="">Selecciona un cargo...</option>' +
+            (data.cargos || []).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        }
+
+        const formResp = document.getElementById('formReqResponsable');
+        if (formResp) {
+          formResp.innerHTML = '<option value="">Sin asignar / Pendiente</option>' +
+            (data.coordinadores || []).map(co => `<option value="${esc(co.nombre)}">${esc(co.nombre)} (${esc(co.cargo || 'Selección')})</option>`).join('');
+        }
+
+      } catch (err) {
+        console.error('[TalentHub] Fallo de red al cargar catálogos:', err);
+      }
+    }
+
+    function onFiltroRegionalChange() {
+      const reg = document.getElementById('filtroReqRegional').value;
+      const selOp = document.getElementById('filtroReqOperacion');
+      if (!selOp || !_reqCatalogos) return;
+
+      const operaciones = _reqCatalogos.operaciones || [];
+      const filtradas = reg === 'todas'
+        ? operaciones
+        : operaciones.filter(o => o.Regional === reg);
+
+      selOp.innerHTML = '<option value="todas">Todas las Operaciones</option>' +
+        filtradas.map(op => `<option value="${esc(op.Operacion)}">${esc(op.Operacion)}</option>`).join('');
+
+      aplicarFiltrosRequisiciones();
+    }
+
+    function onOperacionFormChange() {
+      const sel = document.getElementById('formReqOperacion');
+      const val = sel.value;
+      const formReg = document.getElementById('formReqRegional');
+      const formCiudad = document.getElementById('formReqCiudad');
+      if (!val || !_reqCatalogos) {
+        if (formReg) formReg.value = '';
+        if (formCiudad) formCiudad.value = '';
+        return;
+      }
+      const opInfo = (_reqCatalogos.operaciones || []).find(o => o.Operacion === val);
+      if (opInfo) {
+        if (formReg) formReg.value = opInfo.Regional || '';
+        if (formCiudad) formCiudad.value = opInfo.Ciudad || '';
+      }
+    }
+
+    function setToggleBtn(group, value) {
+      const input = document.getElementById(`formReq${group}`);
+      if (input) input.value = value;
+
+      const container = document.getElementById(`btnGroup${group}`);
+      if (container) {
+        container.querySelectorAll('.btn-toggle-option').forEach(el => {
+          if (el.getAttribute('data-val') === value) {
+            el.classList.add('active');
+          } else {
+            el.classList.remove('active');
+          }
+        });
+      }
+    }
+
+    function toggleCampoDescCurso(show) {
+      const box = document.getElementById('boxReqDescCurso');
+      const input = document.getElementById('formReqDescCurso');
+      if (box) box.style.display = show ? 'block' : 'none';
+      if (input) {
+        input.required = show;
+        if (!show) input.value = '';
+      }
+    }
+
+    function toggleCondicionalesMotivo(motivo) {
+      const boxReemplazo = document.getElementById('boxReqMotivoReemplazo');
+      const inputReemplazo = document.getElementById('formReqMotivoReemplazo');
+      const boxTemp = document.getElementById('boxReqDuracionTemp');
+      const inputTemp = document.getElementById('formReqDuracionTemp');
+
+      const isReemplazo = (motivo === 'Reemplazo');
+      const isTemp = (motivo === 'Temporal');
+
+      if (boxReemplazo) boxReemplazo.style.display = isReemplazo ? 'block' : 'none';
+      if (inputReemplazo) {
+        inputReemplazo.required = isReemplazo;
+        if (!isReemplazo) inputReemplazo.value = '';
+      }
+
+      if (boxTemp) boxTemp.style.display = isTemp ? 'block' : 'none';
+      if (inputTemp) {
+        inputTemp.required = isTemp;
+        if (!isTemp) inputTemp.value = '';
+      }
+    }
+
+    function toggleFiltrosRequisiciones() {
+      const body = document.getElementById('bodyFiltrosRequisiciones');
+      const icon = document.getElementById('iconToggleFiltros');
+      if (!body) return;
+
+      const isHidden = body.style.display === 'none';
+      body.style.display = isHidden ? 'block' : 'none';
+      if (icon) icon.textContent = isHidden ? '▼ Ocultar' : '▲ Mostrar';
+    }
+
+    function aplicarFiltrosRequisiciones() {
+      _reqFiltros.q = (document.getElementById('filtroReqQ')?.value || '').trim();
+      _reqFiltros.estado = document.getElementById('filtroReqEstado')?.value || 'todos';
+      _reqFiltros.regional = document.getElementById('filtroReqRegional')?.value || 'todas';
+      _reqFiltros.operacion = document.getElementById('filtroReqOperacion')?.value || 'todas';
+      _reqFiltros.desde = document.getElementById('filtroReqDesde')?.value || '';
+      _reqFiltros.hasta = document.getElementById('filtroReqHasta')?.value || '';
+      cargarRequisiciones();
+    }
+
+    function limpiarFiltrosRequisiciones() {
+      if (document.getElementById('filtroReqQ')) document.getElementById('filtroReqQ').value = '';
+      if (document.getElementById('filtroReqEstado')) document.getElementById('filtroReqEstado').value = 'todos';
+      if (document.getElementById('filtroReqRegional')) document.getElementById('filtroReqRegional').value = 'todas';
+      if (document.getElementById('filtroReqOperacion')) document.getElementById('filtroReqOperacion').value = 'todas';
+      if (document.getElementById('filtroReqDesde')) document.getElementById('filtroReqDesde').value = '';
+      if (document.getElementById('filtroReqHasta')) document.getElementById('filtroReqHasta').value = '';
+
+      _reqFiltros = {
+        q: '',
+        estado: 'todos',
+        regional: 'todas',
+        operacion: 'todas',
+        desde: '',
+        hasta: ''
+      };
+
+      if (_reqCatalogos) {
+        const selOp = document.getElementById('filtroReqOperacion');
+        if (selOp) {
+          selOp.innerHTML = '<option value="todas">Todas las Operaciones</option>' +
+            (_reqCatalogos.operaciones || []).map(op => `<option value="${esc(op.Operacion)}">${esc(op.Operacion)}</option>`).join('');
+        }
+      }
+
+      cargarRequisiciones();
+    }
+
+    function ordenarRequisiciones(columna) {
+      if (_reqOrden.columna === columna) {
+        _reqOrden.orden = (_reqOrden.orden === 'ASC') ? 'DESC' : 'ASC';
+      } else {
+        _reqOrden.columna = columna;
+        _reqOrden.orden = (columna.includes('Fecha') || columna.includes('Id')) ? 'DESC' : 'ASC';
+      }
+
+      // Actualizar indicadores visuales de ordenamiento
+      document.querySelectorAll('#tablaRequisiciones th.sortable').forEach(th => th.classList.remove('active'));
+      const colMap = {
+        'Requisición': 'Requisición',
+        'Fecha Requisición': 'Fecha_Requisición',
+        'Estado': 'Estado',
+        'Regional': 'Regional',
+        'Operación': 'Operación',
+        'Cargo Requerido': 'Cargo_Requerido',
+        'N° Personas Requeridas': 'N_Personas_Requeridas',
+        'Solicitante': 'Solicitante'
+      };
+      const indId = colMap[columna];
+      if (indId) {
+        const indEl = document.getElementById(`sort_${indId}`);
+        if (indEl) {
+          indEl.textContent = _reqOrden.orden === 'ASC' ? '▲' : '▼';
+          indEl.closest('th')?.classList.add('active');
+        }
+      }
+
+      cargarRequisiciones();
+    }
+
+    async function cargarRequisiciones() {
+      const tbody = document.getElementById('tbodyRequisiciones');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:28px;">Cargando requisiciones...</td></tr>';
+      }
+
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          q: _reqFiltros.q,
+          estado: _reqFiltros.estado,
+          regional: _reqFiltros.regional,
+          operacion: _reqFiltros.operacion,
+          desde: _reqFiltros.desde,
+          hasta: _reqFiltros.hasta,
+          sortBy: _reqOrden.columna,
+          sortDir: _reqOrden.orden
+        });
+
+        const res = await fetch(`/talenthub/api/requisiciones?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#ef4444; padding:24px;">${esc(data.error || 'Error al cargar requisiciones')}</td></tr>`;
+          }
+          return;
+        }
+
+        _requisiciones = data.requisiciones || [];
+
+        // Actualizar KPIs
+        const k = data.kpis || {};
+        if (document.getElementById('kpiReqTotal')) document.getElementById('kpiReqTotal').textContent = k.total || 0;
+        if (document.getElementById('kpiReqEnProceso')) document.getElementById('kpiReqEnProceso').textContent = k.enProceso || 0;
+        if (document.getElementById('kpiReqFinalizado')) document.getElementById('kpiReqFinalizado').textContent = k.finalizado || 0;
+        if (document.getElementById('kpiReqOtras')) document.getElementById('kpiReqOtras').textContent = (parseInt(k.suspendido || 0) + parseInt(k.cancelado || 0));
+        if (document.getElementById('kpiReqVacantes')) document.getElementById('kpiReqVacantes').textContent = k.totalVacantes || 0;
+
+        // Actualizar contador badge de filtros activos
+        let actCount = 0;
+        if (_reqFiltros.q) actCount++;
+        if (_reqFiltros.estado && _reqFiltros.estado !== 'todos') actCount++;
+        if (_reqFiltros.regional && _reqFiltros.regional !== 'todas') actCount++;
+        if (_reqFiltros.operacion && _reqFiltros.operacion !== 'todas') actCount++;
+        if (_reqFiltros.desde) actCount++;
+        if (_reqFiltros.hasta) actCount++;
+
+        const lblCount = document.getElementById('lblFiltrosActivosCount');
+        if (lblCount) {
+          lblCount.textContent = actCount > 0 ? `${actCount} filtro(s) activo(s)` : 'Sin filtros';
+        }
+
+        const lblTot = document.getElementById('lblTotalRegistrosReq');
+        if (lblTot) {
+          lblTot.textContent = `(${_requisiciones.length} registros)`;
+        }
+
+        renderizarTablaRequisiciones();
+
+      } catch (err) {
+        console.error('[TalentHub] Error al cargar requisiciones:', err);
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#ef4444; padding:24px;">Error de red al consultar requisiciones.</td></tr>';
+        }
+      }
+    }
+
+    function renderizarTablaRequisiciones() {
+      const tbody = document.getElementById('tbodyRequisiciones');
+      if (!tbody) return;
+
+      if (!_requisiciones.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:32px;">No se encontraron requisiciones con los criterios actuales.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = _requisiciones.map(r => {
+        const codigo = esc(r['Requisición'] || ('#' + r.IdRequisicion));
+        const badgeClase = getEstadoBadgeClass(r.Estado);
+        const fechaFormatted = esc(r.fechaRequisicion || r['Fecha Requisición'] || '-');
+        const regional = esc(r.Regional || '-');
+        const operacion = esc(r['Operación'] || '-');
+        const cargo = esc(r['Cargo Requerido'] || '-');
+        const vacantes = parseInt(r['N° Personas Requeridas']) || 1;
+        const solicitante = esc(r.Solicitante || '-');
+        const responsable = esc(r['Responsable de Selección'] || 'Pendiente');
+
+        return `
+          <tr>
+            <td>
+              <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary); cursor:pointer;" onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})">
+                ${codigo}
+              </span>
+            </td>
+            <td style="font-size:0.8rem; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">
+              ${fechaFormatted}
+            </td>
+            <td>
+              <span class="status-badge ${badgeClase}">${esc(r.Estado)}</span>
+            </td>
+            <td style="font-weight:500;">${regional}</td>
+            <td style="font-weight:600;">${operacion}</td>
+            <td style="font-weight:700; color:var(--text);">${cargo}</td>
+            <td style="text-align:center;">
+              <span style="display:inline-block; min-width:24px; padding:2px 8px; border-radius:12px; background:var(--primary-light); color:var(--primary); font-weight:800; font-size:0.82rem;">
+                ${vacantes}
+              </span>
+            </td>
+            <td style="font-size:0.8rem; color:var(--text-muted);">${solicitante}</td>
+            <td style="font-size:0.8rem; font-weight:600; color:${r['Responsable de Selección'] ? 'var(--primary)' : '#94a3b8'}">${responsable}</td>
+            <td style="text-align:right; white-space:nowrap;">
+              <div style="display:inline-flex; gap:6px;">
+                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})" title="Ver detalle completo">
+                  <span>👁️</span>
+                </button>
+                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="abrirModalEditarRequisicionPorId(${r.IdRequisicion})" title="Editar requisición">
+                  <span>✏️</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getEstadoBadgeClass(estado) {
+      if (!estado) return 'en-proceso';
+      const s = estado.toLowerCase().trim();
+      if (s.includes('proceso')) return 'en-proceso';
+      if (s.includes('final')) return 'finalizado';
+      if (s.includes('susp')) return 'suspendido';
+      if (s.includes('canc')) return 'cancelado';
+      return 'en-proceso';
+    }
+
+    function abrirModalCrearRequisicion() {
+      _reqFormModo = 'crear';
+      document.getElementById('formReqTitle').innerHTML = '<span>➕</span> Nueva Requisición de Personal';
+      document.getElementById('formReqSubtitle').textContent = 'Completa los campos requeridos para radicar la vacante en el sistema.';
+      document.getElementById('formReqId').value = '';
+
+      // Resetear campos
+      document.getElementById('formReqOperacion').value = '';
+      document.getElementById('formReqRegional').value = '';
+      document.getElementById('formReqCiudad').value = '';
+      document.getElementById('formReqCargo').value = '';
+      document.getElementById('formReqPersonas').value = '1';
+      document.getElementById('formReqSalario').value = '';
+      document.getElementById('formReqDescTurno').value = '';
+      document.getElementById('formReqPerfil').value = '';
+      document.getElementById('formReqConocimientos').value = '';
+      document.getElementById('formReqExperiencia').value = '';
+      document.getElementById('formReqDescCurso').value = '';
+      document.getElementById('formReqMotivoReemplazo').value = '';
+      document.getElementById('formReqDuracionTemp').value = '';
+      document.getElementById('formReqDotacion').value = '';
+      document.getElementById('formReqEPP').value = '';
+      document.getElementById('formReqObservaciones').value = '';
+      document.getElementById('formReqFechaFin').value = '';
+      document.getElementById('formReqResponsable').value = '';
+
+      // Toggles por defecto
+      setToggleBtn('TipoPago', 'Salario Fijo');
+      setToggleBtn('Turno', 'Rotativo');
+      setToggleBtn('BPM', 'NO');
+      setToggleBtn('Curso', 'NO');
+      toggleCampoDescCurso(false);
+      setToggleBtn('Motivo', 'Ampliación de Personal');
+      toggleCondicionalesMotivo('Ampliación de Personal');
+
+      // Estado en creación siempre es 'En Proceso' y deshabilitado
+      const selEstado = document.getElementById('formReqEstado');
+      if (selEstado) {
+        selEstado.value = 'En Proceso';
+        selEstado.disabled = true;
+      }
+      const lockEstado = document.getElementById('lockEstado');
+      if (lockEstado) lockEstado.textContent = '🔒 Fijo: En Proceso';
+
+      // Permisos de Salario
+      const puedeEditarSalario = _reqCatalogos?.permisos?.puedeModificarSalario || false;
+      const fldSalario = document.getElementById('formReqSalario');
+      if (fldSalario) fldSalario.disabled = !puedeEditarSalario;
+      const lockSalario = document.getElementById('lockSalario');
+      if (lockSalario) lockSalario.style.display = puedeEditarSalario ? 'none' : 'inline';
+
+      // Permisos de Responsable de Selección
+      const puedeEditarResp = _reqCatalogos?.permisos?.puedeModificarResponsable || false;
+      const fldResp = document.getElementById('formReqResponsable');
+      if (fldResp) fldResp.disabled = !puedeEditarResp;
+      const lockResp = document.getElementById('lockResponsable');
+      if (lockResp) lockResp.style.display = puedeEditarResp ? 'none' : 'inline';
+
+      // Permisos de Fecha Fin
+      const puedeEditarEstado = _reqCatalogos?.permisos?.puedeModificarEstado || false;
+      const fldFechaFin = document.getElementById('formReqFechaFin');
+      if (fldFechaFin) fldFechaFin.disabled = !puedeEditarEstado;
+      const lockFechaFin = document.getElementById('lockFechaFin');
+      if (lockFechaFin) lockFechaFin.style.display = puedeEditarEstado ? 'none' : 'inline';
+
+      document.getElementById('modalFormRequisicion').style.display = 'flex';
+    }
+
+    async function abrirModalDetalleRequisicion(id) {
+      try {
+        const res = await fetch(`/talenthub/api/requisiciones/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok || !data.requisicion) {
+          showToast(data.error || 'No se pudo obtener el detalle de la requisición.', 'error');
+          return;
+        }
+
+        const r = data.requisicion;
+        _reqActualDetalle = r;
+
+        document.getElementById('detReqCodigo').textContent = r['Requisición'] || ('#' + r.IdRequisicion);
+        const badge = document.getElementById('detReqBadgeEstado');
+        badge.textContent = r.Estado || 'En Proceso';
+        badge.className = `status-badge ${getEstadoBadgeClass(r.Estado)}`;
+
+        document.getElementById('detReqCargo').textContent = r['Cargo Requerido'] || '-';
+        document.getElementById('detReqUbicacion').textContent = `${r['Operación'] || '-'} · Regional: ${r.Regional || '-'} · Ciudad: ${r.Ciudad || '-'}`;
+
+        document.getElementById('detReqPersonas').textContent = r['N° Personas Requeridas'] || 1;
+        document.getElementById('detReqTipoPago').textContent = r['Tipo de Pago'] || '-';
+        document.getElementById('detReqSalario').textContent = r.Salario ? `$ ${Number(r.Salario).toLocaleString('es-CO')}` : 'Sin especificar';
+        document.getElementById('detReqTurno').textContent = r['Turno Requerido'] || '-';
+        document.getElementById('detReqDescTurno').textContent = r['Descripción del Turno'] || 'Sin descripción';
+
+        document.getElementById('detReqPerfil').textContent = r['Perfil del Cargo'] || 'Sin especificar';
+        document.getElementById('detReqConocimientos').textContent = r['Conocimientos Adicionales'] || 'Sin especificar';
+        document.getElementById('detReqExperiencia').textContent = r['Experiencia Requerida'] || 'Sin especificar';
+
+        document.getElementById('detReqBPM').textContent = r['Manipulación de Alimentos - BPM'] || 'NO';
+        document.getElementById('detReqCurso').textContent = r['Requiere Curso por el Cliente'] || 'NO';
+        document.getElementById('detReqDescCurso').textContent = r['Descripción Curso Requerido'] || 'N/A';
+        document.getElementById('detReqDotacion').textContent = r['Dotación Requerida'] || 'Sin especificar';
+        document.getElementById('detReqEPP').textContent = r['EPP Requeridos'] || 'Sin especificar';
+
+        document.getElementById('detReqMotivo').textContent = r['Motivo de la Solicitud'] || '-';
+        document.getElementById('detReqMotivoDetalle').textContent = r['Motivo del Reemplazo'] || r['Duración de la Temporalidad'] || 'N/A';
+        document.getElementById('detReqObservaciones').textContent = r.Observaciones || 'Sin observaciones';
+
+        document.getElementById('detReqSolicitante').textContent = r.Solicitante || '-';
+        document.getElementById('detReqCargoSolicitante').textContent = r['Cargo Solicitante'] || '-';
+        document.getElementById('detReqResponsable').textContent = r['Responsable de Selección'] || 'Pendiente por asignar';
+        document.getElementById('detReqFechaFin').textContent = r.fechaFinalizacionFormatted || (r['Fecha de Finalización'] ? String(r['Fecha de Finalización']).substring(0, 10) : 'Pendiente');
+
+        document.getElementById('detReqFechaSol').textContent = r.fechaRequisicionFormatted || (r['Fecha Requisición'] ? String(r['Fecha Requisición']).substring(0, 16) : '-');
+        document.getElementById('detReqFechaAct').textContent = r.fechaActualizacionFormatted || (r['Fecha Actualización'] ? String(r['Fecha Actualización']).substring(0, 16) : '-');
+        document.getElementById('detReqUsuarioAct').textContent = r.usuario_actualizacion || 'N/A';
+
+        document.getElementById('modalDetalleRequisicion').style.display = 'flex';
+
+      } catch (err) {
+        console.error('[TalentHub] Error al abrir detalle:', err);
+        showToast('Error de red al consultar detalle de la requisición.', 'error');
+      }
+    }
+
+    function abrirModalEditarRequisicionActual() {
+      if (_reqActualDetalle) {
+        abrirModalEditarRequisicion(_reqActualDetalle);
+      }
+    }
+
+    async function abrirModalEditarRequisicionPorId(id) {
+      try {
+        const res = await fetch(`/talenthub/api/requisiciones/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok || !data.requisicion) {
+          showToast(data.error || 'No se pudo cargar la requisición para editar.', 'error');
+          return;
+        }
+        abrirModalEditarRequisicion(data.requisicion);
+      } catch (err) {
+        console.error('[TalentHub] Error al cargar para editar:', err);
+        showToast('Error de red al cargar la requisición.', 'error');
+      }
+    }
+
+    function abrirModalEditarRequisicion(req) {
+      cerrarModales();
+      _reqFormModo = 'editar';
+
+      const codigo = req['Requisición'] || ('#' + req.IdRequisicion);
+      document.getElementById('formReqTitle').innerHTML = `<span>✏️</span> Editar Requisición ${esc(codigo)}`;
+      document.getElementById('formReqSubtitle').textContent = 'Modifica los parámetros de la requisición según tus permisos.';
+      document.getElementById('formReqId').value = req.IdRequisicion;
+
+      // Asignar campos
+      document.getElementById('formReqOperacion').value = req['Operación'] || '';
+      document.getElementById('formReqRegional').value = req.Regional || '';
+      document.getElementById('formReqCiudad').value = req.Ciudad || '';
+      document.getElementById('formReqCargo').value = req['Cargo Requerido'] || '';
+      document.getElementById('formReqPersonas').value = req['N° Personas Requeridas'] || 1;
+      document.getElementById('formReqSalario').value = req.Salario !== null && req.Salario !== undefined ? req.Salario : '';
+      document.getElementById('formReqDescTurno').value = req['Descripción del Turno'] || '';
+      document.getElementById('formReqPerfil').value = req['Perfil del Cargo'] || '';
+      document.getElementById('formReqConocimientos').value = req['Conocimientos Adicionales'] || '';
+      document.getElementById('formReqExperiencia').value = req['Experiencia Requerida'] || '';
+      document.getElementById('formReqDescCurso').value = req['Descripción Curso Requerido'] || '';
+      document.getElementById('formReqMotivoReemplazo').value = req['Motivo del Reemplazo'] || '';
+      document.getElementById('formReqDuracionTemp').value = req['Duración de la Temporalidad'] || '';
+      document.getElementById('formReqDotacion').value = req['Dotación Requerida'] || '';
+      document.getElementById('formReqEPP').value = req['EPP Requeridos'] || '';
+      document.getElementById('formReqObservaciones').value = req.Observaciones || '';
+
+      const fechaFinStr = req['Fecha de Finalización'] ? String(req['Fecha de Finalización']).substring(0, 10) : '';
+      document.getElementById('formReqFechaFin').value = fechaFinStr;
+
+      document.getElementById('formReqResponsable').value = req['Responsable de Selección'] || '';
+
+      // Toggles
+      setToggleBtn('TipoPago', req['Tipo de Pago'] || 'Salario Fijo');
+      setToggleBtn('Turno', req['Turno Requerido'] || 'Rotativo');
+      setToggleBtn('BPM', req['Manipulación de Alimentos - BPM'] || 'NO');
+      setToggleBtn('Curso', req['Requiere Curso por el Cliente'] || 'NO');
+      toggleCampoDescCurso(req['Requiere Curso por el Cliente'] === 'SI');
+      setToggleBtn('Motivo', req['Motivo de la Solicitud'] || 'Ampliación de Personal');
+      toggleCondicionalesMotivo(req['Motivo de la Solicitud'] || 'Ampliación de Personal');
+
+      // Estado
+      const selEstado = document.getElementById('formReqEstado');
+      const puedeEditarEstado = _reqCatalogos?.permisos?.puedeModificarEstado || false;
+      if (selEstado) {
+        selEstado.value = req.Estado || 'En Proceso';
+        selEstado.disabled = !puedeEditarEstado;
+      }
+      const lockEstado = document.getElementById('lockEstado');
+      if (lockEstado) {
+        lockEstado.textContent = puedeEditarEstado ? '🔒 Selección / Sistema' : '🔒 Solo lectura';
+        lockEstado.style.display = puedeEditarEstado ? 'none' : 'inline';
+      }
+
+      // Permisos de Salario
+      const puedeEditarSalario = _reqCatalogos?.permisos?.puedeModificarSalario || false;
+      const fldSalario = document.getElementById('formReqSalario');
+      if (fldSalario) fldSalario.disabled = !puedeEditarSalario;
+      const lockSalario = document.getElementById('lockSalario');
+      if (lockSalario) lockSalario.style.display = puedeEditarSalario ? 'none' : 'inline';
+
+      // Permisos de Responsable de Selección
+      const puedeEditarResp = _reqCatalogos?.permisos?.puedeModificarResponsable || false;
+      const fldResp = document.getElementById('formReqResponsable');
+      if (fldResp) fldResp.disabled = !puedeEditarResp;
+      const lockResp = document.getElementById('lockResponsable');
+      if (lockResp) lockResp.style.display = puedeEditarResp ? 'none' : 'inline';
+
+      // Permisos de Fecha Fin
+      const fldFechaFin = document.getElementById('formReqFechaFin');
+      if (fldFechaFin) fldFechaFin.disabled = !puedeEditarEstado;
+      const lockFechaFin = document.getElementById('lockFechaFin');
+      if (lockFechaFin) lockFechaFin.style.display = puedeEditarEstado ? 'none' : 'inline';
+
+      document.getElementById('modalFormRequisicion').style.display = 'flex';
+    }
+
+    async function guardarRequisicion(event) {
+      event.preventDefault();
+      const btn = document.getElementById('btnGuardarRequisicion');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const id = document.getElementById('formReqId').value;
+        const modo = _reqFormModo;
+
+        const payload = {
+          usuario: CONFIG.usuarioId,
+          'Operación': document.getElementById('formReqOperacion').value,
+          'Regional': document.getElementById('formReqRegional').value,
+          'Ciudad': document.getElementById('formReqCiudad').value,
+          'Cargo Requerido': document.getElementById('formReqCargo').value,
+          'N° Personas Requeridas': parseInt(document.getElementById('formReqPersonas').value) || 1,
+          'Tipo de Pago': document.getElementById('formReqTipoPago').value,
+          'Salario': document.getElementById('formReqSalario').value || null,
+          'Turno Requerido': document.getElementById('formReqTurno').value,
+          'Descripción del Turno': document.getElementById('formReqDescTurno').value || null,
+          'Perfil del Cargo': document.getElementById('formReqPerfil').value || null,
+          'Conocimientos Adicionales': document.getElementById('formReqConocimientos').value || null,
+          'Experiencia Requerida': document.getElementById('formReqExperiencia').value || null,
+          'Manipulación de Alimentos - BPM': document.getElementById('formReqBPM').value,
+          'Requiere Curso por el Cliente': document.getElementById('formReqCurso').value,
+          'Descripción Curso Requerido': document.getElementById('formReqDescCurso').value || null,
+          'Motivo de la Solicitud': document.getElementById('formReqMotivo').value,
+          'Motivo del Reemplazo': document.getElementById('formReqMotivoReemplazo').value || null,
+          'Duración de la Temporalidad': document.getElementById('formReqDuracionTemp').value || null,
+          'Dotación Requerida': document.getElementById('formReqDotacion').value || null,
+          'EPP Requeridos': document.getElementById('formReqEPP').value || null,
+          'Observaciones': document.getElementById('formReqObservaciones').value || null,
+          'Estado': document.getElementById('formReqEstado').value,
+          'Responsable de Selección': document.getElementById('formReqResponsable').value || null,
+          'Fecha de Finalización': document.getElementById('formReqFechaFin').value || null
+        };
+
+        // Validaciones obligatorias
+        if (!payload['Operación'] || !payload['Cargo Requerido']) {
+          showToast('Operación y Cargo Requerido son obligatorios.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Guardar Requisición';
+          return;
+        }
+
+        if (payload['Requiere Curso por el Cliente'] === 'SI' && !payload['Descripción Curso Requerido']) {
+          showToast('Indica la descripción del curso requerido por el cliente.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Guardar Requisición';
+          return;
+        }
+
+        if (payload['Motivo de la Solicitud'] === 'Reemplazo' && !payload['Motivo del Reemplazo']) {
+          showToast('Indica el motivo o colaborador a reemplazar.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Guardar Requisición';
+          return;
+        }
+
+        if (payload['Motivo de la Solicitud'] === 'Temporal' && !payload['Duración de la Temporalidad']) {
+          showToast('Indica la duración estimada de la temporalidad.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Guardar Requisición';
+          return;
+        }
+
+        let res, data;
+        if (modo === 'crear') {
+          res = await fetch('/talenthub/api/requisiciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          res = await fetch(`/talenthub/api/requisiciones/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'Error al guardar la requisición.', 'error');
+          return;
+        }
+
+        showToast(data.mensaje || 'Requisición guardada exitosamente.', 'success');
+        cerrarModales();
+        await cargarRequisiciones();
+
+      } catch (err) {
+        console.error('[TalentHub] Error al guardar requisición:', err);
+        showToast('Error de red al procesar la requisición.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar Requisición';
+      }
+    }
+
+    // ── UTILITARIOS ─────────────────────────────────────────────────────────
+    function cerrarModales() {
+      document.getElementById('modalNuevoProceso').style.display = 'none';
+      document.getElementById('modalModificar').style.display = 'none';
+      document.getElementById('modalEliminar').style.display = 'none';
+      document.getElementById('modalExitoEliminar').style.display = 'none';
+      const modDetalle = document.getElementById('modalDetalleRequisicion');
+      if (modDetalle) modDetalle.style.display = 'none';
+      const modForm = document.getElementById('modalFormRequisicion');
+      if (modForm) modForm.style.display = 'none';
+    }
+
+    document.querySelectorAll('.modal-backdrop').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) cerrarModales();
+      });
+    });
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const item = document.createElement('div');
+      item.className = `toast-item ${type}`;
+      item.textContent = msg;
+      container.appendChild(item);
+      setTimeout(() => item.remove(), 4000);
+    }
+
+    function toggleModuleLauncher(event) {
+      event.stopPropagation();
+      const panel = document.getElementById('moduleLauncherPanel');
+      const trigger = document.getElementById('moduleLauncherTrigger');
+      const isOpen = panel.classList.contains('open');
+      if (isOpen) {
+        panel.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+      } else {
+        panel.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    document.addEventListener('click', (e) => {
+      const panel = document.getElementById('moduleLauncherPanel');
+      const trigger = document.getElementById('moduleLauncherTrigger');
+      if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !trigger.contains(e.target)) {
+        panel.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    function esc(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

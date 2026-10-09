@@ -27,11 +27,177 @@
   let cfg = null;
   let contexto = null;
   let yaInicializado = false;
+  let recibosDisponibles = [];
+  let reciboSeleccionado = null;
+  let reciboIndiceResaltado = -1;
 
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
+  }
+
+  function normalizarTexto(txt) {
+    return String(txt || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  function renderizarOpcionesRecibo(filtro = '') {
+    const listaEl = document.getElementById('tkb-recibo-list');
+    if (!listaEl) return;
+    const filtroNorm = normalizarTexto(filtro);
+    const selId = document.getElementById('tkb-recibo-select')?.value || '';
+
+    const filtrados = filtroNorm
+      ? recibosDisponibles.filter(r => {
+          const consNorm = normalizarTexto(r.consecutivo);
+          const idNorm = normalizarTexto(r.idRecibo);
+          return consNorm.includes(filtroNorm) || idNorm.includes(filtroNorm);
+        })
+      : recibosDisponibles;
+
+    reciboIndiceResaltado = -1;
+
+    let html = '';
+    if (!filtroNorm) {
+      html += `<div class="tkb-combo-item tkb-combo-item-empty" data-id="" data-consecutivo="">— Ninguno (dejar vacío) —</div>`;
+    }
+
+    if (filtrados.length === 0) {
+      html += `<div class="tkb-combo-no-results">No se encontraron recibos que coincidan</div>`;
+    } else {
+      html += filtrados.map(r => {
+        const texto = r.consecutivo || r.idRecibo;
+        const isSel = (r.idRecibo === selId);
+        return `<div class="tkb-combo-item ${isSel ? 'tkb-combo-item-selected' : ''}" data-id="${esc(r.idRecibo)}" data-consecutivo="${esc(texto)}">${esc(texto)}</div>`;
+      }).join('');
+    }
+
+    listaEl.innerHTML = html;
+
+    listaEl.querySelectorAll('.tkb-combo-item').forEach((itemEl) => {
+      itemEl.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const id = itemEl.getAttribute('data-id') || '';
+        const cons = itemEl.getAttribute('data-consecutivo') || '';
+        seleccionarRecibo(id, cons);
+      });
+    });
+  }
+
+  function abrirListaRecibos() {
+    const input = document.getElementById('tkb-recibo-input');
+    const combo = document.getElementById('tkb-recibo-combobox');
+    const listaEl = document.getElementById('tkb-recibo-list');
+    if (!input || input.disabled || !recibosDisponibles.length) return;
+
+    renderizarOpcionesRecibo(input.value);
+    listaEl.style.display = 'block';
+    combo.classList.add('tkb-combo-open');
+
+    const selEl = listaEl.querySelector('.tkb-combo-item-selected');
+    if (selEl) {
+      selEl.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function cerrarListaRecibos() {
+    const combo = document.getElementById('tkb-recibo-combobox');
+    const listaEl = document.getElementById('tkb-recibo-list');
+    if (listaEl) listaEl.style.display = 'none';
+    if (combo) combo.classList.remove('tkb-combo-open');
+    reciboIndiceResaltado = -1;
+  }
+
+  function seleccionarRecibo(idRecibo, consecutivo) {
+    const input = document.getElementById('tkb-recibo-input');
+    const hidden = document.getElementById('tkb-recibo-select');
+    const clearBtn = document.getElementById('tkb-recibo-clear');
+
+    if (idRecibo) {
+      if (hidden) hidden.value = idRecibo;
+      if (input) input.value = consecutivo;
+      if (clearBtn) clearBtn.style.display = 'flex';
+      reciboSeleccionado = { idRecibo, consecutivo };
+    } else {
+      if (hidden) hidden.value = '';
+      if (input) input.value = '';
+      if (clearBtn) clearBtn.style.display = 'none';
+      reciboSeleccionado = null;
+    }
+    cerrarListaRecibos();
+  }
+
+  function limpiarRecibo() {
+    seleccionarRecibo('', '');
+    const input = document.getElementById('tkb-recibo-input');
+    if (input && !input.disabled) {
+      input.focus();
+      abrirListaRecibos();
+    }
+  }
+
+  function resetearReciboCombobox(mensajePlaceholder = '— Seleccione primero la Operación —') {
+    recibosDisponibles = [];
+    reciboSeleccionado = null;
+    reciboIndiceResaltado = -1;
+
+    const input = document.getElementById('tkb-recibo-input');
+    const hidden = document.getElementById('tkb-recibo-select');
+    const toggle = document.getElementById('tkb-recibo-toggle');
+    const clearBtn = document.getElementById('tkb-recibo-clear');
+
+    if (input) {
+      input.value = '';
+      input.placeholder = mensajePlaceholder;
+      input.disabled = true;
+    }
+    if (hidden) hidden.value = '';
+    if (toggle) toggle.disabled = true;
+    if (clearBtn) clearBtn.style.display = 'none';
+    cerrarListaRecibos();
+  }
+
+  function establecerEstadoCargandoRecibos(mensaje = 'Cargando recibos...') {
+    recibosDisponibles = [];
+    reciboSeleccionado = null;
+    const input = document.getElementById('tkb-recibo-input');
+    const hidden = document.getElementById('tkb-recibo-select');
+    const toggle = document.getElementById('tkb-recibo-toggle');
+    const clearBtn = document.getElementById('tkb-recibo-clear');
+
+    if (input) {
+      input.value = '';
+      input.placeholder = mensaje;
+      input.disabled = true;
+    }
+    if (hidden) hidden.value = '';
+    if (toggle) toggle.disabled = true;
+    if (clearBtn) clearBtn.style.display = 'none';
+    cerrarListaRecibos();
+  }
+
+  function establecerRecibosDisponibles(rows) {
+    recibosDisponibles = rows || [];
+    reciboSeleccionado = null;
+
+    const input = document.getElementById('tkb-recibo-input');
+    const hidden = document.getElementById('tkb-recibo-select');
+    const toggle = document.getElementById('tkb-recibo-toggle');
+    const clearBtn = document.getElementById('tkb-recibo-clear');
+
+    if (input) {
+      input.value = '';
+      input.placeholder = 'Escriba para filtrar o elija de la lista...';
+      input.disabled = false;
+    }
+    if (hidden) hidden.value = '';
+    if (toggle) toggle.disabled = false;
+    if (clearBtn) clearBtn.style.display = 'none';
+    cerrarListaRecibos();
   }
 
   function cargarCSS() {
@@ -87,8 +253,14 @@
             </div>
 
             <div class="tkb-group" id="tkb-recibo-select-wrap" style="display:none;">
-              <label>Consecutivo Recibo (opcional)</label>
-              <select id="tkb-recibo-select"><option value="">— Seleccione primero la Operación —</option></select>
+              <label for="tkb-recibo-input">Consecutivo Recibo (opcional)</label>
+              <div class="tkb-combobox" id="tkb-recibo-combobox">
+                <input type="text" id="tkb-recibo-input" placeholder="— Seleccione primero la Operación —" autocomplete="off" disabled>
+                <input type="hidden" id="tkb-recibo-select" value="">
+                <button type="button" class="tkb-combo-clear" id="tkb-recibo-clear" tabindex="-1" title="Limpiar selección" style="display:none;">&times;</button>
+                <button type="button" class="tkb-combo-arrow" id="tkb-recibo-toggle" tabindex="-1" title="Mostrar recibos" disabled>▼</button>
+                <div class="tkb-combo-list" id="tkb-recibo-list" style="display:none;"></div>
+              </div>
               <small>Solo recibos de los últimos 30 días para la operación escogida. Déjelo vacío si la novedad no es sobre un recibo puntual.</small>
             </div>
 
@@ -127,11 +299,136 @@
     document.getElementById('tkb-modulo').addEventListener('change', onModuloChange);
     document.getElementById('tkb-regional').addEventListener('change', onRegionalChange);
     document.getElementById('tkb-operacion').addEventListener('change', onOperacionChange);
+
+    // Eventos combobox de Recibo
+    const inputRecibo = document.getElementById('tkb-recibo-input');
+    const toggleRecibo = document.getElementById('tkb-recibo-toggle');
+    const clearRecibo = document.getElementById('tkb-recibo-clear');
+
+    inputRecibo.addEventListener('focus', () => {
+      if (!inputRecibo.disabled && recibosDisponibles.length) {
+        abrirListaRecibos();
+      }
+    });
+
+    inputRecibo.addEventListener('click', () => {
+      if (!inputRecibo.disabled && recibosDisponibles.length) {
+        abrirListaRecibos();
+      }
+    });
+
+    inputRecibo.addEventListener('input', () => {
+      if (inputRecibo.disabled) return;
+      abrirListaRecibos();
+      const val = inputRecibo.value.trim();
+      const valNorm = normalizarTexto(val);
+
+      if (!val) {
+        document.getElementById('tkb-recibo-select').value = '';
+        clearRecibo.style.display = 'none';
+        reciboSeleccionado = null;
+      } else {
+        clearRecibo.style.display = 'flex';
+        const matchExacto = recibosDisponibles.find(r => 
+          normalizarTexto(r.consecutivo) === valNorm || normalizarTexto(r.idRecibo) === valNorm
+        );
+        if (matchExacto) {
+          document.getElementById('tkb-recibo-select').value = matchExacto.idRecibo;
+          reciboSeleccionado = matchExacto;
+        } else {
+          document.getElementById('tkb-recibo-select').value = '';
+        }
+      }
+    });
+
+    inputRecibo.addEventListener('keydown', (e) => {
+      const listaEl = document.getElementById('tkb-recibo-list');
+      const items = Array.from(listaEl.querySelectorAll('.tkb-combo-item'));
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (listaEl.style.display === 'none') {
+          abrirListaRecibos();
+          return;
+        }
+        if (!items.length) return;
+        reciboIndiceResaltado = (reciboIndiceResaltado + 1) % items.length;
+        items.forEach((it, idx) => it.classList.toggle('tkb-combo-item-highlight', idx === reciboIndiceResaltado));
+        items[reciboIndiceResaltado]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (listaEl.style.display === 'none') {
+          abrirListaRecibos();
+          return;
+        }
+        if (!items.length) return;
+        reciboIndiceResaltado = (reciboIndiceResaltado - 1 + items.length) % items.length;
+        items.forEach((it, idx) => it.classList.toggle('tkb-combo-item-highlight', idx === reciboIndiceResaltado));
+        items[reciboIndiceResaltado]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        if (listaEl.style.display !== 'none' && reciboIndiceResaltado >= 0 && items[reciboIndiceResaltado]) {
+          e.preventDefault();
+          const itemEl = items[reciboIndiceResaltado];
+          const id = itemEl.getAttribute('data-id') || '';
+          const cons = itemEl.getAttribute('data-consecutivo') || '';
+          seleccionarRecibo(id, cons);
+        }
+      } else if (e.key === 'Escape') {
+        cerrarListaRecibos();
+      }
+    });
+
+    inputRecibo.addEventListener('blur', () => {
+      setTimeout(() => {
+        cerrarListaRecibos();
+        const hidden = document.getElementById('tkb-recibo-select');
+        const val = inputRecibo.value.trim();
+        if (!val) {
+          seleccionarRecibo('', '');
+        } else if (!hidden.value) {
+          const valNorm = normalizarTexto(val);
+          const match = recibosDisponibles.find(r => 
+            normalizarTexto(r.consecutivo) === valNorm || normalizarTexto(r.idRecibo) === valNorm
+          );
+          if (match) {
+            seleccionarRecibo(match.idRecibo, match.consecutivo || match.idRecibo);
+          } else if (reciboSeleccionado) {
+            inputRecibo.value = reciboSeleccionado.consecutivo || reciboSeleccionado.idRecibo;
+            hidden.value = reciboSeleccionado.idRecibo;
+          } else {
+            seleccionarRecibo('', '');
+          }
+        }
+      }, 180);
+    });
+
+    toggleRecibo.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const listaEl = document.getElementById('tkb-recibo-list');
+      if (listaEl.style.display === 'none') {
+        inputRecibo.focus();
+        abrirListaRecibos();
+      } else {
+        cerrarListaRecibos();
+      }
+    });
+
+    clearRecibo.addEventListener('click', (e) => {
+      e.stopPropagation();
+      limpiarRecibo();
+    });
+
+    document.addEventListener('pointerdown', (e) => {
+      const combo = document.getElementById('tkb-recibo-combobox');
+      if (combo && !combo.contains(e.target)) {
+        cerrarListaRecibos();
+      }
+    });
   }
 
   // ── Apertura / cierre ──────────────────────────────────────────────────
   async function abrir() {
     document.getElementById('tkb-form').reset();
+    resetearReciboCombobox('— Seleccione primero la Operación —');
 
     contexto = (typeof cfg.obtenerContexto === 'function') ? (cfg.obtenerContexto() || null) : null;
 
@@ -172,6 +469,7 @@
 
   function cerrar() {
     document.getElementById('tkb-overlay').classList.remove('tkb-open');
+    cerrarListaRecibos();
   }
 
   // ── Módulo / Regional / Operación ───────────────────────────────────────
@@ -219,7 +517,7 @@
     if (esServicios && !hayContexto) {
       refrescarRecibosDisponibles();
     } else {
-      document.getElementById('tkb-recibo-select').innerHTML = '<option value="">— Seleccione primero la Operación —</option>';
+      resetearReciboCombobox('— Seleccione primero la Operación —');
     }
   }
 
@@ -243,33 +541,34 @@
 
   async function refrescarRecibosDisponibles() {
     const modulo = document.getElementById('tkb-modulo').value;
-    const selRecibo = document.getElementById('tkb-recibo-select');
     if (modulo !== 'Servicios' || contexto) return; // el bloque ni se muestra en ese caso
 
     const operacion = document.getElementById('tkb-operacion').value;
     if (!operacion) {
-      selRecibo.innerHTML = '<option value="">— Seleccione primero la Operación —</option>';
+      resetearReciboCombobox('— Seleccione primero la Operación —');
       return;
     }
     if (!cfg.recibosRecientesUrl) {
-      selRecibo.innerHTML = '<option value="">No disponible desde este módulo</option>';
+      resetearReciboCombobox('No disponible desde este módulo');
       return;
     }
 
-    selRecibo.innerHTML = '<option value="">Cargando recibos...</option>';
+    establecerEstadoCargandoRecibos('Cargando recibos...');
     try {
       const url = `${cfg.recibosRecientesUrl}?usuario=${encodeURIComponent(cfg.usuarioId)}&operacion=${encodeURIComponent(operacion)}`;
       const resp = await fetch(url);
       const rows = await resp.json();
       if (resp.ok && Array.isArray(rows)) {
-        selRecibo.innerHTML = rows.length
-          ? ('<option value="">— Seleccione un recibo —</option>' + rows.map((r) => `<option value="${esc(r.idRecibo)}">${esc(r.consecutivo || r.idRecibo)}</option>`).join(''))
-          : '<option value="">Sin recibos en los últimos 30 días</option>';
+        if (rows.length) {
+          establecerRecibosDisponibles(rows);
+        } else {
+          resetearReciboCombobox('Sin recibos en los últimos 30 días');
+        }
       } else {
-        selRecibo.innerHTML = '<option value="">No se pudieron cargar los recibos</option>';
+        resetearReciboCombobox('No se pudieron cargar los recibos');
       }
     } catch (e) {
-      selRecibo.innerHTML = '<option value="">Error al cargar recibos</option>';
+      resetearReciboCombobox('Error al cargar recibos');
     }
   }
 

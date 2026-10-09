@@ -19,9 +19,8 @@ const BUCKETS = [BUCKET_FIRMAS, BUCKET_HOJAS_VIDA, BUCKET_PDFS];
 const TABLES = [
   { table: 'Dynamic_Asistencia', column: 'Cédula' },
   { table: 'Dynamic_Encuesta_Satisfaccion', column: 'identificacion' },
-  { table: 'Dynamic_Entrega_Dotacion', column: 'IdDotación' },
+  { table: 'Dynamic_Actas', column: 'identificacion' },
   { table: 'Dynamic_Solicitud_Vacaciones', column: 'Identificación' },
-  { table: 'Dynamic_registro_marcaciones', column: 'identificacion' },
   { table: 'Dynamic_traslados_trabajador', column: 'Identificación' },
   { table: 'Maestro_Examenes', column: 'Identificación' },
   { table: 'Maestro_Vinculación', column: 'Identificación' },
@@ -42,7 +41,24 @@ const TABLES = [
   { table: 'Dynamic_gastos', column: 'numero_identificacion' },
   { table: 'Dynamic_compromisosst', column: 'identificaciontrabajador' },
   { table: 'Dynamic_pruebaconsumo', column: 'identificacion' },
+  { table: 'Dynamic_Kardex', column: 'UsuarioAsignado' },
+  { table: 'Dynamic_Logysign', column: 'identificacion' },
+  { table: 'Maestro_casosmedicos', column: 'identificacion' },
   { table: 'Maestro_Segmentación', column: 'Identificación' }
+];
+
+// Tablas hijas del módulo de Selección dependientes de Dynamic_hv_aspirante (por id_aspirante)
+const TABLAS_SELECCION_HIJAS = [
+  'Dynamic_hv_documentos',
+  'Dynamic_hv_experiencia_laboral',
+  'Dynamic_hv_educacion',
+  'Dynamic_hv_contacto_emergencia',
+  'Dynamic_hv_familiares',
+  'Dynamic_Aspirante_Hijos',
+  'Dynamic_hv_referencias',
+  'Dynamic_hv_seguridad',
+  'Dynamic_hv_metas_personales',
+  'tokens_seleccion'
 ];
 
 async function computarAccesoIntegridad(usuarioId) {
@@ -70,20 +86,12 @@ function paginaNoAcceso() {
 router.get('/', async (req, res) => {
   try {
     const { usuario } = req.query;
-    if (!usuario) {
-      return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
+    if (usuario) {
+      return res.redirect(`/talenthub?usuario=${encodeURIComponent(usuario)}&tab=Integridad`);
     }
-
-    const acceso = await computarAccesoIntegridad(usuario);
-    if (!acceso) {
-      return res.status(403).send(paginaNoAcceso());
-    }
-
-    const html = fs.readFileSync(HTML_PATH, 'utf8');
-    const config = JSON.stringify(acceso).replace(/<\/script>/gi, '<\\/script>');
-    res.send(html.replace('__CONFIG__', config));
+    return res.redirect('/talenthub?tab=Integridad');
   } catch (err) {
-    console.error('[integridad-id] Error serving page:', err);
+    console.error('[integridad-id] Error redirecting to talenthub:', err);
     res.status(500).send('<h2>Error interno del servidor</h2>');
   }
 });
@@ -124,7 +132,7 @@ router.get('/api/buscar/:identificacion', async (req, res) => {
 
 // API: Eliminar trabajador
 router.post('/api/eliminar', async (req, res) => {
-  const { identificacion, usuario } = req.body;
+  const { identificacion, usuario, soloSociodemografica } = req.body;
   if (!identificacion || !usuario) {
     return res.status(400).json({ error: 'identificacion y usuario requeridos' });
   }
@@ -135,7 +143,8 @@ router.post('/api/eliminar', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    console.log(`[integridad-id] Iniciando eliminación del trabajador ${identificacion} por usuario ${usuario}`);
+    const esSoloSociodemo = Boolean(soloSociodemografica);
+    console.log(`[integridad-id] Iniciando eliminación del trabajador ${identificacion} por usuario ${usuario} (SoloSociodemo: ${esSoloSociodemo})`);
 
     const conn = await pool.getConnection();
     try {
@@ -144,10 +153,43 @@ router.post('/api/eliminar', async (req, res) => {
       // Desactivar temporalmente revisión de claves foráneas para esta sesión/conexión
       await conn.execute('SET foreign_key_checks = 0');
 
+      // 1. Eliminar dependencias por Id Vinculación de Maestro_Vinculación antes de borrar la vinculación
+      await conn.execute(
+        'DELETE FROM `Dynamic_AutoIngreso_Procesados` WHERE `IdVinculacion` IN (SELECT `Id Vinculación` FROM `Maestro_Vinculación` WHERE `Identificación` = ?)',
+        [identificacion]
+      );
+      await conn.execute(
+        'DELETE FROM `Maestro_evaluacionretiro` WHERE `id_vinculacion` IN (SELECT `Id Vinculación` FROM `Maestro_Vinculación` WHERE `Identificación` = ?)',
+        [identificacion]
+      );
+
+      // 2. Eliminar bitácora dependiente de Maestro_casosmedicos antes de borrar los casos médicos
+      await conn.execute(
+        'DELETE FROM `Maestro_bitacora_cmedicos` WHERE `idcaso` IN (SELECT `id` FROM `Maestro_casosmedicos` WHERE `identificacion` = ?)',
+        [identificacion]
+      );
+
+      // 3. Eliminar items dependientes de Dynamic_Actas para el trabajador antes de borrar las actas
+      await conn.execute(
+        'DELETE FROM `Dynamic_Actas_Items` WHERE `IdActa` IN (SELECT `IdActa` FROM `Dynamic_Actas` WHERE `identificacion` = ?)',
+        [identificacion]
+      );
+
+      // 4. Eliminar dependencias de Selección (hojas de vida) antes de borrar Dynamic_hv_aspirante
+      if (!esSoloSociodemo) {
+        for (const tablaHija of TABLAS_SELECCION_HIJAS) {
+          await conn.execute(
+            `DELETE FROM \`${tablaHija}\` WHERE \`id_aspirante\` IN (SELECT \`id_aspirante\` FROM \`Dynamic_hv_aspirante\` WHERE \`identificacion\` = ?)`,
+            [identificacion]
+          );
+        }
+      }
+
       // Deletes en orden para evitar problemas de clave foránea si existieran.
       // Primero todas las tablas hijas
       for (const item of TABLES) {
         if (item.table !== 'Maestro_Segmentación') {
+          if (esSoloSociodemo && item.table === 'Dynamic_hv_aspirante') continue;
           console.log(`Deleting from ${item.table} where ${item.column} = ${identificacion}`);
           await conn.execute(`DELETE FROM \`${item.table}\` WHERE \`${item.column}\` = ?`, [identificacion]);
         }
@@ -156,6 +198,14 @@ router.post('/api/eliminar', async (req, res) => {
       // Al final Maestro_Segmentación
       console.log(`Deleting from Maestro_Segmentación where Identificación = ${identificacion}`);
       await conn.execute('DELETE FROM `Maestro_Segmentación` WHERE `Identificación` = ?', [identificacion]);
+
+      // Si es Solo Sociodemográfica, revertir estado de Dynamic_hv_aspirante a "En proceso"
+      if (esSoloSociodemo) {
+        await conn.execute(
+          'UPDATE `Dynamic_hv_aspirante` SET `estado_proceso` = "En proceso" WHERE `identificacion` = ?',
+          [identificacion]
+        );
+      }
 
       // Activar nuevamente revisión de claves foráneas
       await conn.execute('SET foreign_key_checks = 1');
@@ -170,7 +220,8 @@ router.post('/api/eliminar', async (req, res) => {
     }
 
     // Eliminación de carpetas GCS en segundo plano/paralelo una vez confirmada la DB
-    for (const bucketName of BUCKETS) {
+    const bucketsABorrar = esSoloSociodemo ? BUCKETS.filter(b => b !== BUCKET_HOJAS_VIDA) : BUCKETS;
+    for (const bucketName of bucketsABorrar) {
       try {
         const bucket = storage.bucket(bucketName);
         const [files] = await bucket.getFiles({ prefix: `${identificacion}/` });

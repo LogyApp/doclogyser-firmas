@@ -23,6 +23,7 @@ const router = express.Router();
 const HTML_INDEX_PATH = path.join(__dirname, '../views/descuentonomina/index.html');
 const HTML_FORM_PATH  = path.join(__dirname, '../views/formdescuentonomina/form.html');
 const HTML_SIGN_PATH  = path.join(__dirname, '../views/descuentonomina/firmar.html');
+const NO_FIRMA_MARKER = 'NO_FIRMA_SOPORTE_EMAIL:';
 
 const SECCION_MENU_DESCUENTO_NOMINA = 'DescuentoNomina';
 
@@ -36,7 +37,7 @@ function formatTimestamp() {
   return `${yy}${mm}${dd}${hh}${ss}`;
 }
 
-async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, tipoDocumento, prefijo) {
+async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, tipoDocumento, prefijo, observaciones = null) {
   try {
     const [vinRows] = await pool.execute(
       `SELECT Regional, \`Operación\`, Identificación, Estado, \`Fecha de Ingreso\` 
@@ -56,7 +57,7 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
       `INSERT INTO Maestro_docTrabajador
        (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
         TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud, Justificacion_Solicitud, Usuario)
-       VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?)`,
+             VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)`,
       [
         docId,
         regional,
@@ -67,6 +68,7 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
         tipoDocumento,
         prefijo,
         urlDoc,
+        observaciones,
         usuarioId
       ]
     );
@@ -74,6 +76,33 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
   } catch (err) {
     console.error(`[Maestro_docTrabajador] Error registrando documento para ${identificacion}:`, err.message);
   }
+}
+
+function escaparHtml(texto) {
+  return String(texto == null ? '' : texto).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char]));
+}
+
+function esNoFirmaDescuento(valor) {
+  return String(valor || '').startsWith(NO_FIRMA_MARKER);
+}
+
+function fechaHoraSoporteBogota() {
+  return new Date().toLocaleString('es-CO', {
+    timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
+function construirSoporteNoFirmaDescuento(anotacion) {
+  const fecha = fechaHoraSoporteBogota();
+  const lineas = escaparHtml(anotacion).replace(/\r?\n/g, '<br>');
+  return {
+    marcador: `${NO_FIRMA_MARKER} ${anotacion}`,
+    html: `<div style="border:1.5px dashed #c0392b;border-radius:4px;padding:8px 12px;color:#c0392b;font-size:8pt;font-weight:bold;line-height:1.4;display:inline-block;text-align:center;font-family:Arial,sans-serif;">${lineas}<br><span style="font-size:7pt;color:#555;font-weight:normal;">Fecha soporte: ${fecha}</span></div>`,
+    fecha,
+  };
 }
 
 async function computarAccesoDN(usuarioId) {
@@ -557,6 +586,7 @@ router.get('/api/pruebas', async (req, res) => {
         a.valor,
         a.motivo,
         a.url_doc,
+        CASE WHEN a.firma_trabajador LIKE 'NO_FIRMA_SOPORTE_EMAIL:%' THEN 1 ELSE 0 END AS no_firma,
         a.usuario,
         a.fecha_registro,
         a.token_firma,
@@ -606,9 +636,12 @@ router.get('/api/prueba/:id', async (req, res) => {
       return res.status(403).json({ error: 'No está autorizado para ver este tipo de descuento.' });
     }
 
-    const tieneFirmaGcs = await obtenerFirmaBase64Reciente(discount.identificacion).catch(() => null);
+    const noFirma = esNoFirmaDescuento(discount.firma_trabajador);
+    const tieneFirmaGcs = noFirma ? null : await obtenerFirmaBase64Reciente(discount.identificacion).catch(() => null);
     let estadoFirma = 'SIN_FIRMA';
-    if (discount.firma_trabajador) {
+    if (noFirma) {
+      estadoFirma = 'NO_FIRMA';
+    } else if (discount.firma_trabajador) {
       estadoFirma = 'ACEPTADA';
     } else if (tieneFirmaGcs) {
       estadoFirma = 'PREFILLED';
@@ -616,7 +649,8 @@ router.get('/api/prueba/:id', async (req, res) => {
 
     res.json({
       ...discount,
-      tiene_firma: !!tieneFirmaGcs,
+      no_firma: noFirma,
+      tiene_firma: !noFirma && !!tieneFirmaGcs,
       estado_firma: estadoFirma
     });
   } catch (err) {
@@ -926,6 +960,79 @@ router.post('/api/firmar-asistente', async (req, res) => {
   }
 });
 
+router.post('/api/prueba/:id/no-firma', async (req, res) => {
+  try {
+    const acceso = req.descuentoNominaAccess;
+    if (!acceso || !['Sistema', 'Contratación'].includes(acceso.rol)) {
+      return res.status(403).json({ error: 'Solo Sistema o Contratación pueden generar soporte de No firma.' });
+    }
+
+    const { id } = req.params;
+    const [[discount]] = await pool.execute(
+      'SELECT * FROM Dynamic_descuentonomina WHERE id_descuento = ? LIMIT 1',
+      [id]
+    );
+    if (!discount) return res.status(404).json({ error: 'Autorización no encontrada.' });
+    if (discount.url_doc) return res.status(409).json({ error: 'Esta autorización ya tiene un documento generado.' });
+
+    const anotacion = String(req.body.anotacion || 'El trabajador no firma,\nse soporta por correo electrónico').trim();
+    if (!anotacion || anotacion.length > 700) {
+      return res.status(400).json({ error: 'La anotación es obligatoria y no puede superar 700 caracteres.' });
+    }
+
+    const soporte = construirSoporteNoFirmaDescuento(anotacion);
+    const templateName = discount.tipo_descuento === 'Anticipada' ? 'descuento_anticipado' : 'descuento_especifico';
+    const [plantillaRows] = await pool.execute(
+      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? LIMIT 1',
+      [templateName]
+    );
+    if (!plantillaRows.length) return res.status(500).json({ error: `Plantilla ${templateName} no configurada.` });
+
+    const dateObj = new Date(discount.fecha);
+    const diaVal = dateObj.getDate();
+    const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const mesVal = mesesNombres[dateObj.getMonth()];
+    const anioVal = dateObj.getFullYear();
+    let cleanNombre = String(discount.nombre_trabajador || '');
+    if (cleanNombre.includes(' ** ')) cleanNombre = cleanNombre.split(' ** ').pop();
+
+    const datos = {
+      ciudad: discount.ciudad || '',
+      fecha: `${diaVal} de ${mesVal} del año ${anioVal}`,
+      dia: diaVal,
+      mes: mesVal,
+      anio: anioVal,
+      nombre_trabajador: cleanNombre.trim().toUpperCase(),
+      identificacion: String(discount.identificacion),
+      cargo: discount.cargo || '',
+      tipo_descuento: discount.tipo_descuento,
+      cuotas: discount.cuotas || '',
+      valor: discount.valor || '',
+      motivo: discount.motivo || '',
+      firma_trabajador: soporte.html,
+    };
+    const htmlFinal = reemplazarVariables(plantillaRows[0].contenido_html, datos);
+    const pdfBuffer = await generarPDF(htmlFinal);
+    const timestamp = formatTimestamp();
+    const urlDoc = await subirPDFDescuentoNomina(discount.identificacion, timestamp, pdfBuffer);
+
+    const notaDocumento = `No firma (soporte por correo): ${anotacion.replace(/\s+/g, ' ')}`.slice(0, 1000);
+    const [actualizado] = await pool.execute(
+      `UPDATE Dynamic_descuentonomina
+       SET firma_trabajador = ?, url_firma = NULL, url_doc = ?, token_firma = NULL, token_expira = NULL
+       WHERE id_descuento = ? AND url_doc IS NULL`,
+      [soporte.marcador, urlDoc, id]
+    );
+    if (actualizado.affectedRows !== 1) return res.status(409).json({ error: 'La autorización cambió durante la generación del PDF.' });
+
+    await registrarDocumentoTrabajador(discount.identificacion, urlDoc, discount.usuario, 21, 'DCTO', notaDocumento);
+    return res.json({ ok: true, no_firma: true, urlDoc, fechaSoporte: soporte.fecha });
+  } catch (err) {
+    console.error('[descuentonomina] POST /api/prueba/:id/no-firma:', err);
+    return res.status(500).json({ error: err.message || 'No fue posible generar el soporte de No firma.' });
+  }
+});
+
 // ═════ API: POST /api/prueba/:id/generar-pdf (FORZAR) ═════
 router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
   try {
@@ -942,6 +1049,9 @@ router.post('/api/prueba/:id/generar-pdf', async (req, res) => {
 
     if (c.url_doc && !force) {
       return res.status(400).json({ error: 'El PDF ya fue generado anteriormente para este registro.' });
+    }
+    if (esNoFirmaDescuento(c.firma_trabajador)) {
+      return res.status(409).json({ error: 'El documento está cerrado como No firma; no se puede regenerar como una firma del trabajador.' });
     }
 
     const tieneFirmaGcs = await obtenerFirmaBase64Reciente(c.identificacion).catch(() => null);

@@ -128,6 +128,7 @@
     .badge-firma-aceptada { background: #d1fae5; color: #065f46; }
     .badge-firma-prefilled { background: #fef3c7; color: #92400e; }
     .badge-firma-sin { background: #fee2e2; color: #991b1b; }
+    .badge-no-firma { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; }
 
     /* Detail Card */
     .detail-card {
@@ -692,7 +693,9 @@
 
         // Status badge
         let statusBadge = '';
-        if (item.url_doc) {
+        if (item.no_firma) {
+          statusBadge = `<span class="status-badge badge-no-firma">No firma · soporte correo</span>`;
+        } else if (item.url_doc) {
           statusBadge = `<span class="status-badge badge-firma-aceptada">✓ Firmado</span>`;
         } else if (item.token_firma) {
           statusBadge = `<span class="status-badge badge-firma-sin">Pendiente</span>`;
@@ -766,7 +769,7 @@
           <p><strong>Observaciones:</strong> <span>${d.observaciones || '—'}</span></p>
           <p><strong>Creador por:</strong> <span>${d.nombre_creador || d.usuario}</span></p>
           <p><strong>Fecha Registro:</strong> <span>${d.fecha_registro ? new Date(d.fecha_registro).toLocaleString() : '—'}</span></p>
-          <p><strong>Estado Documento:</strong> <span><span class="status-badge ${d.url_doc ? 'badge-firma-aceptada' : 'badge-firma-sin'}">${d.url_doc ? 'Firmado' : 'Pendiente'}</span></span></p>
+          <p><strong>Estado Documento:</strong> <span><span class="status-badge ${d.no_firma ? 'badge-no-firma' : d.url_doc ? 'badge-firma-aceptada' : 'badge-firma-sin'}">${d.no_firma ? 'No firma · soporte correo' : d.url_doc ? 'Firmado' : 'Pendiente'}</span></span></p>
           ${expHtml}
         `;
 
@@ -798,11 +801,15 @@
             <button class="btn btn-secondary" onclick="copiarAlPortapapeles('${urlFirmaLink}')" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px; background: #2980b9; color: #fff;">📋 Copiar Enlace de Firma</button>
             <button class="btn btn-secondary" onclick="editarRegistroClick()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">✏️ Editar Detalles</button>
           `;
+          if (['Sistema', 'Contratación'].includes(CONFIG.rol) &&
+              (CONFIG.rol === 'Sistema' || d.tipo_descuento === 'Anticipada')) {
+            ctrlHtml += `<button class="btn btn-secondary" onclick="marcarNoFirmaDescuento()" style="width:100%; margin-bottom:8px; font-size:.85rem; padding:10px; border-color:#fdba74; color:#9a3412;">📋 No firma · generar con soporte por correo</button>`;
+          }
         } else {
           ctrlHtml += `
             <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 25px; margin-bottom: 12px; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 4px;">Acciones de Control</div>
             <a href="${d.url_doc}" target="_blank" class="btn btn-success" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">📄 Abrir PDF Firmado</a>
-            <button class="btn btn-secondary" onclick="forzarRegenerarPDF()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">Forzar Regenerar PDF</button>
+            ${d.no_firma ? '<div class="status-badge badge-no-firma" style="justify-content:center;margin-bottom:8px;">El PDF conserva el soporte de No firma</div>' : '<button class="btn btn-secondary" onclick="forzarRegenerarPDF()" style="width:100%; margin-bottom: 8px; font-size:.85rem; padding: 10px;">Forzar Regenerar PDF</button>'}
           `;
         }
 
@@ -882,6 +889,36 @@
         }
       } catch (err) {
         showToast('Error al enviar recordatorio', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function marcarNoFirmaDescuento() {
+      if (!selectedPruebaId) return;
+      const anotacion = prompt(
+        'Escribe el soporte que aparecerá en el espacio de firma del trabajador:',
+        'El trabajador no firma,\nse soporta por correo electrónico'
+      );
+      if (anotacion === null) return;
+      const limpia = anotacion.trim();
+      if (!limpia) return showToast('La anotación de soporte es obligatoria.', 'error');
+      if (!confirm('Se generará el PDF final con la anotación de No firma y se cerrará el enlace de firma. ¿Continuar?')) return;
+
+      showLoading('Generando PDF con soporte de No firma...');
+      try {
+        const res = await fetch(`${API_BASE}/prueba/${selectedPruebaId}/no-firma?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ anotacion: limpia, usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo generar el PDF de soporte.');
+        showToast('PDF generado con soporte de No firma.');
+        await loadRecords();
+        await verDetalle(selectedPruebaId);
+      } catch (err) {
+        showToast(err.message || 'Error al generar el soporte de No firma.', 'error');
       } finally {
         hideLoading();
       }
