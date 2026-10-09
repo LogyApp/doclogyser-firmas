@@ -2444,11 +2444,11 @@
           </div>
 
           <div class="form-group" id="nt-recibo-select-wrap" style="display:none;">
-            <label>Consecutivo Recibo *</label>
+            <label>Consecutivo Recibo (opcional)</label>
             <select id="nt-recibo-select" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; color:var(--text); background:#fff;">
               <option value="">— Seleccione primero la Operación —</option>
             </select>
-            <small style="color: var(--text-muted); font-size: 0.78rem;">Solo recibos de los últimos 30 días para la operación escogida.</small>
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Solo recibos de los últimos 30 días para la operación escogida. Déjelo vacío si la novedad no es sobre un recibo puntual.</small>
           </div>
 
           <div class="form-group">
@@ -4852,21 +4852,30 @@
     let nuevoTicketContexto = null; // { idRecibo, consecutivo, operacion } | null
 
     function obtenerContextoTicketActual() {
-      const servDetalleVisible = document.getElementById('servicios-vista-detalle')?.style.display === 'block';
+      // offsetParent (no solo el style.display propio) porque al cambiar de
+      // pestaña principal el sub-panel de detalle puede seguir con
+      // display:block aunque su contenedor (tab-content-servicios/recibos)
+      // esté oculto — offsetParent es null en ese caso, igual que si no se
+      // ha abierto nunca.
+      const elServDetalle = document.getElementById('servicios-vista-detalle');
+      const servDetalleVisible = !!elServDetalle && elServDetalle.style.display === 'block' && elServDetalle.offsetParent !== null;
       if (servDetalleVisible && servicioDetalleActual && servicioDetalleActual.idRecibo) {
         return {
           idRecibo: servicioDetalleActual.idRecibo,
           consecutivo: servicioDetalleActual.consecutivoRecibo || servicioDetalleActual.idRecibo,
-          operacion: servicioDetalleActual.operacion || null
+          operacion: servicioDetalleActual.operacion || null,
+          idServicio: servicioDetalleActual.idServicio || null
         };
       }
-      const recibDetalleVisible = document.getElementById('recibos-vista-detalle')?.style.display === 'block';
+      const elRecibDetalle = document.getElementById('recibos-vista-detalle');
+      const recibDetalleVisible = !!elRecibDetalle && elRecibDetalle.style.display === 'block' && elRecibDetalle.offsetParent !== null;
       if (recibDetalleVisible && reciboDetalleActual && reciboDetalleActual.recibo) {
         const r = reciboDetalleActual.recibo;
         return {
           idRecibo: r.IdRecibo,
           consecutivo: r['Consecutivo Recibo'] || r.IdRecibo,
-          operacion: r['Operación'] || null
+          operacion: r['Operación'] || null,
+          idServicio: null
         };
       }
       return null;
@@ -4921,7 +4930,16 @@
       document.getElementById('nt-telefono').value = '';
       document.getElementById('nt-evidencia').value = '';
 
+      // Si se abrió desde un Servicio, prellenar la Descripción con su IdServicio
+      // (el usuario continúa escribiendo después del "= ").
+      const descripcionEl = document.getElementById('nt-descripcion');
+      descripcionEl.value = nuevoTicketContexto?.idServicio ? `IdServicio "${nuevoTicketContexto.idServicio}" = ` : '';
+
       document.getElementById('modal-nuevo-ticket-overlay').classList.add('open');
+      if (nuevoTicketContexto?.idServicio) {
+        descripcionEl.focus();
+        descripcionEl.setSelectionRange(descripcionEl.value.length, descripcionEl.value.length);
+      }
 
       try {
         const resp = await fetch(`/facturacion/api/tickets/form-data?usuario=${encodeURIComponent(CONFIG.usuario)}`);
@@ -4984,7 +5002,6 @@
       const idRecibo = nuevoTicketContexto ? nuevoTicketContexto.idRecibo : document.getElementById('nt-recibo-select').value;
 
       if (!operacion) return alert('Seleccione la Operación.');
-      if (!idRecibo) return alert('Seleccione el Recibo.');
       if (!motivo) return alert('Seleccione el Motivo.');
       if (!descripcion) return alert('La Descripción es obligatoria.');
 

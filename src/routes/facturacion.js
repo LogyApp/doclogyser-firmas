@@ -2729,22 +2729,30 @@ router.post('/api/tickets', uploadTicket.single('evidencia'), async (req, res) =
     const acceso = await computarAccesoFacturacion(usuario, 'Servicios');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    if (!operacion || !motivo || !idrecibo || !descripcion || !descripcion.trim()) {
-      return res.status(400).json({ error: 'Operación, motivo, recibo y descripción son obligatorios.' });
+    if (!operacion || !motivo || !descripcion || !descripcion.trim()) {
+      return res.status(400).json({ error: 'Operación, motivo y descripción son obligatorios.' });
     }
     if (!acceso.sinFiltro && !(acceso.operacionesFiltro || []).includes(operacion)) {
       return res.status(403).json({ error: 'No autorizado para esta operación' });
     }
 
-    const [[motivoRows], [reciboRows]] = await Promise.all([
+    // idrecibo es opcional: solo se exige cuando el ticket se abrió con un
+    // Recibo/Servicio puntual abierto (el frontend lo manda fijo en ese caso).
+    // Fuera de ese contexto puede quedar en blanco (p. ej. novedades generales
+    // de una operación que no aplican a un solo recibo).
+    const idReciboVal = (idrecibo && String(idrecibo).trim()) ? String(idrecibo).trim() : null;
+
+    const [[motivoRows], reciboCheck] = await Promise.all([
       pool.execute(
         "SELECT 1 FROM Config_motivo_tickets WHERE Modulo = 'Servicios' AND Motivo = ? LIMIT 1",
         [motivo]
       ),
-      pool.execute('SELECT IdRecibo FROM Dynamic_Recibos WHERE IdRecibo = ? LIMIT 1', [idrecibo])
+      idReciboVal
+        ? pool.execute('SELECT IdRecibo FROM Dynamic_Recibos WHERE IdRecibo = ? LIMIT 1', [idReciboVal])
+        : Promise.resolve([[]])
     ]);
     if (!motivoRows.length) return res.status(400).json({ error: 'Motivo inválido' });
-    if (!reciboRows.length) return res.status(400).json({ error: 'El recibo seleccionado no existe' });
+    if (idReciboVal && !reciboCheck[0].length) return res.status(400).json({ error: 'El recibo seleccionado no existe' });
 
     const ticket = crypto.randomUUID().slice(0, 8);
 
@@ -2759,7 +2767,7 @@ router.post('/api/tickets', uploadTicket.single('evidencia'), async (req, res) =
       `INSERT INTO Dynamic_Tickets
        (Ticket, fecha_registro, \`Operación\`, solicitante, modulo, motivo, idrecibo, descripcion, Evidencia, telefono, Estado)
        VALUES (?, NOW(), ?, ?, 'Servicios', ?, ?, ?, ?, ?, 'En Proceso')`,
-      [ticket, operacion, usuario, motivo, idrecibo, descripcion.trim(), evidenciaUrl, telefonoVal]
+      [ticket, operacion, usuario, motivo, idReciboVal, descripcion.trim(), evidenciaUrl, telefonoVal]
     );
 
     res.json({ ok: true, ticket });
