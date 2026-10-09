@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { subirFotoServicio, subirEvidenciaTicket } = require('../services/storage');
+const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services/documentRegistry');
 
 const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -2660,38 +2660,12 @@ router.delete('/api/servicios/:idServicio', async (req, res) => {
 
 const ESTADOS_TICKET_VALIDOS = ['En Proceso', 'Pendiente', 'Resuelto', 'Rechazado'];
 
-// Botón "+ Ticket" (compartido entre módulos, por ahora solo en Facturación).
-// Crear un ticket solo exige acceso a 'Servicios' (no a la Sección 'Tickets',
-// que gobierna quién puede VER/gestionar el listado) — cualquiera que opere
-// Servicios/Recibos puede reportar una novedad.
-const uploadTicket = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
-
-// ── GET /api/tickets/form-data (teléfono prellenado + motivos del módulo) ──────
-router.get('/api/tickets/form-data', async (req, res) => {
-  try {
-    const { usuario } = req.query;
-    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
-
-    const acceso = await computarAccesoFacturacion(usuario, 'Servicios');
-    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
-
-    const [[userRows], [motivoRows]] = await Promise.all([
-      pool.execute('SELECT Telefono FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]),
-      pool.execute(
-        "SELECT Motivo FROM Config_motivo_tickets WHERE Modulo = 'Servicios' AND Motivo IS NOT NULL ORDER BY Motivo ASC"
-      )
-    ]);
-
-    res.json({
-      telefono: userRows.length ? (userRows[0].Telefono || '') : '',
-      motivos: motivoRows.map(r => r.Motivo)
-    });
-  } catch (err) {
-    console.error('[facturacion] GET /api/tickets/form-data:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
+// Botón "+ Ticket": widget compartido entre módulos (public/js/ticket-boton.js),
+// backend genérico en src/routes/tickets.js (POST /tickets/api/crear, etc.).
+// El único endpoint que sigue viviendo aquí es este: la lista de recibos
+// recientes es del dominio de Servicios/Facturación (Dynamic_Recibos), así
+// que el widget lo llama aparte solo cuando el Módulo elegido es "Servicios".
+//
 // ── GET /api/tickets/recibos-recientes (selector manual cuando no hay Recibo/Servicio abierto) ──
 router.get('/api/tickets/recibos-recientes', async (req, res) => {
   try {
@@ -2716,63 +2690,6 @@ router.get('/api/tickets/recibos-recientes', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[facturacion] GET /api/tickets/recibos-recientes:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── POST /api/tickets (Crear Ticket) ────────────────────────────────────────────
-router.post('/api/tickets', uploadTicket.single('evidencia'), async (req, res) => {
-  try {
-    const { usuario, operacion, motivo, idrecibo, descripcion, telefono } = req.body;
-
-    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
-    const acceso = await computarAccesoFacturacion(usuario, 'Servicios');
-    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
-
-    if (!operacion || !motivo || !descripcion || !descripcion.trim()) {
-      return res.status(400).json({ error: 'Operación, motivo y descripción son obligatorios.' });
-    }
-    if (!acceso.sinFiltro && !(acceso.operacionesFiltro || []).includes(operacion)) {
-      return res.status(403).json({ error: 'No autorizado para esta operación' });
-    }
-
-    // idrecibo es opcional: solo se exige cuando el ticket se abrió con un
-    // Recibo/Servicio puntual abierto (el frontend lo manda fijo en ese caso).
-    // Fuera de ese contexto puede quedar en blanco (p. ej. novedades generales
-    // de una operación que no aplican a un solo recibo).
-    const idReciboVal = (idrecibo && String(idrecibo).trim()) ? String(idrecibo).trim() : null;
-
-    const [[motivoRows], reciboCheck] = await Promise.all([
-      pool.execute(
-        "SELECT 1 FROM Config_motivo_tickets WHERE Modulo = 'Servicios' AND Motivo = ? LIMIT 1",
-        [motivo]
-      ),
-      idReciboVal
-        ? pool.execute('SELECT IdRecibo FROM Dynamic_Recibos WHERE IdRecibo = ? LIMIT 1', [idReciboVal])
-        : Promise.resolve([[]])
-    ]);
-    if (!motivoRows.length) return res.status(400).json({ error: 'Motivo inválido' });
-    if (idReciboVal && !reciboCheck[0].length) return res.status(400).json({ error: 'El recibo seleccionado no existe' });
-
-    const ticket = crypto.randomUUID().slice(0, 8);
-
-    let evidenciaUrl = '';
-    if (req.file) {
-      evidenciaUrl = await subirEvidenciaTicket(ticket, req.file.buffer, req.file.originalname, req.file.mimetype);
-    }
-
-    const telefonoVal = (telefono && String(telefono).trim()) ? parseInt(String(telefono).replace(/\D/g, ''), 10) || null : null;
-
-    await pool.execute(
-      `INSERT INTO Dynamic_Tickets
-       (Ticket, fecha_registro, \`Operación\`, solicitante, modulo, motivo, idrecibo, descripcion, Evidencia, telefono, Estado)
-       VALUES (?, NOW(), ?, ?, 'Servicios', ?, ?, ?, ?, ?, 'En Proceso')`,
-      [ticket, operacion, usuario, motivo, idReciboVal, descripcion.trim(), evidenciaUrl, telefonoVal]
-    );
-
-    res.json({ ok: true, ticket });
-  } catch (err) {
-    console.error('[facturacion] POST /api/tickets:', err);
     res.status(500).json({ error: err.message });
   }
 });

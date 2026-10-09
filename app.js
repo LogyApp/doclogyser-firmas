@@ -58,6 +58,7 @@ const perfilRoutes                    = require('./src/routes/perfil');
 const casosmedicosRoutes             = require('./src/routes/casosmedicos');
 const facturacionRoutes               = require('./src/routes/facturacion');
 const reciboPublicoRoutes             = require('./src/routes/reciboPublico');
+const ticketsRoutes                   = require('./src/routes/tickets');
 
 const app = express();
 
@@ -131,6 +132,9 @@ app.use('/facturacion', facturacionRoutes);
 // Vistas públicas de recibo/servicio (reemplazan al servicio aparte recibo-recaudo):
 // BASE_URL/recibo/:idRecibo, BASE_URL/consecutivo/:nro, BASE_URL/servicio/:idServicio
 app.use('/', reciboPublicoRoutes);
+// Backend compartido del botón "+ Ticket" (public/js/ticket-boton.js), reusado
+// por cualquier módulo que lo incluya — ver src/routes/tickets.js.
+app.use('/tickets', ticketsRoutes);
 app.use('/directorio-corporativo', directoriocorporativoRoutes);
 app.use('/perfil', perfilRoutes);
 if (process.env.NODE_ENV !== 'production') {

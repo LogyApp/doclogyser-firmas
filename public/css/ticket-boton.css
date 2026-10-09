@@ -1,0 +1,166 @@
+/* Botón flotante + modal "+ Ticket" — compartido entre módulos.
+   Cargado dinámicamente por public/js/ticket-boton.js (mismo patrón que
+   app-launcher-profile.js/.css). Usa tokens neutros con fallback para no
+   depender de las variables CSS propias de cada módulo. */
+
+.tkb-flotante {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 900;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 20px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2e0854 0%, #4a148c 50%, #6b21a8 100%);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 10px 25px -5px rgba(59, 7, 100, 0.45);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.tkb-flotante.tkb-visible { display: flex; }
+.tkb-flotante:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -6px rgba(59, 7, 100, 0.55);
+}
+
+.tkb-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.tkb-overlay.tkb-open { display: flex; opacity: 1; }
+
+.tkb-card {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.tkb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #2e0854 0%, #4a148c 50%, #6b21a8 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.tkb-close {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.tkb-close:hover { background: rgba(255, 255, 255, 0.28); }
+
+.tkb-body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.tkb-group { margin-bottom: 16px; }
+.tkb-group:last-child { margin-bottom: 0; }
+
+.tkb-group label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.tkb-group select,
+.tkb-group input[type="text"],
+.tkb-group textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #0f172a;
+  background: #fff;
+  box-sizing: border-box;
+}
+.tkb-group textarea { resize: vertical; }
+.tkb-group select:disabled,
+.tkb-group input:disabled {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #6b21a8;
+}
+.tkb-group small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.tkb-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.tkb-btn-secundario {
+  padding: 9px 16px;
+  border-radius: 7px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.tkb-btn-secundario:hover { background: #f8fafc; }
+
+.tkb-btn-primario {
+  padding: 9px 18px;
+  border-radius: 7px;
+  border: none;
+  background: linear-gradient(135deg, #2e0854 0%, #4a148c 50%, #6b21a8 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.tkb-btn-primario:hover { filter: brightness(1.08); }
+.tkb-btn-primario:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+  .tkb-flotante { right: 16px; bottom: 16px; padding: 12px 16px; }
+  .tkb-flotante span.tkb-label { display: none; }
+}
