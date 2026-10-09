@@ -5,8 +5,9 @@ const storage = process.env.GCS_KEYFILE
   ? new Storage({ keyFilename: path.resolve(process.env.GCS_KEYFILE) })
   : new Storage();
 
-const BUCKET_FIRMAS = process.env.BUCKET_FIRMAS || 'firmas-images';
-const BUCKET_PDFS   = process.env.BUCKET_PDFS   || 'talenthub_central';
+const BUCKET_FIRMAS   = process.env.BUCKET_FIRMAS   || 'firmas-images';
+const BUCKET_PDFS     = process.env.BUCKET_PDFS     || 'talenthub_central';
+const BUCKET_RECURSOS = process.env.BUCKET_RECURSOS || 'logyser-recursos-corporativos';
 
 function archivosMasRecientesPrimero(files) {
   return files
@@ -291,6 +292,26 @@ async function subirSoporteGasto(idperiodo, quincena, año, tipoGasto, tipoIdent
   return `https://storage.googleapis.com/${bucketName}/${pathInBucket}`;
 }
 
+// Evidencia adjunta a un ticket (Dynamic_Tickets.Evidencia), botón "+ Ticket"
+// compartido entre módulos. Ruta: evidencia_tickets/<Ticket>.Evidencia.<timestamp>.<ext>
+async function subirEvidenciaTicket(ticket, buffer, originalName, contentType) {
+  const ext = path.extname(originalName || '') || '.bin';
+
+  const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const YYYY = ahora.getFullYear();
+  const MM = String(ahora.getMonth() + 1).padStart(2, '0');
+  const DD = String(ahora.getDate()).padStart(2, '0');
+  const HH = String(ahora.getHours()).padStart(2, '0');
+  const mm = String(ahora.getMinutes()).padStart(2, '0');
+  const SS = String(ahora.getSeconds()).padStart(2, '0');
+  const timestamp = `${YYYY}${MM}${DD}${HH}${mm}${SS}`;
+
+  const nombre = `evidencia_tickets/${ticket}.Evidencia.${timestamp}${ext}`;
+  const file = storage.bucket(BUCKET_RECURSOS).file(nombre);
+  await file.save(buffer, { contentType: contentType || 'application/octet-stream' });
+  return `https://storage.googleapis.com/${BUCKET_RECURSOS}/${nombre}`;
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -321,6 +342,7 @@ module.exports = {
   subirPDFActa,
   subirEvidenciaActa,
   subirSoporteGasto,
+  subirEvidenciaTicket,
   storage,
   subirArchivoCloudDocs: async function (identificacion, prefix, buffer, originalName, contentType) {
     const ext = path.extname(originalName) || '.pdf';

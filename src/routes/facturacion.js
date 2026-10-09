@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { subirFotoServicio } = require('../services/storage');
+const { subirFotoServicio, subirEvidenciaTicket } = require('../services/storage');
 const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services/documentRegistry');
 
 const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -2659,6 +2659,115 @@ router.delete('/api/servicios/:idServicio', async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 const ESTADOS_TICKET_VALIDOS = ['En Proceso', 'Pendiente', 'Resuelto', 'Rechazado'];
+
+// Botón "+ Ticket" (compartido entre módulos, por ahora solo en Facturación).
+// Crear un ticket solo exige acceso a 'Servicios' (no a la Sección 'Tickets',
+// que gobierna quién puede VER/gestionar el listado) — cualquiera que opere
+// Servicios/Recibos puede reportar una novedad.
+const uploadTicket = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+
+// ── GET /api/tickets/form-data (teléfono prellenado + motivos del módulo) ──────
+router.get('/api/tickets/form-data', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [[userRows], [motivoRows]] = await Promise.all([
+      pool.execute('SELECT Telefono FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]),
+      pool.execute(
+        "SELECT Motivo FROM Config_motivo_tickets WHERE Modulo = 'Servicios' AND Motivo IS NOT NULL ORDER BY Motivo ASC"
+      )
+    ]);
+
+    res.json({
+      telefono: userRows.length ? (userRows[0].Telefono || '') : '',
+      motivos: motivoRows.map(r => r.Motivo)
+    });
+  } catch (err) {
+    console.error('[facturacion] GET /api/tickets/form-data:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/tickets/recibos-recientes (selector manual cuando no hay Recibo/Servicio abierto) ──
+router.get('/api/tickets/recibos-recientes', async (req, res) => {
+  try {
+    const { usuario, operacion } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!operacion) return res.status(400).json({ error: 'operacion requerida' });
+
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!acceso.sinFiltro && !(acceso.operacionesFiltro || []).includes(operacion)) {
+      return res.status(403).json({ error: 'No autorizado para esta operación' });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT IdRecibo as idRecibo, \`Consecutivo Recibo\` as consecutivo
+       FROM Dynamic_Recibos
+       WHERE Operación = ? AND Fecha >= (NOW() - INTERVAL 30 DAY)
+       ORDER BY Fecha DESC
+       LIMIT 300`,
+      [operacion]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/tickets/recibos-recientes:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/tickets (Crear Ticket) ────────────────────────────────────────────
+router.post('/api/tickets', uploadTicket.single('evidencia'), async (req, res) => {
+  try {
+    const { usuario, operacion, motivo, idrecibo, descripcion, telefono } = req.body;
+
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!operacion || !motivo || !idrecibo || !descripcion || !descripcion.trim()) {
+      return res.status(400).json({ error: 'Operación, motivo, recibo y descripción son obligatorios.' });
+    }
+    if (!acceso.sinFiltro && !(acceso.operacionesFiltro || []).includes(operacion)) {
+      return res.status(403).json({ error: 'No autorizado para esta operación' });
+    }
+
+    const [[motivoRows], [reciboRows]] = await Promise.all([
+      pool.execute(
+        "SELECT 1 FROM Config_motivo_tickets WHERE Modulo = 'Servicios' AND Motivo = ? LIMIT 1",
+        [motivo]
+      ),
+      pool.execute('SELECT IdRecibo FROM Dynamic_Recibos WHERE IdRecibo = ? LIMIT 1', [idrecibo])
+    ]);
+    if (!motivoRows.length) return res.status(400).json({ error: 'Motivo inválido' });
+    if (!reciboRows.length) return res.status(400).json({ error: 'El recibo seleccionado no existe' });
+
+    const ticket = crypto.randomUUID().slice(0, 8);
+
+    let evidenciaUrl = '';
+    if (req.file) {
+      evidenciaUrl = await subirEvidenciaTicket(ticket, req.file.buffer, req.file.originalname, req.file.mimetype);
+    }
+
+    const telefonoVal = (telefono && String(telefono).trim()) ? parseInt(String(telefono).replace(/\D/g, ''), 10) || null : null;
+
+    await pool.execute(
+      `INSERT INTO Dynamic_Tickets
+       (Ticket, fecha_registro, \`Operación\`, solicitante, modulo, motivo, idrecibo, descripcion, Evidencia, telefono, Estado)
+       VALUES (?, NOW(), ?, ?, 'Servicios', ?, ?, ?, ?, ?, 'En Proceso')`,
+      [ticket, operacion, usuario, motivo, idrecibo, descripcion.trim(), evidenciaUrl, telefonoVal]
+    );
+
+    res.json({ ok: true, ticket });
+  } catch (err) {
+    console.error('[facturacion] POST /api/tickets:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── GET /api/tickets ──────────────────────────────────────────────────────────
 router.get('/api/tickets', async (req, res) => {

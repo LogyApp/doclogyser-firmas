@@ -575,6 +575,35 @@
       display: flex;
       opacity: 1;
     }
+
+    /* Botón flotante "+ Ticket" — pensado para reusarse igual en otros módulos */
+    .btn-flotante-ticket {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 900;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 20px;
+      border: none;
+      border-radius: 999px;
+      background: var(--primary-gradient);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      box-shadow: 0 10px 25px -5px rgba(59, 7, 100, 0.45);
+      transition: var(--transition, all 0.18s ease);
+    }
+    .btn-flotante-ticket:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px -6px rgba(59, 7, 100, 0.55);
+    }
+    @media (max-width: 900px) {
+      .btn-flotante-ticket { right: 16px; bottom: 16px; padding: 12px 16px; }
+      .btn-flotante-ticket span { display: none; }
+    }
     .modal-card {
       background: #ffffff;
       border-radius: 12px;
@@ -2376,6 +2405,84 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       BOTÓN FLOTANTE "+ TICKET" (Dynamic_Tickets, modulo = 'Servicios')
+       Pensado para reusarse igual en otros módulos más adelante.
+  ══════════════════════════════════════════════════════════ -->
+  <button type="button" class="btn-flotante-ticket" id="btn-flotante-ticket" onclick="abrirModalNuevoTicket()" title="Reportar un ticket">
+    <span style="font-size:1.1rem;">🎫</span> <span>Ticket</span>
+  </button>
+
+  <div class="modal-overlay" id="modal-nuevo-ticket-overlay">
+    <div class="modal-card" style="max-width: 560px;">
+      <div class="modal-header">
+        <span>🎫 Nuevo Ticket</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalNuevoTicket()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="form-nuevo-ticket" onsubmit="event.preventDefault(); guardarNuevoTicket();">
+
+          <div class="form-group" id="nt-recibo-contexto-wrap" style="display:none;">
+            <label>Recibo</label>
+            <input type="text" id="nt-recibo-contexto" disabled style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; background:#f8fafc; font-weight:700; color:var(--primary);">
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Tomado del registro que tiene abierto.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Regional *</label>
+            <select id="nt-regional" required onchange="onNuevoTicketRegionalChange()" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; color:var(--text); background:#fff;">
+              <option value="">— Seleccione Regional —</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Operación *</label>
+            <select id="nt-operacion" required onchange="onNuevoTicketOperacionChange()" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; color:var(--text); background:#fff;">
+              <option value="">— Seleccione primero la Regional —</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="nt-recibo-select-wrap" style="display:none;">
+            <label>Consecutivo Recibo *</label>
+            <select id="nt-recibo-select" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; color:var(--text); background:#fff;">
+              <option value="">— Seleccione primero la Operación —</option>
+            </select>
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Solo recibos de los últimos 30 días para la operación escogida.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Motivo *</label>
+            <select id="nt-motivo" required style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; color:var(--text); background:#fff;">
+              <option value="">— Seleccione un motivo —</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Descripción *</label>
+            <textarea id="nt-descripcion" rows="4" required placeholder="Describa la novedad o solicitud..." style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; color:var(--text); resize:vertical;"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Teléfono de contacto</label>
+            <input type="text" id="nt-telefono" placeholder="Número de contacto" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; color:var(--text);">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Evidencia (opcional)</label>
+            <input type="file" id="nt-evidencia" accept="image/*,application/pdf">
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalNuevoTicket()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-nuevo-ticket" onclick="guardarNuevoTicket()">Crear Ticket</button>
+      </div>
+    </div>
+  </div>
+
 <script>
     const CONFIG = __CONFIG__;
     const ROLES_GESTION_CLIENTES_CREDITO = ['Facturación', 'Sistema'];
@@ -2422,6 +2529,12 @@
       if (!puedeGestionarClientesCredito) {
         const btnAgregarCliente = document.getElementById('btn-agregar-cliente');
         if (btnAgregarCliente) btnAgregarCliente.style.display = 'none';
+      }
+
+      // Botón flotante "+ Ticket": requiere acceso a Servicios (igual que crear el ticket en backend)
+      if (CONFIG.tabs?.servicios) {
+        const btnTicket = document.getElementById('btn-flotante-ticket');
+        if (btnTicket) btnTicket.style.display = 'flex';
       }
 
       // Cargar quincenas
@@ -3777,6 +3890,7 @@
         }
 
         document.getElementById('det-consecutivo-badge').textContent = 'Recibo: ' + (s.consecutivoRecibo || 'Sin Consecutivo');
+        servicioDetalleActual = { idServicio, idRecibo: s.IdRecibo, consecutivoRecibo: s.consecutivoRecibo, operacion: s.operacion };
         document.getElementById('det-total-pago-header').textContent = '$ ' + formatMiles(s.totalPago);
         document.getElementById('det-total-pago-box').textContent = '$ ' + formatMiles(s.totalPago);
 
@@ -3916,6 +4030,7 @@
 
     // CRUD de Recibos (Agregar / Editar / Eliminar)
     let reciboDetalleActual = null; // { recibo, servicios, totales, estadoColor }
+    let servicioDetalleActual = null; // { idServicio, idRecibo, consecutivoRecibo } — ver verDetalleServicio()
     let modalRecibo = { modo: 'crear' }; // 'crear' | 'editar'
     const ROLES_EDICION_LIBRE_RECIBOS_FRONT = ['Facturación', 'Sistema'];
 
@@ -4724,6 +4839,186 @@
       } finally {
         btn.disabled = false;
         btn.textContent = 'Guardar';
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // BOTÓN FLOTANTE "+ TICKET" (crear ticket en Dynamic_Tickets)
+    // ══════════════════════════════════════════════════════════
+    // Si hay un Recibo o Servicio abierto, el recibo queda fijo (tomado del
+    // contexto) y la Operación se bloquea para que no quede desalineada con
+    // él. Si no hay nada abierto, el usuario elige Regional → Operación y
+    // de ahí sale la lista de recibos de los últimos 30 días para escoger.
+    let nuevoTicketContexto = null; // { idRecibo, consecutivo, operacion } | null
+
+    function obtenerContextoTicketActual() {
+      const servDetalleVisible = document.getElementById('servicios-vista-detalle')?.style.display === 'block';
+      if (servDetalleVisible && servicioDetalleActual && servicioDetalleActual.idRecibo) {
+        return {
+          idRecibo: servicioDetalleActual.idRecibo,
+          consecutivo: servicioDetalleActual.consecutivoRecibo || servicioDetalleActual.idRecibo,
+          operacion: servicioDetalleActual.operacion || null
+        };
+      }
+      const recibDetalleVisible = document.getElementById('recibos-vista-detalle')?.style.display === 'block';
+      if (recibDetalleVisible && reciboDetalleActual && reciboDetalleActual.recibo) {
+        const r = reciboDetalleActual.recibo;
+        return {
+          idRecibo: r.IdRecibo,
+          consecutivo: r['Consecutivo Recibo'] || r.IdRecibo,
+          operacion: r['Operación'] || null
+        };
+      }
+      return null;
+    }
+
+    async function abrirModalNuevoTicket() {
+      const form = document.getElementById('form-nuevo-ticket');
+      form.reset();
+
+      nuevoTicketContexto = obtenerContextoTicketActual();
+
+      const wrapContexto = document.getElementById('nt-recibo-contexto-wrap');
+      const wrapSelect = document.getElementById('nt-recibo-select-wrap');
+      const selRegional = document.getElementById('nt-regional');
+      const selOperacion = document.getElementById('nt-operacion');
+
+      wrapContexto.style.display = nuevoTicketContexto ? 'block' : 'none';
+      wrapSelect.style.display = nuevoTicketContexto ? 'none' : 'block';
+      if (nuevoTicketContexto) {
+        document.getElementById('nt-recibo-contexto').value = nuevoTicketContexto.consecutivo;
+      } else {
+        document.getElementById('nt-recibo-select').innerHTML = '<option value="">— Seleccione primero la Operación —</option>';
+      }
+
+      selRegional.innerHTML = '<option value="">— Seleccione Regional —</option>' +
+        (CONFIG.regionalesFiltro || []).map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+      selOperacion.innerHTML = '<option value="">— Seleccione primero la Regional —</option>';
+      selRegional.disabled = false;
+      selOperacion.disabled = false;
+
+      // Si hay contexto y se puede deducir la Operación del registro abierto,
+      // precargar y bloquear Regional/Operación para que no queden desalineadas.
+      if (nuevoTicketContexto && nuevoTicketContexto.operacion) {
+        const op = nuevoTicketContexto.operacion;
+        const regionalDelOp = (CONFIG.opsPorRegional &&
+          Object.keys(CONFIG.opsPorRegional).find(reg => (CONFIG.opsPorRegional[reg] || []).includes(op))) || '';
+        if (regionalDelOp) {
+          selRegional.value = regionalDelOp;
+          selOperacion.innerHTML = (CONFIG.opsPorRegional[regionalDelOp] || [])
+            .map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+          selOperacion.value = op;
+        } else {
+          // La operación del registro no está en el set accesible del usuario (caso raro); se deja visible sin opciones.
+          selOperacion.innerHTML = `<option value="${esc(op)}">${esc(op)}</option>`;
+          selOperacion.value = op;
+        }
+        selRegional.disabled = true;
+        selOperacion.disabled = true;
+      }
+
+      document.getElementById('nt-motivo').innerHTML = '<option value="">Cargando motivos...</option>';
+      document.getElementById('nt-telefono').value = '';
+      document.getElementById('nt-evidencia').value = '';
+
+      document.getElementById('modal-nuevo-ticket-overlay').classList.add('open');
+
+      try {
+        const resp = await fetch(`/facturacion/api/tickets/form-data?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        const data = await resp.json();
+        if (resp.ok) {
+          document.getElementById('nt-telefono').value = data.telefono || '';
+          document.getElementById('nt-motivo').innerHTML = '<option value="">— Seleccione un motivo —</option>' +
+            (data.motivos || []).map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+        } else {
+          document.getElementById('nt-motivo').innerHTML = '<option value="">Error al cargar motivos</option>';
+        }
+      } catch (e) {
+        document.getElementById('nt-motivo').innerHTML = '<option value="">Error al cargar motivos</option>';
+      }
+    }
+
+    function onNuevoTicketRegionalChange() {
+      const reg = document.getElementById('nt-regional').value;
+      const selOp = document.getElementById('nt-operacion');
+      const opciones = (CONFIG.opsPorRegional && CONFIG.opsPorRegional[reg]) || [];
+      selOp.innerHTML = '<option value="">— Seleccione Operación —</option>' +
+        opciones.map(op => `<option value="${esc(op)}">${esc(op)}</option>`).join('');
+      onNuevoTicketOperacionChange();
+    }
+
+    async function onNuevoTicketOperacionChange() {
+      if (nuevoTicketContexto) return; // el recibo ya viene fijo del contexto, no hace falta listar
+      const operacion = document.getElementById('nt-operacion').value;
+      const selRecibo = document.getElementById('nt-recibo-select');
+      if (!operacion) {
+        selRecibo.innerHTML = '<option value="">— Seleccione primero la Operación —</option>';
+        return;
+      }
+      selRecibo.innerHTML = '<option value="">Cargando recibos...</option>';
+      try {
+        const resp = await fetch(`/facturacion/api/tickets/recibos-recientes?usuario=${encodeURIComponent(CONFIG.usuario)}&operacion=${encodeURIComponent(operacion)}`);
+        const rows = await resp.json();
+        if (resp.ok && Array.isArray(rows)) {
+          selRecibo.innerHTML = rows.length
+            ? ('<option value="">— Seleccione un recibo —</option>' + rows.map(r => `<option value="${esc(r.idRecibo)}">${esc(r.consecutivo || r.idRecibo)}</option>`).join(''))
+            : '<option value="">Sin recibos en los últimos 30 días</option>';
+        } else {
+          selRecibo.innerHTML = '<option value="">No se pudieron cargar los recibos</option>';
+        }
+      } catch (e) {
+        selRecibo.innerHTML = '<option value="">Error al cargar recibos</option>';
+      }
+    }
+
+    function cerrarModalNuevoTicket() {
+      document.getElementById('modal-nuevo-ticket-overlay').classList.remove('open');
+    }
+
+    async function guardarNuevoTicket() {
+      const operacion = document.getElementById('nt-operacion').value;
+      const motivo = document.getElementById('nt-motivo').value;
+      const descripcion = document.getElementById('nt-descripcion').value.trim();
+      const telefono = document.getElementById('nt-telefono').value.trim();
+      const evidenciaInput = document.getElementById('nt-evidencia');
+      const idRecibo = nuevoTicketContexto ? nuevoTicketContexto.idRecibo : document.getElementById('nt-recibo-select').value;
+
+      if (!operacion) return alert('Seleccione la Operación.');
+      if (!idRecibo) return alert('Seleccione el Recibo.');
+      if (!motivo) return alert('Seleccione el Motivo.');
+      if (!descripcion) return alert('La Descripción es obligatoria.');
+
+      const btn = document.getElementById('btn-guardar-nuevo-ticket');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const fd = new FormData();
+        fd.append('usuario', CONFIG.usuario);
+        fd.append('operacion', operacion);
+        fd.append('motivo', motivo);
+        fd.append('idrecibo', idRecibo);
+        fd.append('descripcion', descripcion);
+        fd.append('telefono', telefono);
+        if (evidenciaInput.files[0]) fd.append('evidencia', evidenciaInput.files[0]);
+
+        const resp = await fetch('/facturacion/api/tickets', { method: 'POST', body: fd });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          cerrarModalNuevoTicket();
+          alert(`Ticket creado correctamente: ${data.ticket}`);
+          if (CONFIG.tabs?.tickets) {
+            if (typeof cargarTickets === 'function') cargarTickets().catch(() => {});
+            if (typeof cargarMetricasTickets === 'function') cargarMetricasTickets().catch(() => {});
+          }
+        } else {
+          alert('Error: ' + (data.error || 'No se pudo crear el ticket.'));
+        }
+      } catch (e) {
+        alert('Error de conexión al crear el ticket.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Crear Ticket';
       }
     }
 
