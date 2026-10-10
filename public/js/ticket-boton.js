@@ -3,13 +3,20 @@
  * Cada página lo activa una vez cargado el DOM:
  *
  *   initBotonTicket({
- *     moduloDefecto: 'Servicios',        // módulo preseleccionado (editable)
+ *     moduloDefecto: 'Servicios',        // red de seguridad si no hay match en BD o falla la consulta
+ *     moduloErp: 'facturacion',          // opcional — prefijo de ruta del módulo ERP anfitrión
  *     usuarioId: CONFIG.usuario,
  *     opsPorRegional: CONFIG.opsPorRegional,
  *     regionalesFiltro: CONFIG.regionalesFiltro,
  *     obtenerContexto: miFuncion,        // opcional — ver abajo
  *     recibosRecientesUrl: '/facturacion/api/tickets/recibos-recientes' // opcional
  *   });
+ *
+ * moduloErp, si se provee, se usa para resolver dinámicamente el módulo
+ * preseleccionado contra Config_motivo_tickets (columna ModuloERP, fila con
+ * Motivo = NULL) vía GET /tickets/api/modulo-defecto — así el default puede
+ * administrarse desde BD sin tocar código. Si no hay fila configurada para
+ * ese moduloErp (o la consulta falla), se usa moduloDefecto tal cual.
  *
  * obtenerContexto(), si se provee, se llama cada vez que se abre el modal y
  * debe devolver null (sin registro abierto) o:
@@ -446,15 +453,29 @@
       descripcionEl.setSelectionRange(descripcionEl.value.length, descripcionEl.value.length);
     }
 
+    // Default dinámico: si la página anfitriona declaró cfg.moduloErp, se
+    // consulta Config_motivo_tickets (columna ModuloERP) por un default
+    // configurado en BD; si no hay fila o falla la consulta, se usa
+    // cfg.moduloDefecto (el valor fijo que ya traía cada página) como red
+    // de seguridad — nunca se queda sin preselección.
+    let moduloPreferido = cfg.moduloDefecto;
+    if (cfg.moduloErp) {
+      try {
+        const respDefecto = await fetch(`/tickets/api/modulo-defecto?moduloErp=${encodeURIComponent(cfg.moduloErp)}`);
+        const dataDefecto = await respDefecto.json();
+        if (respDefecto.ok && dataDefecto?.modulo) moduloPreferido = dataDefecto.modulo;
+      } catch (e) { /* se mantiene cfg.moduloDefecto */ }
+    }
+
     try {
       const resp = await fetch('/tickets/api/modulos');
       const modulos = await resp.json();
-      const lista = (resp.ok && Array.isArray(modulos) && modulos.length) ? modulos : [cfg.moduloDefecto];
+      const lista = (resp.ok && Array.isArray(modulos) && modulos.length) ? modulos : [moduloPreferido];
       selModulo.innerHTML = lista.map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
-      selModulo.value = lista.includes(cfg.moduloDefecto) ? cfg.moduloDefecto : lista[0];
+      selModulo.value = lista.includes(moduloPreferido) ? moduloPreferido : lista[0];
     } catch (e) {
-      selModulo.innerHTML = `<option value="${esc(cfg.moduloDefecto)}">${esc(cfg.moduloDefecto)}</option>`;
-      selModulo.value = cfg.moduloDefecto;
+      selModulo.innerHTML = `<option value="${esc(moduloPreferido)}">${esc(moduloPreferido)}</option>`;
+      selModulo.value = moduloPreferido;
     }
 
     aplicarEstadoSegunModulo();
