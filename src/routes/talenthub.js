@@ -890,7 +890,7 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
 // Lista requisiciones con filtros, conteos KPI y ordenamiento dinámico
 router.get('/api/requisiciones', async (req, res) => {
   try {
-    const { usuario, estado, regional, operacion, q, sortBy, sortDir } = req.query;
+    const { usuario, estado, regional, operacion, cargo, q, sortBy, sortDir } = req.query;
     const fechaDesde = req.query.fechaDesde || req.query.desde;
     const fechaHasta = req.query.fechaHasta || req.query.hasta;
     const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
@@ -926,6 +926,10 @@ router.get('/api/requisiciones', async (req, res) => {
       whereClauses.push("`Operación` = ?");
       params.push(operacion);
     }
+    if (cargo && cargo !== 'todos') {
+      whereClauses.push("`Cargo Requerido` = ?");
+      params.push(cargo);
+    }
     if (fechaDesde) {
       whereClauses.push("DATE(`Fecha Requisición`) >= ?");
       params.push(fechaDesde);
@@ -950,6 +954,7 @@ router.get('/api/requisiciones', async (req, res) => {
       'Cargo Requerido': '`Cargo Requerido`',
       'N° Personas Requeridas': '`N° Personas Requeridas`',
       'Solicitante': '`Solicitante`',
+      'Responsable de Selección': '`Responsable de Selección`',
       'Ciudad': '`Ciudad`'
     };
     const sortCol = allowedSortCols[sortBy] || '`Fecha Requisición`';
@@ -1021,6 +1026,11 @@ router.get('/api/requisiciones', async (req, res) => {
       baseScopeParams
     );
 
+    const [facetCargos] = await pool.execute(
+      `SELECT \`Cargo Requerido\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Cargo Requerido\` IS NOT NULL GROUP BY \`Cargo Requerido\` ORDER BY cnt DESC`,
+      baseScopeParams
+    );
+
     res.json({
       ok: true,
       requisiciones: rows,
@@ -1028,7 +1038,8 @@ router.get('/api/requisiciones', async (req, res) => {
       facetas: {
         estados: facetEstados,
         regionales: facetRegionales,
-        operaciones: facetOperaciones
+        operaciones: facetOperaciones,
+        cargos: facetCargos
       }
     });
 

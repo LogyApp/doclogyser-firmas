@@ -566,51 +566,151 @@
     .toast-item.success { background: #10b981; }
     @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* ── Requisiciones Styles ──────────────────────────────────────────────── */
-    .req-kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
-      margin-bottom: 20px;
+    /* ── Estado Chips Style (como Inventario) ── */
+    .estado-filter-section {
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 14px;
+      margin-bottom: 14px;
     }
-    .req-kpi-card {
-      background: var(--card-bg);
+    .estado-filter-label {
+      display: block;
+      font-weight: 700;
+      font-size: 0.76rem;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .estado-filter-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .estado-chip {
+      background-color: #fff;
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+    .estado-chip:hover {
+      background-color: #f8fafc;
+      border-color: #cbd5e1;
+      color: var(--text);
+    }
+    .estado-chip.active {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(74, 48, 109, 0.25);
+    }
+
+    /* ── Resizable & Fixed Table Headers (como SST) ── */
+    .req-table-wrapper {
+      max-height: calc(100vh - 290px);
+      min-height: 280px;
+      overflow-x: auto;
+      overflow-y: auto;
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      box-shadow: var(--shadow-sm);
+    }
+    table.resizable-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+    table.resizable-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      background: #f8fafc;
+      border-bottom: 2px solid var(--border);
+      border-right: 1px solid var(--border);
+      padding: 10px 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      user-select: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    table.resizable-table th.sortable {
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    table.resizable-table th.sortable:hover {
+      background: #ede8f5;
+      color: var(--primary);
+    }
+    table.resizable-table .th-content {
       display: flex;
       align-items: center;
-      gap: 12px;
-      box-shadow: var(--shadow-sm);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      justify-content: space-between;
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
-    .req-kpi-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-    .req-kpi-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      font-size: 1.3rem;
+    table.resizable-table .sort-icon {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      transition: color 0.15s;
       flex-shrink: 0;
     }
-    .req-kpi-val {
-      font-size: 1.45rem;
+    table.resizable-table th.sorted .sort-icon {
+      color: var(--primary);
       font-weight: 800;
-      color: var(--text);
-      line-height: 1.1;
-      font-family: 'JetBrains Mono', monospace;
     }
-    .req-kpi-lbl {
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      letter-spacing: 0.03em;
-      margin-top: 2px;
+    table.resizable-table .col-resizer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      cursor: col-resize;
+      user-select: none;
+      height: 100%;
+      z-index: 30;
+    }
+    table.resizable-table .col-resizer:hover, table.resizable-table .col-resizer.resizing {
+      background: var(--primary);
+      opacity: 0.7;
+    }
+    table.resizable-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid #f1f5f9;
+      color: var(--text);
+      background: #ffffff;
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.83rem;
+    }
+    table.resizable-table tbody tr:hover td {
+      background-color: #faf9fd;
+    }
+    .btn-action {
+      padding: 4px 8px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
     }
 
     /* Filter Panel */
@@ -1091,68 +1191,35 @@
 
     <!-- ── SECCIÓN: REQUISICIONES DE PERSONAL ────────────────────────────────── -->
     <div id="tabContentRequisiciones" style="display: none;">
-      
-      <!-- KPIs Grid -->
-      <div class="req-kpi-grid">
-        <div class="req-kpi-card">
-          <div class="req-kpi-icon" style="background:#f1eafa; color:var(--primary)">📋</div>
-          <div>
-            <div class="req-kpi-val" id="kpiReqTotal">0</div>
-            <div class="req-kpi-lbl">Total Requisiciones</div>
-          </div>
-        </div>
-        <div class="req-kpi-card">
-          <div class="req-kpi-icon" style="background:#f3e8ff; color:#7e22ce">⏳</div>
-          <div>
-            <div class="req-kpi-val" id="kpiReqEnProceso" style="color:#7e22ce">0</div>
-            <div class="req-kpi-lbl">En Proceso</div>
-          </div>
-        </div>
-        <div class="req-kpi-card">
-          <div class="req-kpi-icon" style="background:#dcfce7; color:#15803d">✅</div>
-          <div>
-            <div class="req-kpi-val" id="kpiReqFinalizado" style="color:#15803d">0</div>
-            <div class="req-kpi-lbl">Finalizadas</div>
-          </div>
-        </div>
-        <div class="req-kpi-card">
-          <div class="req-kpi-icon" style="background:#fee2e2; color:#b91c1c">⏸️</div>
-          <div>
-            <div class="req-kpi-val" id="kpiReqOtras" style="color:#b91c1c">0</div>
-            <div class="req-kpi-lbl">Suspendidas / Cancel.</div>
-          </div>
-        </div>
-        <div class="req-kpi-card">
-          <div class="req-kpi-icon" style="background:#e0f2fe; color:#0369a1">👥</div>
-          <div>
-            <div class="req-kpi-val" id="kpiReqVacantes" style="color:#0369a1">0</div>
-            <div class="req-kpi-lbl">Personas Requeridas</div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Card Filtros Plegables con Conteos -->
+      <!-- Card Filtros Plegables con Conteos y Chips de Estado (como Inventario) -->
       <div class="filter-panel" id="panelFiltrosRequisiciones">
         <div class="filter-panel-header" onclick="toggleFiltrosRequisiciones()">
           <div class="filter-panel-title">
             <span>🔍</span> Filtros y Búsqueda de Requisiciones
             <span class="tag-badge tag-badge-primary" id="lblFiltrosActivosCount" style="margin-left:8px; font-size:0.72rem;">Cargando...</span>
           </div>
-          <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltros">
+          <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltros" onclick="toggleFiltrosRequisiciones()">
             <span id="iconToggleFiltros">▼ Ocultar</span>
           </button>
         </div>
         <div class="filter-panel-body" id="bodyFiltrosRequisiciones">
+
+          <!-- Filtro Principal: Estado (Chips Dinámicos con Conteos estilo Inventario) -->
+          <div class="estado-filter-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label class="estado-filter-label" style="margin-bottom:0;">Estado de la Requisición (Filtro Principal)</label>
+              <span id="lblEstadoTotalCount" style="font-size:0.75rem; color:var(--text-muted); font-weight:600;"></span>
+            </div>
+            <div id="filter-estado-buttons" class="estado-filter-buttons">
+              <!-- Botones generados dinámicamente: Todos (X), En Proceso (X), Finalizado (X), Suspendido (X), Cancelado (X) -->
+            </div>
+          </div>
+
           <div class="filter-grid">
             <div class="filter-group" style="grid-column: span 2;">
               <label>Buscador de Requisiciones</label>
               <input type="text" id="filtroReqQ" placeholder="Escribe código RQ, Cargo, Solicitante o Ciudad..." onkeydown="if(event.key==='Enter') aplicarFiltrosRequisiciones()">
-            </div>
-            <div class="filter-group">
-              <label>Estado</label>
-              <select id="filtroReqEstado" onchange="aplicarFiltrosRequisiciones()">
-                <option value="todos">Todos los Estados</option>
-              </select>
             </div>
             <div class="filter-group">
               <label>Regional</label>
@@ -1164,6 +1231,12 @@
               <label>Operación</label>
               <select id="filtroReqOperacion" onchange="aplicarFiltrosRequisiciones()">
                 <option value="todas">Todas las Operaciones</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Cargo Requerido</label>
+              <select id="filtroReqCargo" onchange="aplicarFiltrosRequisiciones()">
+                <option value="todos">Todos los Cargos</option>
               </select>
             </div>
             <div class="filter-group">
@@ -1186,7 +1259,7 @@
         </div>
       </div>
 
-      <!-- Card Tabla Maestra de Requisiciones -->
+      <!-- Card Tabla Maestra de Requisiciones (Columnas fijas y redimensionables como SST) -->
       <div class="card">
         <div class="card-title" style="justify-content: space-between; flex-wrap:wrap; gap:10px;">
           <div style="display:flex; align-items:center; gap:8px;">
@@ -1197,42 +1270,82 @@
             <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarRequisiciones()">
               <span>↻ Actualizar</span>
             </button>
-            <button type="button" class="btn btn-primary" style="padding:6px 14px; font-size:0.78rem;" onclick="abrirModalCrearRequisicion()">
-              <span>➕ Nueva Requisición</span>
-            </button>
           </div>
         </div>
 
-        <div class="table-container">
-          <table id="tablaRequisiciones">
+        <div class="req-table-wrapper">
+          <table id="tablaRequisiciones" class="resizable-table">
             <thead>
               <tr>
-                <th class="sortable" onclick="ordenarRequisiciones('Requisición')">
-                  Requisición <span class="sort-indicator" id="sort_Requisición">▲</span>
+                <th style="width: 130px; min-width: 100px;" class="sortable" onclick="ordenarRequisiciones('Requisición')">
+                  <div class="th-content">
+                    <span>Requisición</span>
+                    <span class="sort-icon" id="sort_Requisición">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
                 </th>
-                <th class="sortable active" onclick="ordenarRequisiciones('Fecha Requisición')">
-                  Fecha Solicitud <span class="sort-indicator" id="sort_Fecha_Requisición">▼</span>
+                <th style="width: 145px; min-width: 120px;" class="sortable active sorted" onclick="ordenarRequisiciones('Fecha Requisición')">
+                  <div class="th-content">
+                    <span>Fecha Solicitud</span>
+                    <span class="sort-icon" id="sort_Fecha_Requisición">▼</span>
+                  </div>
+                  <div class="col-resizer"></div>
                 </th>
-                <th class="sortable" onclick="ordenarRequisiciones('Estado')">
-                  Estado <span class="sort-indicator" id="sort_Estado">▲</span>
+                <th style="width: 130px; min-width: 110px;" class="sortable" onclick="ordenarRequisiciones('Estado')">
+                  <div class="th-content">
+                    <span>Estado</span>
+                    <span class="sort-icon" id="sort_Estado">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
                 </th>
-                <th class="sortable" onclick="ordenarRequisiciones('Regional')">
-                  Regional <span class="sort-indicator" id="sort_Regional">▲</span>
+                <th style="width: 140px; min-width: 110px;" class="sortable" onclick="ordenarRequisiciones('Regional')">
+                  <div class="th-content">
+                    <span>Regional</span>
+                    <span class="sort-icon" id="sort_Regional">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
                 </th>
-                <th class="sortable" onclick="ordenarRequisiciones('Operación')">
-                  Operación <span class="sort-indicator" id="sort_Operación">▲</span>
+                <th style="width: 180px; min-width: 140px;" class="sortable" onclick="ordenarRequisiciones('Operación')">
+                  <div class="th-content">
+                    <span>Operación</span>
+                    <span class="sort-icon" id="sort_Operación">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
                 </th>
-                <th class="sortable" onclick="ordenarRequisiciones('Cargo Requerido')">
-                  Cargo Requerido <span class="sort-indicator" id="sort_Cargo_Requerido">▲</span>
+                <th style="width: 210px; min-width: 160px;" class="sortable" onclick="ordenarRequisiciones('Cargo Requerido')">
+                  <div class="th-content">
+                    <span>Cargo Requerido</span>
+                    <span class="sort-icon" id="sort_Cargo_Requerido">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
                 </th>
-                <th class="sortable" style="text-align:center" onclick="ordenarRequisiciones('N° Personas Requeridas')">
-                  Vacantes <span class="sort-indicator" id="sort_N_Personas_Requeridas">▲</span>
+                <th style="width: 95px; min-width: 80px; text-align:center;" class="sortable" onclick="ordenarRequisiciones('N° Personas Requeridas')">
+                  <div class="th-content" style="justify-content:center;">
+                    <span>Vacantes</span>
+                    <span class="sort-icon" id="sort_N_Personas_Requeridas">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
                 </th>
-                <th class="sortable" onclick="ordenarRequisiciones('Solicitante')">
-                  Solicitante <span class="sort-indicator" id="sort_Solicitante">▲</span>
+                <th style="width: 180px; min-width: 140px;" class="sortable" onclick="ordenarRequisiciones('Solicitante')">
+                  <div class="th-content">
+                    <span>Solicitante</span>
+                    <span class="sort-icon" id="sort_Solicitante">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
                 </th>
-                <th>Responsable Selección</th>
-                <th style="text-align:right">Acciones</th>
+                <th style="width: 180px; min-width: 140px;" class="sortable" onclick="ordenarRequisiciones('Responsable de Selección')">
+                  <div class="th-content">
+                    <span>Responsable Selección</span>
+                    <span class="sort-icon" id="sort_Responsable_de_Selección">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 130px; min-width: 120px; text-align:right;">
+                  <div class="th-content" style="justify-content:flex-end;">
+                    <span>Acciones</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
               </tr>
             </thead>
             <tbody id="tbodyRequisiciones">
@@ -1495,6 +1608,8 @@
         </form>
       </div>
     </div>
+  </div>
+
   <!-- ── MODAL: FICHA DETALLADA DE REQUISICIÓN ───────────────────────────── -->
   <div class="modal-backdrop" id="modalDetalleRequisicion">
     <div class="modal-box modal-box-lg">
@@ -2580,6 +2695,7 @@
       estado: 'todos',
       regional: 'todas',
       operacion: 'todas',
+      cargo: 'todos',
       desde: '',
       hasta: ''
     };
@@ -2595,6 +2711,7 @@
         await cargarCatalogosRequisiciones();
       }
       await cargarRequisiciones();
+      inicializarRedimensionColumnasRequisiciones();
     }
 
     async function cargarCatalogosRequisiciones() {
@@ -2607,25 +2724,25 @@
         }
         _reqCatalogos = data;
 
-        // Poblar filtro Estados
-        const selEstado = document.getElementById('filtroReqEstado');
-        if (selEstado) {
-          selEstado.innerHTML = '<option value="todos">Todos los Estados</option>' +
-            (data.estados || []).map(est => `<option value="${esc(est)}">${esc(est)}</option>`).join('');
-        }
-
-        // Poblar filtro Regionales
+        // Poblar filtro Regionales base
         const selReg = document.getElementById('filtroReqRegional');
         if (selReg) {
           selReg.innerHTML = '<option value="todas">Todas las Regionales</option>' +
             (data.regionales || []).map(reg => `<option value="${esc(reg)}">${esc(reg)}</option>`).join('');
         }
 
-        // Poblar filtro Operaciones
+        // Poblar filtro Operaciones base
         const selOp = document.getElementById('filtroReqOperacion');
         if (selOp) {
           selOp.innerHTML = '<option value="todas">Todas las Operaciones</option>' +
             (data.operaciones || []).map(op => `<option value="${esc(op.Operacion)}">${esc(op.Operacion)}</option>`).join('');
+        }
+
+        // Poblar filtro Cargos base
+        const selCargo = document.getElementById('filtroReqCargo');
+        if (selCargo) {
+          selCargo.innerHTML = '<option value="todos">Todos los Cargos</option>' +
+            (data.cargos || []).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
         }
 
         // Poblar opciones del formulario modal
@@ -2655,15 +2772,18 @@
     function onFiltroRegionalChange() {
       const reg = document.getElementById('filtroReqRegional').value;
       const selOp = document.getElementById('filtroReqOperacion');
-      if (!selOp || !_reqCatalogos) return;
+      _reqFiltros.regional = reg;
+      _reqFiltros.operacion = 'todas';
 
-      const operaciones = _reqCatalogos.operaciones || [];
-      const filtradas = reg === 'todas'
-        ? operaciones
-        : operaciones.filter(o => o.Regional === reg);
+      if (selOp && _reqCatalogos) {
+        const operaciones = _reqCatalogos.operaciones || [];
+        const filtradas = reg === 'todas'
+          ? operaciones
+          : operaciones.filter(o => o.Regional === reg);
 
-      selOp.innerHTML = '<option value="todas">Todas las Operaciones</option>' +
-        filtradas.map(op => `<option value="${esc(op.Operacion)}">${esc(op.Operacion)}</option>`).join('');
+        selOp.innerHTML = '<option value="todas">Todas las Operaciones</option>' +
+          filtradas.map(op => `<option value="${esc(op.Operacion)}">${esc(op.Operacion)}</option>`).join('');
+      }
 
       aplicarFiltrosRequisiciones();
     }
@@ -2745,9 +2865,9 @@
 
     function aplicarFiltrosRequisiciones() {
       _reqFiltros.q = (document.getElementById('filtroReqQ')?.value || '').trim();
-      _reqFiltros.estado = document.getElementById('filtroReqEstado')?.value || 'todos';
       _reqFiltros.regional = document.getElementById('filtroReqRegional')?.value || 'todas';
       _reqFiltros.operacion = document.getElementById('filtroReqOperacion')?.value || 'todas';
+      _reqFiltros.cargo = document.getElementById('filtroReqCargo')?.value || 'todos';
       _reqFiltros.desde = document.getElementById('filtroReqDesde')?.value || '';
       _reqFiltros.hasta = document.getElementById('filtroReqHasta')?.value || '';
       cargarRequisiciones();
@@ -2755,9 +2875,9 @@
 
     function limpiarFiltrosRequisiciones() {
       if (document.getElementById('filtroReqQ')) document.getElementById('filtroReqQ').value = '';
-      if (document.getElementById('filtroReqEstado')) document.getElementById('filtroReqEstado').value = 'todos';
       if (document.getElementById('filtroReqRegional')) document.getElementById('filtroReqRegional').value = 'todas';
       if (document.getElementById('filtroReqOperacion')) document.getElementById('filtroReqOperacion').value = 'todas';
+      if (document.getElementById('filtroReqCargo')) document.getElementById('filtroReqCargo').value = 'todos';
       if (document.getElementById('filtroReqDesde')) document.getElementById('filtroReqDesde').value = '';
       if (document.getElementById('filtroReqHasta')) document.getElementById('filtroReqHasta').value = '';
 
@@ -2766,19 +2886,109 @@
         estado: 'todos',
         regional: 'todas',
         operacion: 'todas',
+        cargo: 'todos',
         desde: '',
         hasta: ''
       };
 
-      if (_reqCatalogos) {
-        const selOp = document.getElementById('filtroReqOperacion');
-        if (selOp) {
-          selOp.innerHTML = '<option value="todas">Todas las Operaciones</option>' +
-            (_reqCatalogos.operaciones || []).map(op => `<option value="${esc(op.Operacion)}">${esc(op.Operacion)}</option>`).join('');
+      cargarRequisiciones();
+    }
+
+    function renderEstadoButtons(facetas, kpis) {
+      const container = document.getElementById('filter-estado-buttons');
+      if (!container) return;
+
+      const total = kpis?.total || 0;
+      const estadosFacet = facetas?.estados || [];
+
+      const countsMap = {};
+      estadosFacet.forEach(item => {
+        if (item && item.valor) {
+          countsMap[item.valor.trim()] = item.cnt || 0;
         }
+      });
+
+      const standardEstados = ['En Proceso', 'Finalizado', 'Suspendido', 'Cancelado'];
+      estadosFacet.forEach(item => {
+        if (item && item.valor && !standardEstados.includes(item.valor.trim())) {
+          standardEstados.push(item.valor.trim());
+        }
+      });
+
+      const estadoActual = _reqFiltros.estado || 'todos';
+
+      let html = '';
+      const activeTodos = (estadoActual === 'todos') ? 'active' : '';
+      html += `<button type="button" class="estado-chip ${activeTodos}" onclick="seleccionarFiltroEstado('todos')">
+        Todos (${total})
+      </button>`;
+
+      standardEstados.forEach(est => {
+        const count = countsMap[est] !== undefined ? countsMap[est] : (
+          est === 'En Proceso' ? (kpis?.enProceso || 0) :
+          est === 'Finalizado' ? (kpis?.finalizado || 0) :
+          est === 'Suspendido' ? (kpis?.suspendido || 0) :
+          est === 'Cancelado' ? (kpis?.cancelado || 0) : 0
+        );
+        const activeClass = (estadoActual.toLowerCase() === est.toLowerCase()) ? 'active' : '';
+        html += `<button type="button" class="estado-chip ${activeClass}" onclick="seleccionarFiltroEstado('${esc(est)}')">
+          ${esc(est)} (${count})
+        </button>`;
+      });
+
+      container.innerHTML = html;
+
+      const lblTotal = document.getElementById('lblEstadoTotalCount');
+      if (lblTotal) {
+        lblTotal.textContent = `${total} requisiciones registradas`;
+      }
+    }
+
+    function seleccionarFiltroEstado(nuevoEstado) {
+      if (_reqFiltros.estado === nuevoEstado && nuevoEstado !== 'todos') {
+        _reqFiltros.estado = 'todos';
+      } else {
+        _reqFiltros.estado = nuevoEstado;
+      }
+      cargarRequisiciones();
+    }
+
+    function actualizarFiltrosConConteos(facetas, total) {
+      // 1. Regionales
+      const selReg = document.getElementById('filtroReqRegional');
+      if (selReg && facetas?.regionales && facetas.regionales.length > 0) {
+        const valActual = _reqFiltros.regional || selReg.value || 'todas';
+        const regOptions = facetas.regionales.map(r => {
+          const selected = (r.valor === valActual) ? 'selected' : '';
+          return `<option value="${esc(r.valor)}" ${selected}>${esc(r.valor)} (${r.cnt})</option>`;
+        }).join('');
+
+        selReg.innerHTML = `<option value="todas" ${valActual === 'todas' ? 'selected' : ''}>Todas las Regionales (${total || 0})</option>${regOptions}`;
       }
 
-      cargarRequisiciones();
+      // 2. Operaciones
+      const selOp = document.getElementById('filtroReqOperacion');
+      if (selOp && facetas?.operaciones && facetas.operaciones.length > 0) {
+        const valActual = _reqFiltros.operacion || selOp.value || 'todas';
+        const opOptions = facetas.operaciones.map(o => {
+          const selected = (o.valor === valActual) ? 'selected' : '';
+          return `<option value="${esc(o.valor)}" ${selected}>${esc(o.valor)} (${o.cnt})</option>`;
+        }).join('');
+
+        selOp.innerHTML = `<option value="todas" ${valActual === 'todas' ? 'selected' : ''}>Todas las Operaciones (${total || 0})</option>${opOptions}`;
+      }
+
+      // 3. Cargos
+      const selCargo = document.getElementById('filtroReqCargo');
+      if (selCargo && facetas?.cargos && facetas.cargos.length > 0) {
+        const valActual = _reqFiltros.cargo || selCargo.value || 'todos';
+        const cargoOptions = facetas.cargos.map(c => {
+          const selected = (c.valor === valActual) ? 'selected' : '';
+          return `<option value="${esc(c.valor)}" ${selected}>${esc(c.valor)} (${c.cnt})</option>`;
+        }).join('');
+
+        selCargo.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los Cargos (${total || 0})</option>${cargoOptions}`;
+      }
     }
 
     function ordenarRequisiciones(columna) {
@@ -2799,7 +3009,8 @@
         'Operación': 'Operación',
         'Cargo Requerido': 'Cargo_Requerido',
         'N° Personas Requeridas': 'N_Personas_Requeridas',
-        'Solicitante': 'Solicitante'
+        'Solicitante': 'Solicitante',
+        'Responsable de Selección': 'Responsable_de_Selección'
       };
       const indId = colMap[columna];
       if (indId) {
@@ -2811,6 +3022,45 @@
       }
 
       cargarRequisiciones();
+    }
+
+    // ═════ REDIMENSIÓN DE COLUMNAS (DRAG & RESIZE estilo SST) ═════
+    function inicializarRedimensionColumnasRequisiciones() {
+      const resizers = document.querySelectorAll('#tablaRequisiciones .col-resizer');
+      resizers.forEach(resizer => {
+        if (resizer._hasResizerHandler) return;
+        resizer._hasResizerHandler = true;
+
+        resizer.addEventListener('mousedown', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+
+          const th = this.parentElement;
+          const startX = e.pageX;
+          const startWidth = th.offsetWidth;
+          resizer.classList.add('resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+
+          function onMouseMove(e) {
+            const diffX = e.pageX - startX;
+            const newWidth = Math.max(50, startWidth + diffX);
+            th.style.width = newWidth + 'px';
+            th.style.minWidth = newWidth + 'px';
+          }
+
+          function onMouseUp() {
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+          }
+
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        });
+      });
     }
 
     async function cargarRequisiciones() {
@@ -2826,6 +3076,7 @@
           estado: _reqFiltros.estado,
           regional: _reqFiltros.regional,
           operacion: _reqFiltros.operacion,
+          cargo: _reqFiltros.cargo,
           desde: _reqFiltros.desde,
           hasta: _reqFiltros.hasta,
           sortBy: _reqOrden.columna,
@@ -2843,14 +3094,12 @@
         }
 
         _requisiciones = data.requisiciones || [];
-
-        // Actualizar KPIs
         const k = data.kpis || {};
-        if (document.getElementById('kpiReqTotal')) document.getElementById('kpiReqTotal').textContent = k.total || 0;
-        if (document.getElementById('kpiReqEnProceso')) document.getElementById('kpiReqEnProceso').textContent = k.enProceso || 0;
-        if (document.getElementById('kpiReqFinalizado')) document.getElementById('kpiReqFinalizado').textContent = k.finalizado || 0;
-        if (document.getElementById('kpiReqOtras')) document.getElementById('kpiReqOtras').textContent = (parseInt(k.suspendido || 0) + parseInt(k.cancelado || 0));
-        if (document.getElementById('kpiReqVacantes')) document.getElementById('kpiReqVacantes').textContent = k.totalVacantes || 0;
+        const facetas = data.facetas || {};
+
+        // Renderizar chips de Estado y conteos en selects
+        renderEstadoButtons(facetas, k);
+        actualizarFiltrosConConteos(facetas, k.total || 0);
 
         // Actualizar contador badge de filtros activos
         let actCount = 0;
@@ -2858,6 +3107,7 @@
         if (_reqFiltros.estado && _reqFiltros.estado !== 'todos') actCount++;
         if (_reqFiltros.regional && _reqFiltros.regional !== 'todas') actCount++;
         if (_reqFiltros.operacion && _reqFiltros.operacion !== 'todas') actCount++;
+        if (_reqFiltros.cargo && _reqFiltros.cargo !== 'todos') actCount++;
         if (_reqFiltros.desde) actCount++;
         if (_reqFiltros.hasta) actCount++;
 
@@ -2872,6 +3122,7 @@
         }
 
         renderizarTablaRequisiciones();
+        inicializarRedimensionColumnasRequisiciones();
 
       } catch (err) {
         console.error('[TalentHub] Error al cargar requisiciones:', err);
@@ -2902,9 +3153,9 @@
         const responsable = esc(r['Responsable de Selección'] || 'Pendiente');
 
         return `
-          <tr>
+          <tr onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})" style="cursor:pointer;">
             <td>
-              <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary); cursor:pointer;" onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})">
+              <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary);">
                 ${codigo}
               </span>
             </td>
@@ -2924,13 +3175,13 @@
             </td>
             <td style="font-size:0.8rem; color:var(--text-muted);">${solicitante}</td>
             <td style="font-size:0.8rem; font-weight:600; color:${r['Responsable de Selección'] ? 'var(--primary)' : '#94a3b8'}">${responsable}</td>
-            <td style="text-align:right; white-space:nowrap;">
+            <td style="text-align:center; white-space:nowrap;">
               <div style="display:inline-flex; gap:6px;">
-                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})" title="Ver detalle completo">
-                  <span>👁️</span>
+                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="event.stopPropagation(); abrirModalDetalleRequisicion(${r.IdRequisicion})" title="Ver detalle completo">
+                  <span>👁️ Ver</span>
                 </button>
-                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="abrirModalEditarRequisicionPorId(${r.IdRequisicion})" title="Editar requisición">
-                  <span>✏️</span>
+                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="event.stopPropagation(); abrirModalEditarRequisicionPorId(${r.IdRequisicion})" title="Editar requisición">
+                  <span>✏️ Editar</span>
                 </button>
               </div>
             </td>
@@ -2949,7 +3200,11 @@
       return 'en-proceso';
     }
 
-    function abrirModalCrearRequisicion() {
+    async function abrirModalCrearRequisicion() {
+      cerrarModales();
+      if (!_reqCatalogos) {
+        await cargarCatalogosRequisiciones();
+      }
       _reqFormModo = 'crear';
       document.getElementById('formReqTitle').innerHTML = '<span>➕</span> Nueva Requisición de Personal';
       document.getElementById('formReqSubtitle').textContent = 'Completa los campos requeridos para radicar la vacante en el sistema.';
@@ -3074,29 +3329,35 @@
       }
     }
 
-    function abrirModalEditarRequisicionActual() {
+    async function abrirModalEditarRequisicionActual() {
       if (_reqActualDetalle) {
-        abrirModalEditarRequisicion(_reqActualDetalle);
+        await abrirModalEditarRequisicion(_reqActualDetalle);
       }
     }
 
     async function abrirModalEditarRequisicionPorId(id) {
       try {
+        if (!_reqCatalogos) {
+          await cargarCatalogosRequisiciones();
+        }
         const res = await fetch(`/talenthub/api/requisiciones/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const data = await res.json();
         if (!res.ok || !data.ok || !data.requisicion) {
           showToast(data.error || 'No se pudo cargar la requisición para editar.', 'error');
           return;
         }
-        abrirModalEditarRequisicion(data.requisicion);
+        await abrirModalEditarRequisicion(data.requisicion);
       } catch (err) {
         console.error('[TalentHub] Error al cargar para editar:', err);
         showToast('Error de red al cargar la requisición.', 'error');
       }
     }
 
-    function abrirModalEditarRequisicion(req) {
+    async function abrirModalEditarRequisicion(req) {
       cerrarModales();
+      if (!_reqCatalogos) {
+        await cargarCatalogosRequisiciones();
+      }
       _reqFormModo = 'editar';
 
       const codigo = req['Requisición'] || ('#' + req.IdRequisicion);
