@@ -588,11 +588,11 @@
     }
     .estado-chip {
       background-color: #fff;
-      border: 1px solid var(--border);
+      border: 1.5px solid var(--border);
       border-radius: 20px;
       padding: 6px 14px;
       font-size: 0.82rem;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text-muted);
       cursor: pointer;
       transition: all 0.2s ease;
@@ -608,11 +608,80 @@
       color: var(--text);
     }
     .estado-chip.active {
+      font-weight: 800;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Colores de Estado en filtros (Amarillo, Verde, Rojo, Naranja) */
+    .estado-chip.chip-todos {
+      background-color: #f8fafc;
+      border-color: #cbd5e1;
+      color: #475569;
+    }
+    .estado-chip.chip-todos.active {
       background-color: var(--primary);
       border-color: var(--primary);
       color: #fff;
-      font-weight: 700;
-      box-shadow: 0 4px 10px rgba(74, 48, 109, 0.25);
+    }
+
+    .estado-chip.chip-en-proceso {
+      background-color: #fefce8;
+      border-color: #fde047;
+      color: #854d0e;
+    }
+    .estado-chip.chip-en-proceso:hover {
+      background-color: #fef9c3;
+    }
+    .estado-chip.chip-en-proceso.active {
+      background-color: #eab308;
+      border-color: #ca8a04;
+      color: #713f12;
+      box-shadow: 0 4px 10px rgba(202, 138, 4, 0.35);
+    }
+
+    .estado-chip.chip-finalizado {
+      background-color: #f0fdf4;
+      border-color: #86efac;
+      color: #15803d;
+    }
+    .estado-chip.chip-finalizado:hover {
+      background-color: #dcfce7;
+    }
+    .estado-chip.chip-finalizado.active {
+      background-color: #16a34a;
+      border-color: #15803d;
+      color: #ffffff;
+      box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
+    }
+
+    .estado-chip.chip-suspendido {
+      background-color: #fef2f2;
+      border-color: #fca5a5;
+      color: #b91c1c;
+    }
+    .estado-chip.chip-suspendido:hover {
+      background-color: #fee2e2;
+    }
+    .estado-chip.chip-suspendido.active {
+      background-color: #dc2626;
+      border-color: #b91c1c;
+      color: #ffffff;
+      box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+    }
+
+    .estado-chip.chip-cancelado {
+      background-color: #fff7ed;
+      border-color: #fdba74;
+      color: #c2410c;
+    }
+    .estado-chip.chip-cancelado:hover {
+      background-color: #ffedd5;
+    }
+    .estado-chip.chip-cancelado.active {
+      background-color: #ea580c;
+      border-color: #c2410c;
+      color: #ffffff;
+      box-shadow: 0 4px 10px rgba(234, 88, 12, 0.35);
     }
 
     /* ── Resizable & Fixed Table Headers (como SST) ── */
@@ -806,10 +875,10 @@
       letter-spacing: 0.02em;
       white-space: nowrap;
     }
-    .status-badge.en-proceso { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-    .status-badge.finalizado { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-    .status-badge.suspendido { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-    .status-badge.cancelado { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-badge.en-proceso { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+    .status-badge.finalizado { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .status-badge.suspendido { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .status-badge.cancelado { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
 
     /* Toggle Option Buttons */
     .btn-group-toggle {
@@ -1277,6 +1346,12 @@
           <table id="tablaRequisiciones" class="resizable-table">
             <thead>
               <tr>
+                <th style="width: 78px; min-width: 68px; text-align:center;">
+                  <div class="th-content" style="justify-content:center;">
+                    <span title="Acciones" style="opacity:0.75; font-size:0.85rem;">⚙️</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
                 <th style="width: 130px; min-width: 100px;" class="sortable" onclick="ordenarRequisiciones('Requisición')">
                   <div class="th-content">
                     <span>Requisición</span>
@@ -1337,12 +1412,6 @@
                   <div class="th-content">
                     <span>Responsable Selección</span>
                     <span class="sort-icon" id="sort_Responsable_de_Selección">▲</span>
-                  </div>
-                  <div class="col-resizer"></div>
-                </th>
-                <th style="width: 130px; min-width: 120px; text-align:right;">
-                  <div class="th-content" style="justify-content:flex-end;">
-                    <span>Acciones</span>
                   </div>
                   <div class="col-resizer"></div>
                 </th>
@@ -1740,10 +1809,85 @@
           </div>
         </div>
 
+        <!-- Sección 5: Candidatos / Aspirantes Vinculados (REF_ROWS("HV Aspirante", "IdRequisicion")) -->
+        <div class="req-section-hdr" style="justify-content: space-between; align-items:center; margin-top:22px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>👥</span> Candidatos / Aspirantes Vinculados
+            <span id="badgeCountAspirantes" class="tag-badge tag-badge-primary" style="font-size:0.75rem;">0</span>
+          </div>
+          <button type="button" class="btn btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="abrirSelectorVincularAspirante()">
+            <span>➕ Vincular Aspirante</span>
+          </button>
+        </div>
+
+        <div id="boxListaAspirantesVinculados" style="margin-bottom:14px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:#fff;">
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+              <thead>
+                <tr style="background:#f8fafc; border-bottom:1.5px solid var(--border);">
+                  <th style="padding:8px 12px; font-weight:700;">Identificación</th>
+                  <th style="padding:8px 12px; font-weight:700;">Nombre Completo</th>
+                  <th style="padding:8px 12px; font-weight:700;">Ciudad de Residencia</th>
+                  <th style="padding:8px 12px; font-weight:700;">Teléfono</th>
+                  <th style="padding:8px 12px; font-weight:700;">Estado Proceso</th>
+                  <th style="padding:8px 12px; text-align:center; font-weight:700; width:110px;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAspirantesVinculados">
+                <tr>
+                  <td colspan="6" style="text-align:center; padding:18px; color:var(--text-muted);">
+                    No hay candidatos vinculados a esta requisición todavía.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
       <div class="modal-ftr">
         <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cerrar</button>
         <button type="button" class="btn btn-primary" id="btnEditarDesdeDetalle" onclick="abrirModalEditarRequisicionActual()">✏️ Editar Requisición</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: BUSCAR Y VINCULAR ASPIRANTE A LA REQUISICIÓN ───────────────── -->
+  <div class="modal-backdrop" id="modalVincularAspirante" style="z-index: 1050;">
+    <div class="modal-box modal-box-lg" style="max-width: 680px;">
+      <div class="modal-hdr" style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h3 style="font-size:1.15rem; font-weight:800; color:var(--text); display:flex; align-items:center; gap:8px;">
+            <span>👥</span> Vincular Candidato a la Requisición
+          </h3>
+          <p style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">
+            Busca y selecciona un aspirante de la base de datos sin requisición asignada.
+          </p>
+        </div>
+        <button type="button" class="btn btn-outline" style="padding:4px 8px;" onclick="cerrarSelectorVincularAspirante()">✕</button>
+      </div>
+
+      <!-- Buscador en tiempo real -->
+      <div style="margin: 12px 0;">
+        <div style="position:relative;">
+          <input type="text" id="inputBuscarAspiranteVincular" class="input-field" 
+                 placeholder="🔍 Escribe cédula o nombre del candidato para filtrar..." 
+                 oninput="filtrarAspirantesDisponiblesEnVivo()" 
+                 style="font-size:0.88rem; width:100%;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:0.75rem; color:var(--text-muted);">
+          <span id="lblAspirantesDisponiblesConteo">Cargando candidatos disponibles...</span>
+          <span>Aspirantes sin requisición vinculada</span>
+        </div>
+      </div>
+
+      <!-- Lista interactiva de candidatos disponibles -->
+      <div id="listaAspirantesDisponibles" style="max-height: 320px; overflow-y: auto; border: 1.5px solid var(--border); border-radius: 8px; background: #faf9fd; padding: 8px; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Se llena dinámicamente -->
+      </div>
+
+      <div class="modal-ftr" style="margin-top:16px;">
+        <button type="button" class="btn btn-outline" onclick="cerrarSelectorVincularAspirante()">Cerrar</button>
       </div>
     </div>
   </div>
@@ -1760,18 +1904,20 @@
 
         <div class="modal-body" style="padding:14px 0;">
           
-          <!-- 1. Ubicación y Cargo -->
+          <!-- 1. Ubicación y Cargo (Primero Regional, luego Operación) -->
           <div class="req-section-hdr"><span>🏢</span> Ubicación y Cargo Requerido</div>
           <div class="req-form-grid">
             <div class="req-field">
-              <label>Operación *</label>
-              <select id="formReqOperacion" required onchange="onOperacionFormChange()">
-                <option value="">Selecciona una operación...</option>
+              <label>Regional *</label>
+              <select id="formReqRegional" required onchange="onFormRegionalChange()">
+                <option value="">Selecciona una regional...</option>
               </select>
             </div>
             <div class="req-field">
-              <label>Regional *</label>
-              <input type="text" id="formReqRegional" class="req-input" readonly style="background:#f1f5f9;">
+              <label>Operación *</label>
+              <select id="formReqOperacion" required onchange="onOperacionFormChange()" disabled>
+                <option value="">Primero selecciona una regional...</option>
+              </select>
             </div>
             <div class="req-field">
               <label>Ciudad *</label>
@@ -1910,10 +2056,10 @@
             <div class="req-field" id="boxReqEstado">
               <label>Estado de la Requisición <span id="lockEstado" style="color:#94a3b8; font-size:0.7rem;">🔒 Selección / Sistema</span></label>
               <select id="formReqEstado">
-                <option value="En Proceso">En Proceso</option>
-                <option value="Suspendido">Suspendido</option>
-                <option value="Finalizado">Finalizado</option>
-                <option value="Cancelado">Cancelado</option>
+                <option value="EN PROCESO">EN PROCESO</option>
+                <option value="FINALIZADO">FINALIZADO</option>
+                <option value="SUSPENDIDO">SUSPENDIDO</option>
+                <option value="CANCELADO">CANCELADO</option>
               </select>
             </div>
 
@@ -2692,7 +2838,7 @@
     let _reqCatalogos = null;
     let _reqFiltros = {
       q: '',
-      estado: 'todos',
+      estado: 'TODOS',
       regional: 'todas',
       operacion: 'todas',
       cargo: 'todos',
@@ -2745,11 +2891,17 @@
             (data.cargos || []).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
         }
 
-        // Poblar opciones del formulario modal
+        // Poblar opciones del formulario modal (Regional primero)
+        const formReg = document.getElementById('formReqRegional');
+        if (formReg) {
+          formReg.innerHTML = '<option value="">Selecciona una regional...</option>' +
+            (data.regionales || []).map(reg => `<option value="${esc(reg)}">${esc(reg)}</option>`).join('');
+        }
+
         const formOp = document.getElementById('formReqOperacion');
         if (formOp) {
-          formOp.innerHTML = '<option value="">Selecciona una operación...</option>' +
-            (data.operaciones || []).map(op => `<option value="${esc(op.Operacion)}" data-regional="${esc(op.Regional || '')}" data-ciudad="${esc(op.Ciudad || '')}">${esc(op.Operacion)} (${esc(op.Regional || '')})</option>`).join('');
+          formOp.innerHTML = '<option value="">Primero selecciona una regional...</option>';
+          formOp.disabled = true;
         }
 
         const formCargo = document.getElementById('formReqCargo');
@@ -2788,20 +2940,47 @@
       aplicarFiltrosRequisiciones();
     }
 
+    function onFormRegionalChange() {
+      const formReg = document.getElementById('formReqRegional');
+      const formOp = document.getElementById('formReqOperacion');
+      const formCiudad = document.getElementById('formReqCiudad');
+      if (!formOp) return;
+
+      const reg = formReg ? formReg.value : '';
+      if (!reg || !_reqCatalogos) {
+        formOp.innerHTML = '<option value="">Primero selecciona una regional...</option>';
+        formOp.disabled = true;
+        formOp.value = '';
+        if (formCiudad) formCiudad.value = '';
+        return;
+      }
+
+      const operaciones = _reqCatalogos.operaciones || [];
+      const filtradas = operaciones.filter(o => (o.Regional || '').trim().toUpperCase() === reg.trim().toUpperCase());
+
+      formOp.innerHTML = '<option value="">Selecciona una operación...</option>' +
+        filtradas.map(op => `<option value="${esc(op.Operacion)}" data-regional="${esc(op.Regional || '')}" data-ciudad="${esc(op.Ciudad || '')}">${esc(op.Operacion)}</option>`).join('');
+      formOp.disabled = false;
+      formOp.value = '';
+      if (formCiudad) formCiudad.value = '';
+
+      if (filtradas.length === 1) {
+        formOp.value = filtradas[0].Operacion;
+        onOperacionFormChange();
+      }
+    }
+
     function onOperacionFormChange() {
       const sel = document.getElementById('formReqOperacion');
-      const val = sel.value;
-      const formReg = document.getElementById('formReqRegional');
+      const val = sel ? sel.value : '';
       const formCiudad = document.getElementById('formReqCiudad');
       if (!val || !_reqCatalogos) {
-        if (formReg) formReg.value = '';
         if (formCiudad) formCiudad.value = '';
         return;
       }
       const opInfo = (_reqCatalogos.operaciones || []).find(o => o.Operacion === val);
-      if (opInfo) {
-        if (formReg) formReg.value = opInfo.Regional || '';
-        if (formCiudad) formCiudad.value = opInfo.Ciudad || '';
+      if (opInfo && formCiudad) {
+        formCiudad.value = opInfo.Ciudad || '';
       }
     }
 
@@ -2883,7 +3062,7 @@
 
       _reqFiltros = {
         q: '',
-        estado: 'todos',
+        estado: 'TODOS',
         regional: 'todas',
         operacion: 'todas',
         cargo: 'todos',
@@ -2904,34 +3083,34 @@
       const countsMap = {};
       estadosFacet.forEach(item => {
         if (item && item.valor) {
-          countsMap[item.valor.trim()] = item.cnt || 0;
+          countsMap[item.valor.trim().toUpperCase()] = item.cnt || 0;
         }
       });
 
-      const standardEstados = ['En Proceso', 'Finalizado', 'Suspendido', 'Cancelado'];
-      estadosFacet.forEach(item => {
-        if (item && item.valor && !standardEstados.includes(item.valor.trim())) {
-          standardEstados.push(item.valor.trim());
-        }
-      });
-
-      const estadoActual = _reqFiltros.estado || 'todos';
+      const standardEstados = ['EN PROCESO', 'FINALIZADO', 'SUSPENDIDO', 'CANCELADO'];
+      const estadoActual = (_reqFiltros.estado || 'TODOS').toUpperCase();
 
       let html = '';
-      const activeTodos = (estadoActual === 'todos') ? 'active' : '';
-      html += `<button type="button" class="estado-chip ${activeTodos}" onclick="seleccionarFiltroEstado('todos')">
-        Todos (${total})
+      const activeTodos = (estadoActual === 'TODOS') ? 'active' : '';
+      html += `<button type="button" class="estado-chip chip-todos ${activeTodos}" onclick="seleccionarFiltroEstado('TODOS')">
+        TODOS (${total})
       </button>`;
 
       standardEstados.forEach(est => {
         const count = countsMap[est] !== undefined ? countsMap[est] : (
-          est === 'En Proceso' ? (kpis?.enProceso || 0) :
-          est === 'Finalizado' ? (kpis?.finalizado || 0) :
-          est === 'Suspendido' ? (kpis?.suspendido || 0) :
-          est === 'Cancelado' ? (kpis?.cancelado || 0) : 0
+          est === 'EN PROCESO' ? (kpis?.enProceso || 0) :
+          est === 'FINALIZADO' ? (kpis?.finalizado || 0) :
+          est === 'SUSPENDIDO' ? (kpis?.suspendido || 0) :
+          est === 'CANCELADO' ? (kpis?.cancelado || 0) : 0
         );
-        const activeClass = (estadoActual.toLowerCase() === est.toLowerCase()) ? 'active' : '';
-        html += `<button type="button" class="estado-chip ${activeClass}" onclick="seleccionarFiltroEstado('${esc(est)}')">
+        const activeClass = (estadoActual === est) ? 'active' : '';
+        const chipColorClass = (
+          est === 'EN PROCESO' ? 'chip-en-proceso' :
+          est === 'FINALIZADO' ? 'chip-finalizado' :
+          est === 'SUSPENDIDO' ? 'chip-suspendido' :
+          est === 'CANCELADO' ? 'chip-cancelado' : ''
+        );
+        html += `<button type="button" class="estado-chip ${chipColorClass} ${activeClass}" onclick="seleccionarFiltroEstado('${esc(est)}')">
           ${esc(est)} (${count})
         </button>`;
       });
@@ -2945,10 +3124,12 @@
     }
 
     function seleccionarFiltroEstado(nuevoEstado) {
-      if (_reqFiltros.estado === nuevoEstado && nuevoEstado !== 'todos') {
-        _reqFiltros.estado = 'todos';
+      const actual = (_reqFiltros.estado || 'TODOS').toUpperCase();
+      const nuevo = (nuevoEstado || 'TODOS').toUpperCase();
+      if (actual === nuevo && nuevo !== 'TODOS') {
+        _reqFiltros.estado = 'TODOS';
       } else {
-        _reqFiltros.estado = nuevoEstado;
+        _reqFiltros.estado = nuevo;
       }
       cargarRequisiciones();
     }
@@ -3154,6 +3335,16 @@
 
         return `
           <tr onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})" style="cursor:pointer;">
+            <td style="text-align:center; white-space:nowrap;">
+              <div style="display:inline-flex; gap:4px; justify-content:center;">
+                <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.8rem; line-height:1;" onclick="event.stopPropagation(); abrirModalDetalleRequisicion(${r.IdRequisicion})" title="Ver detalle completo">
+                  <span>👁️</span>
+                </button>
+                <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.8rem; line-height:1;" onclick="event.stopPropagation(); abrirModalEditarRequisicionPorId(${r.IdRequisicion})" title="Editar requisición">
+                  <span>✏️</span>
+                </button>
+              </div>
+            </td>
             <td>
               <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary);">
                 ${codigo}
@@ -3175,16 +3366,6 @@
             </td>
             <td style="font-size:0.8rem; color:var(--text-muted);">${solicitante}</td>
             <td style="font-size:0.8rem; font-weight:600; color:${r['Responsable de Selección'] ? 'var(--primary)' : '#94a3b8'}">${responsable}</td>
-            <td style="text-align:center; white-space:nowrap;">
-              <div style="display:inline-flex; gap:6px;">
-                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="event.stopPropagation(); abrirModalDetalleRequisicion(${r.IdRequisicion})" title="Ver detalle completo">
-                  <span>👁️ Ver</span>
-                </button>
-                <button type="button" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;" onclick="event.stopPropagation(); abrirModalEditarRequisicionPorId(${r.IdRequisicion})" title="Editar requisición">
-                  <span>✏️ Editar</span>
-                </button>
-              </div>
-            </td>
           </tr>
         `;
       }).join('');
@@ -3192,11 +3373,11 @@
 
     function getEstadoBadgeClass(estado) {
       if (!estado) return 'en-proceso';
-      const s = estado.toLowerCase().trim();
-      if (s.includes('proceso')) return 'en-proceso';
-      if (s.includes('final')) return 'finalizado';
-      if (s.includes('susp')) return 'suspendido';
-      if (s.includes('canc')) return 'cancelado';
+      const s = String(estado).toUpperCase().trim();
+      if (s.includes('PROCESO')) return 'en-proceso';
+      if (s.includes('FINAL')) return 'finalizado';
+      if (s.includes('SUSP')) return 'suspendido';
+      if (s.includes('CANC')) return 'cancelado';
       return 'en-proceso';
     }
 
@@ -3210,9 +3391,19 @@
       document.getElementById('formReqSubtitle').textContent = 'Completa los campos requeridos para radicar la vacante en el sistema.';
       document.getElementById('formReqId').value = '';
 
-      // Resetear campos
-      document.getElementById('formReqOperacion').value = '';
-      document.getElementById('formReqRegional').value = '';
+      // Resetear campos - Regional primero
+      const formReg = document.getElementById('formReqRegional');
+      if (formReg && _reqCatalogos) {
+        formReg.innerHTML = '<option value="">Selecciona una regional...</option>' +
+          (_reqCatalogos.regionales || []).map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+        formReg.value = '';
+      }
+      const formOp = document.getElementById('formReqOperacion');
+      if (formOp) {
+        formOp.innerHTML = '<option value="">Primero selecciona una regional...</option>';
+        formOp.disabled = true;
+        formOp.value = '';
+      }
       document.getElementById('formReqCiudad').value = '';
       document.getElementById('formReqCargo').value = '';
       document.getElementById('formReqPersonas').value = '1';
@@ -3239,14 +3430,14 @@
       setToggleBtn('Motivo', 'Ampliación de Personal');
       toggleCondicionalesMotivo('Ampliación de Personal');
 
-      // Estado en creación siempre es 'En Proceso' y deshabilitado
+      // Estado en creación siempre es 'EN PROCESO' y deshabilitado
       const selEstado = document.getElementById('formReqEstado');
       if (selEstado) {
-        selEstado.value = 'En Proceso';
+        selEstado.value = 'EN PROCESO';
         selEstado.disabled = true;
       }
       const lockEstado = document.getElementById('lockEstado');
-      if (lockEstado) lockEstado.textContent = '🔒 Fijo: En Proceso';
+      if (lockEstado) lockEstado.textContent = '🔒 Fijo: EN PROCESO';
 
       // Permisos de Salario
       const puedeEditarSalario = _reqCatalogos?.permisos?.puedeModificarSalario || false;
@@ -3286,7 +3477,7 @@
 
         document.getElementById('detReqCodigo').textContent = r['Requisición'] || ('#' + r.IdRequisicion);
         const badge = document.getElementById('detReqBadgeEstado');
-        badge.textContent = r.Estado || 'En Proceso';
+        badge.textContent = r.Estado || 'EN PROCESO';
         badge.className = `status-badge ${getEstadoBadgeClass(r.Estado)}`;
 
         document.getElementById('detReqCargo').textContent = r['Cargo Requerido'] || '-';
@@ -3320,6 +3511,9 @@
         document.getElementById('detReqFechaSol').textContent = r.fechaRequisicionFormatted || (r['Fecha Requisición'] ? String(r['Fecha Requisición']).substring(0, 16) : '-');
         document.getElementById('detReqFechaAct').textContent = r.fechaActualizacionFormatted || (r['Fecha Actualización'] ? String(r['Fecha Actualización']).substring(0, 16) : '-');
         document.getElementById('detReqUsuarioAct').textContent = r.usuario_actualizacion || 'N/A';
+
+        // Renderizar candidatos vinculados (REF_ROWS)
+        renderizarTablaAspirantesVinculados(data.aspirantes || []);
 
         document.getElementById('modalDetalleRequisicion').style.display = 'flex';
 
@@ -3365,9 +3559,26 @@
       document.getElementById('formReqSubtitle').textContent = 'Modifica los parámetros de la requisición según tus permisos.';
       document.getElementById('formReqId').value = req.IdRequisicion;
 
-      // Asignar campos
-      document.getElementById('formReqOperacion').value = req['Operación'] || '';
-      document.getElementById('formReqRegional').value = req.Regional || '';
+      // Asignar campos: Regional primero, luego Operación y Ciudad
+      const formReg = document.getElementById('formReqRegional');
+      if (formReg && _reqCatalogos) {
+        formReg.innerHTML = '<option value="">Selecciona una regional...</option>' +
+          (_reqCatalogos.regionales || []).map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+        formReg.value = req.Regional || '';
+      }
+
+      const formOp = document.getElementById('formReqOperacion');
+      if (formOp && _reqCatalogos) {
+        const operaciones = _reqCatalogos.operaciones || [];
+        const filtradas = req.Regional
+          ? operaciones.filter(o => (o.Regional || '').trim().toUpperCase() === (req.Regional || '').trim().toUpperCase())
+          : operaciones;
+        formOp.innerHTML = '<option value="">Selecciona una operación...</option>' +
+          filtradas.map(op => `<option value="${esc(op.Operacion)}" data-regional="${esc(op.Regional || '')}" data-ciudad="${esc(op.Ciudad || '')}">${esc(op.Operacion)}</option>`).join('');
+        formOp.disabled = false;
+        formOp.value = req['Operación'] || '';
+      }
+
       document.getElementById('formReqCiudad').value = req.Ciudad || '';
       document.getElementById('formReqCargo').value = req['Cargo Requerido'] || '';
       document.getElementById('formReqPersonas').value = req['N° Personas Requeridas'] || 1;
@@ -3401,7 +3612,7 @@
       const selEstado = document.getElementById('formReqEstado');
       const puedeEditarEstado = _reqCatalogos?.permisos?.puedeModificarEstado || false;
       if (selEstado) {
-        selEstado.value = req.Estado || 'En Proceso';
+        selEstado.value = (req.Estado || 'EN PROCESO').toUpperCase();
         selEstado.disabled = !puedeEditarEstado;
       }
       const lockEstado = document.getElementById('lockEstado');
@@ -3534,6 +3745,214 @@
       }
     }
 
+    // ── GESTIÓN DE CANDIDATOS VINCULADOS (REF_ROWS) ──────────────────────────
+    function renderizarTablaAspirantesVinculados(aspirantes) {
+      const badge = document.getElementById('badgeCountAspirantes');
+      if (badge) badge.textContent = `${aspirantes.length}`;
+
+      const tbody = document.getElementById('tbodyAspirantesVinculados');
+      if (!tbody) return;
+
+      if (!aspirantes || aspirantes.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">
+              No hay candidatos vinculados a esta requisición todavía. Haz clic en "➕ Vincular Aspirante" para asociar uno.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = aspirantes.map(a => {
+        const idSafe = esc(a.identificacion || '-');
+        const nombreSafe = esc(a.nombre_completo || '-');
+        const ciudadSafe = esc(a.ciudad || 'No registrada');
+        const telSafe = esc(a.telefono || '-');
+        const estSafe = esc(a.estado_proceso || 'En proceso');
+        const cvLink = a.pdf_public_url
+          ? `<a href="${esc(a.pdf_public_url)}" target="_blank" style="margin-left:5px; font-size:0.75rem; color:var(--primary); text-decoration:none;" title="Ver Hoja de Vida">📄</a>`
+          : '';
+
+        return `
+          <tr>
+            <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary);">${idSafe}</td>
+            <td style="font-weight:600;">${nombreSafe} ${cvLink}</td>
+            <td>${ciudadSafe}</td>
+            <td style="font-size:0.8rem; color:var(--text-muted);">${telSafe}</td>
+            <td><span class="tag-badge tag-badge-primary">${estSafe}</span></td>
+            <td style="text-align:center;">
+              <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.74rem; color:#dc2626; border-color:#fca5a5;" 
+                      onclick="desvincularAspiranteDeRequisicion('${esc(a.id_aspirante)}', '${nombreSafe}')" title="Desvincular aspirante de la vacante">
+                <span>✕ Desvincular</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    let _debounceAspirantesTimer = null;
+    let _aspirantesDisponiblesCache = [];
+
+    function abrirSelectorVincularAspirante() {
+      const input = document.getElementById('inputBuscarAspiranteVincular');
+      if (input) input.value = '';
+      document.getElementById('modalVincularAspirante').style.display = 'flex';
+      cargarAspirantesDisponibles('');
+      if (input) input.focus();
+    }
+
+    function cerrarSelectorVincularAspirante() {
+      document.getElementById('modalVincularAspirante').style.display = 'none';
+    }
+
+    function filtrarAspirantesDisponiblesEnVivo() {
+      clearTimeout(_debounceAspirantesTimer);
+      _debounceAspirantesTimer = setTimeout(() => {
+        const q = (document.getElementById('inputBuscarAspiranteVincular')?.value || '').trim();
+        cargarAspirantesDisponibles(q);
+      }, 250);
+    }
+
+    async function cargarAspirantesDisponibles(q = '') {
+      const lista = document.getElementById('listaAspirantesDisponibles');
+      const lblConteo = document.getElementById('lblAspirantesDisponiblesConteo');
+      if (lista) {
+        lista.innerHTML = '<div style="text-align:center; padding:18px; color:var(--text-muted); font-size:0.83rem;">Buscando aspirantes disponibles...</div>';
+      }
+      if (lblConteo) lblConteo.textContent = 'Buscando...';
+
+      try {
+        const res = await fetch(`/talenthub/api/aspirantes-disponibles?usuario=${encodeURIComponent(CONFIG.usuarioId)}&q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          if (lista) lista.innerHTML = `<div style="text-align:center; padding:18px; color:#ef4444; font-size:0.83rem;">${esc(data.error || 'Error al buscar aspirantes')}</div>`;
+          if (lblConteo) lblConteo.textContent = '0 encontrados';
+          return;
+        }
+
+        const aspirantes = data.aspirantes || [];
+        _aspirantesDisponiblesCache = aspirantes;
+        if (lblConteo) {
+          lblConteo.textContent = `${aspirantes.length} candidato(s) disponible(s)`;
+        }
+
+        if (!aspirantes.length) {
+          if (lista) {
+            lista.innerHTML = `
+              <div style="text-align:center; padding:24px; color:var(--text-muted); font-size:0.85rem;">
+                No se encontraron aspirantes sin requisición con el criterio: "<strong>${esc(q)}</strong>".
+              </div>
+            `;
+          }
+          return;
+        }
+
+        if (lista) {
+          lista.innerHTML = aspirantes.map(a => {
+            const nombre = esc(a.nombre_completo || 'Sin nombre');
+            const cedula = esc(a.identificacion || '-');
+            const ciudad = esc(a.ciudad || 'Ciudad no registrada');
+            const tel = esc(a.telefono || 'Sin teléfono');
+            const estado = esc(a.estado_proceso || 'En proceso');
+
+            return `
+              <div style="background:#fff; border:1px solid var(--border); border-radius:7px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px; transition:border-color 0.15s ease;">
+                <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight:700; font-size:0.88rem; color:var(--text);">${nombre}</span>
+                    <span style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.78rem; color:var(--primary); background:var(--primary-light); padding:1px 6px; border-radius:4px;">CC ${cedula}</span>
+                  </div>
+                  <div style="font-size:0.78rem; color:var(--text-muted); display:flex; gap:12px; flex-wrap:wrap; margin-top:2px;">
+                    <span>📍 <strong>Ciudad:</strong> ${ciudad}</span>
+                    <span>📞 <strong>Tel:</strong> ${tel}</span>
+                    <span>🏷️ <strong>Estado:</strong> ${estado}</span>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary" style="padding:5px 12px; font-size:0.78rem; flex-shrink:0;" 
+                        onclick="vincularAspiranteARequisicion('${esc(a.id_aspirante)}')">
+                  <span>➕ Vincular</span>
+                </button>
+              </div>
+            `;
+          }).join('');
+        }
+
+      } catch (err) {
+        console.error('[TalentHub] Error al cargar aspirantes disponibles:', err);
+        if (lista) {
+          lista.innerHTML = '<div style="text-align:center; padding:18px; color:#ef4444; font-size:0.83rem;">Error de red al consultar aspirantes.</div>';
+        }
+      }
+    }
+
+    async function vincularAspiranteARequisicion(idAspirante) {
+      if (!_reqActualDetalle || !idAspirante) return;
+      const reqId = _reqActualDetalle.IdRequisicion;
+
+      try {
+        const res = await fetch(`/talenthub/api/requisiciones/${reqId}/vincular-aspirante`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            id_aspirante: idAspirante
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo vincular el aspirante.', 'error');
+          return;
+        }
+
+        showToast(data.mensaje || 'Aspirante vinculado exitosamente.', 'success');
+        cerrarSelectorVincularAspirante();
+        // Recargar detalle de la requisición para reflejar la vinculación
+        abrirModalDetalleRequisicion(reqId);
+
+      } catch (err) {
+        console.error('[TalentHub] Error al vincular aspirante:', err);
+        showToast('Error de red al vincular el candidato.', 'error');
+      }
+    }
+
+    async function desvincularAspiranteDeRequisicion(idAspirante, nombre) {
+      if (!_reqActualDetalle || !idAspirante) return;
+      const reqId = _reqActualDetalle.IdRequisicion;
+
+      if (!confirm(`¿Estás seguro de que deseas desvincular al aspirante "${nombre}" de esta requisición?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/talenthub/api/requisiciones/${reqId}/desvincular-aspirante`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            id_aspirante: idAspirante
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo desvincular el aspirante.', 'error');
+          return;
+        }
+
+        showToast(data.mensaje || 'Aspirante desvinculado con éxito.', 'success');
+        // Recargar detalle de la requisición para actualizar la tabla
+        abrirModalDetalleRequisicion(reqId);
+
+      } catch (err) {
+        console.error('[TalentHub] Error al desvincular aspirante:', err);
+        showToast('Error de red al desvincular el aspirante.', 'error');
+      }
+    }
+
     // ── UTILITARIOS ─────────────────────────────────────────────────────────
     function cerrarModales() {
       document.getElementById('modalNuevoProceso').style.display = 'none';
@@ -3544,6 +3963,8 @@
       if (modDetalle) modDetalle.style.display = 'none';
       const modForm = document.getElementById('modalFormRequisicion');
       if (modForm) modForm.style.display = 'none';
+      const modVinc = document.getElementById('modalVincularAspirante');
+      if (modVinc) modVinc.style.display = 'none';
     }
 
     document.querySelectorAll('.modal-backdrop').forEach(modal => {

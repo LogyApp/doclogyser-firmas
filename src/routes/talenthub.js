@@ -873,7 +873,7 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
         ...permisosObj
       },
       permisos: permisosObj,
-      estados: ['En Proceso', 'Suspendido', 'Finalizado', 'Cancelado'],
+      estados: ['EN PROCESO', 'FINALIZADO', 'SUSPENDIDO', 'CANCELADO'],
       operaciones: operacionesFormateadas,
       regionales,
       cargos: cargoRows.map(c => c.cargo),
@@ -914,9 +914,9 @@ router.get('/api/requisiciones', async (req, res) => {
     }
 
     // Filtros de usuario
-    if (estado && estado !== 'todos') {
-      whereClauses.push("`Estado` = ?");
-      params.push(estado);
+    if (estado && estado.toUpperCase() !== 'TODOS') {
+      whereClauses.push("UPPER(`Estado`) = UPPER(?)");
+      params.push(estado.trim());
     }
     if (regional && regional !== 'todas') {
       whereClauses.push("`Regional` = ?");
@@ -1001,10 +1001,10 @@ router.get('/api/requisiciones', async (req, res) => {
     const [kpiRows] = await pool.execute(
       `SELECT 
          COUNT(*) as total,
-         SUM(CASE WHEN \`Estado\` = 'En Proceso' THEN 1 ELSE 0 END) as enProceso,
-         SUM(CASE WHEN \`Estado\` = 'Finalizado' THEN 1 ELSE 0 END) as finalizado,
-         SUM(CASE WHEN \`Estado\` = 'Suspendido' THEN 1 ELSE 0 END) as suspendido,
-         SUM(CASE WHEN \`Estado\` = 'Cancelado' THEN 1 ELSE 0 END) as cancelado,
+         SUM(CASE WHEN UPPER(\`Estado\`) = 'EN PROCESO' THEN 1 ELSE 0 END) as enProceso,
+         SUM(CASE WHEN UPPER(\`Estado\`) = 'FINALIZADO' THEN 1 ELSE 0 END) as finalizado,
+         SUM(CASE WHEN UPPER(\`Estado\`) = 'SUSPENDIDO' THEN 1 ELSE 0 END) as suspendido,
+         SUM(CASE WHEN UPPER(\`Estado\`) = 'CANCELADO' THEN 1 ELSE 0 END) as cancelado,
          COALESCE(SUM(\`N° Personas Requeridas\`), 0) as totalVacantes
        FROM \`Dynamic_Requisiciones\`
        WHERE ${baseScopeSql}`,
@@ -1012,7 +1012,7 @@ router.get('/api/requisiciones', async (req, res) => {
     );
 
     const [facetEstados] = await pool.execute(
-      `SELECT \`Estado\` as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} GROUP BY \`Estado\` ORDER BY cnt DESC`,
+      `SELECT UPPER(\`Estado\`) as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} AND \`Estado\` IS NOT NULL GROUP BY UPPER(\`Estado\`) ORDER BY cnt DESC`,
       baseScopeParams
     );
 
@@ -1050,7 +1050,7 @@ router.get('/api/requisiciones', async (req, res) => {
 });
 
 // 3. GET /api/requisiciones/:id
-// Obtiene el detalle completo de una requisición
+// Obtiene el detalle completo de una requisición y los candidatos vinculados (REF_ROWS)
 router.get('/api/requisiciones/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1074,9 +1074,113 @@ router.get('/api/requisiciones/:id', async (req, res) => {
       return res.status(404).json({ error: 'Requisición no encontrada.' });
     }
 
-    res.json({ ok: true, requisicion: rows[0] });
+    // Consultar candidatos vinculados a esta requisición: REF_ROWS("HV Aspirante", "IdRequisicion")
+    const [aspirantes] = await pool.execute(
+      `SELECT id_aspirante, tipo_documento, identificacion,
+              CONCAT_WS(' ', primer_nombre, segundo_nombre, primer_apellido, segundo_apellido) AS nombre_completo,
+              ciudad, telefono, correo_electronico, estado_proceso, pdf_public_url, foto_public_url,
+              DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro_formatted
+       FROM \`Dynamic_hv_aspirante\`
+       WHERE \`IdRequisicion\` = ?
+       ORDER BY \`fecha_registro\` DESC`,
+      [id]
+    );
+
+    res.json({ ok: true, requisicion: rows[0], aspirantes: aspirantes || [] });
   } catch (err) {
     console.error('[talenthub] GET /api/requisiciones/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3.1 GET /api/aspirantes-disponibles
+// Consulta aspirantes sin requisición asignada (IdRequisicion IS NULL OR 0) con búsqueda en vivo
+router.get('/api/aspirantes-disponibles', async (req, res) => {
+  try {
+    const { usuario, q } = req.query;
+    const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    let sql = `SELECT id_aspirante, tipo_documento, identificacion,
+                      CONCAT_WS(' ', primer_nombre, segundo_nombre, primer_apellido, segundo_apellido) AS nombre_completo,
+                      ciudad, telefono, correo_electronico, estado_proceso, pdf_public_url,
+                      DATE_FORMAT(fecha_registro, '%Y-%m-%d') AS fecha_registro_formatted
+               FROM \`Dynamic_hv_aspirante\`
+               WHERE (\`IdRequisicion\` IS NULL OR \`IdRequisicion\` = 0)`;
+    const params = [];
+
+    if (q && q.trim()) {
+      const qWild = `%${q.trim()}%`;
+      sql += ` AND (\`identificacion\` LIKE ? OR \`primer_nombre\` LIKE ? OR \`segundo_nombre\` LIKE ? OR \`primer_apellido\` LIKE ? OR \`segundo_apellido\` LIKE ? OR \`ciudad\` LIKE ?)`;
+      params.push(qWild, qWild, qWild, qWild, qWild, qWild);
+    }
+
+    sql += ` ORDER BY \`fecha_registro\` DESC LIMIT 50`;
+
+    const [rows] = await pool.execute(sql, params);
+    res.json({ ok: true, aspirantes: rows });
+  } catch (err) {
+    console.error('[talenthub] GET /api/aspirantes-disponibles:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3.2 POST /api/requisiciones/:id/vincular-aspirante
+// Asigna un aspirante a una requisición
+router.post('/api/requisiciones/:id/vincular-aspirante', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, id_aspirante } = req.body;
+    const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    if (!id_aspirante) {
+      return res.status(400).json({ error: 'id_aspirante es obligatorio.' });
+    }
+
+    const [result] = await pool.execute(
+      'UPDATE `Dynamic_hv_aspirante` SET `IdRequisicion` = ?, `fecha_actualizacion` = NOW() WHERE `id_aspirante` = ?',
+      [id, id_aspirante]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Aspirante no encontrado.' });
+    }
+
+    res.json({ ok: true, mensaje: 'Aspirante vinculado exitosamente a la requisición.' });
+  } catch (err) {
+    console.error('[talenthub] POST /api/requisiciones/:id/vincular-aspirante:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3.3 POST /api/requisiciones/:id/desvincular-aspirante
+// Desvincula un aspirante de una requisición
+router.post('/api/requisiciones/:id/desvincular-aspirante', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, id_aspirante } = req.body;
+    const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    if (!id_aspirante) {
+      return res.status(400).json({ error: 'id_aspirante es obligatorio.' });
+    }
+
+    await pool.execute(
+      'UPDATE `Dynamic_hv_aspirante` SET `IdRequisicion` = NULL, `fecha_actualizacion` = NOW() WHERE `id_aspirante` = ? AND `IdRequisicion` = ?',
+      [id_aspirante, id]
+    );
+
+    res.json({ ok: true, mensaje: 'Aspirante desvinculado con éxito.' });
+  } catch (err) {
+    console.error('[talenthub] POST /api/requisiciones/:id/desvincular-aspirante:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1157,7 +1261,7 @@ router.post('/api/requisiciones', async (req, res) => {
         \`Fecha de Finalización\`, \`Responsable de Selección\`,
         \`Fecha Actualización\`, \`usuario_actualizacion\`
       ) VALUES (
-        ?, ?, CONVERT_TZ(NOW(),'SYSTEM','-05:00'), 'En Proceso', ?, ?,
+        ?, ?, CONVERT_TZ(NOW(),'SYSTEM','-05:00'), 'EN PROCESO', ?, ?,
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?,
@@ -1239,7 +1343,7 @@ router.put('/api/requisiciones/:id', async (req, res) => {
     const puedeEditarFechaFin = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
 
     // Resolver campos protegidos
-    const nuevoEstado = puedeEditarEstado && b['Estado'] ? b['Estado'] : current.Estado;
+    const nuevoEstado = puedeEditarEstado && b['Estado'] ? String(b['Estado']).toUpperCase().trim() : (current.Estado || 'EN PROCESO').toUpperCase().trim();
     const nuevoSalario = puedeEditarSalario && b['Salario'] !== undefined ? (b['Salario'] !== '' ? parseFloat(b['Salario']) : null) : current.Salario;
     const nuevoResponsable = puedeEditarResponsable && b['Responsable de Selección'] !== undefined ? (b['Responsable de Selección'] || null) : current['Responsable de Selección'];
     const nuevaFechaFin = puedeEditarFechaFin && b['Fecha de Finalización'] !== undefined ? (b['Fecha de Finalización'] || null) : current['Fecha de Finalización'];
