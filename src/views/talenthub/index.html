@@ -655,33 +655,33 @@
     }
 
     .estado-chip.chip-suspendido {
-      background-color: #fef2f2;
-      border-color: #fca5a5;
-      color: #b91c1c;
-    }
-    .estado-chip.chip-suspendido:hover {
-      background-color: #fee2e2;
-    }
-    .estado-chip.chip-suspendido.active {
-      background-color: #dc2626;
-      border-color: #b91c1c;
-      color: #ffffff;
-      box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
-    }
-
-    .estado-chip.chip-cancelado {
       background-color: #fff7ed;
       border-color: #fdba74;
       color: #c2410c;
     }
-    .estado-chip.chip-cancelado:hover {
+    .estado-chip.chip-suspendido:hover {
       background-color: #ffedd5;
     }
-    .estado-chip.chip-cancelado.active {
+    .estado-chip.chip-suspendido.active {
       background-color: #ea580c;
       border-color: #c2410c;
       color: #ffffff;
       box-shadow: 0 4px 10px rgba(234, 88, 12, 0.35);
+    }
+
+    .estado-chip.chip-cancelado {
+      background-color: #fef2f2;
+      border-color: #fca5a5;
+      color: #b91c1c;
+    }
+    .estado-chip.chip-cancelado:hover {
+      background-color: #fee2e2;
+    }
+    .estado-chip.chip-cancelado.active {
+      background-color: #dc2626;
+      border-color: #b91c1c;
+      color: #ffffff;
+      box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
     }
 
     /* ── Resizable & Fixed Table Headers (como SST) ── */
@@ -877,8 +877,78 @@
     }
     .status-badge.en-proceso { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
     .status-badge.finalizado { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-    .status-badge.suspendido { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-    .status-badge.cancelado { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+    .status-badge.suspendido { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+    .status-badge.cancelado { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+    /* Badges de Días de Proceso */
+    .badge-dias-cumple {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #86efac;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.74rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .badge-dias-nocumple {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.74rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .badge-dias-pendiente {
+      background: #fef9c3;
+      color: #854d0e;
+      border: 1px solid #fde047;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.74rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .badge-contratado-locked {
+      background: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #cbd5e1;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: not-allowed;
+    }
+    .select-responsable-inline {
+      padding: 3px 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      max-width: 175px;
+      width: 100%;
+      outline: none;
+      cursor: pointer;
+    }
+    .select-responsable-inline:focus {
+      border-color: var(--primary);
+    }
 
     /* Toggle Option Buttons */
     .btn-group-toggle {
@@ -1129,6 +1199,9 @@
       <div style="display:flex; align-items:center; gap:10px;">
         <button type="button" class="btn btn-primary" id="btnHeaderAdministrarId" onclick="abrirModalNuevoProcesoIntegridad()" style="display:none;">
           <span>➕ Administrar Identificación</span>
+        </button>
+        <button type="button" class="btn btn-outline" id="btnHeaderParametrosReq" onclick="abrirModalParametrosRequisiciones()" style="display:none;" title="Configurar parámetros de Requisiciones">
+          <span>⚙️ Parámetros</span>
         </button>
         <button type="button" class="btn btn-primary" id="btnHeaderNuevaRequisicion" onclick="abrirModalCrearRequisicion()" style="display:none;">
           <span>➕ Nueva Requisición</span>
@@ -1394,9 +1467,9 @@
                   </div>
                   <div class="col-resizer"></div>
                 </th>
-                <th style="width: 95px; min-width: 80px; text-align:center;" class="sortable" onclick="ordenarRequisiciones('N° Personas Requeridas')">
+                <th style="width: 140px; min-width: 110px; text-align:center;" class="sortable" onclick="ordenarRequisiciones('N° Personas Requeridas')">
                   <div class="th-content" style="justify-content:center;">
-                    <span>Vacantes</span>
+                    <span>Vacantes / Aspirantes</span>
                     <span class="sort-icon" id="sort_N_Personas_Requeridas">▲</span>
                   </div>
                   <div class="col-resizer"></div>
@@ -1681,48 +1754,88 @@
 
   <!-- ── MODAL: FICHA DETALLADA DE REQUISICIÓN ───────────────────────────── -->
   <div class="modal-backdrop" id="modalDetalleRequisicion">
-    <div class="modal-box modal-box-lg">
-      <div class="modal-hdr" style="border-bottom:1.5px solid var(--border); padding-bottom:12px;">
+    <div class="modal-box modal-box-lg" style="max-height:92vh; display:flex; flex-direction:column; overflow:hidden; padding:0;">
+      
+      <!-- ENCABEZADO FIJO (Sticky con Resumen de la Solicitud) -->
+      <div class="modal-hdr" style="position:sticky; top:0; z-index:20; background:#fff; border-bottom:1.5px solid var(--border); padding:16px 20px 14px; margin-bottom:0; flex-shrink:0;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
           <div>
             <div style="display:flex; align-items:center; gap:8px;">
               <span id="detReqCodigo" style="font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.25rem; color:var(--primary)">RQ00000</span>
               <span id="detReqBadgeEstado" class="status-badge en-proceso">En Proceso</span>
             </div>
-            <h3 id="detReqCargo" style="margin-top:4px; font-size:1.2rem; font-weight:800; color:var(--text)">-</h3>
-            <p id="detReqUbicacion" style="font-size:0.83rem; color:var(--text-muted); margin-top:2px;">-</p>
+            <h3 id="detReqCargo" style="margin-top:4px; font-size:1.15rem; font-weight:800; color:var(--text)">-</h3>
+            <p id="detReqUbicacion" style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">-</p>
           </div>
           <button type="button" class="btn btn-outline" style="padding:4px 9px;" onclick="cerrarModales()">✕</button>
         </div>
+
+        <!-- Resumen de la Solicitud integrado en el encabezado -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-top:12px; background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Personas Requeridas</span>
+            <span id="detReqPersonas" style="font-size:1.1rem; color:var(--primary); font-weight:800;">-</span>
+          </div>
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Tipo de Pago</span>
+            <span id="detReqTipoPago" style="font-size:0.83rem; font-weight:600; color:var(--text);">-</span>
+          </div>
+          <div style="display:flex; flex-direction:column;" id="detReqSalarioContainer">
+            <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Salario</span>
+            <span id="detReqSalario" style="font-size:0.83rem; font-weight:700; color:var(--text);">-</span>
+          </div>
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Turno Requerido</span>
+            <span id="detReqTurno" style="font-size:0.83rem; font-weight:600; color:var(--text);">-</span>
+          </div>
+          <div style="display:flex; flex-direction:column; grid-column: span 2;">
+            <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Descripción del Turno</span>
+            <span id="detReqDescTurno" style="font-size:0.8rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">-</span>
+          </div>
+        </div>
       </div>
-      <div class="modal-body" style="padding:16px 0;">
+
+      <!-- CUERPO SCROLLEABLE -->
+      <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1; margin-bottom:0;">
         
-        <!-- Sección 1: Parámetros Clave -->
-        <div class="req-section-hdr"><span>📋</span> Resumen de la Solicitud</div>
-        <div class="req-detail-grid">
-          <div class="req-detail-box">
-            <div class="req-detail-lbl">Personas Requeridas</div>
-            <div class="req-detail-val" id="detReqPersonas" style="font-size:1.15rem; color:var(--primary); font-weight:800;">-</div>
+        <!-- SECCIÓN 1: CANDIDATOS / ASPIRANTES VINCULADOS (Justo después del encabezado) -->
+        <div class="req-section-hdr" style="justify-content: space-between; align-items:center; margin-top:0;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>👥</span> Candidatos / Aspirantes Vinculados
+            <span id="badgeCountAspirantes" class="tag-badge tag-badge-primary" style="font-size:0.75rem;">0</span>
           </div>
-          <div class="req-detail-box">
-            <div class="req-detail-lbl">Tipo de Pago</div>
-            <div class="req-detail-val" id="detReqTipoPago">-</div>
-          </div>
-          <div class="req-detail-box">
-            <div class="req-detail-lbl">Salario</div>
-            <div class="req-detail-val" id="detReqSalario">-</div>
-          </div>
-          <div class="req-detail-box">
-            <div class="req-detail-lbl">Turno Requerido</div>
-            <div class="req-detail-val" id="detReqTurno">-</div>
-          </div>
-          <div class="req-detail-box" style="grid-column: span 2;">
-            <div class="req-detail-lbl">Descripción del Turno</div>
-            <div class="req-detail-val" id="detReqDescTurno">-</div>
+          <button type="button" class="btn btn-primary" id="btnDetalleVincularAspirante" style="padding:4px 10px; font-size:0.75rem;" onclick="abrirSelectorVincularAspirante()">
+            <span>➕ Vincular Aspirante</span>
+          </button>
+        </div>
+
+        <div id="boxListaAspirantesVinculados" style="margin-bottom:18px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:#fff;">
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+              <thead>
+                <tr style="background:#f8fafc; border-bottom:1.5px solid var(--border);">
+                  <th style="padding:8px 10px; text-align:center; font-weight:700; width:90px;">Acciones</th>
+                  <th style="padding:8px 10px; font-weight:700;">Identificación</th>
+                  <th style="padding:8px 10px; font-weight:700;">Nombre Completo</th>
+                  <th style="padding:8px 10px; font-weight:700;">Días del Proceso</th>
+                  <th style="padding:8px 10px; font-weight:700;">Fecha Ingreso</th>
+                  <th style="padding:8px 10px; font-weight:700;">Estado Proceso</th>
+                  <th style="padding:8px 10px; font-weight:700;">Responsable</th>
+                  <th style="padding:8px 10px; text-align:center; font-weight:700; width:50px;">HV</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAspirantesVinculados">
+                <tr>
+                  <td colspan="8" style="text-align:center; padding:18px; color:var(--text-muted);">
+                    No hay candidatos vinculados a esta requisición todavía.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Sección 2: Perfil y Conocimientos -->
+        <!-- SECCIÓN 2: Perfil y Conocimientos -->
         <div class="req-section-hdr"><span>🎯</span> Perfil y Requisitos</div>
         <div class="req-detail-grid">
           <div class="req-detail-box" style="grid-column: span 2;">
@@ -1739,7 +1852,7 @@
           </div>
         </div>
 
-        <!-- Sección 3: Condiciones y Cursos -->
+        <!-- SECCIÓN 3: Condiciones y Cursos -->
         <div class="req-section-hdr"><span>🛡️</span> Dotación, EPP y Condiciones</div>
         <div class="req-detail-grid">
           <div class="req-detail-box">
@@ -1764,7 +1877,7 @@
           </div>
         </div>
 
-        <!-- Sección 4: Motivo y Auditoría -->
+        <!-- SECCIÓN 4: Justificación y Trazabilidad -->
         <div class="req-section-hdr"><span>🔍</span> Justificación y Trazabilidad</div>
         <div class="req-detail-grid">
           <div class="req-detail-box">
@@ -1789,7 +1902,9 @@
           </div>
           <div class="req-detail-box">
             <div class="req-detail-lbl">Responsable Selección</div>
-            <div class="req-detail-val" id="detReqResponsable" style="color:var(--primary); font-weight:700;">-</div>
+            <div class="req-detail-val" id="detReqResponsableWrap" style="color:var(--primary); font-weight:700;">
+              <span id="detReqResponsable">-</span>
+            </div>
           </div>
           <div class="req-detail-box">
             <div class="req-detail-lbl">Fecha de Finalización</div>
@@ -1809,45 +1924,36 @@
           </div>
         </div>
 
-        <!-- Sección 5: Candidatos / Aspirantes Vinculados (REF_ROWS("HV Aspirante", "IdRequisicion")) -->
-        <div class="req-section-hdr" style="justify-content: space-between; align-items:center; margin-top:22px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span>👥</span> Candidatos / Aspirantes Vinculados
-            <span id="badgeCountAspirantes" class="tag-badge tag-badge-primary" style="font-size:0.75rem;">0</span>
-          </div>
-          <button type="button" class="btn btn-primary" style="padding:4px 10px; font-size:0.75rem;" onclick="abrirSelectorVincularAspirante()">
-            <span>➕ Vincular Aspirante</span>
-          </button>
-        </div>
-
-        <div id="boxListaAspirantesVinculados" style="margin-bottom:14px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:#fff;">
-          <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-              <thead>
-                <tr style="background:#f8fafc; border-bottom:1.5px solid var(--border);">
-                  <th style="padding:8px 12px; font-weight:700;">Identificación</th>
-                  <th style="padding:8px 12px; font-weight:700;">Nombre Completo</th>
-                  <th style="padding:8px 12px; font-weight:700;">Ciudad de Residencia</th>
-                  <th style="padding:8px 12px; font-weight:700;">Teléfono</th>
-                  <th style="padding:8px 12px; font-weight:700;">Estado Proceso</th>
-                  <th style="padding:8px 12px; text-align:center; font-weight:700; width:110px;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyAspirantesVinculados">
-                <tr>
-                  <td colspan="6" style="text-align:center; padding:18px; color:var(--text-muted);">
-                    No hay candidatos vinculados a esta requisición todavía.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
       </div>
-      <div class="modal-ftr">
+      <div class="modal-ftr" style="padding:12px 20px; background:#f8fafc;">
         <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cerrar</button>
         <button type="button" class="btn btn-primary" id="btnEditarDesdeDetalle" onclick="abrirModalEditarRequisicionActual()">✏️ Editar Requisición</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: PARÁMETROS DE REQUISICIONES ──────────────────────────────── -->
+  <div class="modal-backdrop" id="modalParametrosRequisiciones" style="z-index: 1060;">
+    <div class="modal-box modal-box-lg" style="max-width: 720px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; padding:0;">
+      <div class="modal-hdr" style="padding:16px 22px; border-bottom:1.5px solid var(--border); margin-bottom:0; flex-shrink:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="color:var(--primary); margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+              <span>⚙️</span> Parámetros de Requisiciones
+            </h3>
+            <p style="margin:4px 0 0; font-size:0.82rem; color:var(--text-muted);">
+              Ajusta los roles permitidos y límites de días para el flujo de requisiciones en la base de datos.
+            </p>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:4px 9px;" onclick="cerrarModales()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" id="bodyParametrosRequisiciones" style="padding:18px 22px; overflow-y:auto; flex:1; margin-bottom:0;">
+        <div style="text-align:center; padding:24px; color:var(--text-muted);">Cargando parámetros...</div>
+      </div>
+      <div class="modal-ftr" style="padding:12px 22px; border-top:1px solid var(--border); background:#f8fafc; flex-shrink:0;">
+        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarParametrosReq" onclick="guardarParametrosRequisiciones()">💾 Guardar Parámetros</button>
       </div>
     </div>
   </div>
@@ -2107,9 +2213,12 @@
     let _firmaDigitalModificada = false;
     let _firmaDigitalCanvasInicializado = false;
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       // 1. Renderizar navegación según secciones autorizadas
       renderSidebarNav();
+
+      // Cargar catálogos y permisos de Requisiciones desde el inicio
+      await cargarCatalogosRequisiciones();
 
       // 2. Activar pestaña configurada
       switchTab(CONFIG.activeTab || 'Requisiciones');
@@ -2137,6 +2246,22 @@
       // 5. Cargar perfil corporativo del usuario
       cargarPerfilTalenthub();
     });
+
+    function actualizarVisibilidadBotonesHeader() {
+      const tabName = CONFIG.activeTab || 'Requisiciones';
+      const btnHeaderIntegridad = document.getElementById('btnHeaderAdministrarId');
+      if (btnHeaderIntegridad) {
+        btnHeaderIntegridad.style.display = (tabName === 'Integridad' && _reqCatalogos?.permisos?.puedeAgregarIntegridad) ? 'inline-flex' : 'none';
+      }
+      const btnHeaderReq = document.getElementById('btnHeaderNuevaRequisicion');
+      if (btnHeaderReq) {
+        btnHeaderReq.style.display = (tabName === 'Requisiciones') ? 'inline-flex' : 'none';
+      }
+      const btnHeaderParametros = document.getElementById('btnHeaderParametrosReq');
+      if (btnHeaderParametros) {
+        btnHeaderParametros.style.display = (tabName === 'Requisiciones' && _reqCatalogos?.permisos?.puedeEditarParametros) ? 'inline-flex' : 'none';
+      }
+    }
 
     function renderSidebarNav() {
       const navList = document.getElementById('sidebarNavList');
@@ -2177,15 +2302,8 @@
       document.getElementById('pageTitleText').innerHTML = `${meta.icon} ${meta.title}`;
       document.getElementById('pageSubtitleText').textContent = meta.subtitle;
 
-      // Mostrar botones superiores según pestaña activa
-      const btnHeaderIntegridad = document.getElementById('btnHeaderAdministrarId');
-      if (btnHeaderIntegridad) {
-        btnHeaderIntegridad.style.display = (tabName === 'Integridad') ? 'inline-flex' : 'none';
-      }
-      const btnHeaderReq = document.getElementById('btnHeaderNuevaRequisicion');
-      if (btnHeaderReq) {
-        btnHeaderReq.style.display = (tabName === 'Requisiciones') ? 'inline-flex' : 'none';
-      }
+      // Actualizar visibilidad de botones del encabezado según pestaña y permisos
+      actualizarVisibilidadBotonesHeader();
 
       // Mostrar contenido activo
       const contentId = `tabContent${tabName}`;
@@ -2913,9 +3031,10 @@
         const formResp = document.getElementById('formReqResponsable');
         if (formResp) {
           formResp.innerHTML = '<option value="">Sin asignar / Pendiente</option>' +
-            (data.coordinadores || []).map(co => `<option value="${esc(co.nombre)}">${esc(co.nombre)} (${esc(co.cargo || 'Selección')})</option>`).join('');
+            (data.responsablesSeleccion || data.coordinadores || []).map(co => `<option value="${esc(co.id || co.nombre)}">${esc(co.label || co.nombre)}</option>`).join('');
         }
 
+        actualizarVisibilidadBotonesHeader();
       } catch (err) {
         console.error('[TalentHub] Fallo de red al cargar catálogos:', err);
       }
@@ -3322,6 +3441,11 @@
         return;
       }
 
+      const puedeEditarDespues = _reqCatalogos?.permisos?.puedeEditarDespuesDeGuardar || false;
+      const puedeEscogerVacio = _reqCatalogos?.permisos?.puedeEscogerResponsableVacio || false;
+      const puedeEditarAsignado = _reqCatalogos?.permisos?.puedeEditarResponsableAsignado || false;
+      const listaResp = _reqCatalogos?.responsablesSeleccion || [];
+
       tbody.innerHTML = _requisiciones.map(r => {
         const codigo = esc(r['Requisición'] || ('#' + r.IdRequisicion));
         const badgeClase = getEstadoBadgeClass(r.Estado);
@@ -3330,8 +3454,33 @@
         const operacion = esc(r['Operación'] || '-');
         const cargo = esc(r['Cargo Requerido'] || '-');
         const vacantes = parseInt(r['N° Personas Requeridas']) || 1;
+        const totalAspirantes = parseInt(r.total_aspirantes) || 0;
         const solicitante = esc(r.Solicitante || '-');
-        const responsable = esc(r['Responsable de Selección'] || 'Pendiente');
+        const respActual = (r['Responsable de Selección'] || '').trim();
+
+        const btnEditHtml = puedeEditarDespues
+          ? `<button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.8rem; line-height:1;" onclick="event.stopPropagation(); abrirModalEditarRequisicionPorId(${r.IdRequisicion})" title="Editar requisición"><span>✏️</span></button>`
+          : '';
+
+        // Celda de Responsable con select inline según permisos
+        const esEditable = (!respActual && puedeEscogerVacio) || (respActual && puedeEditarAsignado);
+        let celdaResp = '';
+        if (esEditable) {
+          const opts = listaResp.map(u => {
+            const isSel = (u.id === respActual || u.nombre === respActual) ? 'selected' : '';
+            return `<option value="${esc(u.id)}" ${isSel}>${esc(u.label || u.nombre)}</option>`;
+          }).join('');
+          celdaResp = `
+            <select class="select-responsable-inline" onclick="event.stopPropagation()" onchange="event.stopPropagation(); cambiarResponsableInline(${r.IdRequisicion}, this.value)">
+              <option value="">-- Sin asignar --</option>
+              ${opts}
+            </select>
+          `;
+        } else {
+          celdaResp = respActual
+            ? `<span style="font-size:0.8rem; font-weight:600; color:var(--primary);">${esc(respActual)}</span>`
+            : `<span style="font-size:0.8rem; color:#94a3b8;">—</span>`;
+        }
 
         return `
           <tr onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})" style="cursor:pointer;">
@@ -3340,9 +3489,7 @@
                 <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.8rem; line-height:1;" onclick="event.stopPropagation(); abrirModalDetalleRequisicion(${r.IdRequisicion})" title="Ver detalle completo">
                   <span>👁️</span>
                 </button>
-                <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.8rem; line-height:1;" onclick="event.stopPropagation(); abrirModalEditarRequisicionPorId(${r.IdRequisicion})" title="Editar requisición">
-                  <span>✏️</span>
-                </button>
+                ${btnEditHtml}
               </div>
             </td>
             <td>
@@ -3360,15 +3507,41 @@
             <td style="font-weight:600;">${operacion}</td>
             <td style="font-weight:700; color:var(--text);">${cargo}</td>
             <td style="text-align:center;">
-              <span style="display:inline-block; min-width:24px; padding:2px 8px; border-radius:12px; background:var(--primary-light); color:var(--primary); font-weight:800; font-size:0.82rem;">
-                ${vacantes}
+              <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:var(--primary-light); color:var(--primary); font-weight:800; font-size:0.82rem;" title="Vacantes Requeridas: ${vacantes} / Aspirantes Relacionados: ${totalAspirantes}">
+                ${vacantes} / ${totalAspirantes}
               </span>
             </td>
             <td style="font-size:0.8rem; color:var(--text-muted);">${solicitante}</td>
-            <td style="font-size:0.8rem; font-weight:600; color:${r['Responsable de Selección'] ? 'var(--primary)' : '#94a3b8'}">${responsable}</td>
+            <td>${celdaResp}</td>
           </tr>
         `;
       }).join('');
+    }
+
+    async function cambiarResponsableInline(idReq, nuevoResponsable) {
+      try {
+        const res = await fetch(`/talenthub/api/requisiciones/${idReq}/responsable`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            responsable: nuevoResponsable || null
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo actualizar el responsable.', 'error');
+          cargarRequisiciones();
+          return;
+        }
+        showToast('Responsable de Selección actualizado con éxito.', 'success');
+        const reqItem = _requisiciones.find(x => x.IdRequisicion === idReq);
+        if (reqItem) reqItem['Responsable de Selección'] = data.responsable;
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al actualizar el responsable.', 'error');
+        cargarRequisiciones();
+      }
     }
 
     function getEstadoBadgeClass(estado) {
@@ -3440,11 +3613,13 @@
       if (lockEstado) lockEstado.textContent = '🔒 Fijo: EN PROCESO';
 
       // Permisos de Salario
-      const puedeEditarSalario = _reqCatalogos?.permisos?.puedeModificarSalario || false;
+      const puedeVerSalario = _reqCatalogos?.permisos?.puedeVerSalario ?? false;
+      const fldSalarioWrap = document.getElementById('fieldReqSalario');
+      if (fldSalarioWrap) fldSalarioWrap.style.display = puedeVerSalario ? 'block' : 'none';
       const fldSalario = document.getElementById('formReqSalario');
-      if (fldSalario) fldSalario.disabled = !puedeEditarSalario;
+      if (fldSalario) fldSalario.disabled = !puedeVerSalario;
       const lockSalario = document.getElementById('lockSalario');
-      if (lockSalario) lockSalario.style.display = puedeEditarSalario ? 'none' : 'inline';
+      if (lockSalario) lockSalario.style.display = puedeVerSalario ? 'none' : 'inline';
 
       // Permisos de Responsable de Selección
       const puedeEditarResp = _reqCatalogos?.permisos?.puedeModificarResponsable || false;
@@ -3485,7 +3660,15 @@
 
         document.getElementById('detReqPersonas').textContent = r['N° Personas Requeridas'] || 1;
         document.getElementById('detReqTipoPago').textContent = r['Tipo de Pago'] || '-';
-        document.getElementById('detReqSalario').textContent = r.Salario ? `$ ${Number(r.Salario).toLocaleString('es-CO')}` : 'Sin especificar';
+
+        // Visibilidad y valor de Salario
+        const puedeVerSalario = _reqCatalogos?.permisos?.puedeVerSalario ?? false;
+        const detSalarioContainer = document.getElementById('detReqSalarioContainer');
+        if (detSalarioContainer) {
+          detSalarioContainer.style.display = puedeVerSalario ? 'flex' : 'none';
+        }
+        document.getElementById('detReqSalario').textContent = (puedeVerSalario && r.Salario) ? `$ ${Number(r.Salario).toLocaleString('es-CO')}` : (puedeVerSalario ? 'Sin especificar' : '—');
+
         document.getElementById('detReqTurno').textContent = r['Turno Requerido'] || '-';
         document.getElementById('detReqDescTurno').textContent = r['Descripción del Turno'] || 'Sin descripción';
 
@@ -3505,12 +3688,51 @@
 
         document.getElementById('detReqSolicitante').textContent = r.Solicitante || '-';
         document.getElementById('detReqCargoSolicitante').textContent = r['Cargo Solicitante'] || '-';
-        document.getElementById('detReqResponsable').textContent = r['Responsable de Selección'] || 'Pendiente por asignar';
-        document.getElementById('detReqFechaFin').textContent = r.fechaFinalizacionFormatted || (r['Fecha de Finalización'] ? String(r['Fecha de Finalización']).substring(0, 10) : 'Pendiente');
 
+        // Responsable Selección interactivo inline en Detalle
+        const respActual = (r['Responsable de Selección'] || '').trim();
+        const puedeEscogerVacio = _reqCatalogos?.permisos?.puedeEscogerResponsableVacio || false;
+        const puedeEditarAsignado = _reqCatalogos?.permisos?.puedeEditarResponsableAsignado || false;
+        const esEditable = (!respActual && puedeEscogerVacio) || (respActual && puedeEditarAsignado);
+        const listaResp = _reqCatalogos?.responsablesSeleccion || [];
+        const wrapResp = document.getElementById('detReqResponsableWrap');
+        if (wrapResp) {
+          if (esEditable) {
+            const opts = listaResp.map(u => {
+              const isSel = (u.id === respActual || u.nombre === respActual) ? 'selected' : '';
+              return `<option value="${esc(u.id)}" ${isSel}>${esc(u.label || u.nombre)}</option>`;
+            }).join('');
+            wrapResp.innerHTML = `
+              <select class="select-responsable-inline" style="font-size:0.85rem; padding:4px 8px; width:100%; max-width:280px;" onchange="cambiarResponsableDetalle(${r.IdRequisicion}, this.value)">
+                <option value="">-- Sin asignar --</option>
+                ${opts}
+              </select>
+            `;
+          } else {
+            wrapResp.innerHTML = respActual
+              ? `<span style="font-size:0.85rem; font-weight:700; color:var(--primary);">${esc(respActual)}</span>`
+              : `<span style="font-size:0.85rem; color:#94a3b8;">Pendiente por asignar</span>`;
+          }
+        }
+
+        document.getElementById('detReqFechaFin').textContent = r.fechaFinalizacionFormatted || (r['Fecha de Finalización'] ? String(r['Fecha de Finalización']).substring(0, 10) : 'Pendiente');
         document.getElementById('detReqFechaSol').textContent = r.fechaRequisicionFormatted || (r['Fecha Requisición'] ? String(r['Fecha Requisición']).substring(0, 16) : '-');
         document.getElementById('detReqFechaAct').textContent = r.fechaActualizacionFormatted || (r['Fecha Actualización'] ? String(r['Fecha Actualización']).substring(0, 16) : '-');
         document.getElementById('detReqUsuarioAct').textContent = r.usuario_actualizacion || 'N/A';
+
+        // Visibilidad de botón Editar Requisición en footer de Detalle
+        const puedeEditarDespues = _reqCatalogos?.permisos?.puedeEditarDespuesDeGuardar || false;
+        const btnEditDetalle = document.getElementById('btnEditarDesdeDetalle');
+        if (btnEditDetalle) {
+          btnEditDetalle.style.display = puedeEditarDespues ? 'inline-flex' : 'none';
+        }
+
+        // Visibilidad de botón Vincular Aspirante
+        const puedeVincular = _reqCatalogos?.permisos?.puedeVincularAspirante || false;
+        const btnVincDetalle = document.getElementById('btnDetalleVincularAspirante');
+        if (btnVincDetalle) {
+          btnVincDetalle.style.display = puedeVincular ? 'inline-flex' : 'none';
+        }
 
         // Renderizar candidatos vinculados (REF_ROWS)
         renderizarTablaAspirantesVinculados(data.aspirantes || []);
@@ -3520,6 +3742,32 @@
       } catch (err) {
         console.error('[TalentHub] Error al abrir detalle:', err);
         showToast('Error de red al consultar detalle de la requisición.', 'error');
+      }
+    }
+
+    async function cambiarResponsableDetalle(idReq, nuevoResponsable) {
+      try {
+        const res = await fetch(`/talenthub/api/requisiciones/${idReq}/responsable`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            responsable: nuevoResponsable || null
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'No se pudo actualizar el responsable.', 'error');
+          if (_reqActualDetalle) abrirModalDetalleRequisicion(idReq);
+          return;
+        }
+        showToast('Responsable de Selección actualizado con éxito.', 'success');
+        if (_reqActualDetalle) _reqActualDetalle['Responsable de Selección'] = data.responsable;
+        cargarRequisiciones();
+      } catch (err) {
+        console.error(err);
+        showToast('Error de red al actualizar el responsable.', 'error');
+        if (_reqActualDetalle) abrirModalDetalleRequisicion(idReq);
       }
     }
 
@@ -3622,11 +3870,13 @@
       }
 
       // Permisos de Salario
-      const puedeEditarSalario = _reqCatalogos?.permisos?.puedeModificarSalario || false;
+      const puedeVerSalario = _reqCatalogos?.permisos?.puedeVerSalario ?? false;
+      const fldSalarioWrap = document.getElementById('fieldReqSalario');
+      if (fldSalarioWrap) fldSalarioWrap.style.display = puedeVerSalario ? 'block' : 'none';
       const fldSalario = document.getElementById('formReqSalario');
-      if (fldSalario) fldSalario.disabled = !puedeEditarSalario;
+      if (fldSalario) fldSalario.disabled = !puedeVerSalario;
       const lockSalario = document.getElementById('lockSalario');
-      if (lockSalario) lockSalario.style.display = puedeEditarSalario ? 'none' : 'inline';
+      if (lockSalario) lockSalario.style.display = puedeVerSalario ? 'none' : 'inline';
 
       // Permisos de Responsable de Selección
       const puedeEditarResp = _reqCatalogos?.permisos?.puedeModificarResponsable || false;
@@ -3748,7 +3998,7 @@
     // ── GESTIÓN DE CANDIDATOS VINCULADOS (REF_ROWS) ──────────────────────────
     function renderizarTablaAspirantesVinculados(aspirantes) {
       const badge = document.getElementById('badgeCountAspirantes');
-      if (badge) badge.textContent = `${aspirantes.length}`;
+      if (badge) badge.textContent = `${aspirantes ? aspirantes.length : 0}`;
 
       const tbody = document.getElementById('tbodyAspirantesVinculados');
       if (!tbody) return;
@@ -3756,7 +4006,7 @@
       if (!aspirantes || aspirantes.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">
+            <td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">
               No hay candidatos vinculados a esta requisición todavía. Haz clic en "➕ Vincular Aspirante" para asociar uno.
             </td>
           </tr>
@@ -3764,29 +4014,78 @@
         return;
       }
 
+      const tiempoLimite = parseInt(_reqCatalogos?.permisos?.tiempoLimiteRequisicion) || 8;
+      const fechaReqStr = _reqActualDetalle?.['Fecha Requisición'] || _reqActualDetalle?.fechaRequisicion || null;
+
       tbody.innerHTML = aspirantes.map(a => {
         const idSafe = esc(a.identificacion || '-');
         const nombreSafe = esc(a.nombre_completo || '-');
-        const ciudadSafe = esc(a.ciudad || 'No registrada');
-        const telSafe = esc(a.telefono || '-');
         const estSafe = esc(a.estado_proceso || 'En proceso');
+        const isContratado = (a.estado_proceso || '').trim().toLowerCase() === 'contratado';
+        const fechaIngresoStr = a.fecha_ingreso ? String(a.fecha_ingreso).substring(0, 10) : null;
+        const fechaIngresoDisplay = fechaIngresoStr ? esc(fechaIngresoStr) : '—';
+        const respAspirante = esc(a.responsable_aspirante || '—');
         const cvLink = a.pdf_public_url
-          ? `<a href="${esc(a.pdf_public_url)}" target="_blank" style="margin-left:5px; font-size:0.75rem; color:var(--primary); text-decoration:none;" title="Ver Hoja de Vida">📄</a>`
-          : '';
+          ? `<a href="${esc(a.pdf_public_url)}" target="_blank" style="font-size:0.85rem; color:var(--primary); text-decoration:none;" title="Ver Hoja de Vida">📄</a>`
+          : '—';
+
+        // ── CÁLCULO DE DÍAS DEL PROCESO ──
+        let diasBadgeHtml = '';
+        if (fechaReqStr) {
+          const dReq = new Date(fechaReqStr);
+          if (!isNaN(dReq.getTime())) {
+            if (fechaIngresoStr) {
+              const dIng = new Date(fechaIngresoStr);
+              if (!isNaN(dIng.getTime())) {
+                const diffMs = dIng.getTime() - dReq.getTime();
+                let dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                if (dias < 0) dias = 0;
+                if (dias <= tiempoLimite) {
+                  diasBadgeHtml = `<span class="badge-dias-cumple" title="Cumple límite de ${tiempoLimite} días">✓ ${dias} ${dias === 1 ? 'día' : 'días'} · Cumple</span>`;
+                } else {
+                  diasBadgeHtml = `<span class="badge-dias-nocumple" title="Superó límite de ${tiempoLimite} días">✕ ${dias} ${dias === 1 ? 'día' : 'días'} · No Cumple</span>`;
+                }
+              }
+            } else {
+              const dHoy = new Date();
+              const diffMs = dHoy.getTime() - dReq.getTime();
+              let dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+              if (dias < 0) dias = 0;
+              diasBadgeHtml = `<span class="badge-dias-pendiente" title="En proceso actual">⏳ ${dias} ${dias === 1 ? 'día' : 'días'} · Pendiente</span>`;
+            }
+          }
+        }
+        if (!diasBadgeHtml) {
+          diasBadgeHtml = '<span style="color:#94a3b8; font-size:0.75rem;">—</span>';
+        }
+
+        // ── ACCIÓN: QUITAR (BLOQUEADO SI ESTÁ CONTRATADO) ──
+        let accionHtml = '';
+        if (isContratado) {
+          accionHtml = `
+            <span class="badge-contratado-locked" title="Aspirante contratado en Sociodemográfica. Para eliminarlo debes realizar la purga desde el módulo de Integridad.">
+              🔒 Contratado
+            </span>
+          `;
+        } else {
+          accionHtml = `
+            <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.74rem; color:#dc2626; border-color:#fca5a5;" 
+                    onclick="desvincularAspiranteDeRequisicion('${esc(a.id_aspirante)}', '${nombreSafe}')" title="Quitar aspirante de la vacante">
+              <span>✕ Quitar</span>
+            </button>
+          `;
+        }
 
         return `
           <tr>
+            <td style="text-align:center; white-space:nowrap;">${accionHtml}</td>
             <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary);">${idSafe}</td>
-            <td style="font-weight:600;">${nombreSafe} ${cvLink}</td>
-            <td>${ciudadSafe}</td>
-            <td style="font-size:0.8rem; color:var(--text-muted);">${telSafe}</td>
-            <td><span class="tag-badge tag-badge-primary">${estSafe}</span></td>
-            <td style="text-align:center;">
-              <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.74rem; color:#dc2626; border-color:#fca5a5;" 
-                      onclick="desvincularAspiranteDeRequisicion('${esc(a.id_aspirante)}', '${nombreSafe}')" title="Desvincular aspirante de la vacante">
-                <span>✕ Desvincular</span>
-              </button>
-            </td>
+            <td style="font-weight:600;">${nombreSafe}</td>
+            <td>${diasBadgeHtml}</td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${fechaIngresoDisplay}</td>
+            <td><span class="tag-badge ${isContratado ? 'tag-badge-primary' : ''}">${estSafe}</span></td>
+            <td style="font-size:0.8rem; font-weight:500;">${respAspirante}</td>
+            <td style="text-align:center;">${cvLink}</td>
           </tr>
         `;
       }).join('');
@@ -3910,8 +4209,9 @@
 
         showToast(data.mensaje || 'Aspirante vinculado exitosamente.', 'success');
         cerrarSelectorVincularAspirante();
-        // Recargar detalle de la requisición para reflejar la vinculación
+        // Recargar detalle y tabla principal para actualizar conteos
         abrirModalDetalleRequisicion(reqId);
+        cargarRequisiciones();
 
       } catch (err) {
         console.error('[TalentHub] Error al vincular aspirante:', err);
@@ -3923,7 +4223,7 @@
       if (!_reqActualDetalle || !idAspirante) return;
       const reqId = _reqActualDetalle.IdRequisicion;
 
-      if (!confirm(`¿Estás seguro de que deseas desvincular al aspirante "${nombre}" de esta requisición?`)) {
+      if (!confirm(`¿Estás seguro de que deseas quitar al aspirante "${nombre}" de esta requisición?`)) {
         return;
       }
 
@@ -3939,17 +4239,180 @@
 
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          showToast(data.error || 'No se pudo desvincular el aspirante.', 'error');
+          showToast(data.error || 'No se pudo quitar el aspirante.', 'error');
           return;
         }
 
-        showToast(data.mensaje || 'Aspirante desvinculado con éxito.', 'success');
-        // Recargar detalle de la requisición para actualizar la tabla
+        showToast(data.mensaje || 'Aspirante retirado de la requisición con éxito.', 'success');
+        // Recargar detalle de la requisición y tabla principal para actualizar conteos
         abrirModalDetalleRequisicion(reqId);
+        cargarRequisiciones();
 
       } catch (err) {
         console.error('[TalentHub] Error al desvincular aspirante:', err);
-        showToast('Error de red al desvincular el aspirante.', 'error');
+        showToast('Error de red al quitar el aspirante.', 'error');
+      }
+    }
+
+    // ── GESTIÓN DE PARÁMETROS CONFIGURABLES DE REQUISICIONES ────────────────
+    let _parametrosReqData = [];
+    let _rolesDisponibles = [];
+
+    async function abrirModalParametrosRequisiciones() {
+      const body = document.getElementById('bodyParametrosRequisiciones');
+      if (body) {
+        body.innerHTML = '<div style="text-align:center; padding:28px; color:var(--text-muted);"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando parámetros...</div>';
+      }
+      document.getElementById('modalParametrosRequisiciones').style.display = 'flex';
+
+      try {
+        const res = await fetch(`/talenthub/api/parametros/requisiciones?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          if (body) body.innerHTML = `<div style="color:#ef4444; padding:20px; text-align:center;">${esc(data.error || 'Error al cargar parámetros')}</div>`;
+          return;
+        }
+
+        _parametrosReqData = data.parametros || [];
+        _rolesDisponibles = data.roles || [];
+        renderBodyParametrosRequisiciones();
+      } catch (err) {
+        console.error('[TalentHub] Error al cargar parámetros:', err);
+        if (body) body.innerHTML = '<div style="color:#ef4444; padding:20px; text-align:center;">Error de red al consultar parámetros.</div>';
+      }
+    }
+
+    function renderBodyParametrosRequisiciones() {
+      const body = document.getElementById('bodyParametrosRequisiciones');
+      if (!body) return;
+
+      if (!_parametrosReqData.length) {
+        body.innerHTML = '<div style="text-align:center; padding:24px; color:var(--text-muted);">No hay parámetros configurados para Requisiciones.</div>';
+        return;
+      }
+
+      let html = '<div style="display:flex; flex-direction:column; gap:16px;">';
+
+      _parametrosReqData.forEach((p, idx) => {
+        const concepto = esc(p.Concepto);
+        const condicion = p.Condicion;
+        const parametroVal = p.Parametro || '';
+
+        html += `
+          <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:14px 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+              <div>
+                <div style="font-weight:700; font-size:0.92rem; color:var(--text);">${concepto}</div>
+                <div style="font-size:0.76rem; color:var(--text-muted);">Condición: <strong>${esc(condicion)}</strong></div>
+              </div>
+              <span class="tag-badge tag-badge-primary" style="font-size:0.7rem;">${esc(p.Modulo)} · ${esc(p.Seccion)}</span>
+            </div>
+        `;
+
+        if (condicion === 'Rol') {
+          const rolesSeleccionados = parametroVal.split(',').map(s => s.trim().toLowerCase());
+          const chipsHtml = _rolesDisponibles.map(rol => {
+            const rolTrim = rol.trim();
+            const isChecked = rolesSeleccionados.includes(rolTrim.toLowerCase());
+            const activeStyle = isChecked
+              ? 'background:var(--primary); color:#fff; border-color:var(--primary); font-weight:700;'
+              : 'background:#f1f5f9; color:#475569; border-color:#cbd5e1;';
+            return `
+              <button type="button" class="btn" style="padding:4px 10px; font-size:0.78rem; border-radius:16px; border:1px solid; transition:all 0.15s ease; ${activeStyle}"
+                      onclick="toggleRolParametro(${idx}, '${esc(rolTrim)}')">
+                ${isChecked ? '✓ ' : '+ '}${esc(rolTrim)}
+              </button>
+            `;
+          }).join('');
+
+          html += `
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+              ${chipsHtml}
+            </div>
+          `;
+        } else if (condicion === 'Número') {
+          html += `
+            <div style="margin-top:8px; max-width:200px;">
+              <input type="number" class="input-field" min="1" max="365" value="${esc(parametroVal)}" 
+                     onchange="actualizarNumeroParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
+              <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Días límite para cumplimiento del proceso</small>
+            </div>
+          `;
+        } else {
+          html += `
+            <div style="margin-top:8px;">
+              <input type="text" class="input-field" value="${esc(parametroVal)}" 
+                     onchange="actualizarTextoParametro(${idx}, this.value)" style="font-size:0.85rem;">
+            </div>
+          `;
+        }
+
+        html += `</div>`;
+      });
+
+      html += '</div>';
+      body.innerHTML = html;
+    }
+
+    function toggleRolParametro(paramIdx, rol) {
+      const p = _parametrosReqData[paramIdx];
+      if (!p) return;
+      let roles = (p.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
+      const rolLower = rol.toLowerCase();
+      const existIdx = roles.findIndex(r => r.toLowerCase() === rolLower);
+      if (existIdx >= 0) {
+        roles.splice(existIdx, 1);
+      } else {
+        roles.push(rol);
+      }
+      p.Parametro = roles.join(', ');
+      renderBodyParametrosRequisiciones();
+    }
+
+    function actualizarNumeroParametro(paramIdx, val) {
+      const p = _parametrosReqData[paramIdx];
+      if (p) p.Parametro = String(val || '0').trim();
+    }
+
+    function actualizarTextoParametro(paramIdx, val) {
+      const p = _parametrosReqData[paramIdx];
+      if (p) p.Parametro = String(val || '').trim();
+    }
+
+    async function guardarParametrosRequisiciones() {
+      const btn = document.getElementById('btnGuardarParametrosReq');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+      }
+
+      try {
+        const res = await fetch('/talenthub/api/parametros/requisiciones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            parametros: _parametrosReqData
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast(data.error || 'Error al guardar parámetros.', 'error');
+          return;
+        }
+
+        showToast('Parámetros guardados y aplicados correctamente.', 'success');
+        cerrarModales();
+        await cargarCatalogosRequisiciones();
+        await cargarRequisiciones();
+      } catch (err) {
+        console.error('[TalentHub] Error al guardar parámetros:', err);
+        showToast('Error de red al guardar parámetros.', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '💾 Guardar Parámetros';
+        }
       }
     }
 
@@ -3965,6 +4428,8 @@
       if (modForm) modForm.style.display = 'none';
       const modVinc = document.getElementById('modalVincularAspirante');
       if (modVinc) modVinc.style.display = 'none';
+      const modParams = document.getElementById('modalParametrosRequisiciones');
+      if (modParams) modParams.style.display = 'none';
     }
 
     document.querySelectorAll('.modal-backdrop').forEach(modal => {

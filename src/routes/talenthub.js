@@ -778,6 +778,26 @@ router.post('/api/integridad/modificar', async (req, res) => {
 // ── SUBMÓDULO: REQUISICIONES DE PERSONAL (Dynamic_Requisiciones) ──────────────
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ── HELPER DE PARÁMETROS CONFIGURABLES ───────────────────────────────────────
+async function obtenerParametrosTalenthub() {
+  const [rows] = await pool.execute(
+    'SELECT `Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ?',
+    ['talenthub']
+  );
+  const mapa = {};
+  for (const r of rows) {
+    mapa[r.Concepto] = r.Parametro;
+    mapa[`${r.Seccion}:${r.Concepto}`] = r.Parametro;
+  }
+  return mapa;
+}
+
+function rolPermitidoEnParametro(rolUsuario, parametroStr) {
+  if (!rolUsuario || !parametroStr) return false;
+  const roles = parametroStr.split(',').map(s => s.trim().toLowerCase());
+  return roles.includes(rolUsuario.trim().toLowerCase());
+}
+
 // 1. GET /api/requisiciones/catalogos
 // Carga datos del usuario actual, listas desplegables de regionales, operaciones, cargos y responsables
 router.get('/api/requisiciones/catalogos', async (req, res) => {
@@ -792,10 +812,22 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     const cargoUsuario = (acceso.cargo || '').toUpperCase().trim();
     const esAdminOp = acceso.operacion === 'Administracion';
 
-    // Reglas de permisos para campos protegidos
+    // Cargar parámetros dinámicos de Config_Parametros
+    const paramsConfig = await obtenerParametrosTalenthub();
+
+    // Permisos basados en parámetros de configuración
+    const puedeEditarDespuesDeGuardar = rolPermitidoEnParametro(rol, paramsConfig['Editar Requisición despues de guardar']);
+    const puedeVerSalario = rolPermitidoEnParametro(rol, paramsConfig['Editar y ver Salario en Requisición']);
+    const puedeModificarSalario = puedeVerSalario;
+    const tiempoLimiteRequisicion = parseInt(paramsConfig['Tiempo limite de Requisición']) || 8;
+    const puedeVincularAspirante = rolPermitidoEnParametro(rol, paramsConfig['Responsables area de Selección']);
+    const puedeEscogerResponsableVacio = rolPermitidoEnParametro(rol, paramsConfig['Escoger responsables area de Selección en Requisición']);
+    const puedeEditarResponsableAsignado = rolPermitidoEnParametro(rol, paramsConfig['Editar responsables area de Selección en Requisición']);
+    const puedeAgregarIntegridad = rolPermitidoEnParametro(rol, paramsConfig['Agregar Registros a Integridad']);
+    const puedeEditarParametros = rolPermitidoEnParametro(rol, paramsConfig['Editar parametros de Requisiciones']);
+
+    // Reglas de permisos adicionales
     const puedeEditarEstado = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
-    const puedeEditarSalario = ['Selección', 'Sistema'].includes(rol);
-    const puedeEditarResponsable = rol === 'Sistema' || (rol === 'Selección' && cargoUsuario === 'COORDINADOR DE SELECCIÓN');
     const puedeEditarFechaFin = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
 
     // Operaciones según alcance del usuario
@@ -831,10 +863,30 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     }
     const [cargoRows] = await pool.execute(cargosQuery);
 
-    // Responsables de Selección (usuarios con Rol 'Selección' o 'Selección Centro')
-    const [respRows] = await pool.execute(
-      "SELECT `ID` as id, `Nombre` as nombre, `Colaborador` as colaborador, `Cargo` as cargo, `Rol` as rol FROM `Maestro_Usuarios` WHERE `Rol` IN ('Selección', 'Selección Centro') ORDER BY `Nombre` ASC"
-    );
+    // Responsables de Selección: pobladas con Nombre y Cargo de Maestro_Usuarios según roles en "Responsables area de Selección"
+    const rolesRespParam = paramsConfig['Responsables area de Selección'] || 'Selección, Selección Centro, Directorth, Generalista, AuxiliarR';
+    const rolesRespLista = rolesRespParam.split(',').map(r => r.trim()).filter(Boolean);
+
+    let respRows = [];
+    if (rolesRespLista.length > 0) {
+      const phRoles = rolesRespLista.map(() => '?').join(',');
+      const [uRows] = await pool.execute(
+        `SELECT \`ID\` as id, \`Nombre\` as nombre, \`Cargo\` as cargo, \`Rol\` as rol 
+         FROM \`Maestro_Usuarios\` 
+         WHERE \`Rol\` IN (${phRoles}) 
+         ORDER BY \`Nombre\` ASC`,
+        rolesRespLista
+      );
+      respRows = uRows;
+    }
+
+    const listaResponsables = respRows.map(r => ({
+      id: r.id,
+      nombre: r.nombre,
+      cargo: r.cargo || '',
+      rol: r.rol,
+      label: r.cargo ? `${r.nombre} - ${r.cargo}` : r.nombre
+    }));
 
     const operacionesFormateadas = opRows.map(o => ({
       operacion: o.operacion,
@@ -845,17 +897,17 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       Ciudad: o.ciudad
     }));
 
-    const listaCoordinadores = respRows.map(r => ({
-      id: r.id,
-      nombre: r.colaborador || r.nombre || r.id,
-      rol: r.rol,
-      cargo: r.cargo
-    }));
-
     const permisosObj = {
+      puedeEditarDespuesDeGuardar,
+      puedeVerSalario,
+      puedeModificarSalario,
+      tiempoLimiteRequisicion,
+      puedeVincularAspirante,
+      puedeEscogerResponsableVacio,
+      puedeEditarResponsableAsignado,
+      puedeAgregarIntegridad,
+      puedeEditarParametros,
       puedeModificarEstado: puedeEditarEstado,
-      puedeModificarSalario: puedeEditarSalario,
-      puedeModificarResponsable: puedeEditarResponsable,
       puedeModificarFechaFin: puedeEditarFechaFin,
       esCoordinadorSeleccion: cargoUsuario === 'COORDINADOR DE SELECCIÓN',
       rol: acceso.rol,
@@ -877,8 +929,9 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       operaciones: operacionesFormateadas,
       regionales,
       cargos: cargoRows.map(c => c.cargo),
-      responsablesSeleccion: listaCoordinadores,
-      coordinadores: listaCoordinadores
+      responsablesSeleccion: listaResponsables,
+      coordinadores: listaResponsables,
+      tiempoLimiteRequisicion
     });
   } catch (err) {
     console.error('[talenthub] GET /api/requisiciones/catalogos:', err);
@@ -962,21 +1015,26 @@ router.get('/api/requisiciones', async (req, res) => {
 
     const whereSql = whereClauses.join(' AND ');
 
-    // Consulta de registros
+    // Consulta de registros con total_aspirantes y restricción de salario
+    const paramsConfig = await obtenerParametrosTalenthub();
+    const puedeVerSalario = rolPermitidoEnParametro(acceso.rol, paramsConfig['Editar y ver Salario en Requisición']);
+
     const [rows] = await pool.execute(
-      `SELECT IdRequisicion, \`Requisición\`, 
-              DATE_FORMAT(\`Fecha Requisición\`, '%Y-%m-%d %H:%i') as fechaRequisicion,
-              \`Estado\`, \`Regional\`, \`Operación\`, \`Ciudad\`, \`Cargo Requerido\`, \`Tipo de Pago\`, \`Salario\`,
-              \`Solicitante\`, \`Cargo Solicitante\`, \`N° Personas Requeridas\`, \`Perfil del Cargo\`,
-              \`Conocimientos Adicionales\`, \`Experiencia Requerida\`, \`Turno Requerido\`, \`Descripción del Turno\`,
-              \`Manipulación de Alimentos - BPM\`, \`Requiere Curso por el Cliente\`, \`Descripción Curso Requerido\`,
-              \`Motivo de la Solicitud\`, \`Motivo del Reemplazo\`, \`Duración de la Temporalidad\`, \`Observaciones\`,
-              \`Dotación Requerida\`, \`EPP Requeridos\`,
-              DATE_FORMAT(\`Fecha de Finalización\`, '%Y-%m-%d') as fechaFinalizacion,
-              \`Responsable de Selección\`,
-              DATE_FORMAT(\`Fecha Actualización\`, '%Y-%m-%d %H:%i') as fechaActualizacion,
-              \`usuario_actualizacion\`
-       FROM \`Dynamic_Requisiciones\`
+      `SELECT r.IdRequisicion, r.\`Requisición\`, 
+              DATE_FORMAT(r.\`Fecha Requisición\`, '%Y-%m-%d %H:%i') as fechaRequisicion,
+              r.\`Estado\`, r.\`Regional\`, r.\`Operación\`, r.\`Ciudad\`, r.\`Cargo Requerido\`, r.\`Tipo de Pago\`,
+              ${puedeVerSalario ? 'r.`Salario`' : 'NULL AS `Salario`'},
+              r.\`Solicitante\`, r.\`Cargo Solicitante\`, r.\`N° Personas Requeridas\`, r.\`Perfil del Cargo\`,
+              r.\`Conocimientos Adicionales\`, r.\`Experiencia Requerida\`, r.\`Turno Requerido\`, r.\`Descripción del Turno\`,
+              r.\`Manipulación de Alimentos - BPM\`, r.\`Requiere Curso por el Cliente\`, r.\`Descripción Curso Requerido\`,
+              r.\`Motivo de la Solicitud\`, r.\`Motivo del Reemplazo\`, r.\`Duración de la Temporalidad\`, r.\`Observaciones\`,
+              r.\`Dotación Requerida\`, r.\`EPP Requeridos\`,
+              DATE_FORMAT(r.\`Fecha de Finalización\`, '%Y-%m-%d') as fechaFinalizacion,
+              r.\`Responsable de Selección\`,
+              DATE_FORMAT(r.\`Fecha Actualización\`, '%Y-%m-%d %H:%i') as fechaActualizacion,
+              r.\`usuario_actualizacion\`,
+              (SELECT COUNT(*) FROM \`Dynamic_hv_aspirante\` WHERE \`IdRequisicion\` = r.\`IdRequisicion\`) AS total_aspirantes
+       FROM \`Dynamic_Requisiciones\` r
        WHERE ${whereSql}
        ORDER BY ${sortCol} ${sortDirection}
        LIMIT 500`,
@@ -1050,7 +1108,7 @@ router.get('/api/requisiciones', async (req, res) => {
 });
 
 // 3. GET /api/requisiciones/:id
-// Obtiene el detalle completo de una requisición y los candidatos vinculados (REF_ROWS)
+// Obtiene el detalle completo de una requisición y los candidatos vinculados (REF_ROWS) con Fecha de Ingreso y Responsable
 router.get('/api/requisiciones/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1074,15 +1132,29 @@ router.get('/api/requisiciones/:id', async (req, res) => {
       return res.status(404).json({ error: 'Requisición no encontrada.' });
     }
 
+    const paramsConfig = await obtenerParametrosTalenthub();
+    const puedeVerSalario = rolPermitidoEnParametro(acceso.rol, paramsConfig['Editar y ver Salario en Requisición']);
+    if (!puedeVerSalario && rows[0]) {
+      rows[0].Salario = null;
+    }
+
     // Consultar candidatos vinculados a esta requisición: REF_ROWS("HV Aspirante", "IdRequisicion")
+    // Con Fecha de Ingreso de Maestro_Vinculación y Usuario de Dynamic_hv_aspirante
     const [aspirantes] = await pool.execute(
-      `SELECT id_aspirante, tipo_documento, identificacion,
-              CONCAT_WS(' ', primer_nombre, segundo_nombre, primer_apellido, segundo_apellido) AS nombre_completo,
-              ciudad, telefono, correo_electronico, estado_proceso, pdf_public_url, foto_public_url,
-              DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro_formatted
-       FROM \`Dynamic_hv_aspirante\`
-       WHERE \`IdRequisicion\` = ?
-       ORDER BY \`fecha_registro\` DESC`,
+      `SELECT a.id_aspirante, a.tipo_documento, a.identificacion,
+              CONCAT_WS(' ', a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido) AS nombre_completo,
+              a.ciudad, a.telefono, a.correo_electronico, a.estado_proceso, a.pdf_public_url, a.foto_public_url,
+              a.Usuario AS responsable_aspirante,
+              DATE_FORMAT(a.fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro_formatted,
+              DATE_FORMAT(v.max_fecha_ingreso, '%Y-%m-%d') AS fecha_ingreso
+       FROM \`Dynamic_hv_aspirante\` a
+       LEFT JOIN (
+         SELECT \`Identificación\` AS id_vinc, MAX(\`Fecha de Ingreso\`) AS max_fecha_ingreso
+         FROM \`Maestro_Vinculación\`
+         GROUP BY \`Identificación\`
+       ) v ON CAST(v.id_vinc AS CHAR) = CAST(a.identificacion AS CHAR)
+       WHERE a.\`IdRequisicion\` = ?
+       ORDER BY a.\`fecha_registro\` DESC`,
       [id]
     );
 
@@ -1128,7 +1200,7 @@ router.get('/api/aspirantes-disponibles', async (req, res) => {
 });
 
 // 3.2 POST /api/requisiciones/:id/vincular-aspirante
-// Asigna un aspirante a una requisición
+// Asigna un aspirante a una requisición (validando permiso Responsables area de Selección)
 router.post('/api/requisiciones/:id/vincular-aspirante', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1136,6 +1208,12 @@ router.post('/api/requisiciones/:id/vincular-aspirante', async (req, res) => {
     const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
     if (!acceso) {
       return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    const paramsConfig = await obtenerParametrosTalenthub();
+    const puedeVincular = rolPermitidoEnParametro(acceso.rol, paramsConfig['Responsables area de Selección']);
+    if (!puedeVincular) {
+      return res.status(403).json({ error: 'Solo los usuarios con rol en "Responsables area de Selección" pueden vincular aspirantes.' });
     }
 
     if (!id_aspirante) {
@@ -1159,7 +1237,7 @@ router.post('/api/requisiciones/:id/vincular-aspirante', async (req, res) => {
 });
 
 // 3.3 POST /api/requisiciones/:id/desvincular-aspirante
-// Desvincula un aspirante de una requisición
+// Quita un aspirante de una requisición (NO permitido si el estado_proceso es 'Contratado')
 router.post('/api/requisiciones/:id/desvincular-aspirante', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1173,14 +1251,85 @@ router.post('/api/requisiciones/:id/desvincular-aspirante', async (req, res) => 
       return res.status(400).json({ error: 'id_aspirante es obligatorio.' });
     }
 
+    const [aspRows] = await pool.execute(
+      'SELECT id_aspirante, estado_proceso FROM `Dynamic_hv_aspirante` WHERE `id_aspirante` = ? AND `IdRequisicion` = ? LIMIT 1',
+      [id_aspirante, id]
+    );
+    if (!aspRows.length) {
+      return res.status(404).json({ error: 'Aspirante no encontrado en esta requisición.' });
+    }
+
+    if ((aspRows[0].estado_proceso || '').trim().toLowerCase() === 'contratado') {
+      return res.status(400).json({
+        error: 'No es posible quitar un aspirante con estado "Contratado". Para eliminarlo debe realizarse el proceso de purga desde el módulo de Integridad.'
+      });
+    }
+
     await pool.execute(
       'UPDATE `Dynamic_hv_aspirante` SET `IdRequisicion` = NULL, `fecha_actualizacion` = NOW() WHERE `id_aspirante` = ? AND `IdRequisicion` = ?',
       [id_aspirante, id]
     );
 
-    res.json({ ok: true, mensaje: 'Aspirante desvinculado con éxito.' });
+    res.json({ ok: true, mensaje: 'Aspirante quitado de la requisición con éxito.' });
   } catch (err) {
     console.error('[talenthub] POST /api/requisiciones/:id/desvincular-aspirante:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3.4 PATCH /api/requisiciones/:id/responsable
+// Asigna o edita el responsable de selección inline o en detalle según reglas de Config_Parametros
+router.patch('/api/requisiciones/:id/responsable', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, responsable } = req.body;
+    const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT IdRequisicion, `Requisición`, `Responsable de Selección` FROM `Dynamic_Requisiciones` WHERE `IdRequisicion` = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Requisición no encontrada.' });
+    }
+    const current = rows[0];
+    const actual = (current['Responsable de Selección'] || '').trim();
+
+    const paramsConfig = await obtenerParametrosTalenthub();
+    const rol = acceso.rol || '';
+
+    if (!actual) {
+      // Requisición sin responsable: roles en "Escoger responsables area de Selección en Requisición"
+      const puedeEscoger = rolPermitidoEnParametro(rol, paramsConfig['Escoger responsables area de Selección en Requisición']);
+      if (!puedeEscoger) {
+        return res.status(403).json({ error: 'No tienes permiso para asignar responsable a esta requisición.' });
+      }
+    } else {
+      // Requisición con responsable: roles en "Editar responsables area de Selección en Requisición"
+      const puedeEditar = rolPermitidoEnParametro(rol, paramsConfig['Editar responsables area de Selección en Requisición']);
+      if (!puedeEditar) {
+        return res.status(403).json({ error: 'Solo los roles autorizados pueden modificar un responsable ya asignado.' });
+      }
+    }
+
+    const nuevoResponsable = responsable ? String(responsable).trim() : null;
+
+    await pool.execute(
+      `UPDATE \`Dynamic_Requisiciones\` SET
+        \`Responsable de Selección\` = ?,
+        \`usuario_actualizacion\` = ?,
+        \`Fecha Actualización\` = CONVERT_TZ(NOW(),'SYSTEM','-05:00')
+       WHERE \`IdRequisicion\` = ?`,
+      [nuevoResponsable, acceso.usuarioId, id]
+    );
+
+    console.log(`[talenthub-requisiciones] Responsable de ${current['Requisición']} (ID: ${id}) actualizado a "${nuevoResponsable}" por ${acceso.usuarioId}`);
+    res.json({ ok: true, mensaje: 'Responsable de Selección actualizado con éxito.', responsable: nuevoResponsable });
+  } catch (err) {
+    console.error('[talenthub] PATCH /api/requisiciones/:id/responsable:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1323,6 +1472,15 @@ router.put('/api/requisiciones/:id', async (req, res) => {
       return res.status(403).json({ error: 'No tienes permiso para editar requisiciones.' });
     }
 
+    const paramsConfig = await obtenerParametrosTalenthub();
+    const rol = acceso.rol || '';
+
+    // Permiso de editar después de guardar según Config_Parametros
+    const puedeEditarDespues = rolPermitidoEnParametro(rol, paramsConfig['Editar Requisición despues de guardar']);
+    if (!puedeEditarDespues) {
+      return res.status(403).json({ error: 'No tienes permiso para editar requisiciones después de guardadas.' });
+    }
+
     const [existing] = await pool.execute(
       'SELECT * FROM `Dynamic_Requisiciones` WHERE `IdRequisicion` = ? LIMIT 1',
       [id]
@@ -1332,13 +1490,12 @@ router.put('/api/requisiciones/:id', async (req, res) => {
     }
     const current = existing[0];
 
-    const rol = acceso.rol || '';
     const cargoUsuario = (acceso.cargo || '').toUpperCase().trim();
     const b = req.body;
 
     // Permisos especiales
     const puedeEditarEstado = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
-    const puedeEditarSalario = ['Selección', 'Sistema'].includes(rol);
+    const puedeEditarSalario = rolPermitidoEnParametro(rol, paramsConfig['Editar y ver Salario en Requisición']);
     const puedeEditarResponsable = rol === 'Sistema' || (rol === 'Selección' && cargoUsuario === 'COORDINADOR DE SELECCIÓN');
     const puedeEditarFechaFin = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
 
@@ -1420,6 +1577,77 @@ router.put('/api/requisiciones/:id', async (req, res) => {
 
   } catch (err) {
     console.error('[talenthub] PUT /api/requisiciones/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. GET /api/parametros/requisiciones
+// Lista los parámetros de la sección Requisiciones (excepto editar parámetros) y roles de Config_Rol
+router.get('/api/parametros/requisiciones', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT id, Modulo, Seccion, Concepto, Condicion, Parametro 
+       FROM Config_Parametros 
+       WHERE Modulo = 'talenthub' AND Seccion = 'Requisiciones' AND Concepto != 'Editar parametros de Requisiciones'
+       ORDER BY id ASC`
+    );
+
+    const [roles] = await pool.execute(
+      'SELECT DISTINCT Rol FROM Config_Rol ORDER BY Rol ASC'
+    );
+
+    res.json({
+      ok: true,
+      parametros: rows,
+      roles: roles.map(r => r.Rol).filter(Boolean)
+    });
+  } catch (err) {
+    console.error('[talenthub] GET /api/parametros/requisiciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7. POST /api/parametros/requisiciones
+// Guarda los parámetros modificados validando que el rol tenga permiso en "Editar parametros de Requisiciones"
+router.post('/api/parametros/requisiciones', async (req, res) => {
+  try {
+    const { usuario, parametros } = req.body;
+    const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    const paramsConfig = await obtenerParametrosTalenthub();
+    const puedeEditarParams = rolPermitidoEnParametro(acceso.rol, paramsConfig['Editar parametros de Requisiciones']);
+    if (!puedeEditarParams) {
+      return res.status(403).json({ error: 'Solo los roles autorizados pueden modificar los parámetros de Requisiciones.' });
+    }
+
+    if (!Array.isArray(parametros)) {
+      return res.status(400).json({ error: 'El listado de parámetros es inválido.' });
+    }
+
+    for (const p of parametros) {
+      if (p.id && p.Parametro !== undefined) {
+        await pool.execute(
+          `UPDATE Config_Parametros 
+           SET Parametro = ? 
+           WHERE id = ? AND Modulo = 'talenthub' AND Seccion = 'Requisiciones' AND Concepto != 'Editar parametros de Requisiciones'`,
+          [String(p.Parametro).trim(), p.id]
+        );
+      }
+    }
+
+    console.log(`[talenthub-parametros] Parámetros de Requisiciones actualizados por ${acceso.usuarioId}`);
+    res.json({ ok: true, mensaje: 'Parámetros actualizados exitosamente.' });
+  } catch (err) {
+    console.error('[talenthub] POST /api/parametros/requisiciones:', err);
     res.status(500).json({ error: err.message });
   }
 });
