@@ -1419,12 +1419,6 @@
           <table id="tablaRequisiciones" class="resizable-table">
             <thead>
               <tr>
-                <th style="width: 78px; min-width: 68px; text-align:center;">
-                  <div class="th-content" style="justify-content:center;">
-                    <span title="Acciones" style="opacity:0.75; font-size:0.85rem;">⚙️</span>
-                  </div>
-                  <div class="col-resizer"></div>
-                </th>
                 <th style="width: 130px; min-width: 100px;" class="sortable" onclick="ordenarRequisiciones('Requisición')">
                   <div class="th-content">
                     <span>Requisición</span>
@@ -1492,7 +1486,7 @@
             </thead>
             <tbody id="tbodyRequisiciones">
               <tr>
-                <td colspan="10" style="text-align:center; color:var(--text-muted); padding:28px;">Cargando requisiciones...</td>
+                <td colspan="9" style="text-align:center; color:var(--text-muted); padding:28px;">Cargando requisiciones...</td>
               </tr>
             </tbody>
           </table>
@@ -1763,6 +1757,7 @@
             <div style="display:flex; align-items:center; gap:8px;">
               <span id="detReqCodigo" style="font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.25rem; color:var(--primary)">RQ00000</span>
               <span id="detReqBadgeEstado" class="status-badge en-proceso">En Proceso</span>
+              <span id="detReqHeaderFechaSolBadge" style="font-size:0.8rem; font-family:'JetBrains Mono',monospace; color:var(--text-muted); font-weight:600; margin-left:6px;" title="Fecha de Radicación / Solicitud">📅 -</span>
             </div>
             <h3 id="detReqCargo" style="margin-top:4px; font-size:1.15rem; font-weight:800; color:var(--text)">-</h3>
             <p id="detReqUbicacion" style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">-</p>
@@ -1772,6 +1767,10 @@
 
         <!-- Resumen de la Solicitud integrado en el encabezado -->
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-top:12px; background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Fecha Solicitud</span>
+            <span id="detReqHeaderFechaSol" style="font-size:0.82rem; font-weight:700; color:var(--text); font-family:'JetBrains Mono',monospace;">-</span>
+          </div>
           <div style="display:flex; flex-direction:column;">
             <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Personas Requeridas</span>
             <span id="detReqPersonas" style="font-size:1.1rem; color:var(--primary); font-weight:800;">-</span>
@@ -3034,6 +3033,13 @@
             (data.responsablesSeleccion || data.coordinadores || []).map(co => `<option value="${esc(co.id || co.nombre)}">${esc(co.label || co.nombre)}</option>`).join('');
         }
 
+        // 1. Prellenar filtro FECHA DESDE por defecto según la quincena actual si aplica
+        if (data.fechaDesdeDefecto && !_reqFiltros.desde) {
+          _reqFiltros.desde = data.fechaDesdeDefecto;
+          const fDesdeInput = document.getElementById('filtroReqDesde');
+          if (fDesdeInput) fDesdeInput.value = data.fechaDesdeDefecto;
+        }
+
         actualizarVisibilidadBotonesHeader();
       } catch (err) {
         console.error('[TalentHub] Fallo de red al cargar catálogos:', err);
@@ -3172,11 +3178,12 @@
     }
 
     function limpiarFiltrosRequisiciones() {
+      const fDesdeDefecto = _reqCatalogos?.fechaDesdeDefecto || '';
       if (document.getElementById('filtroReqQ')) document.getElementById('filtroReqQ').value = '';
       if (document.getElementById('filtroReqRegional')) document.getElementById('filtroReqRegional').value = 'todas';
       if (document.getElementById('filtroReqOperacion')) document.getElementById('filtroReqOperacion').value = 'todas';
       if (document.getElementById('filtroReqCargo')) document.getElementById('filtroReqCargo').value = 'todos';
-      if (document.getElementById('filtroReqDesde')) document.getElementById('filtroReqDesde').value = '';
+      if (document.getElementById('filtroReqDesde')) document.getElementById('filtroReqDesde').value = fDesdeDefecto;
       if (document.getElementById('filtroReqHasta')) document.getElementById('filtroReqHasta').value = '';
 
       _reqFiltros = {
@@ -3185,7 +3192,7 @@
         regional: 'todas',
         operacion: 'todas',
         cargo: 'todos',
-        desde: '',
+        desde: fDesdeDefecto,
         hasta: ''
       };
 
@@ -3366,7 +3373,7 @@
     async function cargarRequisiciones() {
       const tbody = document.getElementById('tbodyRequisiciones');
       if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:28px;">Cargando requisiciones...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:28px;">Cargando requisiciones...</td></tr>';
       }
 
       try {
@@ -3388,7 +3395,7 @@
 
         if (!res.ok || !data.ok) {
           if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#ef4444; padding:24px;">${esc(data.error || 'Error al cargar requisiciones')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#ef4444; padding:24px;">${esc(data.error || 'Error al cargar requisiciones')}</td></tr>`;
           }
           return;
         }
@@ -3427,7 +3434,7 @@
       } catch (err) {
         console.error('[TalentHub] Error al cargar requisiciones:', err);
         if (tbody) {
-          tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#ef4444; padding:24px;">Error de red al consultar requisiciones.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#ef4444; padding:24px;">Error de red al consultar requisiciones.</td></tr>';
         }
       }
     }
@@ -3437,11 +3444,10 @@
       if (!tbody) return;
 
       if (!_requisiciones.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:32px;">No se encontraron requisiciones con los criterios actuales.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:32px;">No se encontraron requisiciones con los criterios actuales.</td></tr>';
         return;
       }
 
-      const puedeEditarDespues = _reqCatalogos?.permisos?.puedeEditarDespuesDeGuardar || false;
       const puedeEscogerVacio = _reqCatalogos?.permisos?.puedeEscogerResponsableVacio || false;
       const puedeEditarAsignado = _reqCatalogos?.permisos?.puedeEditarResponsableAsignado || false;
       const listaResp = _reqCatalogos?.responsablesSeleccion || [];
@@ -3457,10 +3463,6 @@
         const totalAspirantes = parseInt(r.total_aspirantes) || 0;
         const solicitante = esc(r.Solicitante || '-');
         const respActual = (r['Responsable de Selección'] || '').trim();
-
-        const btnEditHtml = puedeEditarDespues
-          ? `<button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.8rem; line-height:1;" onclick="event.stopPropagation(); abrirModalEditarRequisicionPorId(${r.IdRequisicion})" title="Editar requisición"><span>✏️</span></button>`
-          : '';
 
         // Celda de Responsable con select inline según permisos
         const esEditable = (!respActual && puedeEscogerVacio) || (respActual && puedeEditarAsignado);
@@ -3484,14 +3486,6 @@
 
         return `
           <tr onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})" style="cursor:pointer;">
-            <td style="text-align:center; white-space:nowrap;">
-              <div style="display:inline-flex; gap:4px; justify-content:center;">
-                <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.8rem; line-height:1;" onclick="event.stopPropagation(); abrirModalDetalleRequisicion(${r.IdRequisicion})" title="Ver detalle completo">
-                  <span>👁️</span>
-                </button>
-                ${btnEditHtml}
-              </div>
-            </td>
             <td>
               <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary);">
                 ${codigo}
@@ -3715,8 +3709,14 @@
           }
         }
 
+        const fechaSolStr = r.fechaRequisicionFormatted || (r['Fecha Requisición'] ? String(r['Fecha Requisición']).substring(0, 16) : '-');
+        const badgeFechaSol = document.getElementById('detReqHeaderFechaSolBadge');
+        if (badgeFechaSol) badgeFechaSol.textContent = '📅 ' + fechaSolStr;
+        const gridFechaSol = document.getElementById('detReqHeaderFechaSol');
+        if (gridFechaSol) gridFechaSol.textContent = fechaSolStr;
+
         document.getElementById('detReqFechaFin').textContent = r.fechaFinalizacionFormatted || (r['Fecha de Finalización'] ? String(r['Fecha de Finalización']).substring(0, 10) : 'Pendiente');
-        document.getElementById('detReqFechaSol').textContent = r.fechaRequisicionFormatted || (r['Fecha Requisición'] ? String(r['Fecha Requisición']).substring(0, 16) : '-');
+        document.getElementById('detReqFechaSol').textContent = fechaSolStr;
         document.getElementById('detReqFechaAct').textContent = r.fechaActualizacionFormatted || (r['Fecha Actualización'] ? String(r['Fecha Actualización']).substring(0, 16) : '-');
         document.getElementById('detReqUsuarioAct').textContent = r.usuario_actualizacion || 'N/A';
 
@@ -4311,7 +4311,8 @@
 
         if (condicion === 'Rol') {
           const rolesSeleccionados = parametroVal.split(',').map(s => s.trim().toLowerCase());
-          const chipsHtml = _rolesDisponibles.map(rol => {
+          const rolesVisibles = _rolesDisponibles.filter(r => r.trim().toLowerCase() !== 'sistema');
+          const chipsHtml = rolesVisibles.map(rol => {
             const rolTrim = rol.trim();
             const isChecked = rolesSeleccionados.includes(rolTrim.toLowerCase());
             const activeStyle = isChecked
@@ -4355,6 +4356,7 @@
     }
 
     function toggleRolParametro(paramIdx, rol) {
+      if (rol.trim().toLowerCase() === 'sistema') return; // Proteger Sistema de manipulaciones
       const p = _parametrosReqData[paramIdx];
       if (!p) return;
       let roles = (p.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);

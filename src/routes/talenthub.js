@@ -826,9 +826,30 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     const puedeAgregarIntegridad = rolPermitidoEnParametro(rol, paramsConfig['Agregar Registros a Integridad']);
     const puedeEditarParametros = rolPermitidoEnParametro(rol, paramsConfig['Editar parametros de Requisiciones']);
 
+    // 1. Fecha Desde por defecto (mínima fecha de la quincena actual en Maestro_Fechas) si el rol no tiene excepción
+    const noAplicaFiltroFechaDesde = rolPermitidoEnParametro(rol, paramsConfig['No aplica el filtro de FECHA DESDE']);
+    let fechaDesdeDefecto = null;
+    if (!noAplicaFiltroFechaDesde) {
+      try {
+        const [fHoyRows] = await pool.execute('SELECT `Quincena`, `Año` FROM `Maestro_Fechas` WHERE DATE(`Fecha`) = CURDATE() LIMIT 1');
+        if (fHoyRows.length > 0) {
+          const { Quincena, Año } = fHoyRows[0];
+          const [fMinRows] = await pool.execute(
+            'SELECT DATE_FORMAT(MIN(`Fecha`), "%Y-%m-%d") as fechaMinima FROM `Maestro_Fechas` WHERE `Quincena` = ? AND `Año` = ?',
+            [Quincena, Año]
+          );
+          if (fMinRows.length > 0 && fMinRows[0].fechaMinima) {
+            fechaDesdeDefecto = fMinRows[0].fechaMinima;
+          }
+        }
+      } catch (errFecha) {
+        console.error('[talenthub] Error consultando fecha mínima de quincena en Maestro_Fechas:', errFecha.message);
+      }
+    }
+
     // Reglas de permisos adicionales
-    const puedeEditarEstado = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
-    const puedeEditarFechaFin = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
+    const puedeEditarEstado = ['Selección', 'Selección Centro', 'Sistema', 'CoorSelección'].includes(rol);
+    const puedeEditarFechaFin = ['Selección', 'Selección Centro', 'Sistema', 'CoorSelección'].includes(rol);
 
     // Operaciones según alcance del usuario
     let opQuery = "SELECT DISTINCT `OPERACIÓN` as operacion, `REGIONAL` as regional, `C.C.` as ciudad FROM `Maestro_Operaciones` WHERE `REGIONAL` != 'INACTIVO'";
@@ -852,18 +873,21 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     opRows.forEach(r => { if (r.regional) regionalesSet.add(r.regional); });
     const regionales = Array.from(regionalesSet).sort();
 
-    // Cargos de Config_Cargo_Laboral según Rol y Operación
+    // Cargos de Config_Cargo_Laboral según Config_Parametros
+    const puedeTodosLosCargos = rolPermitidoEnParametro(rol, paramsConfig['Puede escoger todos los cargos en la Requisición']);
+    const puedeCargosAdministrativos = rolPermitidoEnParametro(rol, paramsConfig['Puede escoger cargos administrativos en la Requisición']);
+
     let cargosQuery = "";
-    if (['Sistema', 'Selección', 'Selección Centro', 'Control'].includes(rol)) {
+    if (puedeTodosLosCargos) {
       cargosQuery = "SELECT `Cargo` as cargo, `Grupo Nomina` as grupoNomina FROM `Config_Cargo_Laboral` ORDER BY `Cargo` ASC";
-    } else if (esAdminOp) {
+    } else if (puedeCargosAdministrativos) {
       cargosQuery = "SELECT `Cargo` as cargo, `Grupo Nomina` as grupoNomina FROM `Config_Cargo_Laboral` WHERE `Grupo Nomina` = 'Administrativo' ORDER BY `Cargo` ASC";
     } else {
       cargosQuery = "SELECT `Cargo` as cargo, `Grupo Nomina` as grupoNomina FROM `Config_Cargo_Laboral` WHERE `Grupo Nomina` = 'Operativo' ORDER BY `Cargo` ASC";
     }
     const [cargoRows] = await pool.execute(cargosQuery);
 
-    // Responsables de Selección: pobladas con Nombre y Cargo de Maestro_Usuarios según roles en "Responsables area de Selección"
+    // Responsables de Selección: pobladas con Nombre y Rol de Maestro_Usuarios según roles en "Responsables area de Selección"
     const rolesRespParam = paramsConfig['Responsables area de Selección'] || 'Selección, Selección Centro, Directorth, Generalista, AuxiliarR';
     const rolesRespLista = rolesRespParam.split(',').map(r => r.trim()).filter(Boolean);
 
@@ -881,11 +905,11 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     }
 
     const listaResponsables = respRows.map(r => ({
-      id: r.id,
+      id: r.nombre,
       nombre: r.nombre,
       cargo: r.cargo || '',
-      rol: r.rol,
-      label: r.cargo ? `${r.nombre} - ${r.cargo}` : r.nombre
+      rol: r.rol || '',
+      label: r.rol ? `${r.nombre} - ${r.rol}` : r.nombre
     }));
 
     const operacionesFormateadas = opRows.map(o => ({
@@ -931,7 +955,8 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       cargos: cargoRows.map(c => c.cargo),
       responsablesSeleccion: listaResponsables,
       coordinadores: listaResponsables,
-      tiempoLimiteRequisicion
+      tiempoLimiteRequisicion,
+      fechaDesdeDefecto
     });
   } catch (err) {
     console.error('[talenthub] GET /api/requisiciones/catalogos:', err);
@@ -1605,7 +1630,7 @@ router.get('/api/parametros/requisiciones', async (req, res) => {
     res.json({
       ok: true,
       parametros: rows,
-      roles: roles.map(r => r.Rol).filter(Boolean)
+      roles: roles.map(r => r.Rol).filter(Boolean).filter(r => r.trim().toLowerCase() !== 'sistema')
     });
   } catch (err) {
     console.error('[talenthub] GET /api/parametros/requisiciones:', err);
@@ -1635,11 +1660,29 @@ router.post('/api/parametros/requisiciones', async (req, res) => {
 
     for (const p of parametros) {
       if (p.id && p.Parametro !== undefined) {
+        // Consultar valor previo en BD para asegurar que 'Sistema' se conserve si existía
+        const [existing] = await pool.execute(
+          'SELECT Condicion, Parametro FROM Config_Parametros WHERE id = ?',
+          [p.id]
+        );
+        let finalParam = String(p.Parametro).trim();
+        if (existing.length > 0 && existing[0].Condicion === 'Rol') {
+          const dbRoles = (existing[0].Parametro || '').split(',').map(s => s.trim());
+          const hasSistema = dbRoles.some(r => r.toLowerCase() === 'sistema');
+          if (hasSistema) {
+            const newRoles = finalParam.split(',').map(s => s.trim()).filter(Boolean);
+            if (!newRoles.some(r => r.toLowerCase() === 'sistema')) {
+              newRoles.unshift('Sistema');
+            }
+            finalParam = newRoles.join(', ');
+          }
+        }
+
         await pool.execute(
           `UPDATE Config_Parametros 
            SET Parametro = ? 
            WHERE id = ? AND Modulo = 'talenthub' AND Seccion = 'Requisiciones' AND Concepto != 'Editar parametros de Requisiciones'`,
-          [String(p.Parametro).trim(), p.id]
+          [finalParam, p.id]
         );
       }
     }
