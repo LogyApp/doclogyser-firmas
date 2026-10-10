@@ -3,9 +3,10 @@
  * Cada página lo activa una vez cargado el DOM:
  *
  *   initBotonTicket({
- *     moduloDefecto: 'Servicios',        // red de seguridad si no hay match en BD o falla la consulta
+ *     usuarioId: CONFIG.usuario,         // único parámetro obligatorio
  *     moduloErp: 'facturacion',          // opcional — prefijo de ruta del módulo ERP anfitrión
- *     usuarioId: CONFIG.usuario,
+ *     obtenerSeccion: miFuncion,         // opcional — ver abajo (o usar la alternativa estática `seccion: 'Recibos'`)
+ *     moduloDefecto: 'Servicios',        // opcional — red de seguridad si no hay match en BD o falla la consulta
  *     opsPorRegional: CONFIG.opsPorRegional,
  *     regionalesFiltro: CONFIG.regionalesFiltro,
  *     obtenerContexto: miFuncion,        // opcional — ver abajo
@@ -13,10 +14,18 @@
  *   });
  *
  * moduloErp, si se provee, se usa para resolver dinámicamente el módulo
- * preseleccionado contra Config_motivo_tickets (columna ModuloERP, fila con
- * Motivo = NULL) vía GET /tickets/api/modulo-defecto — así el default puede
- * administrarse desde BD sin tocar código. Si no hay fila configurada para
- * ese moduloErp (o la consulta falla), se usa moduloDefecto tal cual.
+ * preseleccionado contra Config_motivo_tickets (columnas ModuloERP/Seccion,
+ * filas con Motivo = NULL) vía GET /tickets/api/modulo-defecto — así el
+ * default puede administrarse desde BD sin tocar código. La búsqueda intenta
+ * primero un match exacto (ModuloERP, Seccion) y luego cae al genérico por
+ * ModuloERP solo. obtenerSeccion(), si se provee, se llama cada vez que se
+ * abre el modal y debe devolver la Sección actualmente visible usando el
+ * MISMO valor que ya usa ese módulo en su tabla Maestro_Menu_X (p.ej.
+ * 'Actas' en Inventario, 'Evaluación SST' en SST) — así no hay que inventar
+ * un vocabulario nuevo. Si la página no es una SPA por pestañas, se puede
+ * usar en su lugar el valor estático `seccion`. Si no hay match en BD (o
+ * falla la consulta), se usa moduloDefecto; si tampoco se declaró, el
+ * Módulo queda libre para que el usuario lo escoja manualmente.
  *
  * obtenerContexto(), si se provee, se llama cada vez que se abre el modal y
  * debe devolver null (sin registro abierto) o:
@@ -454,28 +463,42 @@
     }
 
     // Default dinámico: si la página anfitriona declaró cfg.moduloErp, se
-    // consulta Config_motivo_tickets (columna ModuloERP) por un default
-    // configurado en BD; si no hay fila o falla la consulta, se usa
-    // cfg.moduloDefecto (el valor fijo que ya traía cada página) como red
-    // de seguridad — nunca se queda sin preselección.
-    let moduloPreferido = cfg.moduloDefecto;
+    // consulta Config_motivo_tickets (columnas ModuloERP/Seccion) por un
+    // default configurado en BD — primero por (ModuloERP, Seccion) exacto,
+    // luego por ModuloERP genérico. Si no hay ninguna fila o falla la
+    // consulta, se usa cfg.moduloDefecto (si la página lo declaró); si
+    // tampoco hay eso, el Módulo queda totalmente libre para que el usuario
+    // escoja (se preselecciona el primero de la lista, sin intención de
+    // negocio detrás).
+    let moduloPreferido = cfg.moduloDefecto || null;
     if (cfg.moduloErp) {
       try {
-        const respDefecto = await fetch(`/tickets/api/modulo-defecto?moduloErp=${encodeURIComponent(cfg.moduloErp)}`);
+        const seccionActual = (typeof cfg.obtenerSeccion === 'function') ? cfg.obtenerSeccion() : (cfg.seccion || null);
+        const qs = new URLSearchParams({ moduloErp: cfg.moduloErp });
+        if (seccionActual) qs.set('seccion', seccionActual);
+        const respDefecto = await fetch(`/tickets/api/modulo-defecto?${qs.toString()}`);
         const dataDefecto = await respDefecto.json();
         if (respDefecto.ok && dataDefecto?.modulo) moduloPreferido = dataDefecto.modulo;
-      } catch (e) { /* se mantiene cfg.moduloDefecto */ }
+      } catch (e) { /* se mantiene cfg.moduloDefecto (o null) */ }
     }
 
     try {
       const resp = await fetch('/tickets/api/modulos');
       const modulos = await resp.json();
-      const lista = (resp.ok && Array.isArray(modulos) && modulos.length) ? modulos : [moduloPreferido];
-      selModulo.innerHTML = lista.map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
-      selModulo.value = lista.includes(moduloPreferido) ? moduloPreferido : lista[0];
+      const lista = (resp.ok && Array.isArray(modulos) && modulos.length) ? modulos : (moduloPreferido ? [moduloPreferido] : []);
+      if (!lista.length) {
+        selModulo.innerHTML = '<option value="">— Sin módulos configurados —</option>';
+      } else {
+        selModulo.innerHTML = lista.map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+        selModulo.value = (moduloPreferido && lista.includes(moduloPreferido)) ? moduloPreferido : lista[0];
+      }
     } catch (e) {
-      selModulo.innerHTML = `<option value="${esc(moduloPreferido)}">${esc(moduloPreferido)}</option>`;
-      selModulo.value = moduloPreferido;
+      if (moduloPreferido) {
+        selModulo.innerHTML = `<option value="${esc(moduloPreferido)}">${esc(moduloPreferido)}</option>`;
+        selModulo.value = moduloPreferido;
+      } else {
+        selModulo.innerHTML = '<option value="">— Sin módulos configurados —</option>';
+      }
     }
 
     aplicarEstadoSegunModulo();
@@ -662,8 +685,8 @@
   }
 
   window.initBotonTicket = function initBotonTicket(opciones) {
-    if (!opciones || !opciones.moduloDefecto || !opciones.usuarioId) {
-      console.error('[ticket-boton] initBotonTicket requiere moduloDefecto y usuarioId.');
+    if (!opciones || !opciones.usuarioId) {
+      console.error('[ticket-boton] initBotonTicket requiere usuarioId.');
       return;
     }
     cfg = {

@@ -55,22 +55,33 @@ router.get('/api/motivos', async (req, res) => {
   }
 });
 
-// ── GET /api/modulo-defecto?moduloErp=X — default dinámico por módulo ERP ──
+// ── GET /api/modulo-defecto?moduloErp=X&seccion=Y — default dinámico ───────
 // Config_motivo_tickets.ModuloERP/Seccion permiten mapear, por fila "ancla"
 // (Motivo = NULL), qué Modulo de Dynamic_Tickets debe preseleccionarse según
-// el módulo ERP (prefijo de ruta: 'facturacion', 'nomina', 'sst'...) en el
-// que esté el usuario. Si no hay fila configurada para ese ModuloERP, el
-// widget cae a su propio moduloDefecto (parámetro fijo de initBotonTicket),
-// así nunca se queda sin preselección por falta de dato en esta tabla.
+// el módulo ERP (prefijo de ruta: 'facturacion', 'nomina', 'sst'...) y,
+// opcionalmente, la Sección activa dentro de ese módulo — usando el mismo
+// valor de Sección que cada módulo ya tiene en su tabla Maestro_Menu_X.
+// Prioridad: (1) match exacto ModuloERP+Seccion, (2) fila genérica de ese
+// ModuloERP con Seccion NULL. Si ninguna existe, el widget cae a su propio
+// moduloDefecto, así nunca depende por completo de esta tabla.
 router.get('/api/modulo-defecto', async (req, res) => {
   try {
-    const { moduloErp } = req.query;
+    const { moduloErp, seccion } = req.query;
     if (!moduloErp) return res.status(400).json({ error: 'moduloErp requerido' });
-    const [rows] = await pool.execute(
-      'SELECT Modulo FROM Config_motivo_tickets WHERE ModuloERP = ? AND Motivo IS NULL LIMIT 1',
+
+    if (seccion) {
+      const [exacto] = await pool.execute(
+        'SELECT Modulo FROM Config_motivo_tickets WHERE ModuloERP = ? AND Seccion = ? AND Motivo IS NULL LIMIT 1',
+        [moduloErp, seccion]
+      );
+      if (exacto.length) return res.json({ modulo: exacto[0].Modulo });
+    }
+
+    const [generico] = await pool.execute(
+      'SELECT Modulo FROM Config_motivo_tickets WHERE ModuloERP = ? AND Seccion IS NULL AND Motivo IS NULL LIMIT 1',
       [moduloErp]
     );
-    res.json({ modulo: rows.length ? rows[0].Modulo : null });
+    res.json({ modulo: generico.length ? generico[0].Modulo : null });
   } catch (err) {
     console.error('[tickets] GET /api/modulo-defecto:', err);
     res.status(500).json({ error: err.message });
