@@ -1460,6 +1460,7 @@
         <div class="inc-table-container">
           <table class="data-table" id="table-inc">
             <thead><tr>
+              <th style="width:150px;min-width:110px"><div class="th-content"><span>Documento</span></div></th>
               <th style="width:120px;min-width:100px" class="sortable" onclick="toggleSortIncapacidadesNomina('fecha')"><div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-inc-fecha">▼</span></div></th>
               <th style="width:220px;min-width:150px" class="sortable" onclick="toggleSortIncapacidadesNomina('trabajador')"><div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-inc-trabajador">↕</span></div></th>
               <th style="width:130px;min-width:105px" class="sortable" onclick="toggleSortIncapacidadesNomina('identificacion')"><div class="th-content"><span>Identificación</span><span class="sort-icon" id="sort-icon-inc-identificacion">↕</span></div></th>
@@ -1467,7 +1468,6 @@
               <th style="width:170px;min-width:120px" class="sortable" onclick="toggleSortIncapacidadesNomina('operacion')"><div class="th-content"><span>Operación</span><span class="sort-icon" id="sort-icon-inc-operacion">↕</span></div></th>
               <th style="width:190px;min-width:140px" class="sortable" onclick="toggleSortIncapacidadesNomina('evento')"><div class="th-content"><span>Evento</span><span class="sort-icon" id="sort-icon-inc-evento">↕</span></div></th>
               <th style="width:150px;min-width:110px" class="sortable" onclick="toggleSortIncapacidadesNomina('diagnostico')"><div class="th-content"><span>Cod Diagnostico</span><span class="sort-icon" id="sort-icon-inc-diagnostico">↕</span></div></th>
-              <th style="width:150px;min-width:110px"><div class="th-content"><span>Documento</span></div></th>
             </tr></thead>
             <tbody id="tbody-inc"><tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">Cargando incapacidades...</td></tr></tbody>
           </table>
@@ -4959,10 +4959,11 @@
       const documentos = row.sst_documentos || [];
       const enlaces = documentos.length ? documentos.map((url, index) => {
         const urlSegura = /^https?:\/\//i.test(url) || url.startsWith('/') ? escaparHtmlIncapacidadNomina(url) : '';
-        return urlSegura ? `<a href="${urlSegura}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm inc-document-link" onclick="event.stopPropagation();">📄 ${documentos.length > 1 ? `PDF ${index + 1}` : 'Abrir incapacidad'}</a>` : '';
+        return urlSegura ? `<a href="${urlSegura}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm inc-document-link" onclick="event.stopPropagation();">📄 PDF${documentos.length > 1 ? ` ${index + 1}` : ''}</a>` : '';
       }).join(' ') : '<span style="color:#64748b">Sin documento</span>';
       const diagnosticos = (row.sst_cod_diagnosticos || []).map(escaparHtmlIncapacidadNomina).join(', ') || '—';
       return `<tr>
+        <td>${enlaces}</td>
         <td>${escaparHtmlIncapacidadNomina(rangoFecha)}<br><small>${row.sst_dias_continuos} día(s)</small></td>
         <td><strong>${escaparHtmlIncapacidadNomina(limpiarNombreIncapacidad(row.sst_trabajador))}</strong></td>
         <td>${escaparHtmlIncapacidadNomina(row.sst_identificacion || '—')}</td>
@@ -4970,7 +4971,6 @@
         <td>${escaparHtmlIncapacidadNomina(row.sst_operacion || '—')}</td>
         <td>${eventoDistinto ? `<span class="evento-no-incapacidad">${escaparHtmlIncapacidadNomina(evento)}</span>` : escaparHtmlIncapacidadNomina(evento || '—')}</td>
         <td>${diagnosticos}</td>
-        <td>${enlaces}</td>
       </tr>`;
     }).join('');
     makeTableResizable(document.getElementById('table-inc'));
