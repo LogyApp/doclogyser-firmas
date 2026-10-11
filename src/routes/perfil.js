@@ -41,7 +41,25 @@ router.get('/api', async (req, res) => {
   try {
     const result = await obtenerPerfilPropio(req.query.usuario);
     if (result.error) return res.status(result.status).json({ error: result.error });
-    if (!result.perfil) return res.status(404).json({ error: 'No se encontró un perfil corporativo relacionado con este usuario.' });
+    if (!result.perfil) {
+      return res.json({
+        ok: true,
+        perfil: {
+          identificacion: result.user?.ID || '',
+          nombre: result.user?.Nombre || result.user?.ID || 'Usuario del Sistema',
+          cargo: result.user?.Rol || 'Administrador',
+          regional: 'Nacional',
+          operacion: 'General',
+          area: 'Sistemas',
+          direccion: '',
+          email: '',
+          celular: '',
+          foto_url: null,
+          firma_url: null
+        },
+        firmaDigital: null
+      });
+    }
 
     let firmaDigital = null;
     try { firmaDigital = await obtenerFirmaBase64Reciente(result.perfil.identificacion); }

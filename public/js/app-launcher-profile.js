@@ -4,9 +4,13 @@
   if (!usuario) return;
 
   const currentModule = window.location.pathname.split('/').filter(Boolean)[0] || '';
-  const homeModules = new Set(['nomina', 'inventario', 'sst', 'cloud-docs', 'facturacion', 'directorio-corporativo']);
+  const homeModules = new Set(['nomina', 'inventario', 'sst', 'cloud-docs', 'facturacion', 'directorio-corporativo', 'talenthub']);
   const defaultPhoto = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
   const modules = [
+    { id: 'talenthub', name: 'TalentHub', symbol: '❖', tabs: [
+      ['Requisiciones', 'Requisiciones'], ['Aspirantes & Hojas de Vida', 'Aspirantes'],
+      ['Sociodemográfica y Vinculación', 'Sociodemografica'], ['Integridad de Identificación', 'Integridad']
+    ] },
     { id: 'nomina', name: 'Nómina', symbol: '▣', tabs: [
       ['Activos', 'activos'], ['Retiros', 'retiros'], ['Bloqueo de Datos', 'bloqueo'],
       ['Biométrico · Asistencia', 'biometrico', 'asistencia'], ['Biométrico · Recorridos GPS', 'biometrico', 'rutas'],
@@ -357,17 +361,29 @@
   function renderProfileCard() {
     if (!profile) return;
     const card = document.querySelector('.alp-profile');
-    if (!card) return;
-    const name = profile.nombre || usuario;
-    card.querySelector('.alp-avatar').src = profile.foto_url || defaultPhoto;
-    card.querySelector('.alp-avatar').onerror = event => { event.currentTarget.src = defaultPhoto; };
-    card.querySelector('.alp-profile-name').textContent = name;
-    card.style.display = 'block';
-    profileModal.view.querySelector('.alp-photo-large').src = profile.foto_url || defaultPhoto;
-    profileModal.view.querySelector('.alp-photo-large').onerror = event => { event.currentTarget.src = defaultPhoto; };
-    profileModal.view.querySelector('.alp-view-name').textContent = name;
-    profileModal.view.querySelector('.alp-view-cargo').textContent = profile.cargo || 'Cargo no registrado';
-    ['direccion', 'email', 'celular'].forEach(key => profileModal.view.querySelector(`[data-profile="${key}"]`).textContent = profile[key] || 'No registrado');
+    if (card) {
+      const name = profile.nombre || usuario;
+      card.querySelector('.alp-avatar').src = profile.foto_url || defaultPhoto;
+      card.querySelector('.alp-avatar').onerror = event => { event.currentTarget.src = defaultPhoto; };
+      card.querySelector('.alp-profile-name').textContent = name;
+      card.style.display = 'block';
+    }
+    const mobileThumb = document.getElementById('mobileProfileThumb');
+    if (mobileThumb) {
+      mobileThumb.src = profile.foto_url || defaultPhoto;
+      mobileThumb.onerror = event => { event.currentTarget.src = defaultPhoto; };
+    }
+    document.querySelectorAll('.mobile-profile-thumb').forEach(thumb => {
+      thumb.src = profile.foto_url || defaultPhoto;
+      thumb.onerror = event => { event.currentTarget.src = defaultPhoto; };
+    });
+    if (profileModal) {
+      profileModal.view.querySelector('.alp-photo-large').src = profile.foto_url || defaultPhoto;
+      profileModal.view.querySelector('.alp-photo-large').onerror = event => { event.currentTarget.src = defaultPhoto; };
+      profileModal.view.querySelector('.alp-view-name').textContent = profile.nombre || usuario;
+      profileModal.view.querySelector('.alp-view-cargo').textContent = profile.cargo || 'Cargo no registrado';
+      ['direccion', 'email', 'celular'].forEach(key => profileModal.view.querySelector(`[data-profile="${key}"]`).textContent = profile[key] || 'No registrado');
+    }
   }
 
   async function openProfile() {
@@ -393,7 +409,7 @@
     const brand = sidebar?.querySelector('.sidebar-brand') || document.querySelector('.brand-lockup-horizontal');
     if (!brand) return;
     brand.querySelectorAll('.brand-logo-app, .brand-logo-company-crop img').forEach(activarLogoComoInicio);
-    sidebar?.querySelector('.sidebar-user')?.remove();
+    sidebar?.querySelector('.sidebar-user, .talenthub-profile')?.remove();
     if (currentModule === 'nomina') return;
     if (!document.querySelector('link[data-app-launcher-profile-style]')) {
       const style = document.createElement('link');
@@ -405,6 +421,8 @@
     createLauncher(sidebar, brand);
     if (!sidebar) return;
     profileModal = createProfileModal();
+    window.abrirPerfilCorporativo = openProfile;
+    window.abrirPerfil = openProfile;
     loadProfile();
   }
 

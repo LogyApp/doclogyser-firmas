@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app-launcher-profile.css">
   <style>
     :root {
       /* Tema Lavanda Oscura Corporativa (Elegante, equilibrada, menor componente azul) */
@@ -1076,12 +1077,401 @@
       margin-top: 2px;
       word-break: break-word;
     }
+
+    /* ══════════════════════════════════════════════════════════
+       HEADER MÓVIL Y MENÚ OFF-CANVAS
+    ══════════════════════════════════════════════════════════ */
+    .mobile-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--sidebar-bg);
+      color: #fff;
+      padding: 6px 12px;
+      min-height: 48px;
+      position: sticky;
+      top: 0;
+      z-index: 150;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    .mobile-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .mobile-menu-btn {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.45rem;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mobile-menu-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .mobile-logo-app {
+      height: 24px;
+      max-height: 24px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .mobile-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+      flex: 1;
+      padding: 0 8px;
+      letter-spacing: -0.01em;
+    }
+    .mobile-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .mobile-profile-btn {
+      background: transparent;
+      border: none;
+      padding: 2px;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+    }
+    .mobile-profile-thumb {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      transition: transform .15s ease, border-color .15s ease;
+    }
+    .mobile-profile-btn:hover .mobile-profile-thumb {
+      transform: scale(1.05);
+      border-color: #fff;
+    }
+    .mobile-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 140;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    .mobile-backdrop.open {
+      display: block;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       RESPONSIVE DRAWER Y ADAPTACIÓN GENERAL (≤ 900px)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      body {
+        flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: auto;
+        height: auto;
+        min-height: 100vh;
+      }
+      .mobile-header {
+        display: flex;
+      }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        z-index: 200;
+        box-shadow: 4px 0 20px rgba(28, 19, 43, 0.35);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .wrapper {
+        margin-left: 0 !important;
+        padding: 12px 10px !important;
+        height: auto !important;
+        min-height: calc(100vh - 48px);
+        overflow-y: visible !important;
+        width: 100% !important;
+      }
+      .page-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 12px 14px !important;
+        margin-bottom: 12px !important;
+        border-left: 4px solid var(--accent) !important;
+        background: #fff;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm);
+      }
+      .page-header > div:last-child {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+      }
+      .page-header .btn {
+        flex: 1 !important;
+        min-width: 140px !important;
+        justify-content: center !important;
+        text-align: center !important;
+        padding: 8px 12px !important;
+        font-size: .8rem !important;
+      }
+      .card {
+        padding: 14px 14px !important;
+        margin-bottom: 12px !important;
+      }
+      .filter-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+      .filter-group[style*="span 2"] {
+        grid-column: span 1 !important;
+      }
+      .search-bar-row {
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+      .worker-meta-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+      }
+      .audit-card {
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+      .estado-filter-buttons {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap !important;
+        padding-bottom: 4px;
+      }
+      .modal-box, .modal-box-lg {
+        width: calc(100% - 20px) !important;
+        max-width: 100% !important;
+        margin: 10px auto !important;
+        max-height: 94vh !important;
+        overflow-y: auto !important;
+        padding: 16px 14px !important;
+        border-radius: 10px !important;
+      }
+      .form-row-2, .form-row-3 {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       OPTIMIZACIÓN MÓVIL COMPACTA (360×800: Redmi, Galaxy, Vivo, Honor)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 600px) {
+      .mobile-header {
+        padding: 5px 10px;
+        min-height: 44px;
+      }
+      .mobile-menu-btn {
+        font-size: 1.35rem;
+      }
+      .mobile-logo-app {
+        height: 22px;
+        max-height: 22px;
+      }
+      .mobile-title {
+        font-size: .88rem;
+        max-width: 175px;
+      }
+      .mobile-profile-thumb {
+        width: 31px;
+        height: 31px;
+      }
+      .wrapper {
+        padding: 6px 6px !important;
+        min-height: calc(100vh - 44px);
+      }
+      .page-header {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+        gap: 6px !important;
+      }
+      .page-title-box h1 {
+        font-size: .95rem !important;
+      }
+      .page-title-box p {
+        font-size: .68rem !important;
+      }
+      .page-header .btn {
+        padding: 6px 10px !important;
+        font-size: .74rem !important;
+        border-radius: 6px !important;
+      }
+      .card {
+        padding: 8px 8px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+      }
+      .card-title {
+        font-size: .86rem !important;
+        margin-bottom: 8px !important;
+      }
+      .btn {
+        padding: 6px 10px !important;
+        font-size: .74rem !important;
+        border-radius: 6px !important;
+      }
+      .input-field, .req-input, input, select, textarea {
+        font-size: .76rem !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
+      }
+      .input-field, .req-input, input:not([type="checkbox"]):not([type="radio"]), select {
+        height: 30px !important;
+      }
+      .filter-group label, .form-group label, .req-field label {
+        font-size: .66rem !important;
+        margin-bottom: 2px !important;
+        font-weight: 600;
+      }
+      .estado-filter-btn {
+        padding: 4px 8px !important;
+        font-size: .70rem !important;
+        border-radius: 6px !important;
+      }
+      .table-responsive {
+        max-height: calc(100vh - 190px) !important;
+        border-radius: 6px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      table {
+        font-size: .74rem !important;
+      }
+      th {
+        padding: 6px 8px !important;
+        font-size: .67rem !important;
+      }
+      td {
+        padding: 6px 8px !important;
+        font-size: .74rem !important;
+      }
+      .col-resizer {
+        display: none !important;
+      }
+      .modal-box, .modal-box-lg {
+        margin: 6px !important;
+        width: calc(100% - 12px) !important;
+        border-radius: 8px !important;
+        max-height: 94vh !important;
+        padding: 12px 10px !important;
+      }
+      .modal-hdr {
+        margin-bottom: 8px !important;
+        padding-bottom: 6px !important;
+      }
+      .modal-hdr h3 {
+        font-size: .92rem !important;
+      }
+      .modal-hdr p {
+        font-size: .68rem !important;
+      }
+      .modal-ftr {
+        margin-top: 10px !important;
+        padding-top: 8px !important;
+      }
+      .modal-ftr .btn {
+        padding: 6px 10px !important;
+        font-size: .74rem !important;
+      }
+      .req-detail-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+      }
+      .req-detail-box {
+        padding: 6px 8px !important;
+        border-radius: 6px !important;
+      }
+      .req-detail-lbl {
+        font-size: .62rem !important;
+      }
+      .req-detail-val {
+        font-size: .76rem !important;
+      }
+      .worker-card {
+        padding: 8px 8px !important;
+        border-radius: 8px !important;
+      }
+      .worker-meta-grid {
+        grid-template-columns: 1fr !important;
+        gap: 6px !important;
+      }
+      .meta-box {
+        padding: 6px 8px !important;
+      }
+      .meta-label {
+        font-size: .64rem !important;
+      }
+      .meta-val {
+        font-size: .76rem !important;
+      }
+      .tab-placeholder-card {
+        padding: 24px 16px !important;
+      }
+      .tab-placeholder-icon {
+        font-size: 2.2rem !important;
+      }
+      .tab-placeholder-title {
+        font-size: 1.05rem !important;
+      }
+      .tab-placeholder-desc {
+        font-size: .76rem !important;
+      }
+    }
   </style>
 </head>
 <body>
 
+  <!-- Backdrop móvil -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Header móvil -->
+  <header class="mobile-header">
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">☰</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+    </div>
+    <div class="mobile-title"><span id="mobileHeaderTitle">TalentHub — Requisiciones de Personal</span></div>
+    <div class="mobile-header-right">
+      <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
+      </button>
+    </div>
+  </header>
+
   <!-- ── SIDEBAR ───────────────────────────────────────────────────────────── -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <!-- Doble logo corporativo idéntico a Nómina (LogyApp + Logyser recortado) -->
       <div class="brand-lockup" onclick="window.location.reload()" title="Reiniciar módulo TalentHub">
@@ -1091,98 +1481,6 @@
           <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
         </div>
       </div>
-
-      <!-- Module Launcher Dropdown ("OTROS") -->
-      <div class="module-launcher">
-        <button type="button" class="module-launcher-trigger" id="moduleLauncherTrigger" aria-label="Abrir otros módulos" aria-expanded="false" onclick="toggleModuleLauncher(event)">
-          <span class="module-launcher-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-          <span class="module-launcher-caption">OTROS</span>
-        </button>
-        <div class="module-launcher-panel" id="moduleLauncherPanel">
-          <div class="module-launcher-heading">Otros módulos</div>
-
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">💼</span>Nómina</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=activos">Activos</a>
-              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=retiros">Retiros</a>
-              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=bloqueo">Bloqueo de Datos</a>
-              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=biometrico">Biométrico</a>
-              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=incapacidades">Incapacidades</a>
-              <a class="module-launcher-link" href="/nomina?usuario=__USER__&amp;tab=traslados">Traslados</a>
-            </div>
-          </details>
-
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">▦</span>Inventario</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=inventario">Inventario</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=reportes">Reportes</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=pendienterecibir">Pendiente por recibir</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=kardex">Kardex</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=articulos">Catálogo de artículos</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=actas">Actas de Entrega</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=dotacionley">Dotación de Ley</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=historial">Historial de Confirmaciones</a>
-            </div>
-          </details>
-
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">▤</span>Cloud Docs</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=trabajador">Doc Trabajadores</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=documento">Documentos</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=todo">Consolidado</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=docretiros">Doc Retiros</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=logysign">LogySign</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=validarcap">Validar Capacitación</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=permisos">Permisos</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=duplicados">Duplicados</a>
-            </div>
-          </details>
-
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">◷</span>Facturación</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=servicios">Servicios</a>
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=recibos">Recibos</a>
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=clientescredito">Clientes Crédito</a>
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=bloqueo">Bloqueos</a>
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=tickets">Tickets</a>
-            </div>
-          </details>
-
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">＋</span>SST</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=evaluacion">Evaluación SST</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=capacitacion">Capacitación</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=capacitacion&amp;subtab=temas">Temas de capacitación</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=pruebaconsumo">Prueba de Consumo</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=participacion">Participación</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=compromiso">Compromisos SST</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=gestionmedica&amp;subtab=casosmedicos">Casos Médicos</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=gestionmedica&amp;subtab=incapacidades">Incapacidades</a>
-            </div>
-          </details>
-
-          <a class="module-launcher-link" data-module-link href="/directorio-corporativo?usuario=__USER__">Directorio Corporativo</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- User Profile Badge (Clickable para editar perfil y firma) -->
-    <div class="talenthub-profile" id="talenthubProfile" style="display:none;">
-      <button type="button" class="talenthub-profile-trigger" onclick="abrirPerfilTalenthub()" aria-label="Ver y editar mi perfil">
-        <img class="talenthub-profile-thumb" id="talenthubProfileThumb" src="" alt="Foto de perfil">
-        <span class="talenthub-profile-label">
-          <span class="talenthub-profile-name" id="talenthubProfileName">Cargando...</span>
-          <span class="talenthub-profile-hint">Mi perfil corporativo</span>
-        </span>
-        <span class="talenthub-profile-arrow" aria-hidden="true">›</span>
-      </button>
     </div>
 
     <!-- Navigation List -->
@@ -2260,6 +2558,7 @@
 
       // 5. Cargar perfil corporativo del usuario
       cargarPerfilTalenthub();
+      sincronizarPerfilMovil();
 
       // 6. Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js)
       if (typeof initBotonTicket === 'function') {
@@ -2272,6 +2571,58 @@
         });
       }
     });
+
+    const TITULOS_TALENTHUB = {
+      Requisiciones: 'Requisiciones',
+      Aspirantes: 'Aspirantes & Hojas de Vida',
+      Sociodemografica: 'Sociodemográfica',
+      Integridad: 'Integridad'
+    };
+
+    function actualizarTituloMovilTalenthub(tabName) {
+      const el = document.getElementById('mobileHeaderTitle');
+      if (el) {
+        const titulo = TITULOS_TALENTHUB[tabName] || TAB_META[tabName]?.title || tabName || 'TalentHub';
+        el.textContent = `TalentHub — ${titulo}`;
+      }
+    }
+
+    function toggleMobileSidebar(forceState) {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('mobile-backdrop');
+      if (!sb) return;
+      const shouldOpen = forceState !== undefined ? Boolean(forceState) : !sb.classList.contains('open');
+      sb.classList.toggle('open', shouldOpen);
+      if (bd) bd.classList.toggle('open', shouldOpen);
+      if (document.body) {
+        document.body.style.overflow = (shouldOpen && window.innerWidth <= 900) ? 'hidden' : '';
+      }
+    }
+
+    function abrirPerfilCorporativo() {
+      if (typeof window.abrirPerfil === 'function') {
+        window.abrirPerfil();
+      } else if (typeof window.appLauncherProfile !== 'undefined' && typeof window.appLauncherProfile.openModal === 'function') {
+        window.appLauncherProfile.openModal();
+      } else if (typeof abrirPerfilTalenthub === 'function') {
+        abrirPerfilTalenthub();
+      }
+    }
+
+    async function sincronizarPerfilMovil() {
+      try {
+        const thumb = document.getElementById('mobileProfileThumb');
+        if (!thumb || !CONFIG || !CONFIG.usuarioId) return;
+        const res = await fetch(`/perfil/api?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.ok && data.perfil && data.perfil.foto_url) {
+          thumb.src = data.perfil.foto_url;
+        }
+      } catch (e) {
+        // Fallback silencioso
+      }
+    }
 
     function actualizarVisibilidadBotonesHeader() {
       const tabName = CONFIG.activeTab || 'Requisiciones';
@@ -2304,13 +2655,26 @@
           <span class="nav-item-icon">${meta.icon}</span>
           <span>${sec}</span>
         `;
-        li.onclick = () => switchTab(sec);
+        li.onclick = () => {
+          switchTab(sec);
+          if (window.innerWidth <= 900) {
+            toggleMobileSidebar(false);
+          }
+        };
         navList.appendChild(li);
       });
     }
 
     function switchTab(tabName) {
       CONFIG.activeTab = tabName;
+
+      // Actualizar título en header móvil
+      actualizarTituloMovilTalenthub(tabName);
+
+      // Cerrar sidebar en pantallas táctiles o móviles
+      if (window.innerWidth <= 900) {
+        toggleMobileSidebar(false);
+      }
 
       // Actualizar sidebar active
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -4583,6 +4947,7 @@
         .replace(/"/g, '&quot;');
     }
   </script>
+  <script src="/js/app-launcher-profile.js" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
 </body>
 </html>

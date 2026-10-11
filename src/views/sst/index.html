@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app-launcher-profile.css">
 
   <style>
     :root {
@@ -273,45 +274,96 @@
       background: var(--bg);
     }
 
-    /* Header móvil */
+    /* ══════════════════════════════════════════════════════════
+       MÓVIL HEADER Y BACKDROP (Estilo Nómina / Facturación / Inventario)
+    ══════════════════════════════════════════════════════════ */
     .mobile-header {
       display: none;
-      align-items: center;
-      justify-content: space-between;
       background: var(--primary);
       color: #fff;
-      padding: 12px 16px;
+      padding: 7px 12px;
+      align-items: center;
+      justify-content: space-between;
       position: sticky;
       top: 0;
-      z-index: 90;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 130;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      min-height: 48px;
     }
-
+    .mobile-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .mobile-menu-btn {
       background: none;
       border: none;
       color: #fff;
-      font-size: 1.5rem;
+      font-size: 1.45rem;
       cursor: pointer;
       display: flex;
       align-items: center;
-      padding: 4px;
+      justify-content: center;
+      padding: 2px 4px;
+      line-height: 1;
     }
-
+    .mobile-logo-app {
+      height: 24px;
+      max-height: 24px;
+      width: auto;
+      object-fit: contain;
+    }
     .mobile-title {
+      font-family: 'Outfit', sans-serif;
       font-weight: 700;
-      font-size: 1rem;
+      font-size: .92rem;
       display: flex;
       align-items: center;
       gap: 6px;
+      letter-spacing: .2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 190px;
     }
-
+    .mobile-header-right {
+      display: flex;
+      align-items: center;
+    }
+    .mobile-profile-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      border-radius: 50%;
+      outline: none;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+    .mobile-profile-btn:active {
+      transform: scale(.92);
+      opacity: .85;
+    }
+    .mobile-profile-thumb {
+      width: 33px;
+      height: 33px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, .9);
+      object-fit: cover;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+    }
     .mobile-backdrop {
       display: none;
       position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
+      inset: 0;
       background: rgba(0, 0, 0, 0.5);
-      z-index: 95;
+      z-index: 140;
+    }
+    .mobile-backdrop.open {
+      display: block;
     }
 
     /* Header de cada pestaña */
@@ -1326,19 +1378,78 @@
     /* ══════════════════════════════════════════════════════════
        RESPONSIVE (< 900px)
     ══════════════════════════════════════════════════════════ */
+    /* ══════════════════════════════════════════════════════════
+       RESPONSIVE DRAWER Y ADAPTACIÓN GENERAL (≤ 900px)
+    ══════════════════════════════════════════════════════════ */
     @media (max-width: 900px) {
-      body { flex-direction: column; }
-      .mobile-header { display: flex; }
-      .sidebar { transform: translateX(-100%); }
-      .sidebar.open { transform: translateX(0); }
-      .mobile-backdrop.open { display: block; }
-      .main-wrapper {
-        margin-left: 0;
-        padding: 16px;
+      body {
+        flex-direction: column;
+        overflow: visible;
         height: auto;
-        min-height: calc(100vh - 56px);
       }
-      .view-layout.detail-active { grid-template-columns: 1fr; }
+      .mobile-header {
+        display: flex;
+      }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        z-index: 200;
+        box-shadow: 4px 0 20px rgba(6, 78, 59, 0.35);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .main-wrapper {
+        margin-left: 0 !important;
+        padding: 12px 10px !important;
+        height: auto !important;
+        min-height: calc(100vh - 48px);
+        overflow-y: visible !important;
+      }
+      .tab-header {
+        padding: 12px 14px !important;
+        margin-bottom: 12px !important;
+        gap: 10px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        border-left: 4px solid var(--accent) !important;
+      }
+      .tab-header-left {
+        gap: 2px !important;
+      }
+      .tab-title {
+        font-size: 1.05rem !important;
+      }
+      .tab-subtitle {
+        font-size: .75rem !important;
+      }
+      .tab-actions {
+        width: 100% !important;
+        justify-content: stretch !important;
+      }
+      .tab-actions .btn {
+        flex: 1 !important;
+        text-align: center !important;
+        justify-content: center !important;
+        padding: 8px 12px !important;
+        font-size: .8rem !important;
+      }
+      .filters-card {
+        padding: 12px 14px !important;
+        margin-bottom: 12px !important;
+      }
+      .filters-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+      .view-layout.detail-active {
+        grid-template-columns: 1fr !important;
+      }
       .detail-card {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -1346,10 +1457,175 @@
         border-radius: 0;
         max-height: 100vh;
         margin: 0;
-        padding: 20px;
+        padding: 16px;
       }
-      .filters-grid { grid-template-columns: 1fr; }
-      .modal-content.modal-form-large { height: 95vh; max-width: 98%; }
+      .modal-content.modal-form-large {
+        height: 95vh;
+        max-width: 98%;
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       OPTIMIZACIÓN MÓVIL COMPACTA (360×800: Redmi, Galaxy, Vivo, Honor)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 600px) {
+      .mobile-header {
+        padding: 5px 10px;
+        min-height: 44px;
+      }
+      .mobile-menu-btn {
+        font-size: 1.35rem;
+      }
+      .mobile-logo-app {
+        height: 22px;
+        max-height: 22px;
+      }
+      .mobile-title {
+        font-size: .88rem;
+        max-width: 175px;
+      }
+      .mobile-profile-thumb {
+        width: 31px;
+        height: 31px;
+      }
+      .main-wrapper {
+        padding: 6px 6px !important;
+        min-height: calc(100vh - 44px);
+      }
+      .tab-header {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+        gap: 6px !important;
+      }
+      .tab-title {
+        font-size: .95rem !important;
+      }
+      .tab-subtitle {
+        font-size: .68rem !important;
+      }
+      .tab-actions .btn {
+        padding: 6px 10px !important;
+        font-size: .74rem !important;
+        border-radius: 6px !important;
+      }
+      .subtabs-bar {
+        margin-bottom: 8px !important;
+        gap: 4px !important;
+        width: 100% !important;
+      }
+      .subtab-btn {
+        padding: 6px 8px !important;
+        font-size: .74rem !important;
+        flex: 1 !important;
+        text-align: center !important;
+      }
+      .filters-card {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+      }
+      .filtros-toggle-left {
+        font-size: .78rem !important;
+      }
+      .filtros-badge {
+        font-size: .60rem !important;
+        min-width: 16px !important;
+        height: 16px !important;
+      }
+      .filtros-chevron {
+        font-size: .78rem !important;
+      }
+      .field label, .filter-group label {
+        font-size: .66rem !important;
+        margin-bottom: 2px !important;
+        font-weight: 600;
+      }
+      .field select, .field input, .filter-group select, .filter-group input {
+        height: 30px !important;
+        font-size: .74rem !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
+      }
+      .btn {
+        padding: 6px 10px !important;
+        font-size: .74rem !important;
+        border-radius: 6px !important;
+      }
+      .card {
+        padding: 8px 8px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+      }
+      .table-container {
+        max-height: calc(100vh - 190px) !important;
+        border-radius: 6px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      table {
+        font-size: .74rem !important;
+      }
+      th {
+        padding: 6px 8px !important;
+        font-size: .67rem !important;
+      }
+      td {
+        padding: 6px 8px !important;
+        font-size: .74rem !important;
+      }
+      .badge, .status-badge {
+        font-size: .64rem !important;
+        padding: 1px 6px !important;
+      }
+      .btn-action-icon {
+        width: 26px !important;
+        height: 26px !important;
+      }
+      .pagination-bar {
+        font-size: .72rem !important;
+        padding: 6px 8px !important;
+        gap: 6px !important;
+      }
+      .pagination-btn {
+        padding: 3px 8px !important;
+        font-size: .70rem !important;
+      }
+      .modal-content {
+        margin: 6px !important;
+        width: calc(100% - 12px) !important;
+        border-radius: 8px !important;
+        max-height: 94vh !important;
+      }
+      .modal-header {
+        padding: 10px 12px !important;
+      }
+      .modal-title {
+        font-size: .95rem !important;
+      }
+      .modal-body {
+        padding: 10px 12px !important;
+      }
+      .modal-footer {
+        padding: 8px 12px !important;
+      }
+      .modal-footer .btn {
+        padding: 6px 12px !important;
+        font-size: .74rem !important;
+      }
+      .notif-dropdown {
+        top: 52px !important;
+        left: 8px !important;
+        right: 8px !important;
+      }
+      .detail-card {
+        padding: 12px 10px !important;
+      }
+      .detail-card-header {
+        padding: 10px 12px !important;
+      }
+      .detail-card-body {
+        padding: 10px 12px !important;
+      }
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -1711,11 +1987,16 @@
 
   <!-- Header móvil -->
   <header class="mobile-header">
-    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">☰</button>
-    <div class="mobile-title">
-      <span>🛡️ SST — Seguridad y Salud</span>
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">☰</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
     </div>
-    <span id="mobile-user-badge" style="font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;"></span>
+    <div class="mobile-title"><span id="mobileHeaderTitle">SST — Evaluación SST</span></div>
+    <div class="mobile-header-right">
+      <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
+      </button>
+    </div>
   </header>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -3636,6 +3917,7 @@
 
       const mobBadge = document.getElementById('mobile-user-badge');
       if (mobBadge) mobBadge.innerText = `${uName} (${CONFIG.rol || 'SST'})`;
+      sincronizarPerfilMovil();
 
       if (typeof actualizarPermisosBotonesCm === 'function') {
         actualizarPermisosBotonesCm();
@@ -4299,6 +4581,20 @@
     }
 
     // ═════ NAVEGACIÓN ENTRE PESTAÑAS ═════
+    const TITULOS_SST = {
+      evaluacion: 'Evaluación SST',
+      capacitacion: 'Capacitación',
+      pruebaconsumo: 'Prueba de Consumo',
+      participacion: 'Participación',
+      compromiso: 'Compromisos SST',
+      gestionmedica: 'Gestión Médica'
+    };
+
+    function actualizarTituloMovilSst(titulo) {
+      const el = document.getElementById('mobileHeaderTitle');
+      if (el) el.textContent = `SST — ${titulo}`;
+    }
+
     function switchTab(tabId, options = null) {
       currentTab = tabId;
 
@@ -4331,6 +4627,12 @@
       const capSub = (tabId === 'capacitacion') ? (isTemas ? 'temas' : 'evals') : null;
       sincronizarUrlPestana(tabId, capSub, syncOpts);
 
+      if (tabId === 'capacitacion') {
+        actualizarTituloMovilSst(isTemas ? 'Temas de Capacitación' : 'Capacitación');
+      } else {
+        actualizarTituloMovilSst(TITULOS_SST[tabId] || 'Gestión SST');
+      }
+
       const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
       actualizarIconosOrdenSst(key);
       inicializarRedimensionColumnasSst();
@@ -4351,22 +4653,32 @@
     function switchGestionMedicaSubtab(subtab, options = null) {
       subtabGestionMedica = subtab === 'incapacidades' ? 'incapacidades' : 'casosmedicos';
       const esCasos = subtabGestionMedica === 'casosmedicos';
-      document.getElementById('subtab-btn-gestion-casos').classList.toggle('active', esCasos);
-      document.getElementById('subtab-btn-gestion-casos').setAttribute('aria-selected', String(esCasos));
-      document.getElementById('subtab-btn-gestion-incapacidades').classList.toggle('active', !esCasos);
-      document.getElementById('subtab-btn-gestion-incapacidades').setAttribute('aria-selected', String(!esCasos));
-      document.getElementById('pane-casosmedicos').style.display = esCasos ? 'block' : 'none';
-      document.getElementById('pane-incapacidades').style.display = esCasos ? 'none' : 'block';
+      const btnCasos = document.getElementById('subtab-btn-gestion-casos');
+      const btnInc = document.getElementById('subtab-btn-gestion-incapacidades');
+      if (btnCasos) {
+        btnCasos.classList.toggle('active', esCasos);
+        btnCasos.setAttribute('aria-selected', String(esCasos));
+      }
+      if (btnInc) {
+        btnInc.classList.toggle('active', !esCasos);
+        btnInc.setAttribute('aria-selected', String(!esCasos));
+      }
+      const paneCasos = document.getElementById('pane-casosmedicos');
+      const paneInc = document.getElementById('pane-incapacidades');
+      if (paneCasos) paneCasos.style.display = esCasos ? 'block' : 'none';
+      if (paneInc) paneInc.style.display = esCasos ? 'none' : 'block';
 
       if (!esCasos && document.getElementById('cm-view-expediente')?.style.display === 'flex') {
         document.getElementById('cm-view-expediente').style.display = 'none';
-        document.getElementById('cm-view-listado').style.display = 'block';
+        const listado = document.getElementById('cm-view-listado');
+        if (listado) listado.style.display = 'block';
         currentExpedienteTrabajadorId = null;
       }
 
       sincronizarUrlPestana('gestionmedica', subtabGestionMedica, options || {});
+      actualizarTituloMovilSst(esCasos ? 'Casos Médicos' : 'Incapacidades');
 
-      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
+      const key = esCasos ? 'cm' : 'inc';
       actualizarIconosOrdenSst(key);
       inicializarRedimensionColumnasSst();
       if (!dataStore[key].length) {
@@ -4374,40 +4686,54 @@
       }
     }
 
-    function switchGestionMedicaSubtab(subtab) {
-      subtabGestionMedica = subtab === 'incapacidades' ? 'incapacidades' : 'casosmedicos';
-      const esCasos = subtabGestionMedica === 'casosmedicos';
-      document.getElementById('subtab-btn-gestion-casos').classList.toggle('active', esCasos);
-      document.getElementById('subtab-btn-gestion-casos').setAttribute('aria-selected', String(esCasos));
-      document.getElementById('subtab-btn-gestion-incapacidades').classList.toggle('active', !esCasos);
-      document.getElementById('subtab-btn-gestion-incapacidades').setAttribute('aria-selected', String(!esCasos));
-      document.getElementById('pane-casosmedicos').style.display = esCasos ? 'block' : 'none';
-      document.getElementById('pane-incapacidades').style.display = esCasos ? 'none' : 'block';
-
-      sincronizarUrlPestana('gestionmedica', subtabGestionMedica);
-
-      const key = esCasos ? 'cm' : 'inc';
-      actualizarIconosOrdenSst(key);
-      inicializarRedimensionColumnasSst();
-      if (!dataStore[key].length) cargarDatos(key);
-    }
-
     function toggleMobileSidebar(forceState) {
       const sb = document.getElementById('sidebar');
       const bd = document.getElementById('mobile-backdrop');
-      const shouldOpen = forceState !== undefined ? forceState : !sb.classList.contains('open');
+      if (!sb) return;
+      const shouldOpen = forceState !== undefined ? Boolean(forceState) : !sb.classList.contains('open');
       sb.classList.toggle('open', shouldOpen);
-      bd.classList.toggle('open', shouldOpen);
+      if (bd) bd.classList.toggle('open', shouldOpen);
+      if (document.body) {
+        document.body.style.overflow = (shouldOpen && window.innerWidth <= 900) ? 'hidden' : '';
+      }
+    }
+
+    function abrirPerfilCorporativo() {
+      if (typeof window.abrirPerfil === 'function') {
+        window.abrirPerfil();
+      } else if (typeof window.appLauncherProfile !== 'undefined' && typeof window.appLauncherProfile.openModal === 'function') {
+        window.appLauncherProfile.openModal();
+      }
+    }
+
+    async function sincronizarPerfilMovil() {
+      try {
+        const thumb = document.getElementById('mobileProfileThumb');
+        if (!thumb || !CONFIG || !CONFIG.usuarioId) return;
+        const res = await fetch(`/perfil/api?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.ok && data.perfil && data.perfil.foto_url) {
+          thumb.src = data.perfil.foto_url;
+        }
+      } catch (e) {
+        // Fallback silencioso; app-launcher-profile.js también intenta sincronizar
+      }
     }
 
     function switchCapSubtab(subtab) {
       const isEvals = (subtab === 'evals');
-      document.getElementById('subtab-btn-cap-evals').classList.toggle('active', isEvals);
-      document.getElementById('subtab-btn-cap-temas').classList.toggle('active', !isEvals);
-      document.getElementById('cap-subview-evals').style.display = isEvals ? 'block' : 'none';
-      document.getElementById('cap-subview-temas').style.display = isEvals ? 'none' : 'block';
+      const btnEvals = document.getElementById('subtab-btn-cap-evals');
+      const btnTemas = document.getElementById('subtab-btn-cap-temas');
+      if (btnEvals) btnEvals.classList.toggle('active', isEvals);
+      if (btnTemas) btnTemas.classList.toggle('active', !isEvals);
+      const viewEvals = document.getElementById('cap-subview-evals');
+      const viewTemas = document.getElementById('cap-subview-temas');
+      if (viewEvals) viewEvals.style.display = isEvals ? 'block' : 'none';
+      if (viewTemas) viewTemas.style.display = isEvals ? 'none' : 'block';
 
       sincronizarUrlPestana('capacitacion', isEvals ? 'evals' : 'temas');
+      actualizarTituloMovilSst(isEvals ? 'Capacitación' : 'Temas de Capacitación');
 
       if (!isEvals) cargarTemasCapacitacion();
     }

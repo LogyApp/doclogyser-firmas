@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app-launcher-profile.css">
 
   <style>
     :root {
@@ -67,45 +68,96 @@
       transition: transform 0.3s ease;
     }
 
-    /* Header móvil (mismo patrón que SST/Nómina) */
+    /* ══════════════════════════════════════════════════════════
+       MÓVIL HEADER Y BACKDROP (Estilo Nómina / Facturación / Inventario)
+    ══════════════════════════════════════════════════════════ */
     .mobile-header {
       display: none;
-      align-items: center;
-      justify-content: space-between;
       background: var(--primary);
       color: #fff;
-      padding: 12px 16px;
+      padding: 7px 12px;
+      align-items: center;
+      justify-content: space-between;
       position: sticky;
       top: 0;
-      z-index: 90;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 130;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      min-height: 48px;
     }
-
+    .mobile-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .mobile-menu-btn {
       background: none;
       border: none;
       color: #fff;
-      font-size: 1.5rem;
+      font-size: 1.45rem;
       cursor: pointer;
       display: flex;
       align-items: center;
-      padding: 4px;
+      justify-content: center;
+      padding: 2px 4px;
+      line-height: 1;
     }
-
+    .mobile-logo-app {
+      height: 24px;
+      max-height: 24px;
+      width: auto;
+      object-fit: contain;
+    }
     .mobile-title {
+      font-family: 'Outfit', sans-serif;
       font-weight: 700;
-      font-size: 1rem;
+      font-size: .92rem;
       display: flex;
       align-items: center;
       gap: 6px;
+      letter-spacing: .2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 190px;
     }
-
+    .mobile-header-right {
+      display: flex;
+      align-items: center;
+    }
+    .mobile-profile-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      border-radius: 50%;
+      outline: none;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+    .mobile-profile-btn:active {
+      transform: scale(.92);
+      opacity: .85;
+    }
+    .mobile-profile-thumb {
+      width: 33px;
+      height: 33px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, .9);
+      object-fit: cover;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+    }
     .mobile-backdrop {
       display: none;
       position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
+      inset: 0;
       background: rgba(0, 0, 0, 0.5);
-      z-index: 95;
+      z-index: 140;
+    }
+    .mobile-backdrop.open {
+      display: block;
     }
     
     .sidebar-brand {
@@ -578,25 +630,265 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ══════════════════════════════════════════════════════════
+       RESPONSIVE DRAWER Y ADAPTACIÓN GENERAL (≤ 900px)
+    ══════════════════════════════════════════════════════════ */
     @media (max-width: 900px) {
-      body { flex-direction: column; overflow: visible; height: auto; }
-      .mobile-header { display: flex; }
-      .sidebar { transform: translateX(-100%); }
-      .sidebar.open { transform: translateX(0); }
-      .mobile-backdrop.open { display: block; }
-      .main-content {
-        margin-left: 0;
-        padding: 16px;
+      body {
+        flex-direction: column;
+        overflow: visible;
         height: auto;
-        min-height: calc(100vh - 56px);
-        overflow-y: visible;
       }
-      .brand-lockup { margin-bottom: 10px; }
-      .tabs-bar { width: 100%; justify-content: stretch; }
-      .tab-btn { flex: 1; text-align: center; padding: 8px 10px; font-size: 0.85rem; }
-      .modal-content { max-height: 95vh; height: 95vh; border-radius: 12px; }
-      .filters-grid { grid-template-columns: 1fr; }
-      .permisos-layout { grid-template-columns: 1fr !important; }
+      .mobile-header {
+        display: flex;
+      }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        z-index: 200;
+        box-shadow: 4px 0 20px rgba(0, 11, 89, 0.35);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .main-content {
+        margin-left: 0 !important;
+        padding: 12px 10px !important;
+        height: auto !important;
+        min-height: calc(100vh - 48px);
+        overflow-y: visible !important;
+      }
+      .tab-header {
+        padding: 12px 14px !important;
+        margin-bottom: 12px !important;
+        gap: 10px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        border-left: 4px solid var(--accent) !important;
+      }
+      .tab-header-left {
+        gap: 2px !important;
+      }
+      .tab-title {
+        font-size: 1.05rem !important;
+      }
+      .tab-subtitle {
+        font-size: .75rem !important;
+      }
+      .tab-actions {
+        width: 100% !important;
+        justify-content: stretch !important;
+      }
+      .tab-actions .btn {
+        flex: 1 !important;
+        text-align: center !important;
+        justify-content: center !important;
+        padding: 8px 12px !important;
+        font-size: .8rem !important;
+      }
+      .filters-card {
+        padding: 12px 14px !important;
+        margin-bottom: 12px !important;
+      }
+      .filters-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+      .modal-content {
+        max-height: 94vh !important;
+        height: auto !important;
+        border-radius: 12px !important;
+        margin: 10px !important;
+        width: calc(100% - 20px) !important;
+      }
+      .permisos-layout {
+        grid-template-columns: 1fr !important;
+      }
+      .roles-sidebar {
+        border-right: none !important;
+        border-bottom: 1.5px solid var(--border) !important;
+        padding-right: 0 !important;
+        padding-bottom: 16px !important;
+        margin-bottom: 16px !important;
+        max-height: 220px !important;
+        overflow-y: auto !important;
+      }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       OPTIMIZACIÓN MÓVIL COMPACTA (360×800: Redmi, Galaxy, Vivo, Honor)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 600px) {
+      .mobile-header {
+        padding: 5px 10px;
+        min-height: 44px;
+      }
+      .mobile-menu-btn {
+        font-size: 1.35rem;
+      }
+      .mobile-logo-app {
+        height: 22px;
+        max-height: 22px;
+      }
+      .mobile-title {
+        font-size: .88rem;
+        max-width: 175px;
+      }
+      .mobile-profile-thumb {
+        width: 31px;
+        height: 31px;
+      }
+      .main-content {
+        padding: 6px 6px !important;
+        min-height: calc(100vh - 44px);
+      }
+      .tab-header {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+        gap: 6px !important;
+      }
+      .tab-title {
+        font-size: .95rem !important;
+      }
+      .tab-title #cd-tab-icon {
+        font-size: 1rem !important;
+      }
+      .tab-subtitle {
+        font-size: .68rem !important;
+      }
+      #cd-tab-badge {
+        font-size: .65rem !important;
+        padding: 2px 6px !important;
+      }
+      .tab-actions .btn {
+        padding: 6px 10px !important;
+        font-size: .74rem !important;
+        border-radius: 6px !important;
+      }
+      .filters-card {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+      }
+      .filtros-toggle-left {
+        font-size: .78rem !important;
+      }
+      .filtros-badge {
+        font-size: .60rem !important;
+        min-width: 16px !important;
+        height: 16px !important;
+      }
+      .filtros-chevron {
+        font-size: .78rem !important;
+      }
+      .field label {
+        font-size: .66rem !important;
+        margin-bottom: 2px !important;
+        font-weight: 600;
+      }
+      .field select,
+      .field input {
+        height: 30px !important;
+        font-size: .74rem !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
+      }
+      .field .btn-request {
+        height: 30px !important;
+        font-size: .72rem !important;
+      }
+      .card {
+        padding: 8px 8px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+      }
+      .table-container {
+        max-height: calc(100vh - 190px) !important;
+        border-radius: 6px !important;
+      }
+      table {
+        font-size: .74rem !important;
+      }
+      th {
+        padding: 6px 8px !important;
+        font-size: .67rem !important;
+      }
+      td {
+        padding: 6px 8px !important;
+        font-size: .74rem !important;
+      }
+      .badge-status {
+        font-size: .64rem !important;
+        padding: 1px 6px !important;
+      }
+      .btn-action-icon {
+        width: 26px !important;
+        height: 26px !important;
+      }
+      .pagination-bar {
+        font-size: .72rem !important;
+        padding: 6px 8px !important;
+        gap: 6px !important;
+      }
+      .pagination-btn {
+        padding: 3px 8px !important;
+        font-size: .70rem !important;
+      }
+      .modal-content {
+        margin: 6px !important;
+        width: calc(100% - 12px) !important;
+        border-radius: 8px !important;
+      }
+      .modal-header {
+        padding: 10px 12px !important;
+      }
+      .modal-title {
+        font-size: .95rem !important;
+      }
+      .modal-body {
+        padding: 10px 12px !important;
+      }
+      .modal-footer {
+        padding: 8px 12px !important;
+      }
+      .modal-footer .btn {
+        padding: 6px 12px !important;
+        font-size: .74rem !important;
+      }
+      #modal-worker .field,
+      #modal-doc .field,
+      .modal-body .field {
+        min-width: 100% !important;
+        max-width: 100% !important;
+      }
+      .btn-cloud-upload {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 8px 12px !important;
+        font-size: .75rem !important;
+      }
+      #descuento-nomina-container {
+        height: calc(100vh - 75px) !important;
+        min-height: 480px !important;
+      }
+      #permisos-container {
+        padding: 10px 8px !important;
+      }
+      .permisos-layout {
+        min-height: auto !important;
+        gap: 12px !important;
+      }
+      #bulk-actions-toolbar {
+        padding: 8px 10px !important;
+        gap: 8px !important;
+        font-size: .75rem !important;
+      }
     }
 
     .role-card {
@@ -724,9 +1016,16 @@
 
   <!-- Header móvil -->
   <header class="mobile-header">
-    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
-    <div class="mobile-title"><span>☁️ Cloud Docs</span></div>
-    <span id="mobile-user-badge" style="font-size: 0.75rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 4px;"></span>
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+    </div>
+    <div class="mobile-title"><span id="mobileHeaderTitle">Cloud Docs — Trabajadores</span></div>
+    <div class="mobile-header-right">
+      <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
+      </button>
+    </div>
   </header>
 
   <!-- Sidebar -->
@@ -1315,6 +1614,11 @@
       // El contador de registros no aplica a Permisos/Descuento de Nómina
       // (no son listados tabulares de la misma naturaleza); se oculta ahí.
       if (badge) badge.style.display = (tab === 'permisos' || tab === 'descuentonomina') ? 'none' : 'inline-flex';
+
+      const mobileHeaderTitle = document.getElementById('mobileHeaderTitle');
+      if (mobileHeaderTitle) {
+        mobileHeaderTitle.textContent = `Cloud Docs — ${meta.title || tab}`;
+      }
     }
 
     function actualizarBadgeRegistrosCD(total) {
@@ -1580,7 +1884,9 @@
           toggleMainFilters();
         }
       });
-      document.getElementById('mobile-user-badge').innerText = CONFIG.rol;
+      const mobileBadge = document.getElementById('mobile-user-badge');
+      if (mobileBadge) mobileBadge.innerText = CONFIG.rol;
+      sincronizarPerfilMovil();
       document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
       document.getElementById('btn-nueva-firma').href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
@@ -2040,13 +2346,37 @@
       }
     }
 
-    // Menú lateral en móvil (mismo patrón que SST/Nómina)
+    // Menú lateral en móvil (mismo patrón que SST/Nómina / Facturación / Inventario)
     function toggleMobileSidebar(forceState) {
       const sb = document.getElementById('sidebar');
       const bd = document.getElementById('mobile-backdrop');
+      if (!sb || !bd) return;
       const shouldOpen = forceState !== undefined ? forceState : !sb.classList.contains('open');
       sb.classList.toggle('open', shouldOpen);
       bd.classList.toggle('open', shouldOpen);
+    }
+
+    function abrirPerfilCorporativo() {
+      if (typeof window.abrirPerfil === 'function') {
+        window.abrirPerfil();
+      } else if (typeof window.appLauncherProfile !== 'undefined' && typeof window.appLauncherProfile.openModal === 'function') {
+        window.appLauncherProfile.openModal();
+      }
+    }
+
+    async function sincronizarPerfilMovil() {
+      try {
+        const thumb = document.getElementById('mobileProfileThumb');
+        if (!thumb || !CONFIG || !CONFIG.usuarioId) return;
+        const res = await fetch(`/perfil/api?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.ok && data.perfil && data.perfil.foto_url) {
+          thumb.src = data.perfil.foto_url;
+        }
+      } catch (e) {
+        // Fallback silencioso; app-launcher-profile.js también intenta sincronizar
+      }
     }
 
     // Reset filters
