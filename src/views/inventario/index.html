@@ -139,9 +139,10 @@
       position: fixed;
       left: 0;
       top: 0;
-      z-index: 100;
+      z-index: 200;
       border-right: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow: 4px 0 15px rgba(0, 11, 89, 0.08);
+      transition: transform 0.25s ease;
     }
     
     .sidebar-brand {
@@ -1692,207 +1693,278 @@
       margin-left: 4px;
     }
 
-    /* ── Mobile Layout Optimization ── */
-    @media (max-width: 768px) {
+    /* ══════════════════════════════════════════════════════════
+       MÓVIL HEADER Y BACKDROP (Estilo Nómina / Facturación / LogyApp)
+    ══════════════════════════════════════════════════════════ */
+    .mobile-header {
+      display: none;
+      background: var(--primary);
+      color: #fff;
+      padding: 7px 12px;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 130;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      min-height: 48px;
+    }
+    .mobile-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mobile-menu-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.45rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 4px;
+      line-height: 1;
+    }
+    .mobile-logo-app {
+      height: 24px;
+      max-height: 24px;
+      width: auto;
+      object-fit: contain;
+    }
+    .mobile-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: .92rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: .2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 190px;
+    }
+    .mobile-header-right {
+      display: flex;
+      align-items: center;
+    }
+    .mobile-profile-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      border-radius: 50%;
+      outline: none;
+      transition: transform .15s ease, opacity .15s ease;
+    }
+    .mobile-profile-btn:active {
+      transform: scale(.92);
+      opacity: .85;
+    }
+    .mobile-profile-thumb {
+      width: 33px;
+      height: 33px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, .9);
+      object-fit: cover;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+    }
+    .mobile-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 140;
+    }
+    .mobile-backdrop.open {
+      display: block;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       RESPONSIVE DRAWER Y ADAPTACIÓN GENERAL (≤ 900px)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
       body {
         flex-direction: column;
-        overflow-y: auto;
+        overflow: visible;
+        height: auto;
       }
-      
+
+      .mobile-header {
+        display: flex;
+      }
+
       .sidebar {
-        position: static;
-        width: 100%;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 6px rgba(0, 11, 89, 0.05);
-      }
-      
-      .sidebar-brand {
-        padding: 12px 16px;
-      }
-      
-      .brand-lockup {
-        flex-direction: row;
-        gap: 12px;
-        padding: 4px;
-      }
-      
-      .brand-logo-company-crop {
-        height: 24px !important;
-        width: auto !important;
-      }
-      
-      .brand-logo-app {
-        height: 24px !important;
-      }
-      
-      .brand-divider {
-        height: 18px !important;
-        width: 1px !important;
-        margin: 0 !important;
-      }
-      
-      .nav-list {
-        flex-direction: row;
-        overflow-x: auto;
-        padding: 8px 16px;
-        gap: 8px;
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      
-      .nav-list::-webkit-scrollbar {
-        display: none;
-      }
-      
-      .nav-item {
-        margin-bottom: 0;
-        padding: 8px 12px;
-        font-size: 0.85rem;
-        white-space: nowrap;
-      }
-      
-      .nav-item.active::before {
+        position: fixed;
         left: 0;
-        bottom: 0;
-        top: auto;
-        width: 100%;
-        height: 3px;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        z-index: 200;
+        box-shadow: 4px 0 20px rgba(0, 11, 89, 0.35);
       }
-      
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
       .wrapper {
-        margin-left: 0;
-        padding: 16px;
-        height: auto;
-        overflow-y: visible;
+        margin-left: 0 !important;
+        padding: 12px 10px !important;
+        height: auto !important;
+        min-height: calc(100vh - 48px);
+        overflow-y: visible !important;
       }
-      
-      header {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 16px;
-        gap: 16px;
+
+      /* Cabecera interna en móvil: compacta y sin logos/perfil redundantes */
+      .wrapper > header {
+        padding: 10px 12px !important;
+        margin-bottom: 12px !important;
+        gap: 10px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        border-bottom: 2px solid var(--primary) !important;
       }
-      
-      .logo-container {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
+
+      .wrapper > header .logo-container img {
+        display: none !important;
       }
-      
-      header > div:nth-child(2) {
+
+      .wrapper > header .logo-container {
+        gap: 0 !important;
+      }
+
+      .wrapper > header .header-titles h1 {
+        font-size: 1.05rem !important;
+      }
+
+      .wrapper > header .header-titles p {
+        font-size: .72rem !important;
+      }
+
+      .wrapper > header .user-profile {
+        display: none !important;
+      }
+
+      /* Pendiente por Recibir ya no tiene título propio en el header (se
+         quitó por quedar duplicado con "Transferencias Pendientes por
+         Recibir"); sin logo ni perfil (ocultos arriba) no queda nada que
+         mostrar ahí, así que se oculta el header completo en móvil. */
+      #content-tab-pendiente-recibir > header {
+        display: none !important;
+      }
+
+      .wrapper > header > div[style*="margin-left: auto"],
+      .wrapper > header > div[style*="margin-left:auto"] {
         margin-left: 0 !important;
         margin-right: 0 !important;
-        width: 100%;
-        justify-content: center;
+        width: 100% !important;
       }
-      
+
       .btn-confirmar {
-        width: 100%;
-        justify-content: center;
+        width: 100% !important;
+        justify-content: center !important;
       }
-      
-      .user-profile {
-        width: 100%;
-        justify-content: center;
-        border-top: 1px solid var(--border);
-        padding-top: 12px;
-      }
-      
+
       .tabs-container {
         flex-direction: column !important;
         align-items: stretch !important;
+        gap: 8px !important;
+        margin-bottom: 12px !important;
       }
-      
+
       .tabs-container > div:first-child {
         display: flex;
         width: 100%;
-        gap: 8px;
+        gap: 6px;
       }
-      
+
       .tabs-container .tab-btn {
         flex: 1;
         text-align: center;
-        padding: 10px 8px;
-        font-size: 0.8rem;
+        padding: 7px 6px;
+        font-size: 0.78rem;
+        border-radius: 6px;
       }
-      
+
       .tabs-container > div:last-child {
         display: flex !important;
         width: 100%;
         overflow-x: auto;
-        padding-bottom: 6px;
-        margin-top: 4px;
-        gap: 8px !important;
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+        padding-bottom: 4px;
+        margin-top: 2px;
+        gap: 6px !important;
+        -webkit-overflow-scrolling: touch;
       }
-      
-      .tabs-container > div:last-child::-webkit-scrollbar {
-        display: none;
-      }
-      
+
       .mini-stat-card {
         flex: 0 0 auto;
-        min-width: 130px;
+        min-width: 120px;
+        padding: 8px 10px;
+        border-radius: 8px;
       }
 
       #btn-actualizar-global {
-        margin: 0 16px 12px 16px !important;
+        margin: 8px 16px 14px 16px !important;
         justify-content: center;
       }
-      
+
       .filters-card {
-        padding: 16px;
-      }
-      
-      .filters-grid {
-        gap: 12px !important;
-      }
-      
-      .category-chip {
-        padding: 5px 10px;
-        font-size: 0.78rem;
+        padding: 12px;
       }
 
-      /* ── Formularios de detalle (Solicitudes / Actas de Entrega): apilar
-         la columna del formulario y la de artículos en vez de lado a lado ── */
+      .filters-grid {
+        gap: 8px !important;
+      }
+
+      .category-chip {
+        padding: 4px 8px;
+        font-size: 0.76rem;
+      }
+
       .dashboard-grid {
         grid-template-columns: 1fr !important;
       }
 
-      /* Cualquier grid inline de 2 columnas fijas (pares de campos en modales
-         de edición de Artículos/Kardex, Email/Celular en Actas, etc.) */
       [style*="grid-template-columns: 1fr 1fr"] {
         grid-template-columns: 1fr !important;
       }
 
-      /* Tablas (Kardex, Solicitudes, Actas, Artículos, Historial): más compactas
-         para aprovechar mejor el ancho disponible dentro del scroll horizontal */
-      .kardex-table th, .kardex-table td {
-        padding: 8px 10px;
-        font-size: 0.78rem;
+      .kardex-table th, .kardex-table td,
+      .rep-table th, .rep-table td {
+        padding: 6px 8px;
+        font-size: 0.74rem;
       }
 
-      .kardex-table-container {
+      .kardex-table-container,
+      .rep-table-container {
         -webkit-overflow-scrolling: touch;
       }
 
-      /* Modales: menos espacio superior fijo para aprovechar el alto de pantalla */
       .modal {
-        padding-top: 16px;
+        padding: 8px;
       }
 
-      /* Encabezados de tarjeta/modal con título + botón: permitir que envuelvan */
+      .modal-content {
+        max-width: 100% !important;
+        max-height: 96vh !important;
+        margin: 4px auto !important;
+        border-radius: 10px !important;
+      }
+
       .modal-header {
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
       }
 
-      /* Botones de formulario que suelen ir en fila: permitir envolver siempre */
-
-      /* ── Dashboard / Reportes de Inventario: móvil ── */
+      /* Dashboard / Reportes */
       #rep-header-actions {
         flex-wrap: wrap;
         justify-content: center;
@@ -1917,7 +1989,7 @@
       }
 
       .rep-filters-box {
-        padding: 14px;
+        padding: 12px;
       }
 
       .rep-filters-row {
@@ -1950,11 +2022,11 @@
       .rep-metric-btn {
         flex: 1;
         font-size: 0.7rem;
-        padding: 8px 4px;
+        padding: 7px 4px;
       }
 
       .rep-kpi-card {
-        padding: 14px;
+        padding: 12px;
       }
 
       .rep-charts-grid {
@@ -1962,7 +2034,7 @@
       }
 
       .rep-chart-canvas-wrap {
-        height: 240px;
+        height: 230px;
       }
 
       .rep-chart-header {
@@ -1971,27 +2043,300 @@
       }
 
       .rep-table-card {
-        padding: 14px;
+        padding: 12px;
       }
 
       #rep-table-search, #modal-rep-search {
         width: 100% !important;
       }
 
-      .rep-table th, .rep-table td {
-        padding: 8px 10px;
-        font-size: 0.76rem;
-      }
-
       .rep-modal-footer {
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
       }
 
       .rep-modal-footer button {
         flex: 1;
         justify-content: center;
       }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       OPTIMIZACIÓN MÓVIL COMPACTA (360×800: Redmi, Galaxy, Vivo, Honor)
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 600px) {
+      .mobile-header {
+        padding: 5px 10px;
+        min-height: 44px;
+      }
+      .mobile-menu-btn {
+        font-size: 1.35rem;
+      }
+      .mobile-logo-app {
+        height: 22px;
+        max-height: 22px;
+      }
+      .mobile-title {
+        font-size: .88rem;
+        max-width: 175px;
+      }
+      .mobile-profile-thumb {
+        width: 31px;
+        height: 31px;
+      }
+
+      .wrapper {
+        padding: 8px 6px !important;
+        min-height: calc(100vh - 44px);
+      }
+
+      .wrapper > header {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+        gap: 6px !important;
+      }
+      .wrapper > header .header-titles h1 {
+        font-size: .98rem !important;
+        line-height: 1.25;
+      }
+      .wrapper > header .header-titles p {
+        font-size: .68rem !important;
+        line-height: 1.3;
+        margin-top: 1px;
+      }
+
+      /* Filtros compactos */
+      .filters-card,
+      .rep-filters-box {
+        padding: 8px 10px !important;
+        margin-bottom: 8px !important;
+        border-radius: 8px !important;
+      }
+      .filters-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 5px !important;
+      }
+      .filter-group label {
+        font-size: .66rem !important;
+        margin-bottom: 2px !important;
+        font-weight: 600;
+      }
+      .filter-group select,
+      .filter-group input {
+        height: 30px !important;
+        font-size: .74rem !important;
+        padding: 3px 6px !important;
+        border-radius: 5px !important;
+      }
+
+      /* Chips de categoría horizontales deslizables al tacto */
+      .category-chips,
+      #category-chips-container,
+      .chips-container,
+      .sol-btn-group {
+        display: flex !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+        padding-bottom: 3px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .category-chip {
+        flex-shrink: 0;
+        padding: 4px 8px !important;
+        font-size: .70rem !important;
+        border-radius: 6px !important;
+      }
+      .sol-btn-group-item {
+        flex-shrink: 0;
+        padding: 4px 8px !important;
+        font-size: .72rem !important;
+        border-radius: 5px !important;
+      }
+
+      /* Tarjetas de Métricas y KPIs en Reportes y Stock */
+      .rep-kpis-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 5px !important;
+      }
+      .rep-kpi-card {
+        padding: 7px 8px !important;
+        gap: 6px !important;
+        border-radius: 8px !important;
+      }
+      .rep-kpi-icon {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 1.05rem !important;
+        border-radius: 8px !important;
+      }
+      .rep-kpi-val {
+        font-size: 1.05rem !important;
+      }
+      .rep-kpi-title {
+        font-size: .65rem !important;
+      }
+
+      /* Tablas de alta densidad de datos */
+      .kardex-table-container,
+      .rep-table-container,
+      .table-responsive {
+        max-height: calc(100vh - 150px) !important;
+        border-radius: 8px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      table th,
+      .kardex-table th,
+      .rep-table th {
+        padding: 5px 6px !important;
+        font-size: .66rem !important;
+        letter-spacing: .1px;
+      }
+      table td,
+      .kardex-table td,
+      .rep-table td {
+        padding: 5px 6px !important;
+        font-size: .72rem !important;
+      }
+      .estado-badge {
+        font-size: .62rem !important;
+        padding: 2px 5px !important;
+      }
+
+      /* Botones y acciones */
+      .btn-primary,
+      .btn-secondary,
+      .btn-confirmar {
+        padding: 5px 10px !important;
+        font-size: .74rem !important;
+        border-radius: 6px !important;
+      }
+      #btn-actualizar-global {
+        padding: 6px 10px !important;
+        font-size: .75rem !important;
+        margin: 4px 10px 10px 10px !important;
+      }
+
+      /* Formularios de detalle (Solicitudes y Actas) */
+      .sol-form-grid,
+      .actas-form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+      }
+
+      /* Modales compactos */
+      .modal {
+        padding: 4px !important;
+      }
+      .modal-content {
+        max-width: 100% !important;
+        max-height: 96vh !important;
+        border-radius: 8px !important;
+      }
+      .modal-header {
+        padding: 8px 12px !important;
+        font-size: .86rem !important;
+      }
+      .modal-body {
+        padding: 10px 12px !important;
+      }
+      .modal-footer {
+        padding: 8px 12px !important;
+        gap: 5px !important;
+      }
+
+      /* Modales "conf-modal" (ej. Recibir Pedido / Acta de Ingreso) — este
+         sistema de modal es distinto al de arriba (.modal) y nunca tuvo
+         ajuste móvil propio, por eso se veía igual que en escritorio. */
+      .conf-modal {
+        padding: 4px !important;
+      }
+      .conf-modal-content {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 98vh !important;
+        border-radius: 8px !important;
+      }
+      .conf-modal-header {
+        padding: 10px 12px !important;
+      }
+      .conf-modal-header h2 {
+        font-size: .92rem !important;
+      }
+      .conf-modal-body {
+        padding: 10px 12px !important;
+        gap: 10px !important;
+      }
+      .conf-modal-footer {
+        padding: 10px 12px !important;
+        gap: 6px !important;
+      }
+      /* Tabla de ítems a recibir: columnas más angostas para que quepa más
+         información sin tener que desplazar tanto horizontalmente. */
+      #recibir-modal-items-table {
+        min-width: 560px !important;
+        font-size: .72rem !important;
+      }
+      #recibir-modal-items-table th:nth-child(1) { width: 40px !important; }
+      #recibir-modal-items-table th:nth-child(2) { width: 36px !important; }
+      #recibir-modal-items-table th:nth-child(3) { width: 140px !important; }
+      #recibir-modal-items-table th:nth-child(4) { width: 110px !important; }
+      #recibir-modal-items-table th:nth-child(5) { width: 55px !important; }
+      #recibir-modal-items-table th:nth-child(6) { width: 65px !important; }
+      #recibir-modal-items-table th:nth-child(7) { width: 110px !important; }
+      #recibir-modal-items-container {
+        max-height: 220px !important;
+      }
+
+      /* Tarjetas informativas (mini-stat-card): más compactas para dejar
+         espacio a los registros, que son lo importante. */
+      .mini-stat-card {
+        padding: 5px 8px !important;
+        min-width: 0 !important;
+        gap: 5px !important;
+      }
+      .mini-stat-icon {
+        font-size: .85rem !important;
+      }
+      .mini-stat-info .lbl {
+        font-size: .56rem !important;
+      }
+      .mini-stat-info .val {
+        font-size: .74rem !important;
+      }
+
+      /* Descripciones largas de encabezado: solo aportan en pantallas
+         grandes, en móvil quitan espacio a los registros. */
+      .desc-desktop-only {
+        display: none !important;
+      }
+
+      /* Filtros de Kardex: el campo "Artículo" (input + datalist) se
+         desbordaba de su columna en el grid de 2 columnas móvil. */
+      #kardex-filter-articulo-search {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      .filters-grid {
+        overflow-x: hidden;
+      }
+      .filter-group {
+        min-width: 0;
+      }
+      .filter-group select,
+      .filter-group input {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+    }
+
+    /* "Mostrando N artículos/movimientos": no aporta valor, se quita en
+       todas las resoluciones. */
+    #results-text,
+    #kardex-results-text,
+    #articulos-results-text {
+      display: none !important;
     }
 
     /* ── Dashboard / Reportes de Inventario ── */
@@ -2561,8 +2906,25 @@
 </head>
 <body>
 
+  <!-- Backdrop móvil -->
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar()"></div>
+
+  <!-- Header móvil -->
+  <header class="mobile-header">
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+    </div>
+    <div class="mobile-title"><span id="mobileHeaderTitle">Inventario · Reportes</span></div>
+    <div class="mobile-header-right">
+      <button type="button" class="mobile-profile-btn" onclick="abrirPerfilCorporativo()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
+      </button>
+    </div>
+  </header>
+
   <!-- Sidebar -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-lockup">
         <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
@@ -2854,10 +3216,6 @@
     <header>
       <div class="logo-container">
         <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" alt="LOG&SER LOGO">
-        <div class="header-titles">
-          <h1>Pendiente por Recibir e Ingresos</h1>
-          <p>Recepción de transferencias en tránsito e historial de actas de ingreso</p>
-        </div>
       </div>
 
       <div class="user-profile">
@@ -2901,7 +3259,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
           <div>
             <h2 style="font-size: 1.1rem; color: var(--primary); margin: 0; font-weight: 700;">Transferencias Pendientes por Recibir</h2>
-            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Verifica físicamente los elementos recibidos, registra novedades o faltantes y valida la entrega mediante firma digital.</p>
+            <p class="desc-desktop-only" style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Verifica físicamente los elementos recibidos, registra novedades o faltantes y valida la entrega mediante firma digital.</p>
           </div>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="pendiente-btn-agregar-kardex" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
@@ -2911,22 +3269,39 @@
         </div>
 
         <!-- Filtros de búsqueda para Pendientes -->
-        <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid var(--border); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label for="pendiente-filter-operacion" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Operación Destino</label>
-            <select id="pendiente-filter-operacion" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
-              <option value="">Todas las operaciones</option>
-            </select>
+        <div class="filters-card" style="margin: 16px 0;">
+          <div class="filtros-toggle" id="pendiente-filtros-toggle">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="pendiente-filtros-badge">0</span>
+            </span>
+            <span class="filtros-chevron" id="pendiente-filtros-chevron">▸</span>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label for="pendiente-filter-categoria" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Categoría</label>
-            <select id="pendiente-filter-categoria" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
-              <option value="">Todas las categorías</option>
-            </select>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label for="pendiente-filter-search" style="font-weight: 600; font-size: 0.78rem; color: var(--text);">Buscar Artículo / No. Pedido</label>
-            <input type="text" id="pendiente-filter-search" placeholder="Escribe el nombre del artículo o ID..." style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; background: white; outline: none; transition: border-color 0.2s;">
+          <div id="pendiente-filtros-body" style="display: none;">
+            <div class="filters-grid" style="margin-top: 14px;">
+              <div class="filter-group">
+                <label for="pendiente-filter-operacion-origen">Operación Origen</label>
+                <select id="pendiente-filter-operacion-origen">
+                  <option value="">Todas las operaciones</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="pendiente-filter-operacion">Operación Destino</label>
+                <select id="pendiente-filter-operacion">
+                  <option value="">Todas las operaciones</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="pendiente-filter-categoria">Categoría</label>
+                <select id="pendiente-filter-categoria">
+                  <option value="">Todas las categorías</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label for="pendiente-filter-search">Buscar Artículo / No. Pedido</label>
+                <input type="text" id="pendiente-filter-search" placeholder="Escribe el nombre del artículo o ID...">
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2952,7 +3327,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
           <div>
             <h2 style="font-size: 1.1rem; color: #16a34a; margin: 0; font-weight: 700;">Historial de Ingresos y Actas de Verificación</h2>
-            <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Consulta todas las transferencias recibidas, sus actas digitales generadas con firma y el detalle de devoluciones por novedad.</p>
+            <p class="desc-desktop-only" style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">Consulta todas las transferencias recibidas, sus actas digitales generadas con firma y el detalle de devoluciones por novedad.</p>
           </div>
           <div>
             <button id="btn-refrescar-historial-ingresos" class="btn" style="background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
@@ -3195,7 +3570,7 @@
               </div>
               <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                 <button id="sol-btn-sincronizar-ingresos" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: 1px solid var(--border); background: white; color: var(--text); cursor: pointer; transition: all 0.2s;" title="Sincronizar solicitudes automáticas para nuevos ingresos de Maestro_Vinculación">
-                  <span>🔄</span> Sincronizar Nuevos Ingresos
+                  <span>🔄</span> Actualizar
                 </button>
                 <button class="btn-primary" id="sol-btn-nueva" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
                   <span>➕</span> Nueva Solicitud
@@ -3460,42 +3835,11 @@
             <!-- VISTA LISTADO DE ACTAS -->
             <div id="acta-vista-listado" class="acta-vista active">
 
-            <!-- Stats Container (Mini-Stats Next to Tab Title) -->
-            <div class="tabs-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 10px; margin-bottom: 20px;">
-              <div style="font-weight: 700; color: var(--primary); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                <span>📊</span> Resumen de Actas
-              </div>
-
-              <!-- Right Side: Mini Stats Info Box -->
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <div class="mini-stat-card">
-                  <span class="mini-stat-icon">📄</span>
-                  <div class="mini-stat-info">
-                    <span class="lbl">Total Actas</span>
-                    <span class="val" id="acta-stat-total">0</span>
-                  </div>
-                </div>
-                <div class="mini-stat-card">
-                  <span class="mini-stat-icon">✍️</span>
-                  <div class="mini-stat-info">
-                    <span class="lbl">Firmadas</span>
-                    <span class="val" id="acta-stat-firmadas">0</span>
-                  </div>
-                </div>
-                <div class="mini-stat-card">
-                  <span class="mini-stat-icon">⏳</span>
-                  <div class="mini-stat-info">
-                    <span class="lbl">Pendientes</span>
-                    <span class="val" id="acta-stat-pendientes">0</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <div class="results-count" id="acta-results-text">Mostrando 0 actas</div>
                 <span class="badge badge-estado" id="acta-badge-total" style="background: #eef1ff; border: 1px solid #c5d0f5; color: #1a1a6e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">Total: 0</span>
+                <span class="badge badge-estado" style="background: #fef9c3; border: 1px solid #fde68a; color: #854d0e; font-weight: 600; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem;">⏳ Pendientes: <span id="acta-stat-pendientes">0</span></span>
               </div>
               <button class="btn-primary" id="acta-btn-nueva" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: white; cursor: pointer;">
                 <span>➕</span> Nueva Acta
@@ -3754,38 +4098,6 @@
           <!-- SUBTAB CONTENT 2: LÓGICA DE ABASTECIMIENTO -->
           <div id="actas-subtab-content-logica" style="display: none;">
             
-            <!-- Header & Stats Bar -->
-            <div class="tabs-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 10px; margin-bottom: 20px;">
-              <div style="font-weight: 700; color: var(--primary); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                <span>📋</span> Lógica de Abastecimiento
-              </div>
-
-              <!-- Mini Stats Cards -->
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <div class="mini-stat-card">
-                  <span class="mini-stat-icon">📑</span>
-                  <div class="mini-stat-info">
-                    <span class="lbl">Total Reglas</span>
-                    <span class="val" id="logica-stat-total">0</span>
-                  </div>
-                </div>
-                <div class="mini-stat-card">
-                  <span class="mini-stat-icon">🏢</span>
-                  <div class="mini-stat-info">
-                    <span class="lbl">Operaciones</span>
-                    <span class="val" id="logica-stat-operaciones">0</span>
-                  </div>
-                </div>
-                <div class="mini-stat-card">
-                  <span class="mini-stat-icon">👔</span>
-                  <div class="mini-stat-info">
-                    <span class="lbl">Cargos</span>
-                    <span class="val" id="logica-stat-cargos">0</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <!-- Top Actions Row -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
               <div style="display: flex; align-items: center; gap: 10px;">
@@ -3909,40 +4221,8 @@
       </div>
     </header>
 
-    <!-- Stats Container (Mini-Stats Next to Tab Title) -->
-    <div class="tabs-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; margin-bottom: 20px;">
-      <div style="font-weight: 700; color: var(--primary); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-        <span>📊</span> Resumen de Transacciones
-      </div>
-
-      <!-- Right Side: Mini Stats Info Box -->
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <div class="mini-stat-card">
-          <span class="mini-stat-icon">📈</span>
-          <div class="mini-stat-info">
-            <span class="lbl">Total Movimientos</span>
-            <span class="val" id="kardex-stat-total-mov">0</span>
-          </div>
-        </div>
-        <div class="mini-stat-card">
-          <span class="mini-stat-icon">📥</span>
-          <div class="mini-stat-info">
-            <span class="lbl">Total Entradas</span>
-            <span class="val" id="kardex-stat-total-ent">0</span>
-          </div>
-        </div>
-        <div class="mini-stat-card">
-          <span class="mini-stat-icon">📤</span>
-          <div class="mini-stat-info">
-            <span class="lbl">Total Salidas</span>
-            <span class="val" id="kardex-stat-total-sal">0</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Filters Section -->
-    <div class="filters-card">
+    <div class="filters-card" style="margin-top: 20px;">
       <div class="filtros-toggle" id="kardex-filtros-toggle">
         <span class="filtros-toggle-left">
           🔍 Filtros de Consulta
@@ -5866,7 +6146,10 @@
       // visible actualmente, sin navegar ni recargar la página, preservando filtros aplicados.
       const btnActualizarGlobal = document.getElementById('btn-actualizar-global');
       if (btnActualizarGlobal) {
-        btnActualizarGlobal.addEventListener('click', () => refrescarVistaActual());
+        btnActualizarGlobal.addEventListener('click', () => {
+          if (typeof toggleMobileSidebar === 'function') toggleMobileSidebar(false);
+          refrescarVistaActual();
+        });
       }
 
       // 4. Tab switching event listeners (Inventario)
@@ -5875,6 +6158,7 @@
         tabBtnHistorial.classList.remove('active');
         tabContentConsulta.classList.add('active');
         tabContentHistorial.classList.remove('active');
+        if (typeof setMobileHeaderTitle === 'function') setMobileHeaderTitle('Inventario · Stock');
       });
 
       tabBtnHistorial.addEventListener('click', () => {
@@ -5882,6 +6166,7 @@
         tabBtnConsulta.classList.remove('active');
         tabContentHistorial.classList.add('active');
         tabContentConsulta.classList.remove('active');
+        if (typeof setMobileHeaderTitle === 'function') setMobileHeaderTitle('Historial Confirmaciones');
         initHistory();
       });
 
@@ -5962,6 +6247,32 @@
       const contentTabActas = document.getElementById('content-tab-actas');
       const contentTabDotacionLey = document.getElementById('content-tab-dotacionley');
 
+      function toggleMobileSidebar(force) {
+        const sb = document.getElementById('sidebar');
+        const bd = document.getElementById('mobile-backdrop');
+        if (!sb || !bd) return;
+        const isOpen = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+        sb.classList.toggle('open', isOpen);
+        bd.classList.toggle('open', isOpen);
+      }
+      window.toggleMobileSidebar = toggleMobileSidebar;
+
+      function abrirPerfilCorporativo() {
+        if (typeof window.abrirPerfil === 'function') {
+          window.abrirPerfil();
+        } else {
+          const trigger = document.querySelector('.alp-profile-trigger');
+          if (trigger) trigger.click();
+        }
+      }
+      window.abrirPerfilCorporativo = abrirPerfilCorporativo;
+
+      function setMobileHeaderTitle(title) {
+        const el = document.getElementById('mobileHeaderTitle');
+        if (el) el.textContent = title;
+      }
+      window.setMobileHeaderTitle = setMobileHeaderTitle;
+
       const desactivarTodasLasPestanas = () => {
         if (tabBtnInventario) tabBtnInventario.classList.remove('active');
         if (tabBtnReportes) tabBtnReportes.classList.remove('active');
@@ -6008,6 +6319,8 @@
           desactivarTodasLasPestanas();
           tabBtnInventario.classList.add('active');
           if (contentTabInventario) contentTabInventario.style.display = 'block';
+          setMobileHeaderTitle('Inventario · Stock');
+          toggleMobileSidebar(false);
           fetchData();
         });
       }
@@ -6017,6 +6330,8 @@
           desactivarTodasLasPestanas();
           tabBtnReportes.classList.add('active');
           if (contentTabReportes) contentTabReportes.style.display = 'block';
+          setMobileHeaderTitle('Inventario · Reportes');
+          toggleMobileSidebar(false);
           initReportesInventario();
         });
       }
@@ -6033,6 +6348,8 @@
           desactivarTodasLasPestanas();
           tabBtnPendienteRecibirMain.classList.add('active');
           if (contentTabPendienteRecibir) contentTabPendienteRecibir.style.display = 'block';
+          setMobileHeaderTitle('Pendiente Recibir');
+          toggleMobileSidebar(false);
           initPendientesMain();
         });
       }
@@ -6042,6 +6359,8 @@
           desactivarTodasLasPestanas();
           tabBtnKardex.classList.add('active');
           if (contentTabKardex) contentTabKardex.style.display = 'block';
+          setMobileHeaderTitle('Inventario · Kardex');
+          toggleMobileSidebar(false);
           if (!isKardexInitialized) {
             initKardex();
           } else {
@@ -6055,6 +6374,8 @@
           desactivarTodasLasPestanas();
           tabBtnArticulos.classList.add('active');
           if (contentTabArticulos) contentTabArticulos.style.display = 'block';
+          setMobileHeaderTitle('Inventario · Artículos');
+          toggleMobileSidebar(false);
           initArticulos();
         });
       }
@@ -6064,6 +6385,8 @@
           desactivarTodasLasPestanas();
           tabBtnSolicitudes.classList.add('active');
           if (contentTabSolicitudes) contentTabSolicitudes.style.display = 'block';
+          setMobileHeaderTitle('Inventario · Solicitudes');
+          toggleMobileSidebar(false);
           if (!isSolicitudesInitialized) {
             initSolicitudes();
           } else {
@@ -6077,6 +6400,8 @@
           desactivarTodasLasPestanas();
           tabBtnActas.classList.add('active');
           if (contentTabActas) contentTabActas.style.display = 'block';
+          setMobileHeaderTitle('Inventario · Actas');
+          toggleMobileSidebar(false);
           initActas();
         });
       }
@@ -6086,6 +6411,8 @@
           desactivarTodasLasPestanas();
           tabBtnDotacionLey.classList.add('active');
           if (contentTabDotacionLey) contentTabDotacionLey.style.display = 'block';
+          setMobileHeaderTitle('Dotación de Ley');
+          toggleMobileSidebar(false);
           initDotacionLey();
         });
       }
@@ -11237,9 +11564,11 @@
 
       if (vista === 'formulario') {
         if (formulario) formulario.style.display = 'block';
+        if (typeof setMobileHeaderTitle === 'function') setMobileHeaderTitle('Nueva Solicitud');
         resetSolicitudForm();
       } else {
         if (listado) listado.style.display = 'block';
+        if (typeof setMobileHeaderTitle === 'function') setMobileHeaderTitle('Inventario · Solicitudes');
         fetchSolicitudesList();
       }
     }
@@ -13108,11 +13437,26 @@
           });
         }
 
+        // Filtros plegables de Pendientes
+        const pendToggle = document.getElementById('pendiente-filtros-toggle');
+        const pendBody = document.getElementById('pendiente-filtros-body');
+        const pendChevron = document.getElementById('pendiente-filtros-chevron');
+        let pendAbierto = false;
+        if (pendToggle && pendBody && pendChevron) {
+          pendToggle.addEventListener('click', () => {
+            pendAbierto = !pendAbierto;
+            pendBody.style.display = pendAbierto ? 'block' : 'none';
+            pendChevron.style.transform = pendAbierto ? 'rotate(90deg)' : 'rotate(0deg)';
+          });
+        }
+
         // Filtros de Pendientes
+        const fOpOrigen = document.getElementById('pendiente-filter-operacion-origen');
         const fOp = document.getElementById('pendiente-filter-operacion');
         const fCat = document.getElementById('pendiente-filter-categoria');
         const fSearch = document.getElementById('pendiente-filter-search');
 
+        if (fOpOrigen) fOpOrigen.addEventListener('change', () => { renderPendientesList(); });
         if (fOp) fOp.addEventListener('change', () => { renderPendientesList(); });
         if (fCat) fCat.addEventListener('change', () => { renderPendientesList(); });
         if (fSearch) fSearch.addEventListener('input', () => { renderPendientesList(); });
@@ -13156,18 +13500,24 @@
     }
 
     function populatePendientesFilterSelectors() {
+      const selOpOrigen = document.getElementById('pendiente-filter-operacion-origen');
       const selOp = document.getElementById('pendiente-filter-operacion');
       const selCat = document.getElementById('pendiente-filter-categoria');
 
-      if (!selOp || !selCat) return;
+      if (!selOpOrigen || !selOp || !selCat) return;
 
+      const currentOpOrigen = selOpOrigen.value;
       const currentOp = selOp.value;
       const currentCat = selCat.value;
 
+      const operacionOrigenCounts = {};
       const operacionCounts = {};
       const categoriaCounts = {};
 
       allPendientes.forEach(order => {
+        const oOrigen = order.OperacionOrigen || 'Sin Operación';
+        operacionOrigenCounts[oOrigen] = (operacionOrigenCounts[oOrigen] || 0) + 1;
+
         const o = order.OperacionDestino || 'Sin Operación';
         operacionCounts[o] = (operacionCounts[o] || 0) + 1;
 
@@ -13178,6 +13528,12 @@
           });
         }
       });
+
+      selOpOrigen.innerHTML = `<option value="">Todas las operaciones (${allPendientes.length})</option>`;
+      Object.keys(operacionOrigenCounts).sort().forEach(o => {
+        selOpOrigen.innerHTML += `<option value="${o === 'Sin Operación' ? '' : o}">${o} (${operacionOrigenCounts[o]})</option>`;
+      });
+      selOpOrigen.value = operacionOrigenCounts[currentOpOrigen] ? currentOpOrigen : '';
 
       selOp.innerHTML = `<option value="">Todas las operaciones (${allPendientes.length})</option>`;
       Object.keys(operacionCounts).sort().forEach(o => {
@@ -13204,11 +13560,24 @@
       const puedeGestionarPendiente = ['Sistema', 'Inventario'].includes(CONFIG.rol);
       const puedeEliminarPendiente = puedeGestionarPendiente;
 
+      const selOpOrigen = document.getElementById('pendiente-filter-operacion-origen')?.value || '';
       const selOp = document.getElementById('pendiente-filter-operacion')?.value || '';
       const selCat = document.getElementById('pendiente-filter-categoria')?.value || '';
       const searchVal = (document.getElementById('pendiente-filter-search')?.value || '').trim().toLowerCase();
 
+      const pendBadge = document.getElementById('pendiente-filtros-badge');
+      if (pendBadge) {
+        let activeCount = 0;
+        if (selOpOrigen) activeCount++;
+        if (selOp) activeCount++;
+        if (selCat) activeCount++;
+        if (searchVal) activeCount++;
+        pendBadge.textContent = activeCount;
+        pendBadge.style.display = activeCount > 0 ? 'inline-flex' : 'none';
+      }
+
       const filtered = allPendientes.filter(order => {
+        if (selOpOrigen && order.OperacionOrigen !== selOpOrigen) return false;
         if (selOp && order.OperacionDestino !== selOp) return false;
         if (selCat) {
           const hasCat = (order.items || []).some(it => it.Categoria === selCat);
@@ -16640,6 +17009,7 @@
       const subtabContentLogica = document.getElementById('actas-subtab-content-logica');
 
       if (subtab === 'logica') {
+        if (typeof setMobileHeaderTitle === 'function') setMobileHeaderTitle('Lógica Abastecimiento');
         if (subtabBtnLogica) {
           subtabBtnLogica.style.background = 'var(--primary)';
           subtabBtnLogica.style.color = 'white';
@@ -16657,6 +17027,7 @@
 
         initLogicaAbastecimiento();
       } else {
+        if (typeof setMobileHeaderTitle === 'function') setMobileHeaderTitle('Inventario · Actas');
         if (subtabBtnActas) {
           subtabBtnActas.style.background = 'var(--primary)';
           subtabBtnActas.style.color = 'white';
