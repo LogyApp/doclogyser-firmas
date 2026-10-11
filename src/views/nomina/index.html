@@ -566,11 +566,6 @@
     }
 
     /* Pestaña: Traslados móvil */
-    .btn-nuevo-traslado {
-      padding: 6px 12px;
-      font-size: .75rem;
-      border-radius: 6px;
-    }
     .tras-top-actions {
       margin-bottom: 8px;
     }
@@ -697,7 +692,12 @@
   }
   .bio-route-card:hover { border-color: var(--primary); background: #f8fafc; }
   .bio-route-card.selected { border-color: var(--primary); background: #f0fdf4; box-shadow: 0 0 0 2px rgba(15,118,110,.2); }
-  .bio-map-box { flex: 1; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; position: relative; height: 540px; }
+  /* z-index propio (no solo position:relative) para que .bio-map-box forme su
+     propio stacking context: así los controles internos de Leaflet (que usan
+     z-index:1000 fijo en su CSS) quedan contenidos dentro de este bloque y
+     nunca se superponen al sidebar/menú móvil (z-index:100), sin importar su
+     valor interno. */
+  .bio-map-box { flex: 1; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; position: relative; z-index: 1; height: 540px; }
   #bio-main-map { width: 100%; height: 100%; }
 
   @media (max-width: 900px) {
@@ -827,14 +827,36 @@
       border-radius: 8px;
       flex: none !important;
     }
+    /* La barra de estado del recorrido (nombre + métricas + estilo de mapa)
+       usaba una sola fila horizontal; en pantallas angostas el nombre
+       quedaba aplastado en una columna muy estrecha y el texto se
+       envolvía en muchas líneas, tapando el mapa. En columna y compacta
+       ocupa mucho menos alto. */
+    .bio-route-status {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 4px !important;
+      padding: 6px 8px !important;
+      top: 6px !important;
+      left: 6px !important;
+      right: 6px !important;
+    }
+    .bio-route-status-name {
+      font-size: .74rem !important;
+      white-space: normal;
+    }
+    .bio-route-status #bioRouteMetrics {
+      font-size: .68rem !important;
+      gap: 8px !important;
+      flex-wrap: wrap;
+    }
+    .bio-route-status #bioMapStyleSelect {
+      width: 100%;
+      font-size: .72rem !important;
+    }
   }
 
   /* ── Estilos Traslados Integrado en Nómina ─────────────────────────────── */
-  .btn-nuevo-traslado {
-    background: #e67e22; color: #fff; border: none; text-decoration: none;
-    padding: 9px 18px; border-radius: 7px; font-size: .85rem; font-weight: 700; cursor: pointer;
-  }
-  .btn-nuevo-traslado:hover { background: #d4720f; }
   .tras-top-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
   .ba {
     border: none; border-radius: 5px; padding: 5px 9px;
@@ -1279,8 +1301,8 @@
               <!-- Cargado dinámicamente -->
             </div>
             <div class="bio-map-box">
-              <div style="position:absolute; top:12px; left:12px; right:12px; z-index:1000; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.94); padding:8px 14px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1);">
-                <div style="font-weight:700; font-size:.85rem; color:var(--primary);" id="bioActiveRouteWorker">Seleccione un recorrido de la lista</div>
+              <div class="bio-route-status" style="position:absolute; top:12px; left:12px; right:12px; z-index:40; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.94); padding:8px 14px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1);">
+                <div class="bio-route-status-name" style="font-weight:700; font-size:.85rem; color:var(--primary);" id="bioActiveRouteWorker">Seleccione un recorrido de la lista</div>
                 <div id="bioRouteMetrics" style="display:none; gap:12px; font-size:.78rem; font-weight:600;">
                   <span>📏 <strong id="bioMetricDist">0 km</strong></span>
                   <span>⚡ <strong id="bioMetricVel">0 km/h</strong></span>
@@ -1506,7 +1528,7 @@
       <!-- Subpanel: Listado -->
       <div id="trasSubpanelListado">
         <div class="tras-top-actions">
-          <button type="button" class="btn-nuevo-traslado" onclick="abrirModalNuevoTraslado()">+ Nuevo Traslado</button>
+          <button type="button" class="btn-guardar-ficha" onclick="abrirModalNuevoTraslado()">+ Nuevo Traslado</button>
         </div>
 
         <div class="card">
