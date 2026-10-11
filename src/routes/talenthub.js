@@ -847,9 +847,10 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       }
     }
 
-    // Reglas de permisos adicionales
-    const puedeEditarEstado = ['Selección', 'Selección Centro', 'Sistema', 'CoorSelección'].includes(rol);
-    const puedeEditarFechaFin = ['Selección', 'Selección Centro', 'Sistema', 'CoorSelección'].includes(rol);
+    // Reglas de permisos dinámicas desde Config_Parametros
+    const puedeEditarEstado = rolPermitidoEnParametro(rol, paramsConfig['Modificar Estado en Requisición'] || 'Sistema, CoorSelección, Selección Centro');
+    const puedeEditarFechaFin = rolPermitidoEnParametro(rol, paramsConfig['Modificar Fecha Fin en Requisición'] || 'Sistema, CoorSelección, Selección Centro');
+    const puedeReabrirRequisicion = rolPermitidoEnParametro(rol, paramsConfig['Reabrir Requisición Finalizada o Cancelada'] || 'Sistema, CoorSelección, Directorth');
 
     // Operaciones según alcance del usuario
     let opQuery = "SELECT DISTINCT `OPERACIÓN` as operacion, `REGIONAL` as regional, `C.C.` as ciudad FROM `Maestro_Operaciones` WHERE `REGIONAL` != 'INACTIVO'";
@@ -933,6 +934,7 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       puedeEditarParametros,
       puedeModificarEstado: puedeEditarEstado,
       puedeModificarFechaFin: puedeEditarFechaFin,
+      puedeReabrirRequisicion,
       esCoordinadorSeleccion: cargoUsuario === 'COORDINADOR DE SELECCIÓN',
       rol: acceso.rol,
       cargo: acceso.cargo,
@@ -1024,25 +1026,27 @@ router.get('/api/requisiciones', async (req, res) => {
 
     // Ordenamiento permitido
     const allowedSortCols = {
-      'Fecha Requisición': '`Fecha Requisición`',
-      'Requisición': '`Requisición`',
-      'Estado': '`Estado`',
-      'Regional': '`Regional`',
-      'Operación': '`Operación`',
-      'Cargo Requerido': '`Cargo Requerido`',
-      'N° Personas Requeridas': '`N° Personas Requeridas`',
-      'Solicitante': '`Solicitante`',
-      'Responsable de Selección': '`Responsable de Selección`',
-      'Ciudad': '`Ciudad`'
+      'Fecha Requisición': 'r.`Fecha Requisición`',
+      'Requisición': 'r.`Requisición`',
+      'Estado': 'r.`Estado`',
+      'Regional': 'r.`Regional`',
+      'Operación': 'r.`Operación`',
+      'Cargo Requerido': 'r.`Cargo Requerido`',
+      'N° Personas Requeridas': 'r.`N° Personas Requeridas`',
+      'Cumplimiento SLA': 'sla.aspirantes_cumple',
+      'Solicitante': 'r.`Solicitante`',
+      'Responsable de Selección': 'r.`Responsable de Selección`',
+      'Ciudad': 'r.`Ciudad`'
     };
-    const sortCol = allowedSortCols[sortBy] || '`Fecha Requisición`';
+    const sortCol = allowedSortCols[sortBy] || 'r.`Fecha Requisición`';
     const sortDirection = (sortDir && sortDir.toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
 
     const whereSql = whereClauses.join(' AND ');
 
-    // Consulta de registros con total_aspirantes y restricción de salario
+    // Consulta de registros con total_aspirantes, métricas de SLA y restricción de salario
     const paramsConfig = await obtenerParametrosTalenthub();
     const puedeVerSalario = rolPermitidoEnParametro(acceso.rol, paramsConfig['Editar y ver Salario en Requisición']);
+    const tiempoLimiteRequisicion = parseInt(paramsConfig['Tiempo limite de Requisición']) || 8;
 
     const [rows] = await pool.execute(
       `SELECT r.IdRequisicion, r.\`Requisición\`, 
@@ -1058,13 +1062,40 @@ router.get('/api/requisiciones', async (req, res) => {
               r.\`Responsable de Selección\`,
               DATE_FORMAT(r.\`Fecha Actualización\`, '%Y-%m-%d %H:%i') as fechaActualizacion,
               r.\`usuario_actualizacion\`,
-              (SELECT COUNT(*) FROM \`Dynamic_hv_aspirante\` WHERE \`IdRequisicion\` = r.\`IdRequisicion\`) AS total_aspirantes
+              COALESCE(sla.total_aspirantes, 0) AS total_aspirantes,
+              COALESCE(sla.aspirantes_cumple, 0) AS aspirantes_cumple,
+              COALESCE(sla.aspirantes_nocumple, 0) AS aspirantes_nocumple,
+              COALESCE(sla.aspirantes_pendientes, 0) AS aspirantes_pendientes
        FROM \`Dynamic_Requisiciones\` r
+       LEFT JOIN (
+         SELECT a.IdRequisicion,
+                COUNT(*) AS total_aspirantes,
+                SUM(CASE WHEN v.max_ingreso IS NOT NULL AND DATEDIFF(v.max_ingreso, req.\`Fecha Requisición\`) <= ? THEN 1 ELSE 0 END) AS aspirantes_cumple,
+                SUM(CASE WHEN v.max_ingreso IS NOT NULL AND DATEDIFF(v.max_ingreso, req.\`Fecha Requisición\`) > ? THEN 1 ELSE 0 END) AS aspirantes_nocumple,
+                SUM(CASE WHEN v.max_ingreso IS NULL THEN 1 ELSE 0 END) AS aspirantes_pendientes
+         FROM \`Dynamic_hv_aspirante\` a
+         JOIN \`Dynamic_Requisiciones\` req ON req.IdRequisicion = a.IdRequisicion
+         LEFT JOIN (
+           SELECT \`Identificación\` AS id_vinc, MAX(\`Fecha de Ingreso\`) AS max_ingreso
+           FROM \`Maestro_Vinculación\`
+           GROUP BY \`Identificación\`
+         ) v ON CAST(v.id_vinc AS CHAR) = CAST(a.identificacion AS CHAR)
+         WHERE a.IdRequisicion IS NOT NULL AND a.IdRequisicion != 0
+         GROUP BY a.IdRequisicion
+       ) sla ON sla.IdRequisicion = r.IdRequisicion
        WHERE ${whereSql}
        ORDER BY ${sortCol} ${sortDirection}
        LIMIT 500`,
-      params
+      [tiempoLimiteRequisicion, tiempoLimiteRequisicion, ...params]
     );
+
+    const requisicionesFormateadas = rows.map(r => ({
+      ...r,
+      total_aspirantes: parseInt(r.total_aspirantes) || 0,
+      aspirantes_cumple: parseInt(r.aspirantes_cumple) || 0,
+      aspirantes_nocumple: parseInt(r.aspirantes_nocumple) || 0,
+      aspirantes_pendientes: parseInt(r.aspirantes_pendientes) || 0
+    }));
 
     // Consulta de conteos para filtros y KPIs (bajo el alcance base del usuario)
     let baseScopeClauses = ["1=1"];
@@ -1116,7 +1147,7 @@ router.get('/api/requisiciones', async (req, res) => {
 
     res.json({
       ok: true,
-      requisiciones: rows,
+      requisiciones: requisicionesFormateadas,
       kpis: kpiRows[0] || { total: 0, enProceso: 0, finalizado: 0, suspendido: 0, cancelado: 0, totalVacantes: 0 },
       facetas: {
         estados: facetEstados,
@@ -1398,16 +1429,17 @@ router.post('/api/requisiciones', async (req, res) => {
       }
     }
 
-    // Permisos de salario al crear (solo Selección y Sistema)
-    const puedeEditarSalario = ['Selección', 'Sistema'].includes(rol);
+    // Permisos según Config_Parametros al crear
+    const paramsConfig = await obtenerParametrosTalenthub();
+    const puedeEditarSalario = rolPermitidoEnParametro(rol, paramsConfig['Editar y ver Salario en Requisición']);
     const salario = puedeEditarSalario && b['Salario'] !== undefined && b['Salario'] !== '' ? parseFloat(b['Salario']) : null;
 
     // Permisos de Responsable de Selección
-    const puedeEditarResponsable = rol === 'Sistema' || (rol === 'Selección' && cargoUsuario === 'COORDINADOR DE SELECCIÓN');
-    const responsable = puedeEditarResponsable ? (b['Responsable de Selección'] || null) : null;
+    const puedeEscogerResponsable = rolPermitidoEnParametro(rol, paramsConfig['Escoger responsables area de Selección en Requisición']);
+    const responsable = puedeEscogerResponsable ? (b['Responsable de Selección'] || null) : null;
 
     // Permisos de Fecha de Finalización
-    const puedeEditarFechaFin = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
+    const puedeEditarFechaFin = rolPermitidoEnParametro(rol, paramsConfig['Modificar Fecha Fin en Requisición'] || 'Sistema, CoorSelección, Selección Centro');
     const fechaFin = puedeEditarFechaFin && b['Fecha de Finalización'] ? b['Fecha de Finalización'] : null;
 
     // Reglas de campos condicionales
@@ -1518,17 +1550,44 @@ router.put('/api/requisiciones/:id', async (req, res) => {
     const cargoUsuario = (acceso.cargo || '').toUpperCase().trim();
     const b = req.body;
 
-    // Permisos especiales
-    const puedeEditarEstado = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
+    // Permisos especiales según Config_Parametros
+    const puedeEditarEstado = rolPermitidoEnParametro(rol, paramsConfig['Modificar Estado en Requisición'] || 'Sistema, CoorSelección, Selección Centro');
+    const puedeEditarFechaFin = rolPermitidoEnParametro(rol, paramsConfig['Modificar Fecha Fin en Requisición'] || 'Sistema, CoorSelección, Selección Centro');
+    const puedeReabrir = rolPermitidoEnParametro(rol, paramsConfig['Reabrir Requisición Finalizada o Cancelada'] || 'Sistema, CoorSelección, Directorth');
     const puedeEditarSalario = rolPermitidoEnParametro(rol, paramsConfig['Editar y ver Salario en Requisición']);
-    const puedeEditarResponsable = rol === 'Sistema' || (rol === 'Selección' && cargoUsuario === 'COORDINADOR DE SELECCIÓN');
-    const puedeEditarFechaFin = ['Selección', 'Selección Centro', 'Sistema'].includes(rol);
+    const puedeEditarResponsable = rolPermitidoEnParametro(rol, paramsConfig['Editar responsables area de Selección en Requisición'] || 'Sistema, CoorSelección, Directorth');
+
+    const estadoAnterior = (current.Estado || 'EN PROCESO').toUpperCase().trim();
+    const esCerrada = ['FINALIZADO', 'CANCELADO'].includes(estadoAnterior);
+
+    // Validación de cambio de Estado
+    if (b['Estado'] && String(b['Estado']).toUpperCase().trim() !== estadoAnterior) {
+      if (esCerrada && !puedeReabrir) {
+        return res.status(403).json({ error: 'No tienes permiso para reabrir o modificar el estado de una requisición finalizada o cancelada.' });
+      }
+      if (!puedeEditarEstado) {
+        return res.status(403).json({ error: 'No tienes permiso para modificar el estado de la requisición.' });
+      }
+    }
+
+    // Validación de cambio de Fecha de Finalización
+    const fechaFinAnterior = current['Fecha de Finalización'] ? String(current['Fecha de Finalización']).substring(0, 10) : '';
+    const fechaFinNueva = b['Fecha de Finalización'] ? String(b['Fecha de Finalización']).substring(0, 10) : '';
+    if (b['Fecha de Finalización'] !== undefined && fechaFinNueva !== fechaFinAnterior) {
+      if (!puedeEditarFechaFin) {
+        return res.status(403).json({ error: 'No tienes permiso para modificar la fecha de finalización de la requisición.' });
+      }
+    }
 
     // Resolver campos protegidos
-    const nuevoEstado = puedeEditarEstado && b['Estado'] ? String(b['Estado']).toUpperCase().trim() : (current.Estado || 'EN PROCESO').toUpperCase().trim();
+    const nuevoEstado = (puedeEditarEstado && (!esCerrada || puedeReabrir) && b['Estado'])
+      ? String(b['Estado']).toUpperCase().trim()
+      : estadoAnterior;
     const nuevoSalario = puedeEditarSalario && b['Salario'] !== undefined ? (b['Salario'] !== '' ? parseFloat(b['Salario']) : null) : current.Salario;
     const nuevoResponsable = puedeEditarResponsable && b['Responsable de Selección'] !== undefined ? (b['Responsable de Selección'] || null) : current['Responsable de Selección'];
-    const nuevaFechaFin = puedeEditarFechaFin && b['Fecha de Finalización'] !== undefined ? (b['Fecha de Finalización'] || null) : current['Fecha de Finalización'];
+    const nuevaFechaFin = (puedeEditarFechaFin && b['Fecha de Finalización'] !== undefined)
+      ? (b['Fecha de Finalización'] || null)
+      : current['Fecha de Finalización'];
 
     // Resolver campos condicionales
     const reqCurso = b['Requiere Curso por el Cliente'] !== undefined ? (b['Requiere Curso por el Cliente'] === 'SI' ? 'SI' : 'NO') : current['Requiere Curso por el Cliente'];
