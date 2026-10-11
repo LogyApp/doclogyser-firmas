@@ -2778,6 +2778,7 @@
         <div class="table-container">
           <table class="data-table" id="table-inc">
             <thead><tr>
+              <th style="width: 150px; min-width: 110px;"><div class="th-content"><span>Documento</span></div><div class="col-resizer"></div></th>
               <th style="width: 120px; min-width: 100px;" class="sortable" onclick="toggleSortSst('inc', 'fecha')"><div class="th-content"><span>Fecha</span><span class="sort-icon" id="sort-icon-inc-fecha">↕</span></div><div class="col-resizer"></div></th>
               <th style="width: 220px; min-width: 150px;" class="sortable" onclick="toggleSortSst('inc', 'trabajador')"><div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-inc-trabajador">↕</span></div><div class="col-resizer"></div></th>
               <th style="width: 130px; min-width: 105px;" class="sortable" onclick="toggleSortSst('inc', 'identificacion')"><div class="th-content"><span>Identificación</span><span class="sort-icon" id="sort-icon-inc-identificacion">↕</span></div><div class="col-resizer"></div></th>
@@ -2785,7 +2786,6 @@
               <th style="width: 170px; min-width: 120px;" class="sortable" onclick="toggleSortSst('inc', 'operacion')"><div class="th-content"><span>Operación</span><span class="sort-icon" id="sort-icon-inc-operacion">↕</span></div><div class="col-resizer"></div></th>
               <th style="width: 190px; min-width: 140px;" class="sortable" onclick="toggleSortSst('inc', 'evento')"><div class="th-content"><span>Evento</span><span class="sort-icon" id="sort-icon-inc-evento">↕</span></div><div class="col-resizer"></div></th>
               <th style="width: 150px; min-width: 110px;" class="sortable" onclick="toggleSortSst('inc', 'diagnostico')"><div class="th-content"><span>Cod Diagnostico</span><span class="sort-icon" id="sort-icon-inc-diagnostico">↕</span></div><div class="col-resizer"></div></th>
-              <th style="width: 150px; min-width: 110px;"><div class="th-content"><span>Documento</span></div><div class="col-resizer"></div></th>
             </tr></thead>
             <tbody id="tbody-inc"><tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">Cargando incapacidades...</td></tr></tbody>
           </table>
@@ -6316,10 +6316,11 @@
         const documentos = row.sst_documentos || [];
         const enlaces = documentos.length ? documentos.map((url, index) => {
           const urlSegura = /^https?:\/\//i.test(url) || url.startsWith('/') ? escaparHtmlIncapacidad(url) : '';
-          return urlSegura ? `<a href="${urlSegura}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">📄 ${documentos.length > 1 ? `PDF ${index + 1}` : 'Abrir incapacidad'}</a>` : '';
+          return urlSegura ? `<a href="${urlSegura}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">📄 PDF${documentos.length > 1 ? ` ${index + 1}` : ''}</a>` : '';
         }).join(' ') : '<span style="color:var(--text-muted);">Sin documento</span>';
         const codigosDiagnostico = (row.sst_cod_diagnosticos || []).map(escaparHtmlIncapacidad).join(', ') || '—';
         return `<tr>
+          <td>${enlaces}</td>
           <td>${escaparHtmlIncapacidad(rangoFecha)}<br><small>${row.sst_dias_continuos} día(s)</small></td>
           <td><strong>${escaparHtmlIncapacidad(limpiarNombreTrabajador(row.sst_trabajador))}</strong></td>
           <td>${escaparHtmlIncapacidad(row.sst_identificacion || '—')}</td>
@@ -6327,7 +6328,6 @@
           <td>${escaparHtmlIncapacidad(row.sst_operacion || '—')}</td>
           <td>${eventoDistinto ? `<span class="evento-no-incapacidad">${escaparHtmlIncapacidad(evento)}</span>` : escaparHtmlIncapacidad(evento || '—')}</td>
           <td>${codigosDiagnostico}</td>
-          <td>${enlaces}</td>
         </tr>`;
       }).join('');
       inicializarRedimensionColumnasSst();
