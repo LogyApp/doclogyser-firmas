@@ -223,6 +223,10 @@
       font-size: .78rem; font-weight: 700;
     }
     .badge-info { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    /* Contador "N Registros" del encabezado: no aporta valor, se quita en
+       todas las pestañas (actualizarBadgeRegistrosCD sigue actualizando su
+       texto, solo que ya no se muestra). */
+    #cd-tab-badge { display: none !important; }
 
     .brand-lockup {
       display: flex;
@@ -478,6 +482,13 @@
     .btn-request:hover { background: #cbd5e1; }
     .btn-submit { background: var(--success); color: #fff; }
     .btn-submit:hover { background: #15803d; }
+    .btn-icon-circle {
+      width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: var(--transition); text-decoration: none; flex-shrink: 0; padding: 0;
+    }
+    .btn-icon-circle:hover { filter: brightness(0.92); transform: scale(1.06); }
+    .btn-icon-circle svg { width: 15px; height: 15px; }
     .btn-cancel { background: var(--danger); color: #fff; }
     .btn-cancel:hover { background: #b91c1c; }
     .btn-cloud-upload {
@@ -3258,6 +3269,7 @@
 
     function getLogysignColumns() {
       const cols = [
+        { key: 'acciones', label: 'Acciones', width: 150, align: 'center' },
         { key: 'colaborador', label: 'Colaborador', width: 220 },
         { key: 'documento', label: 'Documento', width: 220 },
         { key: 'fecha_registro', label: 'Fecha de Registro', width: 170 },
@@ -3269,7 +3281,6 @@
         cols.push({ key: 'causa', label: 'Causa', width: 170 });
       }
       cols.push({ key: 'estado', label: 'Estado', width: 110, align: 'center' });
-      cols.push({ key: 'acciones', label: 'Acciones', width: 260, align: 'center' });
       return cols;
     }
 
@@ -3441,14 +3452,22 @@
 
         return `
           <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
-            <a href="${waUrl}" target="_blank" class="btn" style="background:#25d366;color:#fff;padding:6px 9px;font-size:.78rem;">WhatsApp</a>
-            <button class="btn btn-request" style="padding:6px 9px;font-size:.78rem;" onclick="copiarEnlaceLogysign('${linkFirma}')">Copiar</button>
-            <button class="btn btn-submit" style="padding:6px 9px;font-size:.78rem;" onclick="reenviarCorreoLogysign('${item.id}')">Reenviar</button>
-            <button class="btn" style="background:#e67e22;color:#fff;padding:6px 9px;font-size:.78rem;" onclick="marcarNoFirmaLogysign('${item.id}')" title="Marcar como No Firma (Genera soporte)">No Firma</button>
+            <a href="${waUrl}" target="_blank" class="btn-icon-circle" style="background:#25d366;color:#fff;" title="Enviar por WhatsApp">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            </a>
+            <button class="btn-icon-circle" style="background:#e2e8f0;color:#475569;" onclick="copiarEnlaceLogysign('${linkFirma}')" title="Copiar enlace de firma">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
+            <button class="btn-icon-circle" style="background:var(--success);color:#fff;" onclick="reenviarCorreoLogysign('${item.id}')" title="Reenviar notificación">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+            <button class="btn-icon-circle" style="background:#e67e22;color:#fff;" onclick="marcarNoFirmaLogysign('${item.id}')" title="Marcar como No Firma (Genera soporte)">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+            </button>
           </div>`;
       }
       const viewPdfUrl = `/logysign/api/signed-pdf/${item.id}`;
-      return `<a href="${viewPdfUrl}" target="_blank" class="btn btn-submit" style="font-size:.78rem;">Ver PDF Firmado</a>`;
+      return `<a href="${viewPdfUrl}" target="_blank" class="btn btn-submit" style="padding:6px 10px;font-size:.78rem;" title="Ver PDF Firmado">PDF</a>`;
     }
 
     function renderLogysignRows(filtered) {
