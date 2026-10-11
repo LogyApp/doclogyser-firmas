@@ -2244,6 +2244,17 @@
 
       // 5. Cargar perfil corporativo del usuario
       cargarPerfilTalenthub();
+
+      // 6. Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js)
+      if (typeof initBotonTicket === 'function') {
+        initBotonTicket({
+          moduloErp: 'talenthub',
+          usuarioId: CONFIG.usuarioId,
+          opsPorRegional: CONFIG.opsPorRegional,
+          regionalesFiltro: Object.keys(CONFIG.opsPorRegional || {}),
+          obtenerSeccion: () => CONFIG.activeTab || null
+        });
+      }
     });
 
     function actualizarVisibilidadBotonesHeader() {
@@ -4481,5 +4492,6 @@
         .replace(/"/g, '&quot;');
     }
   </script>
+  <script src="/js/ticket-boton.js" defer></script>
 </body>
 </html>

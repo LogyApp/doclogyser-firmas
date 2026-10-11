@@ -6235,6 +6235,22 @@
           fetchData();
         }
       }
+
+      // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
+      if (typeof initBotonTicket === 'function') {
+        const SECCION_TICKET_INVENTARIO = {
+          inventario: 'Inventario', kardex: 'Kardex', articulos: 'ArtÍculos',
+          pendienterecibir: 'pendienteRecibir', actas: 'Actas',
+          solicitudes: 'Solicitudes', dotacionley: 'DotacionLey'
+        };
+        initBotonTicket({
+          moduloErp: 'inventario',
+          usuarioId: CONFIG.usuarioId,
+          opsPorRegional: CONFIG.opsPorRegional,
+          regionalesFiltro: CONFIG.regionalesFiltro,
+          obtenerSeccion: () => SECCION_TICKET_INVENTARIO[new URLSearchParams(window.location.search).get('tab')] || null
+        });
+      }
     }
 
     // Refresca los datos de la pestaña/subpestaña actualmente visible, sin cambiar de vista,
@@ -18924,5 +18940,6 @@
     window.addEventListener('DOMContentLoaded', init);
   </script>
   <script src="/js/app-launcher-profile.js" defer></script>
+  <script src="/js/ticket-boton.js" defer></script>
 </body>
 </html>

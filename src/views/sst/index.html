@@ -3548,6 +3548,25 @@
           }
         }, 600);
       }
+
+      // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
+      if (typeof initBotonTicket === 'function') {
+        const SECCION_TICKET_SST = {
+          evaluacion: 'Evaluación SST', capacitacion: 'Capacitación SST',
+          pruebaconsumo: 'Prueba de Consumo', participacion: 'Participación',
+          compromiso: 'Compromiso SST'
+        };
+        initBotonTicket({
+          moduloErp: 'sst',
+          usuarioId: CONFIG.usuarioId,
+          opsPorRegional: CONFIG.opsPorRegional,
+          regionalesFiltro: CONFIG.regionalesFiltro,
+          obtenerSeccion: () => {
+            if (currentTab === 'gestionmedica') return subtabGestionMedica === 'casosmedicos' ? 'Casos Medicos' : null;
+            return SECCION_TICKET_SST[currentTab] || null;
+          }
+        });
+      }
     });
 
     // Soporte para botones Atrás/Adelante del navegador (popstate)
@@ -7788,5 +7807,6 @@
     }
   </script>
   <script src="/js/app-launcher-profile.js" defer></script>
+  <script src="/js/ticket-boton.js" defer></script>
 </body>
 </html>

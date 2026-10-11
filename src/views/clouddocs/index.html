@@ -1677,6 +1677,22 @@
       const tabParam = (new URLSearchParams(window.location.search).get('tab') || '').toLowerCase().trim();
       const tabSolicitada = document.getElementById(`tab-btn-${tabParam}`) ? tabParam : 'trabajador';
       switchTab(tabSolicitada);
+
+      // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
+      if (typeof initBotonTicket === 'function') {
+        const SECCION_TICKET_CLOUDDOCS = {
+          trabajador: 'CloudDocs', documento: 'CloudDocs', todo: 'CloudDocs', logysign: 'CloudDocs',
+          docretiros: 'DocRetiros', solicitudes: 'Solicitudes', validarcap: 'ValidarCap',
+          permisos: 'Permisos', duplicados: 'Duplicados'
+        };
+        initBotonTicket({
+          moduloErp: 'cloud-docs',
+          usuarioId: CONFIG.usuarioId,
+          opsPorRegional: CONFIG.opsPorRegional,
+          regionalesFiltro: CONFIG.regionalesFiltro,
+          obtenerSeccion: () => SECCION_TICKET_CLOUDDOCS[activeTab] || null
+        });
+      }
     });
 
     // Auto-prefill helper for regionals and operations
@@ -4094,5 +4110,6 @@
     }
   </script>
   <script src="/js/app-launcher-profile.js" defer></script>
+  <script src="/js/ticket-boton.js" defer></script>
 </body>
 </html>

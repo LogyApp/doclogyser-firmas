@@ -4617,7 +4617,27 @@
   } else {
     switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : (tabs.incapacidades ? 'incapacidades' : 'traslados')))));
   }
+
+  // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
+  // Se espera a DOMContentLoaded porque ticket-boton.js se carga con "defer" al
+  // final del body — este <script> corre inline durante el parseo, antes de
+  // que los scripts deferred se ejecuten, así que initBotonTicket todavía no
+  // existiría si se llamara aquí directamente.
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof initBotonTicket === 'function') {
+      const SECCION_TICKET_NOMINA = {
+        retiros: 'Retiro', activos: 'Activo', bloqueo: 'Bloqueo_datos',
+        biometrico: 'Biometrico', incapacidades: 'Biometrico', traslados: 'Traslados'
+      };
+      initBotonTicket({
+        moduloErp: 'nomina',
+        usuarioId: usuario,
+        obtenerSeccion: () => SECCION_TICKET_NOMINA[_tabActual] || null
+      });
+    }
+  });
 </script>
 <script src="/js/app-launcher-profile.js" defer></script>
+<script src="/js/ticket-boton.js" defer></script>
 </body>
 </html>
