@@ -323,14 +323,31 @@
   .btn-guardar-ficha:hover { background: #0c5d56; }
   .btn-guardar-ficha:disabled { background: #9ca3af; cursor: not-allowed; }
 
-  /* ── Móvil (mismo patrón que Inventario/SST) ─────────────────────────── */
+  /* ── Móvil (patrón unificado móvil 360×800) ─────────────────────────── */
   .mobile-header {
     display: none; align-items: center; justify-content: space-between;
-    background: var(--primary); color: #fff; padding: 12px 16px;
+    background: var(--primary); color: #fff; padding: 6px 12px;
     position: sticky; top: 0; z-index: 90; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    min-height: 48px;
   }
-  .mobile-menu-btn { background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; padding: 4px; }
-  .mobile-title { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 6px; }
+  .mobile-header-left { display: flex; align-items: center; gap: 8px; }
+  .mobile-menu-btn {
+    background: none; border: none; color: #fff; font-size: 1.45rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 2px 4px; line-height: 1;
+  }
+  .mobile-logo-app { height: 24px; max-height: 24px; width: auto; object-fit: contain; }
+  .mobile-title { font-weight: 700; font-size: .92rem; display: flex; align-items: center; gap: 6px; letter-spacing: .2px; }
+  .mobile-header-right { display: flex; align-items: center; }
+  .mobile-profile-btn {
+    background: transparent; border: none; padding: 0; margin: 0; cursor: pointer;
+    display: flex; align-items: center; border-radius: 50%; outline: none;
+    transition: transform .15s ease, opacity .15s ease;
+  }
+  .mobile-profile-btn:active { transform: scale(.92); opacity: .85; }
+  .mobile-profile-thumb {
+    width: 33px; height: 33px; border-radius: 50%; border: 2px solid rgba(255,255,255,.9);
+    object-fit: cover; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  }
   .mobile-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 95; }
   .mobile-backdrop.open { display: block; }
 
@@ -339,12 +356,399 @@
     .mobile-header { display: flex; }
     .sidebar { transform: translateX(-100%); transition: transform .2s ease; }
     .sidebar.open { transform: translateX(0); }
-    .wrapper { margin-left: 0; padding: 16px; height: auto; min-height: calc(100vh - 56px); overflow-y: visible; }
+    .wrapper { margin-left: 0; padding: 14px 12px; height: auto; min-height: calc(100vh - 48px); overflow-y: visible; }
     .filtros-grid { grid-template-columns: 1fr; }
     .ficha-grid { grid-template-columns: 1fr; }
     .modal-full-overlay { padding: 0; }
     .modal-full { max-width: 100%; height: 100vh; border-radius: 0; }
-    .table-container { max-height: 60vh; }
+    .table-container { max-height: calc(100vh - 180px); }
+  }
+
+  /* ── Optimización móvil compacta (específica para 360×800: Redmi, Galaxy A05-A07, Vivo, Honor) ── */
+  @media (max-width: 600px) {
+    .mobile-header { padding: 5px 10px; min-height: 44px; }
+    .mobile-menu-btn { font-size: 1.35rem; }
+    .mobile-logo-app { height: 22px; max-height: 22px; }
+    .mobile-title { font-size: .88rem; }
+    .mobile-profile-thumb { width: 31px; height: 31px; }
+
+    .wrapper {
+      padding: 8px 6px;
+      min-height: calc(100vh - 44px);
+    }
+    .page-hd {
+      margin-bottom: 6px;
+    }
+    .page-title {
+      font-size: 1.02rem;
+      line-height: 1.25;
+    }
+    .page-sub {
+      font-size: .70rem;
+      line-height: 1.3;
+      margin-top: 1px;
+    }
+    .card {
+      padding: 9px 9px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+    }
+
+    /* Filtros compactos unificados */
+    .filtros-toggle-left {
+      font-size: .80rem;
+      gap: 6px;
+    }
+    .filtros-badge {
+      font-size: .60rem;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+    }
+    .filtros-chevron {
+      font-size: .80rem;
+    }
+    .filtros-body {
+      margin-top: 8px;
+    }
+    .filtros-grid {
+      gap: 6px;
+    }
+    .filtro-field label {
+      font-size: .68rem;
+      margin-bottom: 2px;
+      font-weight: 600;
+    }
+    .filtro-field select, .filtro-field input {
+      padding: 5px 7px;
+      font-size: .75rem;
+      border-radius: 5px;
+      height: 31px;
+    }
+    .btn-reset {
+      margin-top: 6px;
+      padding: 4px 9px;
+      font-size: .70rem;
+      border-radius: 5px;
+    }
+
+    /* Contador de registros */
+    .contador-resultados {
+      font-size: .70rem;
+      margin-bottom: 5px;
+    }
+
+    /* Tabla y celdas con alta densidad de datos (todas las pestañas) */
+    .table-container {
+      max-height: calc(100vh - 170px);
+      border-radius: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    table.retiros-table thead th {
+      padding: 6px 7px;
+      font-size: .67rem;
+      letter-spacing: .2px;
+      line-height: 1.2;
+    }
+    table.retiros-table tbody td {
+      padding: 6px 7px;
+      font-size: .73rem;
+      line-height: 1.25;
+    }
+    #activosTable th:first-child,
+    #activosTable td:first-child,
+    #trasladosTable th:first-child,
+    #trasladosTable td:first-child {
+      width: 145px !important;
+      min-width: 145px !important;
+    }
+    .celda-fecha-hora {
+      font-size: .66rem;
+    }
+    .badge-legal {
+      font-size: .64rem;
+      padding: 2px 6px;
+    }
+    .btn-retirar, .btn-tomo-cargo {
+      padding: 3px 7px;
+      font-size: .68rem;
+      border-radius: 4px;
+      margin-left: 0;
+    }
+    .celda-acciones {
+      gap: 4px;
+    }
+
+    /* Pestaña: Bloqueo de Datos móvil */
+    .btn-nuevo-bloqueo {
+      padding: 5px 10px;
+      font-size: .75rem;
+    }
+    #formBloqueoNomina {
+      padding: 14px 14px !important;
+    }
+    #formBloqueoNomina .ficha-field {
+      margin-bottom: 10px !important;
+    }
+    #formBloqueoNomina .btn-grupo-opt {
+      padding: 6px 8px;
+      font-size: .76rem;
+    }
+
+    /* Pestaña: Biométrico móvil */
+    .bio-subnav {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      gap: 6px;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+      border-bottom: 1.5px solid var(--border);
+    }
+    .bio-subnav-btn {
+      padding: 5px 10px;
+      font-size: .74rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+      border-radius: 6px;
+      gap: 5px;
+    }
+    #bioGlobalFilters .bio-filters-wrap {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 8px !important;
+    }
+    #bioGlobalFilters .bio-filters-inputs {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 6px !important;
+      width: 100%;
+    }
+    #bioFilterGroupRange {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      width: 100%;
+    }
+    #bioFilterGroupRange .filtro-field {
+      width: 100%;
+      min-width: 0 !important;
+    }
+    #bioFilterWorkerSearch {
+      width: 100% !important;
+    }
+    #bioRegionalOpFilters {
+      display: grid !important;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      width: 100%;
+    }
+    #bioRegionalOpFilters .filtro-field {
+      min-width: 0 !important;
+      width: 100%;
+    }
+    .bio-pills-group {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      gap: 4px;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+      width: 100%;
+    }
+    .bio-pill {
+      padding: 4px 8px;
+      font-size: .68rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .bio-kpis-grid {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 6px !important;
+      margin-bottom: 8px !important;
+    }
+    .bio-kpi-card {
+      padding: 8px 10px;
+      border-radius: 8px;
+    }
+    .bio-kpi-val {
+      font-size: 1.15rem;
+      margin-bottom: 2px;
+    }
+    .bio-kpi-lbl {
+      font-size: .62rem;
+    }
+    .bio-kpis-compact {
+      gap: 12px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .bio-kpis-compact .bio-kpi-card {
+      min-width: 80px;
+    }
+    .bio-kpis-compact .bio-kpi-val {
+      font-size: .95rem;
+    }
+    .bio-kpis-compact .bio-kpi-lbl {
+      font-size: .60rem;
+    }
+    .bio-routes-sidebar {
+      width: 100% !important;
+      max-height: 170px !important;
+      gap: 6px;
+    }
+    .bio-route-card {
+      padding: 6px 9px;
+      font-size: .73rem;
+      border-radius: 6px;
+    }
+    .bio-map-box {
+      height: 290px !important;
+      border-radius: 8px;
+    }
+
+    /* Pestaña: Incapacidades móvil */
+    #panelIncapacidades .tab-header {
+      padding: 9px 12px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      border-left-width: 4px;
+      gap: 6px;
+    }
+    #panelIncapacidades .tab-title {
+      font-size: 1.02rem;
+      gap: 6px;
+    }
+    #panelIncapacidades .tab-subtitle {
+      font-size: .70rem;
+    }
+    #panelIncapacidades .badge {
+      font-size: .65rem;
+      padding: 2px 7px;
+    }
+    #panelIncapacidades .card-filters {
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      border-left-width: 3px;
+    }
+    #panelIncapacidades .filtros-toggle {
+      font-size: .76rem;
+      letter-spacing: .4px;
+    }
+    #panelIncapacidades .filtros-body {
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+    #panelIncapacidades .inc-filters-grid {
+      gap: 6px;
+    }
+    #panelIncapacidades .inc-form-label {
+      font-size: .68rem;
+      margin-bottom: 2px;
+    }
+    #panelIncapacidades .inc-form-control {
+      padding: 5px 7px;
+      font-size: .75rem;
+      height: 31px;
+      border-radius: 5px;
+    }
+    #panelIncapacidades .btn-secondary {
+      height: 31px !important;
+      padding: 4px 10px !important;
+      font-size: .72rem !important;
+    }
+    #panelIncapacidades .inc-table-container {
+      max-height: calc(100vh - 170px);
+      -webkit-overflow-scrolling: touch;
+    }
+    #panelIncapacidades table.data-table th {
+      padding: 6px 7px;
+      font-size: .67rem;
+      letter-spacing: .2px;
+    }
+    #panelIncapacidades table.data-table td {
+      padding: 6px 7px;
+      font-size: .73rem;
+    }
+    #panelIncapacidades .btn-sm {
+      padding: 3px 6px;
+      font-size: .68rem;
+      border-radius: 4px;
+    }
+
+    /* Pestaña: Traslados móvil */
+    .btn-nuevo-traslado {
+      padding: 6px 12px;
+      font-size: .75rem;
+      border-radius: 6px;
+    }
+    .tras-top-actions {
+      margin-bottom: 8px;
+    }
+    .ba {
+      padding: 3px 6px;
+      font-size: .66rem;
+      margin: 1px;
+      border-radius: 4px;
+    }
+
+    /* Modal de perfil en móvil */
+    .profile-modal {
+      width: 100%;
+      max-height: 96vh;
+      border-radius: 12px;
+    }
+    .profile-modal-body {
+      padding: 12px 14px;
+    }
+    .profile-photo-large {
+      width: 82px;
+      height: 82px;
+    }
+    .profile-view-name {
+      font-size: 1.1rem;
+      margin-top: 8px;
+    }
+    .profile-view-role {
+      font-size: .78rem;
+      margin-top: 2px;
+    }
+    .profile-details {
+      gap: 6px;
+      padding-top: 10px;
+    }
+    .profile-detail {
+      grid-template-columns: 80px minmax(0,1fr);
+      font-size: .75rem;
+      gap: 6px;
+    }
+    .ficha-field label {
+      font-size: .70rem;
+    }
+    .profile-edit-preview {
+      width: 56px;
+      height: 56px;
+    }
+    .profile-signature-tab {
+      font-size: .72rem;
+      padding: 5px 8px;
+    }
+    #profileDigitalCanvas {
+      height: 120px;
+    }
+    .btn-guardar-ficha {
+      padding: 7px 14px;
+      font-size: .78rem;
+      border-radius: 6px;
+    }
+    .modal-full-header {
+      padding: 9px 12px;
+      font-size: .84rem;
+    }
+    .modal-full-header button {
+      padding: 4px 10px;
+      font-size: .75rem;
+    }
   }
 
   /* ── Estilos Biométrico Integrado en Nómina ────────────────────────────── */
@@ -450,9 +854,16 @@
 
   <!-- Header móvil -->
   <header class="mobile-header">
-    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
-    <div class="mobile-title"><span>&#128188; Nómina</span></div>
-    <span id="mobile-user-badge" style="font-size:.75rem;background:rgba(255,255,255,.2);padding:3px 8px;border-radius:4px"></span>
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+    </div>
+    <div class="mobile-title"><span id="mobileHeaderTitle">Nómina</span></div>
+    <div class="mobile-header-right">
+      <button type="button" class="mobile-profile-btn" onclick="abrirPerfilNomina()" aria-label="Ver y editar perfil corporativo" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
+      </button>
+    </div>
   </header>
 
   <!-- Sidebar -->
@@ -690,62 +1101,41 @@
           <div class="page-title">Nómina · Bloqueo de Datos</div>
           <div class="page-sub">Historial de cierres de novedades y bloqueo quincenal de asistencia</div>
         </div>
-        <button class="btn-guardar-ficha" type="button" onclick="abrirModalBloqueoNomina()" style="display:inline-flex; align-items:center; gap:8px;">
+        <button class="btn-guardar-ficha btn-nuevo-bloqueo" type="button" onclick="abrirModalBloqueoNomina()" style="display:inline-flex; align-items:center; gap:8px;">
           ➕ Nuevo Registro
         </button>
       </div>
 
-      <!-- Métricas -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
-        <div class="card" style="padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700;">Total Registros</div>
-            <div style="font-size:1.6rem; font-weight:700; color:#1a202c;" id="bloqCountTotal">0</div>
-          </div>
-          <div style="font-size:1.8rem; opacity:0.8;">📑</div>
-        </div>
-        <div class="card" style="padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700;">Bloqueados</div>
-            <div style="font-size:1.6rem; font-weight:700; color:#e53e3e;" id="bloqCountBloqueados">0</div>
-          </div>
-          <div style="font-size:1.8rem; opacity:0.8;">🔒</div>
-        </div>
-        <div class="card" style="padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700;">Desbloqueados</div>
-            <div style="font-size:1.6rem; font-weight:700; color:#38a169;" id="bloqCountDesbloqueados">0</div>
-          </div>
-          <div style="font-size:1.8rem; opacity:0.8;">🔓</div>
-        </div>
-      </div>
-
-      <!-- Filtros y Tabla -->
+      <!-- Filtros -->
       <div class="card">
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:16px;">
-          <div class="filtro-field">
-            <label>Regional</label>
-            <select id="bloqFilterRegional" onchange="onBloqRegionalChange()"><option value="">Todas las regionales</option></select>
-          </div>
-          <div class="filtro-field">
-            <label>Operación</label>
-            <select id="bloqFilterOperacion" onchange="renderBloqueoNominaTable()"><option value="">Todas las operaciones</option></select>
-          </div>
-          <div class="filtro-field">
-            <label>Quincena</label>
-            <select id="bloqFilterQuincena" onchange="renderBloqueoNominaTable()"><option value="">Todas las quincenas</option></select>
-          </div>
-          <div class="filtro-field">
-            <label>Datos</label>
-            <select id="bloqFilterDatos" onchange="renderBloqueoNominaTable()">
-              <option value="">Todos los datos</option>
-              <option value="Asistencia">Asistencia</option>
-              <option value="Servicios">Servicios</option>
-            </select>
+        <div class="filtros-toggle" id="bloqFiltrosToggle">
+          <span class="filtros-toggle-left">
+            &#128269; Filtros de Consulta
+            <span class="filtros-badge" id="bloqFiltrosBadge">0</span>
+          </span>
+          <span class="filtros-chevron" id="bloqFiltrosChevron">&#9656;</span>
+        </div>
+        <div class="filtros-body" id="bloqFiltrosBody" style="display:none">
+          <div class="filtros-grid">
+            <div class="filtro-field"><label>Regional</label><select id="bloqFilterRegional" onchange="onBloqRegionalChange()"><option value="">Todas las regionales</option></select></div>
+            <div class="filtro-field"><label>Operación</label><select id="bloqFilterOperacion" onchange="renderBloqueoNominaTable()"><option value="">Todas las operaciones</option></select></div>
+            <div class="filtro-field"><label>Quincena</label><select id="bloqFilterQuincena" onchange="renderBloqueoNominaTable()"><option value="">Todas las quincenas</option></select></div>
+            <div class="filtro-field">
+              <label>Datos</label>
+              <select id="bloqFilterDatos" onchange="renderBloqueoNominaTable()">
+                <option value="">Todos los datos</option>
+                <option value="Asistencia">Asistencia</option>
+                <option value="Servicios">Servicios</option>
+              </select>
+            </div>
           </div>
           <button type="button" class="btn-reset" onclick="resetFiltrosBloqueoNomina()">&#8635; Limpiar filtros</button>
         </div>
+      </div>
 
+      <!-- Tabla -->
+      <div class="card">
+        <div class="contador-resultados" id="bloqContador"></div>
         <div class="table-container">
           <table class="retiros-table" id="bloqueoNominaTable">
             <thead>
@@ -793,47 +1183,54 @@
 
       <!-- Filtros Globales Biométrico -->
       <div class="card" style="margin-bottom: 16px;" id="bioGlobalFilters">
-        <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between;">
-          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
-            <div id="bioFilterGroupRange" style="display:flex; gap:8px; align-items:center;">
-              <div class="filtro-field" style="margin-bottom:0">
-                <label style="font-size:.72rem">Desde</label>
-                <input type="date" id="bioFilterStartDate" style="padding:6px 10px; font-size:.82rem;">
-              </div>
-              <div class="filtro-field" style="margin-bottom:0">
-                <label style="font-size:.72rem">Hasta</label>
-                <input type="date" id="bioFilterEndDate" style="padding:6px 10px; font-size:.82rem;">
-              </div>
-            </div>
-            <div class="filtro-field" style="margin-bottom:0; min-width:230px;">
-              <label style="font-size:.72rem">Buscar Colaborador</label>
-              <input type="text" id="bioFilterWorkerSearch" placeholder="Cédula o nombre..." style="padding:6px 10px; font-size:.82rem;">
-            </div>
-            <div id="bioRegionalOpFilters" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-              <div class="filtro-field" style="margin-bottom:0; min-width:170px;">
-                <label style="font-size:.72rem">Regional asignada</label>
-                <select id="bioFilterRegional" style="padding:6px 10px; font-size:.82rem"><option value="">Todas las regionales (0)</option></select>
-              </div>
-              <div class="filtro-field" style="margin-bottom:0; min-width:210px;">
-                <label style="font-size:.72rem">Operación asignada</label>
-                <select id="bioFilterOperacion" style="padding:6px 10px; font-size:.82rem"><option value="">Todas las operaciones (0)</option></select>
-              </div>
-            </div>
-          </div>
-          <div class="bio-pills-group" id="bioClassificationPills">
-            <button type="button" class="bio-pill active" data-clas="">Todas</button>
-            <button type="button" class="bio-pill" data-clas="sst">SST <span class="bio-pill-count" id="bioCount-sst">0</span></button>
-            <button type="button" class="bio-pill" data-clas="coordinadores">Coordinadores <span class="bio-pill-count" id="bioCount-coordinadores">0</span></button>
-            <button type="button" class="bio-pill" data-clas="auxiliares_administrativos">Aux. Administrativos <span class="bio-pill-count" id="bioCount-auxiliares_administrativos">0</span></button>
-            <button type="button" class="bio-pill" data-clas="auxiliares_logisticos">Aux. Logísticos <span class="bio-pill-count" id="bioCount-auxiliares_logisticos">0</span></button>
-            <button type="button" class="bio-pill" data-clas="aprendices">Aprendices <span class="bio-pill-count" id="bioCount-aprendices">0</span></button>
-          </div>
-          <div class="bio-kpis-grid bio-kpis-compact" id="bioAsistenciaStats">
-            <div class="bio-kpi-card"><div class="bio-kpi-val" id="bioStatTotalMarcaciones">0</div><div class="bio-kpi-lbl">Total Marcaciones</div></div>
-            <div class="bio-kpi-card"><div class="bio-kpi-val" id="bioStatManuales">0</div><div class="bio-kpi-lbl">Marcaciones Manuales</div></div>
-          </div>
+        <div class="filtros-toggle" id="bioFiltrosToggle">
+          <span class="filtros-toggle-left">&#128269; Filtros de Consulta</span>
+          <span class="filtros-chevron" id="bioFiltrosChevron">&#9656;</span>
         </div>
-        <button type="button" class="btn-reset" id="bioResetFiltros" onclick="resetFiltrosBiometrico()">&#8635; Limpiar filtros</button>
+        <div class="filtros-body" id="bioFiltrosBody" style="display:none">
+          <div class="bio-filters-wrap" style="display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between;">
+            <div class="bio-filters-inputs" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+              <div id="bioFilterGroupRange" style="display:flex; gap:8px; align-items:center;">
+                <div class="filtro-field" style="margin-bottom:0">
+                  <label style="font-size:.72rem">Desde</label>
+                  <input type="date" id="bioFilterStartDate" style="padding:6px 10px; font-size:.82rem;">
+                </div>
+                <div class="filtro-field" style="margin-bottom:0">
+                  <label style="font-size:.72rem">Hasta</label>
+                  <input type="date" id="bioFilterEndDate" style="padding:6px 10px; font-size:.82rem;">
+                </div>
+              </div>
+              <div class="filtro-field" style="margin-bottom:0; min-width:230px;">
+                <label style="font-size:.72rem">Buscar Colaborador</label>
+                <input type="text" id="bioFilterWorkerSearch" placeholder="Cédula o nombre..." style="padding:6px 10px; font-size:.82rem;">
+              </div>
+              <div id="bioRegionalOpFilters" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                <div class="filtro-field" style="margin-bottom:0; min-width:170px;">
+                  <label style="font-size:.72rem">Regional asignada</label>
+                  <select id="bioFilterRegional" style="padding:6px 10px; font-size:.82rem"><option value="">Todas las regionales (0)</option></select>
+                </div>
+                <div class="filtro-field" style="margin-bottom:0; min-width:210px;">
+                  <label style="font-size:.72rem">Operación asignada</label>
+                  <select id="bioFilterOperacion" style="padding:6px 10px; font-size:.82rem"><option value="">Todas las operaciones (0)</option></select>
+                </div>
+              </div>
+            </div>
+            <div class="bio-pills-group" id="bioClassificationPills">
+              <button type="button" class="bio-pill active" data-clas="">Todas</button>
+              <button type="button" class="bio-pill" data-clas="sst">SST <span class="bio-pill-count" id="bioCount-sst">0</span></button>
+              <button type="button" class="bio-pill" data-clas="coordinadores">Coordinadores <span class="bio-pill-count" id="bioCount-coordinadores">0</span></button>
+              <button type="button" class="bio-pill" data-clas="auxiliares_administrativos">Aux. Administrativos <span class="bio-pill-count" id="bioCount-auxiliares_administrativos">0</span></button>
+              <button type="button" class="bio-pill" data-clas="auxiliares_logisticos">Aux. Logísticos <span class="bio-pill-count" id="bioCount-auxiliares_logisticos">0</span></button>
+              <button type="button" class="bio-pill" data-clas="aprendices">Aprendices <span class="bio-pill-count" id="bioCount-aprendices">0</span></button>
+            </div>
+          </div>
+          <button type="button" class="btn-reset" id="bioResetFiltros" onclick="resetFiltrosBiometrico()">&#8635; Limpiar filtros</button>
+        </div>
+      </div>
+
+      <div class="bio-kpis-grid bio-kpis-compact" id="bioAsistenciaStats" style="margin-bottom: 16px;">
+        <div class="bio-kpi-card"><div class="bio-kpi-val" id="bioStatTotalMarcaciones">0</div><div class="bio-kpi-lbl">Total Marcaciones</div></div>
+        <div class="bio-kpi-card"><div class="bio-kpi-val" id="bioStatManuales">0</div><div class="bio-kpi-lbl">Marcaciones Manuales</div></div>
       </div>
 
       <!-- Subpanel 1: Asistencia -->
@@ -1460,7 +1857,10 @@
   let _firmaDigitalModificada = false;
   let _firmaDigitalCanvasInicializado = false;
 
-  document.getElementById('mobile-user-badge').textContent = rol;
+  const _mobileThumb = document.getElementById('mobileProfileThumb');
+  if (_mobileThumb) {
+    _mobileThumb.src = NOMINA_FOTO_DEFAULT;
+  }
   document.querySelectorAll('.module-launcher-link').forEach(link => {
     link.href = link.href.replace('__USER__', encodeURIComponent(usuario));
   });
@@ -1500,9 +1900,18 @@
     if (!_nominaPerfil) return;
     const foto = _nominaPerfil.foto_url || NOMINA_FOTO_DEFAULT;
     const nombre = _nominaPerfil.nombre || usuarioNombre || usuario;
-    document.getElementById('nominaProfileThumb').src = foto;
-    document.getElementById('nominaProfileThumb').onerror = e => { e.currentTarget.src = NOMINA_FOTO_DEFAULT; };
-    document.getElementById('nominaProfileName').textContent = nombre;
+    const desktopThumb = document.getElementById('nominaProfileThumb');
+    if (desktopThumb) {
+      desktopThumb.src = foto;
+      desktopThumb.onerror = e => { e.currentTarget.src = NOMINA_FOTO_DEFAULT; };
+    }
+    const mobileThumb = document.getElementById('mobileProfileThumb');
+    if (mobileThumb) {
+      mobileThumb.src = foto;
+      mobileThumb.onerror = e => { e.currentTarget.src = NOMINA_FOTO_DEFAULT; };
+    }
+    const desktopName = document.getElementById('nominaProfileName');
+    if (desktopName) desktopName.textContent = nombre;
     document.getElementById('nominaProfileLarge').src = foto;
     document.getElementById('nominaProfileLarge').onerror = e => { e.currentTarget.src = NOMINA_FOTO_DEFAULT; };
     document.getElementById('nominaProfileViewName').textContent = nombre;
@@ -1513,8 +1922,11 @@
     document.getElementById('nominaProfile').style.display = 'block';
   }
 
-  function abrirPerfilNomina() {
-    if (!_nominaPerfil) return;
+  async function abrirPerfilNomina() {
+    if (!_nominaPerfil) {
+      await cargarPerfilNomina();
+      if (!_nominaPerfil) return;
+    }
     document.getElementById('nominaProfileView').style.display = 'block';
     document.getElementById('nominaProfileForm').style.display = 'none';
     document.getElementById('nominaProfileModal').classList.add('open');
@@ -1888,6 +2300,16 @@
   function switchTab(tab) {
     _tabActual = tab;
     sincronizarUrlPestana(tab, tab === 'traslados' ? _trasState.activeSubTab : _bioState.activeSubTab);
+    const tabNombres = {
+      activos: 'Nómina · Activos',
+      retiros: 'Nómina · Retiros',
+      bloqueo: 'Nómina · Bloqueo',
+      biometrico: 'Nómina · Biométrico',
+      incapacidades: 'Nómina · Incapacidades',
+      traslados: 'Nómina · Traslados'
+    };
+    const titleEl = document.getElementById('mobileHeaderTitle');
+    if (titleEl && tabNombres[tab]) titleEl.textContent = tabNombres[tab];
     document.getElementById('navRetiros').classList.toggle('active', tab === 'retiros');
     document.getElementById('navActivos').classList.toggle('active', tab === 'activos');
     if (document.getElementById('navBloqueo')) document.getElementById('navBloqueo').classList.toggle('active', tab === 'bloqueo');
@@ -1951,6 +2373,28 @@
       chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
     });
   })('tras');
+  (function initFiltrosPlegables(prefix) {
+    const toggle  = document.getElementById(prefix + 'FiltrosToggle');
+    const body    = document.getElementById(prefix + 'FiltrosBody');
+    const chevron = document.getElementById(prefix + 'FiltrosChevron');
+    let abierto = false;
+    toggle.addEventListener('click', () => {
+      abierto = !abierto;
+      body.style.display = abierto ? 'block' : 'none';
+      chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+  })('bloq');
+  (function initFiltrosPlegables(prefix) {
+    const toggle  = document.getElementById(prefix + 'FiltrosToggle');
+    const body    = document.getElementById(prefix + 'FiltrosBody');
+    const chevron = document.getElementById(prefix + 'FiltrosChevron');
+    let abierto = false;
+    toggle.addEventListener('click', () => {
+      abierto = !abierto;
+      body.style.display = abierto ? 'block' : 'none';
+      chevron.style.transform = abierto ? 'rotate(90deg)' : 'rotate(0deg)';
+    });
+  })('bio');
 
   function actualizarBadgeFiltrosRetiros() {
     let n = 0;
@@ -2536,24 +2980,69 @@
   }
 
   function onBloqRegionalChange() {
-    const reg = document.getElementById('bloqFilterRegional').value;
-    const selOp = document.getElementById('bloqFilterOperacion');
-    selOp.innerHTML = '<option value="">Todas las operaciones</option>';
-    const opsObj = (tabs.bloqueo && tabs.bloqueo.opsPorRegional) || (tabs.activo && tabs.activo.opsPorRegional) || {};
-    if (reg && opsObj[reg]) {
-      opsObj[reg].forEach(op => {
-        const o = document.createElement('option'); o.value = op; o.textContent = op; selOp.appendChild(o);
-      });
-    }
+    updateFilterOptionsWithCountsBloqueo();
     renderBloqueoNominaTable();
   }
 
   function resetFiltrosBloqueoNomina() {
     document.getElementById('bloqFilterRegional').value = '';
-    document.getElementById('bloqFilterOperacion').innerHTML = '<option value="">Todas las operaciones</option>';
     document.getElementById('bloqFilterQuincena').value = '';
     document.getElementById('bloqFilterDatos').value = '';
+    updateFilterOptionsWithCountsBloqueo();
     renderBloqueoNominaTable();
+  }
+
+  function actualizarBadgeFiltrosBloqueo() {
+    let n = 0;
+    if (document.getElementById('bloqFilterRegional').value) n++;
+    if (document.getElementById('bloqFilterOperacion').value) n++;
+    if (document.getElementById('bloqFilterQuincena').value) n++;
+    if (document.getElementById('bloqFilterDatos').value) n++;
+    const badge = document.getElementById('bloqFiltrosBadge');
+    badge.textContent = n;
+    badge.style.display = n ? 'flex' : 'none';
+  }
+
+  function updateFilterOptionsWithCountsBloqueo() {
+    const selReg = document.getElementById('bloqFilterRegional');
+    const selOp  = document.getElementById('bloqFilterOperacion');
+    const selectedReg = selReg.value;
+    const selectedOp  = selOp.value;
+    const data = _bloqueoNominaState.allData;
+
+    const regCounts = {};
+    data.forEach(r => { if (r.regional) regCounts[r.regional] = (regCounts[r.regional] || 0) + 1; });
+
+    selReg.innerHTML = '';
+    const optAllR = document.createElement('option');
+    optAllR.value = '';
+    optAllR.textContent = `Todas las regionales (${data.length})`;
+    selReg.appendChild(optAllR);
+    (tabs.bloqueo.regionalesFiltro || []).forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r; opt.textContent = `${r} (${regCounts[r] || 0})`;
+      if (r === selectedReg) opt.selected = true;
+      selReg.appendChild(opt);
+    });
+
+    const opsObj = tabs.bloqueo.opsPorRegional || {};
+    let allowedOps = [];
+    if (selectedReg) allowedOps = opsObj[selectedReg] || [];
+    else { const set = new Set(); Object.values(opsObj).forEach(ops => ops.forEach(o => set.add(o))); allowedOps = Array.from(set).sort(); }
+    const dataPorReg = selectedReg ? data.filter(r => r.regional === selectedReg) : data;
+    const opCounts = {};
+    dataPorReg.forEach(r => { if (r.operacion) opCounts[r.operacion] = (opCounts[r.operacion] || 0) + 1; });
+
+    selOp.innerHTML = '';
+    const optAllO = document.createElement('option');
+    optAllO.value = ''; optAllO.textContent = `Todas las operaciones (${dataPorReg.length})`;
+    selOp.appendChild(optAllO);
+    allowedOps.forEach(op => {
+      const opt = document.createElement('option');
+      opt.value = op; opt.textContent = `${op} (${opCounts[op] || 0})`;
+      if (op === selectedOp) opt.selected = true;
+      selOp.appendChild(opt);
+    });
   }
 
   async function fetchDataBloqueoNomina() {
@@ -2562,6 +3051,7 @@
       if (resp.ok) {
         _bloqueoNominaState.allData = await resp.json();
         _bloqueoNominaState.cargado = true;
+        updateFilterOptionsWithCountsBloqueo();
         sortAndRenderBloqueoNomina();
         makeTableResizable(document.getElementById('bloqueoNominaTable'));
       }
@@ -2626,9 +3116,8 @@
       return true;
     });
 
-    document.getElementById('bloqCountTotal').textContent = data.length;
-    document.getElementById('bloqCountBloqueados').textContent = data.filter(r => r.condicion === 'Bloquear').length;
-    document.getElementById('bloqCountDesbloqueados').textContent = data.filter(r => r.condicion === 'Desbloquear').length;
+    actualizarBadgeFiltrosBloqueo();
+    document.getElementById('bloqContador').textContent = `${data.length} registro(s)`;
 
     const body = document.getElementById('bloqueoNominaBody');
     body.innerHTML = '';
@@ -2711,11 +3200,10 @@
   if (tabs.activo) document.getElementById('navActivos').style.display = 'flex';
   if (tabs.bloqueo) {
     document.getElementById('navBloqueo').style.display = 'flex';
-    // Poblar filtros de bloqueo
-    const selReg = document.getElementById('bloqFilterRegional');
+    // bloqFilterRegional se puebla con conteos en updateFilterOptionsWithCountsBloqueo()
+    // una vez cargan los datos; aquí solo se puebla el select del modal de creación.
     const selMReg = document.getElementById('mNomRegional');
     (tabs.bloqueo.regionalesFiltro || []).forEach(r => {
-      const o1 = document.createElement('option'); o1.value = r; o1.textContent = r; selReg.appendChild(o1);
       const o2 = document.createElement('option'); o2.value = r; o2.textContent = r; selMReg.appendChild(o2);
     });
     // Cargar quincenas
