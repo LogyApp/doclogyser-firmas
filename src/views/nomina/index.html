@@ -495,117 +495,6 @@
       font-size: .76rem;
     }
 
-    /* Pestaña: Biométrico móvil */
-    .bio-subnav {
-      overflow-x: auto;
-      flex-wrap: nowrap;
-      gap: 6px;
-      margin-bottom: 8px;
-      padding-bottom: 6px;
-      -webkit-overflow-scrolling: touch;
-      border-bottom: 1.5px solid var(--border);
-    }
-    .bio-subnav-btn {
-      padding: 5px 10px;
-      font-size: .74rem;
-      white-space: nowrap;
-      flex-shrink: 0;
-      border-radius: 6px;
-      gap: 5px;
-    }
-    #bioGlobalFilters .bio-filters-wrap {
-      flex-direction: column;
-      align-items: stretch !important;
-      gap: 8px !important;
-    }
-    #bioGlobalFilters .bio-filters-inputs {
-      flex-direction: column;
-      align-items: stretch !important;
-      gap: 6px !important;
-      width: 100%;
-    }
-    #bioFilterGroupRange {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      width: 100%;
-    }
-    #bioFilterGroupRange .filtro-field {
-      width: 100%;
-      min-width: 0 !important;
-    }
-    #bioFilterWorkerSearch {
-      width: 100% !important;
-    }
-    #bioRegionalOpFilters {
-      display: grid !important;
-      grid-template-columns: 1fr;
-      gap: 6px;
-      width: 100%;
-    }
-    #bioRegionalOpFilters .filtro-field {
-      min-width: 0 !important;
-      width: 100%;
-    }
-    .bio-pills-group {
-      overflow-x: auto;
-      flex-wrap: nowrap;
-      gap: 4px;
-      padding-bottom: 4px;
-      -webkit-overflow-scrolling: touch;
-      width: 100%;
-    }
-    .bio-pill {
-      padding: 4px 8px;
-      font-size: .68rem;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .bio-kpis-grid {
-      grid-template-columns: 1fr 1fr !important;
-      gap: 6px !important;
-      margin-bottom: 8px !important;
-    }
-    .bio-kpi-card {
-      padding: 8px 10px;
-      border-radius: 8px;
-    }
-    .bio-kpi-val {
-      font-size: 1.15rem;
-      margin-bottom: 2px;
-    }
-    .bio-kpi-lbl {
-      font-size: .62rem;
-    }
-    .bio-kpis-compact {
-      gap: 12px;
-      margin-top: 4px;
-      flex-wrap: wrap;
-    }
-    .bio-kpis-compact .bio-kpi-card {
-      min-width: 80px;
-    }
-    .bio-kpis-compact .bio-kpi-val {
-      font-size: .95rem;
-    }
-    .bio-kpis-compact .bio-kpi-lbl {
-      font-size: .60rem;
-    }
-    .bio-routes-sidebar {
-      width: 100% !important;
-      max-height: 170px !important;
-      gap: 6px;
-    }
-    .bio-route-card {
-      padding: 6px 9px;
-      font-size: .73rem;
-      border-radius: 6px;
-    }
-    .bio-map-box {
-      height: 290px !important;
-      border-radius: 8px;
-    }
-
     /* Pestaña: Incapacidades móvil */
     #panelIncapacidades .tab-header {
       padding: 9px 12px;
@@ -814,7 +703,130 @@
   @media (max-width: 900px) {
     .bio-routes-layout { flex-direction: column; }
     .bio-routes-sidebar { width: 100%; max-height: 240px; }
-    .bio-map-box { height: 380px; }
+    /* flex:1 (flex-basis:0%) hace que el algoritmo de flexbox ignore el
+       height explícito en modo columna; flex:none obliga a usar el height
+       fijo de abajo como tamaño real, si no el mapa queda en 0px de alto. */
+    .bio-map-box { height: 380px; flex: none; }
+  }
+
+  /* Pestaña: Biométrico móvil (360×800) — reubicado aquí, DESPUÉS de las
+     reglas base .bio-* de arriba: estaba antes dentro del bloque general
+     "Optimización móvil compacta" (más arriba en el archivo), pero al no
+     llevar !important la mayoría de estas reglas, el orden de aparición en
+     el CSS hacía que las reglas base (declaradas más abajo) siempre
+     ganaran el empate de especificidad, dejando sin efecto el ajuste móvil
+     aunque el media query sí coincidiera con el viewport. */
+  @media (max-width: 600px) {
+    .bio-subnav {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      gap: 6px;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+      border-bottom: 1.5px solid var(--border);
+    }
+    .bio-subnav-btn {
+      padding: 5px 10px;
+      font-size: .74rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+      border-radius: 6px;
+      gap: 5px;
+    }
+    #bioGlobalFilters .bio-filters-wrap {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 8px !important;
+    }
+    #bioGlobalFilters .bio-filters-inputs {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 6px !important;
+      width: 100%;
+    }
+    #bioFilterGroupRange {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      width: 100%;
+    }
+    #bioFilterGroupRange .filtro-field {
+      width: 100%;
+      min-width: 0 !important;
+    }
+    #bioFilterWorkerSearch {
+      width: 100% !important;
+    }
+    #bioRegionalOpFilters {
+      display: grid !important;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      width: 100%;
+    }
+    #bioRegionalOpFilters .filtro-field {
+      min-width: 0 !important;
+      width: 100%;
+    }
+    .bio-pills-group {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      gap: 4px;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+      width: 100%;
+    }
+    .bio-pill {
+      padding: 4px 8px;
+      font-size: .68rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .bio-kpis-grid {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 6px !important;
+      margin-bottom: 8px !important;
+    }
+    .bio-kpi-card {
+      padding: 8px 10px !important;
+      border-radius: 8px;
+    }
+    .bio-kpi-val {
+      font-size: 1.15rem !important;
+      margin-bottom: 2px;
+    }
+    .bio-kpi-lbl {
+      font-size: .62rem !important;
+    }
+    .bio-kpis-compact {
+      gap: 12px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .bio-kpis-compact .bio-kpi-card {
+      min-width: 80px;
+    }
+    .bio-kpis-compact .bio-kpi-val {
+      font-size: .95rem !important;
+    }
+    .bio-kpis-compact .bio-kpi-lbl {
+      font-size: .60rem !important;
+    }
+    .bio-routes-sidebar {
+      width: 100% !important;
+      max-height: 170px !important;
+      gap: 6px;
+    }
+    .bio-route-card {
+      padding: 6px 9px !important;
+      font-size: .73rem !important;
+      border-radius: 6px;
+    }
+    .bio-map-box {
+      height: 290px !important;
+      border-radius: 8px;
+      flex: none !important;
+    }
   }
 
   /* ── Estilos Traslados Integrado en Nómina ─────────────────────────────── */
