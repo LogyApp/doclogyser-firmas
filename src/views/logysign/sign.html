@@ -163,6 +163,58 @@
       }
     }
 
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      header {
+        padding: 14px 16px;
+        border-radius: var(--radius-md);
+        gap: 10px;
+      }
+      .brand-lockup {
+        padding: 0;
+      }
+      .header-title h1 {
+        font-size: 1.3rem;
+      }
+      .header-title p {
+        font-size: 0.85rem;
+      }
+      .worker-badge {
+        padding: 7px 14px;
+        font-size: 0.82rem;
+      }
+      .grid {
+        gap: 14px;
+      }
+      .card {
+        padding: 14px;
+        border-radius: var(--radius-md);
+      }
+      .card-title {
+        font-size: 1rem;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+      }
+      .pdf-controls {
+        padding: 8px 10px;
+      }
+      .pdf-page-nav {
+        gap: 6px;
+      }
+      .btn-nav {
+        padding: 6px 9px;
+        font-size: 0.78rem;
+      }
+      .option-card {
+        padding: 14px;
+      }
+      .drawing-canvas {
+        height: 140px;
+      }
+    }
+
     .card {
       background: var(--card-bg);
       border-radius: var(--radius-lg);
@@ -757,17 +809,34 @@
       showLoading('Renderizando página ' + pageNum + '...');
       try {
         const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 1.2 });
-        
+
+        // Escala dinámica: antes era fija (1.2, pensada para escritorio),
+        // así que en móvil el canvas ya nacía angosto y el CSS lo encogía
+        // todavía más para caber en el contenedor, dejando el texto
+        // diminuto (solo legible haciendo zoom). Ahora se calcula para que
+        // el documento ocupe el ancho disponible del contenedor, y se usa
+        // devicePixelRatio para que se vea nítido también en pantallas de
+        // alta densidad (la mayoría de celulares).
+        const wrapperEl = document.querySelector('.pdf-container-wrapper');
+        const wrapperStyles = getComputedStyle(wrapperEl);
+        const horizontalPadding = parseFloat(wrapperStyles.paddingLeft) + parseFloat(wrapperStyles.paddingRight);
+        const availableWidth = Math.max(240, wrapperEl.clientWidth - horizontalPadding);
+
+        const baseViewport = page.getViewport({ scale: 1 });
+        const fitScale = availableWidth / baseViewport.width;
+        const dpr = window.devicePixelRatio || 1;
+        const viewport = page.getViewport({ scale: fitScale * dpr });
+
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        
+        canvas.style.width = (viewport.width / dpr) + 'px';
+
         const renderContext = {
           canvasContext: ctx,
           viewport: viewport
         };
         await page.render(renderContext).promise;
-        
+
         // Update controls
         pageIndicator.innerText = `Página: ${pageNum} / ${pdfDoc.numPages}`;
         btnPrev.disabled = pageNum <= 1;
@@ -781,16 +850,16 @@
         currentPageBoxes.forEach(box => {
           const boxEl = document.createElement('div');
           boxEl.className = 'sig-placeholder-box';
-          
+
           // Calculate display absolute pixels from relative coords
           const containerW = canvas.clientWidth;
           const containerH = canvas.clientHeight;
-          
+
           boxEl.style.left = `${box.x * containerW}px`;
           boxEl.style.top = `${box.y * containerH}px`;
           boxEl.style.width = `${box.w * containerW}px`;
           boxEl.style.height = `${box.h * containerH}px`;
-          
+
           boxEl.innerHTML = `<span class="sig-placeholder-text">Firma aquí</span>`;
           canvas.parentNode.appendChild(boxEl);
         });
@@ -801,6 +870,15 @@
         hideLoading();
       }
     }
+
+    // Si el usuario rota el dispositivo o cambia el tamaño de la ventana,
+    // re-renderiza para recalcular la escala al nuevo ancho disponible.
+    let resizeRenderTimeout = null;
+    window.addEventListener('resize', () => {
+      if (!pdfDoc) return;
+      clearTimeout(resizeRenderTimeout);
+      resizeRenderTimeout = setTimeout(() => renderPage(currentPageNum), 250);
+    });
 
     btnPrev.addEventListener('click', () => {
       if (currentPageNum > 1) {
