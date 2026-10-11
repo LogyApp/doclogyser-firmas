@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app-launcher-profile.css">
+  <link rel="stylesheet" href="/css/app-launcher-profile.css?v=20261011b">
   <style>
     :root {
       /* Tema Lavanda Oscura Corporativa (Elegante, equilibrada, menor componente azul) */
@@ -1646,10 +1646,10 @@
             <span class="tag-badge tag-badge-primary" id="lblFiltrosActivosCount" style="margin-left:8px; font-size:0.72rem;">Cargando...</span>
           </div>
           <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltros" onclick="toggleFiltrosRequisiciones()">
-            <span id="iconToggleFiltros">▼ Ocultar</span>
+            <span id="iconToggleFiltros">▲ Mostrar</span>
           </button>
         </div>
-        <div class="filter-panel-body" id="bodyFiltrosRequisiciones">
+        <div class="filter-panel-body" id="bodyFiltrosRequisiciones" style="display:none;">
 
           <!-- Filtro Principal: Estado (Chips Dinámicos con Conteos estilo Inventario) -->
           <div class="estado-filter-section">
@@ -4947,7 +4947,7 @@
         .replace(/"/g, '&quot;');
     }
   </script>
-  <script src="/js/app-launcher-profile.js" defer></script>
+  <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
 </body>
 </html>

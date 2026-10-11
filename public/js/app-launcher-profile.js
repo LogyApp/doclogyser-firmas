@@ -1,32 +1,16 @@
 (() => {
   const params = new URLSearchParams(window.location.search);
-  const usuario = params.get('usuario');
-  if (!usuario) return;
+  const usuario = params.get('usuario') || (window.CONFIG && window.CONFIG.usuarioId) || (window.APP_CONFIG && window.APP_CONFIG.usuarioId) || 'Sistema';
 
   const currentModule = window.location.pathname.split('/').filter(Boolean)[0] || '';
-  const homeModules = new Set(['nomina', 'inventario', 'sst', 'cloud-docs', 'facturacion', 'directorio-corporativo', 'talenthub']);
+  const homeModules = new Set(['nomina', 'facturacion', 'sst', 'talenthub', 'cloud-docs', 'inventario', 'directorio-corporativo']);
   const defaultPhoto = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
   const modules = [
-    { id: 'talenthub', name: 'TalentHub', symbol: '❖', tabs: [
-      ['Requisiciones', 'Requisiciones'], ['Aspirantes & Hojas de Vida', 'Aspirantes'],
-      ['Sociodemográfica y Vinculación', 'Sociodemografica'], ['Integridad de Identificación', 'Integridad']
-    ] },
     { id: 'nomina', name: 'Nómina', symbol: '▣', tabs: [
       ['Activos', 'activos'], ['Retiros', 'retiros'], ['Bloqueo de Datos', 'bloqueo'],
       ['Biométrico · Asistencia', 'biometrico', 'asistencia'], ['Biométrico · Recorridos GPS', 'biometrico', 'rutas'],
       ['Biométrico · Reportes', 'biometrico', 'reportes'], ['Traslados', 'traslados'],
       ['Incapacidades', 'incapacidades']
-    ] },
-    { id: 'inventario', name: 'Inventario', symbol: '▦', tabs: [
-      ['Inventario', 'inventario'], ['Reportes', 'reportes'], ['Pendiente por recibir', 'pendienterecibir'],
-      ['Kardex', 'kardex'], ['Catálogo de artículos', 'articulos'], ['Solicitudes', 'solicitudes'],
-      ['Actas de Entrega', 'actas'], ['Dotación de Ley', 'dotacionley'], ['Historial de Confirmaciones', 'historial']
-    ] },
-    { id: 'cloud-docs', name: 'Cloud Docs', symbol: '▤', tabs: [
-      ['Doc Trabajadores', 'trabajador'], ['Tipos de Documento', 'documento'], ['Consolidado', 'todo'],
-      ['Doc Retiros', 'docretiros'], ['LogySign', 'logysign'], ['Solicitudes', 'solicitudes'],
-      ['Validar Capacitación', 'validarcap'], ['Permisos', 'permisos'], ['Duplicados', 'duplicados'],
-      ['Autorizaciones de Descuento', 'descuentonomina']
     ] },
     { id: 'facturacion', name: 'Facturación', symbol: '◷', tabs: [
       ['Servicios', 'servicios'], ['Recibos', 'recibos'], ['Clientes Crédito', 'clientescredito'],
@@ -37,6 +21,21 @@
       ['Temas de capacitación', 'capacitacion', 'temas'], ['Prueba de Consumo', 'pruebaconsumo'],
       ['Participación', 'participacion'], ['Compromisos SST', 'compromiso'],
       ['Casos Médicos', 'gestionmedica', 'casosmedicos'], ['Incapacidades', 'gestionmedica', 'incapacidades']
+    ] },
+    { id: 'talenthub', name: 'TalentHub', symbol: '❖', tabs: [
+      ['Requisiciones', 'Requisiciones'], ['Aspirantes & Hojas de Vida', 'Aspirantes'],
+      ['Sociodemográfica y Vinculación', 'Sociodemografica'], ['Integridad de Identificación', 'Integridad']
+    ] },
+    { id: 'cloud-docs', name: 'Cloud Docs', symbol: '▤', tabs: [
+      ['Doc Trabajadores', 'trabajador'], ['Tipos de Documento', 'documento'], ['Consolidado', 'todo'],
+      ['Doc Retiros', 'docretiros'], ['LogySign', 'logysign'], ['Solicitudes', 'solicitudes'],
+      ['Validar Capacitación', 'validarcap'], ['Permisos', 'permisos'], ['Duplicados', 'duplicados'],
+      ['Autorizaciones de Descuento', 'descuentonomina']
+    ] },
+    { id: 'inventario', name: 'Inventario', symbol: '▦', tabs: [
+      ['Inventario', 'inventario'], ['Reportes', 'reportes'], ['Pendiente por recibir', 'pendienterecibir'],
+      ['Kardex', 'kardex'], ['Catálogo de artículos', 'articulos'], ['Solicitudes', 'solicitudes'],
+      ['Actas de Entrega', 'actas'], ['Dotación de Ley', 'dotacionley'], ['Historial de Confirmaciones', 'historial']
     ] }
   ];
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -136,7 +135,7 @@
               `<a class="alp-link" href="${esc(moduleUrl(module.id, tab, subtab))}">${esc(label)}</a>`
             ).join('')}</div>
           </details>`).join('')}
-        ${currentModule === 'directorio-corporativo' ? '' : `<a class="alp-link" href="/directorio-corporativo?usuario=${encodeURIComponent(usuario)}">Directorio Corporativo</a>`}
+        ${currentModule === 'directorio-corporativo' ? '' : `<a class="alp-link alp-directorio-link" href="/directorio-corporativo?usuario=${encodeURIComponent(usuario)}"><span class="alp-symbol">📇</span>Directorio Corporativo</a>`}
       </div>`;
     const button = launcher.querySelector('.alp-trigger');
     const panel = launcher.querySelector('.alp-panel');
@@ -406,7 +405,7 @@
 
   function init() {
     const sidebar = document.querySelector('.sidebar');
-    const brand = sidebar?.querySelector('.sidebar-brand') || document.querySelector('.brand-lockup-horizontal');
+    const brand = sidebar?.querySelector('.sidebar-brand') || document.querySelector('.brand-wrap') || document.querySelector('.brand-lockup-horizontal');
     if (!brand) return;
     brand.querySelectorAll('.brand-logo-app, .brand-logo-company-crop img').forEach(activarLogoComoInicio);
     sidebar?.querySelector('.sidebar-user, .talenthub-profile')?.remove();
@@ -414,7 +413,7 @@
     if (!document.querySelector('link[data-app-launcher-profile-style]')) {
       const style = document.createElement('link');
       style.rel = 'stylesheet';
-      style.href = '/css/app-launcher-profile.css';
+      style.href = '/css/app-launcher-profile.css?v=20261011b';
       style.dataset.appLauncherProfileStyle = 'true';
       document.head.appendChild(style);
     }

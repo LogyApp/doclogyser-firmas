@@ -106,9 +106,10 @@
   .module-launcher-group[open] summary { background: #f2f7f7; color: var(--primary); }
   .module-launcher-group[open] summary::after { transform: rotate(90deg); color: var(--primary); }
   .module-launcher-symbol { width: 25px; height: 25px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 6px; background: #e8f5f3; color: #0f766e; font-size: .8rem; }
-  .module-launcher-links { display: grid; gap: 2px; padding: 2px 4px 8px 40px; }
   .module-launcher-link { display: block; padding: 7px 8px; border-radius: 5px; color: #566271; text-decoration: none; font-size: .74rem; line-height: 1.25; }
   .module-launcher-link:hover, .module-launcher-link:focus-visible { color: #0f766e; background: #eef8f6; outline: none; }
+  .module-launcher-directorio-link { display: flex !important; align-items: center !important; gap: 9px !important; padding: 10px !important; border-radius: 6px !important; color: #263442 !important; font-size: .8rem !important; font-weight: 700 !important; border-top: 1px solid #edf0f3 !important; margin-top: 4px !important; }
+  .module-launcher-directorio-link:hover, .module-launcher-directorio-link:focus-visible { background: #f2f7f7 !important; color: var(--primary) !important; }
 
   /* ── Contenido ──────────────────────────────────────────────────────────── */
   .wrapper { margin-left: 280px; flex: 1; min-width: 0; padding: 24px; height: 100vh; overflow-y: auto; }
@@ -918,34 +919,6 @@
         <div class="module-launcher-panel" id="moduleLauncherPanel" aria-label="Otros módulos">
           <div class="module-launcher-heading">Otros módulos</div>
           <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">▦</span>Inventario</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=inventario">Inventario</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=reportes">Reportes</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=pendienterecibir">Pendiente por recibir</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=kardex">Kardex</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=articulos">Catálogo de artículos</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=actas">Actas de Entrega</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=dotacionley">Dotación de Ley</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=historial">Historial de Confirmaciones</a>
-            </div>
-          </details>
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">▤</span>Cloud Docs</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=trabajador">Doc Trabajadores</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=documento">Documentos</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=todo">Consolidado</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=docretiros">Doc Retiros</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=logysign">LogySign</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=validarcap">Validar Capacitación</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=permisos">Permisos</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=duplicados">Duplicados</a>
-            </div>
-          </details>
-          <details class="module-launcher-group">
             <summary><span class="module-launcher-symbol">◷</span>Facturación</summary>
             <div class="module-launcher-links">
               <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=servicios">Servicios</a>
@@ -969,15 +942,46 @@
             </div>
           </details>
           <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">👥</span>TalentHub</summary>
+            <summary><span class="module-launcher-symbol">❖</span>TalentHub</summary>
             <div class="module-launcher-links">
               <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Requisiciones">Requisiciones</a>
-              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Aspirantes">Aspirantes</a>
-              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Sociodemografica">Sociodemográfica</a>
-              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Integridad">Integridad</a>
+              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Aspirantes">Aspirantes &amp; Hojas de Vida</a>
+              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Sociodemografica">Sociodemográfica y Vinculación</a>
+              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Integridad">Integridad de Identificación</a>
             </div>
           </details>
-          <a class="module-launcher-link" data-module-link href="/directorio-corporativo?usuario=__USER__">Directorio Corporativo</a>
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">▤</span>Cloud Docs</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=trabajador">Doc Trabajadores</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=documento">Tipos de Documento</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=todo">Consolidado</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=docretiros">Doc Retiros</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=logysign">LogySign</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=validarcap">Validar Capacitación</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=permisos">Permisos</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=duplicados">Duplicados</a>
+              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=descuentonomina">Autorizaciones de Descuento</a>
+            </div>
+          </details>
+          <details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">▦</span>Inventario</summary>
+            <div class="module-launcher-links">
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=inventario">Inventario</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=reportes">Reportes</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=pendienterecibir">Pendiente por recibir</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=kardex">Kardex</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=articulos">Catálogo de artículos</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=actas">Actas de Entrega</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=dotacionley">Dotación de Ley</a>
+              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=historial">Historial de Confirmaciones</a>
+            </div>
+          </details>
+          <a class="module-launcher-link module-launcher-directorio-link" data-module-link href="/directorio-corporativo?usuario=__USER__">
+            <span class="module-launcher-symbol">📇</span>Directorio Corporativo
+          </a>
         </div>
       </div>
     </div>
@@ -5159,7 +5163,7 @@
     }
   });
 </script>
-<script src="/js/app-launcher-profile.js" defer></script>
+<script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
 </body>
 </html>
