@@ -1967,7 +1967,9 @@
     }
     document.getElementById('nominaProfileView').style.display = 'block';
     document.getElementById('nominaProfileForm').style.display = 'none';
-    document.getElementById('nominaProfileModal').classList.add('open');
+    const perfilOverlay = document.getElementById('nominaProfileModal');
+    perfilOverlay.classList.add('open');
+    perfilOverlay._backEntry = registrarModalBack(() => cerrarPerfilNomina());
     document.getElementById('nominaProfileStatus').style.display = 'none';
   }
 
@@ -2074,7 +2076,10 @@
   }
 
   function cerrarPerfilNomina() {
-    document.getElementById('nominaProfileModal').classList.remove('open');
+    const perfilOverlay = document.getElementById('nominaProfileModal');
+    perfilOverlay.classList.remove('open');
+    cerrarModalBack(perfilOverlay._backEntry);
+    perfilOverlay._backEntry = null;
     cancelarEdicionPerfilNomina();
   }
 
@@ -2316,10 +2321,15 @@
   function abrirModal(url, titulo) {
     document.getElementById('modalTitulo').textContent = titulo;
     document.getElementById('gestionIframe').src = url;
-    document.getElementById('gestionModalOverlay').classList.add('open');
+    const overlay = document.getElementById('gestionModalOverlay');
+    overlay.classList.add('open');
+    overlay._backEntry = registrarModalBack(() => cerrarModalGestion());
   }
   function cerrarModalGestion() {
-    document.getElementById('gestionModalOverlay').classList.remove('open');
+    const overlay = document.getElementById('gestionModalOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
     document.getElementById('gestionIframe').src = 'about:blank';
     if (_tabActual === 'retiros') fetchDataRetiros();
     else if (_tabActual === 'activos') fetchDataActivos();
@@ -2937,7 +2947,9 @@
         avisoEl.style.display = 'none';
       }
 
-      document.getElementById('fichaModalOverlay').classList.add('open');
+      const fichaOverlay = document.getElementById('fichaModalOverlay');
+      fichaOverlay.classList.add('open');
+      fichaOverlay._backEntry = registrarModalBack(() => cerrarFichaVinculacion());
     } catch { alert('Error de conexión al cargar la ficha.'); }
   }
 
@@ -2951,7 +2963,10 @@
   }
 
   function cerrarFichaVinculacion() {
-    document.getElementById('fichaModalOverlay').classList.remove('open');
+    const fichaOverlay = document.getElementById('fichaModalOverlay');
+    fichaOverlay.classList.remove('open');
+    cerrarModalBack(fichaOverlay._backEntry);
+    fichaOverlay._backEntry = null;
     liberarEdicionFicha();
     _fichaIdActual = null;
   }
@@ -2999,10 +3014,15 @@
   }
 
   function abrirModalBloqueoNomina() {
-    document.getElementById('modalBloqueoNominaOverlay').classList.add('open');
+    const overlay = document.getElementById('modalBloqueoNominaOverlay');
+    overlay.classList.add('open');
+    overlay._backEntry = registrarModalBack(() => cerrarModalBloqueoNomina());
   }
   function cerrarModalBloqueoNomina() {
-    document.getElementById('modalBloqueoNominaOverlay').classList.remove('open');
+    const overlay = document.getElementById('modalBloqueoNominaOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
   }
 
   function onMNomRegionalChange() {
@@ -4136,7 +4156,9 @@
     document.getElementById('cooInpDireccion').value = row.direccion || '';
     document.getElementById('cooInpLat').value = row.latitud != null ? row.latitud : '';
     document.getElementById('cooInpLng').value = row.longitud != null ? row.longitud : '';
-    document.getElementById('cooModalOverlay').classList.add('open');
+    const cooOverlay = document.getElementById('cooModalOverlay');
+    cooOverlay.classList.add('open');
+    cooOverlay._backEntry = registrarModalBack(() => cerrarCooModal());
 
     setTimeout(() => {
       if (!cooMap) {
@@ -4156,7 +4178,10 @@
   }
 
   function cerrarCooModal() {
-    document.getElementById('cooModalOverlay').classList.remove('open');
+    const cooOverlay = document.getElementById('cooModalOverlay');
+    cooOverlay.classList.remove('open');
+    cerrarModalBack(cooOverlay._backEntry);
+    cooOverlay._backEntry = null;
     _cooState.editando = null;
   }
 
@@ -4216,6 +4241,7 @@
   function openBioGPSModal(lat, lng, workerName, markType, opNombre, opLat, opLng, distM) {
     const modal = document.getElementById('bioGPSModalOverlay');
     modal.classList.add('open');
+    modal._backEntry = registrarModalBack(() => cerrarBioGPSModal());
 
     let distText = '';
     if (distM != null) {
@@ -4270,7 +4296,10 @@
   }
 
   function cerrarBioGPSModal() {
-    document.getElementById('bioGPSModalOverlay').classList.remove('open');
+    const modal = document.getElementById('bioGPSModalOverlay');
+    modal.classList.remove('open');
+    cerrarModalBack(modal._backEntry);
+    modal._backEntry = null;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -4562,10 +4591,15 @@
   // ── Modal "Nuevo Traslado" (iframe sobre /formtraslado existente) ────────
   function abrirModalNuevoTraslado() {
     document.getElementById('trasladosIframe').src = '/formtraslado?usuario=' + encodeURIComponent(usuario);
-    document.getElementById('trasladosModalOverlay').classList.add('open');
+    const overlay = document.getElementById('trasladosModalOverlay');
+    overlay.classList.add('open');
+    overlay._backEntry = registrarModalBack(() => cerrarModalNuevoTraslado());
   }
   function cerrarModalNuevoTraslado() {
-    document.getElementById('trasladosModalOverlay').classList.remove('open');
+    const overlay = document.getElementById('trasladosModalOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
     document.getElementById('trasladosIframe').src = 'about:blank';
     fetchTrasladosData();
   }
@@ -4581,10 +4615,15 @@
     } else {
       msgCorreo.style.display = 'none';
     }
-    document.getElementById('trasEnlaceModalOverlay').classList.add('open');
+    const overlay = document.getElementById('trasEnlaceModalOverlay');
+    overlay.classList.add('open');
+    overlay._backEntry = registrarModalBack(() => cerrarModalEnlaceTraslado());
   }
   function cerrarModalEnlaceTraslado() {
-    document.getElementById('trasEnlaceModalOverlay').classList.remove('open');
+    const overlay = document.getElementById('trasEnlaceModalOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
   }
   function copiarUrlTraslado() {
     const val = document.getElementById('trasUrlInput').value;
@@ -4690,12 +4729,17 @@
       document.getElementById('tras_e_email').value          = t.email_trabajador || '';
       trasSelOpDestino.value = t.operacion_destino || '';
 
-      document.getElementById('trasEditModalOverlay').classList.add('open');
+      const overlay = document.getElementById('trasEditModalOverlay');
+      overlay.classList.add('open');
+      overlay._backEntry = registrarModalBack(() => cerrarEditarTraslado());
     } catch { alert('Error de conexión'); }
   }
 
   function cerrarEditarTraslado() {
-    document.getElementById('trasEditModalOverlay').classList.remove('open');
+    const overlay = document.getElementById('trasEditModalOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
     _trasState.editandoId = null;
   }
 
@@ -5165,5 +5209,6 @@
 </script>
 <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
+<script src="/js/modal-back.js" defer></script>
 </body>
 </html>

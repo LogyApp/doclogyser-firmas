@@ -2902,6 +2902,37 @@
         switchMainTab('recibos');
       }
 
+      // El botón "Atrás" del navegador/móvil debe cerrar la vista de detalle
+      // de Servicio/Recibo (que ya sincroniza la URL con ?idservicio=/
+      // ?idrecibo= vía history.pushState al abrir/volver) en vez de dejarla
+      // visible con una URL desactualizada — estas dos vistas son
+      // "ventanas emergentes" a su manera (ocupan toda la pantalla sobre el
+      // listado) aunque no usan el sistema .modal-overlay de los demás
+      // modales de este archivo, así que se manejan aparte con su propio
+      // listener de popstate en vez de registrarModalBack/cerrarModalBack.
+      window.addEventListener('popstate', () => {
+        const params = new URLSearchParams(window.location.search);
+        const idServicio = params.get('idservicio');
+        const idRecibo = params.get('idrecibo');
+
+        const detalleServicioEl = document.getElementById('servicios-vista-detalle');
+        const detalleReciboEl = document.getElementById('recibos-vista-detalle');
+        const servicioVisible = !!detalleServicioEl && detalleServicioEl.style.display === 'block';
+        const reciboVisible = !!detalleReciboEl && detalleReciboEl.style.display === 'block';
+
+        if (!idServicio && servicioVisible) {
+          volverAListadoServicios();
+        } else if (!idRecibo && reciboVisible) {
+          volverAListadoRecibos();
+        } else if (idServicio && !servicioVisible) {
+          switchMainTab('servicios');
+          verDetalleServicio(idServicio);
+        } else if (idRecibo && !reciboVisible) {
+          switchMainTab('recibos');
+          verDetalleRecibo(idRecibo);
+        }
+      });
+
       // Inicializar columnas redimensionables
       makeTableResizable(document.getElementById('tabla-servicios'));
       makeTableResizable(document.getElementById('tabla-recibos'));
@@ -3338,12 +3369,17 @@
     // FORMULARIO MODAL BLOQUEO
     // ──────────────────────────────────────────────────────────
     function abrirModalBloqueo() {
-      document.getElementById('modal-bloqueo-overlay').classList.add('open');
+      const overlay = document.getElementById('modal-bloqueo-overlay');
+      overlay.classList.add('open');
+      overlay._backEntry = registrarModalBack(() => cerrarModalBloqueo());
       cargarPreseleccionadosInfo();
     }
 
     function cerrarModalBloqueo() {
-      document.getElementById('modal-bloqueo-overlay').classList.remove('open');
+      const overlay = document.getElementById('modal-bloqueo-overlay');
+      overlay.classList.remove('open');
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
     }
 
     function setCriterio(crit) {
@@ -3481,11 +3517,16 @@
     function abrirModalCliente() {
       document.getElementById('form-cliente').reset();
       document.getElementById('nit-autocomplete-list').style.display = 'none';
-      document.getElementById('modal-cliente-overlay').classList.add('open');
+      const overlay = document.getElementById('modal-cliente-overlay');
+      overlay.classList.add('open');
+      overlay._backEntry = registrarModalBack(() => cerrarModalCliente());
     }
 
     function cerrarModalCliente() {
-      document.getElementById('modal-cliente-overlay').classList.remove('open');
+      const overlay = document.getElementById('modal-cliente-overlay');
+      overlay.classList.remove('open');
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
     }
 
     let searchNitTimeout = null;
@@ -3626,11 +3667,16 @@
       document.getElementById('mec-usuario').value = c.usuario || 'Sistema';
       document.getElementById('mec-fecha').value = c.fechaRegistro ? c.fechaRegistro.replace('T', ' ').slice(0, 19) : '—';
       document.getElementById('mec-nit-autocomplete-list').style.display = 'none';
-      document.getElementById('modal-editar-cliente-overlay').classList.add('open');
+      const overlay = document.getElementById('modal-editar-cliente-overlay');
+      overlay.classList.add('open');
+      overlay._backEntry = registrarModalBack(() => cerrarModalEditarCliente());
     }
 
     function cerrarModalEditarCliente() {
-      document.getElementById('modal-editar-cliente-overlay').classList.remove('open');
+      const overlay = document.getElementById('modal-editar-cliente-overlay');
+      overlay.classList.remove('open');
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
     }
 
     async function guardarEdicionCliente() {
@@ -5057,11 +5103,16 @@
       });
       document.getElementById('tk-observaciones').value = 'Sincronizar y validar';
 
-      document.getElementById('modal-ticket-overlay').classList.add('open');
+      const overlay = document.getElementById('modal-ticket-overlay');
+      overlay.classList.add('open');
+      overlay._backEntry = registrarModalBack(() => cerrarModalTicket());
     }
 
     function cerrarModalTicket() {
-      document.getElementById('modal-ticket-overlay').classList.remove('open');
+      const overlay = document.getElementById('modal-ticket-overlay');
+      overlay.classList.remove('open');
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
     }
 
     function setAccionTicket(accion) {
@@ -5231,11 +5282,16 @@
         setModalidadRecibo(null, true);
       }
 
-      document.getElementById('modal-recibo-overlay').classList.add('open');
+      const overlayRecibo = document.getElementById('modal-recibo-overlay');
+      overlayRecibo.classList.add('open');
+      overlayRecibo._backEntry = registrarModalBack(() => cerrarModalRecibo());
     }
 
     function cerrarModalRecibo() {
-      document.getElementById('modal-recibo-overlay').classList.remove('open');
+      const overlayRecibo = document.getElementById('modal-recibo-overlay');
+      overlayRecibo.classList.remove('open');
+      cerrarModalBack(overlayRecibo._backEntry);
+      overlayRecibo._backEntry = null;
     }
 
     function onModalRecioRegionalChange(operacionPreseleccionada) {
@@ -5663,11 +5719,16 @@
       onDuracionServicioChange();
       if (existente?.['Total Hora']) document.getElementById('ms-total-hora').value = existente['Total Hora'];
 
-      document.getElementById('modal-servicio-overlay').classList.add('open');
+      const overlayServicio = document.getElementById('modal-servicio-overlay');
+      overlayServicio.classList.add('open');
+      overlayServicio._backEntry = registrarModalBack(() => cerrarModalServicio());
     }
 
     function cerrarModalServicio() {
-      document.getElementById('modal-servicio-overlay').classList.remove('open');
+      const overlayServicio = document.getElementById('modal-servicio-overlay');
+      overlayServicio.classList.remove('open');
+      cerrarModalBack(overlayServicio._backEntry);
+      overlayServicio._backEntry = null;
     }
 
     function setEstadoServicio(estado) {
@@ -6175,5 +6236,6 @@
   </script>
   <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
+  <script src="/js/modal-back.js" defer></script>
 </body>
 </html>

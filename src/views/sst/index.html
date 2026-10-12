@@ -5889,11 +5889,16 @@
       document.getElementById('modal-contacto-part-nombre').value = nombre || '';
       document.getElementById('modal-contacto-part-celular').value = celular || '';
       document.getElementById('modal-contacto-part-email').value = email || '';
-      document.getElementById('modal-contacto-part').style.display = 'flex';
+      const modalContactoEl = document.getElementById('modal-contacto-part');
+      modalContactoEl.style.display = 'flex';
+      modalContactoEl._backEntry = registrarModalBack(() => cerrarModalContactoParticipacion());
     }
 
     function cerrarModalContactoParticipacion() {
-      document.getElementById('modal-contacto-part').style.display = 'none';
+      const modalContactoEl = document.getElementById('modal-contacto-part');
+      modalContactoEl.style.display = 'none';
+      cerrarModalBack(modalContactoEl._backEntry);
+      modalContactoEl._backEntry = null;
     }
 
     async function guardarContactoParticipacion(e) {
@@ -6008,17 +6013,24 @@
     function abrirEditarParticipacion(id) {
       document.getElementById('modal-crear-label').innerText = `Editar Formato de Asistencia #${id}`;
       document.getElementById('iframe-crear').src = `/formparticipacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}&id=${encodeURIComponent(id)}`;
-      document.getElementById('modal-crear-container').style.display = 'flex';
+      const modalCrearEl = document.getElementById('modal-crear-container');
+      modalCrearEl.style.display = 'flex';
+      modalCrearEl._backEntry = registrarModalBack(() => cerrarModalCrear());
     }
 
     // ═════ LIGHTBOX (PARTICIPACIÓN) ═════
     function abrirLightboxParticipacion(url) {
       document.getElementById('lightbox-part-img').src = url;
-      document.getElementById('modal-lightbox-part').style.display = 'flex';
+      const modalLightboxEl = document.getElementById('modal-lightbox-part');
+      modalLightboxEl.style.display = 'flex';
+      modalLightboxEl._backEntry = registrarModalBack(() => cerrarLightboxParticipacion());
     }
 
     function cerrarLightboxParticipacion() {
-      document.getElementById('modal-lightbox-part').style.display = 'none';
+      const modalLightboxEl = document.getElementById('modal-lightbox-part');
+      modalLightboxEl.style.display = 'none';
+      cerrarModalBack(modalLightboxEl._backEntry);
+      modalLightboxEl._backEntry = null;
       document.getElementById('lightbox-part-img').src = '';
     }
 
@@ -6289,12 +6301,17 @@
       }
 
       modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => cerrarModalFirmaAnalistaCsst());
       limpiarCanvasCsst();
     }
 
     function cerrarModalFirmaAnalistaCsst() {
       const modal = document.getElementById('modal-firmar-analista-csst');
-      if (modal) modal.style.display = 'none';
+      if (modal) {
+        modal.style.display = 'none';
+        cerrarModalBack(modal._backEntry);
+        modal._backEntry = null;
+      }
     }
 
     function limpiarCanvasCsst() {
@@ -7236,7 +7253,9 @@
         document.getElementById('cm-bitacora-compromiso').value = '';
         document.getElementById('cm-bitacora-actividad').value = '';
 
-        document.getElementById('modal-cm-bitacora').style.display = 'flex';
+        const modalBitacoraEl = document.getElementById('modal-cm-bitacora');
+        modalBitacoraEl.style.display = 'flex';
+        modalBitacoraEl._backEntry = registrarModalBack(() => cerrarModalBitacora());
       } catch (err) {
         console.error('Error abriendo modal bitacora:', err);
         showToast('Error al abrir modal de bitácora', 'error');
@@ -7246,7 +7265,10 @@
     }
 
     function cerrarModalBitacora() {
-      document.getElementById('modal-cm-bitacora').style.display = 'none';
+      const modalBitacoraEl = document.getElementById('modal-cm-bitacora');
+      modalBitacoraEl.style.display = 'none';
+      cerrarModalBack(modalBitacoraEl._backEntry);
+      modalBitacoraEl._backEntry = null;
       document.getElementById('form-cm-bitacora').reset();
     }
 
@@ -7457,7 +7479,7 @@
         resetCamposCasoModal();
 
         document.getElementById('modal-cm-title').innerText = `Registrar Caso Médico: ${trab.nombre || identificacion}`;
-        document.getElementById('modal-cm-crear').style.display = 'flex';
+        abrirModalCmCrear();
       } catch (e) {
         console.error(e);
         showToast('Error cargando datos del trabajador', 'error');
@@ -7478,7 +7500,7 @@
         document.getElementById('cm-input-worker-search').value = '';
         document.getElementById('cm-worker-dropdown').style.display = 'none';
         document.getElementById('modal-cm-title').innerText = 'Registrar Nuevo Caso Médico';
-        document.getElementById('modal-cm-crear').style.display = 'flex';
+        abrirModalCmCrear();
       } catch (e) {
         console.error(e);
         showToast('Error abriendo formulario', 'error');
@@ -7487,8 +7509,20 @@
       }
     }
 
+    // modal-cm-crear se abre desde 3 flujos (agregar caso, nuevo caso global,
+    // editar caso) que comparten el mismo contenedor; centralizado aquí para
+    // registrar una sola vez el "Atrás cierra el modal" (ver modal-back.js).
+    function abrirModalCmCrear() {
+      const modalCmEl = document.getElementById('modal-cm-crear');
+      modalCmEl.style.display = 'flex';
+      modalCmEl._backEntry = registrarModalBack(() => cerrarModalAgregarCaso());
+    }
+
     function cerrarModalAgregarCaso() {
-      document.getElementById('modal-cm-crear').style.display = 'none';
+      const modalCmEl = document.getElementById('modal-cm-crear');
+      modalCmEl.style.display = 'none';
+      cerrarModalBack(modalCmEl._backEntry);
+      modalCmEl._backEntry = null;
       document.getElementById('form-cm-crear').reset();
       selectedWorkerData = null;
       limpiarDatosTrabajadorModal();
@@ -7857,7 +7891,7 @@
 
         document.getElementById('modal-cm-title').innerText = `Editar Caso Médico: ${caso.codigo_caso || '#' + caso.id}`;
         document.getElementById('btn-cm-guardar').innerText = '💾 Actualizar Caso Médico';
-        document.getElementById('modal-cm-crear').style.display = 'flex';
+        abrirModalCmCrear();
       } catch (err) {
         console.error('Error abriendo modal editar:', err);
         showToast('Error al preparar edición del caso', 'error');
@@ -8088,11 +8122,16 @@
 
       document.getElementById('modal-crear-label').innerText = titles[tipo] || 'Nuevo Registro';
       document.getElementById('iframe-crear').src = urls[tipo] || 'about:blank';
-      document.getElementById('modal-crear-container').style.display = 'flex';
+      const modalCrearEl = document.getElementById('modal-crear-container');
+      modalCrearEl.style.display = 'flex';
+      modalCrearEl._backEntry = registrarModalBack(() => cerrarModalCrear());
     }
 
     function cerrarModalCrear() {
-      document.getElementById('modal-crear-container').style.display = 'none';
+      const modalCrearEl = document.getElementById('modal-crear-container');
+      modalCrearEl.style.display = 'none';
+      cerrarModalBack(modalCrearEl._backEntry);
+      modalCrearEl._backEntry = null;
       document.getElementById('iframe-crear').src = 'about:blank';
       // Recargar la pestaña activa para mostrar cualquier nuevo registro
       actualizarVistaActual();
@@ -8134,5 +8173,6 @@
   </script>
   <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
+  <script src="/js/modal-back.js" defer></script>
 </body>
 </html>

@@ -3426,11 +3426,18 @@
     }
 
     // Modal Utility Functions
+    // El botón "Atrás" del navegador/móvil cierra el modal abierto en vez de
+    // salir de la página (ver public/js/modal-back.js). _modalBackEntries
+    // guarda, por id de modal, el "ticket" de historial pendiente.
+    const _modalBackEntries = {};
     function openModal(id) {
       document.getElementById(id).style.display = 'flex';
+      _modalBackEntries[id] = registrarModalBack(() => closeModal(id));
     }
     function closeModal(id) {
       document.getElementById(id).style.display = 'none';
+      cerrarModalBack(_modalBackEntries[id]);
+      _modalBackEntries[id] = null;
     }
 
     // Loader Utility Functions
@@ -4460,5 +4467,6 @@
   </script>
   <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
+  <script src="/js/modal-back.js" defer></script>
 </body>
 </html>

@@ -2766,7 +2766,9 @@
       document.getElementById('modalNuevoFeedback').style.display = 'none';
       document.getElementById('btnModalNuevoModificar').style.display = 'none';
       document.getElementById('btnModalNuevoEliminar').style.display = 'none';
-      document.getElementById('modalNuevoProceso').style.display = 'flex';
+      const el = document.getElementById('modalNuevoProceso');
+      el.style.display = 'flex';
+      el._backEntry = registrarModalBack(() => cerrarModales());
     }
 
     async function modalConsultarTrabajador() {
@@ -2819,12 +2821,16 @@
     }
 
     function abrirModalModificarDesdeNuevo() {
-      document.getElementById('modalNuevoProceso').style.display = 'none';
+      // cerrarModalConBack (no solo style.display) para consumir la entrada
+      // de historial de modalNuevoProceso antes de abrir el siguiente modal;
+      // si no, quedaría una entrada de "Atrás" huérfana apuntando a un modal
+      // que ya no está visible.
+      cerrarModalConBack(document.getElementById('modalNuevoProceso'));
       abrirModalModificar();
     }
 
     function abrirModalEliminarDesdeNuevo() {
-      document.getElementById('modalNuevoProceso').style.display = 'none';
+      cerrarModalConBack(document.getElementById('modalNuevoProceso'));
       abrirModalEliminar();
     }
 
@@ -2833,7 +2839,9 @@
       if (!trabajadorActual) return;
       document.getElementById('modOldId').value = trabajadorActual.identificacion;
       document.getElementById('modNewId').value = '';
-      document.getElementById('modalModificar').style.display = 'flex';
+      const el = document.getElementById('modalModificar');
+      el.style.display = 'flex';
+      el._backEntry = registrarModalBack(() => cerrarModales());
     }
 
     async function ejecutarModificacion() {
@@ -2911,7 +2919,9 @@
         lbl.style.fontWeight = 'normal';
       }
 
-      document.getElementById('modalEliminar').style.display = 'flex';
+      const elModalEliminar = document.getElementById('modalEliminar');
+      elModalEliminar.style.display = 'flex';
+      elModalEliminar._backEntry = registrarModalBack(() => cerrarModales());
     }
 
     function actualizarAclaracionPurga() {
@@ -2985,7 +2995,9 @@
         } else {
           linkBtn.style.display = 'none';
         }
-        document.getElementById('modalExitoEliminar').style.display = 'flex';
+        const elModalExito = document.getElementById('modalExitoEliminar');
+        elModalExito.style.display = 'flex';
+        elModalExito._backEntry = registrarModalBack(() => cerrarModales());
 
         // Limpiar tarjeta del trabajador actual
         document.getElementById('workerCardResult').style.display = 'none';
@@ -3095,7 +3107,9 @@
       }
       document.getElementById('talenthubProfileView').style.display = 'block';
       document.getElementById('talenthubProfileForm').style.display = 'none';
-      document.getElementById('talenthubProfileModal').classList.add('open');
+      const perfilOverlay = document.getElementById('talenthubProfileModal');
+      perfilOverlay.classList.add('open');
+      perfilOverlay._backEntry = registrarModalBack(() => cerrarPerfilTalenthub());
       document.getElementById('talenthubProfileStatus').style.display = 'none';
     }
 
@@ -3203,7 +3217,10 @@
     }
 
     function cerrarPerfilTalenthub() {
-      document.getElementById('talenthubProfileModal').classList.remove('open');
+      const perfilOverlay = document.getElementById('talenthubProfileModal');
+      perfilOverlay.classList.remove('open');
+      cerrarModalBack(perfilOverlay._backEntry);
+      perfilOverlay._backEntry = null;
       cancelarEdicionPerfilTalenthub();
     }
 
@@ -4069,7 +4086,9 @@
         lockFechaFin.style.display = puedeModificarFechaFin ? 'none' : 'inline';
       }
 
-      document.getElementById('modalFormRequisicion').style.display = 'flex';
+      const elFormReq = document.getElementById('modalFormRequisicion');
+      elFormReq.style.display = 'flex';
+      elFormReq._backEntry = registrarModalBack(() => cerrarModales());
     }
 
     async function abrirModalDetalleRequisicion(id) {
@@ -4177,7 +4196,9 @@
         // Renderizar candidatos vinculados (REF_ROWS)
         renderizarTablaAspirantesVinculados(data.aspirantes || []);
 
-        document.getElementById('modalDetalleRequisicion').style.display = 'flex';
+        const elDetalleReq = document.getElementById('modalDetalleRequisicion');
+        elDetalleReq.style.display = 'flex';
+        elDetalleReq._backEntry = registrarModalBack(() => cerrarModales());
 
       } catch (err) {
         console.error('[TalentHub] Error al abrir detalle:', err);
@@ -4353,7 +4374,9 @@
         lockFechaFin.style.display = puedeModificarFechaFin ? 'none' : 'inline';
       }
 
-      document.getElementById('modalFormRequisicion').style.display = 'flex';
+      const elFormReq = document.getElementById('modalFormRequisicion');
+      elFormReq.style.display = 'flex';
+      elFormReq._backEntry = registrarModalBack(() => cerrarModales());
     }
 
     async function guardarRequisicion(event) {
@@ -4559,13 +4582,18 @@
     function abrirSelectorVincularAspirante() {
       const input = document.getElementById('inputBuscarAspiranteVincular');
       if (input) input.value = '';
-      document.getElementById('modalVincularAspirante').style.display = 'flex';
+      const elVincular = document.getElementById('modalVincularAspirante');
+      elVincular.style.display = 'flex';
+      elVincular._backEntry = registrarModalBack(() => cerrarSelectorVincularAspirante());
       cargarAspirantesDisponibles('');
       if (input) input.focus();
     }
 
     function cerrarSelectorVincularAspirante() {
-      document.getElementById('modalVincularAspirante').style.display = 'none';
+      const elVincular = document.getElementById('modalVincularAspirante');
+      elVincular.style.display = 'none';
+      cerrarModalBack(elVincular._backEntry);
+      elVincular._backEntry = null;
     }
 
     function filtrarAspirantesDisponiblesEnVivo() {
@@ -4725,7 +4753,9 @@
       if (body) {
         body.innerHTML = '<div style="text-align:center; padding:28px; color:var(--text-muted);"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando parámetros...</div>';
       }
-      document.getElementById('modalParametrosRequisiciones').style.display = 'flex';
+      const elParamsReq = document.getElementById('modalParametrosRequisiciones');
+      elParamsReq.style.display = 'flex';
+      elParamsReq._backEntry = registrarModalBack(() => cerrarModales());
 
       try {
         const res = await fetch(`/talenthub/api/parametros/requisiciones?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
@@ -4881,19 +4911,26 @@
     }
 
     // ── UTILITARIOS ─────────────────────────────────────────────────────────
+    // Cierra el modal `el` y, si tenía una entrada de historial pendiente
+    // (ver modal-back.js), la consume — así el botón "Atrás" del navegador
+    // cierra el modal en vez de salir de la página. Seguro de llamar aunque
+    // el modal no estuviera abierto (cerrarModalBack ignora entradas nulas).
+    function cerrarModalConBack(el) {
+      if (!el) return;
+      el.style.display = 'none';
+      cerrarModalBack(el._backEntry);
+      el._backEntry = null;
+    }
+
     function cerrarModales() {
-      document.getElementById('modalNuevoProceso').style.display = 'none';
-      document.getElementById('modalModificar').style.display = 'none';
-      document.getElementById('modalEliminar').style.display = 'none';
-      document.getElementById('modalExitoEliminar').style.display = 'none';
-      const modDetalle = document.getElementById('modalDetalleRequisicion');
-      if (modDetalle) modDetalle.style.display = 'none';
-      const modForm = document.getElementById('modalFormRequisicion');
-      if (modForm) modForm.style.display = 'none';
-      const modVinc = document.getElementById('modalVincularAspirante');
-      if (modVinc) modVinc.style.display = 'none';
-      const modParams = document.getElementById('modalParametrosRequisiciones');
-      if (modParams) modParams.style.display = 'none';
+      cerrarModalConBack(document.getElementById('modalNuevoProceso'));
+      cerrarModalConBack(document.getElementById('modalModificar'));
+      cerrarModalConBack(document.getElementById('modalEliminar'));
+      cerrarModalConBack(document.getElementById('modalExitoEliminar'));
+      cerrarModalConBack(document.getElementById('modalDetalleRequisicion'));
+      cerrarModalConBack(document.getElementById('modalFormRequisicion'));
+      cerrarModalConBack(document.getElementById('modalVincularAspirante'));
+      cerrarModalConBack(document.getElementById('modalParametrosRequisiciones'));
     }
 
     document.querySelectorAll('.modal-backdrop').forEach(modal => {
@@ -4949,5 +4986,6 @@
   </script>
   <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
+  <script src="/js/modal-back.js" defer></script>
 </body>
 </html>

@@ -6093,7 +6093,7 @@
       });
 
       modalClose.addEventListener('click', () => {
-        imageModal.style.display = 'none';
+        closeActiveModals();
       });
 
       // Modal de detalle de Artículo (Stock/Kardex/Actas) — se abre desde Inventario, Kardex y
@@ -6103,33 +6103,47 @@
       const btnCloseStock = document.getElementById('articulo-stock-modal-btn-close');
       const btnCloseStockHeader = document.getElementById('articulo-stock-modal-close');
       if (stockModal) {
-        if (btnCloseStock) btnCloseStock.addEventListener('click', () => stockModal.style.display = 'none');
-        if (btnCloseStockHeader) btnCloseStockHeader.addEventListener('click', () => stockModal.style.display = 'none');
+        if (btnCloseStock) btnCloseStock.addEventListener('click', () => closeActiveModals());
+        if (btnCloseStockHeader) btnCloseStockHeader.addEventListener('click', () => closeActiveModals());
       }
 
+      // IDs de los modales cerrados en bloque por closeActiveModals() (Escape,
+      // y ahora también cada botón ×/Cancelar individual — ver más abajo,
+      // todos quedaron redirigidos a llamar esta misma función en vez de
+      // poner style.display='none' directo, para que el botón "Atrás" del
+      // navegador/móvil también los cierre de forma consistente).
+      const MODAL_IDS_ACTIVE = [
+        'image-modal',
+        'conf-modal',
+        'kardex-edit-modal',
+        'dotley-masivo-modal',
+        'dotley-enviar-dotacion-modal',
+        'articulo-form-modal',
+        'formarticulos-modal',
+        'ajuste-stock-modal',
+        'formkardex-modal',
+        'articulo-stock-modal',
+        'sol-add-articles-modal',
+        'acta-add-articles-modal',
+        'elementos-manager-modal'
+      ];
       function closeActiveModals() {
-        const modalIds = [
-          'image-modal',
-          'conf-modal',
-          'kardex-edit-modal',
-          'dotley-masivo-modal',
-          'articulo-form-modal',
-          'formarticulos-modal',
-          'ajuste-stock-modal',
-          'formkardex-modal',
-          'articulo-stock-modal',
-          'sol-add-articles-modal',
-          'acta-add-articles-modal',
-          'elementos-manager-modal'
-        ];
-        modalIds.forEach(id => {
+        MODAL_IDS_ACTIVE.forEach(id => {
           const el = document.getElementById(id);
           if (el && el.style.display !== 'none') {
             el.style.display = 'none';
+            cerrarModalBack(el._backEntry);
+            el._backEntry = null;
           }
         });
         document.querySelectorAll('.ac-list').forEach(el => el.style.display = 'none');
       }
+      // Las funciones que abren estos 12 modales (openConfirmationModal,
+      // openArticleFormModal, openFormArticulosModal, etc.) están definidas
+      // fuera de init() y necesitan poder llamar closeActiveModals al
+      // registrar el cierre por "Atrás" — se expone igual que
+      // closeLogicaModal/closeRepDetalleModal más abajo en este archivo.
+      window.closeActiveModals = closeActiveModals;
 
       // Universal Escape key listener for all modals and overlays
       window.addEventListener('keydown', (e) => {
@@ -6185,8 +6199,8 @@
         updateConfCategoriasDropdown();
       });
 
-      confModalClose.addEventListener('click', () => { confModal.style.display = 'none'; });
-      btnConfCancel.addEventListener('click', () => { confModal.style.display = 'none'; });
+      confModalClose.addEventListener('click', () => { closeActiveModals(); });
+      btnConfCancel.addEventListener('click', () => { closeActiveModals(); });
 
       // 6. Signature Actions listeners
       btnDrawNewSig.addEventListener('click', () => {
@@ -7227,6 +7241,7 @@
             modalImg.src = imgEl.src;
             modalCaption.textContent = item.Articulo || '';
             imageModal.style.display = 'block';
+            imageModal._backEntry = registrarModalBack(() => closeActiveModals());
           }
         });
 
@@ -7420,6 +7435,7 @@
             modalImg.src = imgSrc;
             modalCaption.textContent = title;
             imageModal.style.display = 'block';
+            imageModal._backEntry = registrarModalBack(() => closeActiveModals());
           }
         });
 
@@ -7634,6 +7650,7 @@
       populateMonthsDropdown();
 
       confModal.style.display = 'flex';
+      confModal._backEntry = registrarModalBack(() => closeActiveModals());
       
       isCanvasDrawn = false;
       clearCanvas();
@@ -7830,7 +7847,7 @@
         }
 
         alert('¡Confirmación de inventario registrada con éxito! Correo de notificación enviado.');
-        confModal.style.display = 'none';
+        closeActiveModals();
         
         // Cargar historial y cambiar de pestaña
         tabBtnHistorial.click();
@@ -8572,10 +8589,10 @@
       const editForm = document.getElementById('kardex-edit-form');
 
       if (btnCancelEdit) {
-        btnCancelEdit.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
+        btnCancelEdit.addEventListener('click', () => closeActiveModals());
       }
       if (btnCloseModal) {
-        btnCloseModal.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
+        btnCloseModal.addEventListener('click', () => closeActiveModals());
       }
       if (editForm) {
         editForm.addEventListener('submit', submitEditKardexForm);
@@ -9237,6 +9254,7 @@
       toggleOperacionDestino();
 
       modal.style.display = 'block';
+      modal._backEntry = registrarModalBack(() => closeActiveModals());
 
       // Poblar los datalists (Artículo, Kpendiente) en segundo plano, sin bloquear la apertura.
       populateKardexEditArticles().catch(err => console.error(err));
@@ -9286,8 +9304,7 @@
         const result = await res.json();
         if (result.success) {
           alert('El registro de Kardex se actualizó correctamente.');
-          const modal = document.getElementById('kardex-edit-modal');
-          if (modal) modal.style.display = 'none';
+          closeActiveModals();
           fetchKardexData(); // Reload table
           if (document.getElementById('pendiente-orders-container')) fetchPendientesList(); // Reload "Pendiente por Recibir" too, si aplica
         } else {
@@ -9559,8 +9576,8 @@
       const btnCloseElementos = document.getElementById('elementos-manager-modal-close');
       const btnCloseElementosFooter = document.getElementById('elementos-manager-btn-close');
 
-      if (btnCloseElementos) btnCloseElementos.addEventListener('click', () => elementosModal.style.display = 'none');
-      if (btnCloseElementosFooter) btnCloseElementosFooter.addEventListener('click', () => elementosModal.style.display = 'none');
+      if (btnCloseElementos) btnCloseElementos.addEventListener('click', () => closeActiveModals());
+      if (btnCloseElementosFooter) btnCloseElementosFooter.addEventListener('click', () => closeActiveModals());
 
       // formarticulos Bulk modal event listeners
       const bulkModal = document.getElementById('formarticulos-modal');
@@ -9574,8 +9591,8 @@
       const btnAddSingle = document.getElementById('formarticulos-btn-add-single');
       const btnGuardarBulk = document.getElementById('formarticulos-btn-guardar');
 
-      if (btnCloseBulk) btnCloseBulk.addEventListener('click', () => bulkModal.style.display = 'none');
-      if (btnCancelBulk) btnCancelBulk.addEventListener('click', () => bulkModal.style.display = 'none');
+      if (btnCloseBulk) btnCloseBulk.addEventListener('click', () => closeActiveModals());
+      if (btnCancelBulk) btnCancelBulk.addEventListener('click', () => closeActiveModals());
       if (btnTabSingle) btnTabSingle.addEventListener('click', () => switchFormArticulosTab('single'));
       if (btnTabExcel) btnTabExcel.addEventListener('click', () => switchFormArticulosTab('excel'));
       if (btnTabManual) btnTabManual.addEventListener('click', () => switchFormArticulosTab('manual'));
@@ -9589,8 +9606,8 @@
       const btnCloseForm = document.getElementById('articulo-form-modal-close');
       const formModal = document.getElementById('articulo-form-modal');
 
-      if (btnCancelForm) btnCancelForm.addEventListener('click', () => formModal.style.display = 'none');
-      if (btnCloseForm) btnCloseForm.addEventListener('click', () => formModal.style.display = 'none');
+      if (btnCancelForm) btnCancelForm.addEventListener('click', () => closeActiveModals());
+      if (btnCloseForm) btnCloseForm.addEventListener('click', () => closeActiveModals());
 
       const form = document.getElementById('articulo-form');
       if (form) {
@@ -9783,6 +9800,7 @@
               modalImg.src = imgEl.src;
               modalCaption.textContent = art.Elemento || art.Articulo;
               imageModal.style.display = 'block';
+              imageModal._backEntry = registrarModalBack(() => closeActiveModals());
             }
           });
         }
@@ -10090,6 +10108,7 @@
       updateEditArticuloTallaState();
       updateEditArticuloPlacaState();
       modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => closeActiveModals());
     }
 
     async function submitArticleForm(e) {
@@ -10210,6 +10229,7 @@
       title.textContent = `Stock: ${art.Articulo || art.Elemento}`;
       tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">Consultando stock físico...</td></tr>';
       modal.style.display = 'block';
+      modal._backEntry = registrarModalBack(() => closeActiveModals());
 
       try {
         const res = await fetch(`/inventario/api/articulos/stock/${idArt}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
@@ -10661,20 +10681,23 @@
 
           poblarFiltrosDotacion('sol', cat);
 
-          if (artModal) artModal.style.display = 'flex';
+          if (artModal) {
+            artModal.style.display = 'flex';
+            artModal._backEntry = registrarModalBack(() => closeActiveModals());
+          }
           renderModalArticlesList();
           updateModalSelectedCount();
         });
       }
 
-      if (btnCloseArtModal) btnCloseArtModal.addEventListener('click', () => artModal.style.display = 'none');
-      if (btnCancelArtModal) btnCancelArtModal.addEventListener('click', () => artModal.style.display = 'none');
+      if (btnCloseArtModal) btnCloseArtModal.addEventListener('click', () => closeActiveModals());
+      if (btnCancelArtModal) btnCancelArtModal.addEventListener('click', () => closeActiveModals());
 
       if (btnAceptarArtModal) {
         btnAceptarArtModal.addEventListener('click', () => {
           selectedSolicitudItems = JSON.parse(JSON.stringify(tempSelectedItems));
           renderSolicitudFormItems();
-          artModal.style.display = 'none';
+          closeActiveModals();
         });
       }
 
@@ -12081,8 +12104,9 @@
 
       switchFormArticulosTab('single');
       updateFormArticulosGridCount();
-      
+
       modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => closeActiveModals());
     }
 
     function switchFormArticulosTab(tab) {
@@ -12519,6 +12543,7 @@
       updateFormKardexGridCount();
 
       modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => closeActiveModals());
     }
 
     function switchFormKardexTab(tab) {
@@ -13186,8 +13211,8 @@
         if (!res.ok) throw new Error(data.error || 'Error al guardar movimientos');
 
         alert(data.message || 'Movimientos guardados exitosamente.');
-        document.getElementById('formkardex-modal').style.display = 'none';
-        
+        closeActiveModals();
+
         if (window.fetchKardexList) {
           window.fetchKardexList();
         } else if (window.fetchKardexData) {
@@ -13226,6 +13251,7 @@
       inputNewCant.value = '';
 
       modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => closeActiveModals());
       inputNewCant.focus();
     }
 
@@ -13286,8 +13312,8 @@
         if (!res.ok) throw new Error(data.error || 'Error al guardar el ajuste');
 
         alert('Ajuste guardado exitosamente.');
-        document.getElementById('ajuste-stock-modal').style.display = 'none';
-        
+        closeActiveModals();
+
         // Refresh inventory data
         if (window.fetchData) {
           window.fetchData();
@@ -13321,8 +13347,8 @@
       const fkSingleArticuloSearch = document.getElementById('fk-single-articulo-search');
       const fkSingleArticuloAcList = document.getElementById('fk-single-articulo-ac-list');
 
-      if (closeSpan) closeSpan.addEventListener('click', () => { modal.style.display = 'none'; });
-      if (btnCancel) btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
+      if (closeSpan) closeSpan.addEventListener('click', () => closeActiveModals());
+      if (btnCancel) btnCancel.addEventListener('click', () => closeActiveModals());
 
       if (btnSingleTab) btnSingleTab.addEventListener('click', () => switchFormKardexTab('single'));
       if (btnExcelTab) btnExcelTab.addEventListener('click', () => switchFormKardexTab('excel'));
@@ -13353,8 +13379,8 @@
       const adjBtnCancel = document.getElementById('ajuste-stock-btn-cancel');
       const adjBtnGuardar = document.getElementById('ajuste-stock-btn-guardar');
 
-      if (adjCloseSpan) adjCloseSpan.addEventListener('click', () => { adjModal.style.display = 'none'; });
-      if (adjBtnCancel) adjBtnCancel.addEventListener('click', () => { adjModal.style.display = 'none'; });
+      if (adjCloseSpan) adjCloseSpan.addEventListener('click', () => closeActiveModals());
+      if (adjBtnCancel) adjBtnCancel.addEventListener('click', () => closeActiveModals());
       if (adjBtnGuardar) adjBtnGuardar.addEventListener('click', saveAjusteStock);
     });
 
@@ -14099,6 +14125,7 @@
 
       // Show Modal
       modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => closeRecibirTransferenciaModal());
       clearRecibirCanvas();
 
       // Fetch Recent Signature
@@ -14393,7 +14420,11 @@
 
     function closeRecibirTransferenciaModal() {
       const modal = document.getElementById('recibir-transferencia-modal');
-      if (modal) modal.style.display = 'none';
+      if (modal) {
+        modal.style.display = 'none';
+        cerrarModalBack(modal._backEntry);
+        modal._backEntry = null;
+      }
       currentReceivingOrders = [];
       recibirItemsState = [];
       recibirSortState = { col: null, dir: 'asc' };
@@ -14805,6 +14836,7 @@
       const modal = document.getElementById('elementos-manager-modal');
       if (modal) {
         modal.style.display = 'flex';
+        modal._backEntry = registrarModalBack(() => closeActiveModals());
         activeElementosCategory = '';
         activeElementosClase = '';
         fetchAndRenderElementos();
@@ -14992,6 +15024,7 @@
         modalImg.src = url;
         if (modalCaption) modalCaption.textContent = title;
         imageModal.style.display = 'block';
+        imageModal._backEntry = registrarModalBack(() => closeActiveModals());
       }
     };
     window.openImageModal = window.openImageZoom;
@@ -15468,20 +15501,23 @@
           }
           actualizarBannerTallasActa();
 
-          if (actaArtModal) actaArtModal.style.display = 'flex';
+          if (actaArtModal) {
+            actaArtModal.style.display = 'flex';
+            actaArtModal._backEntry = registrarModalBack(() => closeActiveModals());
+          }
           renderModalActaArticlesList();
           updateActaModalSelectedCount();
         });
       }
 
-      if (btnCloseActaArtModal) btnCloseActaArtModal.addEventListener('click', () => actaArtModal.style.display = 'none');
-      if (btnCancelActaArtModal) btnCancelActaArtModal.addEventListener('click', () => actaArtModal.style.display = 'none');
+      if (btnCloseActaArtModal) btnCloseActaArtModal.addEventListener('click', () => closeActiveModals());
+      if (btnCancelActaArtModal) btnCancelActaArtModal.addEventListener('click', () => closeActiveModals());
 
       if (btnAceptarActaArtModal) {
         btnAceptarActaArtModal.addEventListener('click', () => {
           selectedActaItems = JSON.parse(JSON.stringify(actaTempSelectedItems));
           renderActaFormItems();
-          actaArtModal.style.display = 'none';
+          closeActiveModals();
         });
       }
 
@@ -17048,7 +17084,11 @@
 
     window.closeLogicaModal = function() {
       const modal = document.getElementById('logica-form-modal');
-      if (modal) modal.style.display = 'none';
+      if (modal) {
+        modal.style.display = 'none';
+        cerrarModalBack(modal._backEntry);
+        modal._backEntry = null;
+      }
     };
 
     window.limpiarFiltrosLogica = function() {
@@ -17387,7 +17427,10 @@
         if (catInput) catInput.value = '';
       }
 
-      if (modal) modal.style.display = 'flex';
+      if (modal) {
+        modal.style.display = 'flex';
+        modal._backEntry = registrarModalBack(() => closeLogicaModal());
+      }
     }
     window.openLogicaModal = openLogicaModal;
     window.initLogicaAbastecimiento = initLogicaAbastecimiento;
@@ -17856,11 +17899,14 @@
           populateDotleyMasivoRegional();
           document.getElementById('dotley-masivo-count-wrap').style.display = 'none';
           btnEnviarMasivo.disabled = true;
-          if (masivoModal) masivoModal.style.display = 'flex';
+          if (masivoModal) {
+            masivoModal.style.display = 'flex';
+            masivoModal._backEntry = registrarModalBack(() => closeActiveModals());
+          }
         });
       }
-      if (btnCerrarMasivo) btnCerrarMasivo.addEventListener('click', () => { masivoModal.style.display = 'none'; });
-      if (btnCancelarMasivo) btnCancelarMasivo.addEventListener('click', () => { masivoModal.style.display = 'none'; });
+      if (btnCerrarMasivo) btnCerrarMasivo.addEventListener('click', () => closeActiveModals());
+      if (btnCancelarMasivo) btnCancelarMasivo.addEventListener('click', () => closeActiveModals());
 
       if (masivoRegSel) {
         masivoRegSel.addEventListener('change', () => {
@@ -17891,15 +17937,18 @@
           btnEnviarDotacion.style.display = 'inline-flex';
           btnEnviarDotacion.addEventListener('click', () => {
             populateDotleyGenRegional();
-            if (genDotacionModal) genDotacionModal.style.display = 'flex';
+            if (genDotacionModal) {
+              genDotacionModal.style.display = 'flex';
+              genDotacionModal._backEntry = registrarModalBack(() => closeActiveModals());
+            }
           });
         } else {
           btnEnviarDotacion.style.display = 'none';
         }
       }
 
-      if (btnCerrarGen) btnCerrarGen.addEventListener('click', () => { if (genDotacionModal) genDotacionModal.style.display = 'none'; });
-      if (btnCancelGen) btnCancelGen.addEventListener('click', () => { if (genDotacionModal) genDotacionModal.style.display = 'none'; });
+      if (btnCerrarGen) btnCerrarGen.addEventListener('click', () => closeActiveModals());
+      if (btnCancelGen) btnCancelGen.addEventListener('click', () => closeActiveModals());
 
       if (genRegSel) {
         genRegSel.addEventListener('change', () => {
@@ -17978,8 +18027,7 @@
         }
 
         // Close gen modal
-        const genDotacionModal = document.getElementById('dotley-enviar-dotacion-modal');
-        if (genDotacionModal) genDotacionModal.style.display = 'none';
+        closeActiveModals();
 
         // Load kardex lookups if needed
         await ensureKardexLookupsLoaded().catch(err => console.error('Error cargando kardex-lookups:', err));
@@ -17990,7 +18038,10 @@
         // Open Kardex modal, switch to manual tab and show loading overlay
         const formKardexModal = document.getElementById('formkardex-modal');
         const loadingOverlay = document.getElementById('formkardex-loading-overlay');
-        if (formKardexModal) formKardexModal.style.display = 'flex';
+        if (formKardexModal) {
+          formKardexModal.style.display = 'flex';
+          formKardexModal._backEntry = registrarModalBack(() => closeActiveModals());
+        }
         switchFormKardexTab('manual');
         updateFormKardexGridCount();
         if (loadingOverlay) loadingOverlay.style.display = 'flex';
@@ -18094,7 +18145,7 @@
         if (!res.ok) throw new Error(data.error || 'Error al enviar los correos');
 
         alert(`Correos enviados: ${data.enviados} de ${data.total}.${data.sinCorreo ? ` ${data.sinCorreo} colaborador(es) sin correo registrado.` : ''}`);
-        document.getElementById('dotley-masivo-modal').style.display = 'none';
+        closeActiveModals();
       } catch (err) {
         alert(err.message);
       } finally {
@@ -19159,6 +19210,7 @@
 
       if (!modal) return;
       modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => closeRepDetalleModal());
       if (title) title.textContent = `Detalle de Artículos: ${operacionNombre}`;
       if (subtitle) subtitle.textContent = repSelectedCategory ? `Filtrado por categoría: ${repSelectedCategory}` : 'Inventario físico completo de la operación';
       if (searchInput) searchInput.value = '';
@@ -19237,7 +19289,11 @@
 
     window.closeRepDetalleModal = function() {
       const modal = document.getElementById('modal-rep-detalle');
-      if (modal) modal.style.display = 'none';
+      if (modal) {
+        modal.style.display = 'none';
+        cerrarModalBack(modal._backEntry);
+        modal._backEntry = null;
+      }
       repDetalleCurrentItems = [];
     };
 
@@ -19313,5 +19369,6 @@
   </script>
   <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
+  <script src="/js/modal-back.js" defer></script>
 </body>
 </html>
