@@ -124,28 +124,31 @@
       flex-wrap: wrap;
     }
 
-    /* User Badge */
+    /* User Badge: foto de perfil clicable que abre "Mi perfil y firma"
+       (reemplaza el badge de Rol anterior; ahorra espacio y es consistente
+       con el resto de módulos). */
     .user-pill {
       display: flex;
       align-items: center;
       gap: 9px;
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 5px 12px;
+      padding: 5px 14px 5px 5px;
       border-radius: 20px;
       font-size: 0.8rem;
+      cursor: pointer;
+      transition: background .15s ease, transform .15s ease;
+      font-family: inherit;
     }
-    .user-pill-avatar {
-      width: 24px;
-      height: 24px;
+    .user-pill:hover { background: rgba(255, 255, 255, 0.18); }
+    .user-pill:active { transform: scale(.97); }
+    .user-pill-avatar-photo {
+      width: 26px;
+      height: 26px;
       border-radius: 50%;
-      background: var(--secondary-orange);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 0.72rem;
+      object-fit: cover;
+      background: #fff;
+      border: 1.5px solid rgba(255, 255, 255, 0.85);
     }
     .user-pill-name {
       font-weight: 600;
@@ -154,21 +157,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-    .user-pill-rol {
-      font-size: 0.68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      padding: 2px 7px;
-      border-radius: 10px;
-      background: rgba(232, 118, 43, 0.25);
-      color: #FFB380;
-      border: 1px solid rgba(232, 118, 43, 0.4);
-    }
-    .user-pill-rol.sistema {
-      background: rgba(139, 92, 246, 0.35);
-      color: #DDD6FE;
-      border-color: rgba(139, 92, 246, 0.5);
     }
 
     .btn-header {
@@ -1253,7 +1241,7 @@
       .btn-header { font-size: 0.95rem; padding: 7px; min-width: 34px; justify-content: center; }
       .btn-header-label { display: none; }
       .user-pill { font-size: 0.72rem; padding: 4px 10px 4px 4px; gap: 6px; }
-      .user-pill-rol { display: none; }
+      .user-pill-name { max-width: 90px; }
 
       .main-container { padding: 14px 12px 40px; }
       .controls-bar {
@@ -1348,10 +1336,6 @@
     <div class="brand-wrap">
       <div class="brand-lockup-horizontal">
         <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
-        <div class="brand-divider-vert"></div>
-        <div class="brand-logo-company-crop">
-          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20Logyser.png" alt="Logyser">
-        </div>
       </div>
       <div class="header-titles">
         <span class="header-main-title">Directorio Corporativo</span>
@@ -1360,13 +1344,13 @@
     </div>
 
     <div class="header-actions">
-      <!-- Badge de Usuario Conectado -->
+      <!-- Badge de Usuario Conectado: foto de perfil (en vez del Rol) que abre
+           "Mi perfil y firma" al presionar, igual que en los demás módulos. -->
       <div id="user-pill-container" style="display: none;">
-        <div class="user-pill">
-          <div class="user-pill-avatar" id="user-avatar-initial">U</div>
+        <button type="button" class="user-pill" onclick="if (window.abrirPerfilCorporativo) abrirPerfilCorporativo();" aria-label="Ver y editar mi perfil y firma" title="Mi perfil y firma">
+          <img class="user-pill-avatar-photo mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
           <span class="user-pill-name" id="user-display-name">—</span>
-          <span class="user-pill-rol" id="user-display-rol">—</span>
-        </div>
+        </button>
       </div>
 
       <!-- Botón Agregar (Solo Rol Sistema) -->
@@ -1800,19 +1784,11 @@
     }
 
     function mostrarUserPill(user) {
+      // La foto de perfil la pinta app-launcher-profile.js (#mobileProfileThumb)
+      // una vez carga /perfil/api; aquí solo fijamos el nombre y mostramos el badge.
       const container = document.getElementById('user-pill-container');
-      const avatarEl = document.getElementById('user-avatar-initial');
       const nameEl = document.getElementById('user-display-name');
-      const rolEl = document.getElementById('user-display-rol');
-
-      avatarEl.innerText = (user.nombre || 'U').charAt(0).toUpperCase();
       nameEl.innerText = user.nombre || user.id;
-      rolEl.innerText = user.rol || 'Usuario';
-
-      if (user.esSistema) {
-        rolEl.classList.add('sistema');
-      }
-
       container.style.display = 'flex';
     }
 

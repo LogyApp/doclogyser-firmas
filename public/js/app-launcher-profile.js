@@ -423,7 +423,10 @@
       document.head.appendChild(style);
     }
     createLauncher(sidebar, brand);
-    if (!sidebar) return;
+    // El modal de perfil (y el thumbnail del header móvil, #mobileProfileThumb/
+    // .mobile-profile-thumb) se crean para CUALQUIER página que cargue este
+    // script, tenga o no sidebar de escritorio (p. ej. directorio-corporativo,
+    // que usa su propio layout sin sidebar pero sí quiere el mismo perfil).
     profileModal = createProfileModal();
     window.abrirPerfilCorporativo = openProfile;
     window.abrirPerfil = openProfile;
