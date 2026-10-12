@@ -1243,11 +1243,17 @@
         flex-wrap: wrap;
         width: 100%;
         justify-content: flex-end;
-        gap: 8px;
+        gap: 6px;
       }
       .header-actions > * { width: auto; }
-      .btn-header { font-size: 0.74rem; padding: 6px 10px; justify-content: center; }
-      .user-pill { font-size: 0.72rem; padding: 4px 10px; }
+      /* Botones de acción (Agregar/Sincronizar, solo Rol Sistema) pasan a ser
+         solo-ícono en móvil (el texto va en .btn-header-label, oculto aquí)
+         para que quepan junto al badge de usuario en una sola fila compacta,
+         en vez de 3 filas completas apiladas. */
+      .btn-header { font-size: 0.95rem; padding: 7px; min-width: 34px; justify-content: center; }
+      .btn-header-label { display: none; }
+      .user-pill { font-size: 0.72rem; padding: 4px 10px 4px 4px; gap: 6px; }
+      .user-pill-rol { display: none; }
 
       .main-container { padding: 14px 12px 40px; }
       .controls-bar {
@@ -1364,13 +1370,13 @@
       </div>
 
       <!-- Botón Agregar (Solo Rol Sistema) -->
-      <button type="button" class="btn-header accent" id="btn-header-add" style="display: none;" onclick="abrirModalNuevoColaborador()">
-        ＋ Agregar Colaborador
+      <button type="button" class="btn-header accent" id="btn-header-add" style="display: none;" onclick="abrirModalNuevoColaborador()" title="Agregar Colaborador" aria-label="Agregar Colaborador">
+        ＋<span class="btn-header-label"> Agregar Colaborador</span>
       </button>
 
       <!-- Botón Sincronizar (Solo Rol Sistema) -->
-      <button type="button" class="btn-header" id="btn-header-sync" style="display: none;" onclick="sincronizarVinculacion()" title="Sincronizar colaboradores activos desde Maestro_Vinculación">
-        🔄 Sincronizar Vinculación
+      <button type="button" class="btn-header" id="btn-header-sync" style="display: none;" onclick="sincronizarVinculacion()" title="Sincronizar colaboradores activos desde Maestro_Vinculación" aria-label="Sincronizar Vinculación">
+        🔄<span class="btn-header-label"> Sincronizar Vinculación</span>
       </button>
 
     </div>

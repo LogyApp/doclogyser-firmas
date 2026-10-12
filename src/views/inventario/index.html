@@ -2306,19 +2306,28 @@
       /* Modales "+ Agregar Artículos" (Acta de Entrega / Solicitudes): usan
          estilos inline sin las clases .modal-content/.modal-body/.modal-footer,
          por lo que el CSS móvil genérico de arriba no les aplicaba y la
-         "sección fija" (banner de tallas, aviso, buscador y filtros) seguía
-         con el padding de escritorio, dejando muy poco alto para la lista
-         scrolleable de artículos debajo. */
+         "sección fija" (banner de tallas, aviso, buscador y filtros) se
+         quedaba siempre visible SIN hacer scroll (flex:1/min-height:0 en la
+         lista la encerraba en su propia cajita chica), dejando muy poco
+         espacio para ver los artículos. Ahora todo el modal se desplaza como
+         una sola unidad: solo el título (arriba) y el footer de acciones
+         (abajo) quedan "sticky"; el banner de tallas, el aviso, los filtros
+         y la lista de artículos se desplazan juntos, así al hacer scroll se
+         gana toda la pantalla para elegir artículos. */
       #acta-add-articles-modal > div,
       #sol-add-articles-modal > div {
         max-height: 96vh !important;
         width: 100% !important;
         max-width: 100% !important;
         border-radius: 0 !important;
+        overflow-y: auto !important;
       }
       #acta-add-articles-modal .modal-header,
       #sol-add-articles-modal .modal-header {
         padding: 10px 14px !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 2 !important;
       }
       #acta-modal-filtros-fijos,
       #sol-modal-filtros-fijos {
@@ -2340,10 +2349,16 @@
       #acta-modal-articles-list,
       #sol-modal-articles-list {
         padding: 10px 14px !important;
+        flex: none !important;
+        min-height: 0 !important;
+        overflow-y: visible !important;
       }
       #acta-modal-footer,
       #sol-modal-footer {
         padding: 10px 14px !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 2 !important;
       }
 
       /* Tarjetas informativas (mini-stat-card): más compactas para dejar

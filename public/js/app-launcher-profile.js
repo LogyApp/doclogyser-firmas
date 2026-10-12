@@ -404,6 +404,11 @@
   }
 
   function init() {
+    // Logo del header móvil (.mobile-header, separado del sidebar de escritorio):
+    // se activa aparte y sin depender de que exista `brand` más abajo, para que
+    // recargue al inicio del módulo igual que el logo de escritorio en los 6 módulos.
+    document.querySelectorAll('.mobile-header .mobile-logo-app').forEach(activarLogoComoInicio);
+
     const sidebar = document.querySelector('.sidebar');
     const brand = sidebar?.querySelector('.sidebar-brand') || document.querySelector('.brand-wrap') || document.querySelector('.brand-lockup-horizontal');
     if (!brand) return;
