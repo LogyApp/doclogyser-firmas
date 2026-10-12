@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const pool = require('./db');
 
 const authConfig = process.env.SMTP_USER
   ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS || '' }
@@ -2470,7 +2471,280 @@ async function enviarCorreoPortalAspirante({ correo, nombreAspirante, portalUrl 
   });
 }
 
+/**
+ * Notificación por correo electrónico al crear una nueva requisición en TalentHub.
+ * Cumple con las siguientes reglas de negocio:
+ * 1. Regional ANTIOQUIA -> Config_Parametros: 'Notificación de Requisición, regional Antioquia'.
+ * 2. Regional CENTRO -> Config_Parametros: 'Notificación de Requisición, regional Centro'.
+ * 3. Otras regionales (diferente de ANTIOQUIA y CENTRO) -> Config_Parametros: 'Notificación de Requisición, otras regionales'.
+ *    En otras regionales, el Rol 'AuxiliarR' solo recibe correo si su Regional en Maestro_Usuarios coincide con la regional de la requisición.
+ * 4. Si el usuario creador no está en la columna Parametro de la opción aplicada, se envía copia (CC) del correo a su email.
+ */
+async function notificarCreacionRequisicion({
+  idRequisicion,
+  codigoRequisicion,
+  requisicion = {},
+  usuarioCreadorId
+}) {
+  try {
+    const regional = (requisicion['Regional'] || requisicion.regional || '').trim();
+    const regUpper = regional.toUpperCase();
+
+    // 1, 2, 3. Determinar el concepto en Config_Parametros según la regional
+    let concepto = '';
+    if (regUpper === 'ANTIOQUIA') {
+      concepto = 'Notificación de Requisición, regional Antioquia';
+    } else if (regUpper === 'CENTRO') {
+      concepto = 'Notificación de Requisición, regional Centro';
+    } else {
+      concepto = 'Notificación de Requisición, otras regionales';
+    }
+
+    // Consultar roles permitidos en Config_Parametros
+    const [paramRows] = await pool.execute(
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Concepto` = ? LIMIT 1',
+      [concepto]
+    );
+
+    const parametroStr = paramRows.length ? (paramRows[0].Parametro || '') : '';
+    const rolesConfig = parametroStr
+      .split(',')
+      .map(r => r.trim())
+      .filter(Boolean);
+
+    if (!rolesConfig.length) {
+      console.warn(`[notificarCreacionRequisicion] No se encontraron roles configurados en Config_Parametros para "${concepto}".`);
+    }
+
+    const toEmails = new Set();
+    const rolesSet = new Set(rolesConfig.map(r => r.toLowerCase()));
+
+    if (rolesConfig.length > 0) {
+      const placeholders = rolesConfig.map(() => '?').join(',');
+      const [usuarios] = await pool.query(
+        `SELECT ID, Nombre, Rol, Email, Regional FROM \`Maestro_Usuarios\` WHERE Rol IN (${placeholders})`,
+        rolesConfig
+      );
+
+      for (const u of usuarios) {
+        const email = (u.Email || '').trim().toLowerCase();
+        if (!email || !email.includes('@')) continue;
+
+        const rolUsuario = (u.Rol || '').trim();
+        const regUsuario = (u.Regional || '').trim().toUpperCase();
+
+        // Regla 3: Si el rol es AuxiliarR en otras regionales, solo le debe llegar coincidiendo la regional
+        if (rolUsuario.toLowerCase() === 'auxiliarr') {
+          if (regUpper === 'ANTIOQUIA' || regUpper === 'CENTRO') {
+            continue;
+          }
+          if (regUsuario !== regUpper) {
+            continue;
+          }
+        }
+
+        toEmails.add(email);
+      }
+    }
+
+    // 4. Copia al usuario creador si su rol no está en el parámetro de la opción aplicada
+    let creadorEmail = '';
+    let creadorRol = '';
+    let creadorNombre = '';
+    let creadorRegional = '';
+
+    if (usuarioCreadorId) {
+      const [cRows] = await pool.execute(
+        'SELECT ID, Nombre, Rol, Email, Regional FROM `Maestro_Usuarios` WHERE ID = ? LIMIT 1',
+        [usuarioCreadorId]
+      );
+      if (cRows.length) {
+        creadorEmail = (cRows[0].Email || '').trim().toLowerCase();
+        creadorRol = (cRows[0].Rol || '').trim();
+        creadorNombre = cRows[0].Nombre || '';
+        creadorRegional = (cRows[0].Regional || '').trim().toUpperCase();
+      }
+    }
+
+    const estaEnParametro = rolesSet.has(creadorRol.toLowerCase());
+    const leLlegaPorParametro = estaEnParametro && (
+      creadorRol.toLowerCase() !== 'auxiliarr' ||
+      (regUpper !== 'ANTIOQUIA' && regUpper !== 'CENTRO' && creadorRegional === regUpper)
+    );
+
+    const ccEmails = new Set();
+    if (!leLlegaPorParametro && creadorEmail && creadorEmail.includes('@')) {
+      if (!toEmails.has(creadorEmail)) {
+        ccEmails.add(creadorEmail);
+      }
+    }
+
+    const toList = Array.from(toEmails);
+    const ccList = Array.from(ccEmails);
+
+    if (toList.length === 0 && ccList.length === 0) {
+      console.warn(`[notificarCreacionRequisicion] No se determinaron destinatarios para requisición ${codigoRequisicion}.`);
+      return;
+    }
+
+    // Datos descriptivos de la requisición
+    const cargo = requisicion['Cargo Requerido'] || requisicion.cargo || 'Cargo no especificado';
+    const operacion = requisicion['Operación'] || requisicion.operacion || '';
+    const numPersonas = requisicion['N° Personas Requeridas'] || requisicion.personas || 1;
+    const solicitante = requisicion['Solicitante'] || creadorNombre || usuarioCreadorId;
+    const tipoPago = requisicion['Tipo de Pago'] || 'Salario Fijo';
+    const salario = requisicion['Salario'] != null && requisicion['Salario'] !== ''
+      ? `$ ${Number(requisicion['Salario']).toLocaleString('es-CO')}`
+      : null;
+    const motivo = requisicion['Motivo de la Solicitud'] || 'Ampliación de Personal';
+    const turno = requisicion['Turno Requerido'] || 'Rotativo';
+    const responsable = requisicion['Responsable de Selección'] || 'Pendiente por asignar';
+    const fechaFin = requisicion['Fecha de Finalización'] ? formatFecha(requisicion['Fecha de Finalización']) : null;
+    const ciudad = requisicion['Ciudad'] || '';
+    const cursoReq = requisicion['Requiere Curso por el Cliente'] === 'SI'
+      ? `SÍ (${requisicion['Descripción Curso Requerido'] || ''})`
+      : 'NO';
+    const bpm = requisicion['Manipulación de Alimentos - BPM'] === 'SI' ? 'SÍ' : 'NO';
+    const observaciones = requisicion['Observaciones'] || null;
+
+    const asunto = `Nueva Requisición de Personal: ${codigoRequisicion} — ${cargo} (${operacion} / ${regional})`;
+
+    const cuerpo = `
+      <div style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:650px;margin:0 auto;background:#f8fafc;padding:24px;color:#1e293b">
+        <div style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06);border:1px solid #e2e8f0">
+          
+          <!-- Encabezado corporativo LOG&SER -->
+          <div style="border-top:5px solid #4f46e5;padding:20px 28px;background:#ffffff;border-bottom:1px solid #f1f5f9">
+            <table style="width:100%;border-collapse:collapse">
+              <tr>
+                <td style="vertical-align:middle">
+                  <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px;display:inline-block" alt="LOG&amp;SER">
+                </td>
+                <td style="vertical-align:middle;text-align:right">
+                  <span style="display:inline-block;background:#eef2ff;color:#4338ca;padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:700;letter-spacing:0.5px">
+                    TALENTHUB • REQUISICIONES
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="padding:28px 28px 24px 28px">
+            <div style="margin-bottom:20px">
+              <span style="display:inline-block;background:#10b981;color:#ffffff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;text-transform:uppercase;letter-spacing:0.5px">
+                Estado: EN PROCESO
+              </span>
+              <h2 style="color:#0f172a;margin:12px 0 6px 0;font-size:20px;font-weight:700">
+                Se ha generado una nueva requisición de personal
+              </h2>
+              <p style="color:#64748b;margin:0;font-size:14px;line-height:1.5">
+                Código: <strong style="color:#4f46e5;font-size:16px">${codigoRequisicion}</strong> &nbsp;|&nbsp; Solicitante: <strong>${solicitante}</strong>
+              </p>
+            </div>
+
+            <!-- Tabla Resumen Requisición -->
+            <table style="width:100%;border-collapse:collapse;margin-top:16px;background:#f8fafc;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;font-size:13px">
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600;width:38%">Cargo Requerido:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:700">${cargo}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;background:#ffffff">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">N° Vacantes / Personas:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${numPersonas}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Regional:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${regional}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;background:#ffffff">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Operación:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${operacion}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Ciudad:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${ciudad || 'No especificada'}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;background:#ffffff">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Motivo Solicitud:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">
+                    ${motivo}
+                    ${requisicion['Motivo del Reemplazo'] ? ` (${requisicion['Motivo del Reemplazo']})` : ''}
+                    ${requisicion['Duración de la Temporalidad'] ? ` (${requisicion['Duración de la Temporalidad']})` : ''}
+                  </td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Tipo de Pago / Salario:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${tipoPago}${salario ? ` — ${salario}` : ''}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;background:#ffffff">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Turno Requerido:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${turno}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Curso por el Cliente:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${cursoReq}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;background:#ffffff">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Manipulación Alimentos BPM:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${bpm}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Responsable de Selección:</td>
+                  <td style="padding:10px 14px;color:#4f46e5;font-weight:700">${responsable}</td>
+                </tr>
+                ${fechaFin ? `
+                <tr style="border-bottom:1px solid #e2e8f0;background:#ffffff">
+                  <td style="padding:10px 14px;color:#64748b;font-weight:600">Fecha Estimada Fin:</td>
+                  <td style="padding:10px 14px;color:#0f172a;font-weight:600">${fechaFin}</td>
+                </tr>
+                ` : ''}
+              </tbody>
+            </table>
+
+            ${observaciones ? `
+            <div style="margin-top:16px;padding:12px 16px;background:#f1f5f9;border-left:4px solid #4f46e5;border-radius:4px;font-size:13px">
+              <strong style="color:#0f172a">Observaciones:</strong>
+              <p style="margin:4px 0 0 0;color:#334155;line-height:1.5">${observaciones}</p>
+            </div>
+            ` : ''}
+
+            <p style="margin-top:24px;font-size:12px;color:#94a3b8;line-height:1.5;text-align:center">
+              Para gestionar los aspirantes vinculados o actualizar el estado de esta solicitud, ingrese al módulo <strong>TalentHub</strong> en la sección <strong>Requisiciones</strong>.
+            </p>
+          </div>
+
+          <div style="background:#f1f5f9;padding:14px 24px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b;text-align:center">
+            Sistema de Gestión Integral — LOG&amp;SER S.A.S.
+          </div>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"TalentHub Requisiciones" <${EMAIL_FROM}>`,
+      to: toList.length > 0 ? toList.join(', ') : undefined,
+      cc: ccList.length > 0 ? ccList.join(', ') : undefined,
+      subject: asunto,
+      html: cuerpo
+    };
+
+    if (!mailOptions.to && mailOptions.cc) {
+      mailOptions.to = mailOptions.cc;
+      delete mailOptions.cc;
+    }
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[notificarCreacionRequisicion] Notificación enviada exitosamente para ${codigoRequisicion}: TO=[${toList.join(', ')}], CC=[${ccList.join(', ')}]`);
+    return info;
+  } catch (err) {
+    console.error(`[notificarCreacionRequisicion] Error al procesar notificación de requisición:`, err);
+    throw err;
+  }
+}
+
 module.exports = {
+  notificarCreacionRequisicion,
   enviarCorreoPortalAspirante,
   notificarConfirmacionInventario,
   notificarTransferenciaDespachada,

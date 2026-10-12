@@ -6,6 +6,7 @@ const pool = require('../services/db');
 const { storage, obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
+const { notificarCreacionRequisicion } = require('../services/email');
 
 const router = express.Router();
 const uploadFotoPerfil = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -1508,6 +1509,44 @@ router.post('/api/requisiciones', async (req, res) => {
         acceso.usuarioId
       ]
     );
+
+    // Notificación por correo electrónico según Config_Parametros y regional
+    notificarCreacionRequisicion({
+      idRequisicion: nextVal,
+      codigoRequisicion: codigoReq,
+      requisicion: {
+        'IdRequisicion': nextVal,
+        'Requisición': codigoReq,
+        'Regional': regional,
+        'Operación': b['Operación'],
+        'Ciudad': ciudad,
+        'Cargo Requerido': b['Cargo Requerido'],
+        'Tipo de Pago': b['Tipo de Pago'] || 'Salario Fijo',
+        'Salario': salario,
+        'Solicitante': solicitante,
+        'Cargo Solicitante': cargoSolicitante,
+        'N° Personas Requeridas': parseInt(b['N° Personas Requeridas']) || 1,
+        'Perfil del Cargo': b['Perfil del Cargo'] || null,
+        'Conocimientos Adicionales': b['Conocimientos Adicionales'] || null,
+        'Experiencia Requerida': b['Experiencia Requerida'] || null,
+        'Turno Requerido': b['Turno Requerido'] || 'Rotativo',
+        'Descripción del Turno': b['Descripción del Turno'] || null,
+        'Manipulación de Alimentos - BPM': b['Manipulación de Alimentos - BPM'] === 'SI' ? 'SI' : 'NO',
+        'Requiere Curso por el Cliente': reqCurso,
+        'Descripción Curso Requerido': descCurso,
+        'Motivo de la Solicitud': motivo,
+        'Motivo del Reemplazo': motivoReemplazo,
+        'Duración de la Temporalidad': duracionTemp,
+        'Observaciones': b['Observaciones'] || null,
+        'Dotación Requerida': b['Dotación Requerida'] || null,
+        'EPP Requeridos': b['EPP Requeridos'] || null,
+        'Fecha de Finalización': fechaFin,
+        'Responsable de Selección': responsable
+      },
+      usuarioCreadorId: acceso.usuarioId || usuario
+    }).catch(err => {
+      console.error('[talenthub-requisiciones] Error al enviar notificación por correo:', err);
+    });
 
     console.log(`[talenthub-requisiciones] Creada requisición ${codigoReq} (ID: ${nextVal}) por ${acceso.usuarioId}`);
     res.json({ ok: true, id: nextVal, requisicion: codigoReq, mensaje: `Requisición ${codigoReq} registrada con éxito.` });
