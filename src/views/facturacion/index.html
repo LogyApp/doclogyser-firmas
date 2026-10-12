@@ -26,30 +26,10 @@
   <link rel="stylesheet" href="/css/app-launcher-profile.css?v=20261011b">
 
   <style>
-    :root {
-      --primary: #3b0764;
-      --primary-gradient: linear-gradient(135deg, #2e0854 0%, #4a148c 50%, #6b21a8 100%);
-      --primary-dark: #1b0430;
-      --primary-light: #7c3aed;
-      --accent: #9333ea;
-      --accent-hover: #7e22ce;
-      --accent-soft: rgba(147, 51, 234, 0.12);
-      --bg: #fdfcff;
-      --card-bg: #ffffff;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e9d5ff;
-      --border-dark: #cbd5e1;
-      --success: #16a34a;
-      --warning: #f59e0b;
-      --danger: #dc2626;
-      --radius: 10px;
-      --radius-sm: 6px;
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-      --shadow: 0 4px 6px -1px rgba(59, 7, 100, 0.05), 0 2px 4px -2px rgba(59, 7, 100, 0.03);
-      --shadow-lg: 0 12px 20px -3px rgba(59, 7, 100, 0.20), 0 4px 6px -2px rgba(59, 7, 100, 0.06);
-      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+    /* :root propio eliminado — ahora theme-tokens.css es la unica fuente de
+       verdad para --primary/--accent/--bg/--text/etc. Los alias no
+       canonicos (--primary-gradient, --accent-hover, --border-dark, --radius,
+       --shadow) se renombraron a sus equivalentes canonicos en todo el archivo. */
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -71,7 +51,7 @@
     .sidebar {
       width: 280px;
       background: var(--primary);
-      color: #ffffff;
+      color: var(--text-inverse);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
@@ -81,7 +61,7 @@
       top: 0;
       z-index: 200;
       border-right: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 4px 0 15px rgba(59, 7, 100, 0.18);
+      box-shadow: var(--shadow-lg);
       transition: transform 0.3s ease;
     }
 
@@ -167,16 +147,16 @@
     }
 
     .nav-item:hover {
-      color: #fff;
+      color: var(--text-inverse);
       background: rgba(255, 255, 255, 0.08);
     }
 
     .nav-item:hover .nav-icon {
-      color: #fff;
+      color: var(--text-inverse);
     }
 
     .nav-item.active {
-      color: #fff;
+      color: var(--text-inverse);
       background: rgba(255, 255, 255, 0.14);
       font-weight: 600;
     }
@@ -206,7 +186,7 @@
 
     .sidebar-user strong {
       display: block;
-      color: #fff;
+      color: var(--text-inverse);
       font-size: 0.86rem;
       margin-bottom: 2px;
     }
@@ -248,8 +228,8 @@
 
     .card {
       background: var(--card-bg);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
       border: 1px solid var(--border);
       padding: 20px;
       margin-bottom: 20px;
@@ -265,7 +245,7 @@
 
     .metric-card {
       background: var(--card-bg);
-      border-radius: var(--radius);
+      border-radius: var(--radius-md);
       border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
       padding: 18px 20px;
@@ -331,15 +311,15 @@
       gap: 8px;
       font-weight: 700;
       font-size: 0.92rem;
-      color: var(--primary);
+      color: var(--accent);
     }
 
     .filtros-badge {
       display: none;
       align-items: center;
       justify-content: center;
-      background: var(--primary);
-      color: #fff;
+      background: var(--accent);
+      color: var(--accent-contrast);
       border-radius: 999px;
       font-size: 0.68rem;
       font-weight: 700;
@@ -351,7 +331,7 @@
     .filtros-chevron {
       display: inline-block;
       transition: transform 0.2s ease;
-      color: var(--primary);
+      color: var(--accent);
       font-size: 0.95rem;
     }
 
@@ -379,7 +359,7 @@
       border: 1.5px solid var(--border);
       border-radius: var(--radius-sm);
       font-size: 0.88rem;
-      background: #fff;
+      background: var(--card-bg);
       color: var(--text);
       font-family: inherit;
       transition: var(--transition);
@@ -387,26 +367,26 @@
 
     .filtro-field select:focus, .filtro-field input:focus {
       outline: none;
-      border-color: var(--primary-light);
+      border-color: var(--accent-light);
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
     .filtro-field-quincena-highlight {
-      background: #f5f3ff !important;
-      border: 1.5px solid #a855f7 !important;
+      background: var(--accent-soft) !important;
+      border: 1.5px solid var(--accent-light) !important;
       border-radius: 8px !important;
       padding: 6px 10px !important;
-      box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.15) !important;
+      box-shadow: 0 0 0 2px var(--accent-soft) !important;
     }
     .filtro-field-quincena-highlight label {
-      color: #7e22ce !important;
+      color: var(--accent-dark) !important;
       font-weight: 700 !important;
     }
     .filtro-field-quincena-highlight select {
-      background: #ffffff !important;
-      border-color: #c084fc !important;
+      background: var(--card-bg) !important;
+      border-color: var(--accent-light) !important;
       font-weight: 600 !important;
-      color: #581c87 !important;
+      color: var(--accent-dark) !important;
     }
 
     .btn-reset {
@@ -423,14 +403,14 @@
     }
 
     .btn-reset:hover {
-      background: #f1f5f9;
+      background: var(--bg-elevated);
       color: var(--text);
     }
 
     /* Botones primarios corporativos */
     .btn-primary {
-      background: var(--primary);
-      color: #fff;
+      background: var(--accent);
+      color: var(--accent-contrast);
       padding: 10px 20px;
       border-radius: 7px;
       font-weight: 600;
@@ -440,15 +420,15 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 2px 4px rgba(6, 78, 59, 0.2);
+      box-shadow: 0 2px 4px var(--accent-soft);
       transition: var(--transition);
       font-family: inherit;
     }
 
     .btn-primary:hover {
-      background: #6b21a8;
+      background: var(--accent-dark);
       transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(6, 78, 59, 0.25);
+      box-shadow: 0 4px 8px var(--accent-soft);
     }
 
     /* Tabla Corporativa con encabezado fijo y redimensionable */
@@ -457,8 +437,8 @@
       overflow-y: auto;
       overflow-x: auto;
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: #fff;
+      border-radius: var(--radius-md);
+      background: var(--card-bg);
     }
 
     table.data-table {
@@ -468,8 +448,8 @@
     }
 
     table.data-table thead th {
-      background-color: #f8fafc;
-      color: var(--primary);
+      background-color: var(--bg-elevated);
+      color: var(--accent);
       font-size: 0.76rem;
       text-transform: uppercase;
       letter-spacing: 0.4px;
@@ -488,7 +468,7 @@
     table.data-table tbody td {
       padding: 10px 14px;
       font-size: 0.85rem;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--border);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -496,14 +476,14 @@
     }
 
     table.data-table tbody tr:hover {
-      background-color: #f8fafc;
+      background-color: var(--bg-elevated);
     }
 
     /* Column resizing & sort indicators */
     .sort-indicator { font-size: 0.72rem; color: var(--text-muted); margin-left: 4px; }
     .th-resize { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; touch-action: none; z-index: 2; }
-    .th-resize::after { content: ''; display: block; position: absolute; right: 0; top: 20%; bottom: 20%; width: 2px; background: #cbd5e1; transition: background 0.2s; }
-    .th-resize:hover::after, .th-resize.resizing::after { background: var(--primary); }
+    .th-resize::after { content: ''; display: block; position: absolute; right: 0; top: 20%; bottom: 20%; width: 2px; background: var(--border-strong); transition: background 0.2s; }
+    .th-resize:hover::after, .th-resize.resizing::after { background: var(--accent); }
 
     /* Badges */
     .badge {
@@ -516,9 +496,9 @@
       font-weight: 700;
       letter-spacing: 0.2px;
     }
-    .badge-bloq { background: #fee2e2; color: #b91c1c; }
-    .badge-desbloq { background: #dcfce7; color: #15803d; }
-    .badge-servicios { background: #e0f2fe; color: #0369a1; }
+    .badge-bloq { background: var(--danger-soft); color: var(--danger-dark); }
+    .badge-desbloq { background: var(--success-soft); color: var(--success-dark); }
+    .badge-servicios { background: var(--info-soft); color: var(--info-dark); }
 
     /* Switch Toggle */
     .switch {
@@ -531,21 +511,21 @@
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
       position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #cbd5e1; transition: .25s; border-radius: 24px;
+      background-color: var(--border-strong); transition: .25s; border-radius: 24px;
     }
     .slider:before {
       position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-      background-color: white; transition: .25s; border-radius: 50%;
+      background-color: var(--text-inverse); transition: .25s; border-radius: 50%;
       box-shadow: 0 1px 3px rgba(0,0,0,0.25);
     }
-    input:checked + .slider { background-color: var(--primary-light); }
+    input:checked + .slider { background-color: var(--accent); }
     input:checked + .slider:before { transform: translateX(20px); }
 
     /* Grupos de botones */
     .btn-grupo {
       display: flex;
       gap: 6px;
-      background: #f1f5f9;
+      background: var(--bg-elevated);
       padding: 4px;
       border-radius: 8px;
     }
@@ -564,8 +544,8 @@
       text-align: center;
     }
     .btn-grupo-opt.sel {
-      background: var(--primary);
-      color: #fff;
+      background: var(--accent);
+      color: var(--accent-contrast);
       box-shadow: 0 1px 4px rgba(0,0,0,0.12);
     }
 
@@ -593,7 +573,7 @@
     /* El botón/modal "+ Ticket" ahora es un widget compartido entre módulos
        — ver public/js/ticket-boton.js y public/css/ticket-boton.css. */
     .modal-card {
-      background: #ffffff;
+      background: var(--card-bg);
       border-radius: 12px;
       width: 100%;
       max-width: 600px;
@@ -610,7 +590,7 @@
     }
     .modal-header {
       background: var(--primary);
-      color: #fff;
+      color: var(--text-inverse);
       padding: 16px 22px;
       display: flex;
       align-items: center;
@@ -622,7 +602,7 @@
     .modal-close-btn {
       background: rgba(255, 255, 255, 0.15);
       border: none;
-      color: #fff;
+      color: var(--text-inverse);
       width: 32px;
       height: 32px;
       border-radius: 6px;
@@ -645,7 +625,7 @@
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background: #f8fafc;
+      background: var(--bg-elevated);
     }
 
     .form-group {
@@ -655,7 +635,7 @@
       display: block;
       font-size: 0.78rem;
       font-weight: 700;
-      color: #334155;
+      color: var(--text);
       margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.3px;
@@ -671,24 +651,24 @@
     }
     .form-group input:focus, .form-group select:focus {
       outline: none;
-      border-color: var(--primary-light);
+      border-color: var(--accent-light);
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
     .form-group input:disabled {
-      background: #f1f5f9;
+      background: var(--bg);
       color: var(--text-muted);
       cursor: not-allowed;
     }
 
     /* Banner informativo */
     .info-banner {
-      background: #faf5ff;
-      border: 1px solid #e9d5ff;
-      border-left: 4px solid var(--primary-light);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-soft);
+      border-left: 4px solid var(--accent-light);
       padding: 12px 14px;
       border-radius: 6px;
       font-size: 0.83rem;
-      color: #7e22ce;
+      color: var(--accent-dark);
       margin-top: 10px;
       line-height: 1.45;
     }
@@ -700,38 +680,38 @@
       max-height: 160px;
       overflow-y: auto;
       padding: 8px 12px;
-      background: #fff;
+      background: var(--card-bg);
     }
     .check-item {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 6px 0;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--border);
       font-size: 0.85rem;
       cursor: pointer;
     }
     .check-item:last-child { border-bottom: none; }
-    .check-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary-light); cursor: pointer; }
+    .check-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
 
     /* Autocomplete NIT */
     .autocomplete-wrapper { position: relative; }
     .autocomplete-list {
       position: absolute; top: 100%; left: 0; right: 0;
-      background: #fff; border: 1.5px solid var(--primary-light); border-radius: 6px;
+      background: var(--card-bg); border: 1.5px solid var(--accent-light); border-radius: 6px;
       max-height: 190px; overflow-y: auto; z-index: 2500; box-shadow: var(--shadow-lg);
       display: none;
     }
     .autocomplete-item {
-      padding: 9px 12px; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+      padding: 9px 12px; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid var(--border);
     }
-    .autocomplete-item:hover { background: #faf5ff; }
+    .autocomplete-item:hover { background: var(--accent-soft); }
 
     /* Móvil Header y Backdrop (Estilo Nómina / LogyApp) */
     .mobile-header {
       display: none;
       background: var(--primary);
-      color: #fff;
+      color: var(--text-inverse);
       padding: 7px 12px;
       align-items: center;
       justify-content: space-between;
@@ -743,7 +723,7 @@
     }
     .mobile-header-left { display: flex; align-items: center; gap: 8px; }
     .mobile-menu-btn {
-      background: none; border: none; color: #fff; font-size: 1.45rem; cursor: pointer;
+      background: none; border: none; color: var(--text-inverse); font-size: 1.45rem; cursor: pointer;
       display: flex; align-items: center; justify-content: center; padding: 2px 4px; line-height: 1;
     }
     .mobile-logo-app { height: 24px; max-height: 24px; width: auto; object-fit: contain; }
@@ -765,7 +745,7 @@
     .mobile-profile-btn:active { transform: scale(.92); opacity: .85; }
     .mobile-profile-thumb {
       width: 33px; height: 33px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .9);
-      object-fit: cover; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+      object-fit: cover; background: var(--card-bg); box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
     }
     .mobile-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 140; }
     .mobile-backdrop.open { display: block; }
@@ -789,15 +769,15 @@
       min-width: 135px;
     }
     .category-chip:hover {
-      background-color: #faf5ff;
-      border-color: #c084fc;
-      color: var(--primary);
+      background-color: var(--accent-soft);
+      border-color: var(--accent-light);
+      color: var(--accent);
     }
     .category-chip.active {
-      background: var(--primary-gradient);
-      border-color: var(--primary);
-      color: #ffffff;
-      box-shadow: 0 4px 12px rgba(59, 7, 100, 0.25);
+      background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%);
+      border-color: var(--accent);
+      color: var(--accent-contrast);
+      box-shadow: 0 4px 12px var(--accent-soft);
     }
     .category-chip .chip-title {
       font-weight: 700;
@@ -809,7 +789,7 @@
       opacity: 0.85;
     }
     .category-chip.active .chip-sub {
-      color: #f3e8ff;
+      color: var(--accent-contrast);
     }
 
     /* Switch toggle */
@@ -819,7 +799,7 @@
       position: absolute;
       cursor: pointer;
       top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #cbd5e1;
+      background-color: var(--border-strong);
       transition: .3s;
     }
     .switch .slider.round:before {
@@ -829,12 +809,12 @@
       width: 14px;
       left: 3px;
       bottom: 3px;
-      background-color: white;
+      background-color: var(--text-inverse);
       transition: .3s;
       border-radius: 50%;
     }
     .switch input:checked + .slider {
-      background-color: var(--primary-light);
+      background-color: var(--accent);
     }
     .switch input:checked + .slider:before {
       transform: translateX(18px);
@@ -842,10 +822,10 @@
 
     /* Detail View Styling */
     .detail-container {
-      background: #ffffff;
+      background: var(--card-bg);
       border-radius: 12px;
       border: 1px solid var(--border);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-md);
       padding: 24px;
       margin-bottom: 24px;
     }
@@ -866,7 +846,7 @@
       margin-top: 16px;
     }
     .detail-section {
-      background: #faf5ff;
+      background: var(--accent-soft);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 18px;
@@ -874,14 +854,14 @@
     .detail-section-title {
       font-size: 0.9rem;
       font-weight: 700;
-      color: var(--primary);
+      color: var(--accent);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
       gap: 8px;
-      border-bottom: 1px solid rgba(147, 51, 234, 0.15);
+      border-bottom: 1px solid var(--accent-soft);
       padding-bottom: 6px;
     }
     .detail-item {
@@ -1337,17 +1317,17 @@
         <!-- Barra de Botones de Forma de Pago con Toggle de Sumas -->
         <div class="card" style="padding: 16px; margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
-            <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+            <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
               <span>💳</span> Forma de Pago
             </div>
             <!-- Switch Valor Base / Total Pago -->
-            <div style="display: flex; align-items: center; gap: 8px; background: #faf5ff; padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px; background: var(--accent-soft); padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border);">
               <span id="toggle-lbl-base" style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chk-modo-total').checked = false; toggleModoSumas(false);">Valor Base</span>
               <label class="switch" style="position: relative; display: inline-block; width: 38px; height: 20px; margin: 0;">
                 <input type="checkbox" id="chk-modo-total" onchange="toggleModoSumas(this.checked)" checked>
                 <span class="slider round"></span>
               </label>
-              <span id="toggle-lbl-total" style="font-size: 0.8rem; font-weight: 700; color: var(--primary); cursor: pointer;" onclick="document.getElementById('chk-modo-total').checked = true; toggleModoSumas(true);">Total Pago</span>
+              <span id="toggle-lbl-total" style="font-size: 0.8rem; font-weight: 700; color: var(--accent); cursor: pointer;" onclick="document.getElementById('chk-modo-total').checked = true; toggleModoSumas(true);">Total Pago</span>
             </div>
           </div>
 
@@ -1383,11 +1363,11 @@
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
               <div class="filtro-field">
                 <label>Desde (Hora Inicio)</label>
-                <input type="date" id="serv-filtro-desde" onchange="onServicioFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: var(--text);">
+                <input type="date" id="serv-filtro-desde" onchange="onServicioFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: var(--card-bg); color: var(--text);">
               </div>
               <div class="filtro-field">
                 <label>Hasta (Hora Inicio)</label>
-                <input type="date" id="serv-filtro-hasta" onchange="onServicioFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: var(--text);">
+                <input type="date" id="serv-filtro-hasta" onchange="onServicioFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: var(--card-bg); color: var(--text);">
               </div>
               <div class="filtro-field">
                 <label>Año</label>
@@ -1469,7 +1449,7 @@
               </tr>
             </thead>
             <tbody id="tabla-servicios-body">
-              <tr><td colspan="20" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando servicios...</td></tr>
+              <tr><td colspan="20" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando servicios...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1479,16 +1459,16 @@
       <div id="servicios-vista-detalle" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn-secondary" onclick="volverAListadoServicios()" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: white;">
+            <button type="button" class="btn-secondary" onclick="volverAListadoServicios()" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg);">
               <span>←</span> Volver al listado de servicios
             </button>
-            <button type="button" id="btn-volver-a-recibo" class="btn-secondary" onclick="volverAReciboOrigen()" style="display: none; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1.5px solid #a855f7; background: #faf5ff; color: #6b21a8;">
+            <button type="button" id="btn-volver-a-recibo" class="btn-secondary" onclick="volverAReciboOrigen()" style="display: none; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent-dark);">
               <span>←</span> Volver al recibo <strong id="btn-volver-a-recibo-id" style="margin-left: 4px;"></strong>
             </button>
           </div>
           <div style="display: flex; align-items: center; gap: 10px;">
             <span id="det-estado-badge" style="padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;">-</span>
-            <span id="det-consecutivo-badge" style="background: #f3e8ff; border: 1px solid #d8b4fe; color: var(--primary); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
+            <span id="det-consecutivo-badge" style="background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
           </div>
         </div>
 
@@ -1496,16 +1476,16 @@
           <div class="detail-header-card">
             <div>
               <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">ID Servicio</div>
-              <div id="det-id-servicio" style="font-size: 1.35rem; font-weight: 800; color: var(--primary);">-</div>
+              <div id="det-id-servicio" style="font-size: 1.35rem; font-weight: 800; color: var(--accent);">-</div>
             </div>
             <div style="text-align: right;">
               <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total a Pagar</div>
-              <div id="det-total-pago-header" style="font-size: 1.8rem; font-weight: 800; color: var(--primary);">$ 0</div>
+              <div id="det-total-pago-header" style="font-size: 1.8rem; font-weight: 800; color: var(--accent);">$ 0</div>
             </div>
           </div>
 
           <div id="det-serv-acciones-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-            <a id="btn-ver-servicio-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid var(--primary-light); background:#faf5ff; color:var(--primary); text-decoration:none;">
+            <a id="btn-ver-servicio-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid var(--accent-light); background:var(--accent-soft); color:var(--accent); text-decoration:none;">
               👁️ Ver Servicio / Firma del Cliente
             </a>
           </div>
@@ -1517,12 +1497,12 @@
               <div class="detail-section-title"><span>💰</span> Liquidación Financiera</div>
               <div class="detail-item"><span class="detail-label">Cantidad:</span><span class="detail-value" id="det-cantidad">-</span></div>
               <div class="detail-item"><span class="detail-label">Valor Unitario:</span><span class="detail-value" id="det-valor-unitario">-</span></div>
-              <div class="detail-item"><span class="detail-label">Valor Base:</span><span class="detail-value" id="det-valor-base" style="font-weight: 700; color: var(--primary);">-</span></div>
+              <div class="detail-item"><span class="detail-label">Valor Base:</span><span class="detail-value" id="det-valor-base" style="font-weight: 700; color: var(--accent);">-</span></div>
               <div class="detail-item"><span class="detail-label">IVA (19%):</span><span class="detail-value" id="det-iva">-</span></div>
-              <div class="detail-item"><span class="detail-label">ReteFuente (4%):</span><span class="detail-value" id="det-retefuente" style="color: #e11d48;">-</span></div>
-              <div class="detail-item"><span class="detail-label">ReteIVA (15%):</span><span class="detail-value" id="det-reteiva" style="color: #e11d48;">-</span></div>
-              <div class="detail-item"><span class="detail-label">ReteICA:</span><span class="detail-value" id="det-reteica" style="color: #e11d48;">-</span></div>
-              <div class="detail-item" style="border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;"><span class="detail-label" style="font-weight: 700; color: var(--primary);">Total Pago:</span><span class="detail-value" id="det-total-pago-box" style="font-size: 1.05rem; font-weight: 800; color: var(--primary);">-</span></div>
+              <div class="detail-item"><span class="detail-label">ReteFuente (4%):</span><span class="detail-value" id="det-retefuente" style="color: var(--danger);">-</span></div>
+              <div class="detail-item"><span class="detail-label">ReteIVA (15%):</span><span class="detail-value" id="det-reteiva" style="color: var(--danger);">-</span></div>
+              <div class="detail-item"><span class="detail-label">ReteICA:</span><span class="detail-value" id="det-reteica" style="color: var(--danger);">-</span></div>
+              <div class="detail-item" style="border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;"><span class="detail-label" style="font-weight: 700; color: var(--accent);">Total Pago:</span><span class="detail-value" id="det-total-pago-box" style="font-size: 1.05rem; font-weight: 800; color: var(--accent);">-</span></div>
               <div class="detail-item"><span class="detail-label">Forma de Pago:</span><span class="detail-value" id="det-forma-pago">-</span></div>
               <div class="detail-item"><span class="detail-label">Fecha Transferencia:</span><span class="detail-value" id="det-fecha-transferencia">-</span></div>
             </div>
@@ -1574,7 +1554,7 @@
 
           <!-- Sección 5: Evidencias y Documentos -->
           <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 12px;"><span>📷</span> Evidencias y Documentos</div>
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 12px;"><span>📷</span> Evidencias y Documentos</div>
             <div id="det-evidencias-container" style="display: flex; gap: 16px; flex-wrap: wrap;">
               <!-- Fotos o mensaje si no hay fotos -->
             </div>
@@ -1603,17 +1583,17 @@
         <!-- Barra de Botones de Modalidad con Toggle de Sumas -->
         <div class="card" style="padding: 16px; margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
-            <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+            <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
               <span>📑</span> Modalidad
             </div>
             <!-- Switch Subtotal / Total -->
-            <div style="display: flex; align-items: center; gap: 8px; background: #faf5ff; padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px; background: var(--accent-soft); padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border);">
               <span id="toggle-recib-lbl-subtotal" style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('chk-recib-modo-total').checked = false; toggleRecibModoSumas(false);">Subtotal</span>
               <label class="switch" style="position: relative; display: inline-block; width: 38px; height: 20px; margin: 0;">
                 <input type="checkbox" id="chk-recib-modo-total" onchange="toggleRecibModoSumas(this.checked)" checked>
                 <span class="slider round"></span>
               </label>
-              <span id="toggle-recib-lbl-total" style="font-size: 0.8rem; font-weight: 700; color: var(--primary); cursor: pointer;" onclick="document.getElementById('chk-recib-modo-total').checked = true; toggleRecibModoSumas(true);">Total</span>
+              <span id="toggle-recib-lbl-total" style="font-size: 0.8rem; font-weight: 700; color: var(--accent); cursor: pointer;" onclick="document.getElementById('chk-recib-modo-total').checked = true; toggleRecibModoSumas(true);">Total</span>
             </div>
           </div>
 
@@ -1649,11 +1629,11 @@
             <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
               <div class="filtro-field">
                 <label>Desde (Fecha Registro)</label>
-                <input type="date" id="recib-filtro-desde" onchange="onReciboFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: var(--text);">
+                <input type="date" id="recib-filtro-desde" onchange="onReciboFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: var(--card-bg); color: var(--text);">
               </div>
               <div class="filtro-field">
                 <label>Hasta (Fecha Registro)</label>
-                <input type="date" id="recib-filtro-hasta" onchange="onReciboFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: var(--text);">
+                <input type="date" id="recib-filtro-hasta" onchange="onReciboFilterChange()" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: var(--card-bg); color: var(--text);">
               </div>
               <div class="filtro-field">
                 <label>Año</label>
@@ -1739,7 +1719,7 @@
               </tr>
             </thead>
             <tbody id="tabla-recibos-body">
-              <tr><td colspan="24" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando recibos...</td></tr>
+              <tr><td colspan="24" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando recibos...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1748,16 +1728,16 @@
       <!-- SUBVISTA 2: VISTA DETALLE DE RECIBO (&idrecibo=...) -->
       <div id="recibos-vista-detalle" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-          <button type="button" class="btn-secondary" onclick="volverAListadoRecibos()" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: white;">
+          <button type="button" class="btn-secondary" onclick="volverAListadoRecibos()" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg);">
             <span>←</span> Volver al listado de recibos
           </button>
           <div style="display: flex; align-items: center; gap: 10px;">
             <span id="det-recib-estado-badge" style="padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;">-</span>
-            <span id="det-recib-consecutivo-badge" style="background: #f3e8ff; border: 1px solid #d8b4fe; color: var(--primary); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
-            <button type="button" id="btn-editar-recibo" class="btn-secondary" onclick="abrirModalRecibo('editar')" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: white;" title="Editar este recibo">
+            <span id="det-recib-consecutivo-badge" style="background: var(--accent-soft); border: 1px solid var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">-</span>
+            <button type="button" id="btn-editar-recibo" class="btn-secondary" onclick="abrirModalRecibo('editar')" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg);" title="Editar este recibo">
               ✏️ Editar
             </button>
-            <button type="button" id="btn-eliminar-recibo" onclick="eliminarRecibo()" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer; border-radius: 8px; border: 1.5px solid #fca5a5; color: #dc2626; background: #fef2f2;" title="Eliminar este recibo (solo rol Sistema)">
+            <button type="button" id="btn-eliminar-recibo" onclick="eliminarRecibo()" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-weight: 700; cursor: pointer; border-radius: 8px; border: 1.5px solid var(--danger-soft); color: var(--danger); background: var(--danger-soft);" title="Eliminar este recibo (solo rol Sistema)">
               🗑️ Eliminar
             </button>
           </div>
@@ -1767,20 +1747,20 @@
           <div class="detail-header-card">
             <div>
               <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Recibo</div>
-              <div id="det-recib-consecutivo" style="font-size: 1.6rem; font-weight: 800; color: var(--primary);">-</div>
+              <div id="det-recib-consecutivo" style="font-size: 1.6rem; font-weight: 800; color: var(--accent);">-</div>
               <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">IdRecibo (consulta): <span id="det-recib-id" style="font-family: monospace;">-</span></div>
             </div>
             <div style="text-align: right;">
               <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Liquidación</div>
-              <div id="det-recib-total-header" style="font-size: 1.8rem; font-weight: 800; color: var(--primary);">$ 0</div>
+              <div id="det-recib-total-header" style="font-size: 1.8rem; font-weight: 800; color: var(--accent);">$ 0</div>
             </div>
           </div>
 
           <div id="det-recib-acciones-row" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-            <a id="btn-ver-recibo-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid var(--primary-light); background:#faf5ff; color:var(--primary); text-decoration:none;">
+            <a id="btn-ver-recibo-cliente" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:1.5px solid var(--accent-light); background:var(--accent-soft); color:var(--accent); text-decoration:none;">
               👁️ Ver Recibo del Cliente
             </a>
-            <a id="btn-whatsapp-recibo" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:none; color:#fff; text-decoration:none;">
+            <a id="btn-whatsapp-recibo" href="#" target="_blank" rel="noopener" style="display:none; align-items:center; gap:8px; padding: 9px 16px; font-weight:700; font-size:0.85rem; border-radius:8px; border:none; color:var(--text-inverse); text-decoration:none;">
               💬 Enviar por WhatsApp
             </a>
           </div>
@@ -1791,10 +1771,10 @@
               <div class="detail-section-title"><span>💰</span> Liquidación Financiera</div>
               <div class="detail-item"><span class="detail-label">Subtotal:</span><span class="detail-val" id="det-recib-subtotal" style="font-weight: 700;">$ 0</span></div>
               <div class="detail-item"><span class="detail-label">IVA:</span><span class="detail-val" id="det-recib-iva">$ 0</span></div>
-              <div class="detail-item"><span class="detail-label">ReteFuente:</span><span class="detail-val" id="det-recib-retefuente" style="color: #e11d48;">$ 0</span></div>
-              <div class="detail-item"><span class="detail-label">ReteIVA:</span><span class="detail-val" id="det-recib-reteiva" style="color: #e11d48;">$ 0</span></div>
-              <div class="detail-item"><span class="detail-label">ReteICA:</span><span class="detail-val" id="det-recib-reteica" style="color: #e11d48;">$ 0</span></div>
-              <div class="detail-item" style="border-top: 2px solid var(--border); margin-top: 8px; padding-top: 8px;"><span class="detail-label" style="font-weight: 700; color: var(--primary);">Total:</span><span class="detail-val" id="det-recib-total" style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">$ 0</span></div>
+              <div class="detail-item"><span class="detail-label">ReteFuente:</span><span class="detail-val" id="det-recib-retefuente" style="color: var(--danger);">$ 0</span></div>
+              <div class="detail-item"><span class="detail-label">ReteIVA:</span><span class="detail-val" id="det-recib-reteiva" style="color: var(--danger);">$ 0</span></div>
+              <div class="detail-item"><span class="detail-label">ReteICA:</span><span class="detail-val" id="det-recib-reteica" style="color: var(--danger);">$ 0</span></div>
+              <div class="detail-item" style="border-top: 2px solid var(--border); margin-top: 8px; padding-top: 8px;"><span class="detail-label" style="font-weight: 700; color: var(--accent);">Total:</span><span class="detail-val" id="det-recib-total" style="font-weight: 800; font-size: 1.1rem; color: var(--accent);">$ 0</span></div>
             </div>
 
             <!-- Sección 2: Tercero y Facturación -->
@@ -1822,7 +1802,7 @@
 
           <!-- Sección 4: Servicios Vinculados -->
           <div style="margin-top: 24px;">
-            <div style="font-size: 0.95rem; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
               <span><span>📦</span> Servicios del Recibo (<span id="det-recib-servicios-count">0</span>)</span>
               <button type="button" id="btn-agregar-servicio" class="btn-primary" style="display:none; padding: 7px 14px; font-size: 0.82rem;" onclick="abrirModalServicio('crear')">
                 ➕ Agregar Servicio
@@ -1918,7 +1898,7 @@
             </tr>
           </thead>
           <tbody id="tabla-bloqueos-body">
-            <tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando bloqueos...</td></tr>
+            <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando bloqueos...</td></tr>
           </tbody>
         </table>
       </div>
@@ -1979,7 +1959,7 @@
             </tr>
           </thead>
           <tbody id="tabla-clientes-body">
-            <tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando clientes...</td></tr>
+            <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
           </tbody>
         </table>
       </div>
@@ -1998,7 +1978,7 @@
 
       <!-- Chips de Estado -->
       <div class="card" style="padding: 16px; margin-bottom: 16px;">
-        <div style="font-weight: 700; font-size: 0.85rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+        <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
           <span>🎫</span> Estado del Ticket
         </div>
         <div id="tickets-estado-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -2066,7 +2046,7 @@
             </tr>
           </thead>
           <tbody id="tabla-tickets-body">
-            <tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando tickets...</td></tr>
+            <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando tickets...</td></tr>
           </tbody>
         </table>
       </div>
@@ -2145,8 +2125,8 @@
           </div>
 
           <!-- Sección Clientes a los que aplica (Solo si Forma de Pago = 3) -->
-          <div id="seccion-clientes-credito" style="border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px; background: #fafafa;">
-            <label style="display:block; font-size: 0.78rem; font-weight:700; color:#334155; margin-bottom: 6px; text-transform:uppercase;">Clientes a los que aplica *</label>
+          <div id="seccion-clientes-credito" style="border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px; background: var(--bg-elevated);">
+            <label style="display:block; font-size: 0.78rem; font-weight:700; color:var(--text); margin-bottom: 6px; text-transform:uppercase;">Clientes a los que aplica *</label>
             
             <div class="btn-grupo" style="margin-bottom: 10px;">
               <button type="button" class="btn-grupo-opt sel" id="btn-tc-preseleccionados" onclick="setTipoClientes('Preseleccionados')">Preseleccionados</button>
@@ -2219,12 +2199,12 @@
 
           <div class="form-group" style="margin-bottom: 0;">
             <label>Estado Inicial</label>
-            <div style="display:flex; align-items:center; gap:10px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:10px; padding: 8px 12px; background: var(--bg-elevated); border-radius: 6px; border: 1px solid var(--border);">
               <label class="switch" style="margin:0;">
                 <input type="checkbox" id="mc-bloqueo" checked disabled>
                 <span class="slider"></span>
               </label>
-              <span style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">Habilitado para bloqueo (1)</span>
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--accent);">Habilitado para bloqueo (1)</span>
             </div>
           </div>
 
@@ -2259,7 +2239,7 @@
 
           <div class="form-group">
             <label>ID Registro</label>
-            <input type="text" id="mec-id-disp" disabled style="background:#f1f5f9; font-weight:600; color:#64748b;">
+            <input type="text" id="mec-id-disp" disabled style="background:var(--bg-elevated); font-weight:600; color:var(--text-muted);">
           </div>
 
           <div class="form-group">
@@ -2281,23 +2261,23 @@
 
           <div class="form-group">
             <label>Estado de Bloqueo</label>
-            <div style="display:flex; align-items:center; gap:10px; padding: 10px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:10px; padding: 10px 14px; background: var(--bg-elevated); border-radius: 6px; border: 1px solid var(--border);">
               <label class="switch" style="margin:0;">
                 <input type="checkbox" id="mec-bloqueo">
                 <span class="slider"></span>
               </label>
-              <span id="mec-bloqueo-label" style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">Habilitado para bloqueo (1)</span>
+              <span id="mec-bloqueo-label" style="font-size: 0.85rem; font-weight: 600; color: var(--accent);">Habilitado para bloqueo (1)</span>
             </div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
             <div class="form-group" style="margin-bottom:0;">
               <label>Último Usuario</label>
-              <input type="text" id="mec-usuario" disabled style="background:#f8fafc; font-size:0.85rem;">
+              <input type="text" id="mec-usuario" disabled style="background:var(--bg-elevated); font-size:0.85rem;">
             </div>
             <div class="form-group" style="margin-bottom:0;">
               <label>Fecha Registro</label>
-              <input type="text" id="mec-fecha" disabled style="background:#f8fafc; font-size:0.85rem;">
+              <input type="text" id="mec-fecha" disabled style="background:var(--bg-elevated); font-size:0.85rem;">
             </div>
           </div>
 
@@ -2305,7 +2285,7 @@
       </div>
 
       <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
-        <button type="button" class="btn-reset" onclick="eliminarCliente()" style="margin-top:0; border-color:#fca5a5; color:#dc2626; background:#fef2f2; font-weight:700;">
+        <button type="button" class="btn-reset" onclick="eliminarCliente()" style="margin-top:0; border-color:var(--danger-soft); color:var(--danger); background:var(--danger-soft); font-weight:700;">
           🗑️ Eliminar
         </button>
         <div style="display:flex; gap:10px;">
@@ -2341,11 +2321,11 @@
           <div class="detail-item"><span class="detail-label">Fecha Registro:</span><span class="detail-value" id="tk-modal-fecha">-</span></div>
           <div class="detail-item" id="tk-modal-idrecibo-row" style="display:none;">
             <span class="detail-label">IdRecibo:</span>
-            <span class="detail-value"><a id="tk-modal-idrecibo-link" href="#" target="_blank" style="color: var(--primary); font-weight:700;">-</a></span>
+            <span class="detail-value"><a id="tk-modal-idrecibo-link" href="#" target="_blank" style="color: var(--accent); font-weight:700;">-</a></span>
           </div>
           <div class="detail-item" id="tk-modal-evidencia-row" style="display:none;">
             <span class="detail-label">Evidencia:</span>
-            <span class="detail-value"><a id="tk-modal-evidencia-link" href="#" target="_blank" style="color: var(--primary); font-weight:700;">Ver evidencia</a></span>
+            <span class="detail-value"><a id="tk-modal-evidencia-link" href="#" target="_blank" style="color: var(--accent); font-weight:700;">Ver evidencia</a></span>
           </div>
         </div>
 
@@ -2427,12 +2407,12 @@
 
           <!-- Bloque RECAUDO -->
           <div id="mr-bloque-recaudo" style="display: none;">
-            <div id="mr-cliente-sin-servicios" style="display:none; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #92400e; font-size: 0.85rem; margin-bottom: 16px;">
+            <div id="mr-cliente-sin-servicios" style="display:none; padding: 12px 14px; background: var(--warning-soft); border: 1px solid var(--warning-soft); border-radius: 8px; color: var(--warning-dark); font-size: 0.85rem; margin-bottom: 16px;">
               ℹ️ El cliente podrá seleccionarse una vez el recibo tenga servicios registrados.
             </div>
             <div id="mr-cliente-con-servicios" style="display:none;">
               <div id="mr-clientes-sugeridos-wrap" style="display:none; margin-bottom: 12px;">
-                <label style="display:block; font-size: 0.78rem; font-weight:700; color:#334155; margin-bottom: 6px; text-transform:uppercase;">Clientes sugeridos (según la placa más reciente)</label>
+                <label style="display:block; font-size: 0.78rem; font-weight:700; color:var(--text); margin-bottom: 6px; text-transform:uppercase;">Clientes sugeridos (según la placa más reciente)</label>
                 <div id="mr-clientes-sugeridos" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
               </div>
               <div class="form-group autocomplete-wrapper">
@@ -2455,8 +2435,8 @@
             </div>
           </div>
 
-          <div id="mr-retenciones-wrap" style="display:none; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; background: #fafafa;">
-            <label style="display:block; font-size: 0.78rem; font-weight:700; color:#334155; margin-bottom: 8px; text-transform:uppercase;">Retenciones</label>
+          <div id="mr-retenciones-wrap" style="display:none; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; background: var(--bg-elevated);">
+            <label style="display:block; font-size: 0.78rem; font-weight:700; color:var(--text); margin-bottom: 8px; text-transform:uppercase;">Retenciones</label>
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; cursor:pointer;">
                 <input type="checkbox" id="mr-retefuente" style="width:16px;height:16px;"> Aplica Retefuente
@@ -2501,16 +2481,16 @@
 
           <div class="form-group" id="ms-idrecibo-wrap">
             <label>Recibo</label>
-            <div id="ms-idrecibo-info" style="padding:9px 12px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; font-size:0.88rem;">-</div>
+            <div id="ms-idrecibo-info" style="padding:9px 12px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; font-size:0.88rem;">-</div>
             <select id="ms-idrecibo-select" style="display:none; margin-top:6px;"></select>
           </div>
 
           <div class="form-group">
             <label>Estado *</label>
             <div class="btn-grupo">
-              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-green" style="color:#15803d;" onclick="setEstadoServicio('Green')">🟢 Verde</button>
-              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-yellow" style="color:#b45309;" onclick="setEstadoServicio('Yellow')">🟡 Amarillo</button>
-              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-red" style="color:#b91c1c;" onclick="setEstadoServicio('Red')">🔴 Rojo</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-green" style="color:var(--success-dark);" onclick="setEstadoServicio('Green')">🟢 Verde</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-yellow" style="color:var(--warning-dark);" onclick="setEstadoServicio('Yellow')">🟡 Amarillo</button>
+              <button type="button" class="btn-grupo-opt" id="btn-ms-estado-red" style="color:var(--danger-dark);" onclick="setEstadoServicio('Red')">🔴 Rojo</button>
             </div>
             <small style="color: var(--text-muted); font-size: 0.76rem;">Verde requiere Cantidad, Valor Unitario y Forma de Pago (y Foto de Transferencia si la Forma de Pago es Transferencia).</small>
           </div>
@@ -2617,7 +2597,7 @@
             </div>
             <div class="form-group">
               <label>Total Hora</label>
-              <input type="text" id="ms-total-hora" disabled style="background:#f1f5f9;">
+              <input type="text" id="ms-total-hora" disabled style="background:var(--bg-elevated);">
             </div>
           </div>
 
@@ -2642,7 +2622,7 @@
               <button type="button" class="btn-grupo-opt" id="btn-ms-fp-1" onclick="setFormaPagoServicio(1)">EFECTIVO</button>
               <button type="button" class="btn-grupo-opt" id="btn-ms-fp-2" onclick="setFormaPagoServicio(2)">TRANSFERENCIA</button>
             </div>
-            <div id="ms-forma-pago-credito" style="display:none; padding:9px 12px; background:#f1f5f9; border-radius:6px; color:var(--text-muted); font-weight:600; font-size:0.85rem;">CREDITO (automático)</div>
+            <div id="ms-forma-pago-credito" style="display:none; padding:9px 12px; background:var(--bg-elevated); border-radius:6px; color:var(--text-muted); font-weight:600; font-size:0.85rem;">CREDITO (automático)</div>
           </div>
 
           <div id="ms-transferencia-wrap" style="display:none;">
@@ -3157,7 +3137,7 @@
         const span = document.getElementById('bloqSort-' + k);
         if (!span) return;
         span.textContent = sortBloqueosState.col === k ? (sortBloqueosState.order === 'asc' ? ' ▲' : ' ▼') : '';
-        if (sortBloqueosState.col === k) span.style.color = 'var(--primary)';
+        if (sortBloqueosState.col === k) span.style.color = 'var(--accent)';
       });
 
       renderBloqueosTable();
@@ -3189,7 +3169,7 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron registros de bloqueo para los filtros seleccionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron registros de bloqueo para los filtros seleccionados.</td></tr>';
         return;
       }
 
@@ -3207,7 +3187,7 @@
           <td style="font-weight: 600; color: var(--text-muted);">#${b.id}</td>
           <td>${esc(b.regional) || '— Todas —'}</td>
           <td style="font-weight: 500;">${esc(b.operacion) || '— Todas —'}</td>
-          <td style="font-weight: 600; color: var(--primary);">${esc(limite)}</td>
+          <td style="font-weight: 600; color: var(--accent);">${esc(limite)}</td>
           <td>${b.anio || '—'}</td>
           <td><span class="badge badge-servicios">Servicios</span></td>
           <td>${fpStr}</td>
@@ -3279,7 +3259,7 @@
         const span = document.getElementById('cliSort-' + k);
         if (!span) return;
         span.textContent = sortClientesState.col === k ? (sortClientesState.order === 'asc' ? ' ▲' : ' ▼') : '';
-        if (sortClientesState.col === k) span.style.color = 'var(--primary)';
+        if (sortClientesState.col === k) span.style.color = 'var(--accent)';
       });
 
       renderClientesTable();
@@ -3307,7 +3287,7 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron clientes crédito con los criterios de búsqueda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron clientes crédito con los criterios de búsqueda.</td></tr>';
         return;
       }
 
@@ -3339,10 +3319,10 @@
               <span class="slider"></span>
             </label>
           </td>
-          <td style="font-weight: 600; color: var(--primary);">${esc(cFNom)}</td>
+          <td style="font-weight: 600; color: var(--accent);">${esc(cFNom)}</td>
           <td style="font-family: monospace; font-size: 0.85rem;">${esc(c.nit) || '—'}</td>
           <td>${esc(c.nombre)}</td>
-          <td style="font-size: 0.85rem; color: #475569;">${esc(usrNom)}</td>
+          <td style="font-size: 0.85rem; color: var(--text-muted);">${esc(usrNom)}</td>
           <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(fReg)}</td>
         `;
         tbody.appendChild(tr);
@@ -3381,7 +3361,7 @@
           if (infoBox) {
             const resumen = preseleccionadosInfo.resumenTexto || preseleccionadosInfo.infoText || 'Todos los clientes de crédito configurados';
             const total = (typeof preseleccionadosInfo.totalHabilitados !== 'undefined') ? preseleccionadosInfo.totalHabilitados : (preseleccionadosInfo.onesCount || 0);
-            infoBox.innerHTML = `<strong>Criterio de Clientes:</strong> ${esc(resumen)}<br><small style="color:#7e22ce;opacity:.9;">Total clientes a bloquear en este grupo: <strong>${total}</strong></small>`;
+            infoBox.innerHTML = `<strong>Criterio de Clientes:</strong> ${esc(resumen)}<br><small style="color:var(--accent-dark);opacity:.9;">Total clientes a bloquear en este grupo: <strong>${total}</strong></small>`;
           }
         }
       } catch (e) {
@@ -3568,7 +3548,7 @@
             const data = await resp.json();
             listEl.innerHTML = '';
             if (data.length === 0) {
-              listEl.innerHTML = '<div style="padding: 8px 12px; color: #a0aec0; font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
+              listEl.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted); font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
             } else {
               data.forEach(item => {
                 const row = document.createElement('div');
@@ -3652,7 +3632,7 @@
             const data = await resp.json();
             listEl.innerHTML = '';
             if (!data.encontrado) {
-              listEl.innerHTML = '<div style="padding: 8px 12px; color: #a0aec0; font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
+              listEl.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted); font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
             } else {
               const row = document.createElement('div');
               row.className = 'autocomplete-item';
@@ -3683,10 +3663,10 @@
       chk.checked = isBloq;
       const lbl = document.getElementById('mec-bloqueo-label');
       lbl.textContent = isBloq ? 'Habilitado para bloqueo (1)' : 'Excluido de bloqueo (0)';
-      lbl.style.color = isBloq ? 'var(--primary)' : 'var(--text-muted)';
+      lbl.style.color = isBloq ? 'var(--accent)' : 'var(--text-muted)';
       chk.onchange = () => {
         lbl.textContent = chk.checked ? 'Habilitado para bloqueo (1)' : 'Excluido de bloqueo (0)';
-        lbl.style.color = chk.checked ? 'var(--primary)' : 'var(--text-muted)';
+        lbl.style.color = chk.checked ? 'var(--accent)' : 'var(--text-muted)';
       };
       document.getElementById('mec-usuario').value = c.usuario || 'Sistema';
       document.getElementById('mec-fecha').value = c.fechaRegistro ? c.fechaRegistro.replace('T', ' ').slice(0, 19) : '—';
@@ -3805,10 +3785,10 @@
         lblBase.style.fontWeight = '500';
         lblBase.style.color = 'var(--text-muted)';
         lblTotal.style.fontWeight = '700';
-        lblTotal.style.color = 'var(--primary)';
+        lblTotal.style.color = 'var(--accent)';
       } else {
         lblBase.style.fontWeight = '700';
-        lblBase.style.color = 'var(--primary)';
+        lblBase.style.color = 'var(--accent)';
         lblTotal.style.fontWeight = '500';
         lblTotal.style.color = 'var(--text-muted)';
       }
@@ -3866,7 +3846,7 @@
 
     async function cargarServicios() {
       const tbody = document.getElementById('tabla-servicios-body');
-      tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando servicios...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando servicios...</td></tr>';
 
       try {
         const params = new URLSearchParams({
@@ -3899,14 +3879,14 @@
         renderServiciosTable();
       } catch (err) {
         console.error('[cargarServicios]', err);
-        tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: #e53e3e; padding: 24px;">Error al cargar datos de servicios.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar datos de servicios.</td></tr>';
       }
     }
 
     function renderServiciosTable() {
       const tbody = document.getElementById('tabla-servicios-body');
       if (!allServicios.length) {
-        tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron servicios con los filtros actuales.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="20" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron servicios con los filtros actuales.</td></tr>';
         const cEl = document.getElementById('serv-count-mostrados');
         const bEl = document.getElementById('serv-suma-base');
         const tEl = document.getElementById('serv-suma-total');
@@ -3947,22 +3927,22 @@
 
       tbody.innerHTML = allServicios.map(s => {
         // Colores de estado
-        let colorEstado = '#4b5563';
-        if (s.estado === 'Yellow') colorEstado = '#d97706';
-        else if (s.estado === 'Green') colorEstado = '#16a34a';
-        else if (s.estado === 'Red') colorEstado = '#dc2626';
+        let colorEstado = 'var(--text-muted)';
+        if (s.estado === 'Yellow') colorEstado = 'var(--warning)';
+        else if (s.estado === 'Green') colorEstado = 'var(--success)';
+        else if (s.estado === 'Red') colorEstado = 'var(--danger)';
 
         const reteFuenteHtml = s.valorReteFuente > 0 
-          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(s.valorReteFuente)}</span>` 
-          : '<span style="color: #94a3b8;">$ 0</span>';
+          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(s.valorReteFuente)}</span>` 
+          : '<span style="color: var(--text-muted);">$ 0</span>';
 
         const reteIvaHtml = s.valorReteIVA > 0 
-          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(s.valorReteIVA)}</span>` 
-          : '<span style="color: #94a3b8;">$ 0</span>';
+          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(s.valorReteIVA)}</span>` 
+          : '<span style="color: var(--text-muted);">$ 0</span>';
 
         const reteIcaHtml = s.valorReteICA > 0 
-          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(s.valorReteICA)}</span>` 
-          : '<span style="color: #94a3b8;">$ 0</span>';
+          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(s.valorReteICA)}</span>` 
+          : '<span style="color: var(--text-muted);">$ 0</span>';
 
         return `
           <tr onclick="verDetalleServicio('${esc(s.idServicio)}')" style="cursor: pointer;" title="Clic para ver detalle del servicio">
@@ -4198,21 +4178,21 @@
         const estadoBadge = document.getElementById('det-estado-badge');
         estadoBadge.textContent = s.Estado || 'Sin Estado';
         if (s.Estado === 'Yellow') {
-          estadoBadge.style.background = '#fef3c7';
-          estadoBadge.style.color = '#b45309';
-          estadoBadge.style.border = '1px solid #fde68a';
+          estadoBadge.style.background = 'var(--warning-soft)';
+          estadoBadge.style.color = 'var(--warning-dark)';
+          estadoBadge.style.border = '1px solid var(--warning-soft)';
         } else if (s.Estado === 'Green') {
-          estadoBadge.style.background = '#dcfce7';
-          estadoBadge.style.color = '#15803d';
-          estadoBadge.style.border = '1px solid #bbf7d0';
+          estadoBadge.style.background = 'var(--success-soft)';
+          estadoBadge.style.color = 'var(--success-dark)';
+          estadoBadge.style.border = '1px solid var(--success-soft)';
         } else if (s.Estado === 'Red') {
-          estadoBadge.style.background = '#fee2e2';
-          estadoBadge.style.color = '#b91c1c';
-          estadoBadge.style.border = '1px solid #fca5a5';
+          estadoBadge.style.background = 'var(--danger-soft)';
+          estadoBadge.style.color = 'var(--danger-dark)';
+          estadoBadge.style.border = '1px solid var(--danger-soft)';
         } else {
-          estadoBadge.style.background = '#f1f5f9';
-          estadoBadge.style.color = '#475569';
-          estadoBadge.style.border = '1px solid #cbd5e1';
+          estadoBadge.style.background = 'var(--bg-elevated)';
+          estadoBadge.style.color = 'var(--text-muted)';
+          estadoBadge.style.border = '1px solid var(--border-strong)';
         }
 
         document.getElementById('det-consecutivo-badge').textContent = 'Recibo: ' + (s.consecutivoRecibo || 'Sin Consecutivo');
@@ -4291,9 +4271,9 @@
         } else {
           evidContainer.innerHTML = fotos.map(f => {
             return `
-              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: white; text-align: center; max-width: 180px;">
+              <div style="border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--card-bg); text-align: center; max-width: 180px;">
                 <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">${esc(f.label)}</div>
-                <div style="font-size: 0.72rem; word-break: break-all; color: var(--primary); font-family: monospace; padding: 4px; background: #faf5ff; border-radius: 4px;">${esc(f.path)}</div>
+                <div style="font-size: 0.72rem; word-break: break-all; color: var(--accent); font-family: monospace; padding: 4px; background: var(--accent-soft); border-radius: 4px;">${esc(f.path)}</div>
               </div>
             `;
           }).join('');
@@ -4384,10 +4364,10 @@
         lblSub.style.fontWeight = '500';
         lblSub.style.color = 'var(--text-muted)';
         lblTot.style.fontWeight = '700';
-        lblTot.style.color = 'var(--primary)';
+        lblTot.style.color = 'var(--accent)';
       } else {
         lblSub.style.fontWeight = '700';
-        lblSub.style.color = 'var(--primary)';
+        lblSub.style.color = 'var(--accent)';
         lblTot.style.fontWeight = '500';
         lblTot.style.color = 'var(--text-muted)';
       }
@@ -4444,7 +4424,7 @@
 
     async function cargarRecibos() {
       const tbody = document.getElementById('tabla-recibos-body');
-      tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando recibos...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando recibos...</td></tr>';
 
       try {
         const params = new URLSearchParams({
@@ -4478,14 +4458,14 @@
         renderRecibosTable();
       } catch (err) {
         console.error('[cargarRecibos]', err);
-        tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: #e53e3e; padding: 24px;">Error al cargar datos de recibos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar datos de recibos.</td></tr>';
       }
     }
 
     function renderRecibosTable() {
       const tbody = document.getElementById('tabla-recibos-body');
       if (!allRecibos.length) {
-        tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron recibos con los filtros actuales.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="24" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron recibos con los filtros actuales.</td></tr>';
         return;
       }
 
@@ -4504,23 +4484,23 @@
       });
 
       tbody.innerHTML = allRecibos.map(r => {
-        let colorEstado = '#4b5563';
-        let bgEstado = '#f3f4f6';
-        if (r.estado === 'Yellow') { colorEstado = '#d97706'; bgEstado = '#fef3c7'; }
-        else if (r.estado === 'Green') { colorEstado = '#16a34a'; bgEstado = '#dcfce7'; }
-        else if (r.estado === 'Red') { colorEstado = '#dc2626'; bgEstado = '#fee2e2'; }
+        let colorEstado = 'var(--text-muted)';
+        let bgEstado = 'var(--bg-elevated)';
+        if (r.estado === 'Yellow') { colorEstado = 'var(--warning)'; bgEstado = 'var(--warning-soft)'; }
+        else if (r.estado === 'Green') { colorEstado = 'var(--success)'; bgEstado = 'var(--success-soft)'; }
+        else if (r.estado === 'Red') { colorEstado = 'var(--danger)'; bgEstado = 'var(--danger-soft)'; }
 
         const reteFuenteHtml = r.retefuente > 0 
-          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(r.retefuente)}</span>` 
-          : '<span style="color: #94a3b8;">$ 0</span>';
+          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(r.retefuente)}</span>` 
+          : '<span style="color: var(--text-muted);">$ 0</span>';
 
         const reteIvaHtml = r.reteiva > 0 
-          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(r.reteiva)}</span>` 
-          : '<span style="color: #94a3b8;">$ 0</span>';
+          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(r.reteiva)}</span>` 
+          : '<span style="color: var(--text-muted);">$ 0</span>';
 
         const reteIcaHtml = r.reteica > 0 
-          ? `<span style="color: #e11d48; font-weight: 600;">$ ${formatMiles(r.reteica)}</span>` 
-          : '<span style="color: #94a3b8;">$ 0</span>';
+          ? `<span style="color: var(--danger); font-weight: 600;">$ ${formatMiles(r.reteica)}</span>` 
+          : '<span style="color: var(--text-muted);">$ 0</span>';
 
         return `
           <tr onclick="verDetalleRecibo('${esc(r.idrecibo)}')" style="cursor: pointer;" title="Clic para ver detalle de este recibo">
@@ -4529,7 +4509,7 @@
             <td style="font-weight: 800; font-size: 0.92rem; color: ${colorEstado};">$ ${formatMiles(r.total)}</td>
             <td>${esc(r.regional || '-')}</td>
             <td>${esc(r.operacion || '-')}</td>
-            <td><span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; background: #faf5ff; border: 1px solid var(--border); color: var(--primary);">${esc(r.modalidad || '-')}</span></td>
+            <td><span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; background: var(--accent-soft); border: 1px solid var(--border); color: var(--accent);">${esc(r.modalidad || '-')}</span></td>
             <td>${esc(r.area || '-')}</td>
             <td>${esc(r.transportadora || '-')}</td>
             <td>${esc(r.proveedor || '-')}</td>
@@ -4741,9 +4721,9 @@
         document.getElementById('det-recib-total-header').textContent = '$ ' + formatMiles(tots.total);
 
         const badgeEstado = document.getElementById('det-recib-estado-badge');
-        let col = '#4b5563', bg = '#f3f4f6', estadoColor = 'Red';
-        if (srvs.some(s => s.Validacion === 2)) { col = '#d97706'; bg = '#fef3c7'; estadoColor = 'Yellow'; }
-        else if (srvs.some(s => s.Validacion === 1)) { col = '#16a34a'; bg = '#dcfce7'; estadoColor = 'Green'; }
+        let col = 'var(--text-muted)', bg = 'var(--bg-elevated)', estadoColor = 'Red';
+        if (srvs.some(s => s.Validacion === 2)) { col = 'var(--warning)'; bg = 'var(--warning-soft)'; estadoColor = 'Yellow'; }
+        else if (srvs.some(s => s.Validacion === 1)) { col = 'var(--success)'; bg = 'var(--success-soft)'; estadoColor = 'Green'; }
         badgeEstado.textContent = estadoColor;
         badgeEstado.style.color = col;
         badgeEstado.style.background = bg;
@@ -4780,7 +4760,7 @@
         if (r.Modalidad === 'RECAUDO' && r.Telefono) {
           const mensaje = construirMensajeWhatsAppRecibo(r, tots, estadoColor);
           btnWhatsapp.href = `https://wa.me/57${r.Telefono}/?text=${encodeURIComponent(mensaje)}`;
-          btnWhatsapp.style.background = (estadoColor === 'Green') ? '#16a34a' : '#d97706';
+          btnWhatsapp.style.background = (estadoColor === 'Green') ? 'var(--success)' : 'var(--warning)';
           btnWhatsapp.style.display = 'inline-flex';
         } else {
           btnWhatsapp.style.display = 'none';
@@ -4834,7 +4814,7 @@
               <td>${esc(s.Cantidad || 0)}</td>
               <td>$ ${formatMiles(s['Valor Unitario'])}</td>
               <td style="font-weight: 600;">$ ${formatMiles(s.valorBase)}</td>
-              <td style="font-weight: 700; color: var(--primary);">$ ${formatMiles(s.totalPago)}</td>
+              <td style="font-weight: 700; color: var(--accent);">$ ${formatMiles(s.totalPago)}</td>
               <td>
                 <button type="button" onclick="event.stopPropagation(); abrirModalServicio('editar', '${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Editar">✏️</button>
                 ${puedeEliminarSrv ? `<button type="button" onclick="event.stopPropagation(); eliminarServicio('${esc(s.IdServicio)}')" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Eliminar (Sistema)">🗑️</button>` : ''}
@@ -4872,19 +4852,19 @@
 
     function estadoTicketColors(estado) {
       switch (estado) {
-        case 'En Proceso': return { bg: '#dbeafe', color: '#1d4ed8' };
-        case 'Pendiente':  return { bg: '#fef3c7', color: '#b45309' };
-        case 'Resuelto':   return { bg: '#dcfce7', color: '#15803d' };
-        case 'Rechazado':  return { bg: '#fee2e2', color: '#b91c1c' };
-        default:           return { bg: '#f1f5f9', color: '#475569' };
+        case 'En Proceso': return { bg: 'var(--info-soft)', color: 'var(--info-dark)' };
+        case 'Pendiente':  return { bg: 'var(--warning-soft)', color: 'var(--warning-dark)' };
+        case 'Resuelto':   return { bg: 'var(--success-soft)', color: 'var(--success-dark)' };
+        case 'Rechazado':  return { bg: 'var(--danger-soft)', color: 'var(--danger-dark)' };
+        default:           return { bg: 'var(--bg-elevated)', color: 'var(--text-muted)' };
       }
     }
 
     function estadoServicioColores(estado) {
       switch (estado) {
-        case 'Green':  return { bg: '#dcfce7', color: '#15803d' };
-        case 'Yellow': return { bg: '#fef3c7', color: '#b45309' };
-        default:       return { bg: '#fee2e2', color: '#b91c1c' };
+        case 'Green':  return { bg: 'var(--success-soft)', color: 'var(--success-dark)' };
+        case 'Yellow': return { bg: 'var(--warning-soft)', color: 'var(--warning-dark)' };
+        default:       return { bg: 'var(--danger-soft)', color: 'var(--danger-dark)' };
       }
     }
 
@@ -4937,7 +4917,7 @@
 
     async function cargarTickets() {
       const tbody = document.getElementById('tabla-tickets-body');
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">Cargando tickets...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando tickets...</td></tr>';
 
       try {
         const params = new URLSearchParams({
@@ -4958,14 +4938,14 @@
         renderTicketsTable();
       } catch (err) {
         console.error('[cargarTickets]', err);
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #e53e3e; padding: 24px;">Error al cargar tickets.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--danger); padding: 24px;">Error al cargar tickets.</td></tr>';
       }
     }
 
     function renderTicketsTable() {
       const tbody = document.getElementById('tabla-tickets-body');
       if (!allTickets.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #a0aec0; padding: 24px;">No se encontraron tickets con los filtros actuales.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron tickets con los filtros actuales.</td></tr>';
         return;
       }
 
@@ -4985,7 +4965,7 @@
       tbody.innerHTML = allTickets.map(t => {
         const colors = estadoTicketColors(t.estado);
         const idReciboHtml = t.idrecibo
-          ? `<a href="/facturacion?usuario=${encodeURIComponent(CONFIG.usuario)}&tab=recibos&idrecibo=${encodeURIComponent(t.idrecibo)}" target="_blank" onclick="event.stopPropagation()" style="color: var(--primary); font-weight:700; text-decoration: underline;">${esc(t.idrecibo)}</a>`
+          ? `<a href="/facturacion?usuario=${encodeURIComponent(CONFIG.usuario)}&tab=recibos&idrecibo=${encodeURIComponent(t.idrecibo)}" target="_blank" onclick="event.stopPropagation()" style="color: var(--accent); font-weight:700; text-decoration: underline;">${esc(t.idrecibo)}</a>`
           : '-';
 
         return `
@@ -5453,7 +5433,7 @@
           const data = await resp.json();
           listEl.innerHTML = '';
           if (!data.length) {
-            listEl.innerHTML = '<div style="padding: 8px 12px; color: #a0aec0; font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
+            listEl.innerHTML = '<div style="padding: 8px 12px; color: var(--text-muted); font-size: 0.82rem;">No se encontraron coincidencias en Maestro_Clientes.</div>';
           } else {
             data.forEach(c => {
               const row = document.createElement('div');
@@ -5884,7 +5864,7 @@
           listEl.innerHTML = '';
           const nuevoRow = document.createElement('div');
           nuevoRow.className = 'autocomplete-item';
-          nuevoRow.style.cssText = 'font-weight:700; color:var(--primary);';
+          nuevoRow.style.cssText = 'font-weight:700; color:var(--accent);';
           nuevoRow.textContent = `+ Nuevo "${q.trim()}"`;
           nuevoRow.onclick = () => crearTransportadoraNueva(q.trim());
           listEl.appendChild(nuevoRow);
@@ -5931,7 +5911,7 @@
           listEl.innerHTML = '';
           const nuevoRow = document.createElement('div');
           nuevoRow.className = 'autocomplete-item';
-          nuevoRow.style.cssText = 'font-weight:700; color:var(--primary);';
+          nuevoRow.style.cssText = 'font-weight:700; color:var(--accent);';
           nuevoRow.textContent = `+ Nuevo "${q.trim()}"`;
           nuevoRow.onclick = () => crearProveedorNuevo(q.trim());
           listEl.appendChild(nuevoRow);
@@ -5977,7 +5957,7 @@
     }
     function renderProveedorChips() {
       document.getElementById('ms-proveedor-chips').innerHTML = msProveedorSeleccionados.map(p => `
-        <span style="display:inline-flex; align-items:center; gap:6px; background:#faf5ff; border:1px solid #d8b4fe; color:var(--primary); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
+        <span style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); border:1px solid var(--accent-soft); color:var(--accent); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
           ${esc(p.proveedor)}
           <span style="cursor:pointer; font-weight:800;" onclick="quitarProveedorChip('${esc(p.id)}')">&times;</span>
         </span>
@@ -5996,7 +5976,7 @@
           listEl.innerHTML = '';
           const nuevoRow = document.createElement('div');
           nuevoRow.className = 'autocomplete-item';
-          nuevoRow.style.cssText = 'font-weight:700; color:var(--primary);';
+          nuevoRow.style.cssText = 'font-weight:700; color:var(--accent);';
           nuevoRow.textContent = `+ Nueva Placa "${q.trim().toUpperCase()}"`;
           nuevoRow.onclick = () => crearPlacaNueva(q.trim().toUpperCase());
           listEl.appendChild(nuevoRow);
@@ -6075,7 +6055,7 @@
     }
     function renderAuxiliaresChips() {
       document.getElementById('ms-auxiliares-chips').innerHTML = msAuxiliaresSeleccionados.map(nombre => `
-        <span style="display:inline-flex; align-items:center; gap:6px; background:#faf5ff; border:1px solid #d8b4fe; color:var(--primary); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
+        <span style="display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); border:1px solid var(--accent-soft); color:var(--accent); padding:4px 10px; border-radius:20px; font-size:0.8rem; font-weight:600;">
           ${esc(nombre)}
           <span style="cursor:pointer; font-weight:800;" onclick="quitarAuxiliarChip('${esc(nombre).replace(/'/g, "\\'")}')">&times;</span>
         </span>
