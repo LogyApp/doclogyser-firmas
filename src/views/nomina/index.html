@@ -1950,8 +1950,11 @@
     }
     const desktopName = document.getElementById('nominaProfileName');
     if (desktopName) desktopName.textContent = nombre;
-    document.getElementById('nominaProfileLarge').src = foto;
-    document.getElementById('nominaProfileLarge').onerror = e => { e.currentTarget.src = NOMINA_FOTO_DEFAULT; };
+    const large = document.getElementById('nominaProfileLarge');
+    if (large) {
+      large.src = foto;
+      large.onerror = e => { e.currentTarget.src = NOMINA_FOTO_DEFAULT; };
+    }
     document.getElementById('nominaProfileViewName').textContent = nombre;
     document.getElementById('nominaProfileViewCargo').textContent = _nominaPerfil.cargo || 'Cargo no registrado';
     document.getElementById('nominaProfileViewDireccion').textContent = _nominaPerfil.direccion || 'No registrada';

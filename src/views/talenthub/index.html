@@ -2556,8 +2556,7 @@
         });
       });
 
-      // 5. Cargar perfil corporativo del usuario
-      cargarPerfilTalenthub();
+      // 5. Cargar perfil corporativo del usuario (gestionado globalmente por app-launcher-profile.js)
       sincronizarPerfilMovil();
 
       // 6. Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js)
@@ -3078,26 +3077,42 @@
 
     function renderPerfilFallback() {
       const nombre = CONFIG.usuarioNombre || CONFIG.usuarioId || 'Usuario';
-      document.getElementById('talenthubProfileThumb').src = TALENTHUB_FOTO_DEFAULT;
-      document.getElementById('talenthubProfileName').textContent = nombre;
-      document.getElementById('talenthubProfile').style.display = 'block';
+      const thumb = document.getElementById('talenthubProfileThumb');
+      if (thumb) thumb.src = TALENTHUB_FOTO_DEFAULT;
+      const nameEl = document.getElementById('talenthubProfileName');
+      if (nameEl) nameEl.textContent = nombre;
+      const card = document.getElementById('talenthubProfile');
+      if (card) card.style.display = 'block';
     }
 
     function renderPerfilTalenthub() {
       if (!_talenthubPerfil) return;
       const foto = _talenthubPerfil.foto_url || TALENTHUB_FOTO_DEFAULT;
       const nombre = _talenthubPerfil.nombre || CONFIG.usuarioNombre || CONFIG.usuarioId;
-      document.getElementById('talenthubProfileThumb').src = foto;
-      document.getElementById('talenthubProfileThumb').onerror = e => { e.currentTarget.src = TALENTHUB_FOTO_DEFAULT; };
-      document.getElementById('talenthubProfileName').textContent = nombre;
-      document.getElementById('talenthubProfileLarge').src = foto;
-      document.getElementById('talenthubProfileLarge').onerror = e => { e.currentTarget.src = TALENTHUB_FOTO_DEFAULT; };
-      document.getElementById('talenthubProfileViewName').textContent = nombre;
-      document.getElementById('talenthubProfileViewCargo').textContent = _talenthubPerfil.cargo || 'Cargo no registrado';
-      document.getElementById('talenthubProfileViewDireccion').textContent = _talenthubPerfil.direccion || 'No registrada';
-      document.getElementById('talenthubProfileViewEmail').textContent = _talenthubPerfil.email || 'No registrado';
-      document.getElementById('talenthubProfileViewCelular').textContent = _talenthubPerfil.celular || 'No registrado';
-      document.getElementById('talenthubProfile').style.display = 'block';
+      const thumb = document.getElementById('talenthubProfileThumb');
+      if (thumb) {
+        thumb.src = foto;
+        thumb.onerror = e => { e.currentTarget.src = TALENTHUB_FOTO_DEFAULT; };
+      }
+      const nameEl = document.getElementById('talenthubProfileName');
+      if (nameEl) nameEl.textContent = nombre;
+      const large = document.getElementById('talenthubProfileLarge');
+      if (large) {
+        large.src = foto;
+        large.onerror = e => { e.currentTarget.src = TALENTHUB_FOTO_DEFAULT; };
+      }
+      const vName = document.getElementById('talenthubProfileViewName');
+      if (vName) vName.textContent = nombre;
+      const vCargo = document.getElementById('talenthubProfileViewCargo');
+      if (vCargo) vCargo.textContent = _talenthubPerfil.cargo || 'Cargo no registrado';
+      const vDir = document.getElementById('talenthubProfileViewDireccion');
+      if (vDir) vDir.textContent = _talenthubPerfil.direccion || 'No registrada';
+      const vEmail = document.getElementById('talenthubProfileViewEmail');
+      if (vEmail) vEmail.textContent = _talenthubPerfil.email || 'No registrado';
+      const vCel = document.getElementById('talenthubProfileViewCelular');
+      if (vCel) vCel.textContent = _talenthubPerfil.celular || 'No registrado';
+      const card = document.getElementById('talenthubProfile');
+      if (card) card.style.display = 'block';
     }
 
     function abrirPerfilTalenthub() {
@@ -3193,16 +3208,18 @@
       const actions = document.getElementById('profileFirmaPngActions');
       const empty = document.getElementById('profileFirmaPngEmpty');
       if (!url) {
-        img.style.display = 'none';
-        actions.style.display = 'none';
-        empty.style.display = 'block';
+        if (img) img.style.display = 'none';
+        if (actions) actions.style.display = 'none';
+        if (empty) empty.style.display = 'block';
         return;
       }
-      img.src = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
-      img.style.display = 'block';
-      link.href = url;
-      actions.style.display = 'flex';
-      empty.style.display = 'none';
+      if (img) {
+        img.src = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        img.style.display = 'block';
+      }
+      if (link) link.href = url;
+      if (actions) actions.style.display = 'flex';
+      if (empty) empty.style.display = 'none';
     }
 
     ['profileEditNombre', 'profileEditCargo', 'profileEditDireccion', 'profileEditEmail', 'profileEditCelular'].forEach(id => {
@@ -3211,16 +3228,21 @@
     });
 
     function cancelarEdicionPerfilTalenthub() {
-      document.getElementById('talenthubProfileError').style.display = 'none';
-      document.getElementById('talenthubProfileForm').style.display = 'none';
-      document.getElementById('talenthubProfileView').style.display = 'block';
+      const err = document.getElementById('talenthubProfileError');
+      if (err) err.style.display = 'none';
+      const form = document.getElementById('talenthubProfileForm');
+      if (form) form.style.display = 'none';
+      const view = document.getElementById('talenthubProfileView');
+      if (view) view.style.display = 'block';
     }
 
     function cerrarPerfilTalenthub() {
       const perfilOverlay = document.getElementById('talenthubProfileModal');
-      perfilOverlay.classList.remove('open');
-      cerrarModalBack(perfilOverlay._backEntry);
-      perfilOverlay._backEntry = null;
+      if (perfilOverlay) {
+        perfilOverlay.classList.remove('open');
+        cerrarModalBack(perfilOverlay._backEntry);
+        perfilOverlay._backEntry = null;
+      }
       cancelarEdicionPerfilTalenthub();
     }
 
@@ -3230,12 +3252,17 @@
       if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
         event.target.value = '';
         const message = document.getElementById('talenthubProfileError');
-        message.textContent = 'Selecciona una foto PNG, JPG o WEBP de máximo 10 MB.';
-        message.style.display = 'block';
+        if (message) {
+          message.textContent = 'Selecciona una foto PNG, JPG o WEBP de máximo 10 MB.';
+          message.style.display = 'block';
+        }
         return;
       }
       const reader = new FileReader();
-      reader.onload = e => { document.getElementById('profileEditPreview').src = e.target.result; };
+      reader.onload = e => {
+        const preview = document.getElementById('profileEditPreview');
+        if (preview) preview.src = e.target.result;
+      };
       reader.readAsDataURL(file);
     }
 
@@ -3243,11 +3270,14 @@
       _firmaDigitalActual = firmaBase64 || null;
       const img = document.getElementById('profileDigitalRecent');
       const empty = document.getElementById('profileDigitalEmpty');
-      img.style.display = _firmaDigitalActual ? 'block' : 'none';
-      empty.style.display = _firmaDigitalActual ? 'none' : 'inline';
-      if (_firmaDigitalActual) img.src = _firmaDigitalActual;
+      if (img) {
+        img.style.display = _firmaDigitalActual ? 'block' : 'none';
+        if (_firmaDigitalActual) img.src = _firmaDigitalActual;
+      }
+      if (empty) empty.style.display = _firmaDigitalActual ? 'none' : 'inline';
       limpiarCanvasFirmaDigital();
-      document.getElementById('profileDigitalCanvasWrap').style.display = 'none';
+      const wrap = document.getElementById('profileDigitalCanvasWrap');
+      if (wrap) wrap.style.display = 'none';
     }
 
     function prepararCanvasFirmaDigital() {

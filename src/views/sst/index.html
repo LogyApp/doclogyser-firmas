@@ -6292,7 +6292,8 @@
       const canvasSec = document.getElementById('modal-csst-canvas-section');
 
       if (firmaPrellenadaCsst) {
-        document.getElementById('modal-csst-prefilled-img').src = firmaPrellenadaCsst;
+        const csstImg = document.getElementById('modal-csst-prefilled-img');
+        if (csstImg) csstImg.src = firmaPrellenadaCsst;
         prefilledSec.style.display = 'block';
         canvasSec.style.display = 'none';
       } else {

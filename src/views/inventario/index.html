@@ -14136,9 +14136,12 @@
 
         if (data.firmaUrl && data.firmaBase64) {
           activeRecibirFirmaMode = 'existing';
-          document.getElementById('recibir-sig-preview-img').src = data.firmaBase64;
-          document.getElementById('recibir-sig-preview-box').style.display = 'block';
-          document.getElementById('recibir-panel-canvas-wrap').style.display = 'none';
+          const recSig = document.getElementById('recibir-sig-preview-img');
+          if (recSig) recSig.src = data.firmaBase64;
+          const recBox = document.getElementById('recibir-sig-preview-box');
+          if (recBox) recBox.style.display = 'block';
+          const canvasWrap = document.getElementById('recibir-panel-canvas-wrap');
+          if (canvasWrap) canvasWrap.style.display = 'none';
         } else {
           activeRecibirFirmaMode = 'new';
           document.getElementById('recibir-sig-preview-box').style.display = 'none';
