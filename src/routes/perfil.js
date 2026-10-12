@@ -37,10 +37,66 @@ async function obtenerPerfilPropio(usuarioId) {
   return { perfil: perfiles[0] || null, user };
 }
 
+// ─── Preferencias de UI (tema/color de acento) ──────────────────────────────
+// Tabla y endpoint independientes de Maestro_firma_corporativa: a diferencia
+// del resto de este archivo, cualquier cuenta con fila en Maestro_Usuarios
+// (incluidas cuentas sin perfil corporativo, como "Sistema") debe poder
+// guardar su tema/acento sin pasar por la validación de perfil completo.
+const TEMAS_VALIDOS = ['claro', 'oscuro', 'sistema'];
+const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/;
+
+async function obtenerPreferenciasUI(usuarioId) {
+  if (!usuarioId) return { tema: 'sistema', colorAcento: '#F55400' };
+  const [rows] = await pool.execute(
+    'SELECT Tema, ColorAcento FROM Maestro_Preferencias_UI WHERE ID = ? LIMIT 1',
+    [usuarioId]
+  );
+  if (!rows.length) return { tema: 'sistema', colorAcento: '#F55400' };
+  return { tema: rows[0].Tema, colorAcento: rows[0].ColorAcento };
+}
+
+router.get('/api/preferencias', async (req, res) => {
+  try {
+    const usuario = req.query.usuario;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const [uRows] = await pool.execute('SELECT ID FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length) return res.status(403).json({ error: 'Usuario no registrado' });
+    const prefs = await obtenerPreferenciasUI(usuario);
+    res.json({ ok: true, ...prefs });
+  } catch (err) {
+    console.error('[perfil] GET /api/preferencias', err);
+    res.status(500).json({ error: 'No se pudieron cargar las preferencias.' });
+  }
+});
+
+router.post('/api/preferencias', async (req, res) => {
+  try {
+    const { usuario, tema, colorAcento } = req.body || {};
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const [uRows] = await pool.execute('SELECT ID FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length) return res.status(403).json({ error: 'Usuario no registrado' });
+
+    const temaValido = TEMAS_VALIDOS.includes(tema) ? tema : 'sistema';
+    const acentoValido = HEX_REGEX.test(colorAcento || '') ? colorAcento : '#F55400';
+
+    await pool.execute(
+      `INSERT INTO Maestro_Preferencias_UI (ID, Tema, ColorAcento) VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE Tema = VALUES(Tema), ColorAcento = VALUES(ColorAcento)`,
+      [usuario, temaValido, acentoValido]
+    );
+
+    res.json({ ok: true, tema: temaValido, colorAcento: acentoValido });
+  } catch (err) {
+    console.error('[perfil] POST /api/preferencias', err);
+    res.status(500).json({ error: 'No se pudieron guardar las preferencias.' });
+  }
+});
+
 router.get('/api', async (req, res) => {
   try {
     const result = await obtenerPerfilPropio(req.query.usuario);
     if (result.error) return res.status(result.status).json({ error: result.error });
+    const preferenciasUI = await obtenerPreferenciasUI(result.user?.ID);
     if (!result.perfil) {
       return res.json({
         ok: true,
@@ -57,14 +113,15 @@ router.get('/api', async (req, res) => {
           foto_url: null,
           firma_url: null
         },
-        firmaDigital: null
+        firmaDigital: null,
+        preferenciasUI
       });
     }
 
     let firmaDigital = null;
     try { firmaDigital = await obtenerFirmaBase64Reciente(result.perfil.identificacion); }
     catch (err) { console.warn('[perfil] No se pudo leer la firma digital reciente:', err.message); }
-    res.json({ ok: true, perfil: result.perfil, firmaDigital });
+    res.json({ ok: true, perfil: result.perfil, firmaDigital, preferenciasUI });
   } catch (err) {
     console.error('[perfil] GET /api', err);
     res.status(500).json({ error: 'No se pudo cargar el perfil.' });

@@ -40,6 +40,7 @@
   ];
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   let profile = null;
+  let preferenciasUI = { tema: 'sistema', colorAcento: '#F55400' };
   let recentSignature = null;
   let signatureChanged = false;
   let canvasReady = false;
@@ -209,6 +210,25 @@
               <div class="alp-actions" style="justify-content:flex-start"><img class="alp-sign-image" data-recent-signature alt="Firma digital registrada" style="display:none"><span data-no-recent-signature>No hay firma guardada.</span><button type="button" class="alp-button" data-draw>Crear nueva firma</button></div>
               <div class="alp-canvas-wrap"><canvas class="alp-canvas" aria-label="Dibuja aquí tu firma digital"></canvas><div class="alp-actions"><small>Usa mouse, lápiz o pantalla táctil.</small><button type="button" class="alp-button" data-clear-canvas>Borrar trazo</button></div></div>
             </section>
+            <section class="alp-section">
+              <div class="alp-section-title">Apariencia</div>
+              <div class="alp-field">
+                <label>Tema</label>
+                <div class="alp-theme-options">
+                  <label class="alp-theme-opt"><input type="radio" name="tema" value="claro"><span>Claro</span></label>
+                  <label class="alp-theme-opt"><input type="radio" name="tema" value="oscuro"><span>Oscuro</span></label>
+                  <label class="alp-theme-opt"><input type="radio" name="tema" value="sistema"><span>Adaptado al sistema</span></label>
+                </div>
+              </div>
+              <div class="alp-field">
+                <label>Color de acento</label>
+                <div class="alp-accent-picker">
+                  <input type="color" name="colorAcento" aria-label="Elegir color de acento">
+                  <input type="text" name="colorAcentoHex" maxlength="7" placeholder="#F55400" aria-label="Color de acento en hexadecimal">
+                </div>
+                <small class="alp-field-hint">Se aplica al instante en todos los módulos; el contraste se ajusta automáticamente si hace falta.</small>
+              </div>
+            </section>
             <div class="alp-error" role="alert"></div>
             <div class="alp-modal-footer"><button class="alp-button" type="button" data-cancel>Cancelar</button><button class="alp-button alp-button-primary" type="submit">Guardar y generar firma</button></div>
           </form>
@@ -238,7 +258,28 @@
       signatureDirty = false;
       canvasWrap.style.display = 'none';
       selectSignTab('html');
+      const temaInput = form.querySelector(`[name="tema"][value="${preferenciasUI.tema}"]`);
+      if (temaInput) temaInput.checked = true;
+      form.querySelector('[name="colorAcento"]').value = preferenciasUI.colorAcento;
+      form.querySelector('[name="colorAcentoHex"]').value = preferenciasUI.colorAcento;
     });
+
+    // Apariencia: auto-guarda y aplica al instante, independiente del botón
+    // "Guardar y generar firma" (así una cuenta sin perfil corporativo, como
+    // "Sistema", puede cambiar su tema sin la validación de nombre/cargo/etc).
+    const colorPicker = form.querySelector('[name="colorAcento"]');
+    const colorHexInput = form.querySelector('[name="colorAcentoHex"]');
+    function aplicarDesdeForm(temaOverride) {
+      const tema = temaOverride || form.querySelector('[name="tema"]:checked')?.value || 'sistema';
+      const hex = /^#[0-9A-Fa-f]{6}$/.test(colorHexInput.value) ? colorHexInput.value : colorPicker.value;
+      preferenciasUI = { tema, colorAcento: hex };
+      colorPicker.value = hex;
+      colorHexInput.value = hex;
+      window.aplicarPreferenciasUI(tema, hex);
+    }
+    form.querySelectorAll('[name="tema"]').forEach(radio => radio.addEventListener('change', () => aplicarDesdeForm()));
+    colorPicker.addEventListener('input', () => { colorHexInput.value = colorPicker.value; aplicarDesdeForm(); });
+    colorHexInput.addEventListener('change', () => aplicarDesdeForm());
 
     const fields = ['nombre', 'cargo', 'direccion', 'email', 'celular'];
     fields.forEach(name => form.querySelector(`[name="${name}"]`).addEventListener('input', paintHtmlSignature));
@@ -398,6 +439,7 @@
       const data = await response.json();
       if (!data.ok || !data.perfil) return;
       profile = data.perfil; recentSignature = data.firmaDigital || null; renderProfileCard();
+      if (data.preferenciasUI) preferenciasUI = data.preferenciasUI;
       paintRecentSignature(recentSignature);
       profileModal.paintPng(profile.firma_url);
     } catch (error) { console.warn('[módulos] No se pudo cargar el perfil:', error); }

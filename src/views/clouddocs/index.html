@@ -3,6 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Tema (Claro/Oscuro/Sistema): fija data-theme antes del primer pintado
+       para evitar parpadeo (FOUC). El acento exacto lo aplica theme.js. -->
+  <script>
+    (function () {
+      try {
+        var p = JSON.parse(localStorage.getItem('logyser-ui-prefs') || 'null');
+        var tema = (p && (p.tema === 'claro' || p.tema === 'oscuro')) ? p.tema
+          : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+        document.documentElement.setAttribute('data-theme', tema);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/theme-tokens.css?v=1">
   <title>Cloud Docs — LOG&SER</title>
   <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
   
@@ -4499,6 +4512,7 @@
       }
     }
   </script>
+  <script src="/js/theme.js" defer></script>
   <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
   <script src="/js/ticket-boton.js" defer></script>
   <script src="/js/modal-back.js" defer></script>

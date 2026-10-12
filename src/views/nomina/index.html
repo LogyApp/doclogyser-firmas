@@ -3,6 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Tema (Claro/Oscuro/Sistema): fija data-theme antes del primer pintado
+     para evitar parpadeo (FOUC). El acento exacto lo aplica theme.js. -->
+<script>
+  (function () {
+    try {
+      var p = JSON.parse(localStorage.getItem('logyser-ui-prefs') || 'null');
+      var tema = (p && (p.tema === 'claro' || p.tema === 'oscuro')) ? p.tema
+        : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+      document.documentElement.setAttribute('data-theme', tema);
+    } catch (e) {}
+  })();
+</script>
+<link rel="stylesheet" href="/css/theme-tokens.css?v=1">
 <title>Nómina — LOG&amp;SER</title>
 <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recursos-corporativos/menu-solicitudes/Logodocnomina.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -290,6 +303,13 @@
   #profileDigitalCanvas { display: block; width: 100%; height: 150px; background: #fff; border: 1px dashed #94a3b8; border-radius: 5px; touch-action: none; cursor: crosshair; }
   .profile-digital-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
   .profile-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .profile-theme-options { display: flex; flex-wrap: wrap; gap: 8px; }
+  .profile-theme-opt { display: flex; align-items: center; gap: 6px; padding: 7px 11px; border: 1px solid var(--border); border-radius: 20px; font-size: .82rem; font-weight: 600; color: var(--text); cursor: pointer; }
+  .profile-theme-opt:has(input:checked) { border-color: var(--accent, var(--primary)); background: var(--accent-soft, rgba(20,184,166,.1)); color: var(--accent, var(--primary)); }
+  .profile-theme-opt input { accent-color: var(--accent, var(--primary)); }
+  .profile-accent-picker { display: flex; align-items: center; gap: 8px; }
+  .profile-accent-picker input[type="color"] { width: 42px; height: 36px; padding: 2px; border: 1.5px solid var(--border); border-radius: 6px; cursor: pointer; }
+  .profile-accent-picker input[type="text"] { flex: 1; text-transform: uppercase; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); }
   @media (max-width: 900px) {
     .nomina-profile { padding-top: 8px; }
     .profile-modal-body { padding: 18px; }
@@ -1767,6 +1787,25 @@
             </div>
           </div>
         </div>
+        <div class="profile-signature-panel">
+          <div style="font-weight:700;color:var(--primary);margin-bottom:8px">Apariencia</div>
+          <div class="ficha-field">
+            <label>Tema</label>
+            <div class="profile-theme-options">
+              <label class="profile-theme-opt"><input type="radio" name="nominaTema" value="claro"><span>Claro</span></label>
+              <label class="profile-theme-opt"><input type="radio" name="nominaTema" value="oscuro"><span>Oscuro</span></label>
+              <label class="profile-theme-opt"><input type="radio" name="nominaTema" value="sistema"><span>Adaptado al sistema</span></label>
+            </div>
+          </div>
+          <div class="ficha-field">
+            <label>Color de acento</label>
+            <div class="profile-accent-picker">
+              <input type="color" id="nominaColorAcento" aria-label="Elegir color de acento">
+              <input type="text" id="nominaColorAcentoHex" maxlength="7" placeholder="#F55400" aria-label="Color de acento en hexadecimal">
+            </div>
+            <small style="color:var(--text-muted);font-size:.76rem">Se aplica al instante en todos los módulos; el contraste se ajusta automáticamente si hace falta.</small>
+          </div>
+        </div>
         <div id="nominaProfileError" class="aviso-banner" style="display:none;background:#fff1f0;border-color:#fecaca;color:#b91c1c"></div>
         <div class="profile-edit-actions">
           <button type="button" class="btn-reset" onclick="cancelarEdicionPerfilNomina()">Cancelar</button>
@@ -2003,7 +2042,40 @@
     document.getElementById('nominaProfileForm').style.display = 'block';
     renderFirmaPerfilNomina();
     mostrarFirmaPngPerfil(_nominaPerfil.firma_url);
+    poblarAparienciaNomina();
   }
+
+  // Apariencia (tema/color de acento): usa el mismo endpoint desacoplado
+  // /perfil/api/preferencias que el resto de módulos (ver public/js/theme.js),
+  // independiente de /nomina/api/perfil, para que funcione igual aunque el
+  // usuario no tenga perfil corporativo vinculado.
+  function poblarAparienciaNomina() {
+    let prefs = { tema: 'sistema', colorAcento: '#F55400' };
+    try {
+      const raw = localStorage.getItem('logyser-ui-prefs');
+      if (raw) { const p = JSON.parse(raw); if (p && p.tema) prefs = p; }
+    } catch (e) {}
+    const temaInput = document.querySelector(`input[name="nominaTema"][value="${prefs.tema}"]`);
+    if (temaInput) temaInput.checked = true;
+    document.getElementById('nominaColorAcento').value = prefs.colorAcento;
+    document.getElementById('nominaColorAcentoHex').value = prefs.colorAcento;
+  }
+  function aplicarAparienciaNomina() {
+    const temaChecked = document.querySelector('input[name="nominaTema"]:checked');
+    const tema = temaChecked ? temaChecked.value : 'sistema';
+    const hexInput = document.getElementById('nominaColorAcentoHex');
+    const colorInput = document.getElementById('nominaColorAcento');
+    const hex = /^#[0-9A-Fa-f]{6}$/.test(hexInput.value) ? hexInput.value : colorInput.value;
+    colorInput.value = hex;
+    hexInput.value = hex;
+    if (window.aplicarPreferenciasUI) window.aplicarPreferenciasUI(tema, hex);
+  }
+  document.querySelectorAll('input[name="nominaTema"]').forEach(r => r.addEventListener('change', aplicarAparienciaNomina));
+  document.getElementById('nominaColorAcento').addEventListener('input', () => {
+    document.getElementById('nominaColorAcentoHex').value = document.getElementById('nominaColorAcento').value;
+    aplicarAparienciaNomina();
+  });
+  document.getElementById('nominaColorAcentoHex').addEventListener('change', aplicarAparienciaNomina);
 
   function cambiarVistaFirmaPerfil(formato) {
     const htmlActivo = formato === 'html';
@@ -5234,6 +5306,7 @@
     }
   });
 </script>
+<script src="/js/theme.js" defer></script>
 <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
 <script src="/js/modal-back.js" defer></script>

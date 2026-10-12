@@ -1,0 +1,94 @@
+/*
+ * Vocabulario canonico de variables CSS para los 7 modulos (estandar Cloud Docs).
+ * --primary* es fijo (unifica la marca); --accent* es el unico grupo que
+ * theme.js sobreescribe en runtime con el color elegido por el usuario.
+ * Los modulos cargan este archivo ANTES de su propio <style>.
+ */
+
+:root,
+:root[data-theme="claro"] {
+  /* Marca (fija, estandar Cloud Docs) */
+  --primary: #000b59;
+  --primary-dark: #00073a;
+  --primary-light: #1c2a7a;
+
+  /* Acento (derivado en runtime por theme.js a partir del HEX del usuario) */
+  --accent: #F55400;
+  --accent-dark: #d64700;
+  --accent-light: #ff8a3d;
+  --accent-soft: rgba(245, 84, 0, 0.1);
+  --accent-contrast: #ffffff;
+
+  /* Semanticos de estado (fijos, no personalizables) */
+  --success: #16a34a; --success-soft: rgba(22, 163, 74, 0.08); --success-dark: #0f7a37;
+  --danger: #dc2626; --danger-soft: rgba(220, 38, 38, 0.08); --danger-dark: #b01f1f;
+  --warning: #d97706; --warning-soft: rgba(217, 119, 6, 0.08); --warning-dark: #a85c04;
+  --info: #2563eb; --info-soft: rgba(37, 99, 235, 0.08); --info-dark: #1d4ed8;
+
+  /* Superficies / neutros */
+  --bg: #f4f5f9;
+  --bg-elevated: #eceef5;
+  --card-bg: #ffffff;
+  --text: #101425;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+  --border: #e7e8ef;
+  --border-strong: #d7d9e4;
+
+  /* Sidebar (canonico para los 6 modulos con sidebar) */
+  --sidebar-bg: var(--primary);
+  --sidebar-text: rgba(255, 255, 255, 0.65);
+  --sidebar-text-muted: rgba(255, 255, 255, 0.5);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.12);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+
+  --overlay: rgba(15, 23, 42, 0.58);
+
+  --radius-lg: 18px; --radius-md: 12px; --radius-sm: 8px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 8px 20px -6px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 11, 89, 0.22);
+
+  --focus-ring: 0 0 0 3px var(--accent-soft);
+  --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root[data-theme="oscuro"] {
+  --primary: #0b1330;
+  --primary-dark: #060a1c;
+  --primary-light: #1b2550;
+
+  /* --accent* se recalcula en runtime (ver theme.js); aqui solo un fallback
+     por si el script aun no corrio cuando se pinta el primer frame. */
+  --accent-soft: rgba(245, 84, 0, 0.16);
+
+  --success: #22c55e; --success-soft: rgba(34, 197, 94, 0.14); --success-dark: #16a34a;
+  --danger: #f87171; --danger-soft: rgba(248, 113, 113, 0.14); --danger-dark: #dc2626;
+  --warning: #fbbf24; --warning-soft: rgba(251, 191, 36, 0.14); --warning-dark: #d97706;
+  --info: #60a5fa; --info-soft: rgba(96, 165, 250, 0.14); --info-dark: #2563eb;
+
+  --bg: #0b0f17;
+  --bg-elevated: #121826;
+  --card-bg: #151c2b;
+  --text: #e6e8ee;
+  --text-muted: #94a0b8;
+  --text-inverse: #0b0f17;
+  --border: #232c3d;
+  --border-strong: #2f3b52;
+
+  /* Fijo y oscuro siempre, sin depender del acento elegido: asi un acento
+     claro nunca deja el sidebar con mal contraste. */
+  --sidebar-bg: #080c16;
+  --sidebar-text: rgba(255, 255, 255, 0.72);
+  --sidebar-text-muted: rgba(255, 255, 255, 0.52);
+  --sidebar-active-bg: rgba(255, 255, 255, 0.10);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.05);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+
+  --overlay: rgba(0, 0, 0, 0.72);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 20px -6px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.65);
+}
