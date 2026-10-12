@@ -2273,21 +2273,77 @@
         padding: 10px 12px !important;
         gap: 6px !important;
       }
-      /* Tabla de ítems a recibir: columnas más angostas para que quepa más
-         información sin tener que desplazar tanto horizontalmente. */
+      /* Tabla de ítems a recibir: en vez de achicar el texto hasta hacerlo
+         ilegible (como hacía esta regla antes), se mantiene un tamaño de
+         columna y de fuente usable y se confía en el scroll horizontal que
+         ya tiene el contenedor (overflow-x:auto inline, linea ~4446) — es
+         preferible desplazar la tabla que mostrar todo diminuto. También se
+         agranda el input de "Recibido" (antes 55px fijos por JS) para que
+         se pueda tocar/editar bien con el dedo. */
       #recibir-modal-items-table {
-        min-width: 560px !important;
+        min-width: 640px !important;
+        font-size: .82rem !important;
+      }
+      #recibir-modal-items-table th:nth-child(1) { width: 48px !important; }
+      #recibir-modal-items-table th:nth-child(2) { width: 46px !important; }
+      #recibir-modal-items-table th:nth-child(3) { width: 180px !important; }
+      #recibir-modal-items-table th:nth-child(4) { width: 130px !important; }
+      #recibir-modal-items-table th:nth-child(5) { width: 68px !important; }
+      #recibir-modal-items-table th:nth-child(6) { width: 78px !important; }
+      #recibir-modal-items-table th:nth-child(7) { width: 150px !important; }
+      #recibir-modal-items-container {
+        max-height: 46vh !important;
+      }
+      .recibir-item-cant-input {
+        width: 64px !important;
+        font-size: .88rem !important;
+        padding: 6px 4px !important;
+      }
+      .recibir-item-novedad-input {
+        font-size: .82rem !important;
+      }
+
+      /* Modales "+ Agregar Artículos" (Acta de Entrega / Solicitudes): usan
+         estilos inline sin las clases .modal-content/.modal-body/.modal-footer,
+         por lo que el CSS móvil genérico de arriba no les aplicaba y la
+         "sección fija" (banner de tallas, aviso, buscador y filtros) seguía
+         con el padding de escritorio, dejando muy poco alto para la lista
+         scrolleable de artículos debajo. */
+      #acta-add-articles-modal > div,
+      #sol-add-articles-modal > div {
+        max-height: 96vh !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+      }
+      #acta-add-articles-modal .modal-header,
+      #sol-add-articles-modal .modal-header {
+        padding: 10px 14px !important;
+      }
+      #acta-modal-filtros-fijos,
+      #sol-modal-filtros-fijos {
+        padding: 10px 14px 0 14px !important;
+      }
+      #acta-modal-filtros-fijos p,
+      #sol-modal-filtros-fijos p {
+        padding: 7px 10px !important;
+        margin-bottom: 8px !important;
         font-size: .72rem !important;
       }
-      #recibir-modal-items-table th:nth-child(1) { width: 40px !important; }
-      #recibir-modal-items-table th:nth-child(2) { width: 36px !important; }
-      #recibir-modal-items-table th:nth-child(3) { width: 140px !important; }
-      #recibir-modal-items-table th:nth-child(4) { width: 110px !important; }
-      #recibir-modal-items-table th:nth-child(5) { width: 55px !important; }
-      #recibir-modal-items-table th:nth-child(6) { width: 65px !important; }
-      #recibir-modal-items-table th:nth-child(7) { width: 110px !important; }
-      #recibir-modal-items-container {
-        max-height: 220px !important;
+      #acta-modal-tallas-banner {
+        padding: 7px 10px !important;
+        margin-bottom: 8px !important;
+      }
+      #acta-modal-tallas-banner > div:first-child {
+        margin-bottom: 5px !important;
+      }
+      #acta-modal-articles-list,
+      #sol-modal-articles-list {
+        padding: 10px 14px !important;
+      }
+      #acta-modal-footer,
+      #sol-modal-footer {
+        padding: 10px 14px !important;
       }
 
       /* Tarjetas informativas (mini-stat-card): más compactas para dejar
@@ -5290,7 +5346,7 @@
       </div>
       
       <!-- Search bar inside modal -->
-      <div style="padding: 16px 24px 0 24px;">
+      <div id="sol-modal-filtros-fijos" style="padding: 16px 24px 0 24px;">
         <p style="font-size: 0.78rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; padding: 10px 14px; border-radius: 6px; margin: 0 0 12px 0; font-weight: 600; line-height: 1.4;">
           ⚠️ Ingresa Cantidad y Nota en cada artículo que quieras incluir. Solo se agregarán los que tengan cantidad mayor a 0.
         </p>
@@ -5330,7 +5386,7 @@
       </div>
 
       <!-- Footer with count and action buttons -->
-      <div style="background: #f8fafc; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-shrink: 0;">
+      <div id="sol-modal-footer" style="background: #f8fafc; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-shrink: 0;">
         <span style="font-size: 0.85rem; font-weight: 600;" id="sol-modal-selected-count">Artículos seleccionados: 0</span>
         <div style="display: flex; gap: 10px;">
           <button type="button" class="btn" id="sol-modal-btn-cancelar" style="background: white; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Cancelar</button>
@@ -5348,7 +5404,7 @@
         <span id="acta-add-articles-modal-close" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
       </div>
 
-      <div style="padding: 16px 24px 0 24px;">
+      <div id="acta-modal-filtros-fijos" style="padding: 16px 24px 0 24px;">
         <!-- Banner informativo de Tallas de Dotación del Trabajador -->
         <div id="acta-modal-tallas-banner" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
@@ -5414,7 +5470,7 @@
         <!-- Populated dynamically -->
       </div>
 
-      <div style="background: #f8fafc; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-shrink: 0;">
+      <div id="acta-modal-footer" style="background: #f8fafc; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); flex-shrink: 0;">
         <span style="font-size: 0.85rem; font-weight: 600;" id="acta-modal-selected-count">Artículos seleccionados: 0</span>
         <div style="display: flex; gap: 10px;">
           <button type="button" class="btn" id="acta-modal-btn-cancelar" style="background: white; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Cancelar</button>

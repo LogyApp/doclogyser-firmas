@@ -2375,10 +2375,10 @@
             <div class="req-field" style="grid-column: span 2;">
               <label>Turno Requerido *</label>
               <div class="btn-group-toggle" id="btnGroupTurno">
-                <div class="btn-toggle-option active" data-val="Rotativo" onclick="setToggleBtn('Turno', 'Rotativo')">Rotativo</div>
-                <div class="btn-toggle-option" data-val="Fijo" onclick="setToggleBtn('Turno', 'Fijo')">Fijo</div>
+                <div class="btn-toggle-option" data-val="Rotativo" onclick="setToggleBtn('Turno', 'Rotativo')">Rotativo</div>
+                <div class="btn-toggle-option active" data-val="Fijo" onclick="setToggleBtn('Turno', 'Fijo')">Fijo</div>
               </div>
-              <input type="hidden" id="formReqTurno" value="Rotativo">
+              <input type="hidden" id="formReqTurno" value="Fijo">
             </div>
 
             <div class="req-field" style="grid-column: span 2;">
@@ -4073,8 +4073,14 @@
       document.getElementById('formReqResponsable').value = '';
 
       // Toggles por defecto
-      setToggleBtn('TipoPago', 'Salario Fijo');
-      setToggleBtn('Turno', 'Rotativo');
+      // "Tipo de Pago" inicia en Destajo para los roles que NO tengan permiso
+      // en Config_Parametros ("Puede escoger todos los cargos en la
+      // Requisición" / "Puede escoger cargos administrativos en la
+      // Requisición"); el resto de roles mantiene el default Salario Fijo.
+      const permisosReq = _reqCatalogos && _reqCatalogos.permisos;
+      const tienePermisoCargoEspecial = !!(permisosReq && (permisosReq.puedeTodosLosCargos || permisosReq.puedeCargosAdministrativos));
+      setToggleBtn('TipoPago', tienePermisoCargoEspecial ? 'Salario Fijo' : 'Destajo');
+      setToggleBtn('Turno', 'Fijo');
       setToggleBtn('BPM', 'NO');
       setToggleBtn('Curso', 'NO');
       toggleCampoDescCurso(false);
@@ -4340,7 +4346,7 @@
 
       // Toggles
       setToggleBtn('TipoPago', req['Tipo de Pago'] || 'Salario Fijo');
-      setToggleBtn('Turno', req['Turno Requerido'] || 'Rotativo');
+      setToggleBtn('Turno', req['Turno Requerido'] || 'Fijo');
       setToggleBtn('BPM', req['Manipulación de Alimentos - BPM'] || 'NO');
       setToggleBtn('Curso', req['Requiere Curso por el Cliente'] || 'NO');
       toggleCampoDescCurso(req['Requiere Curso por el Cliente'] === 'SI');

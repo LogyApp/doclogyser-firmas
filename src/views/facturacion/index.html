@@ -2723,10 +2723,19 @@
       const mobBadge = document.getElementById('mobile-user-badge');
       if (mobBadge) mobBadge.textContent = (CONFIG.usuarioNombre || '').split(' ')[0] || CONFIG.usuario;
 
-      // La pestaña Tickets solo se muestra si el rol tiene acceso explícito (Maestro_Menu_Facturacion, Sección = 'Tickets')
+      // Las pestañas Tickets, Bloqueo de Datos y Clientes Crédito solo se muestran si el
+      // rol tiene acceso explícito en Maestro_Menu_Facturacion para esa Sección.
       if (!CONFIG.tabs?.tickets) {
         const navTicketsEl = document.getElementById('navTickets');
         if (navTicketsEl) navTicketsEl.style.display = 'none';
+      }
+      if (!CONFIG.tabs?.bloqueo) {
+        const navBloqueoEl = document.getElementById('navBloqueo');
+        if (navBloqueoEl) navBloqueoEl.style.display = 'none';
+      }
+      if (!CONFIG.tabs?.clientes_credito) {
+        const navClientesEl = document.getElementById('navClientes');
+        if (navClientesEl) navClientesEl.style.display = 'none';
       }
 
       // La columna Bloqueo y la edición de Clientes Crédito solo aplican a Facturación/Sistema
@@ -3014,6 +3023,8 @@
 
     function switchMainTab(tab) {
       if (tab === 'tickets' && !CONFIG.tabs?.tickets) tab = 'servicios';
+      if (tab === 'bloqueo' && !CONFIG.tabs?.bloqueo) tab = 'servicios';
+      if ((tab === 'clientescredito' || tab === 'clientes') && !CONFIG.tabs?.clientes_credito) tab = 'servicios';
 
       document.getElementById('navServicios')?.classList.toggle('active', tab === 'servicios');
       document.getElementById('navRecibos')?.classList.toggle('active', tab === 'recibos');

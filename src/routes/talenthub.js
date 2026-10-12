@@ -936,6 +936,8 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
       puedeModificarEstado: puedeEditarEstado,
       puedeModificarFechaFin: puedeEditarFechaFin,
       puedeReabrirRequisicion,
+      puedeTodosLosCargos,
+      puedeCargosAdministrativos,
       esCoordinadorSeleccion: cargoUsuario === 'COORDINADOR DE SELECCIÓN',
       rol: acceso.rol,
       cargo: acceso.cargo,

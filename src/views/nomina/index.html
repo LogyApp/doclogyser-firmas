@@ -361,7 +361,18 @@
     .filtros-grid { grid-template-columns: 1fr; }
     .ficha-grid { grid-template-columns: 1fr; }
     .modal-full-overlay { padding: 0; }
-    .modal-full { max-width: 100%; height: 100vh; border-radius: 0; }
+    /* 100dvh (altura visible real) en vez de 100vh: en movil 100vh se calcula
+       sobre el viewport "grande" (barra de direcciones oculta), mas alto que
+       el area visible cuando la barra esta presente, lo que empuja el header/
+       footer del modal fuera de pantalla. Si el navegador no soporta dvh esta
+       declaracion se ignora y queda el height:94vh de la regla base (linea 255). */
+    .modal-full { max-width: 100%; height: 100dvh; border-radius: 0; }
+    /* El modal de Perfil (.profile-modal) debe conservar su propio alto
+       (auto/max-height) en vez del 100dvh de arriba: misma especificidad,
+       pero esta regla va despues en el cascade y aplica solo cuando ambas
+       clases coinciden en el mismo elemento. */
+    .modal-full.profile-modal { height: auto; max-height: 92dvh; }
+    .ficha-footer { flex-shrink: 0; }
     .table-container { max-height: calc(100vh - 180px); }
   }
 
@@ -2321,9 +2332,22 @@
 
   // ── Modal genérico (formretiro / gestionar-retiro) ──────────────────────
   let _tabActual = null;
+  // Navega el iframe con location.replace() en vez de asignar src: src crea
+  // su propia entrada en el historial conjunto de la pestaña (ademas de la
+  // que crea registrarModalBack en el documento padre), lo que obligaba a
+  // presionar "Atras" dos veces para cerrar el modal (la primera pulsacion
+  // solo revertia el iframe, dejando la pantalla en blanco). replace()
+  // navega sin agregar esa entrada extra.
+  function navegarIframeGestion(iframeEl, url) {
+    if (iframeEl.contentWindow) {
+      iframeEl.contentWindow.location.replace(url);
+    } else {
+      iframeEl.src = url;
+    }
+  }
   function abrirModal(url, titulo) {
     document.getElementById('modalTitulo').textContent = titulo;
-    document.getElementById('gestionIframe').src = url;
+    navegarIframeGestion(document.getElementById('gestionIframe'), url);
     const overlay = document.getElementById('gestionModalOverlay');
     overlay.classList.add('open');
     overlay._backEntry = registrarModalBack(() => cerrarModalGestion());
@@ -2333,7 +2357,7 @@
     overlay.classList.remove('open');
     cerrarModalBack(overlay._backEntry);
     overlay._backEntry = null;
-    document.getElementById('gestionIframe').src = 'about:blank';
+    navegarIframeGestion(document.getElementById('gestionIframe'), 'about:blank');
     if (_tabActual === 'retiros') fetchDataRetiros();
     else if (_tabActual === 'activos') fetchDataActivos();
   }

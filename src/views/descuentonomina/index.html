@@ -348,12 +348,12 @@
           <table id="table-pruebas">
             <thead>
               <tr>
+                <th style="width:110px;min-width:90px"><div class="th-content"><span>Documento</span></div></th>
                 <th style="width:250px;min-width:180px" class="sortable" data-sort="nombre_trabajador"><div class="th-content"><span>Trabajador</span><span class="sort-icon">↕</span></div></th>
                 <th style="width:140px;min-width:110px" class="sortable" data-sort="fecha"><div class="th-content"><span>Fecha</span><span class="sort-icon">↕</span></div></th>
                 <th style="width:150px;min-width:120px" class="sortable" data-sort="tipo_descuento"><div class="th-content"><span>Tipo Descuento</span><span class="sort-icon">↕</span></div></th>
                 <th style="width:210px;min-width:150px" class="sortable" data-sort="detalles"><div class="th-content"><span>Detalles Específicos</span><span class="sort-icon">↕</span></div></th>
                 <th style="width:130px;min-width:110px" class="sortable" data-sort="estado"><div class="th-content"><span>Estado</span><span class="sort-icon">↕</span></div></th>
-                <th style="width:110px;min-width:90px" class="sortable" data-sort="documento"><div class="th-content"><span>Documento</span><span class="sort-icon">↕</span></div></th>
               </tr>
             </thead>
             <tbody id="tbody-pruebas">
@@ -712,6 +712,7 @@
         }
 
         tr.innerHTML = `
+          <td>${docLink}</td>
           <td>
             <strong>${item.nombre_trabajador}</strong><br>
             <span style="font-size:0.8rem; color:#64748b;">C.C. ${item.identificacion}</span>
@@ -720,7 +721,6 @@
           <td><span style="font-weight:600; color:var(--primary);">${item.tipo_descuento}</span></td>
           <td>${detailStr}</td>
           <td>${statusBadge}</td>
-          <td>${docLink}</td>
         `;
 
         tbody.appendChild(tr);

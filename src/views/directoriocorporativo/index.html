@@ -1216,35 +1216,38 @@
     .org-empty { color: var(--text-muted); font-size: 0.75rem; font-style: italic; padding: 4px; }
 
     @media (max-width: 640px) {
+      /* Encabezado compacto en movil: logo+titulo siguen en una sola fila
+         (no apilados) para no "comerse" la pantalla; las acciones envuelven
+         a una segunda fila solo si no caben, en vez de forzar 100% de ancho
+         cada una en filas separadas. */
       .top-header {
-        align-items: stretch;
-        flex-direction: column;
-        padding: 10px 12px;
-        gap: 10px;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        gap: 8px;
       }
       .brand-wrap {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 8px;
+        gap: 10px;
+        flex: 1 1 auto;
+        min-width: 0;
       }
-      .brand-lockup-horizontal { gap: 8px; }
-      .brand-logo-app { height: 24px; }
-      .brand-logo-company-crop { width: 104px; height: 28px; }
+      .brand-lockup-horizontal { gap: 6px; }
+      .brand-logo-app { height: 20px; }
+      .brand-logo-company-crop { width: 84px; height: 22px; }
       .header-titles {
-        border-left: none;
-        border-top: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 8px 0 0;
-        width: 100%;
+        padding-left: 10px;
+        min-width: 0;
       }
-      .header-main-title { font-size: 1rem; }
+      .header-main-title { font-size: 0.88rem; }
+      .header-sub-title { font-size: 0.66rem; }
       .header-actions {
-        align-items: stretch;
-        flex-direction: column;
+        flex-wrap: wrap;
+        width: 100%;
+        justify-content: flex-end;
         gap: 8px;
       }
-      .header-actions > *,
-      .header-actions .btn-header { width: 100%; }
-      .btn-header { justify-content: center; }
+      .header-actions > * { width: auto; }
+      .btn-header { font-size: 0.74rem; padding: 6px 10px; justify-content: center; }
+      .user-pill { font-size: 0.72rem; padding: 4px 10px; }
 
       .main-container { padding: 14px 12px 40px; }
       .controls-bar {

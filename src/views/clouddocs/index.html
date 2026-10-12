@@ -1106,6 +1106,12 @@
             <option value="">— Todos los tipos —</option>
           </select>
         </div>
+        <div class="field" id="filter-clasificacion-wrapper" style="display: none;">
+          <label for="filter-clasificacion">Clasificación</label>
+          <select id="filter-clasificacion" onchange="filtrar()">
+            <option value="">— Todas —</option>
+          </select>
+        </div>
         <div class="field" id="filter-estado-wrapper">
           <label for="filter-estado">Estado del Trabajador</label>
           <select id="filter-estado" onchange="filtrar()">
@@ -1642,6 +1648,7 @@
       const filtros = [
         ['filter-buscar', null],
         ['filter-documento', 'filter-documento-wrapper'],
+        ['filter-clasificacion', 'filter-clasificacion-wrapper'],
         ['filter-estado', 'filter-estado-wrapper'],
         ['filter-registro', 'filter-registro-wrapper'],
         ['filter-todo-validacion', 'filter-todo-validacion-wrapper'],
@@ -2177,6 +2184,7 @@
       if (tab !== 'descuentonomina') actualizarOpcionesTipoDocumento(tab);
 
       const docSelectWrapper = document.getElementById('filter-documento-wrapper');
+      const clasificacionWrapper = document.getElementById('filter-clasificacion-wrapper');
       const estadoWrapper = document.getElementById('filter-estado-wrapper');
       const registroWrapper = document.getElementById('filter-registro-wrapper');
       const todoValidacionWrapper = document.getElementById('filter-todo-validacion-wrapper');
@@ -2315,6 +2323,9 @@
         if (labelRegistro) {
           labelRegistro.innerText = tab === 'documento' ? 'Tipo Doc' : 'Tipo de Registro';
         }
+
+        // Filtro por Clasificación: solo aplica a "Tipos de Documento"
+        if (clasificacionWrapper) clasificacionWrapper.style.display = tab === 'documento' ? 'flex' : 'none';
       }
 
       // Update active button classes
@@ -2407,6 +2418,7 @@
         const tipoRegistro = document.getElementById('filter-registro').value;
         const validacion = document.getElementById('filter-todo-validacion').value;
         const estadoSolicitud = document.getElementById('filter-solicitud-estado').value;
+        const clasificacion = document.getElementById('filter-clasificacion').value;
 
         const queryParams = new URLSearchParams({
           usuario: CONFIG.usuarioId,
@@ -2479,7 +2491,9 @@
 
         const data = await res.json();
         if (res.ok) {
-          currentData = data;
+          currentData = activeTab === 'documento'
+            ? poblarFiltroClasificacion(data, clasificacion)
+            : data;
           renderMainTable();
           const masterChk = document.getElementById('select-all-retiros');
           if (masterChk) masterChk.checked = false;
@@ -2499,6 +2513,26 @@
       } finally {
         hideLoader();
       }
+    }
+
+    // Puebla el <select> de Clasificación (pestaña "Tipos de Documento") con los
+    // valores únicos presentes en `data` y su conteo, y devuelve `data` filtrado
+    // por la clasificación seleccionada (o el array completo si no hay selección).
+    function poblarFiltroClasificacion(data, clasificacionVal) {
+      const sel = document.getElementById('filter-clasificacion');
+      if (sel) {
+        const counts = {};
+        data.forEach(item => {
+          const val = item.Clasificacion || '(Sin clasificación)';
+          counts[val] = (counts[val] || 0) + 1;
+        });
+        const uniques = Object.keys(counts).sort();
+        sel.innerHTML = '<option value="">— Todas —</option>' +
+          uniques.map(v => `<option value="${esc(v)}"${v === clasificacionVal ? ' selected' : ''}>${esc(v)} (${counts[v]})</option>`).join('');
+      }
+
+      if (!clasificacionVal) return data;
+      return data.filter(item => (item.Clasificacion || '(Sin clasificación)') === clasificacionVal);
     }
 
     // Helper to dynamically update option counts in the selects

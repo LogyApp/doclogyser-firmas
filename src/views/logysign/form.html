@@ -473,6 +473,13 @@
         padding: 8px !important;
         min-height: 300px !important;
       }
+      /* Asa de redimensionar más grande para poder tocarla con el dedo */
+      .sig-resize-handle {
+        width: 26px;
+        height: 26px;
+        right: -13px;
+        bottom: -13px;
+      }
     }
 
     /* Draggable signature box */
@@ -1237,6 +1244,16 @@
       });
     }
 
+    // Devuelve {x,y} tanto de un MouseEvent como de un TouchEvent, para que
+    // el arrastre/resize del recuadro de firma funcione igual con dedo que
+    // con mouse (antes solo escuchaba mousedown/mousemove/mouseup, por eso
+    // no se podía ubicar el recuadro en móvil).
+    function getPointFromEvent(e) {
+      if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+
     function makeBoxInteractive(boxEl, boxId) {
       const resizeHandle = boxEl.querySelector('.sig-resize-handle');
       const deleteBtn = boxEl.querySelector('.sig-delete-btn');
@@ -1251,40 +1268,54 @@
         });
       }
 
-      boxEl.addEventListener('mousedown', (e) => {
+      const startDrag = (e) => {
         if (e.target === resizeHandle || e.target === deleteBtn) return;
+        if (e.cancelable) e.preventDefault();
         isDragging = true;
         activeBoxEl = boxEl;
         activeBoxId = boxId;
-        startX = e.clientX;
-        startY = e.clientY;
+        const p = getPointFromEvent(e);
+        startX = p.x;
+        startY = p.y;
         startLeft = boxEl.offsetLeft;
         startTop = boxEl.offsetTop;
-        
+
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
-      });
+        document.addEventListener('touchmove', onMouseMove, { passive: false });
+        document.addEventListener('touchend', onMouseUp);
+      };
+      boxEl.addEventListener('mousedown', startDrag);
+      boxEl.addEventListener('touchstart', startDrag, { passive: false });
 
-      resizeHandle.addEventListener('mousedown', (e) => {
+      const startResize = (e) => {
         e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
         isResizing = true;
         activeBoxEl = boxEl;
         activeBoxId = boxId;
-        startX = e.clientX;
-        startY = e.clientY;
+        const p = getPointFromEvent(e);
+        startX = p.x;
+        startY = p.y;
         startWidth = boxEl.offsetWidth;
         startHeight = boxEl.offsetHeight;
-        
+
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
-      });
+        document.addEventListener('touchmove', onMouseMove, { passive: false });
+        document.addEventListener('touchend', onMouseUp);
+      };
+      resizeHandle.addEventListener('mousedown', startResize);
+      resizeHandle.addEventListener('touchstart', startResize, { passive: false });
     }
 
     function onMouseMove(e) {
       if (!activeBoxEl) return;
+      if (e.cancelable) e.preventDefault();
+      const p = getPointFromEvent(e);
       if (isDragging) {
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
+        const dx = p.x - startX;
+        const dy = p.y - startY;
         let newLeft = startLeft + dx;
         let newTop = startTop + dy;
 
@@ -1303,8 +1334,8 @@
           box.y = newTop;
         }
       } else if (isResizing) {
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
+        const dx = p.x - startX;
+        const dy = p.y - startY;
         let newWidth = startWidth + dx;
         let newHeight = startHeight + dy;
 
@@ -1336,6 +1367,8 @@
       activeBoxId = null;
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchmove', onMouseMove);
+      document.removeEventListener('touchend', onMouseUp);
     }
 
     // Add Signature Box Click Listener

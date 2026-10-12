@@ -4084,6 +4084,26 @@
       }
     }
 
+    // Cierre único del dropdown de notificaciones (toggle, click en ítem, click
+    // afuera y botón "Atrás" vía modal-back.js todos reutilizan esta función).
+    function cerrarNotificacionesDropdown(key) {
+      const dropdown = document.getElementById(`notif-dropdown-${key}`);
+      const btn = document.getElementById(`btn-notif-bell-${key}`);
+      const state = notifState[key];
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.classList.remove('active');
+      if (state) {
+        state.isOpen = false;
+        if (state.observer) {
+          state.observer.disconnect();
+          state.observer = null;
+        }
+        cerrarModalBack(state._backEntry);
+        state._backEntry = null;
+        enviarNotificacionesLeidas(key);
+      }
+    }
+
     function toggleNotificacionesDropdown(key = 'ev') {
       const dropdown = document.getElementById(`notif-dropdown-${key}`);
       const btn = document.getElementById(`btn-notif-bell-${key}`);
@@ -4093,18 +4113,12 @@
       const isCurrentlyOpen = dropdown.style.display !== 'none';
 
       if (isCurrentlyOpen) {
-        dropdown.style.display = 'none';
-        btn.classList.remove('active');
-        state.isOpen = false;
-        if (state.observer) {
-          state.observer.disconnect();
-          state.observer = null;
-        }
-        enviarNotificacionesLeidas(key);
+        cerrarNotificacionesDropdown(key);
       } else {
         dropdown.style.display = 'flex';
         btn.classList.add('active');
         state.isOpen = true;
+        state._backEntry = registrarModalBack(() => cerrarNotificacionesDropdown(key));
         renderizarNotificacionesDropdown(key);
 
         const body = document.getElementById(`notif-dropdown-body-${key}`);
@@ -4311,15 +4325,7 @@
           enviarNotificacionesLeidas(key);
         }
 
-        const dropdown = document.getElementById(`notif-dropdown-${key}`);
-        if (dropdown) dropdown.style.display = 'none';
-        const btn = document.getElementById(`btn-notif-bell-${key}`);
-        if (btn) btn.classList.remove('active');
-        state.isOpen = false;
-        if (state.observer) {
-          state.observer.disconnect();
-          state.observer = null;
-        }
+        cerrarNotificacionesDropdown(key);
       }
 
       if (refId) {
@@ -4388,17 +4394,7 @@
           const container = document.getElementById(`notif-bell-container-${key}`);
           const dropdown = document.getElementById(`notif-dropdown-${key}`);
           if (dropdown && dropdown.style.display !== 'none' && container && !container.contains(e.target)) {
-            dropdown.style.display = 'none';
-            const btn = document.getElementById(`btn-notif-bell-${key}`);
-            if (btn) btn.classList.remove('active');
-            if (notifState[key]) {
-              notifState[key].isOpen = false;
-              if (notifState[key].observer) {
-                notifState[key].observer.disconnect();
-                notifState[key].observer = null;
-              }
-              enviarNotificacionesLeidas(key);
-            }
+            cerrarNotificacionesDropdown(key);
           }
         });
       });
