@@ -26,29 +26,16 @@
   <link rel="stylesheet" href="/css/app-launcher-profile.css?v=20261011b">
 
   <style>
+    /* :root ya lo define /css/theme-tokens.css (claro/oscuro + --accent*
+       derivado del color elegido por el usuario). Solo quedan aqui alias
+       puntuales para nombres propios de SST que theme-tokens.css no define
+       con ese nombre exacto, para no tener que buscar/reemplazar cientos
+       de usos en todo el archivo. */
     :root {
-      --primary: #064e3b;
-      --primary-gradient: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
-      --primary-dark: #022c22;
-      --primary-light: #047857;
-      --accent: #10b981;
-      --accent-hover: #059669;
-      --accent-soft: rgba(16, 185, 129, 0.12);
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --border-dark: #cbd5e1;
-      --success: #16a34a;
-      --warning: #f59e0b;
-      --danger: #dc2626;
-      --radius: 12px;
-      --radius-sm: 8px;
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
-      --shadow-lg: 0 12px 20px -3px rgba(6, 78, 59, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --radius: var(--radius-md);
+      --shadow: var(--shadow-md);
+      --accent-hover: var(--accent-dark);
+      --border-dark: var(--border-strong);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -71,7 +58,7 @@
     .sidebar {
       width: 280px;
       background: var(--primary);
-      color: #ffffff;
+      color: var(--text-inverse);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
@@ -147,7 +134,7 @@
       height: 36px;
       border-radius: 50%;
       background: var(--accent);
-      color: var(--primary-dark);
+      color: var(--text);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -164,7 +151,7 @@
     .user-name {
       font-size: 0.85rem;
       font-weight: 600;
-      color: #ffffff;
+      color: var(--text-inverse);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -222,17 +209,17 @@
     }
 
     .nav-item:hover {
-      color: #ffffff;
+      color: var(--text-inverse);
       background: rgba(255, 255, 255, 0.08);
     }
 
     .nav-item:hover .nav-icon {
-      color: #ffffff;
+      color: var(--text-inverse);
       transform: scale(1.08);
     }
 
     .nav-item.active {
-      color: #ffffff;
+      color: var(--text-inverse);
       background: rgba(255, 255, 255, 0.14);
       font-weight: 600;
     }
@@ -271,7 +258,7 @@
     }
     #btn-actualizar-global:hover {
       background: rgba(255, 255, 255, 0.12);
-      color: #fff;
+      color: var(--text-inverse);
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -293,7 +280,7 @@
     .mobile-header {
       display: none;
       background: var(--primary);
-      color: #fff;
+      color: var(--text-inverse);
       padding: 7px 12px;
       align-items: center;
       justify-content: space-between;
@@ -311,7 +298,7 @@
     .mobile-menu-btn {
       background: none;
       border: none;
-      color: #fff;
+      color: var(--text-inverse);
       font-size: 1.45rem;
       cursor: pointer;
       display: flex;
@@ -365,7 +352,7 @@
       border-radius: 50%;
       border: 2px solid rgba(255, 255, 255, .9);
       object-fit: cover;
-      background: #fff;
+      background: var(--card-bg);
       box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
     }
     .mobile-backdrop {
@@ -403,7 +390,7 @@
     .tab-title {
       font-size: 1.35rem;
       font-weight: 700;
-      color: var(--primary-dark);
+      color: var(--text);
       display: flex;
       align-items: center;
       gap: 10px;
@@ -414,7 +401,7 @@
       color: var(--text-muted);
     }
 
-    .evento-no-incapacidad { color: #a16207; font-weight: 700; }
+    .evento-no-incapacidad { color: var(--warning-dark); font-weight: 700; }
 
     .tab-actions {
       display: flex;
@@ -442,18 +429,18 @@
 
     .btn-accent {
       background: var(--accent);
-      color: #ffffff;
-      box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+      color: var(--accent-contrast);
+      box-shadow: 0 4px 10px var(--accent-soft);
     }
     .btn-accent:hover {
       background: var(--accent-hover);
       transform: translateY(-1px);
     }
 
-    .btn-primary { background: var(--primary); color: #ffffff; }
+    .btn-primary { background: var(--primary); color: var(--text-inverse); }
     .btn-primary:hover { background: var(--primary-light); }
-    .btn-secondary { background: #f1f5f9; color: #334155; border-color: var(--border-dark); }
-    .btn-secondary:hover { background: #e2e8f0; color: #0f172a; }
+    .btn-secondary { background: var(--bg-elevated); color: var(--text); border-color: var(--border-dark); }
+    .btn-secondary:hover { background: var(--border); color: var(--text); }
     .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; }
 
     /* ══════════════════════════════════════════════════════════
@@ -477,7 +464,7 @@
       user-select: none;
       font-size: 0.82rem;
       font-weight: 700;
-      color: var(--primary);
+      color: var(--text);
       text-transform: uppercase;
       letter-spacing: 0.8px;
     }
@@ -493,7 +480,7 @@
       align-items: center;
       justify-content: center;
       background: var(--accent);
-      color: #fff;
+      color: var(--accent-contrast);
       border-radius: 999px;
       font-size: 0.7rem;
       font-weight: 700;
@@ -505,7 +492,7 @@
     .filtros-chevron {
       display: inline-block;
       transition: transform 0.2s ease;
-      color: var(--primary);
+      color: var(--text);
       font-size: 0.95rem;
     }
 
@@ -547,7 +534,7 @@
       border-radius: 6px;
       font-size: 0.88rem;
       color: var(--text);
-      background: #ffffff;
+      background: var(--card-bg);
       transition: var(--transition);
       font-family: inherit;
     }
@@ -605,8 +592,8 @@
     }
 
     table.data-table th {
-      background: #f8fafc;
-      color: #334155;
+      background: var(--bg);
+      color: var(--text);
       font-weight: 700;
       padding: 10px 12px;
       border-bottom: 2px solid var(--border);
@@ -627,8 +614,8 @@
     }
 
     table.data-table th.sortable:hover {
-      background: #eff6ff;
-      color: var(--primary);
+      background: var(--info-soft);
+      color: var(--text);
     }
 
     .th-content {
@@ -643,7 +630,7 @@
 
     .sort-icon {
       font-size: 0.75rem;
-      color: #94a3b8;
+      color: var(--text-muted);
       transition: color 0.15s;
       flex-shrink: 0;
     }
@@ -672,9 +659,9 @@
     table.data-table td {
       padding: 10px 12px;
       border-bottom: 1px solid var(--border);
-      border-right: 1px solid #f1f5f9;
+      border-right: 1px solid var(--border);
       color: var(--text);
-      background: #ffffff;
+      background: var(--card-bg);
       vertical-align: middle;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -687,11 +674,11 @@
     }
 
     table.data-table tbody tr:hover td {
-      background: #f8fafc;
+      background: var(--bg);
     }
 
     table.data-table tbody tr.selected td {
-      background: #ecfdf5;
+      background: var(--success-soft);
       border-left: 3px solid var(--accent);
     }
 
@@ -708,15 +695,19 @@
       letter-spacing: 0.3px;
     }
 
-    .badge-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-    .badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
-    .badge-danger  { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-    .badge-info    { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
-    .badge-gray    { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .badge-success { background: var(--success-soft); color: var(--success-dark); border: 1px solid var(--success-soft); }
+    .badge-warning { background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning-soft); }
+    .badge-danger  { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger-soft); }
+    .badge-info    { background: var(--info-soft); color: var(--info-dark); border: 1px solid var(--info-soft); }
+    .badge-gray    { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); }
+    /* .badge-secondary se usaba en varios renders de JS sin que existiera
+       esta clase en el CSS (bug preexistente: quedaba sin fondo/color).
+       Se define igual que .badge-gray, el neutro del sistema de badges. */
+    .badge-secondary { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); }
 
     /* Fichas de asistentes y acciones en Participación */
     .ast-card {
-      background: #ffffff;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 11px 13px;
@@ -724,7 +715,7 @@
       transition: border-color 0.15s, box-shadow 0.15s;
     }
     .ast-card:hover {
-      border-color: #cbd5e1;
+      border-color: var(--border-strong);
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
     .ast-card-header {
@@ -737,7 +728,7 @@
     .ast-card-title {
       font-size: 0.88rem;
       font-weight: 700;
-      color: var(--primary-dark);
+      color: var(--text);
     }
     .ast-card-sub {
       font-size: 0.75rem;
@@ -746,7 +737,7 @@
     }
     .ast-card-contact {
       font-size: 0.74rem;
-      color: #64748b;
+      color: var(--text-muted);
       margin-top: 4px;
       display: flex;
       gap: 12px;
@@ -779,37 +770,37 @@
       transform: translateY(-1px);
     }
     .btn-ast-datos {
-      background: #f1f5f9;
-      color: #334155;
-      border-color: #cbd5e1;
+      background: var(--bg-elevated);
+      color: var(--text);
+      border-color: var(--border-strong);
     }
     .btn-ast-datos:hover {
-      background: #e2e8f0;
-      color: #0f172a;
+      background: var(--border);
+      color: var(--text);
     }
     .btn-ast-whatsapp {
       background: #25d366;
-      color: #ffffff;
+      color: var(--text-inverse);
     }
     .btn-ast-whatsapp:hover {
       background: #1da851;
       box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3);
     }
     .btn-ast-email {
-      background: #2563eb;
-      color: #ffffff;
+      background: var(--info);
+      color: var(--text-inverse);
     }
     .btn-ast-email:hover {
-      background: #1d4ed8;
-      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+      background: var(--info-dark);
+      box-shadow: 0 2px 6px var(--info-soft);
     }
     .btn-ast-copy {
-      background: #0284c7;
-      color: #ffffff;
+      background: var(--primary-light);
+      color: var(--text-inverse);
     }
     .btn-ast-copy:hover {
-      background: #0369a1;
-      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+      background: var(--primary);
+      box-shadow: 0 2px 6px rgba(0, 11, 89, 0.3);
     }
     .btn-ast-action[disabled], .btn-ast-action.disabled {
       opacity: 0.45;
@@ -820,9 +811,9 @@
     }
 
     /* Badges de firma específicas de Participación */
-    .badge-firma-aceptada { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-    .badge-firma-prefilled { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
-    .badge-firma-sin { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-firma-aceptada { background: var(--success-soft); color: var(--success-dark); border: 1px solid var(--success-soft); }
+    .badge-firma-prefilled { background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning-soft); }
+    .badge-firma-sin { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger-soft); }
 
     /* Galería de evidencias */
     .evidencias-grid {
@@ -896,7 +887,7 @@
     .detail-title {
       font-size: 1.05rem;
       font-weight: 700;
-      color: var(--primary-dark);
+      color: var(--text);
     }
 
     .detail-close {
@@ -911,7 +902,7 @@
     }
 
     .detail-close:hover {
-      background: #f1f5f9;
+      background: var(--bg-elevated);
       color: var(--text);
     }
 
@@ -922,7 +913,7 @@
     }
 
     .detail-section {
-      background: #f8fafc;
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 12px 14px;
@@ -932,7 +923,7 @@
       font-size: 0.75rem;
       font-weight: 700;
       text-transform: uppercase;
-      color: var(--primary);
+      color: var(--text);
       margin-bottom: 8px;
       letter-spacing: 0.5px;
     }
@@ -978,9 +969,9 @@
       transition: var(--transition);
     }
 
-    .subtab-btn:hover { color: var(--primary); }
+    .subtab-btn:hover { color: var(--text); }
     .subtab-btn.active {
-      color: var(--primary);
+      color: var(--text);
       border-bottom-color: var(--accent);
       font-weight: 700;
     }
@@ -1001,7 +992,7 @@
     }
 
     .modal-content.modal-form-large {
-      background: #ffffff;
+      background: var(--card-bg);
       border-radius: var(--radius);
       width: 100%;
       max-width: 900px;
@@ -1019,13 +1010,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #f8fafc;
+      background: var(--bg);
     }
 
     .modal-title {
       font-size: 1.1rem;
       font-weight: 700;
-      color: var(--primary-dark);
+      color: var(--text);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -1062,7 +1053,7 @@
     .loading-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(255, 255, 255, 0.75);
+      background: var(--card-bg);
       display: none;
       align-items: center;
       justify-content: center;
@@ -1097,7 +1088,7 @@
       border-radius: var(--radius-sm);
       font-size: 0.88rem;
       font-weight: 600;
-      color: #fff;
+      color: var(--text-inverse);
       box-shadow: var(--shadow-lg);
       animation: slideIn 0.25s ease-out;
       display: flex;
@@ -1105,9 +1096,9 @@
       gap: 8px;
     }
 
-    .toast.success { background: #16a34a; }
-    .toast.error   { background: #dc2626; }
-    .toast.info    { background: #0284c7; }
+    .toast.success { background: var(--success); }
+    .toast.error   { background: var(--danger); }
+    .toast.info    { background: var(--info); }
 
     @keyframes slideIn {
       from { transform: translateX(100%); opacity: 0; }
@@ -1118,7 +1109,7 @@
        ESTILOS PARA PESTAÑA CASOS MÉDICOS
     ══════════════════════════════════════════════════════════ */
     .cm-worker-summary {
-      background: #f8fafc;
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 14px;
@@ -1133,7 +1124,7 @@
       margin-bottom: 10px;
     }
     .cm-case-card {
-      background: #ffffff;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 14px;
@@ -1143,7 +1134,7 @@
       position: relative;
     }
     .cm-case-card:hover {
-      border-color: #cbd5e1;
+      border-color: var(--border-strong);
       box-shadow: 0 4px 10px rgba(0,0,0,0.06);
     }
     .cm-case-card.abierto {
@@ -1161,22 +1152,22 @@
       flex-wrap: wrap;
       margin-bottom: 10px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--border);
     }
     .cm-codigo-badge {
-      background: #f0fdf4;
-      color: #166534;
-      border: 1px solid #bbf7d0;
+      background: var(--success-soft);
+      color: var(--success-dark);
+      border: 1px solid var(--success-soft);
       font-weight: 800;
       font-size: 0.82rem;
       padding: 3px 8px;
       border-radius: 6px;
       letter-spacing: 0.5px;
     }
-    .badge-critica { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-    .badge-alta    { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
-    .badge-media   { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
-    .badge-baja    { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+    .badge-critica { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger-soft); }
+    .badge-alta    { background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning-soft); }
+    .badge-media   { background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning-soft); }
+    .badge-baja    { background: var(--info-soft); color: var(--info-dark); border: 1px solid var(--info-soft); }
 
     .cm-info-grid {
       display: grid;
@@ -1200,7 +1191,7 @@
       font-weight: 600;
     }
     .cm-diagnostico-box {
-      background: #f8fafc;
+      background: var(--bg);
       border-radius: 6px;
       padding: 8px 12px;
       font-size: 0.83rem;
@@ -1208,12 +1199,12 @@
       border-left: 3px solid var(--accent);
     }
     .cm-recomendaciones-box {
-      background: #fffbeb;
-      border: 1px solid #fef3c7;
+      background: var(--warning-soft);
+      border: 1px solid var(--warning-soft);
       border-radius: 6px;
       padding: 10px 12px;
       font-size: 0.82rem;
-      color: #78350f;
+      color: var(--warning-dark);
       margin-bottom: 10px;
     }
     .cm-autocomplete-dropdown {
@@ -1221,7 +1212,7 @@
       top: 100%;
       left: 0;
       right: 0;
-      background: #ffffff;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 6px;
       max-height: 220px;
@@ -1234,12 +1225,12 @@
       padding: 8px 12px;
       font-size: 0.84rem;
       cursor: pointer;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--border);
       transition: background 0.15s;
     }
     .cm-autocomplete-item:hover {
-      background: #ecfdf5;
-      color: var(--primary);
+      background: var(--success-soft);
+      color: var(--text);
     }
 
     /* ═════ EXPEDIENTE MÉDICO Y BITÁCORAS ═════ */
@@ -1255,14 +1246,14 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      background: #ffffff;
+      background: var(--card-bg);
       padding: 12px 18px;
       border-radius: var(--radius);
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
     }
     .cm-hero-card {
-      background: #ffffff;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 18px 20px;
@@ -1281,7 +1272,7 @@
     .cm-hero-title {
       font-size: 1.25rem;
       font-weight: 800;
-      color: var(--primary);
+      color: var(--text);
       margin: 0;
       line-height: 1.2;
     }
@@ -1294,10 +1285,10 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 10px 16px;
-      background: #f8fafc;
+      background: var(--bg);
       padding: 14px;
       border-radius: 8px;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--border);
       font-size: 0.83rem;
     }
     .cm-hero-meta-grid .lbl {
@@ -1315,8 +1306,8 @@
     /* Bitácora dentro de la tarjeta de caso */
     .cm-bitacora-box {
       margin-top: 14px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 8px;
       padding: 14px;
     }
@@ -1331,7 +1322,7 @@
     .cm-bitacora-header-title {
       font-weight: 700;
       font-size: 0.88rem;
-      color: #334155;
+      color: var(--text);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -1342,15 +1333,15 @@
       gap: 10px;
     }
     .cm-bitacora-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 12px 14px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.02);
       transition: all 0.15s ease;
     }
     .cm-bitacora-card:hover {
-      border-color: #cbd5e1;
+      border-color: var(--border-strong);
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     .cm-bitacora-card-top {
@@ -1361,7 +1352,7 @@
       flex-wrap: wrap;
       margin-bottom: 8px;
       padding-bottom: 6px;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--border);
       font-size: 0.8rem;
     }
     .cm-contact-badge {
@@ -1372,16 +1363,16 @@
       border-radius: 12px;
       font-weight: 600;
       font-size: 0.75rem;
-      background: #eff6ff;
-      color: #1d4ed8;
-      border: 1px solid #bfdbfe;
+      background: var(--info-soft);
+      color: var(--info-dark);
+      border: 1px solid var(--info-soft);
     }
-    .badge-res-cumplido { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-    .badge-res-pendiente { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
-    .badge-res-escalado { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-    .badge-res-finalizado { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-    .badge-res-reprogramado { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
-    .badge-res-sin-respuesta { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+    .badge-res-cumplido { background: var(--success-soft); color: var(--success-dark); border: 1px solid var(--success-soft); }
+    .badge-res-pendiente { background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning-soft); }
+    .badge-res-escalado { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger-soft); }
+    .badge-res-finalizado { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border-strong); }
+    .badge-res-reprogramado { background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning-soft); }
+    .badge-res-sin-respuesta { background: var(--info-soft); color: var(--info-dark); border: 1px solid var(--info-soft); }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(4px); }
@@ -1412,7 +1403,7 @@
         transform: translateX(-100%);
         transition: transform .25s ease;
         z-index: 200;
-        box-shadow: 4px 0 20px rgba(6, 78, 59, 0.35);
+        box-shadow: 4px 0 20px rgba(0, 11, 89, 0.35);
       }
       .sidebar.open {
         transform: translateX(0);
@@ -1654,9 +1645,9 @@
       width: 40px;
       height: 40px;
       border-radius: var(--radius-sm);
-      background: #ffffff;
+      background: var(--card-bg);
       border: 1px solid var(--border);
-      color: #475569;
+      color: var(--text-muted);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1667,16 +1658,16 @@
     }
 
     .btn-notif-bell:hover {
-      background: #f8fafc;
+      background: var(--bg);
       border-color: var(--border-dark);
-      color: var(--primary);
+      color: var(--text);
       transform: translateY(-1px);
     }
 
     .btn-notif-bell.active {
       background: var(--accent-soft);
       border-color: var(--accent);
-      color: var(--primary-light);
+      color: var(--text);
     }
 
     .btn-notif-bell svg {
@@ -1697,16 +1688,16 @@
       height: 19px;
       padding: 0 5px;
       border-radius: 10px;
-      background: #ef4444;
-      color: #ffffff;
+      background: var(--danger);
+      color: var(--text-inverse);
       font-size: 0.68rem;
       font-weight: 700;
       line-height: 1;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45);
-      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px var(--danger-soft);
+      border: 2px solid var(--card-bg);
       pointer-events: none;
       animation: notifBadgePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
@@ -1723,7 +1714,7 @@
       right: 0;
       width: 390px;
       max-width: calc(100vw - 32px);
-      background: #ffffff;
+      background: var(--card-bg);
       border-radius: var(--radius);
       border: 1px solid var(--border);
       box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.15), 0 4px 6px -2px rgba(15, 23, 42, 0.05);
@@ -1741,7 +1732,7 @@
 
     .notif-dropdown-header {
       padding: 12px 16px;
-      background: #f8fafc;
+      background: var(--bg);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -1755,12 +1746,12 @@
       gap: 8px;
       font-weight: 700;
       font-size: 0.92rem;
-      color: #0f172a;
+      color: var(--text);
     }
 
     .notif-header-pill {
-      background: rgba(16, 185, 129, 0.15);
-      color: #065f46;
+      background: var(--success-soft);
+      color: var(--success-dark);
       font-size: 0.72rem;
       font-weight: 700;
       padding: 2px 7px;
@@ -1770,7 +1761,7 @@
     .btn-mark-all-read {
       background: transparent;
       border: none;
-      color: #2563eb;
+      color: var(--info);
       font-size: 0.76rem;
       font-weight: 600;
       cursor: pointer;
@@ -1783,8 +1774,8 @@
     }
 
     .btn-mark-all-read:hover {
-      background: #eff6ff;
-      color: #1d4ed8;
+      background: var(--info-soft);
+      color: var(--info-dark);
     }
 
     .notif-dropdown-body {
@@ -1798,19 +1789,19 @@
       width: 6px;
     }
     .notif-dropdown-body::-webkit-scrollbar-track {
-      background: #f8fafc;
+      background: var(--bg);
     }
     .notif-dropdown-body::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+      background: var(--border-strong);
       border-radius: 3px;
     }
     .notif-dropdown-body::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+      background: var(--text-muted);
     }
 
     .notif-item {
       padding: 12px 16px;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: flex-start;
       gap: 12px;
@@ -1821,16 +1812,16 @@
     }
 
     .notif-item:hover {
-      background: #f8fafc;
+      background: var(--bg);
     }
 
     .notif-item.notif-unread {
-      background: #f0fdf4;
-      border-left-color: #10b981;
+      background: var(--accent-soft);
+      border-left-color: var(--accent);
     }
 
     .notif-item.notif-read {
-      background: #ffffff;
+      background: var(--card-bg);
       border-left-color: transparent;
     }
 
@@ -1838,10 +1829,10 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #10b981;
+      background: var(--accent);
       flex-shrink: 0;
       margin-top: 6px;
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+      box-shadow: 0 0 0 3px var(--accent-soft);
       transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
@@ -1869,7 +1860,7 @@
     .notif-worker-name {
       font-size: 0.86rem;
       font-weight: 700;
-      color: #1e293b;
+      color: var(--text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1877,14 +1868,14 @@
 
     .notif-item-time {
       font-size: 0.72rem;
-      color: #94a3b8;
+      color: var(--text-muted);
       white-space: nowrap;
       flex-shrink: 0;
     }
 
     .notif-item-sub {
       font-size: 0.78rem;
-      color: #64748b;
+      color: var(--text-muted);
       line-height: 1.35;
     }
 
@@ -1908,43 +1899,43 @@
     }
 
     .notif-tag-aprobado {
-      background: #dcfce7;
-      color: #15803d;
-      border: 1px solid #bbf7d0;
+      background: var(--success-soft);
+      color: var(--success-dark);
+      border: 1px solid var(--success-soft);
     }
 
     .notif-tag-reprobado {
-      background: #fee2e2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
+      background: var(--danger-soft);
+      color: var(--danger-dark);
+      border: 1px solid var(--danger-soft);
     }
 
     .notif-tag-info {
-      background: #e0e7ff;
-      color: #4338ca;
-      border: 1px solid #c7d2fe;
+      background: var(--info-soft);
+      color: var(--info-dark);
+      border: 1px solid var(--info-soft);
     }
 
     .notif-tag-warning {
-      background: #fef3c7;
-      color: #b45309;
-      border: 1px solid #fde68a;
+      background: var(--warning-soft);
+      color: var(--warning-dark);
+      border: 1px solid var(--warning-soft);
     }
 
     .notif-tag-muted {
-      background: #f1f5f9;
-      color: #475569;
-      border: 1px solid #e2e8f0;
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
       font-weight: 500;
     }
 
     .notif-dropdown-footer {
       padding: 9px 16px;
-      background: #f8fafc;
+      background: var(--bg);
       border-top: 1px solid var(--border);
       text-align: center;
       font-size: 0.73rem;
-      color: #64748b;
+      color: var(--text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1954,7 +1945,7 @@
     .notif-empty {
       padding: 38px 20px;
       text-align: center;
-      color: #94a3b8;
+      color: var(--text-muted);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1969,7 +1960,7 @@
     .notif-empty p {
       font-size: 0.84rem;
       margin: 0;
-      color: #64748b;
+      color: var(--text-muted);
     }
 
     /* Campana de notificaciones en móvil: en escritorio el panel se posiciona
@@ -2446,7 +2437,7 @@
       <div id="cap-subview-temas" style="display: none;">
         <div class="table-card" style="padding: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 style="font-size: 1.1rem; color: var(--primary);">Banco de Temas y Preguntas de Capacitación</h3>
+            <h3 style="font-size: 1.1rem; color: var(--text);">Banco de Temas y Preguntas de Capacitación</h3>
             <a href="#" id="link-admin-cap-full" target="_blank" class="btn btn-secondary btn-sm">Abrir Administrador Completo ↗</a>
           </div>
           <div id="cap-temas-container">
@@ -3012,7 +3003,7 @@
 
         <!-- Encabezado de la Sección de Casos -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-          <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+          <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px;">
             <span>📋</span> Casos Médicos Registrados
             <span class="badge badge-info" id="cm-badge-total-casos-expediente">0</span>
           </h2>
@@ -3089,16 +3080,16 @@
 
   <!-- Modal Editar Contacto Asistente (Participación) -->
   <div class="modal-overlay" id="modal-contacto-part">
-    <div class="modal-content" style="max-width: 480px; width: 92%; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
+    <div class="modal-content" style="max-width: 480px; width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
-        <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">✏️ Editar Contacto de Asistente</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text);">✏️ Editar Contacto de Asistente</div>
         <button type="button" class="modal-close" onclick="cerrarModalContactoParticipacion()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
       </div>
       <form id="form-contacto-part" onsubmit="guardarContactoParticipacion(event)">
         <input type="hidden" id="modal-contacto-part-id">
         <div style="margin-bottom: 14px;">
           <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Nombre del Colaborador</label>
-          <input type="text" id="modal-contacto-part-nombre" readonly style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: #f1f5f9; color: var(--text-main); font-size: 0.88rem; outline: none;">
+          <input type="text" id="modal-contacto-part-nombre" readonly style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated); color: var(--text); font-size: 0.88rem; outline: none;">
         </div>
         <div style="margin-bottom: 14px;">
           <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Teléfono Celular (10 dígitos)</label>
@@ -3119,39 +3110,39 @@
   <!-- Lightbox Modal (Participación) -->
   <div class="modal-overlay" id="modal-lightbox-part" onclick="cerrarLightboxParticipacion()">
     <div style="max-width: 85vw; max-height: 85vh; position: relative;" onclick="event.stopPropagation()">
-      <button onclick="cerrarLightboxParticipacion()" style="position: absolute; top: -14px; right: -14px; z-index: 10; background: #dc2626; color: #fff; border: 2px solid #fff; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">✕</button>
+      <button onclick="cerrarLightboxParticipacion()" style="position: absolute; top: -14px; right: -14px; z-index: 10; background: var(--danger); color: var(--text-inverse); border: 2px solid var(--text-inverse); border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">✕</button>
       <img id="lightbox-part-img" src="" class="modal-lightbox-img" style="max-width: 85vw; max-height: 85vh; object-fit: contain; border-radius: 8px; display: block;">
     </div>
   </div>
 
   <!-- Modal para Firma de Analista SST (Compromiso SST) -->
   <div class="modal-overlay" id="modal-firmar-analista-csst" onclick="if(event.target === this) cerrarModalFirmaAnalistaCsst();">
-    <div style="background: #ffffff; width: 100%; max-width: 500px; padding: 24px; border-radius: 12px; border-top: 5px solid #16a34a; position: relative; margin: auto; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+    <div style="background: var(--card-bg); width: 100%; max-width: 500px; padding: 24px; border-radius: 12px; border-top: 5px solid var(--success); position: relative; margin: auto; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
       <button onclick="cerrarModalFirmaAnalistaCsst()" style="position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--text-muted); line-height: 1;">✕</button>
-      <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 6px;">Firma del Analista SST</div>
-      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">Dibuja tu firma a continuación para autorizar el Compromiso SST como Analista:</p>
+      <div style="font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 6px;">Firma del Analista SST</div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Dibuja tu firma a continuación para autorizar el Compromiso SST como Analista:</p>
 
       <!-- Sección firma prellenada (si existe en GCS) -->
-      <div id="modal-csst-prefilled-section" style="display: none; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-        <p style="color: #15803d; font-weight: 600; font-size: 0.85rem; margin-bottom: 10px;">Tienes una firma registrada en el sistema:</p>
-        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; display: inline-block; padding: 6px; margin-bottom: 12px;">
+      <div id="modal-csst-prefilled-section" style="display: none; background: var(--success-soft); border: 1.5px solid var(--success-soft); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+        <p style="color: var(--success-dark); font-weight: 600; font-size: 0.85rem; margin-bottom: 10px;">Tienes una firma registrada en el sistema:</p>
+        <div style="background: var(--card-bg); border: 1px solid var(--border-strong); border-radius: 6px; display: inline-block; padding: 6px; margin-bottom: 12px;">
           <img id="modal-csst-prefilled-img" src="" style="max-height: 75px; max-width: 100%; display: block;" alt="Firma registrada">
         </div>
         <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-          <button type="button" class="btn btn-sm" id="btn-csst-usar-prefilled" style="background: #16a34a; color: #fff; font-weight: 600;">Usar firma registrada</button>
+          <button type="button" class="btn btn-sm" id="btn-csst-usar-prefilled" style="background: var(--success); color: var(--text-inverse); font-weight: 600;">Usar firma registrada</button>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-csst-dibujar-nueva">Dibujar otra firma...</button>
         </div>
       </div>
 
       <!-- Sección dibujar firma (lienzo canvas) -->
       <div id="modal-csst-canvas-section">
-        <div style="border: 2px dashed #cbd5e1; border-radius: 8px; background: #fafafa; margin-bottom: 16px; position: relative; overflow: hidden; height: 180px;">
+        <div style="border: 2px dashed var(--border-strong); border-radius: 8px; background: var(--bg); margin-bottom: 16px; position: relative; overflow: hidden; height: 180px;">
           <canvas id="canvas-firma-csst" width="450" height="180" style="cursor: crosshair; display: block; width: 100%; height: 100%;"></canvas>
         </div>
         <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
           <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalFirmaAnalistaCsst()">Cancelar</button>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-csst-limpiar-canvas">Limpiar</button>
-          <button type="button" class="btn btn-sm" id="btn-csst-guardar-canvas" style="background: #16a34a; color: #fff; font-weight: 600;">Confirmar Firma</button>
+          <button type="button" class="btn btn-sm" id="btn-csst-guardar-canvas" style="background: var(--success); color: var(--text-inverse); font-weight: 600;">Confirmar Firma</button>
         </div>
       </div>
     </div>
@@ -3172,8 +3163,8 @@
           <input type="hidden" id="cm-hidden-caso-id">
 
           <!-- 1. SELECCIÓN / DATOS DEL TRABAJADOR -->
-          <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--text); font-size: 0.9rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
               <span>👤</span> Información del Colaborador
             </div>
 
@@ -3188,50 +3179,50 @@
             <div class="filters-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Nombre</label>
-                <input type="text" class="form-control" id="cm-view-nombre" readonly style="background: #f1f5f9; font-weight: 600;">
+                <input type="text" class="form-control" id="cm-view-nombre" readonly style="background: var(--bg-elevated); font-weight: 600;">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Identificación</label>
-                <input type="text" class="form-control" id="cm-view-identificacion" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-identificacion" readonly style="background: var(--bg-elevated);">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Cargo</label>
-                <input type="text" class="form-control" id="cm-view-cargo" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-cargo" readonly style="background: var(--bg-elevated);">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Regional</label>
-                <input type="text" class="form-control" id="cm-view-regional" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-regional" readonly style="background: var(--bg-elevated);">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Operación</label>
-                <input type="text" class="form-control" id="cm-view-operacion" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-operacion" readonly style="background: var(--bg-elevated);">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Fecha Ingreso</label>
-                <input type="text" class="form-control" id="cm-view-fecha-ingreso" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-fecha-ingreso" readonly style="background: var(--bg-elevated);">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Antigüedad</label>
-                <input type="text" class="form-control" id="cm-view-antiguedad" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-antiguedad" readonly style="background: var(--bg-elevated);">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Edad</label>
-                <input type="text" class="form-control" id="cm-view-edad" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-edad" readonly style="background: var(--bg-elevated);">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">EPS</label>
-                <input type="text" class="form-control" id="cm-view-eps" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-eps" readonly style="background: var(--bg-elevated);">
               </div>
               <div>
                 <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">AFP (Pensión)</label>
-                <input type="text" class="form-control" id="cm-view-afp" readonly style="background: #f1f5f9;">
+                <input type="text" class="form-control" id="cm-view-afp" readonly style="background: var(--bg-elevated);">
               </div>
             </div>
           </div>
 
           <!-- 2. CLASIFICACIÓN DEL CASO -->
-          <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--text); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <span>📑</span> Clasificación y Prioridad
             </div>
             <div class="filters-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
@@ -3278,8 +3269,8 @@
                   <option value="">Selecciona origen...</option>
                 </select>
               </div>
-              <div class="form-group" id="cm-group-cierre" style="display: none; grid-column: 1 / -1; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 10px 12px; margin-top: 4px;">
-                <div style="font-weight: 700; color: #9f1239; font-size: 0.82rem; margin-bottom: 8px;">
+              <div class="form-group" id="cm-group-cierre" style="display: none; grid-column: 1 / -1; background: var(--danger-soft); border: 1px solid var(--danger-soft); border-radius: 6px; padding: 10px 12px; margin-top: 4px;">
+                <div style="font-weight: 700; color: var(--danger-dark); font-size: 0.82rem; margin-bottom: 8px;">
                   🔒 Información de Cierre del Caso
                 </div>
                 <div class="filters-grid" style="grid-template-columns: 1fr 2fr; gap: 10px;">
@@ -3297,8 +3288,8 @@
           </div>
 
           <!-- 3. DIAGNÓSTICO CIE-10 Y CLÍNICOS -->
-          <div id="cm-group-diagnostico" style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <div id="cm-group-diagnostico" style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--text); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <span>🩺</span> Diagnóstico CIE-10 y Evento
             </div>
             <div style="margin-bottom: 14px; position: relative;">
@@ -3306,7 +3297,7 @@
               <input type="text" class="form-control" id="cm-input-diag-search" placeholder="Ej: M545, Lumbago, Tunel del carpo..." autocomplete="off" oninput="buscarDiagnosticosCie10(this.value)">
               <input type="hidden" id="cm-hidden-diagnostico">
               <div class="cm-autocomplete-dropdown" id="cm-diag-dropdown"></div>
-              <div id="cm-selected-diag-badge" style="display: none; margin-top: 6px; padding: 6px 10px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 0.82rem; color: #065f46; font-weight: 600;"></div>
+              <div id="cm-selected-diag-badge" style="display: none; margin-top: 6px; padding: 6px 10px; background: var(--success-soft); border: 1px solid var(--success-soft); border-radius: 6px; font-size: 0.82rem; color: var(--success-dark); font-weight: 600;"></div>
             </div>
 
             <div class="filters-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
@@ -3326,8 +3317,8 @@
           </div>
 
           <!-- 4. RECOMENDACIONES Y FECHAS -->
-          <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--text); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <span>📝</span> Recomendaciones y Restricciones Médicas
             </div>
             <div class="form-group" style="margin-bottom: 12px;">
@@ -3347,8 +3338,8 @@
           </div>
 
           <!-- 5. GESTIÓN, RESPONSABLES Y SEGUIMIENTO -->
-          <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
-            <div style="font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+            <div style="font-weight: 700; color: var(--text); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <span>📋</span> Puesto de Trabajo y Seguimiento
             </div>
             <div class="filters-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -3421,8 +3412,8 @@
           <input type="hidden" id="cm-bitacora-identificacion">
 
           <!-- Encabezado informativo del caso y colaborador -->
-          <div style="background: #f1f5f9; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
-            <div style="font-weight: 700; color: var(--primary); font-size: 0.92rem;" id="modal-cm-bitacora-caso-cod">Caso Médico</div>
+          <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
+            <div style="font-weight: 700; color: var(--text); font-size: 0.92rem;" id="modal-cm-bitacora-caso-cod">Caso Médico</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;" id="modal-cm-bitacora-trabajador">Colaborador</div>
           </div>
 
@@ -3481,7 +3472,7 @@
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loading-overlay">
     <div class="spinner"></div>
-    <div id="loading-text" style="font-weight: 600; color: var(--primary);">Cargando datos...</div>
+    <div id="loading-text" style="font-weight: 600; color: var(--text);">Cargando datos...</div>
   </div>
 
   <!-- Toast Container -->
@@ -4044,8 +4035,8 @@
 
       if (pill) {
         pill.textContent = count > 0 ? `${count} no leída${count > 1 ? 's' : ''}` : '0 pendientes';
-        pill.style.background = count > 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.15)';
-        pill.style.color = count > 0 ? '#b91c1c' : '#065f46';
+        pill.style.background = count > 0 ? 'var(--danger-soft)' : 'var(--success-soft)';
+        pill.style.color = count > 0 ? 'var(--danger-dark)' : 'var(--success-dark)';
       }
     }
 
@@ -5009,12 +5000,12 @@
           const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Inducción/Reinducción SST: ${urlFirma}`);
           let cel = String(it.celular_trabajador || '').replace(/\D/g, '');
           if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
-          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:var(--text-inverse); font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
         }
 
         const pdfLink = it.url_doc
-          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">📄 Abrir PDF</a>`
-          : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--text); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:var(--text-muted); font-style:italic;">Pendiente</span>';
 
         return `
           <tr onclick="abrirDetalleEvaluacion('${it.id_evaluacion}')" id="row-ev-${it.id_evaluacion}">
@@ -5056,7 +5047,7 @@
       if (!item.url_doc) {
         actionsHtml = `
           <div class="detail-actions">
-            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366;">
+            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366; color:var(--text-inverse);">
               📲 Enviar por WhatsApp
             </a>
             <button class="btn btn-secondary btn-sm" onclick="copiarPortapapeles('${urlFirma}')">
@@ -5069,7 +5060,7 @@
               ✉️ Reenviar Notificación por Correo
             </button>
             ${puedeEliminarRegistro(item, 'ev') ? `
-              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('ev', '${item.id_evaluacion}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('ev', '${item.id_evaluacion}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
                 🗑️ Eliminar Registro
               </button>
             ` : ''}
@@ -5216,19 +5207,19 @@
           const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para responder tu Evaluación de Capacitación SST (${it.tema}): ${urlFirma}`);
           let cel = String(it.celular_trabajador || '').replace(/\D/g, '');
           if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
-          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:var(--text-inverse); font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
         }
 
         const pdfLink = it.url_doc
-          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">📄 Abrir PDF</a>`
-          : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--text); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:var(--text-muted); font-style:italic;">Pendiente</span>';
 
         return `
           <tr onclick="abrirDetalleCapacitacion('${it.id_capacitacion}')" id="row-cap-${it.id_capacitacion}">
             <td><div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">${pdfLink}${waBtn !== '—' ? waBtn : ''}</div></td>
             <td><strong>${fechaFmt}</strong></td>
             <td><strong>${nombreTrabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cedula}</small></td>
-            <td><strong style="color:var(--primary);">${it.tema || '—'}</strong></td>
+            <td><strong style="color:var(--text);">${it.tema || '—'}</strong></td>
             <td><strong>${it.puntaje !== null && it.puntaje !== undefined ? it.puntaje + ' / 100' : '—'}</strong></td>
             <td>${resultBadge}</td>
             <td>${evaluador}</td>
@@ -5262,7 +5253,7 @@
       if (!item.url_doc) {
         actionsHtml = `
           <div class="detail-actions">
-            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366;">
+            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366; color:var(--text-inverse);">
               📲 Enviar por WhatsApp
             </a>
             <button class="btn btn-secondary btn-sm" onclick="copiarPortapapeles('${urlFirma}')">
@@ -5275,7 +5266,7 @@
               ✉️ Reenviar Notificación por Correo
             </button>
             ${puedeEliminarRegistro(item, 'cap') ? `
-              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('cap', '${item.id_capacitacion}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('cap', '${item.id_capacitacion}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
                 🗑️ Eliminar Registro
               </button>
             ` : ''}
@@ -5304,7 +5295,7 @@
 
         <div class="detail-section">
           <div class="detail-section-title">Detalles de Capacitación</div>
-          <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--primary);">${item.tema || '—'}</span></div>
+          <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--text);">${item.tema || '—'}</span></div>
           <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
           <div class="detail-row"><span class="label">Puntaje:</span><span class="value" style="color:var(--accent-hover);">${item.puntaje !== null && item.puntaje !== undefined ? item.puntaje + ' / 100' : 'Pendiente respuesta'}</span></div>
           <div class="detail-row"><span class="label">Resultado:</span><span class="value">${item.url_doc ? item.resultado : 'Pendiente de firma'}</span></div>
@@ -5353,12 +5344,12 @@
         container.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:12px;">
             ${temas.map((t, idx) => `
-              <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:12px 16px;">
-                <div style="font-weight:700; color:var(--primary); font-size:0.95rem;">${idx + 1}. ${t.pregunta}</div>
+              <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 16px;">
+                <div style="font-weight:700; color:var(--text); font-size:0.95rem;">${idx + 1}. ${t.pregunta}</div>
                 <div style="font-size:0.82rem; color:var(--text-muted); margin-top:2px;">${t.descripcion_pregunta || ''}</div>
                 <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
                   ${(t.opciones || []).map(o => `
-                    <span style="font-size:0.75rem; padding:3px 8px; border-radius:4px; border:1px solid ${o.es_correcta ? '#10b981' : '#cbd5e1'}; background:${o.es_correcta ? '#ecfdf5' : '#fff'}; color:${o.es_correcta ? '#065f46' : '#475569'}; font-weight:${o.es_correcta ? '700' : '400'};">
+                    <span style="font-size:0.75rem; padding:3px 8px; border-radius:4px; border:1px solid ${o.es_correcta ? 'var(--accent)' : 'var(--border-strong)'}; background:${o.es_correcta ? 'var(--accent-soft)' : 'var(--card-bg)'}; color:${o.es_correcta ? 'var(--accent-dark)' : 'var(--text-muted)'}; font-weight:${o.es_correcta ? '700' : '400'};">
                       ${o.opcion} ${o.es_correcta ? '✓' : ''}
                     </span>
                   `).join('')}
@@ -5448,12 +5439,12 @@
           const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Consentimiento de Prueba de Consumo: ${urlFirma}`);
           let cel = String(it.celular_trabajador || '').replace(/\D/g, '');
           if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
-          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:var(--text-inverse); font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
         }
 
         const pdfLink = it.url_doc
-          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">📄 Abrir PDF</a>`
-          : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--text); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:var(--text-muted); font-style:italic;">Pendiente</span>';
 
         return `
           <tr onclick="abrirDetallePrueba('${it.idprueba}')" id="row-pc-${it.idprueba}">
@@ -5493,7 +5484,7 @@
       if (!item.url_doc) {
         actionsHtml = `
           <div class="detail-actions">
-            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366;">
+            <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366; color:var(--text-inverse);">
               📲 Enviar por WhatsApp
             </a>
             <button class="btn btn-secondary btn-sm" onclick="copiarPortapapeles('${urlFirma}')">
@@ -5506,7 +5497,7 @@
               ✉️ Enviar Notificación por Correo
             </button>
             ${puedeEliminarRegistro(item, 'pc') ? `
-              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('pc', '${item.idprueba}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('pc', '${item.idprueba}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
                 🗑️ Eliminar Registro
               </button>
             ` : ''}
@@ -5614,7 +5605,7 @@
         if (resp.includes(' ** ')) resp = resp.split(' ** ')[1];
 
         const btnPdf = it.url_doc
-          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">Ver PDF ↗</a>`
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--text); font-weight:700;">Ver PDF ↗</a>`
           : `<button class="btn btn-secondary btn-sm" disabled style="opacity:0.5;">Pendiente</button>`;
 
         return `
@@ -5626,7 +5617,7 @@
               </div>
             </td>
             <td><strong>${fechaFmt}</strong></td>
-            <td><strong style="color:var(--primary);">${it.tema || '—'}</strong></td>
+            <td><strong style="color:var(--text);">${it.tema || '—'}</strong></td>
             <td>${it.lugar || '—'}</td>
             <td>${resp}</td>
             <td>${duracionFmt}</td>
@@ -5674,7 +5665,7 @@
             </div>
           `;
         } else {
-          evidenciasHtml = '<div style="font-size: 0.8rem; color: #888; font-style: italic; margin-top: 6px;">Sin fotos de evidencia registradas.</div>';
+          evidenciasHtml = '<div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; margin-top: 6px;">Sin fotos de evidencia registradas.</div>';
         }
 
         // 2. Acciones globales (Creador o Sistema)
@@ -5685,7 +5676,7 @@
         if (esCreadorOSistema) {
           const btnPdfText = data.url_doc ? '🔄 Regenerar PDF (Solo Firmas Listas)' : '⚙️ Generar PDF (Solo Firmas Listas)';
           accionesGlobalesHtml += `
-            <button class="btn btn-sm" onclick="generarPDFParticipacion(${data.id_asistencia}, true)" style="background: #10b981; color: #fff; border: none; font-weight: 600;">
+            <button class="btn btn-sm" onclick="generarPDFParticipacion(${data.id_asistencia}, true)" style="background: var(--accent); color: var(--accent-contrast); border: none; font-weight: 600;">
               ${btnPdfText}
             </button>
           `;
@@ -5713,7 +5704,7 @@
 
         if (esAutorizadoEliminar && !data.url_doc) {
           accionesGlobalesHtml += `
-            <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${data.id_asistencia}')" style="background: #dc2626; color: #fff; border: none; font-weight: 600;">
+            <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${data.id_asistencia}')" style="background: var(--danger); color: var(--text-inverse); border: none; font-weight: 600;">
               🗑️ Eliminar Registro
             </button>
           `;
@@ -5802,8 +5793,8 @@
                     <div class="ast-card-title">${idx + 1}. ${cleanNombre}</div>
                     <div class="ast-card-sub">C.C. ${ast.identificacion} • ${ast.cargo || '—'} (Op: ${ast.operacion || '—'})</div>
                     <div class="ast-card-contact">
-                      <span>📱 ${ast.celular ? ast.celular : '<em style="color:#94a3b8;">Sin celular</em>'}</span>
-                      <span>✉️ ${ast.email ? ast.email : '<em style="color:#94a3b8;">Sin correo</em>'}</span>
+                      <span>📱 ${ast.celular ? ast.celular : '<em style="color:var(--text-muted);">Sin celular</em>'}</span>
+                      <span>✉️ ${ast.email ? ast.email : '<em style="color:var(--text-muted);">Sin correo</em>'}</span>
                     </div>
                   </div>
                   <div>${badgeFirma}</div>
@@ -5819,7 +5810,7 @@
         const bodyHtml = `
           <div class="detail-section">
             <div class="detail-section-title">Datos de la Actividad</div>
-            <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--primary);">${data.tema || '—'}</span></div>
+            <div class="detail-row"><span class="label">Tema:</span><span class="value" style="font-weight:700; color:var(--text);">${data.tema || '—'}</span></div>
             <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
             <div class="detail-row"><span class="label">Horario:</span><span class="value">${horaIniFmt} a ${horaFinFmt} (${duracionFmt} Hs)</span></div>
             <div class="detail-row"><span class="label">Lugar:</span><span class="value">${data.lugar || '—'}</span></div>
@@ -6105,9 +6096,9 @@
         if (it.url_doc || (it.firma_analista && it.firma_lidersst)) {
           badgeEstado = '<span class="badge badge-success">✓ Completado</span>';
         } else if (it.firma_trabajador && !it.firma_analista) {
-          badgeEstado = '<span class="badge badge-warning" style="background:#fef3c7; color:#b45309; border:1px solid #fcd34d;">⏳ Pend. Analista</span>';
+          badgeEstado = '<span class="badge badge-warning" style="background:var(--warning-soft); color:var(--warning-dark); border:1px solid var(--warning-soft);">⏳ Pend. Analista</span>';
         } else if (it.firma_trabajador && it.firma_analista && !it.firma_lidersst) {
-          badgeEstado = '<span class="badge badge-info" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">⏳ Pend. Líder</span>';
+          badgeEstado = '<span class="badge badge-info" style="background:var(--info-soft); color:var(--info-dark); border:1px solid var(--info-soft);">⏳ Pend. Líder</span>';
         } else {
           badgeEstado = '<span class="badge badge-warning">⏳ Pend. Trabajador</span>';
         }
@@ -6122,14 +6113,14 @@
           const msgWa = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para firmar tu Compromiso de Seguridad SST: ${urlFirma}`);
           let cel = String(it.celular_trabajador || it.celular || '').replace(/\D/g, '');
           if (cel.length === 10 && cel.startsWith('3')) cel = '57' + cel;
-          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:#fff; font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
+          waBtn = `<a href="https://wa.me/${cel}?text=${msgWa}" target="_blank" onclick="event.stopPropagation();" class="btn btn-sm" style="background:#25d366; color:var(--text-inverse); font-size:0.75rem; padding:4px 8px;">📲 WhatsApp</a>`;
         } else if (puedeFirmarAnalista) {
-          waBtn = `<button type="button" onclick="event.stopPropagation(); abrirDetalleCompromiso('${it.idcsst}').then(() => abrirModalFirmaAnalistaCsst('${it.idcsst}'));" class="btn btn-sm" style="background:#16a34a; color:#fff; font-size:0.75rem; padding:4px 8px; font-weight:600;">✍️ Firmar</button>`;
+          waBtn = `<button type="button" onclick="event.stopPropagation(); abrirDetalleCompromiso('${it.idcsst}').then(() => abrirModalFirmaAnalistaCsst('${it.idcsst}'));" class="btn btn-sm" style="background:var(--success); color:var(--text-inverse); font-size:0.75rem; padding:4px 8px; font-weight:600;">✍️ Firmar</button>`;
         }
 
         const pdfLink = it.url_doc
-          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--primary); font-weight:700;">📄 Abrir PDF</a>`
-          : '<span style="color:#94a3b8; font-style:italic;">Pendiente</span>';
+          ? `<a href="${it.url_doc}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--text); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:var(--text-muted); font-style:italic;">Pendiente</span>';
 
         return `
           <tr onclick="abrirDetalleCompromiso('${it.idcsst}')" id="row-csst-${it.idcsst}">
@@ -6202,7 +6193,7 @@
         actionsHtml = `
           <div class="detail-actions">
             ${!item.firma_trabajador ? `
-              <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366;">
+              <a href="${waUrl}" target="_blank" class="btn btn-accent btn-sm" style="background:#25d366; border-color:#25d366; color:var(--text-inverse);">
                 📲 Enviar por WhatsApp al Trabajador
               </a>
               <button class="btn btn-secondary btn-sm" onclick="copiarPortapapeles('${urlFirma}')">
@@ -6214,7 +6205,7 @@
             ` : ''}
 
             ${puedeFirmarAnalista ? `
-              <button type="button" class="btn btn-sm" id="btn-firmar-analista-csst" onclick="abrirModalFirmaAnalistaCsst('${item.idcsst}')" style="background:#16a34a; color:#fff; font-weight:700; width:100%; padding:9px 12px; margin-bottom:8px; border:none; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow: 0 2px 4px rgba(22,163,74,0.3);">
+              <button type="button" class="btn btn-sm" id="btn-firmar-analista-csst" onclick="abrirModalFirmaAnalistaCsst('${item.idcsst}')" style="background:var(--success); color:var(--text-inverse); font-weight:700; width:100%; padding:9px 12px; margin-bottom:8px; border:none; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow: 0 2px 4px var(--success-soft);">
                 ✍️ Firmar como Analista SST
               </button>
             ` : ''}
@@ -6226,7 +6217,7 @@
             ` : ''}
 
             ${puedeEliminarRegistro(item, 'csst') ? `
-              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('csst', '${item.idcsst}')" style="background:#dc2626; color:#fff; border:none; margin-top:8px;">
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('csst', '${item.idcsst}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
                 🗑️ Eliminar Registro
               </button>
             ` : ''}
@@ -6761,7 +6752,7 @@
             <td>${diagHtml}</td>
             <td><strong>${fechaFmt}</strong></td>
             <td>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); abrirExpedienteTrabajador('${cedula}')" style="color:var(--primary); font-weight:600; font-size:0.75rem; padding:4px 8px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); abrirExpedienteTrabajador('${cedula}')" style="color:var(--text); font-weight:600; font-size:0.75rem; padding:4px 8px;">
                 👁 Ver Casos
               </button>
             </td>
@@ -6868,9 +6859,9 @@
         // 2. Render Casos Médicos y Bitácoras
         if (!Array.isArray(casos) || !casos.length) {
           casosContainerEl.innerHTML = `
-            <div style="text-align:center; padding:40px 20px; background:#fff; border:1px dashed var(--border); border-radius:8px; color:var(--text-muted);">
+            <div style="text-align:center; padding:40px 20px; background:var(--card-bg); border:1px dashed var(--border); border-radius:8px; color:var(--text-muted);">
               <div style="font-size:2.5rem; margin-bottom:8px;">📁</div>
-              <div style="font-weight:700; font-size:1.05rem; margin-bottom:4px; color:var(--text-main);">No hay casos médicos registrados para este colaborador</div>
+              <div style="font-weight:700; font-size:1.05rem; margin-bottom:4px; color:var(--text);">No hay casos médicos registrados para este colaborador</div>
               <p style="font-size:0.85rem; max-width:400px; margin:0 auto 16px;">Haz clic en el botón a continuación para registrar el primer caso médico con sus restricciones y diagnósticos.</p>
               ${puedeCrearCaso() ? `
                 <button type="button" class="btn btn-accent" onclick="abrirModalAgregarCasoDesdeExpediente()" style="font-weight:700;">
@@ -6944,7 +6935,7 @@
                   <span class="badge badge-secondary" style="font-weight:700; font-size:0.75rem;">${bitacoras.length}</span>
                 </div>
                 ${puedeCrearBitacora() ? `
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalBitacora(${c.id}, '${c.codigo_caso}', '${identificacion}', '${nombreEscapado}')" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:0.78rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:4px 10px;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalBitacora(${c.id}, '${c.codigo_caso}', '${identificacion}', '${nombreEscapado}')" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:0.78rem; background:var(--info-soft); color:var(--info-dark); border:1px solid var(--info-soft); padding:4px 10px;">
                     <span>➕</span> Agregar Seguimiento
                   </button>
                 ` : ''}
@@ -6953,7 +6944,7 @@
 
           if (bitacoras.length === 0) {
             bitacoraHtml += `
-              <div style="text-align:center; padding:16px; color:var(--text-muted); font-size:0.82rem; background:#ffffff; border-radius:6px; border:1px dashed #cbd5e1;">
+              <div style="text-align:center; padding:16px; color:var(--text-muted); font-size:0.82rem; background:var(--card-bg); border-radius:6px; border:1px dashed var(--border-strong);">
                 Sin registros en la bitácora aún.${puedeCrearBitacora() ? ' Haz clic en "Agregar Seguimiento" para registrar un contacto.' : ''}
               </div>
             `;
@@ -6974,27 +6965,27 @@
                   <div class="cm-bitacora-card-top">
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                       <span class="cm-contact-badge">${iconContact} ${b.tipo_contacto || 'Contacto'}</span>
-                      <span style="font-weight:700; color:var(--text-main); font-size:0.82rem;">${fSegFmt}</span>
+                      <span style="font-weight:700; color:var(--text); font-size:0.82rem;">${fSegFmt}</span>
                       <span class="badge ${badgeResClase}" style="font-size:0.72rem;">${b.resultado || 'PENDIENTE'}</span>
                       <span style="color:var(--text-muted); font-size:0.75rem;">Registrado por: <strong>${b.usuario_nombre || b.usuario || 'SST'}</strong></span>
                     </div>
                     ${puedeEliminarBit ? `
-                      <button type="button" class="btn btn-sm" onclick="eliminarBitacora(${b.idbitacora}, ${c.id}, '${identificacion}')" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:0.72rem; padding:2px 7px; border-radius:4px; cursor:pointer;" title="Eliminar este registro de bitácora">
+                      <button type="button" class="btn btn-sm" onclick="eliminarBitacora(${b.idbitacora}, ${c.id}, '${identificacion}')" style="background:var(--danger-soft); color:var(--danger-dark); border:1px solid var(--danger-soft); font-size:0.72rem; padding:2px 7px; border-radius:4px; cursor:pointer;" title="Eliminar este registro de bitácora">
                         🗑 Eliminar
                       </button>
                     ` : ''}
                   </div>
-                  <div style="font-size:0.83rem; color:var(--text-main); margin-bottom:4px; line-height:1.45;">
+                  <div style="font-size:0.83rem; color:var(--text); margin-bottom:4px; line-height:1.45;">
                     <strong>Objetivo:</strong> ${b.seguimiento_objetivo}
                   </div>
                   ${b.compromiso_accion ? `
-                    <div style="font-size:0.8rem; color:#1e3a8a; background:#eff6ff; padding:6px 10px; border-radius:5px; margin-top:5px; border-left:3px solid #3b82f6;">
+                    <div style="font-size:0.8rem; color:var(--info-dark); background:var(--info-soft); padding:6px 10px; border-radius:5px; margin-top:5px; border-left:3px solid var(--info);">
                       <strong>Compromiso / Acción:</strong> ${b.compromiso_accion}
-                      ${fCompFmt ? `<span style="display:inline-block; margin-left:8px; font-weight:700; color:#1d4ed8;">📅 Plazo: ${fCompFmt}</span>` : ''}
+                      ${fCompFmt ? `<span style="display:inline-block; margin-left:8px; font-weight:700; color:var(--info-dark);">📅 Plazo: ${fCompFmt}</span>` : ''}
                     </div>
                   ` : ''}
                   ${b.actividad_actual ? `
-                    <div style="font-size:0.8rem; color:#475569; margin-top:5px;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
                       <strong>Actividad Laboral Reportada:</strong> ${b.actividad_actual}
                     </div>
                   ` : ''}
@@ -7006,10 +6997,10 @@
           bitacoraHtml += '</div>';
 
           return `
-            <details class="cm-case-card" style="background:#ffffff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;">
-              <summary class="cm-case-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:12px; cursor:pointer; list-style:none;">
+            <details class="cm-case-card" style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;">
+              <summary class="cm-case-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:12px; cursor:pointer; list-style:none;">
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span style="font-weight:800; font-size:1.05rem; color:var(--primary);">${c.codigo_caso}</span>
+                  <span style="font-weight:800; font-size:1.05rem; color:var(--text);">${c.codigo_caso}</span>
                   ${estadoBadge}
                   ${prioBadge}
                   ${tipoCasoBadge}
@@ -7023,18 +7014,18 @@
               <div class="cm-case-body">
                 <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px;">
                   ${puedeEditarCaso ? `
-                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); abrirModalEditarCaso(${c.id})" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer; font-weight:600;" title="Editar este caso">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); abrirModalEditarCaso(${c.id})" style="background:var(--success-soft); color:var(--success-dark); border:1px solid var(--success-soft); font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer; font-weight:600;" title="Editar este caso">
                       ✏️ Editar Caso
                     </button>
                   ` : ''}
                   ${puedeEliminarCaso ? `
-                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); eliminarCasoMedico(${c.id}, '${identificacion}')" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Eliminar este caso">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); eliminarCasoMedico(${c.id}, '${identificacion}')" style="background:var(--danger-soft); color:var(--danger-dark); border:1px solid var(--danger-soft); font-size:0.75rem; padding:4px 10px; border-radius:6px; cursor:pointer;" title="Eliminar este caso">
                       🗑 Eliminar Caso
                     </button>
                   ` : ''}
                 </div>
                 <!-- Diagnóstico CIE-10 -->
-                <div class="cm-diagnostico-box" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:0.85rem; color:#1e40af;">
+                <div class="cm-diagnostico-box" style="background:var(--info-soft); border:1px solid var(--info-soft); border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:0.85rem; color:var(--info-dark);">
                   <strong>🩺 Diagnóstico CIE-10:</strong> [${c.diagnostico || '—'}] ${c.diagnostico_desc || 'Sin descripción'}
                 </div>
 
@@ -7051,7 +7042,7 @@
 
                 <!-- Detalle de Restricciones -->
                 ${c.recomendaciones ? `
-                  <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px 12px; border-radius:6px; font-size:0.82rem; margin-bottom:10px;">
+                  <div style="background:var(--bg); border:1px solid var(--border); padding:8px 12px; border-radius:6px; font-size:0.82rem; margin-bottom:10px;">
                     <strong>Detalle Restricciones:</strong> ${c.recomendaciones}
                   </div>
                 ` : ''}
@@ -7078,17 +7069,17 @@
                 </div>
 
                 <!-- Sección de Gestión Documental y Actas SST -->
-                <div class="cm-actas-container" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin-top:12px;">
-                  <div style="font-weight:700; color:var(--primary); font-size:0.85rem; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                <div class="cm-actas-container" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-top:12px;">
+                  <div style="font-weight:700; color:var(--text); font-size:0.85rem; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
                     <span>📄</span> Actas y Firmas Digitales del Caso
                   </div>
 
                   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
                     <!-- Bloque 1: Acta de Apertura (Doc 94 - AACM) -->
-                    <div style="background:#ffffff; border:1px solid ${c.estado_general_id === 1 ? '#bfdbfe' : '#e2e8f0'}; border-radius:8px; padding:12px; opacity:${c.estado_general_id === 1 ? '1' : '0.65'};">
+                    <div style="background:var(--card-bg); border:1px solid ${c.estado_general_id === 1 ? 'var(--info-soft)' : 'var(--border)'}; border-radius:8px; padding:12px; opacity:${c.estado_general_id === 1 ? '1' : '0.65'};">
                       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div>
-                          <div style="font-weight:700; font-size:0.85rem; color:#1e40af;">Acta de Apertura (Doc 94 - AACM)</div>
+                          <div style="font-weight:700; font-size:0.85rem; color:var(--info-dark);">Acta de Apertura (Doc 94 - AACM)</div>
                           <div style="font-size:0.72rem; color:var(--text-muted);">Habilitada únicamente en estado ABIERTO</div>
                         </div>
                         ${c.url_acta_apertura ? `
@@ -7102,7 +7093,7 @@
 
                       ${c.url_acta_apertura ? `
                         <div style="margin-bottom:8px;">
-                          <a href="${c.url_acta_apertura}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.75rem; padding:4px 10px; text-decoration:none; font-weight:600; border-radius:5px;">
+                          <a href="${c.url_acta_apertura}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:var(--info-soft); color:var(--info-dark); border:1px solid var(--info-soft); font-size:0.75rem; padding:4px 10px; text-decoration:none; font-weight:600; border-radius:5px;">
                             <span>📄</span> Ver Acta de Apertura Firmada
                           </a>
                           <span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
@@ -7112,13 +7103,13 @@
                       ` : c.estado_general_id === 1 ? `
                         <div style="display:flex; flex-direction:column; gap:6px;">
                           <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                            <button type="button" class="btn btn-sm" id="btn-gen-apertura-${c.id}" onclick="generarEnlaceActa(${c.id}, 'apertura')" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                            <button type="button" class="btn btn-sm" id="btn-gen-apertura-${c.id}" onclick="generarEnlaceActa(${c.id}, 'apertura')" style="background:var(--info-soft); color:var(--info-dark); border:1px solid var(--info-soft); font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
                               📄 Generar Enlace
                             </button>
-                            <button type="button" class="btn btn-sm" onclick="copiarEnlaceActa(${c.id}, 'apertura')" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                            <button type="button" class="btn btn-sm" onclick="copiarEnlaceActa(${c.id}, 'apertura')" style="background:var(--bg-elevated); color:var(--text); border:1px solid var(--border-strong); font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
                               📋 Copiar Enlace
                             </button>
-                            <button type="button" class="btn btn-sm" onclick="enviarWhatsAppActa(${c.id}, 'apertura', '${trab.celular || ''}', '${nombreEscapado}', '${c.codigo_caso}')" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                            <button type="button" class="btn btn-sm" onclick="enviarWhatsAppActa(${c.id}, 'apertura', '${trab.celular || ''}', '${nombreEscapado}', '${c.codigo_caso}')" style="background:var(--success-soft); color:var(--success-dark); border:1px solid var(--success-soft); font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
                               📲 WhatsApp
                             </button>
                             <button type="button" class="btn btn-sm" onclick="enviarCorreoActa(${c.id}, 'apertura', '${trab.email || ''}')" style="background:#faf5ff; color:#7e22ce; border:1px solid #d8b4fe; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
@@ -7126,7 +7117,7 @@
                             </button>
                           </div>
                           <div id="wrap-link-apertura-${c.id}" style="${c.token_apertura ? 'display:block;' : 'display:none;'} margin-top:4px;">
-                            <input type="text" readonly id="input-link-apertura-${c.id}" value="${c.token_apertura ? `${window.location.origin}/doclogyser/acta_apertura_cm/${c.id}?token=${encodeURIComponent(c.token_apertura)}` : ''}" style="width:100%; font-size:0.72rem; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc; color:#475569;" onclick="this.select();">
+                            <input type="text" readonly id="input-link-apertura-${c.id}" value="${c.token_apertura ? `${window.location.origin}/doclogyser/acta_apertura_cm/${c.id}?token=${encodeURIComponent(c.token_apertura)}` : ''}" style="width:100%; font-size:0.72rem; padding:4px 8px; border:1px solid var(--border-strong); border-radius:4px; background:var(--bg); color:var(--text-muted);" onclick="this.select();">
                           </div>
                         </div>
                       ` : `
@@ -7137,10 +7128,10 @@
                     </div>
 
                     <!-- Bloque 2: Acta de Cierre (Doc 95 - ACCM) -->
-                    <div style="background:#ffffff; border:1px solid ${c.estado_general_id === 2 ? '#bbf7d0' : '#e2e8f0'}; border-radius:8px; padding:12px; opacity:${c.estado_general_id === 2 ? '1' : '0.65'};">
+                    <div style="background:var(--card-bg); border:1px solid ${c.estado_general_id === 2 ? 'var(--success-soft)' : 'var(--border)'}; border-radius:8px; padding:12px; opacity:${c.estado_general_id === 2 ? '1' : '0.65'};">
                       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                         <div>
-                          <div style="font-weight:700; font-size:0.85rem; color:#15803d;">Acta de Cierre (Doc 95 - ACCM)</div>
+                          <div style="font-weight:700; font-size:0.85rem; color:var(--success-dark);">Acta de Cierre (Doc 95 - ACCM)</div>
                           <div style="font-size:0.72rem; color:var(--text-muted);">Habilitada únicamente en estado CERRADO</div>
                         </div>
                         ${c.url_acta_cierre ? `
@@ -7154,7 +7145,7 @@
 
                       ${c.url_acta_cierre ? `
                         <div style="margin-bottom:8px;">
-                          <a href="${c.url_acta_cierre}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.75rem; padding:4px 10px; text-decoration:none; font-weight:600; border-radius:5px;">
+                          <a href="${c.url_acta_cierre}" target="_blank" class="btn btn-sm" style="display:inline-flex; align-items:center; gap:6px; background:var(--success-soft); color:var(--success-dark); border:1px solid var(--success-soft); font-size:0.75rem; padding:4px 10px; text-decoration:none; font-weight:600; border-radius:5px;">
                             <span>📄</span> Ver Acta de Cierre Firmada
                           </a>
                           <span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
@@ -7164,13 +7155,13 @@
                       ` : c.estado_general_id === 2 ? `
                         <div style="display:flex; flex-direction:column; gap:6px;">
                           <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                            <button type="button" class="btn btn-sm" id="btn-gen-cierre-${c.id}" onclick="generarEnlaceActa(${c.id}, 'cierre')" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                            <button type="button" class="btn btn-sm" id="btn-gen-cierre-${c.id}" onclick="generarEnlaceActa(${c.id}, 'cierre')" style="background:var(--success-soft); color:var(--success-dark); border:1px solid var(--success-soft); font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
                               📄 Generar Enlace
                             </button>
-                            <button type="button" class="btn btn-sm" onclick="copiarEnlaceActa(${c.id}, 'cierre')" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                            <button type="button" class="btn btn-sm" onclick="copiarEnlaceActa(${c.id}, 'cierre')" style="background:var(--bg-elevated); color:var(--text); border:1px solid var(--border-strong); font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
                               📋 Copiar Enlace
                             </button>
-                            <button type="button" class="btn btn-sm" onclick="enviarWhatsAppActa(${c.id}, 'cierre', '${trab.celular || ''}', '${nombreEscapado}', '${c.codigo_caso}')" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
+                            <button type="button" class="btn btn-sm" onclick="enviarWhatsAppActa(${c.id}, 'cierre', '${trab.celular || ''}', '${nombreEscapado}', '${c.codigo_caso}')" style="background:var(--success-soft); color:var(--success-dark); border:1px solid var(--success-soft); font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
                               📲 WhatsApp
                             </button>
                             <button type="button" class="btn btn-sm" onclick="enviarCorreoActa(${c.id}, 'cierre', '${trab.email || ''}')" style="background:#faf5ff; color:#7e22ce; border:1px solid #d8b4fe; font-size:0.74rem; padding:4px 8px; font-weight:600; border-radius:5px;">
@@ -7178,7 +7169,7 @@
                             </button>
                           </div>
                           <div id="wrap-link-cierre-${c.id}" style="${c.token_cierre ? 'display:block;' : 'display:none;'} margin-top:4px;">
-                            <input type="text" readonly id="input-link-cierre-${c.id}" value="${c.token_cierre ? `${window.location.origin}/doclogyser/acta_cierre_cm/${c.id}?token=${encodeURIComponent(c.token_cierre)}` : ''}" style="width:100%; font-size:0.72rem; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc; color:#475569;" onclick="this.select();">
+                            <input type="text" readonly id="input-link-cierre-${c.id}" value="${c.token_cierre ? `${window.location.origin}/doclogyser/acta_cierre_cm/${c.id}?token=${encodeURIComponent(c.token_cierre)}` : ''}" style="width:100%; font-size:0.72rem; padding:4px 8px; border:1px solid var(--border-strong); border-radius:4px; background:var(--bg); color:var(--text-muted);" onclick="this.select();">
                           </div>
                         </div>
                       ` : `
@@ -7194,7 +7185,7 @@
                 ${bitacoraHtml}
 
                 <!-- Footer con metadata -->
-                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:10px; display:flex; justify-content:space-between; flex-wrap:wrap; border-top:1px solid #f1f5f9; padding-top:8px;">
+                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:10px; display:flex; justify-content:space-between; flex-wrap:wrap; border-top:1px solid var(--border); padding-top:8px;">
                   <span>Registrado por: <strong>${c.usuario_nombre || c.usuario || 'SST'}</strong></span>
                   <span>Fecha Registro: ${fRegFmt}</span>
                 </div>
