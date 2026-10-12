@@ -73,7 +73,12 @@
   --card-bg: #151c2b;
   --text: #e6e8ee;
   --text-muted: #94a0b8;
-  --text-inverse: #0b0f17;
+  /* Constante en ambos temas (no se invierte con el tema activo): su unico
+     uso es texto sobre var(--primary)/--sidebar-bg, que SIEMPRE son oscuros
+     en los dos temas por diseno, asi que el texto encima siempre debe ser
+     claro. Para texto sobre var(--accent) (que si varia en claridad segun
+     el color elegido) se usa var(--accent-contrast), no este token. */
+  --text-inverse: #ffffff;
   --border: #232c3d;
   --border-strong: #2f3b52;
 
