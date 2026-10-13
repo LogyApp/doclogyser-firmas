@@ -1795,5 +1795,327 @@ router.post('/api/parametros/requisiciones', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// 5. MÓDULO: ASPIRANTES Y HOJAS DE VIDA (Dynamic_hv_aspirante + Tablas Hijas)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// 5.1 GET /api/aspirantes (Listado maestro con filtros, facetas y conteos)
+router.get('/api/aspirantes', async (req, res) => {
+  try {
+    const {
+      usuario, q, estado, requisicion, regional, operacion,
+      departamento, medio, desde, hasta, sortBy, sortDir
+    } = req.query;
+
+    const acceso = await computarAccesoTalenthub(usuario, 'Aspirantes')
+                || await computarAccesoTalenthub(usuario, 'Requisiciones')
+                || await computarAccesoTalenthub(usuario);
+
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado para acceder al módulo de Aspirantes.' });
+    }
+
+    let sql = `
+      SELECT
+        a.id_aspirante,
+        a.tipo_documento,
+        a.identificacion,
+        CONCAT_WS(' ', a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido) AS nombre_completo,
+        a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido,
+        a.departamento, a.ciudad,
+        a.telefono, a.correo_electronico,
+        a.medio_reclutamiento,
+        COALESCE(a.estado_proceso, 'Registro') AS estado_proceso,
+        a.fecha_registro,
+        a.foto_public_url,
+        a.pdf_public_url,
+        a.IdRequisicion,
+        r.\`Requisición\` AS req_codigo,
+        r.\`Operación\` AS req_operacion,
+        r.\`Cargo Requerido\` AS req_cargo,
+        r.\`Regional\` AS req_regional,
+        r.Estado AS req_estado,
+        COUNT(DISTINCT d.id_documento) AS docs_cargados,
+        SUM(CASE WHEN d.estado = 'Aprobado' THEN 1 ELSE 0 END) AS docs_aprobados,
+        SUM(CASE WHEN d.estado = 'Firmado' THEN 1 ELSE 0 END) AS docs_firmados
+      FROM Dynamic_hv_aspirante a
+      LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+      LEFT JOIN Dynamic_hv_documentos d ON d.id_aspirante = a.id_aspirante
+      WHERE 1=1
+    `;
+    const params = [];
+
+    // Filtros de acceso según rol del usuario
+    if (!acceso.sinFiltro) {
+      if (acceso.regional && !acceso.operacionesFiltro?.length) {
+        sql += ` AND (r.\`Regional\` = ? OR (r.\`Regional\` IS NULL AND a.departamento = ?))`;
+        params.push(acceso.regional, acceso.regional);
+      } else if (acceso.operacionesFiltro?.length) {
+        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+        sql += ` AND (r.\`Operación\` IN (${ph}) OR a.IdRequisicion IS NULL)`;
+        params.push(...acceso.operacionesFiltro);
+      }
+    }
+
+    // Buscador general de texto
+    if (q && q.trim()) {
+      const qWild = `%${q.trim()}%`;
+      sql += ` AND (
+        a.identificacion LIKE ? OR
+        a.primer_nombre LIKE ? OR
+        a.segundo_nombre LIKE ? OR
+        a.primer_apellido LIKE ? OR
+        a.segundo_apellido LIKE ? OR
+        a.telefono LIKE ? OR
+        a.correo_electronico LIKE ? OR
+        r.\`Requisición\` LIKE ? OR
+        r.\`Cargo Requerido\` LIKE ?
+      )`;
+      params.push(qWild, qWild, qWild, qWild, qWild, qWild, qWild, qWild, qWild);
+    }
+
+    // Filtro por Estado
+    if (estado && estado !== 'todos' && estado !== 'Todos') {
+      sql += ` AND LOWER(TRIM(COALESCE(a.estado_proceso, 'Registro'))) = LOWER(TRIM(?))`;
+      params.push(estado);
+    }
+
+    // Filtro por Requisición
+    if (requisicion && requisicion !== 'todas') {
+      if (requisicion === 'sin_requisicion') {
+        sql += ` AND (a.IdRequisicion IS NULL OR a.IdRequisicion = 0)`;
+      } else if (requisicion === 'con_requisicion') {
+        sql += ` AND (a.IdRequisicion IS NOT NULL AND a.IdRequisicion > 0)`;
+      } else {
+        sql += ` AND a.IdRequisicion = ?`;
+        params.push(requisicion);
+      }
+    }
+
+    // Filtro por Regional
+    if (regional && regional !== 'todas' && regional !== 'Todas') {
+      sql += ` AND r.\`Regional\` = ?`;
+      params.push(regional);
+    }
+
+    // Filtro por Operación
+    if (operacion && operacion !== 'todas' && operacion !== 'Todas') {
+      sql += ` AND r.\`Operación\` = ?`;
+      params.push(operacion);
+    }
+
+    // Filtro por Departamento del Aspirante
+    if (departamento && departamento !== 'todos' && departamento !== 'Todos') {
+      sql += ` AND a.departamento = ?`;
+      params.push(departamento);
+    }
+
+    // Filtro por Medio de Reclutamiento
+    if (medio && medio !== 'todos' && medio !== 'Todos') {
+      sql += ` AND a.medio_reclutamiento = ?`;
+      params.push(medio);
+    }
+
+    // Filtros de fecha de registro
+    if (desde) {
+      sql += ` AND DATE(a.fecha_registro) >= ?`;
+      params.push(desde);
+    }
+    if (hasta) {
+      sql += ` AND DATE(a.fecha_registro) <= ?`;
+      params.push(hasta);
+    }
+
+    sql += `
+      GROUP BY
+        a.id_aspirante, a.tipo_documento, a.identificacion,
+        a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido,
+        a.departamento, a.ciudad, a.telefono, a.correo_electronico,
+        a.medio_reclutamiento, a.estado_proceso, a.fecha_registro,
+        a.foto_public_url, a.pdf_public_url, a.IdRequisicion,
+        r.\`Requisición\`, r.\`Operación\`, r.\`Cargo Requerido\`, r.\`Regional\`, r.Estado
+    `;
+
+    // Mapeo seguro de columnas ordenables
+    const colMap = {
+      'nombre': 'nombre_completo',
+      'identificacion': 'a.identificacion',
+      'fecha_registro': 'a.fecha_registro',
+      'estado_proceso': 'a.estado_proceso',
+      'departamento': 'a.departamento',
+      'medio_reclutamiento': 'a.medio_reclutamiento',
+      'req_codigo': 'r.`Requisición`',
+      'req_operacion': 'r.`Operación`',
+      'docs_cargados': 'docs_cargados'
+    };
+    const colOrder = colMap[sortBy] || 'a.fecha_registro';
+    const dirOrder = (sortDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    sql += ` ORDER BY ${colOrder} ${dirOrder} LIMIT 1000`;
+
+    const [rows] = await pool.execute(sql, params);
+
+    // Consulta de KPIs por Estado y facetas para los filtros desplegables
+    const [[kpiRows], [facetasDeptos], [facetasMedios], [facetasReqs], [facetasRegs], [facetasOps]] = await Promise.all([
+      pool.execute(`
+        SELECT 
+          COUNT(*) AS total,
+          SUM(CASE WHEN LOWER(TRIM(COALESCE(estado_proceso, 'Registro'))) = 'registro' THEN 1 ELSE 0 END) AS registro,
+          SUM(CASE WHEN LOWER(TRIM(estado_proceso)) = 'en proceso' THEN 1 ELSE 0 END) AS en_proceso,
+          SUM(CASE WHEN LOWER(TRIM(estado_proceso)) = 'contratado' THEN 1 ELSE 0 END) AS contratado,
+          SUM(CASE WHEN LOWER(TRIM(estado_proceso)) = 'bloqueado' THEN 1 ELSE 0 END) AS bloqueado
+        FROM Dynamic_hv_aspirante
+      `),
+      pool.execute(`SELECT DISTINCT departamento FROM Dynamic_hv_aspirante WHERE departamento IS NOT NULL AND departamento != '' ORDER BY departamento`),
+      pool.execute(`SELECT DISTINCT medio_reclutamiento FROM Dynamic_hv_aspirante WHERE medio_reclutamiento IS NOT NULL AND medio_reclutamiento != '' ORDER BY medio_reclutamiento`),
+      pool.execute(`
+        SELECT DISTINCT r.IdRequisicion, r.\`Requisición\`, r.\`Operación\`, r.\`Cargo Requerido\`
+        FROM Dynamic_Requisiciones r
+        INNER JOIN Dynamic_hv_aspirante a ON a.IdRequisicion = r.IdRequisicion
+        ORDER BY r.\`Requisición\` DESC
+        LIMIT 100
+      `),
+      pool.execute(`SELECT DISTINCT REGIONAL FROM Maestro_Operaciones WHERE REGIONAL IS NOT NULL AND REGIONAL != 'INACTIVO' ORDER BY REGIONAL`),
+      pool.execute(`SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN`)
+    ]);
+
+    res.json({
+      ok: true,
+      aspirantes: rows.map(r => ({
+        ...r,
+        docs_cargados: parseInt(r.docs_cargados, 10) || 0,
+        docs_aprobados: parseInt(r.docs_aprobados, 10) || 0,
+        docs_firmados: parseInt(r.docs_firmados, 10) || 0
+      })),
+      kpis: kpiRows[0] || {},
+      facetas: {
+        departamentos: facetasDeptos.map(d => d.departamento),
+        mediosReclutamiento: facetasMedios.map(m => m.medio_reclutamiento),
+        requisiciones: facetasReqs,
+        regionales: facetasRegs.map(r => r.REGIONAL),
+        operaciones: facetasOps.map(o => o.OPERACIÓN)
+      }
+    });
+
+  } catch (err) {
+    console.error('[talenthub] GET /api/aspirantes:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5.2 GET /api/aspirantes/:id (Ficha Completa con todas las Tablas Dependientes)
+router.get('/api/aspirantes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+
+    const acceso = await computarAccesoTalenthub(usuario, 'Aspirantes')
+                || await computarAccesoTalenthub(usuario, 'Requisiciones')
+                || await computarAccesoTalenthub(usuario);
+
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado para consultar la ficha del aspirante.' });
+    }
+
+    const [aspRows] = await pool.execute(
+      `SELECT a.*,
+              CONCAT_WS(' ', a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido) AS nombre_completo,
+              r.\`Requisición\` AS req_codigo,
+              r.\`Operación\` AS req_operacion,
+              r.\`Cargo Requerido\` AS req_cargo,
+              r.\`Regional\` AS req_regional,
+              r.\`Solicitante\` AS req_solicitante,
+              r.\`Responsable de Selección\` AS req_responsable,
+              r.\`N° Personas Requeridas\` AS req_vacantes,
+              r.\`Fecha Requisición\` AS req_fecha,
+              r.Estado AS req_estado
+       FROM Dynamic_hv_aspirante a
+       LEFT JOIN Dynamic_Requisiciones r ON r.IdRequisicion = a.IdRequisicion
+       WHERE a.id_aspirante = ?`,
+      [id]
+    );
+
+    if (!aspRows.length) {
+      return res.status(404).json({ error: 'Aspirante no encontrado.' });
+    }
+
+    const aspirante = aspRows[0];
+
+    // Consultar simultáneamente todas las tablas hijas dependientes
+    const [
+      [docsRows],
+      [expRows],
+      [eduRows],
+      [refRows],
+      [emergRows],
+      [famRows],
+      [hijosRows],
+      [segRows],
+      [metasRows]
+    ] = await Promise.all([
+      pool.execute(
+        `SELECT d.id_documento, d.id_config_doc, d.estado, d.gcs_path, d.observaciones, d.fecha_actualizacion,
+                c.Documento AS nombre_doc, c.Prefijo AS prefijo, c.Clasificacion AS clasificacion
+         FROM Dynamic_hv_documentos d
+         LEFT JOIN Config_Doc_Trabajador c ON c.Id = d.id_config_doc
+         WHERE d.id_aspirante = ?
+         ORDER BY d.id_config_doc ASC`,
+        [id]
+      ),
+      pool.execute(
+        `SELECT * FROM Dynamic_hv_experiencia_laboral WHERE id_aspirante = ? ORDER BY id_experiencia DESC`,
+        [id]
+      ),
+      pool.execute(
+        `SELECT * FROM Dynamic_hv_educacion WHERE id_aspirante = ? ORDER BY id_educacion DESC`,
+        [id]
+      ),
+      pool.execute(
+        `SELECT * FROM Dynamic_hv_referencias WHERE id_aspirante = ? ORDER BY id_referencia DESC`,
+        [id]
+      ),
+      pool.execute(
+        `SELECT * FROM Dynamic_hv_contacto_emergencia WHERE id_aspirante = ? ORDER BY id_emergencia DESC`,
+        [id]
+      ),
+      pool.execute(
+        `SELECT * FROM Dynamic_hv_familiares WHERE id_aspirante = ? ORDER BY id_familiar DESC`,
+        [id]
+      ),
+      pool.execute(
+        `SELECT * FROM Dynamic_Aspirante_Hijos WHERE id_aspirante = ? ORDER BY id_hijo DESC`,
+        [id]
+      ),
+      pool.execute(
+        `SELECT * FROM Dynamic_hv_seguridad WHERE id_aspirante = ? LIMIT 1`,
+        [id]
+      ),
+      pool.execute(
+        `SELECT * FROM Dynamic_hv_metas_personales WHERE id_aspirante = ? LIMIT 1`,
+        [id]
+      )
+    ]);
+
+    res.json({
+      ok: true,
+      aspirante,
+      documentos: docsRows,
+      experiencia: expRows,
+      educacion: eduRows,
+      referencias: refRows,
+      emergencia: emergRows,
+      familiares: famRows,
+      hijos: hijosRows,
+      seguridad: segRows[0] || null,
+      metas: metasRows[0] || null
+    });
+
+  } catch (err) {
+    console.error('[talenthub] GET /api/aspirantes/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
+
 

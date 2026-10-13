@@ -23,37 +23,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app-launcher-profile.css?v=20261011b">
   <style>
-    :root {
-      /* Tema Lavanda Oscura Corporativa (Elegante, equilibrada, menor componente azul) */
-      --primary: #4a306d;
-      --primary-hover: #3b2459;
-      --primary-dark: #2d1947;
-      --primary-light: #f3edf8;
-      --primary-subtle: #faf6fd;
-      --accent: #6d489b;
-      --accent-soft: rgba(74, 48, 109, 0.12);
-      --sidebar-bg: #1c132b;
-      --sidebar-active: #3e275d;
-      --sidebar-hover: rgba(255, 255, 255, 0.08);
-      --bg: #f8f6fb;
-      --card-bg: #ffffff;
-      --text: #191424;
-      --text-muted: #5e546e;
-      --border: #e3dced;
-      --border-focus: #6d489b;
-      --radius: 12px;
-      --radius-sm: 8px;
-      --danger: #ef4444;
-      --danger-hover: #dc2626;
-      --danger-bg: #fef2f2;
-      --warning: #f59e0b;
-      --warning-bg: #fffbeb;
-      --success: #10b981;
-      --success-bg: #ecfdf5;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
-      --shadow-md: 0 4px 14px -2px rgba(74, 48, 109, 0.14);
-      --shadow-lg: 0 12px 28px -4px rgba(74, 48, 109, 0.20);
-    }
+    /* :root propio eliminado: todas las variables de tema vienen de
+       /css/theme-tokens.css (vocabulario canonico Cloud Docs), cargado
+       antes de este <style>. */
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -70,7 +42,7 @@
     .sidebar {
       width: 280px;
       background: var(--sidebar-bg);
-      color: #fff;
+      color: var(--text-inverse);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
@@ -80,7 +52,7 @@
       top: 0;
       z-index: 100;
       border-right: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 4px 0 20px rgba(28, 19, 43, 0.35);
+      box-shadow: 4px 0 20px rgba(0,11,89,0.35);
     }
     .sidebar-brand {
       padding: 16px 12px;
@@ -112,7 +84,7 @@
     .module-badge-tag {
       background: rgba(255,255,255,0.12);
       border: 1px solid rgba(255,255,255,0.22);
-      color: #fff;
+      color: var(--text-inverse);
       font-size: 0.68rem;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -129,14 +101,14 @@
     .talenthub-profile-trigger {
       display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 10px;
       text-align: left; border: 1px solid rgba(255,255,255,0.16); border-radius: 10px;
-      background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; transition: background 0.18s ease;
+      background: rgba(255,255,255,0.08); color: var(--text-inverse); cursor: pointer; transition: background 0.18s ease;
     }
     .talenthub-profile-trigger:hover { background: rgba(255,255,255,0.15); }
     .talenthub-profile-thumb { width: 42px; height: 42px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.75); object-fit: cover; flex: 0 0 auto; background: rgba(255,255,255,0.2); }
     .talenthub-profile-label { min-width: 0; flex: 1; }
     .talenthub-profile-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 0.82rem; }
     .talenthub-profile-hint { display: block; color: rgba(255,255,255,0.68); font-size: 0.7rem; }
-    .talenthub-profile-arrow { color: #d8c8ea; font-size: 1.1rem; }
+    .talenthub-profile-arrow { color: var(--sidebar-text-muted); font-size: 1.1rem; }
 
     /* Navigation */
     .nav-list { list-style: none; padding: 16px 14px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
@@ -154,10 +126,10 @@
       cursor: pointer;
       transition: all 0.16s ease;
     }
-    .nav-item:hover { color: #fff; background: var(--sidebar-hover); }
+    .nav-item:hover { color: var(--text-inverse); background: var(--sidebar-hover-bg); }
     .nav-item.active {
-      color: #fff;
-      background: var(--sidebar-active);
+      color: var(--text-inverse);
+      background: var(--sidebar-active-bg);
       font-weight: 700;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
@@ -168,7 +140,7 @@
       top: 20%;
       height: 60%;
       width: 4px;
-      background: #c5a9e8;
+      background: var(--accent);
       border-radius: 0 4px 4px 0;
     }
     .nav-item-icon { font-size: 1.15rem; width: 22px; text-align: center; }
@@ -177,7 +149,7 @@
     .module-launcher { position: relative; flex: 0 0 auto; }
     .module-launcher-trigger {
       width: 48px; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0;
-      color: #fff; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.20);
+      color: var(--text-inverse); background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.20);
       border-radius: 8px; cursor: pointer; transition: background 0.16s ease;
     }
     .module-launcher-trigger:hover, .module-launcher-trigger[aria-expanded="true"] { background: rgba(255,255,255,0.22); }
@@ -187,23 +159,23 @@
     .module-launcher-panel {
       position: absolute; z-index: 200; top: calc(100% + 10px); right: -4px; width: 260px;
       max-height: min(74vh, 620px); overflow-y: auto; padding: 9px;
-      background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+      background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 10px;
       box-shadow: 0 16px 38px rgba(0,0,0,0.25); display: none;
     }
     .module-launcher-panel.open { display: block; animation: launcher-in 0.14s ease-out; }
     @keyframes launcher-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
     .module-launcher-heading { padding: 8px 10px; color: var(--text-muted); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid var(--border); margin-bottom: 5px; }
-    .module-launcher-group { border-bottom: 1px solid #edf0f3; }
+    .module-launcher-group { border-bottom: 1px solid var(--border); }
     .module-launcher-group:last-child { border-bottom: 0; }
     .module-launcher-group summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; padding: 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
     .module-launcher-group summary::-webkit-details-marker { display: none; }
-    .module-launcher-group summary::after { content: '›'; margin-left: auto; color: #8793a0; font-size: 1.1rem; transition: transform 0.15s ease; }
-    .module-launcher-group[open] summary { background: var(--primary-light); color: var(--primary); }
-    .module-launcher-group[open] summary::after { transform: rotate(90deg); color: var(--primary); }
-    .module-launcher-symbol { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 6px; background: var(--primary-light); color: var(--primary); font-size: 0.8rem; }
+    .module-launcher-group summary::after { content: '›'; margin-left: auto; color: var(--text-muted); font-size: 1.1rem; transition: transform 0.15s ease; }
+    .module-launcher-group[open] summary { background: var(--accent-soft); color: var(--accent-dark); }
+    .module-launcher-group[open] summary::after { transform: rotate(90deg); color: var(--accent-dark); }
+    .module-launcher-symbol { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 6px; background: var(--accent-soft); color: var(--accent-dark); font-size: 0.8rem; }
     .module-launcher-links { display: grid; gap: 2px; padding: 2px 4px 8px 40px; }
-    .module-launcher-link { display: block; padding: 6px 8px; border-radius: 5px; color: #566271; text-decoration: none; font-size: 0.74rem; }
-    .module-launcher-link:hover { color: var(--primary); background: var(--primary-light); }
+    .module-launcher-link { display: block; padding: 6px 8px; border-radius: 5px; color: var(--text-muted); text-decoration: none; font-size: 0.74rem; }
+    .module-launcher-link:hover { color: var(--accent-dark); background: var(--accent-soft); }
 
     /* ── Content Wrapper ───────────────────────────────────────────────────── */
     .wrapper {
@@ -242,7 +214,7 @@
     /* ── Cards & Panels ────────────────────────────────────────────────────── */
     .card {
       background: var(--card-bg);
-      border-radius: var(--radius);
+      border-radius: var(--radius-md);
       border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
       padding: 22px 24px;
@@ -277,7 +249,7 @@
     .input-field {
       width: 100%;
       padding: 11px 16px;
-      background: #fff;
+      background: var(--card-bg);
       border: 1.5px solid var(--border);
       border-radius: var(--radius-sm);
       font-family: inherit;
@@ -309,21 +281,25 @@
       white-space: nowrap;
     }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    /* .btn-primary es el boton de accion/CTA principal (Nueva Requisicion,
+       Guardar, etc. -- 20 usos), no chrome fijo: debe usar --accent
+       (personalizable) para ser consistente con el boton CTA naranja de
+       los demas modulos ya convertidos, no --primary (navy fijo). */
     .btn-primary {
-      background: var(--primary);
-      color: #fff;
+      background: var(--accent);
+      color: var(--accent-contrast);
     }
     .btn-primary:hover:not(:disabled) {
-      background: var(--primary-hover);
-      box-shadow: 0 4px 12px rgba(74, 48, 109, 0.3);
+      background: var(--accent-dark);
+      box-shadow: 0 4px 12px var(--accent-soft);
     }
     .btn-danger {
       background: var(--danger);
-      color: #fff;
+      color: var(--text-inverse);
     }
     .btn-danger:hover:not(:disabled) {
-      background: var(--danger-hover);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      background: var(--danger-dark);
+      box-shadow: 0 4px 12px rgba(220,38,38,0.3);
     }
     .btn-outline {
       background: transparent;
@@ -331,24 +307,24 @@
       color: var(--text);
     }
     .btn-outline:hover:not(:disabled) {
-      background: #f1f5f9;
-      border-color: #cbd5e1;
+      background: var(--bg-elevated);
+      border-color: var(--border-strong);
     }
     .btn-secondary {
-      background: var(--primary-light);
-      color: var(--primary);
-      border-color: transparent;
+      background: var(--bg-elevated);
+      color: var(--text);
+      border-color: var(--border);
     }
     .btn-secondary:hover:not(:disabled) {
-      background: #e9def4;
+      background: var(--border);
     }
 
     /* Worker Info Display */
     .worker-card {
       margin-top: 20px;
-      background: var(--primary-subtle);
-      border: 1.5px solid #ded3ee;
-      border-radius: var(--radius);
+      background: var(--accent-soft);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
       padding: 20px;
       display: none;
       animation: fadeIn 0.2s ease;
@@ -362,7 +338,7 @@
       margin-bottom: 20px;
     }
     .meta-box {
-      background: #fff;
+      background: var(--card-bg);
       padding: 12px 14px;
       border-radius: 8px;
       border: 1px solid var(--border);
@@ -390,7 +366,7 @@
       margin-bottom: 22px;
     }
     .kpi-pill {
-      background: #fff;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 10px 12px;
@@ -399,7 +375,7 @@
     .kpi-pill-num {
       font-size: 1.25rem;
       font-weight: 800;
-      color: var(--primary);
+      color: var(--text);
       font-family: 'JetBrains Mono', monospace;
     }
     .kpi-pill-lbl {
@@ -414,7 +390,7 @@
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
-      border-top: 1px solid #e2d8f0;
+      border-top: 1px solid var(--border);
       padding-top: 16px;
     }
 
@@ -424,7 +400,7 @@
       overflow-x: auto;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      background: #fff;
+      background: var(--card-bg);
     }
     table {
       width: 100%;
@@ -433,7 +409,7 @@
       font-size: 0.86rem;
     }
     th {
-      background: #f8fafc;
+      background: var(--bg-elevated);
       color: var(--text-muted);
       padding: 12px 16px;
       font-weight: 700;
@@ -448,7 +424,7 @@
       color: var(--text);
     }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #faf9fd; }
+    tr:hover td { background: var(--bg-elevated); }
 
     .tag-badge {
       display: inline-flex;
@@ -459,9 +435,9 @@
       font-size: 0.72rem;
       font-weight: 700;
     }
-    .tag-badge-primary { background: var(--primary-light); color: var(--primary); }
-    .tag-badge-danger { background: var(--danger-bg); color: var(--danger); }
-    .tag-badge-success { background: var(--success-bg); color: var(--success); }
+    .tag-badge-primary { background: var(--accent-soft); color: var(--accent-dark); }
+    .tag-badge-danger { background: var(--danger-soft); color: var(--danger); }
+    .tag-badge-success { background: var(--success-soft); color: var(--success); }
 
     /* Modales */
     .modal-backdrop {
@@ -476,8 +452,8 @@
       padding: 20px;
     }
     .modal-box {
-      background: #fff;
-      border-radius: var(--radius);
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
       box-shadow: var(--shadow-lg);
       max-width: 480px;
       width: 100%;
@@ -504,33 +480,33 @@
     }
     .modal-full-overlay.open { display: flex; animation: modalPop 0.2s ease-out; }
     .modal-full {
-      background: #fff; border-radius: 12px; width: 100%; height: 90vh;
+      background: var(--card-bg); border-radius: 12px; width: 100%; height: 90vh;
       display: flex; flex-direction: column; overflow: hidden;
       box-shadow: 0 20px 45px rgba(0,0,0,0.3); border: 1px solid var(--border);
     }
     .modal-full-header {
-      background: var(--primary); color: #fff; padding: 14px 20px;
+      background: var(--primary); color: var(--text-inverse); padding: 14px 20px;
       display: flex; align-items: center; justify-content: space-between;
       font-weight: 700; font-size: 0.96rem;
     }
     .modal-full-header button {
-      background: rgba(255,255,255,0.18); border: none; color: #fff;
+      background: rgba(255,255,255,0.18); border: none; color: var(--text-inverse);
       padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600;
       transition: background 0.15s ease;
     }
     .modal-full-header button:hover { background: rgba(255,255,255,0.28); }
     
     .profile-modal { width: min(100%, 540px); height: auto; max-height: 92vh; }
-    .profile-modal-body { overflow-y: auto; padding: 24px; background: #fff; }
+    .profile-modal-body { overflow-y: auto; padding: 24px; background: var(--card-bg); }
     .profile-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 12px 18px; }
-    .profile-photo-large { width: 132px; height: 132px; border: 4px solid #fff; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px rgba(109, 72, 155, 0.45), 0 12px 28px rgba(74, 48, 109, 0.2); }
+    .profile-photo-large { width: 132px; height: 132px; border: 4px solid var(--card-bg); border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px rgba(0,11,89,.15), 0 12px 28px rgba(0,11,89,.18); }
     .profile-view-name { margin-top: 16px; font-size: 1.35rem; line-height: 1.2; font-weight: 800; color: var(--text); }
-    .profile-view-role { margin-top: 5px; color: var(--primary); font-weight: 700; font-size: 0.9rem; }
+    .profile-view-role { margin-top: 5px; color: var(--text); font-weight: 700; font-size: 0.9rem; }
     .profile-details { border-top: 1px solid var(--border); padding-top: 14px; display: grid; gap: 10px; }
     .profile-detail { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 10px; font-size: 0.86rem; }
     .profile-detail-label { color: var(--text-muted); font-weight: 600; }
     .profile-detail-value { overflow-wrap: anywhere; color: var(--text); }
-    .profile-save-status { margin-top: 14px; padding: 9px 11px; border-radius: 6px; background: #e9f8ef; color: #0c7a43; font-size: 0.84rem; font-weight: 600; }
+    .profile-save-status { margin-top: 14px; padding: 9px 11px; border-radius: 6px; background: var(--success-soft); color: var(--success-dark); font-size: 0.84rem; font-weight: 600; }
     .profile-edit-form { display: none; }
     .profile-edit-form .ficha-field { margin-bottom: 12px; }
     .profile-edit-form label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
@@ -540,21 +516,21 @@
     .profile-edit-preview { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
     .profile-signature-panel { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
     .profile-signature-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-    .profile-signature-tab { border: 1px solid var(--border); background: #fff; color: var(--text-muted); padding: 7px 11px; border-radius: 6px; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
-    .profile-signature-tab.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
-    .profile-signature-preview { overflow-x: auto; border: 1px solid var(--border); border-radius: 7px; padding: 12px; background: #f8fafc; }
+    .profile-signature-tab { border: 1px solid var(--border); background: var(--card-bg); color: var(--text-muted); padding: 7px 11px; border-radius: 6px; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    .profile-signature-tab.active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+    .profile-signature-preview { overflow-x: auto; border: 1px solid var(--border); border-radius: 7px; padding: 12px; background: var(--bg-elevated); }
     .profile-signature-png { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 110px; }
     .profile-signature-png img { max-width: 100%; height: auto; border: 1px solid var(--border); background: white; }
     .profile-signature-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-    .profile-signature-actions a { color: var(--primary); font-size: 0.82rem; font-weight: 600; }
+    .profile-signature-actions a { color: var(--text); font-size: 0.82rem; font-weight: 600; }
     .profile-digital-signature { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
     .profile-digital-current { display: flex; align-items: center; gap: 14px; min-height: 76px; }
     .profile-digital-current img { max-width: 170px; max-height: 72px; object-fit: contain; }
-    .profile-digital-canvas-wrap { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: #f8fafc; }
-    #profileDigitalCanvas { display: block; width: 100%; height: 150px; background: #fff; border: 1px dashed #94a3b8; border-radius: 5px; touch-action: none; cursor: crosshair; }
+    .profile-digital-canvas-wrap { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-elevated); }
+    #profileDigitalCanvas { display: block; width: 100%; height: 150px; background: var(--card-bg); border: 1px dashed var(--border); border-radius: 5px; touch-action: none; cursor: crosshair; }
     .profile-digital-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
     .profile-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-    .aviso-banner { background: #fff6e6; border: 1px solid #ffe2ad; color: #a15c00; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; font-weight: 600; }
+    .aviso-banner { background: var(--warning-soft); border: 1px solid var(--warning); color: var(--warning-dark); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; font-weight: 600; }
 
     /* Toast */
     .toast-box {
@@ -569,15 +545,15 @@
     .toast-item {
       padding: 12px 18px;
       border-radius: 8px;
-      background: #1e293b;
-      color: #fff;
+      background: var(--primary-dark);
+      color: var(--text-inverse);
       font-size: 0.85rem;
       font-weight: 600;
       box-shadow: 0 10px 25px rgba(0,0,0,0.2);
       animation: toastIn 0.2s ease;
     }
-    .toast-item.error { background: #ef4444; }
-    .toast-item.success { background: #10b981; }
+    .toast-item.error { background: var(--danger); }
+    .toast-item.success { background: var(--success); }
     @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
     /* ── Estado Chips Style (como Inventario) ── */
@@ -590,7 +566,7 @@
       display: block;
       font-weight: 700;
       font-size: 0.76rem;
-      color: var(--primary);
+      color: var(--text);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 8px;
@@ -601,7 +577,7 @@
       flex-wrap: wrap;
     }
     .estado-chip {
-      background-color: #fff;
+      background-color: var(--card-bg);
       border: 1.5px solid var(--border);
       border-radius: 20px;
       padding: 6px 14px;
@@ -617,8 +593,8 @@
       user-select: none;
     }
     .estado-chip:hover {
-      background-color: #f8fafc;
-      border-color: #cbd5e1;
+      background-color: var(--bg-elevated);
+      border-color: var(--border-strong);
       color: var(--text);
     }
     .estado-chip.active {
@@ -628,73 +604,73 @@
 
     /* Colores de Estado en filtros (Amarillo, Verde, Rojo, Naranja) */
     .estado-chip.chip-todos {
-      background-color: #f8fafc;
-      border-color: #cbd5e1;
-      color: #475569;
+      background-color: var(--bg-elevated);
+      border-color: var(--border-strong);
+      color: var(--text-muted);
     }
     .estado-chip.chip-todos.active {
-      background-color: var(--primary);
-      border-color: var(--primary);
-      color: #fff;
+      background-color: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-contrast);
     }
 
     .estado-chip.chip-en-proceso {
-      background-color: #fefce8;
-      border-color: #fde047;
-      color: #854d0e;
+      background-color: var(--warning-soft);
+      border-color: var(--warning);
+      color: var(--warning-dark);
     }
     .estado-chip.chip-en-proceso:hover {
-      background-color: #fef9c3;
+      background-color: var(--warning-soft);
     }
     .estado-chip.chip-en-proceso.active {
-      background-color: #eab308;
-      border-color: #ca8a04;
-      color: #713f12;
-      box-shadow: 0 4px 10px rgba(202, 138, 4, 0.35);
+      background-color: var(--warning);
+      border-color: var(--warning-dark);
+      color: var(--text-inverse);
+      box-shadow: 0 4px 10px rgba(217,119,6,0.35);
     }
 
     .estado-chip.chip-finalizado {
-      background-color: #f0fdf4;
-      border-color: #86efac;
-      color: #15803d;
+      background-color: var(--success-soft);
+      border-color: var(--success);
+      color: var(--success-dark);
     }
     .estado-chip.chip-finalizado:hover {
-      background-color: #dcfce7;
+      background-color: var(--success-soft);
     }
     .estado-chip.chip-finalizado.active {
-      background-color: #16a34a;
-      border-color: #15803d;
-      color: #ffffff;
+      background-color: var(--success);
+      border-color: var(--success-dark);
+      color: var(--text-inverse);
       box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
     }
 
     .estado-chip.chip-suspendido {
-      background-color: #fff7ed;
-      border-color: #fdba74;
-      color: #c2410c;
+      background-color: var(--warning-soft);
+      border-color: var(--warning);
+      color: var(--warning-dark);
     }
     .estado-chip.chip-suspendido:hover {
-      background-color: #ffedd5;
+      background-color: var(--warning-soft);
     }
     .estado-chip.chip-suspendido.active {
-      background-color: #ea580c;
-      border-color: #c2410c;
-      color: #ffffff;
-      box-shadow: 0 4px 10px rgba(234, 88, 12, 0.35);
+      background-color: var(--warning);
+      border-color: var(--warning-dark);
+      color: var(--text-inverse);
+      box-shadow: 0 4px 10px rgba(217,119,6,0.35);
     }
 
     .estado-chip.chip-cancelado {
-      background-color: #fef2f2;
-      border-color: #fca5a5;
-      color: #b91c1c;
+      background-color: var(--danger-soft);
+      border-color: var(--danger);
+      color: var(--danger-dark);
     }
     .estado-chip.chip-cancelado:hover {
-      background-color: #fee2e2;
+      background-color: var(--danger-soft);
     }
     .estado-chip.chip-cancelado.active {
-      background-color: #dc2626;
-      border-color: #b91c1c;
-      color: #ffffff;
+      background-color: var(--danger);
+      border-color: var(--danger-dark);
+      color: var(--text-inverse);
       box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
     }
 
@@ -707,7 +683,7 @@
       position: relative;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      background: #fff;
+      background: var(--card-bg);
       box-shadow: var(--shadow-sm);
     }
     table.resizable-table {
@@ -720,7 +696,7 @@
       position: sticky;
       top: 0;
       z-index: 25;
-      background: #f8fafc;
+      background: var(--bg-elevated);
       border-bottom: 2px solid var(--border);
       border-right: 1px solid var(--border);
       padding: 9px 10px;
@@ -738,8 +714,8 @@
       transition: background 0.15s, color 0.15s;
     }
     table.resizable-table th.sortable:hover {
-      background: #ede8f5;
-      color: var(--primary);
+      background: var(--accent-soft);
+      color: var(--text);
     }
     table.resizable-table .th-content {
       display: flex;
@@ -757,12 +733,12 @@
     }
     table.resizable-table .sort-icon {
       font-size: 0.72rem;
-      color: #94a3b8;
+      color: var(--text-muted);
       transition: color 0.15s;
       flex-shrink: 0;
     }
     table.resizable-table th.sorted .sort-icon {
-      color: var(--primary);
+      color: var(--text);
       font-weight: 800;
     }
     table.resizable-table .col-resizer {
@@ -782,9 +758,9 @@
     table.resizable-table td {
       padding: 9px 12px;
       border-bottom: 1px solid var(--border);
-      border-right: 1px solid #f1f5f9;
+      border-right: 1px solid var(--border);
       color: var(--text);
-      background: #ffffff;
+      background: var(--card-bg);
       vertical-align: middle;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -792,7 +768,7 @@
       font-size: 0.83rem;
     }
     table.resizable-table tbody tr:hover td {
-      background-color: #faf9fd;
+      background-color: var(--bg-elevated);
     }
     .btn-action {
       padding: 4px 8px;
@@ -806,7 +782,7 @@
     .filter-panel {
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: var(--radius-md);
       padding: 16px 18px;
       margin-bottom: 20px;
       box-shadow: var(--shadow-sm);
@@ -852,7 +828,7 @@
       border-radius: 6px;
       font: inherit;
       font-size: 0.82rem;
-      background: #fff;
+      background: var(--card-bg);
       color: var(--text);
       outline: none;
     }
@@ -868,8 +844,8 @@
       white-space: nowrap;
     }
     th.sortable:hover {
-      background: #ede8f5;
-      color: var(--primary);
+      background: var(--accent-soft);
+      color: var(--text);
     }
     th.sortable .sort-indicator {
       display: inline-block;
@@ -879,7 +855,7 @@
     }
     th.sortable.active .sort-indicator {
       opacity: 1;
-      color: var(--primary);
+      color: var(--text);
       font-weight: 900;
     }
 
@@ -895,16 +871,64 @@
       letter-spacing: 0.02em;
       white-space: nowrap;
     }
-    .status-badge.en-proceso { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
-    .status-badge.finalizado { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-    .status-badge.suspendido { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
-    .status-badge.cancelado { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .status-badge.en-proceso { background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning); }
+    .status-badge.finalizado { background: var(--success-soft); color: var(--success-dark); border: 1px solid var(--success); }
+    .status-badge.suspendido { background: var(--warning-soft); color: var(--warning-dark); border: 1px solid var(--warning); }
+    .status-badge.cancelado { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger); }
+    .status-badge.registro { background: var(--info-soft); color: var(--info-dark); border: 1px solid var(--info); }
+    .status-badge.contratado { background: var(--success-soft); color: var(--success-dark); border: 1px solid var(--success); }
+    .status-badge.bloqueado { background: var(--danger-soft); color: var(--danger-dark); border: 1px solid var(--danger); }
+
+    /* Estilos Pestaña Aspirantes: Pills y Agrupamiento */
+    .tab-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .tab-pill:hover { background: var(--accent-soft); color: var(--accent-dark); }
+    .tab-pill.active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); box-shadow: 0 2px 6px var(--accent-soft); }
+
+    .group-header-row td {
+      background: var(--accent-soft) !important;
+      font-weight: 800;
+      font-size: 0.84rem;
+      color: var(--accent-dark);
+      border-top: 2px solid var(--border) !important;
+      border-bottom: 1.5px solid var(--border) !important;
+      padding: 9px 14px !important;
+      cursor: pointer;
+      user-select: none;
+    }
+    .group-header-row:hover td {
+      background: var(--accent-soft) !important;
+    }
+
+    .asp-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--border);
+      background: var(--bg-elevated);
+      flex-shrink: 0;
+    }
 
     /* Badges de Días de Proceso */
     .badge-dias-cumple {
-      background: #dcfce7;
-      color: #15803d;
-      border: 1px solid #86efac;
+      background: var(--success-soft);
+      color: var(--success-dark);
+      border: 1px solid var(--success);
       padding: 3px 8px;
       border-radius: 12px;
       font-weight: 700;
@@ -915,9 +939,9 @@
       white-space: nowrap;
     }
     .badge-dias-nocumple {
-      background: #fee2e2;
-      color: #b91c1c;
-      border: 1px solid #fca5a5;
+      background: var(--danger-soft);
+      color: var(--danger-dark);
+      border: 1px solid var(--danger);
       padding: 3px 8px;
       border-radius: 12px;
       font-weight: 700;
@@ -928,9 +952,9 @@
       white-space: nowrap;
     }
     .badge-dias-pendiente {
-      background: #fef9c3;
-      color: #854d0e;
-      border: 1px solid #fde047;
+      background: var(--warning-soft);
+      color: var(--warning-dark);
+      border: 1px solid var(--warning);
       padding: 3px 8px;
       border-radius: 12px;
       font-weight: 700;
@@ -941,9 +965,9 @@
       white-space: nowrap;
     }
     .badge-contratado-locked {
-      background: #f1f5f9;
-      color: #64748b;
-      border: 1px solid #cbd5e1;
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      border: 1px solid var(--border-strong);
       padding: 3px 8px;
       border-radius: 6px;
       font-size: 0.74rem;
@@ -959,7 +983,7 @@
       font-weight: 600;
       border: 1.5px solid var(--border);
       border-radius: 6px;
-      background: #fff;
+      background: var(--card-bg);
       color: var(--text);
       max-width: 175px;
       width: 100%;
@@ -978,7 +1002,7 @@
     }
     .btn-toggle-option {
       border: 1.5px solid var(--border);
-      background: #f8fafc;
+      background: var(--bg-elevated);
       color: var(--text-muted);
       padding: 7px 13px;
       border-radius: 7px;
@@ -989,15 +1013,15 @@
       user-select: none;
     }
     .btn-toggle-option:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: var(--primary-light);
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--accent-soft);
     }
     .btn-toggle-option.active {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-      box-shadow: 0 3px 8px rgba(74, 48, 109, 0.25);
+      background: var(--accent);
+      color: var(--accent-contrast);
+      border-color: var(--accent);
+      box-shadow: 0 3px 8px var(--accent-soft);
     }
 
     /* Modal Form for Requisición */
@@ -1012,8 +1036,8 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--primary);
-      border-bottom: 1.5px solid #ece4f5;
+      color: var(--text);
+      border-bottom: 1.5px solid var(--border);
       padding-bottom: 5px;
       margin: 18px 0 12px;
       display: flex;
@@ -1046,7 +1070,7 @@
       border-radius: 6px;
       font: inherit;
       font-size: 0.82rem;
-      background: #fff;
+      background: var(--card-bg);
       color: var(--text);
       outline: none;
     }
@@ -1058,8 +1082,8 @@
       min-height: 55px;
     }
     .req-field.disabled .req-input, .req-field.disabled select {
-      background: #f1f5f9;
-      color: #94a3b8;
+      background: var(--bg-elevated);
+      color: var(--text-muted);
       cursor: not-allowed;
     }
 
@@ -1071,7 +1095,7 @@
       margin-bottom: 12px;
     }
     .req-detail-box {
-      background: #f8fafc;
+      background: var(--bg-elevated);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 9px 12px;
@@ -1099,7 +1123,7 @@
       align-items: center;
       justify-content: space-between;
       background: var(--sidebar-bg);
-      color: #fff;
+      color: var(--text-inverse);
       padding: 6px 12px;
       min-height: 48px;
       position: sticky;
@@ -1117,7 +1141,7 @@
     .mobile-menu-btn {
       background: transparent;
       border: none;
-      color: #fff;
+      color: var(--text-inverse);
       font-size: 1.45rem;
       cursor: pointer;
       padding: 4px 6px;
@@ -1140,7 +1164,7 @@
     .mobile-title {
       font-size: .95rem;
       font-weight: 700;
-      color: #fff;
+      color: var(--text-inverse);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1178,7 +1202,7 @@
     }
     .mobile-profile-btn:hover .mobile-profile-thumb {
       transform: scale(1.05);
-      border-color: #fff;
+      border-color: var(--text-inverse);
     }
     .mobile-backdrop {
       display: none;
@@ -1216,7 +1240,7 @@
         transform: translateX(-100%);
         transition: transform .25s ease;
         z-index: 200;
-        box-shadow: 4px 0 20px rgba(28, 19, 43, 0.35);
+        box-shadow: 4px 0 20px rgba(0,11,89,0.35);
       }
       .sidebar.open {
         transform: translateX(0);
@@ -1236,8 +1260,8 @@
         padding: 12px 14px !important;
         margin-bottom: 12px !important;
         border-left: 4px solid var(--accent) !important;
-        background: #fff;
-        border-radius: var(--radius);
+        background: var(--card-bg);
+        border-radius: var(--radius-md);
         border: 1px solid var(--border);
         box-shadow: var(--shadow-sm);
       }
@@ -1552,7 +1576,7 @@
             </div>
             <div class="meta-box">
               <span class="meta-label">Cédula / Identificación</span>
-              <span class="meta-val" id="resIdentificacion" style="font-family:'JetBrains Mono',monospace; color:var(--primary)">-</span>
+              <span class="meta-val" id="resIdentificacion" style="font-family:'JetBrains Mono',monospace; color:var(--text)">-</span>
             </div>
             <div class="meta-box">
               <span class="meta-label">Operación</span>
@@ -1819,20 +1843,209 @@
 
     </div>
 
-    <!-- ── SECCIÓN PLACEHOLDER: ASPIRANTES ────────────────────────────────────── -->
+    <!-- ── SECCIÓN: ASPIRANTES Y HOJAS DE VIDA ────────────────────────────────── -->
     <div id="tabContentAspirantes" style="display: none;">
-      <div class="tab-placeholder-card">
-        <div class="tab-placeholder-icon">👥</div>
-        <div class="tab-placeholder-title">Aspirantes &amp; Hojas de Vida</div>
-        <div class="tab-placeholder-desc">
-          Este submódulo gestionará el reclutamiento a partir de <strong>Dynamic_hv_aspirante</strong> y sus tablas anexas (documentos, estudios, referencias, experiencia).
+
+      <!-- Card Filtros Plegables con Conteos y Chips de Estado (como Requisiciones) -->
+      <div class="filter-panel" id="panelFiltrosAspirantes">
+        <div class="filter-panel-header" onclick="toggleFiltrosAspirantes()">
+          <div class="filter-panel-title">
+            <span>🔍</span> Filtros y Búsqueda de Aspirantes
+            <span class="tag-badge tag-badge-primary" id="lblFiltrosActivosCountAsp" style="margin-left:8px; font-size:0.72rem;">Cargando...</span>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem;" id="btnToggleFiltrosAsp" onclick="toggleFiltrosAspirantes()">
+            <span id="iconToggleFiltrosAsp">▲ Ocultar</span>
+          </button>
         </div>
-        <div style="margin-top: 20px;">
-          <span class="module-badge-tag" style="background:#efe8f7; color:var(--primary); border-color:#d4c5e8;">
-            Próximamente Disponible
-          </span>
+        <div class="filter-panel-body" id="bodyFiltrosAspirantes">
+
+          <!-- Filtro Principal: Estado (Chips Dinámicos con Conteos) -->
+          <div class="estado-filter-section">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label class="estado-filter-label" style="margin-bottom:0;">Estado del Aspirante (Filtro Principal)</label>
+              <span id="lblEstadoTotalCountAsp" style="font-size:0.75rem; color:var(--text-muted); font-weight:600;"></span>
+            </div>
+            <div id="filter-estado-buttons-asp" class="estado-filter-buttons">
+              <!-- Botones generados dinámicamente: Todos (X), Registro (X), En Proceso (X), Contratado (X), Bloqueado (X) -->
+            </div>
+          </div>
+
+          <div class="filter-grid">
+            <div class="filter-group" style="grid-column: span 2;">
+              <label>Buscador de Aspirantes</label>
+              <input type="text" id="filtroAspQ" placeholder="Escribe nombre, cédula, teléfono, correo o cargo..." onkeydown="if(event.key==='Enter') aplicarFiltrosAspirantes()">
+            </div>
+            <div class="filter-group">
+              <label>Requisición Vinculada</label>
+              <select id="filtroAspRequisicion" onchange="aplicarFiltrosAspirantes()">
+                <option value="todas">Todas las Requisiciones</option>
+                <option value="con_requisicion">Con Requisición Asignada</option>
+                <option value="sin_requisicion">Sin Requisición (Disponibles)</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Regional</label>
+              <select id="filtroAspRegional" onchange="aplicarFiltrosAspirantes()">
+                <option value="todas">Todas las Regionales</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Operación</label>
+              <select id="filtroAspOperacion" onchange="aplicarFiltrosAspirantes()">
+                <option value="todas">Todas las Operaciones</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Departamento</label>
+              <select id="filtroAspDepartamento" onchange="aplicarFiltrosAspirantes()">
+                <option value="todos">Todos los Departamentos</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Medio de Reclutamiento</label>
+              <select id="filtroAspMedio" onchange="aplicarFiltrosAspirantes()">
+                <option value="todos">Todos los Medios</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Fecha Registro Desde</label>
+              <input type="date" id="filtroAspDesde" onchange="aplicarFiltrosAspirantes()">
+            </div>
+            <div class="filter-group">
+              <label>Fecha Registro Hasta</label>
+              <input type="date" id="filtroAspHasta" onchange="aplicarFiltrosAspirantes()">
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" class="btn btn-primary" onclick="aplicarFiltrosAspirantes()" style="flex:1;">
+                <span>Filtrar</span>
+              </button>
+              <button type="button" class="btn btn-outline" onclick="limpiarFiltrosAspirantes()" title="Limpiar filtros">
+                <span>Limpiar</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Agrupador de Filas (Group by - Como en la imagen del usuario) -->
+          <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size: 0.95rem;">🗂️</span>
+              <div>
+                <strong style="font-size: 0.82rem; color: var(--text);">Agrupar por (Group by)</strong>
+                <p style="font-size: 0.72rem; color: var(--text-muted); margin:0;">Agrupa los registros por una columna clave con conteos</p>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <select id="selectGroupByAsp" onchange="cambiarAgrupamientoAspirantes()" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card-bg); font-weight: 600; color: var(--text);">
+                <option value="">(Sin agrupar — Lista Plana)</option>
+                <option value="departamento">departamento</option>
+                <option value="medio_reclutamiento">medio_reclutamiento</option>
+                <option value="estado_proceso">estado_proceso</option>
+                <option value="req_codigo">requisición asignada</option>
+                <option value="req_operacion">operación</option>
+              </select>
+              <select id="selectGroupByOrderAsp" onchange="cambiarAgrupamientoAspirantes()" style="padding: 6px 10px; font-size: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card-bg); font-weight: 600; color: var(--text);">
+                <option value="ASC">Ascending</option>
+                <option value="DESC">Descending</option>
+              </select>
+              <button type="button" class="btn btn-outline" onclick="quitarAgrupamientoAspirantes()" style="padding: 6px 10px; font-size: 0.75rem;" title="Quitar agrupamiento">
+                <span>🗑️</span>
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
+
+      <!-- Card Tabla Maestra de Aspirantes (Columnas fijas y redimensionables como Requisiciones) -->
+      <div class="card">
+        <div class="card-title" style="justify-content: space-between; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>👥</span> Lista Maestra de Aspirantes
+            <span id="lblTotalRegistrosAsp" style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;"></span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem;" onclick="cargarAspirantes()">
+              <span>↻ Actualizar</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="req-table-wrapper">
+          <table id="tablaAspirantes" class="resizable-table">
+            <thead>
+              <tr>
+                <th style="width: 220px; min-width: 170px;" class="sortable" onclick="ordenarAspirantes('nombre')">
+                  <div class="th-content">
+                    <span>Aspirante</span>
+                    <span class="sort-icon" id="sort_asp_nombre">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 160px; min-width: 130px;" class="sortable" onclick="ordenarAspirantes('identificacion')">
+                  <div class="th-content">
+                    <span>Contacto</span>
+                    <span class="sort-icon" id="sort_asp_identificacion">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 180px; min-width: 140px;" class="sortable" onclick="ordenarAspirantes('req_codigo')">
+                  <div class="th-content">
+                    <span>Requisición</span>
+                    <span class="sort-icon" id="sort_asp_req_codigo">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 145px; min-width: 115px;" class="sortable" onclick="ordenarAspirantes('departamento')">
+                  <div class="th-content">
+                    <span>Ubicación</span>
+                    <span class="sort-icon" id="sort_asp_departamento">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 145px; min-width: 115px;" class="sortable" onclick="ordenarAspirantes('medio_reclutamiento')">
+                  <div class="th-content">
+                    <span>Medio Reclutamiento</span>
+                    <span class="sort-icon" id="sort_asp_medio_reclutamiento">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 135px; min-width: 110px; text-align:center;" class="sortable" onclick="ordenarAspirantes('docs_cargados')">
+                  <div class="th-content" style="justify-content:center; text-align:center;">
+                    <span>Documentación</span>
+                    <span class="sort-icon" id="sort_asp_docs_cargados">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 120px; min-width: 100px;" class="sortable" onclick="ordenarAspirantes('estado_proceso')">
+                  <div class="th-content">
+                    <span>Estado</span>
+                    <span class="sort-icon" id="sort_asp_estado_proceso">▲</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 130px; min-width: 110px;" class="sortable active sorted" onclick="ordenarAspirantes('fecha_registro')">
+                  <div class="th-content">
+                    <span>Fecha Registro</span>
+                    <span class="sort-icon" id="sort_asp_fecha_registro">▼</span>
+                  </div>
+                  <div class="col-resizer"></div>
+                </th>
+                <th style="width: 165px; min-width: 145px; text-align:center;">
+                  <div class="th-content" style="justify-content:center;">
+                    <span>Acciones</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAspirantes">
+              <tr>
+                <td colspan="9" style="text-align:center; color:var(--text-muted); padding:28px;">Cargando catálogo de aspirantes...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- ── SECCIÓN PLACEHOLDER: SOCIODEMOGRÁFICA ─────────────────────────────── -->
@@ -1844,7 +2057,7 @@
           Este submódulo consolidará la información de <strong>Maestro_Segmentación</strong> combinada con <strong>Maestro_Vinculación</strong>, utilizada por Contratación tras el envío de candidatos aprobados.
         </div>
         <div style="margin-top: 20px;">
-          <span class="module-badge-tag" style="background:#efe8f7; color:var(--primary); border-color:#d4c5e8;">
+          <span class="module-badge-tag" style="background:var(--accent-soft); color:var(--accent-dark); border-color:var(--border);">
             Próximamente Disponible
           </span>
         </div>
@@ -1867,7 +2080,7 @@
         </div>
 
         <div id="modalNuevoFeedback" style="display:none; margin-top:14px;">
-          <div style="background:var(--primary-subtle); border:1px solid #d4c5e8; border-radius:8px; padding:12px; margin-bottom:12px;">
+          <div style="background:var(--accent-soft); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
               <span style="font-weight:700; font-size:1.02rem; color:var(--text);" id="modalNuevoNombre">-</span>
               <span id="modalNuevoBadgeOrigen" class="tag-badge tag-badge-primary">Sociodemográfica</span>
@@ -1875,20 +2088,20 @@
             <div style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;" id="modalNuevoMeta">-</div>
           </div>
           <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:14px; text-align:center;">
-            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:8px;">
-              <div style="font-weight:800; color:var(--primary); font-size:1.1rem;" id="modalNuevoKpiDocs">0</div>
+            <div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; padding:8px;">
+              <div style="font-weight:800; color:var(--text); font-size:1.1rem;" id="modalNuevoKpiDocs">0</div>
               <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Documentos</div>
             </div>
-            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:8px;">
-              <div style="font-weight:800; color:var(--primary); font-size:1.1rem;" id="modalNuevoKpiActas">0</div>
+            <div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; padding:8px;">
+              <div style="font-weight:800; color:var(--text); font-size:1.1rem;" id="modalNuevoKpiActas">0</div>
               <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Actas / Dotación</div>
             </div>
-            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:8px;">
-              <div style="font-weight:800; color:var(--primary); font-size:1.1rem;" id="modalNuevoKpiBio">0</div>
+            <div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; padding:8px;">
+              <div style="font-weight:800; color:var(--text); font-size:1.1rem;" id="modalNuevoKpiBio">0</div>
               <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase;">Marcaciones</div>
             </div>
           </div>
-          <div class="aviso-banner" style="background:#fff6e6; border-color:#ffe2ad; color:#a15c00; margin-bottom:0;">
+          <div class="aviso-banner" style="background:var(--warning-soft); border-color:var(--warning); color:var(--warning-dark); margin-bottom:0;">
             ⚠️ <strong>Atención:</strong> La eliminación borrará permanentemente los datos del trabajador en todos los módulos del sistema, eliminará sus archivos de la nube y dejará constancia certificada para trazabilidad.
           </div>
         </div>
@@ -1911,7 +2124,7 @@
       <div class="modal-body">
         <div style="margin-bottom: 14px;">
           <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Identificación Actual</label>
-          <input type="text" id="modOldId" class="input-field" disabled style="background:#f1f5f9; font-weight:700;">
+          <input type="text" id="modOldId" class="input-field" disabled style="background:var(--bg-elevated); font-weight:700;">
         </div>
         <div>
           <label style="font-size:0.75rem; font-weight:700; color:var(--text); text-transform:uppercase;">Nueva Identificación (Solo Números)</label>
@@ -1933,14 +2146,14 @@
         <p>Esta acción es permanente. Se eliminarán los registros del trabajador en los módulos del sistema y sus archivos en la nube, generando un certificado de auditoría para trazabilidad.</p>
       </div>
       <div class="modal-body">
-        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:12px; margin-bottom:14px; font-size:0.85rem; color:#991b1b;">
+        <div style="background:var(--danger-soft); border:1px solid var(--danger); border-radius:8px; padding:12px; margin-bottom:14px; font-size:0.85rem; color:var(--danger-dark);">
           Se generará automáticamente un <strong>Certificado de Auditoría</strong> que se almacenará en la nube para trazabilidad y consulta permanente.
         </div>
 
         <!-- Opción: Solo Sociodemográfica -->
-        <div class="sociodemo-option-box" id="boxSoloSociodemo" style="margin-bottom:16px; background:#fbf9fd; border:1.5px solid #ded3ee; border-radius:8px; padding:12px 14px;">
+        <div class="sociodemo-option-box" id="boxSoloSociodemo" style="margin-bottom:16px; background:var(--bg-elevated); border:1.5px solid var(--border); border-radius:8px; padding:12px 14px;">
           <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; font-size:0.9rem; color:var(--text); margin-bottom:0;">
-            <input type="checkbox" id="chkSoloSociodemo" onchange="actualizarAclaracionPurga()" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+            <input type="checkbox" id="chkSoloSociodemo" onchange="actualizarAclaracionPurga()" style="width:18px; height:18px; accent-color:var(--accent, var(--primary)); cursor:pointer;">
             <span>Solo Sociodemográfica</span>
           </label>
           <div id="lblAclaracionPurga" style="margin-top:6px; font-size:0.8rem; color:var(--text-muted); padding-left:28px;">
@@ -1968,10 +2181,10 @@
         <h3 style="justify-content: center; color:var(--success)">Trabajador Eliminado</h3>
         <p id="descExitoEliminar">La purga del trabajador y sus registros dependientes se completó con éxito.</p>
       </div>
-      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px; margin-bottom:20px; font-size:0.9rem; color:#166534;">
+      <div style="background:var(--success-soft); border:1px solid var(--success); border-radius:8px; padding:14px; margin-bottom:20px; font-size:0.9rem; color:var(--success-dark);">
         <div style="font-weight:700; margin-bottom:4px;">Certificado de Evidencia Generado</div>
-        <div style="font-size:0.8rem; color:#15803d; margin-bottom:12px;">Se ha guardado una copia inmutable de la auditoría en TalentHub Central.</div>
-        <a id="btnLinkEvidencia" href="#" target="_blank" class="btn btn-primary" style="background:#16a34a; font-size:0.85rem;">
+        <div style="font-size:0.8rem; color:var(--success-dark); margin-bottom:12px;">Se ha guardado una copia inmutable de la auditoría en TalentHub Central.</div>
+        <a id="btnLinkEvidencia" href="#" target="_blank" class="btn btn-primary" style="background:var(--success); font-size:0.85rem;">
           <span>📄 Ver Certificado de Evidencia</span>
         </a>
       </div>
@@ -2024,7 +2237,7 @@
             </div>
           </div>
           <div class="profile-signature-panel">
-            <div style="font-weight:700;color:var(--primary);margin-bottom:8px">Firma corporativa</div>
+            <div style="font-weight:700;color:var(--text);margin-bottom:8px">Firma corporativa</div>
             <div class="profile-signature-tabs" role="tablist" aria-label="Formato de firma">
               <button type="button" class="profile-signature-tab active" id="profileFirmaTabHtml" onclick="cambiarVistaFirmaPerfil('html')">Firma para correo</button>
               <button type="button" class="profile-signature-tab" id="profileFirmaTabPng" onclick="cambiarVistaFirmaPerfil('png')">Imagen PNG</button>
@@ -2046,7 +2259,7 @@
             </div>
           </div>
           <div class="profile-digital-signature">
-            <div style="font-weight:700;color:var(--primary);margin-bottom:8px">Firma digital para documentos</div>
+            <div style="font-weight:700;color:var(--text);margin-bottom:8px">Firma digital para documentos</div>
             <div class="profile-digital-current">
               <img id="profileDigitalRecent" src="" alt="Firma digital registrada" style="display:none">
               <span id="profileDigitalEmpty" style="color:var(--text-muted);font-size:.84rem">No hay una firma previa. Puedes dibujarla aquí.</span>
@@ -2060,7 +2273,7 @@
               </div>
             </div>
           </div>
-          <div id="talenthubProfileError" class="aviso-banner" style="display:none;background:#fff1f0;border-color:#fecaca;color:#b91c1c;margin-top:14px;"></div>
+          <div id="talenthubProfileError" class="aviso-banner" style="display:none;background:var(--danger-soft);border-color:var(--danger);color:var(--danger-dark);margin-top:14px;"></div>
           <div class="profile-edit-actions">
             <button type="button" class="btn btn-outline" onclick="cancelarEdicionPerfilTalenthub()">Cancelar</button>
             <button type="submit" class="btn btn-primary" id="btnGuardarPerfilTalenthub">Guardar y generar firma</button>
@@ -2075,11 +2288,11 @@
     <div class="modal-box modal-box-lg" style="max-height:92vh; display:flex; flex-direction:column; overflow:hidden; padding:0;">
       
       <!-- ENCABEZADO FIJO (Sticky con Resumen de la Solicitud) -->
-      <div class="modal-hdr" style="position:sticky; top:0; z-index:20; background:#fff; border-bottom:1.5px solid var(--border); padding:16px 20px 14px; margin-bottom:0; flex-shrink:0;">
+      <div class="modal-hdr" style="position:sticky; top:0; z-index:20; background: var(--card-bg); border-bottom:1.5px solid var(--border); padding:16px 20px 14px; margin-bottom:0; flex-shrink:0;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
           <div>
             <div style="display:flex; align-items:center; gap:8px;">
-              <span id="detReqCodigo" style="font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.25rem; color:var(--primary)">RQ00000</span>
+              <span id="detReqCodigo" style="font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.25rem; color:var(--text)">RQ00000</span>
               <span id="detReqBadgeEstado" class="status-badge en-proceso">En Proceso</span>
               <span id="detReqHeaderFechaSolBadge" style="font-size:0.8rem; font-family:'JetBrains Mono',monospace; color:var(--text-muted); font-weight:600; margin-left:6px;" title="Fecha de Radicación / Solicitud">📅 -</span>
             </div>
@@ -2090,14 +2303,14 @@
         </div>
 
         <!-- Resumen de la Solicitud integrado en el encabezado -->
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-top:12px; background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-top:12px; background:var(--bg-elevated); padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
           <div style="display:flex; flex-direction:column;">
             <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Fecha Solicitud</span>
             <span id="detReqHeaderFechaSol" style="font-size:0.82rem; font-weight:700; color:var(--text); font-family:'JetBrains Mono',monospace;">-</span>
           </div>
           <div style="display:flex; flex-direction:column;">
             <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Personas Requeridas</span>
-            <span id="detReqPersonas" style="font-size:1.1rem; color:var(--primary); font-weight:800;">-</span>
+            <span id="detReqPersonas" style="font-size:1.1rem; color:var(--text); font-weight:800;">-</span>
           </div>
           <div style="display:flex; flex-direction:column;">
             <span style="font-size:0.68rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Tipo de Pago</span>
@@ -2132,11 +2345,11 @@
           </button>
         </div>
 
-        <div id="boxListaAspirantesVinculados" style="margin-bottom:18px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:#fff;">
+        <div id="boxListaAspirantesVinculados" style="margin-bottom:18px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background: var(--card-bg);">
           <div style="overflow-x:auto;">
             <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
               <thead>
-                <tr style="background:#f8fafc; border-bottom:1.5px solid var(--border);">
+                <tr style="background:var(--bg-elevated); border-bottom:1.5px solid var(--border);">
                   <th style="padding:8px 10px; text-align:center; font-weight:700; width:90px;">Acciones</th>
                   <th style="padding:8px 10px; font-weight:700;">Identificación</th>
                   <th style="padding:8px 10px; font-weight:700;">Nombre Completo</th>
@@ -2225,7 +2438,7 @@
           </div>
           <div class="req-detail-box">
             <div class="req-detail-lbl">Responsable Selección</div>
-            <div class="req-detail-val" id="detReqResponsableWrap" style="color:var(--primary); font-weight:700;">
+            <div class="req-detail-val" id="detReqResponsableWrap" style="color:var(--text); font-weight:700;">
               <span id="detReqResponsable">-</span>
             </div>
           </div>
@@ -2248,7 +2461,7 @@
         </div>
 
       </div>
-      <div class="modal-ftr" style="padding:12px 20px; background:#f8fafc;">
+      <div class="modal-ftr" style="padding:12px 20px; background:var(--bg-elevated);">
         <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cerrar</button>
         <button type="button" class="btn btn-primary" id="btnEditarDesdeDetalle" onclick="abrirModalEditarRequisicionActual()">✏️ Editar Requisición</button>
       </div>
@@ -2261,7 +2474,7 @@
       <div class="modal-hdr" style="padding:16px 22px; border-bottom:1.5px solid var(--border); margin-bottom:0; flex-shrink:0;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <h3 style="color:var(--primary); margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+            <h3 style="color:var(--text); margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
               <span>⚙️</span> Parámetros de Requisiciones
             </h3>
             <p style="margin:4px 0 0; font-size:0.82rem; color:var(--text-muted);">
@@ -2274,7 +2487,7 @@
       <div class="modal-body" id="bodyParametrosRequisiciones" style="padding:18px 22px; overflow-y:auto; flex:1; margin-bottom:0;">
         <div style="text-align:center; padding:24px; color:var(--text-muted);">Cargando parámetros...</div>
       </div>
-      <div class="modal-ftr" style="padding:12px 22px; border-top:1px solid var(--border); background:#f8fafc; flex-shrink:0;">
+      <div class="modal-ftr" style="padding:12px 22px; border-top:1px solid var(--border); background:var(--bg-elevated); flex-shrink:0;">
         <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
         <button type="button" class="btn btn-primary" id="btnGuardarParametrosReq" onclick="guardarParametrosRequisiciones()">💾 Guardar Parámetros</button>
       </div>
@@ -2311,7 +2524,7 @@
       </div>
 
       <!-- Lista interactiva de candidatos disponibles -->
-      <div id="listaAspirantesDisponibles" style="max-height: 320px; overflow-y: auto; border: 1.5px solid var(--border); border-radius: 8px; background: #faf9fd; padding: 8px; display: flex; flex-direction: column; gap: 8px;">
+      <div id="listaAspirantesDisponibles" style="max-height: 320px; overflow-y: auto; border: 1.5px solid var(--border); border-radius: 8px; background: var(--bg-elevated); padding: 8px; display: flex; flex-direction: column; gap: 8px;">
         <!-- Se llena dinámicamente -->
       </div>
 
@@ -2381,7 +2594,7 @@
             </div>
 
             <div class="req-field" id="fieldReqSalario">
-              <label>Salario <span id="lockSalario" style="color:#94a3b8; font-size:0.7rem;">🔒 Solo Selección / Sistema</span></label>
+              <label>Salario <span id="lockSalario" style="color:var(--text-muted); font-size:0.7rem;">🔒 Solo Selección / Sistema</span></label>
               <input type="number" id="formReqSalario" class="req-input" placeholder="Ej: 1400000" step="1000">
             </div>
 
@@ -2486,7 +2699,7 @@
           <div class="req-section-hdr" id="hdrReqControl"><span>⚙️</span> Gestión y Seguimiento de Selección</div>
           <div class="req-form-grid">
             <div class="req-field" id="boxReqEstado">
-              <label>Estado de la Requisición <span id="lockEstado" style="color:#94a3b8; font-size:0.7rem;">🔒 Selección / Sistema</span></label>
+              <label>Estado de la Requisición <span id="lockEstado" style="color:var(--text-muted); font-size:0.7rem;">🔒 Selección / Sistema</span></label>
               <select id="formReqEstado">
                 <option value="EN PROCESO">EN PROCESO</option>
                 <option value="FINALIZADO">FINALIZADO</option>
@@ -2496,14 +2709,14 @@
             </div>
 
             <div class="req-field" id="boxReqResponsable">
-              <label>Responsable de Selección <span id="lockResponsable" style="color:#94a3b8; font-size:0.7rem;">🔒 Coordinador / Sistema</span></label>
+              <label>Responsable de Selección <span id="lockResponsable" style="color:var(--text-muted); font-size:0.7rem;">🔒 Coordinador / Sistema</span></label>
               <select id="formReqResponsable">
                 <option value="">Sin asignar / Pendiente</option>
               </select>
             </div>
 
             <div class="req-field" id="boxReqFechaFin">
-              <label>Fecha de Finalización <span id="lockFechaFin" style="color:#94a3b8; font-size:0.7rem;">🔒 Selección / Sistema</span></label>
+              <label>Fecha de Finalización <span id="lockFechaFin" style="color:var(--text-muted); font-size:0.7rem;">🔒 Selección / Sistema</span></label>
               <input type="date" id="formReqFechaFin" class="req-input">
             </div>
           </div>
@@ -2515,6 +2728,64 @@
           <button type="submit" class="btn btn-primary" id="btnGuardarRequisicion">Guardar Requisición</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ── MODAL: FICHA COMPLETA DEL ASPIRANTE ───────────────────────────── -->
+  <div class="modal-backdrop" id="modalFichaAspirante">
+    <div class="modal-box modal-box-lg" style="max-height:94vh; display:flex; flex-direction:column; overflow:hidden; padding:0; max-width:980px;">
+      
+      <!-- ENCABEZADO FIJO (Sticky con Foto, Nombre, Identificación y Acciones Rápidas) -->
+      <div class="modal-hdr" style="position:sticky; top:0; z-index:20; background: var(--card-bg); border-bottom:1.5px solid var(--border); padding:16px 20px 12px; margin-bottom:0; flex-shrink:0;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:12px;">
+          <div style="display:flex; align-items:center; gap:14px; min-width:0; flex:1;">
+            <img id="fichaAspFoto" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" 
+                 alt="Foto" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); background:var(--bg-elevated); flex-shrink:0;">
+            <div style="min-width:0;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <h3 id="fichaAspNombre" style="font-size:1.15rem; font-weight:800; color:var(--text); text-transform:uppercase; margin:0; line-height:1.2;">-</h3>
+                <span id="fichaAspBadgeEstado" class="status-badge en-proceso">Registro</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-muted); margin-top:3px; flex-wrap:wrap;">
+                <span id="fichaAspDocumento" style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--text);">-</span>
+                <span>•</span>
+                <span id="fichaAspUbicacion">-</span>
+                <span>•</span>
+                <span id="fichaAspFechaReg" style="font-family:'JetBrains Mono',monospace;">-</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+            <a id="btnFichaAbrirAdmin" href="#" target="_blank" class="btn btn-primary" style="padding:6px 12px; font-size:0.75rem; text-decoration:none;" title="Abrir en Panel Administrativo de Selección">
+              <span>📋 Panel Admin</span>
+            </a>
+            <button type="button" class="btn btn-outline" id="btnFichaCopiarPortal" style="padding:6px 12px; font-size:0.75rem;" onclick="copiarLinkPortalFicha()" title="Copiar enlace del portal del aspirante">
+              <span>🔗 Copiar Portal</span>
+            </button>
+            <a id="btnFichaVerHdv" href="#" target="_blank" class="btn btn-outline" style="padding:6px 12px; font-size:0.75rem; display:none;" title="Ver Hoja de Vida en PDF">
+              <span>📄 Ver HDV</span>
+            </a>
+            <button type="button" class="btn btn-outline" style="padding:4px 9px;" onclick="cerrarModales()">✕</button>
+          </div>
+        </div>
+
+        <!-- Barra de Navegación de Pestañas Internas de la Ficha -->
+        <div style="display:flex; gap:6px; margin-top:14px; overflow-x:auto; padding-bottom:2px; border-bottom:1px solid var(--bg-elevated);">
+          <button type="button" class="tab-pill active" id="btnTabFichaDatos" onclick="cambiarSubTabFicha('Datos')">📌 Datos &amp; Contacto</button>
+          <button type="button" class="tab-pill" id="btnTabFichaRequisicion" onclick="cambiarSubTabFicha('Requisicion')">📋 Requisición</button>
+          <button type="button" class="tab-pill" id="btnTabFichaDocs" onclick="cambiarSubTabFicha('Docs')">📁 Documentos <span id="lblCountDocsBadge" class="tag-badge tag-badge-primary" style="margin-left:4px; font-size:0.68rem;">0</span></button>
+          <button type="button" class="tab-pill" id="btnTabFichaExp" onclick="cambiarSubTabFicha('Exp')">💼 Experiencia <span id="lblCountExpBadge" class="tag-badge" style="margin-left:4px; font-size:0.68rem;">0</span></button>
+          <button type="button" class="tab-pill" id="btnTabFichaEdu" onclick="cambiarSubTabFicha('Edu')">🎓 Educación <span id="lblCountEduBadge" class="tag-badge" style="margin-left:4px; font-size:0.68rem;">0</span></button>
+          <button type="button" class="tab-pill" id="btnTabFichaRef" onclick="cambiarSubTabFicha('Ref')">👥 Referencias <span id="lblCountRefBadge" class="tag-badge" style="margin-left:4px; font-size:0.68rem;">0</span></button>
+          <button type="button" class="tab-pill" id="btnTabFichaFam" onclick="cambiarSubTabFicha('Fam')">👨‍👩‍👧 Familia &amp; Emergencia</button>
+          <button type="button" class="tab-pill" id="btnTabFichaSeg" onclick="cambiarSubTabFicha('Seg')">🛡️ Seguridad &amp; Metas</button>
+        </div>
+      </div>
+
+      <!-- CUERPO SCROLLEABLE DE LA FICHA -->
+      <div class="modal-body" style="padding:18px 22px; overflow-y:auto; flex:1; margin-bottom:0;" id="cuerpoFichaAspirante">
+        <!-- Contenido dinámico renderizado según sub-pestaña activa -->
+      </div>
     </div>
   </div>
 
@@ -2554,6 +2825,8 @@
         cargarHistorialAuditoria();
       } else if (CONFIG.activeTab === 'Requisiciones') {
         inicializarRequisiciones();
+      } else if (CONFIG.activeTab === 'Aspirantes') {
+        inicializarAspirantes();
       }
 
       // 4. Soporte para enlaces en el launcher con el usuario
@@ -2718,6 +2991,8 @@
         cargarHistorialAuditoria();
       } else if (tabName === 'Requisiciones') {
         inicializarRequisiciones();
+      } else if (tabName === 'Aspirantes') {
+        inicializarAspirantes();
       }
 
       // Actualizar URL sin recargar
@@ -2921,7 +3196,7 @@
         chk.checked = false;
         chk.disabled = true;
         lbl.textContent = 'El trabajador no está vinculado en Sociodemográfica; se eliminará de Selección / Aspirantes.';
-        lbl.style.color = '#a16207';
+        lbl.style.color = 'var(--warning-dark)';
         lbl.style.fontWeight = '600';
       } else {
         chk.disabled = false;
@@ -3042,12 +3317,12 @@
         tbody.innerHTML = data.historial.map(row => {
           const urlLink = row.archivo_evidencia_url
             ? `<a href="${row.archivo_evidencia_url}" target="_blank" class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;"><span>📄 Evidencia</span></a>`
-            : '<span style="color:#94a3b8; font-size:0.75rem;">Sin archivo</span>';
+            : '<span style="color:var(--text-muted); font-size:0.75rem;">Sin archivo</span>';
 
           return `
             <tr>
               <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem; color:var(--text-muted)">${row.fecha}</td>
-              <td style="font-weight:700; font-family:'JetBrains Mono',monospace; color:var(--primary)">${row.identificacion}</td>
+              <td style="font-weight:700; font-family:'JetBrains Mono',monospace; color:var(--text)">${row.identificacion}</td>
               <td style="font-weight:600">${esc(row.nombre_trabajador || 'N/A')}</td>
               <td>${esc(row.operacion || 'N/A')}</td>
               <td style="font-size:0.8rem; color:var(--text-muted)">${esc(row.usuario)}</td>
@@ -3061,7 +3336,7 @@
 
       } catch (err) {
         console.error(err);
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:20px;">Error al cargar el historial de auditoría.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:20px;">Error al cargar el historial de auditoría.</td></tr>';
       }
     }
 
@@ -3302,7 +3577,7 @@
       canvas.height = Math.round(150 * ratio);
       const ctx = canvas.getContext('2d');
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ctx.strokeStyle = '#000b59';
+      ctx.strokeStyle = '#000b59'; // fijo: tinta de firma (coincide con --primary canonico)
       ctx.lineWidth = 3.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -3850,7 +4125,7 @@
 
         if (!res.ok || !data.ok) {
           if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#ef4444; padding:24px;">${esc(data.error || 'Error al cargar requisiciones')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--danger); padding:24px;">${esc(data.error || 'Error al cargar requisiciones')}</td></tr>`;
           }
           return;
         }
@@ -3889,7 +4164,7 @@
       } catch (err) {
         console.error('[TalentHub] Error al cargar requisiciones:', err);
         if (tbody) {
-          tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#ef4444; padding:24px;">Error de red al consultar requisiciones.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--danger); padding:24px;">Error de red al consultar requisiciones.</td></tr>';
         }
       }
     }
@@ -3926,7 +4201,7 @@
         // ── PÍLDORA SEMAFÓRICA DE SLA (ALTERNATIVA A) ──
         let celdaSlaHtml = '';
         if (totalAspirantes === 0) {
-          celdaSlaHtml = '<span style="color:#94a3b8; font-size:0.75rem; font-weight:500;">— Sin candidatos</span>';
+          celdaSlaHtml = '<span style="color:var(--text-muted); font-size:0.75rem; font-weight:500;">— Sin candidatos</span>';
         } else {
           const contratadosTotal = cumple + nocumple;
           const pct = Math.round((cumple / totalAspirantes) * 100);
@@ -3971,14 +4246,14 @@
           `;
         } else {
           celdaResp = respActual
-            ? `<span style="font-size:0.8rem; font-weight:600; color:var(--primary);">${esc(respActual)}</span>`
-            : `<span style="font-size:0.8rem; color:#94a3b8;">—</span>`;
+            ? `<span style="font-size:0.8rem; font-weight:600; color:var(--text);">${esc(respActual)}</span>`
+            : `<span style="font-size:0.8rem; color:var(--text-muted);">—</span>`;
         }
 
         return `
           <tr onclick="abrirModalDetalleRequisicion(${r.IdRequisicion})" style="cursor:pointer;">
             <td>
-              <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary);">
+              <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--text);">
                 ${codigo}
               </span>
             </td>
@@ -3989,7 +4264,7 @@
               <span class="status-badge ${badgeClase}">${esc(r.Estado)}</span>
             </td>
             <td style="text-align:center;">
-              <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:var(--primary-light); color:var(--primary); font-weight:800; font-size:0.82rem;" title="Vacantes Requeridas: ${vacantes} / Aspirantes Relacionados: ${totalAspirantes}">
+              <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:var(--accent-soft); color:var(--accent-dark); font-weight:800; font-size:0.82rem;" title="Vacantes Requeridas: ${vacantes} / Aspirantes Relacionados: ${totalAspirantes}">
                 ${vacantes} / ${totalAspirantes}
               </span>
             </td>
@@ -4212,8 +4487,8 @@
             `;
           } else {
             wrapResp.innerHTML = respActual
-              ? `<span style="font-size:0.85rem; font-weight:700; color:var(--primary);">${esc(respActual)}</span>`
-              : `<span style="font-size:0.85rem; color:#94a3b8;">Pendiente por asignar</span>`;
+              ? `<span style="font-size:0.85rem; font-weight:700; color:var(--text);">${esc(respActual)}</span>`
+              : `<span style="font-size:0.85rem; color:var(--text-muted);">Pendiente por asignar</span>`;
           }
         }
 
@@ -4386,12 +4661,12 @@
           lockEstado.textContent = '🔒 Requisición cerrada';
           lockEstado.title = 'Solo roles autorizados pueden reabrir una requisición finalizada o cancelada.';
           lockEstado.style.display = 'inline';
-          lockEstado.style.color = '#ef4444';
+          lockEstado.style.color = 'var(--danger)';
         } else if (!puedeEditarEstadoBase) {
           lockEstado.textContent = '🔒 Solo lectura';
           lockEstado.title = 'No tienes permiso para modificar el estado.';
           lockEstado.style.display = 'inline';
-          lockEstado.style.color = '#94a3b8';
+          lockEstado.style.color = 'var(--text-muted)';
         } else {
           lockEstado.style.display = 'none';
         }
@@ -4560,7 +4835,7 @@
         const fechaIngresoDisplay = fechaIngresoStr ? esc(fechaIngresoStr) : '—';
         const respAspirante = esc(a.responsable_aspirante || '—');
         const cvLink = a.pdf_public_url
-          ? `<a href="${esc(a.pdf_public_url)}" target="_blank" style="font-size:0.85rem; color:var(--primary); text-decoration:none;" title="Ver Hoja de Vida">📄</a>`
+          ? `<a href="${esc(a.pdf_public_url)}" target="_blank" style="font-size:0.85rem; color:var(--text); text-decoration:none;" title="Ver Hoja de Vida">📄</a>`
           : '—';
 
         // ── CÁLCULO DE DÍAS DEL PROCESO ──
@@ -4590,7 +4865,7 @@
           }
         }
         if (!diasBadgeHtml) {
-          diasBadgeHtml = '<span style="color:#94a3b8; font-size:0.75rem;">—</span>';
+          diasBadgeHtml = '<span style="color:var(--text-muted); font-size:0.75rem;">—</span>';
         }
 
         // ── ACCIÓN: QUITAR (BLOQUEADO SI ESTÁ CONTRATADO) ──
@@ -4603,7 +4878,7 @@
           `;
         } else {
           accionHtml = `
-            <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.74rem; color:#dc2626; border-color:#fca5a5;" 
+            <button type="button" class="btn btn-outline" style="padding:3px 8px; font-size:0.74rem; color:var(--danger); border-color:var(--danger);" 
                     onclick="desvincularAspiranteDeRequisicion('${esc(a.id_aspirante)}', '${nombreSafe}')" title="Quitar aspirante de la vacante">
               <span>✕ Quitar</span>
             </button>
@@ -4613,7 +4888,7 @@
         return `
           <tr>
             <td style="text-align:center; white-space:nowrap;">${accionHtml}</td>
-            <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary);">${idSafe}</td>
+            <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--text);">${idSafe}</td>
             <td style="font-weight:600;">${nombreSafe}</td>
             <td>${diasBadgeHtml}</td>
             <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${fechaIngresoDisplay}</td>
@@ -4666,7 +4941,7 @@
         const data = await res.json();
 
         if (!res.ok || !data.ok) {
-          if (lista) lista.innerHTML = `<div style="text-align:center; padding:18px; color:#ef4444; font-size:0.83rem;">${esc(data.error || 'Error al buscar aspirantes')}</div>`;
+          if (lista) lista.innerHTML = `<div style="text-align:center; padding:18px; color:var(--danger); font-size:0.83rem;">${esc(data.error || 'Error al buscar aspirantes')}</div>`;
           if (lblConteo) lblConteo.textContent = '0 encontrados';
           return;
         }
@@ -4697,11 +4972,11 @@
             const estado = esc(a.estado_proceso || 'En proceso');
 
             return `
-              <div style="background:#fff; border:1px solid var(--border); border-radius:7px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px; transition:border-color 0.15s ease;">
+              <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:7px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:12px; transition:border-color 0.15s ease;">
                 <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span style="font-weight:700; font-size:0.88rem; color:var(--text);">${nombre}</span>
-                    <span style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.78rem; color:var(--primary); background:var(--primary-light); padding:1px 6px; border-radius:4px;">CC ${cedula}</span>
+                    <span style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.78rem; color:var(--accent-dark); background:var(--accent-soft); padding:1px 6px; border-radius:4px;">CC ${cedula}</span>
                   </div>
                   <div style="font-size:0.78rem; color:var(--text-muted); display:flex; gap:12px; flex-wrap:wrap; margin-top:2px;">
                     <span>📍 <strong>Ciudad:</strong> ${ciudad}</span>
@@ -4721,7 +4996,7 @@
       } catch (err) {
         console.error('[TalentHub] Error al cargar aspirantes disponibles:', err);
         if (lista) {
-          lista.innerHTML = '<div style="text-align:center; padding:18px; color:#ef4444; font-size:0.83rem;">Error de red al consultar aspirantes.</div>';
+          lista.innerHTML = '<div style="text-align:center; padding:18px; color:var(--danger); font-size:0.83rem;">Error de red al consultar aspirantes.</div>';
         }
       }
     }
@@ -4810,7 +5085,7 @@
         const res = await fetch(`/talenthub/api/parametros/requisiciones?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          if (body) body.innerHTML = `<div style="color:#ef4444; padding:20px; text-align:center;">${esc(data.error || 'Error al cargar parámetros')}</div>`;
+          if (body) body.innerHTML = `<div style="color:var(--danger); padding:20px; text-align:center;">${esc(data.error || 'Error al cargar parámetros')}</div>`;
           return;
         }
 
@@ -4819,7 +5094,7 @@
         renderBodyParametrosRequisiciones();
       } catch (err) {
         console.error('[TalentHub] Error al cargar parámetros:', err);
-        if (body) body.innerHTML = '<div style="color:#ef4444; padding:20px; text-align:center;">Error de red al consultar parámetros.</div>';
+        if (body) body.innerHTML = '<div style="color:var(--danger); padding:20px; text-align:center;">Error de red al consultar parámetros.</div>';
       }
     }
 
@@ -4840,7 +5115,7 @@
         const parametroVal = p.Parametro || '';
 
         html += `
-          <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:14px 16px;">
+          <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px;">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
               <div>
                 <div style="font-weight:700; font-size:0.92rem; color:var(--text);">${concepto}</div>
@@ -4857,8 +5132,8 @@
             const rolTrim = rol.trim();
             const isChecked = rolesSeleccionados.includes(rolTrim.toLowerCase());
             const activeStyle = isChecked
-              ? 'background:var(--primary); color:#fff; border-color:var(--primary); font-weight:700;'
-              : 'background:#f1f5f9; color:#475569; border-color:#cbd5e1;';
+              ? 'background:var(--primary); color: var(--text-inverse); border-color:var(--primary); font-weight:700;'
+              : 'background:var(--bg-elevated); color:var(--text-muted); border-color:var(--border-strong);';
             return `
               <button type="button" class="btn" style="padding:4px 10px; font-size:0.78rem; border-radius:16px; border:1px solid; transition:all 0.15s ease; ${activeStyle}"
                       onclick="toggleRolParametro(${idx}, '${esc(rolTrim)}')">
@@ -4959,6 +5234,1217 @@
       }
     }
 
+    // ══════════════════════════════════════════════════════════
+    // ── GESTIÓN DE ASPIRANTES & HOJAS DE VIDA ────────────────
+    // ══════════════════════════════════════════════════════════
+    let _aspirantes = [];
+    let _aspFiltros = {
+      q: '',
+      estado: 'TODOS',
+      requisicion: 'todas',
+      regional: 'todas',
+      operacion: 'todas',
+      departamento: 'todos',
+      medio: 'todos',
+      desde: '',
+      hasta: ''
+    };
+    let _aspOrden = {
+      columna: 'fecha_registro',
+      orden: 'DESC'
+    };
+    let _aspAgrupamiento = {
+      columna: '',
+      orden: 'ASC'
+    };
+    let _aspGruposColapsados = {};
+    let _aspActualDetalle = null;
+    let _aspSubTabActiva = 'Datos';
+
+    async function inicializarAspirantes() {
+      await cargarAspirantes();
+      inicializarRedimensionColumnasAspirantes();
+    }
+
+    function toggleFiltrosAspirantes() {
+      const body = document.getElementById('bodyFiltrosAspirantes');
+      const icon = document.getElementById('iconToggleFiltrosAsp');
+      if (!body) return;
+
+      const isHidden = body.style.display === 'none';
+      body.style.display = isHidden ? 'block' : 'none';
+      if (icon) icon.textContent = isHidden ? '▼ Ocultar' : '▲ Mostrar';
+    }
+
+    function seleccionarFiltroEstadoAsp(nuevoEstado) {
+      const actual = (_aspFiltros.estado || 'TODOS').toUpperCase();
+      const nuevo = (nuevoEstado || 'TODOS').toUpperCase();
+      if (actual === nuevo && nuevo !== 'TODOS') {
+        _aspFiltros.estado = 'TODOS';
+      } else {
+        _aspFiltros.estado = nuevo;
+      }
+      cargarAspirantes();
+    }
+
+    function renderEstadoButtonsAsp(facetas, kpis) {
+      const container = document.getElementById('filter-estado-buttons-asp');
+      if (!container) return;
+
+      const total = kpis?.total || 0;
+      const estadosFacet = facetas?.estados || [];
+
+      const countsMap = {};
+      estadosFacet.forEach(item => {
+        if (item && item.valor) {
+          countsMap[item.valor.trim().toLowerCase()] = item.cnt || 0;
+        }
+      });
+
+      const estadoActual = (_aspFiltros.estado || 'TODOS').toUpperCase();
+
+      let html = '';
+      const activeTodos = (estadoActual === 'TODOS') ? 'active' : '';
+      html += `<button type="button" class="estado-chip chip-todos ${activeTodos}" onclick="seleccionarFiltroEstadoAsp('TODOS')">
+        TODOS (${total})
+      </button>`;
+
+      const standardEstados = [
+        { key: 'REGISTRO', label: 'Registro', cls: 'chip-registro', cnt: countsMap['registro'] !== undefined ? countsMap['registro'] : (kpis?.registro || 0) },
+        { key: 'EN PROCESO', label: 'En Proceso', cls: 'chip-en-proceso', cnt: countsMap['en proceso'] !== undefined ? countsMap['en proceso'] : (kpis?.enProceso || 0) },
+        { key: 'CONTRATADO', label: 'Contratado', cls: 'chip-contratado', cnt: countsMap['contratado'] !== undefined ? countsMap['contratado'] : (kpis?.contratado || 0) },
+        { key: 'BLOQUEADO', label: 'Bloqueado', cls: 'chip-bloqueado', cnt: countsMap['bloqueado'] !== undefined ? countsMap['bloqueado'] : (kpis?.bloqueado || 0) }
+      ];
+
+      standardEstados.forEach(est => {
+        const activeClass = (estadoActual === est.key) ? 'active' : '';
+        html += `<button type="button" class="estado-chip ${est.cls} ${activeClass}" onclick="seleccionarFiltroEstadoAsp('${est.key}')">
+          ${est.label} (${est.cnt})
+        </button>`;
+      });
+
+      container.innerHTML = html;
+
+      const lblTotal = document.getElementById('lblEstadoTotalCountAsp');
+      if (lblTotal) {
+        lblTotal.textContent = `${total} aspirantes registrados`;
+      }
+    }
+
+    function actualizarFiltrosAspirantesConConteos(facetas, total) {
+      // 1. Regionales
+      const selReg = document.getElementById('filtroAspRegional');
+      if (selReg && facetas?.regionales && facetas.regionales.length > 0) {
+        const valActual = _aspFiltros.regional || selReg.value || 'todas';
+        const opts = facetas.regionales.map(r => {
+          const selected = (r.valor === valActual) ? 'selected' : '';
+          return `<option value="${esc(r.valor)}" ${selected}>${esc(r.valor)} (${r.cnt})</option>`;
+        }).join('');
+        selReg.innerHTML = `<option value="todas" ${valActual === 'todas' ? 'selected' : ''}>Todas las Regionales (${total || 0})</option>${opts}`;
+      }
+
+      // 2. Operaciones
+      const selOp = document.getElementById('filtroAspOperacion');
+      if (selOp && facetas?.operaciones && facetas.operaciones.length > 0) {
+        const valActual = _aspFiltros.operacion || selOp.value || 'todas';
+        const opts = facetas.operaciones.map(o => {
+          const selected = (o.valor === valActual) ? 'selected' : '';
+          return `<option value="${esc(o.valor)}" ${selected}>${esc(o.valor)} (${o.cnt})</option>`;
+        }).join('');
+        selOp.innerHTML = `<option value="todas" ${valActual === 'todas' ? 'selected' : ''}>Todas las Operaciones (${total || 0})</option>${opts}`;
+      }
+
+      // 3. Departamentos
+      const selDep = document.getElementById('filtroAspDepartamento');
+      if (selDep && facetas?.departamentos && facetas.departamentos.length > 0) {
+        const valActual = _aspFiltros.departamento || selDep.value || 'todos';
+        const opts = facetas.departamentos.map(d => {
+          const selected = (d.valor === valActual) ? 'selected' : '';
+          return `<option value="${esc(d.valor)}" ${selected}>${esc(d.valor)} (${d.cnt})</option>`;
+        }).join('');
+        selDep.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los Departamentos (${total || 0})</option>${opts}`;
+      }
+
+      // 4. Medios de Reclutamiento
+      const selMed = document.getElementById('filtroAspMedio');
+      if (selMed && facetas?.mediosReclutamiento && facetas.mediosReclutamiento.length > 0) {
+        const valActual = _aspFiltros.medio || selMed.value || 'todos';
+        const opts = facetas.mediosReclutamiento.map(m => {
+          const selected = (m.valor === valActual) ? 'selected' : '';
+          return `<option value="${esc(m.valor)}" ${selected}>${esc(m.valor)} (${m.cnt})</option>`;
+        }).join('');
+        selMed.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los Medios (${total || 0})</option>${opts}`;
+      }
+    }
+
+    function aplicarFiltrosAspirantes() {
+      _aspFiltros.q = (document.getElementById('filtroAspQ')?.value || '').trim();
+      _aspFiltros.requisicion = document.getElementById('filtroAspRequisicion')?.value || 'todas';
+      _aspFiltros.regional = document.getElementById('filtroAspRegional')?.value || 'todas';
+      _aspFiltros.operacion = document.getElementById('filtroAspOperacion')?.value || 'todas';
+      _aspFiltros.departamento = document.getElementById('filtroAspDepartamento')?.value || 'todos';
+      _aspFiltros.medio = document.getElementById('filtroAspMedio')?.value || 'todos';
+      _aspFiltros.desde = document.getElementById('filtroAspDesde')?.value || '';
+      _aspFiltros.hasta = document.getElementById('filtroAspHasta')?.value || '';
+      cargarAspirantes();
+    }
+
+    function limpiarFiltrosAspirantes() {
+      if (document.getElementById('filtroAspQ')) document.getElementById('filtroAspQ').value = '';
+      if (document.getElementById('filtroAspRequisicion')) document.getElementById('filtroAspRequisicion').value = 'todas';
+      if (document.getElementById('filtroAspRegional')) document.getElementById('filtroAspRegional').value = 'todas';
+      if (document.getElementById('filtroAspOperacion')) document.getElementById('filtroAspOperacion').value = 'todas';
+      if (document.getElementById('filtroAspDepartamento')) document.getElementById('filtroAspDepartamento').value = 'todos';
+      if (document.getElementById('filtroAspMedio')) document.getElementById('filtroAspMedio').value = 'todos';
+      if (document.getElementById('filtroAspDesde')) document.getElementById('filtroAspDesde').value = '';
+      if (document.getElementById('filtroAspHasta')) document.getElementById('filtroAspHasta').value = '';
+
+      _aspFiltros = {
+        q: '',
+        estado: 'TODOS',
+        requisicion: 'todas',
+        regional: 'todas',
+        operacion: 'todas',
+        departamento: 'todos',
+        medio: 'todos',
+        desde: '',
+        hasta: ''
+      };
+      cargarAspirantes();
+    }
+
+    function ordenarAspirantes(columna) {
+      if (_aspOrden.columna === columna) {
+        _aspOrden.orden = (_aspOrden.orden === 'ASC') ? 'DESC' : 'ASC';
+      } else {
+        _aspOrden.columna = columna;
+        _aspOrden.orden = (columna.includes('fecha') || columna.includes('docs')) ? 'DESC' : 'ASC';
+      }
+
+      document.querySelectorAll('#tablaAspirantes th.sortable').forEach(th => th.classList.remove('active', 'sorted'));
+      const colMap = {
+        'nombre': 'sort_asp_nombre',
+        'identificacion': 'sort_asp_identificacion',
+        'req_codigo': 'sort_asp_req_codigo',
+        'departamento': 'sort_asp_departamento',
+        'medio_reclutamiento': 'sort_asp_medio_reclutamiento',
+        'docs_cargados': 'sort_asp_docs_cargados',
+        'estado_proceso': 'sort_asp_estado_proceso',
+        'fecha_registro': 'sort_asp_fecha_registro'
+      };
+      const sortIconId = colMap[columna];
+      if (sortIconId) {
+        const el = document.getElementById(sortIconId);
+        if (el) {
+          el.textContent = _aspOrden.orden === 'ASC' ? '▲' : '▼';
+          el.closest('th')?.classList.add('active', 'sorted');
+        }
+      }
+      cargarAspirantes();
+    }
+
+    function cambiarAgrupamientoAspirantes() {
+      const selCol = document.getElementById('selectGroupByAsp')?.value || '';
+      const selOrd = document.getElementById('selectGroupByOrderAsp')?.value || 'ASC';
+      _aspAgrupamiento.columna = selCol;
+      _aspAgrupamiento.orden = selOrd;
+      _aspGruposColapsados = {};
+      renderizarTablaAspirantes();
+    }
+
+    function quitarAgrupamientoAspirantes() {
+      const selCol = document.getElementById('selectGroupByAsp');
+      if (selCol) selCol.value = '';
+      _aspAgrupamiento.columna = '';
+      _aspGruposColapsados = {};
+      renderizarTablaAspirantes();
+    }
+
+    function toggleGrupoAspirantes(grupoKey) {
+      _aspGruposColapsados[grupoKey] = !_aspGruposColapsados[grupoKey];
+      renderizarTablaAspirantes();
+    }
+
+    function inicializarRedimensionColumnasAspirantes() {
+      const resizers = document.querySelectorAll('#tablaAspirantes .col-resizer');
+      resizers.forEach(resizer => {
+        if (resizer._hasResizerHandler) return;
+        resizer._hasResizerHandler = true;
+
+        resizer.addEventListener('mousedown', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+
+          const th = this.parentElement;
+          const startX = e.pageX;
+          const startWidth = th.offsetWidth;
+          resizer.classList.add('resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+
+          function onMouseMove(e) {
+            const diffX = e.pageX - startX;
+            const newWidth = Math.max(60, startWidth + diffX);
+            th.style.width = newWidth + 'px';
+            th.style.minWidth = newWidth + 'px';
+          }
+
+          function onMouseUp() {
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+          }
+
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    }
+
+    async function cargarAspirantes() {
+      const tbody = document.getElementById('tbodyAspirantes');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:28px;">Cargando catálogo de aspirantes...</td></tr>';
+      }
+
+      try {
+        const params = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          q: _aspFiltros.q,
+          estado: _aspFiltros.estado,
+          requisicion: _aspFiltros.requisicion,
+          regional: _aspFiltros.regional,
+          operacion: _aspFiltros.operacion,
+          departamento: _aspFiltros.departamento,
+          medio: _aspFiltros.medio,
+          desde: _aspFiltros.desde,
+          hasta: _aspFiltros.hasta,
+          sortBy: _aspOrden.columna,
+          sortDir: _aspOrden.orden
+        });
+
+        const res = await fetch(`/talenthub/api/aspirantes?${params.toString()}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--danger); padding:24px;">${esc(data.error || 'Error al cargar aspirantes')}</td></tr>`;
+          }
+          return;
+        }
+
+        _aspirantes = data.aspirantes || [];
+        const k = data.kpis || {};
+        const facetas = data.facetas || {};
+
+        renderEstadoButtonsAsp(facetas, k);
+        actualizarFiltrosAspirantesConConteos(facetas, k.total || 0);
+
+        let actCount = 0;
+        if (_aspFiltros.q) actCount++;
+        if (_aspFiltros.estado && _aspFiltros.estado !== 'TODOS') actCount++;
+        if (_aspFiltros.requisicion && _aspFiltros.requisicion !== 'todas') actCount++;
+        if (_aspFiltros.regional && _aspFiltros.regional !== 'todas') actCount++;
+        if (_aspFiltros.operacion && _aspFiltros.operacion !== 'todas') actCount++;
+        if (_aspFiltros.departamento && _aspFiltros.departamento !== 'todos') actCount++;
+        if (_aspFiltros.medio && _aspFiltros.medio !== 'todos') actCount++;
+        if (_aspFiltros.desde) actCount++;
+        if (_aspFiltros.hasta) actCount++;
+
+        const lblCount = document.getElementById('lblFiltrosActivosCountAsp');
+        if (lblCount) {
+          lblCount.textContent = actCount > 0 ? `${actCount} filtro(s) activo(s)` : 'Sin filtros';
+        }
+
+        const lblTot = document.getElementById('lblTotalRegistrosAsp');
+        if (lblTot) {
+          lblTot.textContent = `(${_aspirantes.length} registros)`;
+        }
+
+        renderizarTablaAspirantes();
+        inicializarRedimensionColumnasAspirantes();
+
+      } catch (err) {
+        console.error('[TalentHub] Error al cargar aspirantes:', err);
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--danger); padding:24px;">Error de red al consultar aspirantes.</td></tr>';
+        }
+      }
+    }
+
+    function getEstadoBadgeClassAsp(estado) {
+      if (!estado) return 'registro';
+      const s = String(estado).trim().toLowerCase();
+      if (s.includes('proceso')) return 'en-proceso';
+      if (s.includes('contratado')) return 'contratado';
+      if (s.includes('bloqueado')) return 'bloqueado';
+      return 'registro';
+    }
+
+    function renderFilaAspirante(a, isGrouped) {
+      const aspId = a.id_aspirante || a.IdAspirante;
+      const nombreCompleto = esc(a.nombre_completo || [a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido].filter(Boolean).join(' ') || 'Sin Nombre');
+      const foto = a.foto_public_url || a.foto_url || TALENTHUB_FOTO_DEFAULT;
+      const cargoAspira = esc(a.req_cargo || a.cargo_al_que_aspira || 'Sin cargo asignado');
+      const docTipo = esc(a.tipo_documento || a.tipo_identificacion || 'CC');
+      const docNum = esc(a.identificacion || a.numero_identificacion || '-');
+      const tel = esc(a.telefono || a.celular || 'Sin teléfono');
+      const correo = esc(a.correo_electronico || '');
+      const ubicacion = esc([a.departamento, a.ciudad || a.ciudad_residencia].filter(Boolean).join(' · ') || '—');
+      const medio = esc(a.medio_reclutamiento || 'No especificado');
+      const badgeClase = getEstadoBadgeClassAsp(a.estado_proceso);
+      const fechaReg = a.fecha_registro ? String(a.fecha_registro).substring(0, 10) : (a.fecha_creacion ? String(a.fecha_creacion).substring(0, 10) : '—');
+      const docsCargados = parseInt(a.docs_cargados) || 0;
+      const docsFirmados = parseInt(a.docs_firmados) || 0;
+
+      let reqHtml = '';
+      if (a.req_codigo) {
+        reqHtml = `
+          <div style="cursor:pointer;" onclick="event.stopPropagation(); abrirModalDetalleRequisicion(${a.IdRequisicion})" title="Clic para ver detalle de la requisición">
+            <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--text); font-size:0.82rem;">
+              RQ${esc(String(a.req_codigo).replace(/^RQ/i, ''))}
+            </span>
+            <div style="font-size:0.75rem; color:var(--text); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;" title="${esc(a.req_cargo || '')}">
+              ${esc(a.req_cargo || '-')}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">
+              ${esc(a.req_operacion || '-')}
+            </div>
+          </div>
+        `;
+      } else {
+        reqHtml = `<span style="color:var(--text-muted); font-size:0.75rem;">Sin Requisición</span>`;
+      }
+
+      let docsHtml = '';
+      if (docsCargados === 0) {
+        docsHtml = `<span style="color:var(--text-muted); font-size:0.74rem;">0 cargados</span>`;
+      } else {
+        docsHtml = `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+            <span class="tag-badge tag-badge-primary" style="font-size:0.72rem; padding:2px 7px;">
+              📁 ${docsCargados} cargados
+            </span>
+            ${docsFirmados > 0 ? `<span style="font-size:0.68rem; color:var(--success); font-weight:700;">✍️ ${docsFirmados} firmados</span>` : ''}
+          </div>
+        `;
+      }
+
+      const indentStyle = isGrouped ? 'padding-left: 24px;' : '';
+
+      return `
+        <tr onclick="abrirFichaAspirante('${esc(aspId)}')" style="cursor:pointer;">
+          <td style="${indentStyle}">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${foto}" alt="Foto" class="asp-avatar" onerror="this.src=TALENTHUB_FOTO_DEFAULT">
+              <div style="min-width:0;">
+                <div style="font-weight:700; font-size:0.84rem; color:var(--text); text-transform:uppercase; line-height:1.2;">
+                  ${nombreCompleto}
+                </div>
+                <div style="font-size:0.74rem; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;" title="${cargoAspira}">
+                  🎯 ${cargoAspira}
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--text); font-size:0.82rem;">
+              ${docTipo} ${docNum}
+            </div>
+            <div style="font-size:0.74rem; color:var(--text-muted); margin-top:2px;">
+              📞 ${tel}
+            </div>
+            ${correo ? `<div style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px;" title="${correo}">✉️ ${correo}</div>` : ''}
+          </td>
+          <td>${reqHtml}</td>
+          <td>
+            <span style="font-size:0.8rem; font-weight:500; color:var(--text);">${ubicacion}</span>
+          </td>
+          <td>
+            <span class="tag-badge" style="background:var(--bg-elevated); color:var(--text); font-size:0.72rem;">${medio}</span>
+          </td>
+          <td style="text-align:center;">${docsHtml}</td>
+          <td>
+            <span class="status-badge ${badgeClase}">${esc(a.estado_proceso || 'Registro')}</span>
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-muted);">
+            ${fechaReg}
+          </td>
+          <td style="text-align:center;" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:center; gap:4px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline" style="padding:3px 7px; font-size:0.72rem;" onclick="abrirFichaAspirante('${esc(aspId)}')" title="Ver Ficha Completa">
+                <span>👁️ Ficha</span>
+              </button>
+              <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" class="btn btn-primary" style="padding:3px 7px; font-size:0.72rem; text-decoration:none;" title="Abrir Panel Admin">
+                <span>⚙️ Admin</span>
+              </a>
+              <button type="button" class="btn btn-outline" style="padding:3px 6px; font-size:0.72rem;" onclick="copiarLinkPortalAspirante('${esc(aspId)}')" title="Copiar enlace de acceso al portal del aspirante">
+                <span>🔗</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    function renderizarTablaAspirantes() {
+      const tbody = document.getElementById('tbodyAspirantes');
+      if (!tbody) return;
+
+      if (!_aspirantes.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:32px;">No se encontraron aspirantes con los criterios de búsqueda actuales.</td></tr>';
+        return;
+      }
+
+      const agrupador = _aspAgrupamiento.columna;
+      if (!agrupador) {
+        tbody.innerHTML = _aspirantes.map(a => renderFilaAspirante(a, false)).join('');
+        return;
+      }
+
+      const grupos = {};
+      _aspirantes.forEach(a => {
+        let clave = '';
+        if (agrupador === 'departamento') clave = a.departamento || '(Sin Departamento)';
+        else if (agrupador === 'medio_reclutamiento') clave = a.medio_reclutamiento || '(Sin Medio)';
+        else if (agrupador === 'estado_proceso') clave = a.estado_proceso || 'Registro';
+        else if (agrupador === 'req_codigo') clave = a.req_codigo ? `RQ${String(a.req_codigo).replace(/^RQ/i, '')}` : '(Sin Requisición)';
+        else if (agrupador === 'req_operacion') clave = a.req_operacion || '(Sin Operación)';
+        else clave = String(a[agrupador] || '(Sin Asignar)');
+
+        clave = clave.trim() || '(Vacío)';
+        if (!grupos[clave]) grupos[clave] = [];
+        grupos[clave].push(a);
+      });
+
+      let clavesOrdenadas = Object.keys(grupos);
+      clavesOrdenadas.sort((k1, k2) => {
+        return _aspAgrupamiento.orden === 'DESC'
+          ? k2.localeCompare(k1, undefined, { numeric: true, sensitivity: 'base' })
+          : k1.localeCompare(k2, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      let html = '';
+      clavesOrdenadas.forEach(grupoKey => {
+        const items = grupos[grupoKey];
+        const isCollapsed = Boolean(_aspGruposColapsados[grupoKey]);
+        const iconoColapso = isCollapsed ? '▶' : '▼';
+
+        html += `
+          <tr class="group-header-row" onclick="toggleGrupoAspirantes('${esc(grupoKey)}')">
+            <td colspan="9" style="padding: 9px 14px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.78rem; color:var(--text); font-family:monospace;">${iconoColapso}</span>
+                <span style="font-weight:700; color:var(--text); font-size:0.86rem;">
+                  ${esc(agrupador)}: <span style="color:var(--text);">${esc(grupoKey)}</span>
+                </span>
+                <span class="tag-badge tag-badge-primary" style="font-size:0.72rem; padding:2px 8px; border-radius:12px;">
+                  ${items.length} ${items.length === 1 ? 'aspirante' : 'aspirantes'}
+                </span>
+              </div>
+            </td>
+          </tr>
+        `;
+
+        if (!isCollapsed) {
+          html += items.map(a => renderFilaAspirante(a, true)).join('');
+        }
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    async function abrirFichaAspirante(idAspirante) {
+      if (!idAspirante) return;
+      const modal = document.getElementById('modalFichaAspirante');
+      if (!modal) return;
+
+      modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => cerrarModales());
+
+      const cuerpo = document.getElementById('cuerpoFichaAspirante');
+      if (cuerpo) {
+        cuerpo.innerHTML = '<div style="text-align:center; padding:32px; color:var(--text-muted);"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando ficha completa del aspirante...</div>';
+      }
+
+      try {
+        const res = await fetch(`/talenthub/api/aspirantes/${encodeURIComponent(idAspirante)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok || !data.aspirante) {
+          if (cuerpo) {
+            cuerpo.innerHTML = `<div style="text-align:center; padding:28px; color:var(--danger);">${esc(data.error || 'No se pudo cargar la información del aspirante')}</div>`;
+          }
+          return;
+        }
+
+        _aspActualDetalle = data;
+        const a = data.aspirante;
+        const aspId = a.id_aspirante || a.IdAspirante || idAspirante;
+
+        const fotoEl = document.getElementById('fichaAspFoto');
+        if (fotoEl) {
+          fotoEl.src = a.foto_public_url || a.foto_url || TALENTHUB_FOTO_DEFAULT;
+          fotoEl.onerror = () => { fotoEl.src = TALENTHUB_FOTO_DEFAULT; };
+        }
+
+        const nomEl = document.getElementById('fichaAspNombre');
+        if (nomEl) nomEl.textContent = a.nombre_completo || [a.primer_nombre, a.segundo_nombre, a.primer_apellido, a.segundo_apellido].filter(Boolean).join(' ') || 'Aspirante';
+
+        const badgeEst = document.getElementById('fichaAspBadgeEstado');
+        if (badgeEst) {
+          const est = a.estado_proceso || 'Registro';
+          badgeEst.className = `status-badge ${getEstadoBadgeClassAsp(est)}`;
+          badgeEst.textContent = est;
+        }
+
+        const docEl = document.getElementById('fichaAspDocumento');
+        if (docEl) docEl.textContent = `${a.tipo_documento || 'CC'} ${a.identificacion || '-'}`;
+
+        const ubiEl = document.getElementById('fichaAspUbicacion');
+        if (ubiEl) ubiEl.textContent = [a.ciudad || a.ciudad_residencia, a.departamento].filter(Boolean).join(' · ') || 'Ubicación no especificada';
+
+        const fechaEl = document.getElementById('fichaAspFechaReg');
+        if (fechaEl) fechaEl.textContent = `Registrado: ${a.fecha_registro ? String(a.fecha_registro).substring(0, 10) : '-'}`;
+
+        const btnAdmin = document.getElementById('btnFichaAbrirAdmin');
+        if (btnAdmin) {
+          btnAdmin.href = `/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        }
+
+        const btnHdv = document.getElementById('btnFichaVerHdv');
+        if (btnHdv) {
+          const cvUrl = a.pdf_public_url || a.hoja_vida_pdf_url;
+          if (cvUrl) {
+            btnHdv.href = cvUrl;
+            btnHdv.style.display = 'inline-flex';
+          } else {
+            btnHdv.style.display = 'none';
+          }
+        }
+
+        const bDocs = document.getElementById('lblCountDocsBadge');
+        if (bDocs) bDocs.textContent = String((data.documentos || []).length);
+
+        const bExp = document.getElementById('lblCountExpBadge');
+        if (bExp) bExp.textContent = String((data.experiencia || data.experiencias || []).length);
+
+        const bEdu = document.getElementById('lblCountEduBadge');
+        if (bEdu) bEdu.textContent = String((data.educacion || []).length);
+
+        const bRef = document.getElementById('lblCountRefBadge');
+        if (bRef) bRef.textContent = String((data.referencias || []).length);
+
+        cambiarSubTabFicha(_aspSubTabActiva || 'Datos');
+
+      } catch (err) {
+        console.error('[TalentHub] Error al abrir ficha del aspirante:', err);
+        if (cuerpo) {
+          cuerpo.innerHTML = '<div style="text-align:center; padding:28px; color:var(--danger);">Error de red al consultar la ficha del aspirante.</div>';
+        }
+      }
+    }
+
+    function cambiarSubTabFicha(tabName) {
+      _aspSubTabActiva = tabName;
+      document.querySelectorAll('#modalFichaAspirante .tab-pill').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(`btnTabFicha${tabName}`);
+      if (activeBtn) activeBtn.classList.add('active');
+      renderSubTabFichaAspirante(tabName);
+    }
+
+    function renderSubTabFichaAspirante(tabName) {
+      const cuerpo = document.getElementById('cuerpoFichaAspirante');
+      if (!cuerpo || !_aspActualDetalle) return;
+
+      const a = _aspActualDetalle.aspirante || {};
+
+      if (tabName === 'Datos') {
+        const docTipo = esc(a.tipo_documento || 'CC');
+        const docNum = esc(a.identificacion || '-');
+        const fechaNac = esc(a.fecha_nacimiento ? String(a.fecha_nacimiento).substring(0, 10) : 'Sin registrar');
+        const edadStr = a.edad ? ` (${a.edad} años)` : '';
+        const lugarNac = esc([a.ciudad_nacimiento, a.departamento_nacimiento, a.pais_nacimiento].filter(Boolean).join(', ') || 'Sin registrar');
+        const lugarExp = esc([a.ciudad_expedicion, a.departamento_expedicion].filter(Boolean).join(', ') || 'Sin registrar');
+        const fechaExp = esc(a.fecha_expedicion ? String(a.fecha_expedicion).substring(0, 10) : 'Sin registrar');
+        const genero = esc(a.genero || 'Sin registrar');
+        const estadoCivil = esc(a.estado_civil || 'Sin registrar');
+
+        const cel = esc(a.telefono || 'Sin registrar');
+        const correo = esc(a.correo_electronico || 'Sin registrar');
+        const direccion = esc(a.direccion_barrio || 'Sin registrar');
+        const ciudad = esc(a.ciudad || 'Sin registrar');
+        const depto = esc(a.departamento || 'Sin registrar');
+
+        const eps = esc(a.eps || 'Sin registrar');
+        const afp = esc(a.afp || 'Sin registrar');
+        const rh = esc(a.rh || 'Sin registrar');
+        const tallas = esc(`Camisa: ${a.camisa_talla || '-'} · Pantalón: ${a.talla_pantalon || '-'} · Calzado: ${a.zapatos_talla || '-'}`);
+        const medio = esc(a.medio_reclutamiento || 'Sin registrar');
+        const recomendador = esc(a.recomendador_aspirante || 'Ninguno');
+
+        cuerpo.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <div class="req-section-hdr" style="margin-top:0;"><span>👤</span> Información Personal y de Identificación</div>
+              <div class="req-detail-grid">
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Identificación</div>
+                  <div class="req-detail-val" style="font-family:'JetBrains Mono',monospace; color:var(--text); font-weight:700;">${docTipo} ${docNum}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Fecha Nacimiento</div>
+                  <div class="req-detail-val">${fechaNac}${edadStr}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Lugar Nacimiento</div>
+                  <div class="req-detail-val">${lugarNac}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Expedición Documento</div>
+                  <div class="req-detail-val">${lugarExp} ${fechaExp !== 'Sin registrar' ? `(${fechaExp})` : ''}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Género</div>
+                  <div class="req-detail-val">${genero}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Estado Civil</div>
+                  <div class="req-detail-val">${estadoCivil}</div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="req-section-hdr"><span>📍</span> Contacto y Residencia</div>
+              <div class="req-detail-grid">
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Teléfono / Celular</div>
+                  <div class="req-detail-val">📞 ${cel}</div>
+                </div>
+                <div class="req-detail-box" style="grid-column: span 2;">
+                  <div class="req-detail-lbl">Correo Electrónico</div>
+                  <div class="req-detail-val">✉️ ${correo}</div>
+                </div>
+                <div class="req-detail-box" style="grid-column: span 2;">
+                  <div class="req-detail-lbl">Dirección / Barrio</div>
+                  <div class="req-detail-val">${direccion}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Ciudad / Municipio</div>
+                  <div class="req-detail-val">${ciudad}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Departamento</div>
+                  <div class="req-detail-val">${depto}</div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="req-section-hdr"><span>🩺</span> Seguridad Social, Tallas y Reclutamiento</div>
+              <div class="req-detail-grid">
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">EPS</div>
+                  <div class="req-detail-val">${eps}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Fondo de Pensiones (AFP)</div>
+                  <div class="req-detail-val">${afp}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Grupo Sanguíneo (RH)</div>
+                  <div class="req-detail-val" style="font-weight:700; color:var(--text);">${rh}</div>
+                </div>
+                <div class="req-detail-box" style="grid-column: span 2;">
+                  <div class="req-detail-lbl">Tallas Dotación</div>
+                  <div class="req-detail-val">${tallas}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Medio de Reclutamiento</div>
+                  <div class="req-detail-val">${medio}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Recomendado Por</div>
+                  <div class="req-detail-val">${recomendador}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (tabName === 'Requisicion') {
+        const aspId = a.id_aspirante || a.IdAspirante;
+        if (a.IdRequisicion) {
+          cuerpo.innerHTML = `
+            <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:18px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <div>
+                  <span style="font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.25rem; color:var(--text);">
+                    RQ${esc(String(a.req_codigo || a.IdRequisicion).replace(/^RQ/i, ''))}
+                  </span>
+                  <span class="status-badge ${getEstadoBadgeClass(a.req_estado)}" style="margin-left:8px;">
+                    ${esc(a.req_estado || 'EN PROCESO')}
+                  </span>
+                  <h4 style="margin:6px 0 2px; font-size:1.05rem; font-weight:800; color:var(--text);">${esc(a.req_cargo || 'Sin cargo')}</h4>
+                  <div style="font-size:0.82rem; color:var(--text-muted);">
+                    ${esc(a.req_operacion || '-')} · Regional: ${esc(a.req_regional || '-')}
+                  </div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <button type="button" class="btn btn-outline" onclick="abrirModalDetalleRequisicion(${a.IdRequisicion})" style="font-size:0.8rem; padding:6px 12px;">
+                    <span>🔍 Ver Ficha Requisición</span>
+                  </button>
+                  <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" class="btn btn-primary" style="font-size:0.8rem; padding:6px 12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    <span>⚙️ Administrar Aspirante</span>
+                  </a>
+                </div>
+              </div>
+              <div class="req-detail-grid">
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Responsable de Selección</div>
+                  <div class="req-detail-val" style="font-weight:700; color:var(--text);">${esc(a.req_responsable || 'Sin asignar')}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Solicitante</div>
+                  <div class="req-detail-val">${esc(a.req_solicitante || '-')}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Personas Requeridas</div>
+                  <div class="req-detail-val">${esc(a.req_vacantes || 1)}</div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">Fecha de Solicitud</div>
+                  <div class="req-detail-val" style="font-family:'JetBrains Mono',monospace;">
+                    ${esc(a.req_fecha ? String(a.req_fecha).substring(0, 10) : '-')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          cuerpo.innerHTML = `
+            <div style="background:var(--bg-elevated); border:1px dashed var(--border); border-radius:10px; padding:36px; text-align:center;">
+              <div style="font-size:2.2rem; margin-bottom:8px;">📋</div>
+              <div style="font-weight:700; color:var(--text); font-size:1rem;">Aspirante Disponible (Sin Requisición Asignada)</div>
+              <p style="color:var(--text-muted); font-size:0.84rem; margin:6px 0 16px;">
+                Este candidato aún no se encuentra vinculado a ninguna requisición de personal activa.
+              </p>
+              <a href="/seleccion/admin/${encodeURIComponent(aspId)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}" target="_blank" class="btn btn-primary" style="text-decoration:none; display:inline-flex;">
+                <span>⚙️ Vincular desde Panel Admin</span>
+              </a>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      if (tabName === 'Docs') {
+        const docs = _aspActualDetalle.documentos || [];
+        if (!docs.length) {
+          cuerpo.innerHTML = `
+            <div style="background:var(--bg-elevated); border:1px dashed var(--border); border-radius:10px; padding:32px; text-align:center; color:var(--text-muted); font-size:0.88rem;">
+              📁 No se han registrado documentos en el portal para este aspirante.
+            </div>
+          `;
+          return;
+        }
+
+        cuerpo.innerHTML = `
+          <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden; background: var(--card-bg);">
+            <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+              <thead>
+                <tr style="background:var(--bg-elevated); border-bottom:1.5px solid var(--border);">
+                  <th style="padding:9px 12px; font-weight:700; text-align:left;">Documento</th>
+                  <th style="padding:9px 12px; font-weight:700; text-align:left;">Prefijo / Clasificación</th>
+                  <th style="padding:9px 12px; font-weight:700; text-align:center;">Estado</th>
+                  <th style="padding:9px 12px; font-weight:700; text-align:left;">Fecha</th>
+                  <th style="padding:9px 12px; font-weight:700; text-align:right;">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${docs.map(d => {
+                  const nombreDoc = esc(d.nombre_doc || d.nombre_documento || 'Documento #' + d.id_config_doc);
+                  const pref = esc(d.prefijo || '-');
+                  const clasif = esc(d.clasificacion || '');
+                  const est = esc(d.estado || 'Cargado');
+                  const fecha = esc(d.fecha_actualizacion ? String(d.fecha_actualizacion).substring(0, 16) : (d.fecha_registro ? String(d.fecha_registro).substring(0, 16) : '-'));
+                  let url = d.gcs_path || d.url_documento || d.archivo_url;
+                  if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+                    url = `https://storage.googleapis.com/hojas_vida_logyser/${encodeURI(url)}`;
+                  }
+                  const linkHtml = url
+                    ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="padding:3px 8px; font-size:0.75rem; text-decoration:none;">📄 Ver</a>`
+                    : '<span style="color:var(--text-muted); font-size:0.75rem;">Sin archivo</span>';
+
+                  let badgeColor = 'tag-badge-primary';
+                  if (est.toLowerCase() === 'aprobado' || est.toLowerCase() === 'firmado') badgeColor = 'background:var(--success-soft); color:var(--success-dark); border:1px solid var(--success);';
+                  else if (est.toLowerCase() === 'rechazado') badgeColor = 'background:var(--danger-soft); color:var(--danger-dark); border:1px solid var(--danger);';
+                  else if (est.toLowerCase() === 'pendiente') badgeColor = 'background:var(--warning-soft); color:var(--warning-dark); border:1px solid var(--warning);';
+
+                  return `
+                    <tr style="border-bottom:1px solid var(--border);">
+                      <td style="padding:9px 12px; font-weight:600;">
+                        <div>${nombreDoc}</div>
+                        ${d.observaciones ? `<div style="font-size:0.74rem; color:var(--text-muted); font-weight:normal; margin-top:2px;">Obs: ${esc(d.observaciones)}</div>` : ''}
+                      </td>
+                      <td style="padding:9px 12px; color:var(--text-muted);">
+                        <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--text);">${pref}</span>
+                        ${clasif ? `<div style="font-size:0.72rem; color:var(--text-muted);">${clasif}</div>` : ''}
+                      </td>
+                      <td style="padding:9px 12px; text-align:center;">
+                        <span class="tag-badge" style="font-size:0.72rem; ${badgeColor}">${est}</span>
+                      </td>
+                      <td style="padding:9px 12px; font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-muted);">${fecha}</td>
+                      <td style="padding:9px 12px; text-align:right;">${linkHtml}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        return;
+      }
+
+      if (tabName === 'Exp') {
+        const exps = _aspActualDetalle.experiencia || _aspActualDetalle.experiencias || [];
+        if (!exps.length) {
+          cuerpo.innerHTML = `
+            <div style="background:var(--bg-elevated); border:1px dashed var(--border); border-radius:10px; padding:32px; text-align:center; color:var(--text-muted); font-size:0.88rem;">
+              💼 No registra antecedentes de experiencia laboral.
+            </div>
+          `;
+          return;
+        }
+
+        cuerpo.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${exps.map(exp => {
+              const empresa = esc(exp.empresa || 'Empresa no registrada');
+              const cargo = esc(exp.cargo || 'Cargo no registrado');
+              const ano = esc(exp.ano_experiencia || '-');
+              const tiempo = esc(exp.tiempo_laborado || '');
+              const salario = esc(exp.salario || '-');
+              const funciones = esc(exp.funciones || 'Sin funciones detalladas');
+              const retiro = esc(exp.motivo_retiro || 'No especificado');
+
+              return `
+                <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                    <div>
+                      <div style="font-weight:700; font-size:0.96rem; color:var(--text);">${cargo}</div>
+                      <div style="font-weight:600; font-size:0.86rem; color:var(--text); margin-top:2px;">🏢 ${empresa}</div>
+                    </div>
+                    <span class="tag-badge" style="font-size:0.74rem;">📅 Año: ${ano} ${tiempo ? `· Duración: ${tiempo}` : ''}</span>
+                  </div>
+                  <div style="font-size:0.82rem; color:var(--text); margin-bottom:10px; line-height:1.4;">
+                    <strong>Funciones:</strong> ${funciones}
+                  </div>
+                  <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:0.78rem; color:var(--text-muted); border-top:1px dashed var(--border); padding-top:8px;">
+                    <span><strong>Salario:</strong> ${salario}</span>
+                    <span><strong>Motivo de retiro:</strong> ${retiro}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        return;
+      }
+
+      if (tabName === 'Edu') {
+        const edus = _aspActualDetalle.educacion || [];
+        if (!edus.length) {
+          cuerpo.innerHTML = `
+            <div style="background:var(--bg-elevated); border:1px dashed var(--border); border-radius:10px; padding:32px; text-align:center; color:var(--text-muted); font-size:0.88rem;">
+              🎓 No registra títulos o estudios educativos.
+            </div>
+          `;
+          return;
+        }
+
+        cuerpo.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${edus.map(edu => {
+              const nivel = esc(edu.nivel_escolaridad || 'Nivel no especificado');
+              const programa = esc(edu.programa || 'Programa / Bachillerato');
+              const inst = esc(edu.institucion || 'Institución no especificada');
+              const anio = esc(edu.ano || '-');
+              const modalidad = esc(edu.modalidad || 'Presencial');
+              const culminado = (String(edu.finalizado) === '1' || String(edu.finalizado).toUpperCase() === 'SI') ? 'Finalizado' : 'En curso / Incompleto';
+
+              return `
+                <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                  <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span style="font-weight:700; font-size:0.92rem; color:var(--text);">${programa}</span>
+                      <span class="tag-badge tag-badge-primary" style="font-size:0.7rem; text-transform:uppercase;">${nivel}</span>
+                    </div>
+                    <div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">🏫 ${inst} · Modalidad: ${modalidad}</div>
+                  </div>
+                  <div style="text-align:right;">
+                    <span style="font-family:'JetBrains Mono',monospace; font-size:0.84rem; font-weight:700; color:var(--text);">${anio}</span>
+                    <div style="font-size:0.74rem; color:var(--text-muted); margin-top:2px;">${culminado}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        return;
+      }
+
+      if (tabName === 'Ref') {
+        const refs = (_aspActualDetalle.referencias || []).filter(r => r.nombre_completo || r.telefono || r.empresa);
+        if (!refs.length) {
+          cuerpo.innerHTML = `
+            <div style="background:var(--bg-elevated); border:1px dashed var(--border); border-radius:10px; padding:32px; text-align:center; color:var(--text-muted); font-size:0.88rem;">
+              👥 No registra referencias laborales o personales.
+            </div>
+          `;
+          return;
+        }
+
+        cuerpo.innerHTML = `
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+            ${refs.map(r => {
+              const nom = esc(r.nombre_completo || 'Nombre no registrado');
+              const tipo = esc((r.tipo_referencia || 'Personal').toUpperCase());
+              const ocu = esc(r.ocupacion || '-');
+              const empresa = esc(r.empresa || '');
+              const tel = esc(r.telefono || '-');
+              const jefe = esc(r.jefe_inmediato || '');
+              const cargoJefe = esc(r.cargo_jefe || '');
+
+              return `
+                <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="font-weight:700; font-size:0.9rem; color:var(--text);">${nom}</div>
+                    <span class="tag-badge tag-badge-primary" style="font-size:0.68rem;">${tipo}</span>
+                  </div>
+                  <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">💼 ${ocu} ${empresa ? `(${empresa})` : ''}</div>
+                  ${(jefe || cargoJefe) ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Jefe: ${jefe} ${cargoJefe ? `· ${cargoJefe}` : ''}</div>` : ''}
+                  <div style="font-size:0.8rem; color:var(--text); font-weight:600; margin-top:8px;">📞 ${tel}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        return;
+      }
+
+      if (tabName === 'Fam') {
+        const emergencias = _aspActualDetalle.emergencia || [];
+        const fams = _aspActualDetalle.familiares || [];
+        const hijos = _aspActualDetalle.hijos || [];
+
+        cuerpo.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <div class="req-section-hdr" style="margin-top:0;"><span>🚨</span> Contacto(s) de Emergencia (${emergencias.length})</div>
+              ${!emergencias.length ? `
+                <div style="font-size:0.82rem; color:var(--text-muted); padding:8px 12px; background:var(--bg-elevated); border-radius:6px;">No registra contacto de emergencia.</div>
+              ` : `
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
+                  ${emergencias.map(em => `
+                    <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px;">
+                      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div style="font-weight:700; font-size:0.9rem; color:var(--text);">${esc(em.nombre_completo || 'Sin nombre')}</div>
+                        <span class="tag-badge tag-badge-primary" style="font-size:0.68rem;">${esc(em.parentesco || 'Emergencia')}</span>
+                      </div>
+                      <div style="font-size:0.8rem; color:var(--text); font-weight:700; margin-top:6px;">📞 ${esc(em.telefono || 'Sin teléfono')}</div>
+                      ${em.direccion ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">📍 ${esc(em.direccion)}</div>` : ''}
+                      ${em.correo_electronico ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:2px;">✉️ ${esc(em.correo_electronico)}</div>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+
+            <div>
+              <div class="req-section-hdr"><span>👨‍👩‍👧</span> Familiares / Personas con quien vive (${fams.length})</div>
+              ${!fams.length ? `
+                <div style="font-size:0.82rem; color:var(--text-muted); padding:8px 12px; background:var(--bg-elevated); border-radius:6px;">No registra familiares adicionales.</div>
+              ` : `
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
+                  ${fams.map(f => {
+                    const convive = (String(f.conviven_juntos) === '1' || String(f.conviven_juntos).toUpperCase() === 'SI') ? 'Vive juntos' : 'No viven juntos';
+                    return `
+                      <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:10px 12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                          <div style="font-weight:700; font-size:0.84rem; color:var(--text);">${esc(f.nombre_completo || '-')}</div>
+                          <span style="font-size:0.68rem; padding:2px 6px; border-radius:4px; background:var(--bg-elevated); color:var(--text-muted);">${convive}</span>
+                        </div>
+                        <div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">
+                          <span>Parentesco: <strong>${esc(f.parentesco || '-')}</strong></span> ·
+                          <span>Edad: <strong>${esc(f.edad || '-')}</strong></span>
+                        </div>
+                        <div style="font-size:0.76rem; color:var(--text-muted); margin-top:2px;">Ocupación: ${esc(f.ocupacion || '-')}</div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `}
+            </div>
+
+            <div>
+              <div class="req-section-hdr"><span>🧒</span> Hijos (${hijos.length})</div>
+              ${!hijos.length ? `
+                <div style="font-size:0.82rem; color:var(--text-muted); padding:8px 12px; background:var(--bg-elevated); border-radius:6px;">No registra hijos.</div>
+              ` : `
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+                  ${hijos.map(h => {
+                    const conviveHijo = (String(h.conviven_juntos) === '1' || String(h.conviven_juntos).toUpperCase() === 'SI') ? 'Vive juntos' : 'No conviven';
+                    return `
+                      <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:10px 12px;">
+                        <div style="font-weight:700; font-size:0.84rem; color:var(--text);">${esc(h.nombre_completo || '-')}</div>
+                        <div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">
+                          <span>Edad: <strong>${esc(h.edad || '-')}</strong></span> ·
+                          <span>${conviveHijo}</span>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (tabName === 'Seg') {
+        const seg = _aspActualDetalle.seguridad || {};
+        const met = _aspActualDetalle.metas || {};
+
+        const fmtBool = (val) => {
+          if (val === null || val === undefined || val === '') return 'NO';
+          if (val === 1 || String(val) === '1' || String(val).toUpperCase() === 'SI') return 'SÍ';
+          return 'NO';
+        };
+
+        cuerpo.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <div class="req-section-hdr" style="margin-top:0;"><span>🛡️</span> Cuestionario de Seguridad y Antecedentes</div>
+              <div class="req-detail-grid">
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">¿Acepta Polígrafo?</div>
+                  <div class="req-detail-val" style="font-weight:700; color:${fmtBool(seg.acepta_poligrafo) === 'SÍ' ? 'var(--primary)' : 'var(--text)'};">
+                    ${fmtBool(seg.acepta_poligrafo)}
+                  </div>
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">¿Llamados de Atención Previos?</div>
+                  <div class="req-detail-val" style="font-weight:700;">${fmtBool(seg.llamados_atencion)}</div>
+                  ${seg.detalle_llamados ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">${esc(seg.detalle_llamados)}</div>` : ''}
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">¿Accidentes Laborales?</div>
+                  <div class="req-detail-val" style="font-weight:700;">${fmtBool(seg.accidente_laboral)}</div>
+                  ${seg.detalle_accidente ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">${esc(seg.detalle_accidente)}</div>` : ''}
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">¿Enfermedad Importante?</div>
+                  <div class="req-detail-val" style="font-weight:700;">${fmtBool(seg.enfermedad_importante)}</div>
+                  ${seg.detalle_enfermedad ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">${esc(seg.detalle_enfermedad)}</div>` : ''}
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">¿Consume Alcohol?</div>
+                  <div class="req-detail-val" style="font-weight:700;">${fmtBool(seg.consume_alcohol)}</div>
+                  ${seg.frecuencia_alcohol ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">Frecuencia: ${esc(seg.frecuencia_alcohol)}</div>` : ''}
+                </div>
+                <div class="req-detail-box">
+                  <div class="req-detail-lbl">¿Familiares en Logyser?</div>
+                  <div class="req-detail-val" style="font-weight:700;">${fmtBool(seg.familiar_en_empresa)}</div>
+                  ${seg.detalle_familiar_empresa ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-top:3px;">${esc(seg.detalle_familiar_empresa)}</div>` : ''}
+                </div>
+              </div>
+            </div>
+
+            ${(seg.califica_para_cargo || seg.fortalezas || seg.aspectos_mejorar || seg.resolucion_problemas || seg.observaciones) ? `
+              <div>
+                <div class="req-section-hdr"><span>🧠</span> Perfil Psicolaboral y Autoevaluación</div>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  ${seg.califica_para_cargo ? `
+                    <div class="req-detail-box">
+                      <div class="req-detail-lbl">¿Por qué califica para el cargo?</div>
+                      <div class="req-detail-val" style="line-height:1.45; font-size:0.83rem; white-space:pre-wrap;">${esc(seg.califica_para_cargo)}</div>
+                    </div>
+                  ` : ''}
+                  ${seg.fortalezas ? `
+                    <div class="req-detail-box">
+                      <div class="req-detail-lbl">Fortalezas</div>
+                      <div class="req-detail-val" style="line-height:1.45; font-size:0.83rem; white-space:pre-wrap;">${esc(seg.fortalezas)}</div>
+                    </div>
+                  ` : ''}
+                  ${seg.aspectos_mejorar ? `
+                    <div class="req-detail-box">
+                      <div class="req-detail-lbl">Aspectos por Mejorar</div>
+                      <div class="req-detail-val" style="line-height:1.45; font-size:0.83rem; white-space:pre-wrap;">${esc(seg.aspectos_mejorar)}</div>
+                    </div>
+                  ` : ''}
+                  ${seg.resolucion_problemas ? `
+                    <div class="req-detail-box">
+                      <div class="req-detail-lbl">Resolución de Situaciones Complejas</div>
+                      <div class="req-detail-val" style="line-height:1.45; font-size:0.83rem; white-space:pre-wrap;">${esc(seg.resolucion_problemas)}</div>
+                    </div>
+                  ` : ''}
+                  ${seg.observaciones ? `
+                    <div class="req-detail-box">
+                      <div class="req-detail-lbl">Observaciones Generales</div>
+                      <div class="req-detail-val" style="line-height:1.45; font-size:0.83rem; white-space:pre-wrap;">${esc(seg.observaciones)}</div>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            ` : ''}
+
+            <div>
+              <div class="req-section-hdr"><span>🎯</span> Metas y Proyecto de Vida</div>
+              <div class="req-detail-grid">
+                <div class="req-detail-box" style="grid-column: span 2;">
+                  <div class="req-detail-lbl">Metas a Corto Plazo</div>
+                  <div class="req-detail-val" style="line-height:1.4; font-size:0.84rem;">${esc(met.meta_corto_plazo || 'Sin registrar')}</div>
+                </div>
+                <div class="req-detail-box" style="grid-column: span 2;">
+                  <div class="req-detail-lbl">Metas a Mediano Plazo</div>
+                  <div class="req-detail-val" style="line-height:1.4; font-size:0.84rem;">${esc(met.meta_mediano_plazo || 'Sin registrar')}</div>
+                </div>
+                <div class="req-detail-box" style="grid-column: span 2;">
+                  <div class="req-detail-lbl">Metas a Largo Plazo</div>
+                  <div class="req-detail-val" style="line-height:1.4; font-size:0.84rem;">${esc(met.meta_largo_plazo || 'Sin registrar')}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+    }
+
+    async function copiarLinkPortalFicha() {
+      const aspId = _aspActualDetalle?.aspirante?.id_aspirante || _aspActualDetalle?.aspirante?.IdAspirante;
+      if (!aspId) return;
+      copiarLinkPortalAspirante(aspId);
+    }
+
+    async function copiarLinkPortalAspirante(idAspirante) {
+      if (!idAspirante) return;
+      const url = `${window.location.origin}/seleccion/portal/${encodeURIComponent(idAspirante)}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast('Enlace del portal copiado al portapapeles.', 'success');
+      } catch (e) {
+        prompt('Copia el siguiente enlace del aspirante:', url);
+      }
+    }
+
     // ── UTILITARIOS ─────────────────────────────────────────────────────────
     // Cierra el modal `el` y, si tenía una entrada de historial pendiente
     // (ver modal-back.js), la consume — así el botón "Atrás" del navegador
@@ -4980,6 +6466,7 @@
       cerrarModalConBack(document.getElementById('modalFormRequisicion'));
       cerrarModalConBack(document.getElementById('modalVincularAspirante'));
       cerrarModalConBack(document.getElementById('modalParametrosRequisiciones'));
+      cerrarModalConBack(document.getElementById('modalFichaAspirante'));
     }
 
     document.querySelectorAll('.modal-backdrop').forEach(modal => {
