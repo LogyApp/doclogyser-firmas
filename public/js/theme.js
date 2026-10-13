@@ -176,23 +176,61 @@
   // derivar un sidebar marron oscuro del propio naranja. En cuanto el
   // usuario elige CUALQUIER otro color desde "Mi perfil", el sidebar sí
   // pasa a derivarse de ese color (lo que pedía el requisito original).
-  const NAVY_POR_DEFECTO = { primary: '#000b59', primaryDark: '#00073a', primaryLight: '#1c2a7a' };
-  function derivarPaletaPrimaria(hex) {
-    if (hex.toLowerCase() === '#f55400') return NAVY_POR_DEFECTO;
+  const NAVY_POR_DEFECTO = {
+    claro: { primary: '#000b59', primaryDark: '#00073a', primaryLight: '#1c2a7a' },
+    oscuro: { primary: '#0b1330', primaryDark: '#060a1c', primaryLight: '#1b2550' }
+  };
+  // Luminosidad media-oscura (29% claro / 19% oscuro) para que el color
+  // elegido se note claramente en la barra lateral y aun asi el texto blanco
+  // mantenga >= 7:1 de contraste.
+  function derivarPaletaPrimaria(hex, tema) {
+    if (hex.toLowerCase() === '#f55400') return NAVY_POR_DEFECTO[tema] || NAVY_POR_DEFECTO.claro;
     const hsl = rgbToHsl(hexToRgb(hex));
-    const s = Math.max(30, Math.min(70, hsl.s));
+    const s = Math.min(75, hsl.s);
+    // Respeta la luminosidad elegida (un color oscuro se queda oscuro y se
+    // nota) acotada para que el texto blanco siga siendo legible.
+    const l = Math.max(12, Math.min(tema === 'oscuro' ? 26 : 38, hsl.l));
     return {
-      primary: rgbToHex(hslToRgb({ h: hsl.h, s, l: 16 })),
-      primaryDark: rgbToHex(hslToRgb({ h: hsl.h, s, l: 10 })),
-      primaryLight: rgbToHex(hslToRgb({ h: hsl.h, s, l: 28 }))
+      primary: rgbToHex(hslToRgb({ h: hsl.h, s, l })),
+      primaryDark: rgbToHex(hslToRgb({ h: hsl.h, s, l: l - 8 })),
+      primaryLight: rgbToHex(hslToRgb({ h: hsl.h, s, l: l + 12 }))
     };
+  }
+
+  // Superficies teñidas con el tono elegido (fondo, tarjetas, bordes) para
+  // que toda la interfaz se sienta coherente y no solo botones y texto.
+  const PROPS_SUPERFICIE = ['--bg', '--bg-elevated', '--card-bg', '--border', '--border-strong', '--text-muted'];
+  function aplicarSuperficies(root, hex, tema) {
+    if (hex.toLowerCase() === '#f55400') {
+      PROPS_SUPERFICIE.forEach(p => root.style.removeProperty(p));
+      return;
+    }
+    const { h, s: sBase } = rgbToHsl(hexToRgb(hex));
+    // Un color grisáceo/negro no debe teñir con un tono inventado.
+    const t = (s, l) => rgbToHex(hslToRgb({ h, s: Math.min(s, sBase), l }));
+    if (tema === 'oscuro') {
+      root.style.setProperty('--bg', t(30, 7));
+      root.style.setProperty('--bg-elevated', t(28, 10));
+      root.style.setProperty('--card-bg', t(26, 13));
+      root.style.setProperty('--border', t(24, 20));
+      root.style.setProperty('--border-strong', t(24, 27));
+      root.style.setProperty('--text-muted', t(16, 66));
+    } else {
+      root.style.setProperty('--bg', t(40, 96));
+      root.style.setProperty('--bg-elevated', t(38, 93));
+      root.style.setProperty('--card-bg', '#ffffff');
+      root.style.setProperty('--border', t(30, 91));
+      root.style.setProperty('--border-strong', t(28, 84));
+      root.style.setProperty('--text-muted', t(12, 40));
+    }
   }
 
   function aplicarVariables(tema, hexOriginal) {
     const root = document.documentElement;
     root.setAttribute('data-theme', tema);
     const paleta = derivarPaletaAcento(hexOriginal, tema);
-    const primaria = derivarPaletaPrimaria(hexOriginal);
+    const primaria = derivarPaletaPrimaria(hexOriginal, tema);
+    aplicarSuperficies(root, hexOriginal, tema);
     root.style.setProperty('--primary', primaria.primary);
     root.style.setProperty('--primary-dark', primaria.primaryDark);
     root.style.setProperty('--primary-light', primaria.primaryLight);
@@ -264,4 +302,17 @@
       })
       .catch(() => {});
   }
+
+  // Sincronización en tiempo real entre múltiples pestañas abiertas
+  window.addEventListener('storage', (event) => {
+    if (event.key === STORAGE_KEY && event.newValue) {
+      try {
+        const nueva = JSON.parse(event.newValue);
+        if (nueva && nueva.tema && nueva.colorAcento) {
+          aplicarVariables(resolverTema(nueva.tema), nueva.colorAcento);
+          suscribirSistema(nueva.tema, nueva.colorAcento);
+        }
+      } catch (e) {}
+    }
+  });
 })();

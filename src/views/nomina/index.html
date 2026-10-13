@@ -1802,7 +1802,8 @@
               <input type="color" id="nominaColorAcento" aria-label="Elegir color de acento">
               <input type="text" id="nominaColorAcentoHex" maxlength="7" placeholder="#F55400" aria-label="Color de acento en hexadecimal">
             </div>
-            <small style="color:var(--text-muted);font-size:.76rem">Se aplica al instante en todos los módulos; el contraste se ajusta automáticamente si hace falta.</small>
+            <small style="color:var(--text-muted);font-size:.76rem;display:block">Se aplica al instante en todos los módulos; el contraste se ajusta automáticamente si hace falta.</small>
+            <button class="btn-reset" type="button" id="btnResetAparienciaNomina" style="margin-top:8px;font-size:0.8rem;padding:6px 12px">Restablecer apariencia por defecto</button>
           </div>
         </div>
         <div id="nominaProfileError" class="aviso-banner" style="display:none;background:var(--danger-soft);border-color:var(--danger-soft);color:var(--danger-dark)"></div>
@@ -2075,6 +2076,13 @@
     aplicarAparienciaNomina();
   });
   document.getElementById('nominaColorAcentoHex').addEventListener('change', aplicarAparienciaNomina);
+  document.getElementById('btnResetAparienciaNomina')?.addEventListener('click', () => {
+    const radio = document.querySelector('input[name="nominaTema"][value="sistema"]');
+    if (radio) radio.checked = true;
+    document.getElementById('nominaColorAcento').value = '#F55400';
+    document.getElementById('nominaColorAcentoHex').value = '#F55400';
+    aplicarAparienciaNomina();
+  });
 
   function cambiarVistaFirmaPerfil(formato) {
     const htmlActivo = formato === 'html';

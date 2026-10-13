@@ -3,44 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Tema (Claro/Oscuro/Sistema): fija data-theme antes del primer pintado
+       para evitar parpadeo (FOUC). El acento exacto lo aplica theme.js. -->
+  <script>
+    (function () {
+      try {
+        var p = JSON.parse(localStorage.getItem('logyser-ui-prefs') || 'null');
+        var tema = (p && (p.tema === 'claro' || p.tema === 'oscuro')) ? p.tema
+          : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+        document.documentElement.setAttribute('data-theme', tema);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/css/theme-tokens.css?v=1">
   <title>Caja Operativa - LOG&SER</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app-launcher-profile.css?v=20261011b">
   <style>
     :root {
-      /* Brand */
-      --primary-color: #000B59;
-      --primary-hover: #131C6E;
-      --primary-soft: #EEF0FA;
-      --accent-color: #F55400;
-      --accent-hover: #DA4700;
-      --accent-soft: #FFF0E6;
+      /* Brand (conectado al vocabulario canónico Cloud Docs) */
+      --primary-color: var(--primary);
+      --primary-hover: var(--primary-light);
+      --primary-soft: var(--bg-elevated);
+      --accent-color: var(--accent);
+      --accent-hover: var(--accent-dark);
+      --accent-soft: var(--accent-soft);
       --accent: var(--accent-color);
 
       /* Neutrals */
-      --bg-main: #F6F7FA;
-      --bg-card: #FFFFFF;
-      --bg-subtle: #F7F8FA;
-      --text-primary: #000B59;
-      --text-main: #1E2233;
-      --text-muted: #667085;
-      --text-faint: #98A2B3;
-      --card-border: #E6E8EF;
-      --card-border-hover: #D3D7E2;
+      --bg-main: var(--bg);
+      --bg-card: var(--card-bg);
+      --bg-subtle: var(--bg-elevated);
+      --text-primary: var(--text);
+      --text-main: var(--text);
+      --text-muted: var(--text-muted);
+      --text-faint: var(--text-muted);
+      --card-border: var(--border);
+      --card-border-hover: var(--border-strong);
 
       /* Semantic Colors */
-      --green-bg: #E9F8EF;
-      --green-text: #0C7A43;
-      --green: #17B26A;
-      --yellow-bg: #FFF6E0;
-      --yellow-text: #966212;
-      --yellow: #F2A60D;
-      --red-bg: #FDECEC;
-      --red-text: #C4281B;
-      --red: #E5493A;
-      --info-bg: #E7F1FE;
-      --info-text: #1657A8;
+      --green-bg: var(--success-soft);
+      --green-text: var(--success-dark);
+      --green: var(--success);
+      --yellow-bg: var(--warning-soft);
+      --yellow-text: var(--warning-dark);
+      --yellow: var(--warning);
+      --red-bg: var(--danger-soft);
+      --red-text: var(--danger-dark);
+      --red: var(--danger);
+      --info-bg: var(--info-soft);
+      --info-text: var(--info-dark);
 
       /* Spacing Scale (8px Grid) */
       --space-xs: 4px;
@@ -84,7 +98,7 @@
 
     /* Layout sidebar and content */
     .sidebar {
-      width: 300px;
+      width: 280px;
       background: var(--primary-color);
       color: #ffffff;
       display: flex;
@@ -3739,5 +3753,7 @@
     // Run initialization
     init();
   </script>
+  <script src="/js/theme.js" defer></script>
+  <script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
 </body>
 </html>

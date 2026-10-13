@@ -3,7 +3,7 @@
   const usuario = params.get('usuario') || (window.CONFIG && window.CONFIG.usuarioId) || (window.APP_CONFIG && window.APP_CONFIG.usuarioId) || 'Sistema';
 
   const currentModule = window.location.pathname.split('/').filter(Boolean)[0] || '';
-  const homeModules = new Set(['nomina', 'facturacion', 'sst', 'talenthub', 'cloud-docs', 'inventario', 'directorio-corporativo']);
+  const homeModules = new Set(['nomina', 'facturacion', 'sst', 'talenthub', 'cloud-docs', 'inventario', 'directorio-corporativo', 'cajaoperativa']);
   const defaultPhoto = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
   const modules = [
     { id: 'nomina', name: 'Nómina', symbol: '▣', tabs: [
@@ -227,6 +227,7 @@
                   <input type="text" name="colorAcentoHex" maxlength="7" placeholder="#F55400" aria-label="Color de acento en hexadecimal">
                 </div>
                 <small class="alp-field-hint">Se aplica al instante en todos los módulos; el contraste se ajusta automáticamente si hace falta.</small>
+                <button class="alp-button" type="button" data-reset-appearance style="margin-top:8px">Restablecer apariencia por defecto</button>
               </div>
             </section>
             <div class="alp-error" role="alert"></div>
@@ -280,6 +281,12 @@
     form.querySelectorAll('[name="tema"]').forEach(radio => radio.addEventListener('change', () => aplicarDesdeForm()));
     colorPicker.addEventListener('input', () => { colorHexInput.value = colorPicker.value; aplicarDesdeForm(); });
     colorHexInput.addEventListener('change', () => aplicarDesdeForm());
+    form.querySelector('[data-reset-appearance]').addEventListener('click', () => {
+      form.querySelector('[name="tema"][value="sistema"]').checked = true;
+      colorPicker.value = '#F55400';
+      colorHexInput.value = '#F55400';
+      aplicarDesdeForm('sistema');
+    });
 
     const fields = ['nombre', 'cargo', 'direccion', 'email', 'celular'];
     fields.forEach(name => form.querySelector(`[name="${name}"]`).addEventListener('input', paintHtmlSignature));
@@ -370,6 +377,8 @@
       payload.set('email', form.querySelector('[name="email"]').value.trim());
       payload.set('celular', form.querySelector('[name="celular"]').value.trim());
       payload.set('generarPng', 'true');
+      payload.set('tema', preferenciasUI.tema || 'sistema');
+      payload.set('colorAcento', preferenciasUI.colorAcento || '#F55400');
       const photoFile = form.querySelector('[name="foto"]').files?.[0];
       if (photoFile) payload.set('foto', photoFile);
       if (signatureDirty) payload.set('firmaDigital', canvas.toDataURL('image/png'));

@@ -184,6 +184,22 @@ router.post('/api', (req, res, next) => {
       catch (err) { console.warn('[perfil] No se pudo leer la firma digital reciente:', err.message); }
     }
 
+    let preferenciasUI = null;
+    if (req.body.tema || req.body.colorAcento) {
+      const temaValido = TEMAS_VALIDOS.includes(req.body.tema) ? req.body.tema : 'sistema';
+      const acentoValido = HEX_REGEX.test(req.body.colorAcento || '') ? req.body.colorAcento : '#F55400';
+      try {
+        await pool.execute(
+          `INSERT INTO Maestro_Preferencias_UI (ID, Tema, ColorAcento) VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE Tema = VALUES(Tema), ColorAcento = VALUES(ColorAcento)`,
+          [result.user.ID, temaValido, acentoValido]
+        );
+        preferenciasUI = { tema: temaValido, colorAcento: acentoValido };
+      } catch (prefErr) {
+        console.warn('[perfil] No se pudieron guardar preferencias UI en POST /api:', prefErr.message);
+      }
+    }
+
     res.json({
       ok: true,
       perfil: {
@@ -194,6 +210,7 @@ router.post('/api', (req, res, next) => {
         firma_generada: Boolean(saved.firma_url),
       },
       firmaDigital,
+      preferenciasUI,
     });
   } catch (err) {
     console.error('[perfil] POST /api', err);
