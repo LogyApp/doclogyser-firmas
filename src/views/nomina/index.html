@@ -286,7 +286,7 @@
   .profile-signature-panel { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
   .profile-signature-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
   .profile-signature-tab { border: 1px solid var(--border); background: var(--card-bg); color: var(--text-muted); padding: 7px 11px; border-radius: 6px; font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; }
-  .profile-signature-tab.active { border-color: var(--primary); background: var(--accent-soft); color: var(--text); }
+  .profile-signature-tab.active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
   .profile-signature-preview { overflow-x: auto; border: 1px solid var(--border); border-radius: 7px; padding: 12px; background: var(--bg-elevated); }
   .profile-signature-png { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 110px; }
   .profile-signature-png img { max-width: 100%; height: auto; border: 1px solid var(--border); background: white; }
@@ -334,13 +334,13 @@
     flex: 1; padding: 9px 10px; border: none; border-radius: 7px; background: transparent;
     font-size: .84rem; font-weight: 700; cursor: pointer; color: var(--text-muted); transition: all .18s;
   }
-  .btn-grupo-opt.sel { background: var(--primary); color: var(--text-inverse); box-shadow: 0 1px 5px rgba(0,0,0,.15); }
+  .btn-grupo-opt.sel { background: var(--accent); color: var(--accent-contrast); box-shadow: 0 1px 5px rgba(0,0,0,.15); }
   .btn-grupo-opt:disabled { cursor: not-allowed; opacity: .6; }
   .btn-grupo.deshabilitado { opacity: .6; }
 
   .ficha-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--card-bg); }
-  .btn-guardar-ficha { background: var(--primary); color: var(--text-inverse); border: none; padding: 10px 22px; border-radius: 7px; font-size: .88rem; font-weight: 700; cursor: pointer; }
-  .btn-guardar-ficha:hover { background: var(--primary-dark); }
+  .btn-guardar-ficha { background: var(--accent); color: var(--accent-contrast); border: none; padding: 10px 22px; border-radius: 7px; font-size: .88rem; font-weight: 700; cursor: pointer; }
+  .btn-guardar-ficha:hover { background: var(--accent-dark); }
   .btn-guardar-ficha:disabled { background: var(--border-strong); cursor: not-allowed; }
 
   /* ── Móvil (patrón unificado móvil 360×800) ─────────────────────────── */
@@ -675,7 +675,7 @@
     background: var(--bg-elevated); color: var(--text-muted); font-weight: 600; font-size: .85rem; border: none; cursor: pointer; transition: all .15s;
   }
   .bio-subnav-btn:hover { background: var(--border); color: var(--text); }
-  .bio-subnav-btn.active { background: var(--primary); color: var(--text-inverse); box-shadow: 0 2px 6px rgba(0,11,89,.25); }
+  .bio-subnav-btn.active { background: var(--accent); color: var(--accent-contrast); box-shadow: 0 2px 6px var(--accent-soft); }
 
   .bio-kpis-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;
@@ -697,8 +697,8 @@
     padding: 5px 12px; border-radius: 999px; font-size: .76rem; font-weight: 600;
     border: 1px solid var(--border); background: var(--card-bg); color: var(--text-muted); cursor: pointer; transition: all .12s;
   }
-  .bio-pill:hover { border-color: var(--primary); color: var(--text); }
-  .bio-pill.active { background: var(--primary); color: var(--text-inverse); border-color: var(--primary); }
+  .bio-pill:hover { border-color: var(--accent); color: var(--text); }
+  .bio-pill.active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
   .bio-pill.disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
 
   .badge-dist-cerca { background: var(--success-soft); color: var(--success-dark); font-weight: 700; }
@@ -721,8 +721,8 @@
     background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px;
     cursor: pointer; transition: all .15s; font-size: .83rem;
   }
-  .bio-route-card:hover { border-color: var(--primary); background: var(--bg-elevated); }
-  .bio-route-card.selected { border-color: var(--primary); background: var(--success-soft); box-shadow: 0 0 0 2px rgba(0,11,89,.2); }
+  .bio-route-card:hover { border-color: var(--accent); background: var(--bg-elevated); }
+  .bio-route-card.selected { border-color: var(--accent); background: var(--success-soft); box-shadow: 0 0 0 2px var(--accent-soft); }
   /* z-index propio (no solo position:relative) para que .bio-map-box forme su
      propio stacking context: así los controles internos de Leaflet (que usan
      z-index:1000 fijo en su CSS) quedan contenidos dentro de este bloque y

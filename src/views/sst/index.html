@@ -437,8 +437,10 @@
       transform: translateY(-1px);
     }
 
-    .btn-primary { background: var(--primary); color: var(--text-inverse); }
-    .btn-primary:hover { background: var(--primary-light); }
+    /* .btn-primary es el boton de accion/CTA principal, no chrome fijo:
+       debe usar --accent (personalizable), igual que en los demas modulos. */
+    .btn-primary { background: var(--accent); color: var(--accent-contrast); }
+    .btn-primary:hover { background: var(--accent-dark); }
     .btn-secondary { background: var(--bg-elevated); color: var(--text); border-color: var(--border-dark); }
     .btn-secondary:hover { background: var(--border); color: var(--text); }
     .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; }
