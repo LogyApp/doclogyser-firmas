@@ -1,7 +1,11 @@
 /*
  * Vocabulario canonico de variables CSS para los 7 modulos (estandar Cloud Docs).
- * --primary* es fijo (unifica la marca); --accent* es el unico grupo que
- * theme.js sobreescribe en runtime con el color elegido por el usuario.
+ * --primary* (barra lateral, header) Y --accent* (botones, bordes activos)
+ * se sobreescriben en runtime por theme.js a partir del color que el
+ * usuario elige en "Mi perfil": --primary* es una version oscura/muted de
+ * ese mismo tono (pensada para fondos con texto blanco encima), --accent*
+ * es la version viva/saturada (pensada para botones y resaltados). Los
+ * valores de abajo son solo el fallback antes de que theme.js corra.
  * Los modulos cargan este archivo ANTES de su propio <style>.
  */
 
@@ -82,9 +86,10 @@
   --border: #232c3d;
   --border-strong: #2f3b52;
 
-  /* Fijo y oscuro siempre, sin depender del acento elegido: asi un acento
-     claro nunca deja el sidebar con mal contraste. */
-  --sidebar-bg: #080c16;
+  /* var(--primary) ya es siempre suficientemente oscuro por construccion
+     (theme.js fuerza su luminosidad, sin importar el tono elegido), asi
+     que el sidebar puede derivar de el con seguridad en ambos temas. */
+  --sidebar-bg: var(--primary);
   --sidebar-text: rgba(255, 255, 255, 0.72);
   --sidebar-text-muted: rgba(255, 255, 255, 0.52);
   --sidebar-active-bg: rgba(255, 255, 255, 0.10);

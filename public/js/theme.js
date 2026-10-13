@@ -162,10 +162,40 @@
     };
   }
 
+  // Deriva --primary/--primary-dark/--primary-light (barra lateral, header)
+  // a partir del MISMO HEX elegido por el usuario, pero forzando la
+  // luminosidad a valores siempre oscuros (sin importar el tono ni el tema
+  // activo) para que el texto blanco del sidebar sea legible por
+  // construcción, sin necesitar un bucle de ajuste de contraste. La
+  // saturación se acota (30%-70%) para que el resultado siempre se lea
+  // como "un color" -- ni grisáceo si el usuario eligió algo muy apagado,
+  // ni neón si eligió algo muy saturado.
+  // El naranja por defecto del sistema (#F55400, el mismo que ya trae toda
+  // cuenta sin personalizar) es tratado como caso especial: conserva el
+  // navy/naranja clasico de Cloud Docs (el estandar ya revisado) en vez de
+  // derivar un sidebar marron oscuro del propio naranja. En cuanto el
+  // usuario elige CUALQUIER otro color desde "Mi perfil", el sidebar sí
+  // pasa a derivarse de ese color (lo que pedía el requisito original).
+  const NAVY_POR_DEFECTO = { primary: '#000b59', primaryDark: '#00073a', primaryLight: '#1c2a7a' };
+  function derivarPaletaPrimaria(hex) {
+    if (hex.toLowerCase() === '#f55400') return NAVY_POR_DEFECTO;
+    const hsl = rgbToHsl(hexToRgb(hex));
+    const s = Math.max(30, Math.min(70, hsl.s));
+    return {
+      primary: rgbToHex(hslToRgb({ h: hsl.h, s, l: 16 })),
+      primaryDark: rgbToHex(hslToRgb({ h: hsl.h, s, l: 10 })),
+      primaryLight: rgbToHex(hslToRgb({ h: hsl.h, s, l: 28 }))
+    };
+  }
+
   function aplicarVariables(tema, hexOriginal) {
     const root = document.documentElement;
     root.setAttribute('data-theme', tema);
     const paleta = derivarPaletaAcento(hexOriginal, tema);
+    const primaria = derivarPaletaPrimaria(hexOriginal);
+    root.style.setProperty('--primary', primaria.primary);
+    root.style.setProperty('--primary-dark', primaria.primaryDark);
+    root.style.setProperty('--primary-light', primaria.primaryLight);
     root.style.setProperty('--accent', paleta.accent);
     root.style.setProperty('--accent-dark', paleta.accentDark);
     root.style.setProperty('--accent-light', paleta.accentLight);
