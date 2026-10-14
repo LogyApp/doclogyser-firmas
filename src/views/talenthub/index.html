@@ -1723,6 +1723,12 @@
               </select>
             </div>
             <div class="filter-group">
+              <label>Responsable</label>
+              <select id="filtroReqResponsable" onchange="aplicarFiltrosRequisiciones()">
+                <option value="todos">Todos los Responsables</option>
+              </select>
+            </div>
+            <div class="filter-group">
               <label>Fecha Desde</label>
               <input type="date" id="filtroReqDesde" onchange="aplicarFiltrosRequisiciones()">
             </div>
@@ -2449,6 +2455,10 @@
           <div class="req-detail-box">
             <div class="req-detail-lbl">Fecha de Solicitud</div>
             <div class="req-detail-val" id="detReqFechaSol">-</div>
+          </div>
+          <div class="req-detail-box">
+            <div class="req-detail-lbl">Inicio Conteo SLA</div>
+            <div class="req-detail-val" id="detReqInicioSla">-</div>
           </div>
           <div class="req-detail-box">
             <div class="req-detail-lbl">Última Actualización</div>
@@ -3685,6 +3695,7 @@
       regional: 'todas',
       operacion: 'todas',
       cargo: 'todos',
+      responsable: 'todos',
       desde: '',
       hasta: ''
     };
@@ -3693,6 +3704,7 @@
       orden: 'DESC'
     };
     let _reqActualDetalle = null;
+    let _reqDetalleSla = null;
     let _reqFormModo = 'crear'; // 'crear' | 'editar'
 
     async function inicializarRequisiciones() {
@@ -3732,6 +3744,14 @@
         if (selCargo) {
           selCargo.innerHTML = '<option value="todos">Todos los Cargos</option>' +
             (data.cargos || []).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        }
+
+        // Poblar filtro Responsables base
+        const selResp = document.getElementById('filtroReqResponsable');
+        if (selResp) {
+          selResp.innerHTML = '<option value="todos">Todos los Responsables</option>' +
+            '<option value="sin_asignar">Sin asignar</option>' +
+            (data.responsablesSeleccion || []).map(co => `<option value="${esc(co.nombre)}">${esc(co.nombre)}</option>`).join('');
         }
 
         // Poblar opciones del formulario modal (Regional primero)
@@ -3901,6 +3921,7 @@
       _reqFiltros.regional = document.getElementById('filtroReqRegional')?.value || 'todas';
       _reqFiltros.operacion = document.getElementById('filtroReqOperacion')?.value || 'todas';
       _reqFiltros.cargo = document.getElementById('filtroReqCargo')?.value || 'todos';
+      _reqFiltros.responsable = document.getElementById('filtroReqResponsable')?.value || 'todos';
       _reqFiltros.desde = document.getElementById('filtroReqDesde')?.value || '';
       _reqFiltros.hasta = document.getElementById('filtroReqHasta')?.value || '';
       cargarRequisiciones();
@@ -3912,6 +3933,7 @@
       if (document.getElementById('filtroReqRegional')) document.getElementById('filtroReqRegional').value = 'todas';
       if (document.getElementById('filtroReqOperacion')) document.getElementById('filtroReqOperacion').value = 'todas';
       if (document.getElementById('filtroReqCargo')) document.getElementById('filtroReqCargo').value = 'todos';
+      if (document.getElementById('filtroReqResponsable')) document.getElementById('filtroReqResponsable').value = 'todos';
       if (document.getElementById('filtroReqDesde')) document.getElementById('filtroReqDesde').value = fDesdeDefecto;
       if (document.getElementById('filtroReqHasta')) document.getElementById('filtroReqHasta').value = '';
 
@@ -3921,6 +3943,7 @@
         regional: 'todas',
         operacion: 'todas',
         cargo: 'todos',
+        responsable: 'todos',
         desde: fDesdeDefecto,
         hasta: ''
       };
@@ -4025,6 +4048,20 @@
 
         selCargo.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los Cargos (${total || 0})</option>${cargoOptions}`;
       }
+
+      // 4. Responsables (valor null = requisiciones sin responsable asignado)
+      const selResp = document.getElementById('filtroReqResponsable');
+      if (selResp && facetas?.responsables && facetas.responsables.length > 0) {
+        const valActual = _reqFiltros.responsable || selResp.value || 'todos';
+        const sinAsignar = facetas.responsables.find(r => !r.valor);
+        const respOptions = facetas.responsables.filter(r => r.valor).map(r => {
+          const selected = (r.valor === valActual) ? 'selected' : '';
+          return `<option value="${esc(r.valor)}" ${selected}>${esc(r.valor)} (${r.cnt})</option>`;
+        }).join('');
+
+        selResp.innerHTML = `<option value="todos" ${valActual === 'todos' ? 'selected' : ''}>Todos los Responsables (${total || 0})</option>` +
+          `<option value="sin_asignar" ${valActual === 'sin_asignar' ? 'selected' : ''}>Sin asignar (${sinAsignar ? sinAsignar.cnt : 0})</option>${respOptions}`;
+      }
     }
 
     function ordenarRequisiciones(columna) {
@@ -4114,6 +4151,7 @@
           regional: _reqFiltros.regional,
           operacion: _reqFiltros.operacion,
           cargo: _reqFiltros.cargo,
+          responsable: _reqFiltros.responsable,
           desde: _reqFiltros.desde,
           hasta: _reqFiltros.hasta,
           sortBy: _reqOrden.columna,
@@ -4141,10 +4179,11 @@
         // Actualizar contador badge de filtros activos
         let actCount = 0;
         if (_reqFiltros.q) actCount++;
-        if (_reqFiltros.estado && _reqFiltros.estado !== 'todos') actCount++;
+        if (_reqFiltros.estado && _reqFiltros.estado.toUpperCase() !== 'TODOS') actCount++;
         if (_reqFiltros.regional && _reqFiltros.regional !== 'todas') actCount++;
         if (_reqFiltros.operacion && _reqFiltros.operacion !== 'todas') actCount++;
         if (_reqFiltros.cargo && _reqFiltros.cargo !== 'todos') actCount++;
+        if (_reqFiltros.responsable && _reqFiltros.responsable !== 'todos') actCount++;
         if (_reqFiltros.desde) actCount++;
         if (_reqFiltros.hasta) actCount++;
 
@@ -4195,33 +4234,37 @@
         const cumple = parseInt(r.aspirantes_cumple) || 0;
         const nocumple = parseInt(r.aspirantes_nocumple) || 0;
         const pendientes = parseInt(r.aspirantes_pendientes) || 0;
+        const revisar = parseInt(r.aspirantes_revisar) || 0;
         const solicitante = esc(r.Solicitante || '-');
         const respActual = (r['Responsable de Selección'] || '').trim();
 
-        // ── PÍLDORA SEMAFÓRICA DE SLA (ALTERNATIVA A) ──
+        // ── PÍLDORA SEMAFÓRICA DE SLA (nivel y % calculados en el backend) ──
         let celdaSlaHtml = '';
-        if (totalAspirantes === 0) {
+        if (r.sla_nivel === 'sin_candidatos' || totalAspirantes === 0) {
           celdaSlaHtml = '<span style="color:var(--text-muted); font-size:0.75rem; font-weight:500;">— Sin candidatos</span>';
         } else {
-          const contratadosTotal = cumple + nocumple;
-          const pct = Math.round((cumple / totalAspirantes) * 100);
-          const tooltip = `${cumple} contratados en tiempo (≤ ${tiempoLim} días) · ${nocumple} fuera de tiempo (> ${tiempoLim} días) · ${pendientes} pendientes`;
+          const pct = parseInt(r.sla_pct) || 0;
+          let tooltip = `${cumple} contratados en tiempo (≤ ${tiempoLim} días) · ${nocumple} fuera de tiempo (> ${tiempoLim} días) · ${pendientes} pendientes`;
+          if (revisar > 0) tooltip += ` · ${revisar} con fecha de ingreso anterior a la requisición (revisar)`;
+          if (r.sla_inicio_conteo) tooltip += ` · Conteo desde ${r.sla_inicio_conteo}`;
+          if (r.sla_dias_suspendidos > 0) tooltip += ` · ${r.sla_dias_suspendidos} días suspendida (no cuentan)`;
 
           let badgeClaseSla = '';
           let textoBadgeSla = '';
-          if (contratadosTotal === 0 && pendientes > 0) {
+          if (r.sla_nivel === 'tramite') {
             badgeClaseSla = 'badge-dias-pendiente';
             textoBadgeSla = `⏳ 0/${totalAspirantes} (En trámite)`;
-          } else if (pct >= 80) {
+          } else if (r.sla_nivel === 'verde') {
             badgeClaseSla = 'badge-dias-cumple';
             textoBadgeSla = `🟢 ${cumple}/${totalAspirantes} (${pct}%${pct === 100 ? ' · Cumple' : ''})`;
-          } else if (pct >= 50) {
+          } else if (r.sla_nivel === 'amarillo') {
             badgeClaseSla = 'badge-dias-pendiente';
             textoBadgeSla = `🟡 ${cumple}/${totalAspirantes} (${pct}%)`;
           } else {
             badgeClaseSla = 'badge-dias-nocumple';
             textoBadgeSla = `🔴 ${cumple}/${totalAspirantes} (${pct}% · Alerta)`;
           }
+          if (revisar > 0) textoBadgeSla += ` · ⚠ ${revisar} revisar`;
 
           celdaSlaHtml = `
             <span class="${badgeClaseSla}" style="cursor:help;" title="${esc(tooltip)}">
@@ -4426,6 +4469,7 @@
 
         const r = data.requisicion;
         _reqActualDetalle = r;
+        _reqDetalleSla = data.sla || null;
 
         document.getElementById('detReqCodigo').textContent = r['Requisición'] || ('#' + r.IdRequisicion);
         const badge = document.getElementById('detReqBadgeEstado');
@@ -4500,6 +4544,15 @@
 
         document.getElementById('detReqFechaFin').textContent = r.fechaFinalizacionFormatted || (r['Fecha de Finalización'] ? String(r['Fecha de Finalización']).substring(0, 10) : 'Pendiente');
         document.getElementById('detReqFechaSol').textContent = fechaSolStr;
+        const elInicioSla = document.getElementById('detReqInicioSla');
+        if (elInicioSla) {
+          const s = _reqDetalleSla || {};
+          let txt = s.inicioConteo || '-';
+          if (s.diasSuspendidos > 0) txt += ` · ${s.diasSuspendidos} día(s) suspendida`;
+          if (s.suspendidaActualmente) txt += ' · ⏸ conteo detenido';
+          elInicioSla.textContent = txt;
+          elInicioSla.title = `Registrada antes de las ${s.horaCorte || '12:00'}: cuenta desde ese día; después: desde el día siguiente. Si cae domingo o festivo, pasa al siguiente día hábil.`;
+        }
         document.getElementById('detReqFechaAct').textContent = r.fechaActualizacionFormatted || (r['Fecha Actualización'] ? String(r['Fecha Actualización']).substring(0, 16) : '-');
         document.getElementById('detReqUsuarioAct').textContent = r.usuario_actualizacion || 'N/A';
 
@@ -4823,8 +4876,8 @@
         return;
       }
 
-      const tiempoLimite = parseInt(_reqCatalogos?.permisos?.tiempoLimiteRequisicion) || 8;
-      const fechaReqStr = _reqActualDetalle?.['Fecha Requisición'] || _reqActualDetalle?.fechaRequisicion || null;
+      const tiempoLimite = parseInt(_reqDetalleSla?.limite) || parseInt(_reqCatalogos?.permisos?.tiempoLimiteRequisicion) || 8;
+      const reqSuspendida = !!_reqDetalleSla?.suspendidaActualmente;
 
       tbody.innerHTML = aspirantes.map(a => {
         const idSafe = esc(a.identificacion || '-');
@@ -4838,30 +4891,22 @@
           ? `<a href="${esc(a.pdf_public_url)}" target="_blank" style="font-size:0.85rem; color:var(--text); text-decoration:none;" title="Ver Hoja de Vida">📄</a>`
           : '—';
 
-        // ── CÁLCULO DE DÍAS DEL PROCESO ──
+        // ── DÍAS DEL PROCESO (calculados en el backend: hora de corte, festivos y suspensiones) ──
+        const sla = a.sla || {};
+        const diasTxt = (d) => `${d} ${d === 1 ? 'día' : 'días'}`;
+        const notaSusp = sla.diasSuspendidos > 0 ? ` (${diasTxt(sla.diasSuspendidos)} suspendida no cuentan)` : '';
         let diasBadgeHtml = '';
-        if (fechaReqStr) {
-          const dReq = new Date(fechaReqStr);
-          if (!isNaN(dReq.getTime())) {
-            if (fechaIngresoStr) {
-              const dIng = new Date(fechaIngresoStr);
-              if (!isNaN(dIng.getTime())) {
-                const diffMs = dIng.getTime() - dReq.getTime();
-                let dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                if (dias < 0) dias = 0;
-                if (dias <= tiempoLimite) {
-                  diasBadgeHtml = `<span class="badge-dias-cumple" title="Cumple límite de ${tiempoLimite} días">✓ ${dias} ${dias === 1 ? 'día' : 'días'} · Cumple</span>`;
-                } else {
-                  diasBadgeHtml = `<span class="badge-dias-nocumple" title="Superó límite de ${tiempoLimite} días">✕ ${dias} ${dias === 1 ? 'día' : 'días'} · No Cumple</span>`;
-                }
-              }
-            } else {
-              const dHoy = new Date();
-              const diffMs = dHoy.getTime() - dReq.getTime();
-              let dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-              if (dias < 0) dias = 0;
-              diasBadgeHtml = `<span class="badge-dias-pendiente" title="En proceso actual">⏳ ${dias} ${dias === 1 ? 'día' : 'días'} · Pendiente</span>`;
-            }
+        if (sla.estado === 'revisar') {
+          diasBadgeHtml = `<span class="badge-dias-nocumple" title="La fecha de ingreso (${fechaIngresoDisplay}) es anterior a la fecha de la requisición. Revisa y corrige la vinculación.">⚠ Revisar fecha de ingreso</span>`;
+        } else if (sla.dias !== null && sla.dias !== undefined) {
+          if (sla.estado === 'cumple') {
+            diasBadgeHtml = `<span class="badge-dias-cumple" title="Cumple límite de ${tiempoLimite} días${notaSusp}">✓ ${diasTxt(sla.dias)} · Cumple</span>`;
+          } else if (sla.estado === 'nocumple') {
+            diasBadgeHtml = `<span class="badge-dias-nocumple" title="Superó límite de ${tiempoLimite} días${notaSusp}">✕ ${diasTxt(sla.dias)} · No Cumple</span>`;
+          } else if (reqSuspendida) {
+            diasBadgeHtml = `<span class="badge-dias-pendiente" title="Requisición suspendida: el conteo está detenido${notaSusp}">⏸ ${diasTxt(sla.dias)} · Pausado</span>`;
+          } else {
+            diasBadgeHtml = `<span class="badge-dias-pendiente" title="En proceso actual${notaSusp}">⏳ ${diasTxt(sla.dias)} · Pendiente</span>`;
           }
         }
         if (!diasBadgeHtml) {
@@ -5153,6 +5198,25 @@
               <input type="number" class="input-field" min="1" max="365" value="${esc(parametroVal)}" 
                      onchange="actualizarNumeroParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
               <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Días límite para cumplimiento del proceso</small>
+            </div>
+          `;
+        } else if (condicion === 'Porcentaje') {
+          html += `
+            <div style="margin-top:8px; max-width:200px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <input type="number" class="input-field" min="0" max="100" step="1" value="${esc(parametroVal)}"
+                       onchange="actualizarNumeroParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
+                <span style="font-weight:700; color:var(--text-muted);">%</span>
+              </div>
+              <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Porcentaje mínimo de aspirantes contratados en tiempo</small>
+            </div>
+          `;
+        } else if (condicion === 'Hora') {
+          html += `
+            <div style="margin-top:8px; max-width:200px;">
+              <input type="time" class="input-field" value="${esc(parametroVal)}"
+                     onchange="actualizarTextoParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
+              <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Desde esta hora el conteo inicia al día siguiente</small>
             </div>
           `;
         } else {

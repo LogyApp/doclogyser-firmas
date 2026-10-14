@@ -7,6 +7,7 @@ const { storage, obtenerFirmaBase64Reciente, subirFirma } = require('../services
 const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { notificarCreacionRequisicion } = require('../services/email');
+const { calcularSlaRequisiciones } = require('../services/slaRequisiciones');
 
 const router = express.Router();
 const uploadFotoPerfil = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -973,7 +974,7 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
 // Lista requisiciones con filtros, conteos KPI y ordenamiento dinámico
 router.get('/api/requisiciones', async (req, res) => {
   try {
-    const { usuario, estado, regional, operacion, cargo, q, sortBy, sortDir } = req.query;
+    const { usuario, estado, regional, operacion, cargo, responsable, q, sortBy, sortDir } = req.query;
     const fechaDesde = req.query.fechaDesde || req.query.desde;
     const fechaHasta = req.query.fechaHasta || req.query.hasta;
     const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
@@ -1013,6 +1014,14 @@ router.get('/api/requisiciones', async (req, res) => {
       whereClauses.push("`Cargo Requerido` = ?");
       params.push(cargo);
     }
+    if (responsable && responsable !== 'todos') {
+      if (responsable === 'sin_asignar') {
+        whereClauses.push("(`Responsable de Selección` IS NULL OR TRIM(`Responsable de Selección`) = '')");
+      } else {
+        whereClauses.push("TRIM(`Responsable de Selección`) = ?");
+        params.push(responsable.trim());
+      }
+    }
     if (fechaDesde) {
       whereClauses.push("DATE(`Fecha Requisición`) >= ?");
       params.push(fechaDesde);
@@ -1036,7 +1045,6 @@ router.get('/api/requisiciones', async (req, res) => {
       'Operación': 'r.`Operación`',
       'Cargo Requerido': 'r.`Cargo Requerido`',
       'N° Personas Requeridas': 'r.`N° Personas Requeridas`',
-      'Cumplimiento SLA': 'sla.aspirantes_cumple',
       'Solicitante': 'r.`Solicitante`',
       'Responsable de Selección': 'r.`Responsable de Selección`',
       'Ciudad': 'r.`Ciudad`'
@@ -1046,10 +1054,9 @@ router.get('/api/requisiciones', async (req, res) => {
 
     const whereSql = whereClauses.join(' AND ');
 
-    // Consulta de registros con total_aspirantes, métricas de SLA y restricción de salario
+    // Consulta de registros con restricción de salario (las métricas SLA se calculan en slaRequisiciones)
     const paramsConfig = await obtenerParametrosTalenthub();
     const puedeVerSalario = rolPermitidoEnParametro(acceso.rol, paramsConfig['Editar y ver Salario en Requisición']);
-    const tiempoLimiteRequisicion = parseInt(paramsConfig['Tiempo limite de Requisición']) || 8;
 
     const [rows] = await pool.execute(
       `SELECT r.IdRequisicion, r.\`Requisición\`, 
@@ -1064,41 +1071,53 @@ router.get('/api/requisiciones', async (req, res) => {
               DATE_FORMAT(r.\`Fecha de Finalización\`, '%Y-%m-%d') as fechaFinalizacion,
               r.\`Responsable de Selección\`,
               DATE_FORMAT(r.\`Fecha Actualización\`, '%Y-%m-%d %H:%i') as fechaActualizacion,
-              r.\`usuario_actualizacion\`,
-              COALESCE(sla.total_aspirantes, 0) AS total_aspirantes,
-              COALESCE(sla.aspirantes_cumple, 0) AS aspirantes_cumple,
-              COALESCE(sla.aspirantes_nocumple, 0) AS aspirantes_nocumple,
-              COALESCE(sla.aspirantes_pendientes, 0) AS aspirantes_pendientes
+              r.\`usuario_actualizacion\`
        FROM \`Dynamic_Requisiciones\` r
-       LEFT JOIN (
-         SELECT a.IdRequisicion,
-                COUNT(*) AS total_aspirantes,
-                SUM(CASE WHEN v.max_ingreso IS NOT NULL AND DATEDIFF(v.max_ingreso, req.\`Fecha Requisición\`) <= ? THEN 1 ELSE 0 END) AS aspirantes_cumple,
-                SUM(CASE WHEN v.max_ingreso IS NOT NULL AND DATEDIFF(v.max_ingreso, req.\`Fecha Requisición\`) > ? THEN 1 ELSE 0 END) AS aspirantes_nocumple,
-                SUM(CASE WHEN v.max_ingreso IS NULL THEN 1 ELSE 0 END) AS aspirantes_pendientes
+       WHERE ${whereSql}
+       ORDER BY ${sortCol} ${sortDirection}
+       LIMIT 500`,
+      params
+    );
+
+    // Aspirantes de las requisiciones listadas con su fecha de ingreso más reciente
+    const aspirantesPorReq = new Map();
+    if (rows.length) {
+      const ids = rows.map(r => r.IdRequisicion);
+      const [aspRows] = await pool.execute(
+        `SELECT a.IdRequisicion, DATE_FORMAT(v.max_ingreso, '%Y-%m-%d') AS fecha_ingreso
          FROM \`Dynamic_hv_aspirante\` a
-         JOIN \`Dynamic_Requisiciones\` req ON req.IdRequisicion = a.IdRequisicion
          LEFT JOIN (
            SELECT \`Identificación\` AS id_vinc, MAX(\`Fecha de Ingreso\`) AS max_ingreso
            FROM \`Maestro_Vinculación\`
            GROUP BY \`Identificación\`
          ) v ON CAST(v.id_vinc AS CHAR) = CAST(a.identificacion AS CHAR)
-         WHERE a.IdRequisicion IS NOT NULL AND a.IdRequisicion != 0
-         GROUP BY a.IdRequisicion
-       ) sla ON sla.IdRequisicion = r.IdRequisicion
-       WHERE ${whereSql}
-       ORDER BY ${sortCol} ${sortDirection}
-       LIMIT 500`,
-      [tiempoLimiteRequisicion, tiempoLimiteRequisicion, ...params]
-    );
+         WHERE a.IdRequisicion IN (${ids.map(() => '?').join(',')})`,
+        ids
+      );
+      aspRows.forEach(a => {
+        if (!aspirantesPorReq.has(a.IdRequisicion)) aspirantesPorReq.set(a.IdRequisicion, []);
+        aspirantesPorReq.get(a.IdRequisicion).push(a);
+      });
+    }
 
-    const requisicionesFormateadas = rows.map(r => ({
-      ...r,
-      total_aspirantes: parseInt(r.total_aspirantes) || 0,
-      aspirantes_cumple: parseInt(r.aspirantes_cumple) || 0,
-      aspirantes_nocumple: parseInt(r.aspirantes_nocumple) || 0,
-      aspirantes_pendientes: parseInt(r.aspirantes_pendientes) || 0
-    }));
+    const { porRequisicion: slaPorReq } = await calcularSlaRequisiciones(rows, aspirantesPorReq, paramsConfig);
+
+    const requisicionesFormateadas = rows.map(r => {
+      const sla = slaPorReq.get(r.IdRequisicion);
+      return {
+        ...r,
+        ...sla.resumen,
+        sla_inicio_conteo: sla.inicioConteo,
+        sla_dias_suspendidos: sla.diasSuspendidosTotal
+      };
+    });
+
+    // El cumplimiento SLA se calcula en Node, por eso este orden se aplica después de la consulta
+    if (sortBy === 'Cumplimiento SLA') {
+      const dir = sortDirection === 'ASC' ? 1 : -1;
+      requisicionesFormateadas.sort((a, b) =>
+        dir * ((a.sla_pct - b.sla_pct) || (a.aspirantes_cumple - b.aspirantes_cumple)));
+    }
 
     // Consulta de conteos para filtros y KPIs (bajo el alcance base del usuario)
     let baseScopeClauses = ["1=1"];
@@ -1148,6 +1167,11 @@ router.get('/api/requisiciones', async (req, res) => {
       baseScopeParams
     );
 
+    const [facetResponsables] = await pool.execute(
+      `SELECT NULLIF(TRIM(\`Responsable de Selección\`), '') as valor, COUNT(*) as cnt FROM \`Dynamic_Requisiciones\` WHERE ${baseScopeSql} GROUP BY NULLIF(TRIM(\`Responsable de Selección\`), '') ORDER BY cnt DESC`,
+      baseScopeParams
+    );
+
     res.json({
       ok: true,
       requisiciones: requisicionesFormateadas,
@@ -1156,7 +1180,8 @@ router.get('/api/requisiciones', async (req, res) => {
         estados: facetEstados,
         regionales: facetRegionales,
         operaciones: facetOperaciones,
-        cargos: facetCargos
+        cargos: facetCargos,
+        responsables: facetResponsables
       }
     });
 
@@ -1217,7 +1242,27 @@ router.get('/api/requisiciones/:id', async (req, res) => {
       [id]
     );
 
-    res.json({ ok: true, requisicion: rows[0], aspirantes: aspirantes || [] });
+    // Cumplimiento SLA con la misma lógica que el listado
+    const reqSla = { IdRequisicion: rows[0].IdRequisicion, fechaRequisicion: rows[0].fechaRequisicionFormatted };
+    const { porRequisicion, config: slaConfig } = await calcularSlaRequisiciones(
+      [reqSla], new Map([[reqSla.IdRequisicion, aspirantes]]), paramsConfig
+    );
+    const sla = porRequisicion.get(reqSla.IdRequisicion);
+    aspirantes.forEach((a, i) => { a.sla = sla.evaluaciones[i]; });
+
+    res.json({
+      ok: true,
+      requisicion: rows[0],
+      aspirantes: aspirantes || [],
+      sla: {
+        ...sla.resumen,
+        inicioConteo: sla.inicioConteo,
+        suspendidaActualmente: sla.suspendidaActualmente,
+        diasSuspendidos: sla.diasSuspendidosTotal,
+        limite: slaConfig.limite,
+        horaCorte: slaConfig.horaCorte
+      }
+    });
   } catch (err) {
     console.error('[talenthub] GET /api/requisiciones/:id:', err);
     res.status(500).json({ error: err.message });
@@ -1697,6 +1742,24 @@ router.put('/api/requisiciones/:id', async (req, res) => {
       ]
     );
 
+    // Periodos de suspensión: detienen el conteo de días SLA mientras la requisición esté SUSPENDIDA
+    if (nuevoEstado !== estadoAnterior) {
+      if (nuevoEstado === 'SUSPENDIDO') {
+        await pool.execute(
+          `INSERT INTO \`Dynamic_Requisiciones_Suspension\` (IdRequisicion, fecha_inicio, usuario_inicio)
+           VALUES (?, CONVERT_TZ(NOW(),'SYSTEM','-05:00'), ?)`,
+          [id, acceso.usuarioId]
+        );
+      } else if (estadoAnterior === 'SUSPENDIDO') {
+        await pool.execute(
+          `UPDATE \`Dynamic_Requisiciones_Suspension\`
+           SET fecha_fin = CONVERT_TZ(NOW(),'SYSTEM','-05:00'), usuario_fin = ?
+           WHERE IdRequisicion = ? AND fecha_fin IS NULL`,
+          [acceso.usuarioId, id]
+        );
+      }
+    }
+
     console.log(`[talenthub-requisiciones] Requisición ${current['Requisición']} (ID: ${id}) actualizada por ${acceso.usuarioId}`);
     res.json({ ok: true, mensaje: `Requisición ${current['Requisición']} actualizada correctamente.` });
 
@@ -1756,6 +1819,26 @@ router.post('/api/parametros/requisiciones', async (req, res) => {
 
     if (!Array.isArray(parametros)) {
       return res.status(400).json({ error: 'El listado de parámetros es inválido.' });
+    }
+
+    // Validación de umbrales del semáforo SLA y hora de corte
+    const valorEnviado = (concepto) => {
+      const p = parametros.find(x => x.Concepto === concepto);
+      return p && p.Parametro !== undefined ? String(p.Parametro).trim() : String(paramsConfig[concepto] ?? '').trim();
+    };
+    for (const p of parametros) {
+      const val = String(p.Parametro ?? '').trim();
+      if (p.Condicion === 'Porcentaje' && !/^(100|[1-9]?\d)$/.test(val)) {
+        return res.status(400).json({ error: `"${p.Concepto}" debe ser un número entero entre 0 y 100.` });
+      }
+      if (p.Condicion === 'Hora' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(val)) {
+        return res.status(400).json({ error: `"${p.Concepto}" debe ser una hora válida (HH:mm).` });
+      }
+    }
+    const verde = parseInt(valorEnviado('Porcentaje semáforo verde SLA'));
+    const amarillo = parseInt(valorEnviado('Porcentaje semáforo amarillo SLA'));
+    if (Number.isFinite(verde) && Number.isFinite(amarillo) && amarillo > verde) {
+      return res.status(400).json({ error: 'El porcentaje del semáforo amarillo no puede ser mayor que el del verde.' });
     }
 
     for (const p of parametros) {
