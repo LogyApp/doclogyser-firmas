@@ -312,6 +312,32 @@ async function subirEvidenciaTicket(ticket, buffer, originalName, contentType) {
   return `https://storage.googleapis.com/${BUCKET_RECURSOS}/${nombre}`;
 }
 
+function getBogotaTimestamp() {
+  const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+  const p = n => String(n).padStart(2, '0');
+  return `${ahora.getFullYear()}${p(ahora.getMonth() + 1)}${p(ahora.getDate())}${p(ahora.getHours())}${p(ahora.getMinutes())}${p(ahora.getSeconds())}`;
+}
+
+async function subirSoporteCesantias(identificacion, buffer, originalName) {
+  const ts = getBogotaTimestamp();
+  const ext = (path.extname(originalName || '') || '.pdf').toLowerCase();
+  const nombre = `${identificacion}/${identificacion}.RCES.${ts}${ext}`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  let contentType = 'application/pdf';
+  if (ext === '.png') contentType = 'image/png';
+  else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+  await file.save(buffer, { contentType });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function subirPDFCesantiasSolicitud(identificacion, bufferPdf) {
+  const ts = getBogotaTimestamp();
+  const nombre = `${identificacion}/${identificacion}.RCES.${ts}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -323,6 +349,8 @@ module.exports = {
   subirPDFExamenEgreso,
   subirDocumentoRetiro,
   subirPDFCesantias,
+  subirSoporteCesantias,
+  subirPDFCesantiasSolicitud,
   subirPDFPazYSalvo,
   subirPDFCertificadoRetiro,
   subirPDFEvaluacionRetiro,

@@ -11,6 +11,16 @@ const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRe
 const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
+const {
+  buscarTrabajadorCesantias,
+  obtenerMotivosCesantias,
+  listarSolicitudesCesantias,
+  crearSolicitudCesantias,
+  obtenerDetalleCesantia,
+  actualizarEstadoCesantia,
+  registrarFirmaTrabajador,
+  generarYGuardarPDFCesantias,
+} = require('../services/cesantiasService');
 
 function fechaHoraBogota() {
   const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -235,12 +245,19 @@ router.get('/', async (req, res) => {
     }
 
     const accesoTraslados = await computarAccesoNomina(usuario, 'Traslados');
+    let accesoCesantias = await computarAccesoNomina(usuario, 'Cesantias');
+    if (!accesoCesantias) {
+      const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+      if (uRows.length && ['Nomina', 'Sistema', 'Control', 'Juridica', 'AdmSst', 'LiderSst', 'Asistencial', 'Contratación'].includes(uRows[0].Rol)) {
+        accesoCesantias = { sinFiltro: true, rol: uRows[0].Rol };
+      }
+    }
 
-    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados) {
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias;
     const puedeGenerarDocs = puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
@@ -264,6 +281,15 @@ router.get('/', async (req, res) => {
           sinFiltro:            accesoTraslados.sinFiltro,
           operacionesFiltro:    accesoTraslados.operacionesFiltro,
           opsPorRegional:       accesoTraslados.opsPorRegional,
+        } : null,
+        cesantias: accesoCesantias ? {
+          sinFiltro:            accesoCesantias.sinFiltro,
+          rol:                  base.rol,
+          puedeValidar:         ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR', 'Asistencial', 'Control', 'Nomina', 'Sistema'].includes(base.rol),
+          puedeAprobar:         ['Juridica', 'Sistema', 'Nomina'].includes(base.rol),
+          puedeTramitar:        ['Nomina', 'Sistema'].includes(base.rol),
+          operacionesFiltro:    accesoCesantias.operacionesFiltro || [],
+          opsPorRegional:       accesoCesantias.opsPorRegional || {},
         } : null,
       },
     }).replace(/<\/script>/gi, '<\\/script>');
@@ -1648,6 +1674,153 @@ router.get('/api/biometrico/reportes/sin-registro', verificarAccesoBiometricoAPI
   } catch (err) {
     console.error('[nomina Biometrico API] Error en reporte sin registro:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API Cesantías ──────────────────────────────────────────────────────────
+const uploadCesantias = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+
+router.get('/api/cesantias/motivos', async (req, res) => {
+  try {
+    const motivos = await obtenerMotivosCesantias();
+    res.json({ ok: true, motivos });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error obteniendo motivos:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/api/cesantias/trabajador/:identificacion', async (req, res) => {
+  try {
+    const { identificacion } = req.params;
+    const trabajador = await buscarTrabajadorCesantias(identificacion);
+    if (!trabajador) return res.status(404).json({ ok: false, error: 'Trabajador no encontrado' });
+    res.json({ ok: true, trabajador });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error buscando trabajador:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/api/cesantias', async (req, res) => {
+  try {
+    const { usuario, regional, operacion, estado, motivo, busqueda, fechaDesde, fechaHasta } = req.query;
+    if (!usuario) return res.status(400).json({ ok: false, error: 'Parámetro ?usuario requerido' });
+
+    let acceso = await computarAccesoNomina(usuario, 'Cesantias');
+    if (!acceso) {
+      const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+      if (uRows.length && ['Nomina', 'Sistema', 'Juridica', 'Contratación', 'Control', 'Asistencial'].includes(uRows[0].Rol)) {
+        acceso = { sinFiltro: true, rol: uRows[0].Rol };
+      }
+    }
+    if (!acceso) return res.status(403).json({ ok: false, error: 'No autorizado para ver Cesantías' });
+
+    const data = await listarSolicitudesCesantias({
+      regional, operacion, estado, motivo, busqueda, fechaDesde, fechaHasta
+    }, acceso);
+
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error listando solicitudes:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/api/cesantias', uploadCesantias.any(), async (req, res) => {
+  try {
+    const body = req.body;
+    const files = req.files || [];
+
+    const resultado = await crearSolicitudCesantias({
+      identificacion: body.identificacion,
+      usuario: body.usuario,
+      ciudad_solicitud: body.ciudad_solicitud,
+      fondo_cesantias: body.fondo_cesantias,
+      monto_solicitado: body.monto_solicitado,
+      motivo_retiro: body.motivo_retiro,
+      aplica_conyuge: body.aplica_conyuge === 'true' || body.aplica_conyuge === '1',
+      institucion_educativa: body.institucion_educativa,
+      programa_academico: body.programa_academico,
+      semestre: body.semestre,
+      nombre_beneficiario: body.nombre_beneficiario,
+      identificacion_beneficiario: body.identificacion_beneficiario,
+      firma_base64: body.firma_base64,
+      ip_cliente: req.ip || req.headers['x-forwarded-for'],
+    }, files);
+
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error creando solicitud:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/api/cesantias/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const detalle = await obtenerDetalleCesantia(id);
+    if (!detalle) return res.status(404).json({ ok: false, error: 'Solicitud no encontrada' });
+    res.json({ ok: true, data: detalle });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error obteniendo detalle:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/api/cesantias/:id/estado', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, estado, observaciones } = req.body;
+    if (!usuario || !estado) return res.status(400).json({ ok: false, error: 'usuario y estado son requeridos' });
+
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length) return res.status(403).json({ ok: false, error: 'Usuario no válido' });
+    const rol = uRows[0].Rol;
+
+    // Validar permisos según flujo
+    if (estado === 'validado') {
+      const rolesValidar = ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR', 'Asistencial', 'Control', 'Nomina', 'Sistema'];
+      if (!rolesValidar.includes(rol)) return res.status(403).json({ ok: false, error: 'No tienes permisos para validar la solicitud' });
+    } else if (['aprobado', 'rechazado', 'devuelto', 'cancelado'].includes(estado)) {
+      const rolesAprobar = ['Juridica', 'Sistema', 'Nomina'];
+      if (!rolesAprobar.includes(rol)) return res.status(403).json({ ok: false, error: 'Solo el Rol Jurídica puede gestionar (aprobar/rechazar/devolver/cancelar) esta solicitud' });
+    } else if (estado === 'tramitado') {
+      const rolesTramitar = ['Nomina', 'Sistema'];
+      if (!rolesTramitar.includes(rol)) return res.status(403).json({ ok: false, error: 'Solo el área de Nómina puede marcar como tramitada la solicitud' });
+    }
+
+    const resEstado = await actualizarEstadoCesantia(id, estado, usuario, observaciones);
+    res.json({ ok: true, ...resEstado });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error actualizando estado:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/api/cesantias/:id/firma', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firma_base64 } = req.body;
+    if (!firma_base64) return res.status(400).json({ ok: false, error: 'firma_base64 requerida' });
+
+    const resultado = await registrarFirmaTrabajador(id, firma_base64, req.ip || req.headers['x-forwarded-for']);
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error registrando firma:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/api/cesantias/:id/generar-pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.body;
+    const resultado = await generarYGuardarPDFCesantias(id, usuario || 'sistema');
+    res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error generando PDF:', err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 

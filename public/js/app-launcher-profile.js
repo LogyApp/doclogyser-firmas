@@ -10,7 +10,7 @@
       ['Activos', 'activos'], ['Retiros', 'retiros'], ['Bloqueo de Datos', 'bloqueo'],
       ['Biométrico · Asistencia', 'biometrico', 'asistencia'], ['Biométrico · Recorridos GPS', 'biometrico', 'rutas'],
       ['Biométrico · Reportes', 'biometrico', 'reportes'], ['Traslados', 'traslados'],
-      ['Incapacidades', 'incapacidades']
+      ['Incapacidades', 'incapacidades'], ['Cesantías', 'cesantias']
     ] },
     { id: 'facturacion', name: 'Facturación', symbol: '◷', tabs: [
       ['Servicios', 'servicios'], ['Recibos', 'recibos'], ['Clientes Crédito', 'clientescredito'],
