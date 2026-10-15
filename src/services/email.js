@@ -59,8 +59,23 @@ transporter.sendMail = function (mailOptions, callback) {
 const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
 
 const HEADER = `
-  <div style="border-top:5px solid #e67e22;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-    <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+  <div style="border-top:5px solid #e67e22;background:#1B2A5E;padding:2px 20px;border-bottom:1px solid #0f172a;line-height:0">
+    <!--[if mso]>
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="200" style="width:200px">
+    <tr>
+    <td width="200" style="width:200px;line-height:0;padding:0">
+    <![endif]-->
+    <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png"
+         width="200"
+         height="133"
+         alt="LOG&amp;SER"
+         border="0"
+         style="display:block;width:200px;max-width:200px;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic">
+    <!--[if mso]>
+    </td>
+    </tr>
+    </table>
+    <![endif]-->
   </div>`;
 
 const FOOTER = `
@@ -186,7 +201,7 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #e67e22;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreCorto}</h2>
@@ -251,7 +266,7 @@ async function notificarActaFirma({ email, nombreTrabajador, categoria, urlFirma
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #e67e22;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -474,7 +489,7 @@ async function notificarRetiro({
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #eee">
 
@@ -556,7 +571,7 @@ async function notificarInicioLegalizacionSinRetirar({
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="border-top:5px solid #d97706;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #eee">
 
@@ -620,7 +635,7 @@ async function notificarFirmaRenuncia({ emailTrabajador, nombreTrabajador, urlFi
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&amp;SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -726,8 +741,23 @@ const DESTINATARIOS_INGRESO_REDUCIDO = [
 
 async function notificarIngreso({ trabajador, identificacion, cargo, operacion, fechaIngreso, destinatarios }) {
   const HEADER_VERDE = `
-    <div style="border-top:5px solid #27ae60;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-      <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+    <div style="border-top:5px solid #27ae60;background:#1B2A5E;padding:2px 20px;border-bottom:1px solid #0f172a;line-height:0">
+      <!--[if mso]>
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="200" style="width:200px">
+      <tr>
+      <td width="200" style="width:200px;line-height:0;padding:0">
+      <![endif]-->
+      <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png"
+           width="200"
+           height="133"
+           alt="LOG&amp;SER"
+           border="0"
+           style="display:block;width:200px;max-width:200px;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic">
+      <!--[if mso]>
+      </td>
+      </tr>
+      </table>
+      <![endif]-->
     </div>`;
 
   const asunto = `Nuevo ingreso de personal — ${trabajador}`;
@@ -802,7 +832,7 @@ async function notificarPazYSalvoTrabajador({ emailTrabajador, celularTrabajador
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Estimado/a ${trabajador.split(' ')[0]},</h2>
@@ -863,7 +893,7 @@ async function notificarAreaPazYSalvo({ area, destinatarios, trabajador, identif
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#fdf2f2;border:1px solid #e8b4b4;border-radius:6px;padding:6px 16px;margin-bottom:18px">
@@ -1009,7 +1039,7 @@ async function notificarDocumentoRetiroTrabajador({
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <p style="color:#555;margin:0 0 6px;font-size:.95rem">Cordial saludo, <strong>${nombreTrabajador}</strong></p>
@@ -1068,7 +1098,7 @@ async function notificarDocumentosRetiroConcluidos({
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #27ae60;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
       </div>
       <div style="background:#fff;padding:32px 28px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
@@ -1172,7 +1202,7 @@ async function notificarSolicitudCambioEstado({
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #eee">
 
@@ -1287,7 +1317,7 @@ async function notificarFirmaPruebaConsumo({ email, nombreTrabajador, cliente, u
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -1331,7 +1361,7 @@ async function notificarPruebaConsumoFirmada({ nombreTrabajador, identificacion,
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
@@ -1376,7 +1406,7 @@ async function notificarFirmaDescuentoNomina({ email, nombreTrabajador, tipoDesc
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #2980b9;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -1418,7 +1448,7 @@ async function notificarDescuentoNominaFirmada({ nombreTrabajador, identificacio
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="border-top:5px solid #2980b9;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
@@ -1473,7 +1503,7 @@ async function enviarCorreoFirmaTrabajadorSST({ email, nombreTrabajador, urlFirm
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -1514,7 +1544,7 @@ async function enviarNotificacionTrabajadorFirmoSST({ emailUsuario, nombreTrabaj
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px">Firma del Trabajador Registrada</h2>
@@ -1543,7 +1573,7 @@ async function enviarCorreoFirmaLiderSST({ emailLider, nombreTrabajador, nombreA
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Estimado Líder SST,</h2>
@@ -1579,7 +1609,7 @@ async function enviarNotificacionCompletadoSST({ emailUsuario, nombreTrabajador,
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
@@ -1621,7 +1651,7 @@ async function notificarFirmaEvaluacionSST({ email, nombreTrabajador, tipo, urlF
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #1abc9c;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -1663,7 +1693,7 @@ async function notificarEvaluacionSSTCompletada({ email, nombreTrabajador, tipo,
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #2ecc71;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -1709,7 +1739,7 @@ async function notificarFirmaCapacitacionSST({ email, nombreTrabajador, tema, ur
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #1abc9c;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -1751,7 +1781,7 @@ async function notificarCapacitacionSSTCompletada({ email, nombreTrabajador, tem
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #2ecc71;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
@@ -1797,7 +1827,7 @@ async function notificarMovilidadRegistrada({ emailUsuario, nombreCompleto, iden
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #f59e0b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px" alt="LOG&SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px 16px;margin-bottom:20px">
@@ -2300,7 +2330,7 @@ async function notificarTomoCargoConfirmado({
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-top:5px solid #27ae60;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px" alt="LOG&amp;SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #a9dfbf;border-radius:6px;padding:6px 14px;margin-bottom:18px">
@@ -2436,7 +2466,7 @@ async function enviarCorreoPortalAspirante({ correo, nombreAspirante, portalUrl 
   const cuerpo = `
     <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
       <div style="background:#1B2A5E;padding:24px;text-align:center">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:48px;object-fit:contain" alt="LOG&amp;SER">
+        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;object-fit:contain;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
       </div>
       <div style="padding:32px 24px;color:#0F172A;line-height:1.6">
         <h2 style="color:#1B2A5E;margin-top:0;font-size:20px;font-weight:800">¡Hola, ${nombreAspirante}!</h2>
@@ -2630,7 +2660,7 @@ async function notificarCreacionRequisicion({
             <table style="width:100%;border-collapse:collapse">
               <tr>
                 <td style="vertical-align:middle">
-                  <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" style="height:44px;display:inline-block" alt="LOG&amp;SER">
+                  <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;display:inline-block;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
                 </td>
                 <td style="vertical-align:middle;text-align:right">
                   <span style="display:inline-block;background:#eef2ff;color:#4338ca;padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:700;letter-spacing:0.5px">
@@ -3159,4 +3189,7 @@ module.exports = {
   notificarTomoCargoPendiente,
   notificarTomoCargoConfirmado,
   transporter,
+  HEADER,
+  FOOTER,
+  EMAIL_FROM,
 };
