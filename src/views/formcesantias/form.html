@@ -1144,11 +1144,16 @@
 
             <div id="cedula_nueva_upload" style="display:${!esExistente ? 'block' : 'none'};">
               <input type="file" id="file_${s.key}" accept=".pdf,image/*" onchange="onFileSelected('${s.key}', this)" style="display:none;">
-              <div class="file-input-wrapper">
+              <div class="file-input-wrapper" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <button type="button" class="btn btn-secondary" style="width:auto;" onclick="document.getElementById('file_${s.key}').click()">
                   📎 Seleccionar Archivo
                 </button>
-                <span class="file-chip" id="chip_${s.key}" style="display:none;"></span>
+                <button type="button" class="btn btn-secondary" id="btn_preview_${s.key}" onclick="previsualizarArchivoCesantia('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; background:var(--accent-light); color:var(--accent); font-weight:700;">
+                  👁️ Ver Documento
+                </button>
+                <span class="file-chip" id="chip_${s.key}" style="display:${fileStaged ? 'inline-flex' : 'none'};">
+                  ${fileStaged ? `✓ ${fileStaged.name} (${(fileStaged.size/1024).toFixed(0)} KB)` : ''}
+                </span>
               </div>
             </div>
           `;
@@ -1161,9 +1166,12 @@
             </div>
             <div class="doc-slot-hint">${s.hint}</div>
             <input type="file" id="file_${s.key}" accept=".pdf,image/*" onchange="onFileSelected('${s.key}', this)" style="display:none;">
-            <div class="file-input-wrapper">
+            <div class="file-input-wrapper" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               <button type="button" class="btn btn-secondary" style="width:auto;" onclick="document.getElementById('file_${s.key}').click()">
                 📎 Seleccionar Archivo
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn_preview_${s.key}" onclick="previsualizarArchivoCesantia('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; background:var(--accent-light); color:var(--accent); font-weight:700;">
+                👁️ Ver Documento
               </button>
               <span class="file-chip" id="chip_${s.key}" style="display:${fileStaged ? 'inline-flex' : 'none'};">
                 ${fileStaged ? `✓ ${fileStaged.name} (${(fileStaged.size/1024).toFixed(0)} KB)` : ''}
@@ -1185,7 +1193,15 @@
       if (prev) prev.style.display = opcion === 'existente' ? 'block' : 'none';
       if (up) up.style.display = opcion === 'nueva' ? 'block' : 'none';
       if (opcion === 'existente') {
+        const file = state.archivos['cedula_trabajador'];
+        if (file && file._previewUrl) {
+          try { URL.revokeObjectURL(file._previewUrl); } catch (e) {}
+        }
         delete state.archivos['cedula_trabajador'];
+        const btnPrev = document.getElementById('btn_preview_cedula_trabajador');
+        if (btnPrev) btnPrev.style.display = 'none';
+        const chip = document.getElementById('chip_cedula_trabajador');
+        if (chip) chip.style.display = 'none';
       }
     }
 
@@ -1196,15 +1212,33 @@
     }
 
     function asignarArchivoASlot(key, file) {
+      if (file && !file._previewUrl) {
+        try { file._previewUrl = URL.createObjectURL(file); } catch (e) {}
+      }
       state.archivos[key] = file;
       const chip = document.getElementById(`chip_${key}`);
       const slot = document.getElementById(`slot_${key}`);
+      const btnPrev = document.getElementById(`btn_preview_${key}`);
       if (chip) {
         chip.textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
         chip.style.display = 'inline-flex';
       }
+      if (btnPrev) {
+        btnPrev.style.display = 'inline-flex';
+      }
       if (slot) {
         slot.classList.add('has-file');
+      }
+    }
+
+    function previsualizarArchivoCesantia(key) {
+      const file = state.archivos[key];
+      if (!file) return;
+      if (!file._previewUrl) {
+        try { file._previewUrl = URL.createObjectURL(file); } catch (e) {}
+      }
+      if (file._previewUrl) {
+        window.open(file._previewUrl, '_blank');
       }
     }
 

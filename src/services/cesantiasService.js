@@ -12,6 +12,7 @@ const {
 } = require('./storage');
 const { enviarNotificacionCesantias } = require('./email');
 const { generarPDFDesdeHTML } = require('./renderer');
+const { LOGO_BASE64 } = require('./assets');
 
 // ── Helpers de Config_Parametros para Cesantías ─────────────────────────────
 async function obtenerParametroCesantias(concepto) {
@@ -923,56 +924,59 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
     }
   }
 
-  // Req. 5: Al anular debe eliminarse los registros en Maestro_docTrabajador y eliminar los documentos en el bucket
-  if (estadoNormalizado === 'anulado') {
-    try {
-      const [docsAnular] = await pool.execute(
-        'SELECT id, Doc FROM Maestro_docTrabajador WHERE recurso = ?',
-        [idCesantia]
-      );
-      for (const d of docsAnular) {
-        if (d.Doc) {
-          const [usados] = await pool.execute(
-            'SELECT COUNT(*) AS c FROM Maestro_docTrabajador WHERE Doc = ? AND recurso != ?',
-            [d.Doc, idCesantia]
-          );
-          if (!usados.length || usados[0].c === 0) {
-            await eliminarArchivoBucket(d.Doc);
+  // Ejecutar tareas pesadas / secundarias en segundo plano para máxima respuesta al usuario
+  setImmediate(async () => {
+    // Req. 5: Al anular debe eliminarse los registros en Maestro_docTrabajador y eliminar los documentos en el bucket
+    if (estadoNormalizado === 'anulado') {
+      try {
+        const [docsAnular] = await pool.execute(
+          'SELECT id, Doc FROM Maestro_docTrabajador WHERE recurso = ?',
+          [idCesantia]
+        );
+        for (const d of docsAnular) {
+          if (d.Doc) {
+            const [usados] = await pool.execute(
+              'SELECT COUNT(*) AS c FROM Maestro_docTrabajador WHERE Doc = ? AND recurso != ?',
+              [d.Doc, idCesantia]
+            );
+            if (!usados.length || usados[0].c === 0) {
+              await eliminarArchivoBucket(d.Doc);
+            }
           }
         }
+        await pool.execute('DELETE FROM Maestro_docTrabajador WHERE recurso = ?', [idCesantia]);
+      } catch (eAnulacion) {
+        console.warn('[actualizarEstadoCesantia - background] Advertencia al limpiar soportes de anulación:', eAnulacion.message);
       }
-      await pool.execute('DELETE FROM Maestro_docTrabajador WHERE recurso = ?', [idCesantia]);
-    } catch (eAnulacion) {
-      console.warn('[actualizarEstadoCesantia] Advertencia al limpiar soportes de anulación:', eAnulacion.message);
     }
-  }
 
-  // Si se aprueba y aún no se generó el PDF formal firmado (o se requiere actualizar), lo generamos
-  if (estadoNormalizado === 'aprobado' && exist[0].firma_trabajador) {
-    try {
-      await generarYGuardarPDFCesantias(idCesantia, usuario);
-    } catch (e) {
-      console.warn('[actualizarEstadoCesantia] Advertencia al generar PDF en aprobación:', e.message);
-    }
-  }
-
-  // Req. 4, 5, 13, 14, 15: Notificaciones por correo para validado, aprobado, tramitado, devuelto, rechazado
-  if (['validado', 'aprobado', 'tramitado', 'devuelto', 'rechazado'].includes(estadoNormalizado)) {
-    try {
-      const detalle = await obtenerDetalleCesantia(idCesantia);
-      if (detalle) {
-        enviarNotificacionCesantias({
-          evento: estadoNormalizado,
-          solicitud: detalle.solicitud,
-          trabajador: detalle.trabajador || {},
-          observaciones: observaciones || '',
-          usuarioAccion: usuario,
-        }).catch(eMail => console.error(`[actualizarEstadoCesantia] Error enviando correo (${estadoNormalizado}):`, eMail.message));
+    // Si se aprueba y aún no se generó el PDF formal firmado (o se requiere actualizar), lo generamos
+    if (estadoNormalizado === 'aprobado' && exist[0].firma_trabajador) {
+      try {
+        await generarYGuardarPDFCesantias(idCesantia, usuario);
+      } catch (e) {
+        console.warn('[actualizarEstadoCesantia - background] Advertencia al generar PDF en aprobación:', e.message);
       }
-    } catch (eDet) {
-      console.warn('[actualizarEstadoCesantia] Advertencia al obtener detalle para correo:', eDet.message);
     }
-  }
+
+    // Notificaciones por correo para validado, aprobado, tramitado, devuelto, rechazado
+    if (['validado', 'aprobado', 'tramitado', 'devuelto', 'rechazado'].includes(estadoNormalizado)) {
+      try {
+        const detalle = await obtenerDetalleCesantia(idCesantia);
+        if (detalle) {
+          await enviarNotificacionCesantias({
+            evento: estadoNormalizado,
+            solicitud: detalle.solicitud,
+            trabajador: detalle.trabajador || {},
+            observaciones: observaciones || '',
+            usuarioAccion: usuario,
+          });
+        }
+      } catch (eDet) {
+        console.warn('[actualizarEstadoCesantia - background] Error procesando correo de notificación:', eDet.message);
+      }
+    }
+  });
 
   return { ok: true, estado: estadoNormalizado };
 }
@@ -1050,6 +1054,9 @@ async function generarYGuardarPDFCesantias(idCesantia, usuario = 'sistema') {
   if (!pltRows.length) throw new Error('Plantilla "solicitud_cesantias" no encontrada en Maestro_Plantillas.');
 
   let templateHtml = pltRows[0].contenido_html;
+  if (!templateHtml.includes('data:image/png;base64') && !templateHtml.includes('data:image/jpeg;base64')) {
+    templateHtml = templateHtml.replace(/<img[^>]+class="logo-img"[^>]*>/i, `<img src="${LOGO_BASE64}" alt="LOG&amp;SER" class="logo-img">`);
+  }
 
   // Construcción de la sección específica según la modalidad
   let seccionEspecifica = '';

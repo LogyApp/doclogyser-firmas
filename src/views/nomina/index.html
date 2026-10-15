@@ -2241,7 +2241,7 @@
       <!-- Documentos y Soportes (Maestro_docTrabajador) -->
       <div class="ces-form-section">
         <div class="ces-form-section-title">
-          <span>📁 Soportes y Documentos Asociados (Maestro_docTrabajador - TipoDocumento 46)</span>
+          <span>📁 Soportes y Documentos Asociados</span>
         </div>
         <div id="ces_d_docs_container">
           <div style="font-size:.82rem; color:var(--text-muted);">No hay documentos anexos.</div>
@@ -6685,6 +6685,9 @@
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                   <input type="file" id="slot_file_${s.key}" accept=".pdf,.png,.jpg,.jpeg" style="display:none;" onchange="onCesDocSlotSelected('${s.key}', this)">
+                  <button type="button" class="ba bver" id="slot_btn_prev_${s.key}" onclick="previsualizarDocSlotCesantia('${s.key}')" style="display:${fileStaged ? 'inline-block' : 'none'}; padding:6px 12px; font-size:.78rem; height:auto; margin:0; text-decoration:none;">
+                    👁️ Ver documento
+                  </button>
                   <button type="button" class="btn-guardar-ficha" onclick="document.getElementById('slot_file_${s.key}').click()" style="padding:6px 14px; font-size:.78rem; height:auto; margin:0;">
                     ${fileStaged ? 'Cambiar archivo' : 'Cargar cédula'}
                   </button>
@@ -6719,6 +6722,9 @@
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <input type="file" id="slot_file_${s.key}" accept=".pdf,.png,.jpg,.jpeg" style="display:none;" onchange="onCesDocSlotSelected('${s.key}', this)">
+            <button type="button" class="ba bver" id="slot_btn_prev_${s.key}" onclick="previsualizarDocSlotCesantia('${s.key}')" style="display:${fileStaged ? 'inline-block' : 'none'}; padding:6px 12px; font-size:.78rem; height:auto; margin:0; text-decoration:none;">
+              👁️ Ver documento
+            </button>
             <button type="button" class="btn-guardar-ficha" onclick="document.getElementById('slot_file_${s.key}').click()" style="padding:6px 14px; font-size:.78rem; height:auto; margin:0;">
               ${fileStaged ? 'Cambiar archivo' : 'Cargar soporte'}
             </button>
@@ -6797,18 +6803,35 @@
       return;
     }
 
+    if (file && !file._previewUrl) {
+      try { file._previewUrl = URL.createObjectURL(file); } catch (e) {}
+    }
+
     _cesantiasState.slotsDocumentos[key] = file;
     const staged = document.getElementById(`slot_staged_${key}`);
     const nameEl = document.getElementById(`slot_staged_name_${key}`);
     const btnClear = document.getElementById(`slot_btn_clear_${key}`);
+    const btnPrev = document.getElementById(`slot_btn_prev_${key}`);
     const card = document.getElementById(`dropzone_${key}`) || document.getElementById(`slot_card_${key}`);
 
     if (nameEl) nameEl.textContent = file.name;
     if (staged) staged.style.display = 'block';
     if (btnClear) btnClear.style.display = 'inline-block';
+    if (btnPrev) btnPrev.style.display = 'inline-block';
     if (card) {
       card.style.borderColor = 'var(--accent)';
       card.style.borderStyle = 'solid';
+    }
+  }
+
+  function previsualizarDocSlotCesantia(key) {
+    const file = _cesantiasState.slotsDocumentos[key];
+    if (!file) return;
+    if (!file._previewUrl) {
+      try { file._previewUrl = URL.createObjectURL(file); } catch (e) {}
+    }
+    if (file._previewUrl) {
+      window.open(file._previewUrl, '_blank');
     }
   }
 
@@ -6818,16 +6841,22 @@
   }
 
   function clearCesDocSlot(key) {
+    const file = _cesantiasState.slotsDocumentos[key];
+    if (file && file._previewUrl) {
+      try { URL.revokeObjectURL(file._previewUrl); } catch (e) {}
+    }
     delete _cesantiasState.slotsDocumentos[key];
     const input = document.getElementById(`slot_file_${key}`);
     if (input) input.value = '';
 
     const staged = document.getElementById(`slot_staged_${key}`);
     const btnClear = document.getElementById(`slot_btn_clear_${key}`);
+    const btnPrev = document.getElementById(`slot_btn_prev_${key}`);
     const card = document.getElementById(`dropzone_${key}`) || document.getElementById(`slot_card_${key}`);
 
     if (staged) staged.style.display = 'none';
     if (btnClear) btnClear.style.display = 'none';
+    if (btnPrev) btnPrev.style.display = 'none';
     if (card) {
       card.style.borderColor = 'var(--border)';
       card.style.borderStyle = 'dashed';

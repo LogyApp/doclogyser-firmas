@@ -10,11 +10,7 @@ const transporter = nodemailer.createTransport({
   port:   parseInt(process.env.SMTP_PORT) || 587,
   secure: process.env.SMTP_SECURE === 'true',
   auth:   authConfig,
-  // Sin estos límites, nodemailer espera hasta 2 min para conectar y hasta 10 min de
-  // inactividad en el socket antes de fallar. Si Office 365 responde lento (medido ~11s
-  // solo para el saludo SMTP), cualquier endpoint que haga `await transporter.sendMail(...)`
-  // antes de responder queda colgado minutos — tiempo suficiente para que Cloud Run o el
-  // navegador corten la conexión (ERR_CONNECTION_CLOSED), sin que el usuario vea un error claro.
+  pool:   false, // Evita conexiones ociosas que Office 365 / servidores SMTP resetean con ECONNRESET
   connectionTimeout: 15000,
   greetingTimeout: 15000,
   socketTimeout: 30000,
@@ -3128,15 +3124,30 @@ async function enviarNotificacionCesantias({
       </div>
     `;
 
-    await transporter.sendMail({
-      from: `"LOG&SER Nómina" <${EMAIL_FROM}>`,
-      to: toEmails.join(','),
-      cc: ccFinal.length ? ccFinal.join(',') : undefined,
-      subject: asunto,
-      html: cuerpoHtml,
-    });
-
-    console.log(`[enviarNotificacionCesantias] Correo enviado exitosamente para ${radicadoId} (${evento}). To: ${toEmails.join(',')} | CC: ${ccFinal.join(',')}`);
+    let sendSuccess = false;
+    let attempt = 0;
+    while (!sendSuccess && attempt < 2) {
+      attempt++;
+      try {
+        await transporter.sendMail({
+          from: `"LOG&SER Nómina" <${EMAIL_FROM}>`,
+          to: toEmails.join(','),
+          cc: ccFinal.length ? ccFinal.join(',') : undefined,
+          subject: asunto,
+          html: cuerpoHtml,
+        });
+        sendSuccess = true;
+        console.log(`[enviarNotificacionCesantias] Correo enviado exitosamente para ${radicadoId} (${evento}). To: ${toEmails.join(',')} | CC: ${ccFinal.join(',')}`);
+      } catch (errSend) {
+        const isConnError = errSend.code === 'ECONNRESET' || (errSend.message && errSend.message.includes('ECONNRESET')) || errSend.code === 'ETIMEDOUT';
+        if (attempt < 2 && isConnError) {
+          console.warn(`[enviarNotificacionCesantias] Reintentando envío tras desconexión (${errSend.code || 'ECONNRESET'})...`);
+          await new Promise(r => setTimeout(r, 800));
+        } else {
+          throw errSend;
+        }
+      }
+    }
   } catch (err) {
     console.error(`[enviarNotificacionCesantias] Error enviando correo (${evento}):`, err.message);
   }
