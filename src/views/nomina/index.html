@@ -961,7 +961,8 @@
   @media (max-width: 600px) {
     #cesantiasModalNuevaOverlay .modal-full,
     #cesantiasModalDetalleOverlay .modal-full,
-    #cesantiasModalCompartirOverlay .modal-full {
+    #cesantiasModalCompartirOverlay .modal-full,
+    #cesantiasModalTutorialOverlay .modal-full {
       width: 100% !important;
       max-width: 100% !important;
       height: 100dvh !important;
@@ -972,14 +973,16 @@
       flex-direction: column !important;
     }
     #cesantiasModalNuevaOverlay .modal-ficha-body,
-    #cesantiasModalDetalleOverlay .modal-ficha-body {
+    #cesantiasModalDetalleOverlay .modal-ficha-body,
+    #cesantiasModalTutorialOverlay .modal-ficha-body {
       flex: 1 1 auto !important;
       overflow-y: auto !important;
       padding-bottom: calc(60px + env(safe-area-inset-bottom, 24px)) !important;
       -webkit-overflow-scrolling: touch !important;
     }
     #cesantiasModalNuevaOverlay .ficha-footer,
-    #cesantiasModalDetalleOverlay .ficha-footer {
+    #cesantiasModalDetalleOverlay .ficha-footer,
+    #cesantiasModalTutorialOverlay .ficha-footer {
       position: sticky !important;
       bottom: 0 !important;
       background: var(--card-bg, #ffffff) !important;
@@ -1773,6 +1776,10 @@
           <button type="button" class="btn-reset" onclick="abrirModalCompartirCesantias()" style="margin:0; background:var(--bg-elevated); border:1.5px solid var(--accent); color:var(--accent); font-weight:700; display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:6px; cursor:pointer;">
             <span>🔗 Compartir Enlace</span>
           </button>
+          <button type="button" class="btn-reset" onclick="abrirModalTutorialCesantias()" style="margin:0; background:var(--bg-elevated); border:1.5px solid #0284c7; color:#0284c7; font-weight:700; display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:6px; cursor:pointer;" title="Ver guía y tutorial completo del proceso de cesantías">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:#0284c7; color:#fff; font-size:11px; font-weight:800;">?</span>
+            <span>Guía y Tutorial</span>
+          </button>
         </div>
         <button type="button" class="btn-reset" onclick="fetchCesantiasData()" style="margin:0;">↻ Actualizar</button>
       </div>
@@ -2372,6 +2379,194 @@
         </button>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Guía y Tutorial de Cesantías -->
+<div class="modal-full-overlay" id="cesantiasModalTutorialOverlay" style="display:none" onclick="if(event.target===this) cerrarModalTutorialCesantias()">
+  <div class="modal-full" style="max-width:850px; height:auto; max-height:92vh; overflow-y:auto; display:flex; flex-direction:column;">
+    <div class="modal-full-header" style="background:#1B2A5E; color:#fff; border-bottom:3px solid #e67e22;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:#e67e22; color:#fff; font-weight:800; font-size:16px;">?</span>
+        <div>
+          <span style="font-weight:800; font-size:1.05rem;">Guía Operativa y Tutorial de Cesantías</span>
+          <div style="font-size:0.75rem; color:#cbd5e1; font-weight:normal;">Flujo paso a paso, documentos por motivo y directrices para colaboradores y gestores</div>
+        </div>
+      </div>
+      <button type="button" onclick="cerrarModalTutorialCesantias()" style="color:#fff;">&#10005; Cerrar</button>
+    </div>
+
+    <!-- Navegación de Pestañas del Tutorial en Nómina -->
+    <div style="display:flex; background:var(--bg); border-bottom:1px solid var(--border); overflow-x:auto;">
+      <button type="button" class="btn-reset tut-tab-nom active" id="tut_nom_btn_pasos" onclick="cambiarTabTutorialNomina('pasos')" style="margin:0; padding:12px 18px; font-size:.84rem; font-weight:700; border-radius:0; border-bottom:3px solid var(--accent); background:var(--card-bg); color:var(--accent); cursor:pointer; white-space:nowrap;">🎯 Paso a Paso</button>
+      <button type="button" class="btn-reset tut-tab-nom" id="tut_nom_btn_requisitos" onclick="cambiarTabTutorialNomina('requisitos')" style="margin:0; padding:12px 18px; font-size:.84rem; font-weight:700; border-radius:0; border-bottom:3px solid transparent; background:transparent; color:var(--text-muted); cursor:pointer; white-space:nowrap;">📁 Requisitos por Motivo</button>
+      <button type="button" class="btn-reset tut-tab-nom" id="tut_nom_btn_flujo" onclick="cambiarTabTutorialNomina('flujo')" style="margin:0; padding:12px 18px; font-size:.84rem; font-weight:700; border-radius:0; border-bottom:3px solid transparent; background:transparent; color:var(--text-muted); cursor:pointer; white-space:nowrap;">⏱️ Flujo y Auditoría</button>
+      <button type="button" class="btn-reset tut-tab-nom" id="tut_nom_btn_faq" onclick="cambiarTabTutorialNomina('faq')" style="margin:0; padding:12px 18px; font-size:.84rem; font-weight:700; border-radius:0; border-bottom:3px solid transparent; background:transparent; color:var(--text-muted); cursor:pointer; white-space:nowrap;">❓ Preguntas Frecuentes</button>
+    </div>
+
+    <div class="modal-ficha-body" style="padding:20px; overflow-y:auto; flex:1;">
+
+      <!-- Tab 1: Paso a Paso -->
+      <div id="tut_nom_pane_pasos" style="display:block;">
+        <div style="display:flex; gap:14px; align-items:flex-start; padding:14px 16px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; margin-bottom:12px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:#1e3a8a; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;">1</div>
+          <div>
+            <h4 style="margin:0 0 4px; font-size:.92rem; font-weight:700; color:var(--text);">Identificación y Estado Laboral</h4>
+            <p style="margin:0; font-size:.82rem; color:var(--text-muted); line-height:1.45;">Se ingresa la cédula del colaborador. El sistema verifica automáticamente que cuente con contrato laboral vigente y activo en la empresa, y comprueba que no tenga otra solicitud de cesantías en curso simultáneamente.</p>
+          </div>
+        </div>
+        <div style="display:flex; gap:14px; align-items:flex-start; padding:14px 16px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; margin-bottom:12px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:#1e3a8a; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;">2</div>
+          <div>
+            <h4 style="margin:0 0 4px; font-size:.92rem; font-weight:700; color:var(--text);">Datos de Contacto, Fondo y Ciudad</h4>
+            <p style="margin:0; font-size:.82rem; color:var(--text-muted); line-height:1.45;">Se confirma o actualiza el número celular y correo electrónico para las notificaciones. Se selecciona el Fondo Administrador de Cesantías (Porvenir, Protección, Colfondos, FNA, etc.), la ciudad de solicitud y el valor en pesos a retirar.</p>
+          </div>
+        </div>
+        <div style="display:flex; gap:14px; align-items:flex-start; padding:14px 16px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; margin-bottom:12px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:#1e3a8a; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;">3</div>
+          <div>
+            <h4 style="margin:0 0 4px; font-size:.92rem; font-weight:700; color:var(--text);">Modalidad, Destino y Carga de Soportes</h4>
+            <p style="margin:0; font-size:.82rem; color:var(--text-muted); line-height:1.45;">Se selecciona <strong>Vivienda</strong> o <strong>Educación Superior</strong> según corresponda. Cada soporte requerido se carga de forma independiente en formato PDF o imagen nítida. En compra de vivienda es indispensable adjuntar la cédula del colaborador, la <strong>cédula del vendedor</strong>, la promesa de compraventa y el certificado de tradición si aplica.</p>
+          </div>
+        </div>
+        <div style="display:flex; gap:14px; align-items:flex-start; padding:14px 16px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; margin-bottom:12px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:#1e3a8a; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;">4</div>
+          <div>
+            <h4 style="margin:0 0 4px; font-size:.92rem; font-weight:700; color:var(--text);">Firma Digital y Radicación</h4>
+            <p style="margin:0; font-size:.82rem; color:var(--text-muted); line-height:1.45;">El colaborador o gestor realiza la rúbrica directamente en pantalla (permite múltiples trazos continuos) o reutiliza su firma registrada en el archivo digital corporativo. Al radicar, se asigna el número de radicado único y se disparan las notificaciones automáticas por correo electrónico.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Requisitos por Motivo -->
+      <div id="tut_nom_pane_requisitos" style="display:none;">
+        <div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px;">
+          <strong style="color:var(--accent); font-size:1rem; display:block; margin-bottom:10px;">🏡 Modalidad: Retiro para Vivienda</strong>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:12px; font-size:.82rem;">
+              <strong style="display:block; color:var(--text); margin-bottom:4px;">Compra de Vivienda</strong>
+              <ul style="margin:0; padding-left:18px; color:var(--text-muted); line-height:1.45;">
+                <li>Cédula de ciudadanía del colaborador (ampliada y legible).</li>
+                <li><strong>Cédula de ciudadanía del vendedor</strong> (o representante legal de la constructora/vendedor).</li>
+                <li>Promesa de compraventa o carta de intención firmada por ambas partes.</li>
+                <li>Certificado de Tradición y Libertad reciente (menor a 30 días, si ya cuenta con matrícula inmobiliaria).</li>
+              </ul>
+            </div>
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:12px; font-size:.82rem;">
+              <strong style="display:block; color:var(--text); margin-bottom:4px;">Mejora o Construcción</strong>
+              <ul style="margin:0; padding-left:18px; color:var(--text-muted); line-height:1.45;">
+                <li>Cédula de ciudadanía del colaborador.</li>
+                <li>Certificado de Tradición y Libertad del inmueble (a nombre del colaborador o cónyuge).</li>
+                <li>Contrato de obra civil o cotización detallada de materiales y mano de obra.</li>
+              </ul>
+            </div>
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:12px; font-size:.82rem;">
+              <strong style="display:block; color:var(--text); margin-bottom:4px;">Liberación de Hipoteca o Predial</strong>
+              <ul style="margin:0; padding-left:18px; color:var(--text-muted); line-height:1.45;">
+                <li>Cédula de ciudadanía del colaborador.</li>
+                <li>Certificado de Tradición y Libertad con gravamen hipotecario vigente inscrito.</li>
+                <li>Extracto bancario del crédito hipotecario vigente o recibo oficial de impuesto predial con liquidación.</li>
+              </ul>
+            </div>
+          </div>
+          <div style="margin-top:10px; padding:10px 12px; background:rgba(217, 119, 6, 0.1); border:1px solid rgba(217, 119, 6, 0.3); border-radius:6px; font-size:.8rem; color:#b45309;">
+            💡 <strong>Inmueble a nombre del Cónyuge o Compañero(a):</strong> Si el inmueble o crédito está a nombre de la pareja, se debe adjuntar además la cédula del cónyuge y el Registro Civil de Matrimonio o Acta de Unión Marital de Hecho.
+          </div>
+        </div>
+
+        <div style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:16px;">
+          <strong style="color:var(--accent); font-size:1rem; display:block; margin-bottom:10px;">🎓 Modalidad: Educación Superior</strong>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:12px; font-size:.82rem;">
+              <strong style="display:block; color:var(--text); margin-bottom:4px;">Estudios del Colaborador</strong>
+              <ul style="margin:0; padding-left:18px; color:var(--text-muted); line-height:1.45;">
+                <li>Cédula de ciudadanía del colaborador.</li>
+                <li>Recibo o volante oficial de matrícula expedido por la institución de educación superior (aprobada por el Ministerio de Educación) con valor a pagar y semestre.</li>
+              </ul>
+            </div>
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:12px; font-size:.82rem;">
+              <strong style="display:block; color:var(--text); margin-bottom:4px;">Estudios de Hijos</strong>
+              <ul style="margin:0; padding-left:18px; color:var(--text-muted); line-height:1.45;">
+                <li>Cédula de ciudadanía del colaborador.</li>
+                <li>Registro Civil de Nacimiento del hijo(a) (acredita parentesco).</li>
+                <li>Documento de identidad del estudiante (T.I. o C.C.).</li>
+                <li>Recibo o volante oficial de matrícula expedido por la institución.</li>
+              </ul>
+            </div>
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:6px; padding:12px; font-size:.82rem;">
+              <strong style="display:block; color:var(--text); margin-bottom:4px;">Estudios del Cónyuge</strong>
+              <ul style="margin:0; padding-left:18px; color:var(--text-muted); line-height:1.45;">
+                <li>Cédula del colaborador y cédula del cónyuge.</li>
+                <li>Registro civil de matrimonio o acta de unión marital.</li>
+                <li>Recibo oficial de matrícula expedido por la institución.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Flujo y Auditoría -->
+      <div id="tut_nom_pane_flujo" style="display:none;">
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; background:var(--bg-elevated); border-radius:8px; border:1px solid var(--border);">
+            <span class="badge-ces badge-ces-pendiente" style="flex-shrink:0;">1. PENDIENTE</span>
+            <div style="font-size:.83rem; color:var(--text); line-height:1.45;">Solicitud radicada con éxito. Se envía automáticamente notificación por correo de confirmación al colaborador solicitante y entra a la bandeja de revisión.</div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; background:var(--bg-elevated); border-radius:8px; border:1px solid var(--border);">
+            <span class="badge-ces badge-ces-validado" style="flex-shrink:0;">2. VALIDADO</span>
+            <div style="font-size:.83rem; color:var(--text); line-height:1.45;">Revisión inicial realizada por los Auxiliares o Coordinadores territoriales según la zona geográfica u operación. Verifican legibilidad, coherencia de datos y totalidad de documentos. <em>(Las operaciones administrativas pasan directamente a Jurídica sin esta fase intermedia)</em>.</div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; background:var(--bg-elevated); border-radius:8px; border:1px solid var(--border);">
+            <span class="badge-ces badge-ces-aprobado" style="flex-shrink:0;">3. APROBADO</span>
+            <div style="font-size:.83rem; color:var(--text); line-height:1.45;">Aprobación legal a cargo del área Jurídica. Al aprobar, el sistema genera automáticamente el formato oficial en PDF firmado y con sellos corporativos, listo para su presentación ante el Fondo de Cesantías.</div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; background:var(--bg-elevated); border-radius:8px; border:1px solid var(--border);">
+            <span class="badge-ces badge-ces-tramitado" style="flex-shrink:0;">4. TRAMITADO</span>
+            <div style="font-size:.83rem; color:var(--text); line-height:1.45;">El área de Nómina radica el pago ante el Fondo de Cesantías o transfiere al colaborador y da por concluido el trámite.</div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; background:rgba(234, 88, 12, 0.08); border-radius:8px; border:1px solid rgba(234, 88, 12, 0.3);">
+            <span class="badge-ces badge-ces-devuelto" style="flex-shrink:0;">DEVUELTO</span>
+            <div style="font-size:.83rem; color:var(--text); line-height:1.45;">Si se detectan novedades en los soportes (documento borroso, incompleto o desactualizado), se devuelve con observaciones detalladas para que el colaborador o gestor pueda subsanar sin perder su número de radicado.</div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; background:rgba(239, 68, 68, 0.08); border-radius:8px; border:1px solid rgba(239, 68, 68, 0.3);">
+            <span class="badge-ces badge-ces-rechazado" style="flex-shrink:0;">RECHAZADO</span>
+            <div style="font-size:.83rem; color:var(--text); line-height:1.45;">Si la solicitud no cumple con las causales de ley o no es subsanada, el área competente registra el rechazo indicando el motivo formal.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 4: Preguntas Frecuentes -->
+      <div id="tut_nom_pane_faq" style="display:none;">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <details style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; overflow:hidden;" open>
+            <summary style="padding:10px 14px; font-size:.86rem; font-weight:700; cursor:pointer; color:var(--text);">¿Quiénes tienen permiso para anular o eliminar solicitudes?</summary>
+            <div style="padding:10px 14px; font-size:.82rem; color:var(--text-muted); line-height:1.45; border-top:1px solid var(--border); background:var(--card-bg);">
+              Únicamente los colaboradores y roles autorizados con permisos especiales asignados por la administración de la empresa. Al anular o eliminar una solicitud, el sistema retira automáticamente todos los archivos asociados del archivo digital para garantizar la seguridad de la información.
+            </div>
+          </details>
+          <details style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; overflow:hidden;">
+            <summary style="padding:10px 14px; font-size:.86rem; font-weight:700; cursor:pointer; color:var(--text);">¿Cómo funcionan las notificaciones de correo electrónico?</summary>
+            <div style="padding:10px 14px; font-size:.82rem; color:var(--text-muted); line-height:1.45; border-top:1px solid var(--border); background:var(--card-bg);">
+              El sistema envía avisos automáticos a los correos del colaborador y a los equipos responsables de cada etapa según la operación y regional territorial. Al validar o aprobar, el correo incluye los hipervínculos para consultar directamente los soportes del expediente.
+            </div>
+          </details>
+          <details style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; overflow:hidden;">
+            <summary style="padding:10px 14px; font-size:.86rem; font-weight:700; cursor:pointer; color:var(--text);">¿Dónde se custodian las firmas electrónicas?</summary>
+            <div style="padding:10px 14px; font-size:.82rem; color:var(--text-muted); line-height:1.45; border-top:1px solid var(--border); background:var(--card-bg);">
+              Se almacenan de forma segura y encriptada en el repositorio digital corporativo. Si un colaborador ya cuenta con una firma registrada en trámites anteriores, el sistema le permite reutilizarla con plena validez.
+            </div>
+          </details>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ficha-footer" style="padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border);">
+      <span style="font-size:.75rem; color:var(--text-muted);">Módulo Cesantías · LOG&SER S.A.S.</span>
+      <button type="button" class="btn-guardar-ficha" onclick="cerrarModalTutorialCesantias()" style="width:auto; padding:6px 18px; margin:0;">
+        Cerrar Guía
+      </button>
     </div>
   </div>
 </div>
@@ -5883,6 +6078,7 @@
     // 1: Compra de vivienda
     1: [
       { key: 'cedula_trabajador', label: 'Cédula de Ciudadanía del Trabajador', req: true, hint: 'Fotocopia legible ampliada al 150%' },
+      { key: 'cedula_vendedor', label: 'Cédula del Vendedor', req: true, hint: 'Fotocopia de la cédula del vendedor o representante legal' },
       { key: 'promesa_compraventa', label: 'Promesa de Compraventa o Carta de Intención', req: true, hint: 'Con firmas de comprador y vendedor o constructora' },
       { key: 'cert_tradicion_vivienda', label: 'Certificado de Tradición y Libertad', req: false, hint: 'Vigencia menor a 30 días (si ya cuenta con matrícula inmobiliaria)' },
     ],
@@ -7586,6 +7782,50 @@
     const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
     window.location.href = mailto;
   }
+
+  // ── Modal Guía y Tutorial de Cesantías ──
+  function abrirModalTutorialCesantias() {
+    const overlay = document.getElementById('cesantiasModalTutorialOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    if (window.registrarModalBack) {
+      overlay._backEntry = registrarModalBack(() => cerrarModalTutorialCesantias());
+    }
+  }
+
+  function cerrarModalTutorialCesantias() {
+    const overlay = document.getElementById('cesantiasModalTutorialOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'none';
+    if (window.cerrarModalBack && overlay._backEntry) {
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
+  }
+
+  function cambiarTabTutorialNomina(tabId) {
+    document.querySelectorAll('.tut-tab-nom').forEach(b => {
+      b.classList.remove('active');
+      b.style.borderBottomColor = 'transparent';
+      b.style.color = 'var(--text-muted)';
+      b.style.background = 'transparent';
+    });
+    ['pasos', 'requisitos', 'flujo', 'faq'].forEach(t => {
+      const el = document.getElementById(`tut_nom_pane_${t}`);
+      if (el) el.style.display = t === tabId ? 'block' : 'none';
+    });
+    const btn = document.getElementById(`tut_nom_btn_${tabId}`);
+    if (btn) {
+      btn.classList.add('active');
+      btn.style.borderBottomColor = 'var(--accent)';
+      btn.style.color = 'var(--accent)';
+      btn.style.background = 'var(--card-bg)';
+    }
+  }
+
+  window.abrirModalTutorialCesantias = abrirModalTutorialCesantias;
+  window.cerrarModalTutorialCesantias = cerrarModalTutorialCesantias;
+  window.cambiarTabTutorialNomina = cambiarTabTutorialNomina;
 
   if (tabs.retiro) updateFilterOptionsWithCountsRetiros();
   if (tabs.activo) updateFilterOptionsWithCountsActivos();

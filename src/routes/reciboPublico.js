@@ -40,6 +40,33 @@ function cacheGet(key) {
   return entry.data;
 }
 
+let cachedImpuestos = null;
+let lastImpuestosFetch = 0;
+
+async function getImpuestosRecibo() {
+  const now = Date.now();
+  if (cachedImpuestos && (now - lastImpuestosFetch < 300000)) {
+    return cachedImpuestos;
+  }
+  try {
+    const [rows] = await pool.query('SELECT Concepto, `Operación`, `Valor Base`, Porcentaje FROM Config_Impuestos');
+    const iva = Number(rows.find(r => r.Concepto === 'IVA')?.Porcentaje) || 0.19;
+    const reteFuente = Number(rows.find(r => r.Concepto === 'ReteFuente')?.Porcentaje) || 0.04;
+    const reteIva = Number(rows.find(r => r.Concepto === 'ReteIVA')?.Porcentaje) || 0.15;
+    const reteIcaMap = {};
+    rows.filter(r => r.Concepto === 'ReteICA' && r.Operación).forEach(r => {
+      const key = (r.Operación || '').trim().toLowerCase();
+      reteIcaMap[key] = Number(r.Porcentaje) || 0.007;
+    });
+    cachedImpuestos = { iva, reteFuente, reteIva, reteIcaMap };
+    lastImpuestosFetch = now;
+    return cachedImpuestos;
+  } catch (err) {
+    console.warn('[reciboPublico] Error cargando Config_Impuestos, usando valores por defecto:', err.message);
+    return { iva: 0.19, reteFuente: 0.04, reteIva: 0.15, reteIcaMap: {} };
+  }
+}
+
 // IDs reales son UUIDs cortos tipo AppSheet (letras/números/guiones, <= 40 chars).
 // Validar el formato antes de tocar la base de datos evita gastar una consulta
 // completa en basura obvia (bots, escaneos, copias mal hechas del link).
@@ -50,7 +77,7 @@ function idInvalido(valor) {
 }
 
 async function cargarDatosRecibo(idRecibo) {
-  const [[reciboRows], [serviciosRows]] = await Promise.all([
+  const [[reciboRows], [serviciosRows], impuestos] = await Promise.all([
     pool.execute(`
       SELECT
           r.IdRecibo,
@@ -65,17 +92,10 @@ async function cargarDatosRecibo(idRecibo) {
           r.Retefuente,
           r.ReteIVA,
           r.ReteICA,
-          mc.\`Razón social\`        AS Nombres,
-          v.retefuente,
-          v.reteiva,
-          v.reteica,
-          v.total                   AS TotalVista,
-          v.iva                     AS IvaVista
+          mc.\`Razón social\`        AS Nombres
       FROM Dynamic_Recibos r
       LEFT JOIN Maestro_Clientes mc
           ON mc.\`Código\` = r.Nit
-      LEFT JOIN vista_recibos_appsheet v
-          ON v.idrecibo = r.IdRecibo
       WHERE r.IdRecibo = ?`,
       [idRecibo]
     ),
@@ -110,7 +130,8 @@ async function cargarDatosRecibo(idRecibo) {
       WHERE s.IdRecibo = ?
       ORDER BY s.\`Hora Inicio\` ASC`,
       [idRecibo]
-    )
+    ),
+    getImpuestosRecibo()
   ]);
 
   if (reciboRows.length === 0) return null;
@@ -137,6 +158,23 @@ async function cargarDatosRecibo(idRecibo) {
     ? r['Consecutivo Recibo']
     : r.IdRecibo;
 
+  const subtotal = Math.round(serviciosFiltrados.reduce((acc, s) => acc + ((Number(s.Cantidad) || 0) * (Number(s['Valor Unitario']) || 0)), 0));
+
+  // Cálculo directo en memoria sin escanear la vista vista_recibos_appsheet
+  const iva = Math.round(subtotal * (impuestos.iva || 0.19));
+  const retefuente = String(r.Retefuente || '').toUpperCase() === 'V' ? Math.round(subtotal * (impuestos.reteFuente || 0.04)) : 0;
+  const reteiva = String(r.ReteIVA || '').toUpperCase() === 'V' ? Math.round(iva * (impuestos.reteIva || 0.15)) : 0;
+  const opKey = String(r['Operación'] || '').trim().toLowerCase();
+  const icaRate = impuestos.reteIcaMap[opKey] || 0.007;
+  const reteica = String(r.ReteICA || '').toUpperCase() === 'V' ? Math.round(subtotal * icaRate) : 0;
+  const total = subtotal + iva - retefuente - reteiva - reteica;
+
+  r.IvaVista = iva;
+  r.retefuente = retefuente;
+  r.reteiva = reteiva;
+  r.reteica = reteica;
+  r.TotalVista = total;
+
   return {
     r,
     serviciosRows: serviciosFiltrados,
@@ -144,7 +182,7 @@ async function cargarDatosRecibo(idRecibo) {
     fechaMinimaServicio: fechaMinimaServicio.toLocaleString('es-CO'),
     hora: r.Fecha ? new Date(r.Fecha).toLocaleString('es-CO') : '',
     consecutivoFinal,
-    subtotal: serviciosFiltrados.reduce((acc, s) => acc + ((s.Cantidad || 0) * (s['Valor Unitario'] || 0)), 0)
+    subtotal
   };
 }
 

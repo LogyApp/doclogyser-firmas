@@ -469,6 +469,297 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    /* Botón Disparador del Tutorial */
+    .btn-tutorial-pill {
+      background: #eff6ff;
+      border: 1.5px solid #2563eb;
+      color: #1d4ed8;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-tutorial-pill:hover {
+      background: #dbeafe;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+    }
+    .btn-tutorial-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 0.75rem;
+      line-height: 1;
+    }
+    @media (max-width: 520px) {
+      .badge-portal { display: none; }
+      .btn-tutorial-label { font-size: 0.76rem; }
+    }
+
+    /* Modal Tutorial */
+    .tutorial-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      animation: fadeInTut 0.2s ease;
+    }
+    @keyframes fadeInTut {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .tutorial-modal {
+      background: #ffffff;
+      width: 100%;
+      max-width: 760px;
+      max-height: 90vh;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      animation: slideUpTut 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUpTut {
+      from { transform: translateY(20px) scale(0.98); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .tutorial-modal-header {
+      padding: 16px 20px;
+      background: #1B2A5E;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid #e67e22;
+    }
+    .tutorial-header-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e67e22;
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+    .btn-close-tutorial {
+      background: transparent;
+      border: none;
+      color: #cbd5e1;
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-close-tutorial:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .tutorial-nav {
+      display: flex;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .tut-tab {
+      padding: 12px 18px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .tut-tab:hover {
+      color: var(--accent);
+      background: rgba(30, 58, 138, 0.04);
+    }
+    .tut-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: #ffffff;
+    }
+    .tutorial-modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+      max-height: calc(90vh - 140px);
+    }
+    .tut-step-card {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .tut-step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #1e3a8a;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+    .tut-step-content h4 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 4px 0;
+    }
+    .tut-step-content p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin: 0;
+    }
+    .tut-req-section {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .tut-req-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #1e3a8a;
+      margin-bottom: 12px;
+    }
+    .tut-req-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .tut-req-box {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 0.8rem;
+    }
+    .tut-req-box strong {
+      display: block;
+      color: #0f172a;
+      margin-bottom: 6px;
+      font-size: 0.84rem;
+    }
+    .tut-req-box ul {
+      margin: 0;
+      padding-left: 18px;
+      color: #475569;
+      line-height: 1.45;
+    }
+    .tut-note-box {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #92400e;
+      line-height: 1.4;
+    }
+    .tut-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .tut-time-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .tut-badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.74rem;
+      font-weight: 800;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-pend { background: #fef3c7; color: #92400e; }
+    .badge-val  { background: #e0f2fe; color: #0369a1; }
+    .badge-apr  { background: #dcfce7; color: #166534; }
+    .badge-tra  { background: #f3e8ff; color: #7e22ce; }
+    .badge-dev  { background: #ffedd5; color: #c2410c; }
+    .tut-time-item p {
+      font-size: 0.82rem;
+      color: #334155;
+      margin: 0;
+      line-height: 1.45;
+    }
+    .tut-faq-item {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .tut-faq-item summary {
+      padding: 12px 16px;
+      font-size: 0.86rem;
+      cursor: pointer;
+      background: #f8fafc;
+      color: var(--text);
+    }
+    .tut-faq-body {
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      background: #ffffff;
+      border-top: 1px solid var(--border);
+    }
+    @media (max-width: 600px) {
+      .tutorial-modal {
+        max-height: 98vh;
+        height: 98vh;
+        border-radius: 8px;
+      }
+      .tutorial-modal-body {
+        padding: 14px;
+        max-height: calc(98vh - 140px);
+      }
+    }
   </style>
 </head>
 <body>
@@ -476,8 +767,14 @@
   <!-- Barra Superior -->
   <header class="header-bar">
     <div class="header-content">
-      <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser_sin_Nit.png" alt="Logyser" class="logo-img">
-      <span class="badge-portal">Autogestión de Cesantías</span>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser_sin_Nit.png" alt="Logyser" class="logo-img">
+        <span class="badge-portal">Autogestión de Cesantías</span>
+      </div>
+      <button type="button" class="btn-tutorial-pill" onclick="abrirModalTutorialCesantias()" title="Ver tutorial y requisitos del proceso">
+        <span class="btn-tutorial-icon">?</span>
+        <span class="btn-tutorial-label">Guía y Tutorial</span>
+      </button>
     </div>
   </header>
 
@@ -793,6 +1090,193 @@
 
   </main>
 
+  <!-- MODAL TUTORIAL Y GUÍA DE CESANTÍAS -->
+  <div class="tutorial-modal-overlay" id="modalTutorialCesantiasOverlay" style="display:none;" onclick="cerrarTutorialSiClickFuera(event)">
+    <div class="tutorial-modal" onclick="event.stopPropagation()">
+      <div class="tutorial-modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="tutorial-header-icon">?</span>
+          <div>
+            <h2 style="font-size:1.15rem; font-weight:800; color:#ffffff; margin:0;">Guía y Tutorial de Cesantías</h2>
+            <span style="font-size:0.75rem; color:#cbd5e1;">Aprende cómo radicar tu solicitud, requisitos y tiempos</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close-tutorial" onclick="cerrarModalTutorialCesantias()" title="Cerrar guía">&#10005;</button>
+      </div>
+
+      <!-- Navegación de Pestañas del Tutorial -->
+      <div class="tutorial-nav">
+        <button type="button" class="tut-tab active" id="tut_btn_pasos" onclick="cambiarTabTutorial('pasos')">🎯 Paso a Paso</button>
+        <button type="button" class="tut-tab" id="tut_btn_requisitos" onclick="cambiarTabTutorial('requisitos')">📁 Requisitos por Motivo</button>
+        <button type="button" class="tut-tab" id="tut_btn_flujo" onclick="cambiarTabTutorial('flujo')">⏱️ Flujo y Estados</button>
+        <button type="button" class="tut-tab" id="tut_btn_faq" onclick="cambiarTabTutorial('faq')">❓ Preguntas Frecuentes</button>
+      </div>
+
+      <!-- Cuerpo del Tutorial -->
+      <div class="tutorial-modal-body">
+        
+        <!-- Tab 1: Paso a Paso -->
+        <div class="tut-content-pane" id="tut_pane_pasos" style="display:block;">
+          <div class="tut-step-card">
+            <div class="tut-step-num">1</div>
+            <div class="tut-step-content">
+              <h4>Identificación y Validación de Contrato</h4>
+              <p>Ingresa tu número de cédula. El sistema valida automáticamente que tu contrato laboral esté con estado <strong>Activo</strong> en Maestro_Vinculación y comprueba que no tengas una solicitud anterior en trámite.</p>
+            </div>
+          </div>
+          <div class="tut-step-card">
+            <div class="tut-step-num">2</div>
+            <div class="tut-step-content">
+              <h4>Verificación de Contacto y Fondo</h4>
+              <p>Revisa y actualiza tu número de teléfono y correo electrónico si han cambiado (aquí llegarán las alertas en tiempo real). Selecciona tu fondo de cesantías y la ciudad de solicitud.</p>
+            </div>
+          </div>
+          <div class="tut-step-card">
+            <div class="tut-step-num">3</div>
+            <div class="tut-step-content">
+              <h4>Modalidad, Motivo y Carga de Soportes</h4>
+              <p>Elige entre <strong>Vivienda</strong> o <strong>Educación Superior</strong> y el destino específico. El formulario te mostrará exactamente qué documentos anexar y te permitirá arrastrar o seleccionar archivos en PDF o foto legible.</p>
+            </div>
+          </div>
+          <div class="tut-step-card">
+            <div class="tut-step-num">4</div>
+            <div class="tut-step-content">
+              <h4>Firma Digital y Número de Radicado</h4>
+              <p>Dibuja tu firma con tu dedo o ratón, o reutiliza tu firma registrada. Al presionar <em>Radicar Solicitud</em>, recibirás de inmediato tu número de radicado (ej: <code>CES-...</code>) y copia de confirmación en tu correo.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Requisitos por Motivo -->
+        <div class="tut-content-pane" id="tut_pane_requisitos" style="display:none;">
+          <div class="tut-req-section">
+            <div class="tut-req-title">🏡 Modalidad: Retiro para Vivienda</div>
+            <div class="tut-req-grid">
+              <div class="tut-req-box">
+                <strong>Compra de Vivienda</strong>
+                <ul>
+                  <li>Cédula de ciudadanía del colaborador ampliada al 150%.</li>
+                  <li>Cédula de ciudadanía del vendedor (o representante legal).</li>
+                  <li>Promesa de compraventa o carta de intención de compra con firmas.</li>
+                  <li>Certificado de Tradición y Libertad reciente (menor a 30 días, si aplica matrícula).</li>
+                </ul>
+              </div>
+              <div class="tut-req-box">
+                <strong>Mejora o Construcción de Vivienda</strong>
+                <ul>
+                  <li>Cédula de ciudadanía.</li>
+                  <li>Certificado de Tradición y Libertad del inmueble (a nombre del trabajador o cónyuge).</li>
+                  <li>Contrato de obra civil o cotización detallada de materiales y mano de obra.</li>
+                </ul>
+              </div>
+              <div class="tut-req-box">
+                <strong>Liberación de Hipoteca o Impuesto Predial</strong>
+                <ul>
+                  <li>Cédula de ciudadanía.</li>
+                  <li>Certificado de Tradición y Libertad con gravamen hipotecario inscrito.</li>
+                  <li>Extracto bancario del crédito hipotecario o recibo oficial de impuesto predial.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="tut-note-box">
+              💡 <strong>¿Aplica Cónyuge o Compañero(a) Permanente?</strong> Si el inmueble o crédito está a nombre de tu pareja, debes adjuntar la copia de su cédula y el Registro Civil de Matrimonio o Declaración de Unión Marital de Hecho.
+            </div>
+          </div>
+
+          <div class="tut-req-section" style="margin-top:20px;">
+            <div class="tut-req-title">🎓 Modalidad: Educación Superior</div>
+            <div class="tut-req-grid">
+              <div class="tut-req-box">
+                <strong>Estudios del Trabajador</strong>
+                <ul>
+                  <li>Cédula de ciudadanía del colaborador.</li>
+                  <li>Recibo o volante oficial de matrícula con valor a pagar y semestre (institución aprobada por el MEN).</li>
+                </ul>
+              </div>
+              <div class="tut-req-box">
+                <strong>Estudios de Hijos</strong>
+                <ul>
+                  <li>Cédula del colaborador.</li>
+                  <li>Registro Civil de Nacimiento del hijo(a) (acredita parentesco).</li>
+                  <li>Documento de identidad del estudiante (T.I. o C.C.).</li>
+                  <li>Recibo o volante oficial de matrícula.</li>
+                </ul>
+              </div>
+              <div class="tut-req-box">
+                <strong>Estudios del Cónyuge</strong>
+                <ul>
+                  <li>Cédula del colaborador y cédula del cónyuge.</li>
+                  <li>Registro civil de matrimonio o acta de unión marital.</li>
+                  <li>Recibo oficial de matrícula expedido por la institución.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Flujo y Estados -->
+        <div class="tut-content-pane" id="tut_pane_flujo" style="display:none;">
+          <div class="tut-timeline">
+            <div class="tut-time-item">
+              <div class="tut-badge badge-pend">1. PENDIENTE</div>
+              <p>Tu solicitud fue radicada con éxito. Llega una notificación a tu correo y entra a la bandeja de revisión.</p>
+            </div>
+            <div class="tut-time-item">
+              <div class="tut-badge badge-val">2. VALIDADO</div>
+              <p>El equipo operativo (Auxiliar o Coordinador) verifica que los documentos aportados estén completos y sean legibles. <em>(Operaciones como Administración pasan directo a Jurídica sin esta fase intermedia)</em>.</p>
+            </div>
+            <div class="tut-time-item">
+              <div class="tut-badge badge-apr">3. APROBADO</div>
+              <p>El área Jurídica revisa la legalidad de los soportes. Al aprobar, el sistema genera automáticamente el formato oficial en PDF firmado con los sellos y logotipos de la empresa.</p>
+            </div>
+            <div class="tut-time-item">
+              <div class="tut-badge badge-tra">4. TRAMITADO</div>
+              <p>El área de Nómina procede con la solicitud formal de desembolso ante el Fondo de Cesantías o pago respectivo. Tu trámite queda 100% finalizado.</p>
+            </div>
+            <div class="tut-time-item" style="background:#fff7ed; border-color:#ffedd5;">
+              <div class="tut-badge badge-dev">DEVUELTO / RECHAZADO</div>
+              <p>Si algún soporte está incompleto o borroso, el analista marcará la solicitud como <strong>Devuelta</strong> con observaciones para que puedas corregirla sin perder tu radicado. Si no cumple la ley, se marcará <strong>Rechazada</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Preguntas Frecuentes -->
+        <div class="tut-content-pane" id="tut_pane_faq" style="display:none;">
+          <div class="tut-faq-list">
+            <details class="tut-faq-item" open>
+              <summary><strong>¿Cuánto tiempo tarda en aprobarse mi solicitud?</strong></summary>
+              <div class="tut-faq-body">El trámite toma usualmente entre 2 y 5 días hábiles desde la radicación hasta la aprobación final, dependiendo del volumen de solicitudes y la velocidad de verificación de los soportes.</div>
+            </details>
+            <details class="tut-faq-item">
+              <summary><strong>¿Puedo radicar si ya tengo un trámite en curso?</strong></summary>
+              <div class="tut-faq-body">No. El sistema bloquea automáticamente nuevas solicitudes mientras tengas una solicitud en estado Pendiente, Validado o Aprobado. Una vez finalice (Tramitado) o sea Anulada/Rechazada, podrás radicar nuevamente.</div>
+            </details>
+            <details class="tut-faq-item">
+              <summary><strong>¿Qué hago si mi documento tiene varias páginas?</strong></summary>
+              <div class="tut-faq-body">Te recomendamos escanear o unificar las páginas en un único archivo PDF. El sistema admite archivos en formato PDF, JPG y PNG de hasta 15MB por documento.</div>
+            </details>
+            <details class="tut-faq-item">
+              <summary><strong>¿Cómo me entero cuando mi solicitud cambie de estado?</strong></summary>
+              <div class="tut-faq-body">El sistema envía notificaciones automáticas por correo electrónico a la dirección registrada en el formulario con el detalle del avance y las observaciones registradas.</div>
+            </details>
+            <details class="tut-faq-item">
+              <summary><strong>¿Debo entregar los documentos en físico en la oficina?</strong></summary>
+              <div class="tut-faq-body">No es necesario. El módulo de cesantías de LOGYSER es 100% digital, lo que agiliza el trámite y evita desplazamientos innecesarios.</div>
+            </details>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="tutorial-modal-footer">
+        <span style="font-size:0.75rem; color:var(--text-muted);">Módulo de Cesantías · LOGYSER S.A.S.</span>
+        <button type="button" class="btn btn-secondary" onclick="cerrarModalTutorialCesantias()" style="width:auto; padding:6px 16px; margin:0;">
+          Entendido, Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <p>© 2026 Logyser S.A.S. — Todos los derechos reservados.</p>
     <p style="margin-top:4px;">Módulo de Autogestión de Colaboradores | Proceso de Cesantías</p>
@@ -803,6 +1287,7 @@
     const SOPORTES_POR_MOTIVO = {
       1: [
         { key: 'cedula_trabajador', label: 'Cédula de Ciudadanía del Trabajador', req: true, hint: 'Fotocopia legible ampliada al 150%' },
+        { key: 'cedula_vendedor', label: 'Cédula del Vendedor', req: true, hint: 'Fotocopia de la cédula del vendedor o representante legal' },
         { key: 'promesa_compraventa', label: 'Promesa de Compraventa o Carta de Intención', req: true, hint: 'Con firmas de comprador y vendedor o constructora' },
         { key: 'cert_tradicion_vivienda', label: 'Certificado de Tradición y Libertad', req: false, hint: 'Vigencia menor a 30 días (si ya cuenta con matrícula)' }
       ],
@@ -1097,8 +1582,7 @@
 
       const container = document.getElementById('container_documentos_slots');
       const cardDocs = document.getElementById('card_documentos');
-      container.innerHTML = '';
-      cardDocs.style.display = 'block';
+      if (!container || !cardDocs) return;
 
       let lista = [...(SOPORTES_POR_MOTIVO[motivoId] || [])];
 
@@ -1111,99 +1595,193 @@
       const tieneCedulaPrevia = !!(state.trabajador?.cedulaPrevia?.tieneCedulaPrevia);
       const cp = state.trabajador?.cedulaPrevia || {};
 
-      lista.forEach(s => {
-        const slotEl = document.createElement('div');
-        slotEl.className = 'doc-slot';
-        slotEl.id = `slot_${s.key}`;
+      container.innerHTML = lista.map(s => {
+        const fileStaged = state.archivos[s.key];
 
         // Caso especial: Cédula de Ciudadanía con cédula previa en el sistema
         if (s.key === 'cedula_trabajador' && tieneCedulaPrevia) {
           const esExistente = state.opcionCedula === 'existente';
-          slotEl.innerHTML = `
-            <div class="doc-slot-header">
-              <span class="doc-slot-title">🪪 ${s.label} <span class="req">*</span></span>
-              <span style="font-size:0.75rem; background:#dcfce7; color:#166534; font-weight:700; padding:2px 8px; border-radius:12px;">En Expediente</span>
-            </div>
-            <div class="doc-slot-hint">Se encontró una cédula previamente cargada en tu expediente laboral.</div>
-            
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-              <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; cursor:pointer;">
-                <input type="radio" name="opc_cedula" value="existente" ${esExistente ? 'checked' : ''} onchange="cambiarOpcionCedula('existente')">
-                <span>Usar cédula registrada</span>
-              </label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; cursor:pointer;">
-                <input type="radio" name="opc_cedula" value="nueva" ${!esExistente ? 'checked' : ''} onchange="cambiarOpcionCedula('nueva')">
-                <span>Cargar nuevo documento</span>
-              </label>
-            </div>
-
-            <div id="cedula_existente_preview" style="display:${esExistente ? 'block' : 'none'}; padding:8px 12px; background:#ffffff; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
-              <span>Documento registrado en el sistema: </span>
-              <a href="${cp.urlCedula}" target="_blank" style="color:var(--accent); font-weight:600; text-decoration:underline;">Ver Cédula Actual ↗</a>
-            </div>
-
-            <div id="cedula_nueva_upload" style="display:${!esExistente ? 'block' : 'none'};">
-              <input type="file" id="file_${s.key}" accept=".pdf,.png,.jpg,.jpeg,image/*" onchange="onFileSelected('${s.key}', this)" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; z-index:-1;">
-              <div class="file-input-wrapper" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <label for="file_${s.key}" class="btn btn-secondary" style="width:auto; cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:6px;">
-                  📎 <span id="lbl_btn_${s.key}">${fileStaged ? 'Cambiar Cédula' : 'Cargar Cédula'}</span>
-                </label>
-                <button type="button" class="btn btn-secondary" id="btn_preview_${s.key}" onclick="previsualizarArchivoCesantia('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; background:var(--accent-light); color:var(--accent); font-weight:700;">
-                  👁️ Ver Documento
-                </button>
-                <button type="button" class="btn btn-secondary" id="btn_clear_${s.key}" onclick="removerArchivoSlot('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; color:#ef4444; border-color:#fecaca;" title="Quitar archivo">
-                  ✕
-                </button>
-                <span class="file-chip" id="chip_${s.key}" style="display:${fileStaged ? 'inline-flex' : 'none'};">
-                  ${fileStaged ? `✓ ${fileStaged.name} (${(fileStaged.size/1024).toFixed(0)} KB)` : ''}
-                </span>
+          return `
+            <div class="doc-slot" id="slot_card_${s.key}" style="background:#ffffff; border:1.5px solid var(--accent); border-radius:8px; padding:14px 16px; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                <div>
+                  <div style="font-weight:700; font-size:.88rem; color:var(--text);">
+                    🪪 ${s.label} <span style="color:#ef4444;">*</span>
+                  </div>
+                  <div style="font-size:.74rem; color:var(--text-muted); margin-top:2px;">
+                    Cuentas con una cédula de ciudadanía registrada en tu expediente laboral. Puedes utilizar la existente o cargar una nueva si está desactualizada.
+                  </div>
+                </div>
               </div>
-            </div>
-          `;
-        } else {
-          // Slot normal
-          const fileStaged = state.archivos[s.key];
-          slotEl.innerHTML = `
-            <div class="doc-slot-header">
-              <span class="doc-slot-title">📄 ${s.label} ${s.req ? '<span class="req">*</span>' : '<span style="font-size:0.75rem; color:var(--text-muted);">(Opcional)</span>'}</span>
-            </div>
-            <div class="doc-slot-hint">${s.hint}</div>
-            <input type="file" id="file_${s.key}" accept=".pdf,.png,.jpg,.jpeg,image/*" onchange="onFileSelected('${s.key}', this)" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; z-index:-1;">
-            <div class="file-input-wrapper" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <label for="file_${s.key}" class="btn btn-secondary" style="width:auto; cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:6px;">
-                📎 <span id="lbl_btn_${s.key}">${fileStaged ? 'Cambiar Archivo' : 'Seleccionar Archivo'}</span>
-              </label>
-              <button type="button" class="btn btn-secondary" id="btn_preview_${s.key}" onclick="previsualizarArchivoCesantia('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; background:var(--accent-light); color:var(--accent); font-weight:700;">
-                👁️ Ver Documento
-              </button>
-              <button type="button" class="btn btn-secondary" id="btn_clear_${s.key}" onclick="removerArchivoSlot('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; color:#ef4444; border-color:#fecaca;" title="Quitar archivo">
-                ✕
-              </button>
-              <span class="file-chip" id="chip_${s.key}" style="display:${fileStaged ? 'inline-flex' : 'none'};">
-                ${fileStaged ? `✓ ${fileStaged.name} (${(fileStaged.size/1024).toFixed(0)} KB)` : ''}
-              </span>
+
+              <!-- Opciones: Existente vs Nueva Cédula -->
+              <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+                <label id="lblCedulaExistente" style="flex:1; min-width:220px; border:1.5px solid ${esExistente ? 'var(--accent)' : 'var(--border)'}; border-radius:6px; padding:10px 14px; cursor:pointer; display:flex; align-items:center; gap:10px; background:${esExistente ? 'var(--accent-soft)' : '#f8fafc'};">
+                  <input type="radio" name="form_opcion_cedula" value="existente" ${esExistente ? 'checked' : ''} onchange="cambiarOpcionCedula('existente')" style="accent-color:var(--accent); width:17px; height:17px;">
+                  <div>
+                    <strong style="display:block; font-size:.84rem;">Usar cédula existente en el expediente</strong>
+                    <span style="font-size:.72rem; color:var(--text-muted);">${cp.fecha ? 'Registrada: ' + cp.fecha : 'Disponible en talenthub'}</span>
+                  </div>
+                </label>
+                <label id="lblCedulaNueva" style="flex:1; min-width:220px; border:1.5px solid ${!esExistente ? 'var(--accent)' : 'var(--border)'}; border-radius:6px; padding:10px 14px; cursor:pointer; display:flex; align-items:center; gap:10px; background:${!esExistente ? 'var(--accent-soft)' : '#f8fafc'};">
+                  <input type="radio" name="form_opcion_cedula" value="nueva" ${!esExistente ? 'checked' : ''} onchange="cambiarOpcionCedula('nueva')" style="accent-color:var(--accent); width:17px; height:17px;">
+                  <div>
+                    <strong style="display:block; font-size:.84rem;">Cargar nueva cédula de ciudadanía</strong>
+                    <span style="font-size:.72rem; color:var(--text-muted);">Adjuntar escaneo o fotocopia ampliada al 150%</span>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Caja: Cédula Existente -->
+              <div id="cedula_existente_preview" style="display:${esExistente ? 'flex' : 'none'}; justify-content:space-between; align-items:center; background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3); border-radius:6px; padding:10px 14px; flex-wrap:wrap; gap:8px;">
+                <div style="font-size:.82rem; color:#065f46;">
+                  ✓ <strong>Cédula de tu expediente lista:</strong> Se vinculará directamente a esta solicitud.
+                </div>
+                <a href="${cp.urlCedula}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="width:auto; padding:5px 14px; font-size:.78rem; text-decoration:none; margin:0;">
+                  👁️ Ver Cédula Actual ↗
+                </a>
+              </div>
+
+              <!-- Caja: Subida / Drag & Drop para Nueva Cédula -->
+              <div id="cedula_nueva_upload" style="display:${!esExistente ? 'block' : 'none'};">
+                <div class="doc-drop-zone" id="dropzone_${s.key}"
+                     ondragover="onFormSlotDragOver(event, '${s.key}')"
+                     ondragleave="onFormSlotDragLeave(event, '${s.key}')"
+                     ondrop="onFormSlotDrop(event, '${s.key}')"
+                     style="border:2px dashed ${fileStaged ? 'var(--accent)' : 'var(--border)'}; border-radius:6px; padding:14px 16px; background:#f8fafc; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; transition:all .15s;">
+                  <div style="flex:1; min-width:200px;">
+                    <div style="font-size:.84rem; font-weight:600; color:var(--text);">📁 Arrastre la nueva cédula aquí o use el botón</div>
+                    <div style="font-size:.73rem; color:var(--text-muted); margin-top:2px;">PDF, JPG o PNG (máx. 15MB)</div>
+                    <div id="slot_staged_${s.key}" style="font-size:.78rem; color:#10b981; font-weight:700; margin-top:4px; display:${fileStaged ? 'block' : 'none'};">
+                      ✓ Archivo cargado: <span id="slot_staged_name_${s.key}">${fileStaged ? fileStaged.name : ''}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <input type="file" id="file_${s.key}" accept=".pdf,.png,.jpg,.jpeg,image/*" style="display:none;" onchange="onFormDocSlotSelected('${s.key}', this)">
+                    <button type="button" class="btn btn-secondary" id="btn_preview_${s.key}" onclick="previsualizarArchivoCesantia('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; padding:6px 12px; font-size:.8rem; margin:0; background:var(--accent-soft); color:var(--accent); font-weight:700;">
+                      👁️ Ver documento
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('file_${s.key}').click()" style="width:auto; padding:7px 16px; font-size:.82rem; margin:0;">
+                      <span id="lbl_btn_${s.key}">${fileStaged ? 'Cambiar archivo' : 'Cargar cédula'}</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="btn_clear_${s.key}" onclick="clearFormDocSlot('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; padding:6px 10px; font-size:.8rem; margin:0; color:#ef4444; border-color:#fecaca;" title="Quitar archivo">✕</button>
+                  </div>
+                </div>
+              </div>
             </div>
           `;
         }
 
-        // Configurar Drag & Drop
-        configurarDragAndDrop(slotEl, s.key);
-        container.appendChild(slotEl);
-      });
+        // Slot estándar con soporte completo para Arrastrar y Soltar (Drag & Drop)
+        return `
+          <div class="doc-slot doc-drop-zone" id="slot_card_${s.key}"
+               ondragover="onFormSlotDragOver(event, '${s.key}')"
+               ondragleave="onFormSlotDragLeave(event, '${s.key}')"
+               ondrop="onFormSlotDrop(event, '${s.key}')"
+               style="background:#f8fafc; border:2px dashed ${fileStaged ? 'var(--accent)' : '#cbd5e1'}; border-radius:8px; padding:14px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; transition:all .15s;">
+            <div style="flex:1; min-width:220px;">
+              <div style="font-weight:700; font-size:.88rem; color:var(--text);">
+                📄 ${s.label} ${s.req ? '<span style="color:#ef4444;">*</span>' : '<span style="color:var(--text-muted); font-size:.73rem;">(Opcional)</span>'}
+              </div>
+              <div style="font-size:.75rem; color:var(--text-muted); margin-top:2px;">${s.hint}</div>
+              <div style="font-size:.73rem; color:var(--text-muted); margin-top:4px;">
+                📁 Arrastre y suelte el soporte aquí o presione el botón
+              </div>
+              <div id="slot_staged_${s.key}" style="font-size:.78rem; color:#10b981; font-weight:700; margin-top:4px; display:${fileStaged ? 'block' : 'none'};">
+                ✓ Archivo cargado: <span id="slot_staged_name_${s.key}">${fileStaged ? fileStaged.name : ''}</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <input type="file" id="file_${s.key}" accept=".pdf,.png,.jpg,.jpeg,image/*" style="display:none;" onchange="onFormDocSlotSelected('${s.key}', this)">
+              <button type="button" class="btn btn-secondary" id="btn_preview_${s.key}" onclick="previsualizarArchivoCesantia('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; padding:6px 12px; font-size:.8rem; margin:0; background:var(--accent-soft); color:var(--accent); font-weight:700;">
+                👁️ Ver documento
+              </button>
+              <button type="button" class="btn btn-primary" onclick="document.getElementById('file_${s.key}').click()" style="width:auto; padding:7px 16px; font-size:.82rem; margin:0;">
+                <span id="lbl_btn_${s.key}">${fileStaged ? 'Cambiar archivo' : 'Cargar soporte'}</span>
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn_clear_${s.key}" onclick="clearFormDocSlot('${s.key}')" style="display:${fileStaged ? 'inline-flex' : 'none'}; width:auto; padding:6px 10px; font-size:.8rem; margin:0; color:#ef4444; border-color:#fecaca;" title="Quitar archivo">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      cardDocs.style.display = 'block';
     }
 
-    function cambiarOpcionCedula(opcion) {
-      state.opcionCedula = opcion;
-      const prev = document.getElementById('cedula_existente_preview');
-      const up = document.getElementById('cedula_nueva_upload');
-      if (prev) prev.style.display = opcion === 'existente' ? 'block' : 'none';
-      if (up) up.style.display = opcion === 'nueva' ? 'block' : 'none';
-      if (opcion === 'existente') {
-        removerArchivoSlot('cedula_trabajador');
+    function onFormSlotDragOver(e, key) {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = document.getElementById(`dropzone_${key}`) || document.getElementById(`slot_card_${key}`);
+      if (card) {
+        card.style.borderColor = 'var(--accent)';
+        card.style.background = 'rgba(37, 99, 235, 0.08)';
       }
     }
 
-    function removerArchivoSlot(key) {
+    function onFormSlotDragLeave(e, key) {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = document.getElementById(`dropzone_${key}`) || document.getElementById(`slot_card_${key}`);
+      if (card) {
+        const fileStaged = state.archivos[key];
+        card.style.borderColor = fileStaged ? 'var(--accent)' : '#cbd5e1';
+        card.style.background = card.id && card.id.startsWith('dropzone_') ? '#ffffff' : '#f8fafc';
+      }
+    }
+
+    function onFormSlotDrop(e, key) {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = document.getElementById(`dropzone_${key}`) || document.getElementById(`slot_card_${key}`);
+      if (card) {
+        card.style.background = card.id && card.id.startsWith('dropzone_') ? '#ffffff' : '#f8fafc';
+      }
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        asignarArchivoASlot(key, e.dataTransfer.files[0]);
+      }
+    }
+
+    function onFormDocSlotSelected(key, input) {
+      if (!input.files || !input.files[0]) return;
+      asignarArchivoASlot(key, input.files[0]);
+    }
+
+    function asignarArchivoASlot(key, file) {
+      if (!file) return;
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      const validExts = ['pdf', 'png', 'jpg', 'jpeg'];
+      if (!validExts.includes(ext)) {
+        alert('Formato no válido. Solo se admiten archivos PDF o imágenes (PNG, JPG, JPEG).');
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        alert('El archivo no debe superar los 15 MB.');
+        return;
+      }
+      if (!file._previewUrl) {
+        try { file._previewUrl = URL.createObjectURL(file); } catch (e) {}
+      }
+      state.archivos[key] = file;
+
+      const staged = document.getElementById(`slot_staged_${key}`);
+      const nameEl = document.getElementById(`slot_staged_name_${key}`);
+      const btnClear = document.getElementById(`btn_clear_${key}`);
+      const btnPrev = document.getElementById(`btn_preview_${key}`);
+      const lblBtn = document.getElementById(`lbl_btn_${key}`);
+      const card = document.getElementById(`dropzone_${key}`) || document.getElementById(`slot_card_${key}`);
+
+      if (nameEl) nameEl.textContent = file.name;
+      if (staged) staged.style.display = 'block';
+      if (btnClear) btnClear.style.display = 'inline-flex';
+      if (btnPrev) btnPrev.style.display = 'inline-flex';
+      if (lblBtn) lblBtn.textContent = 'Cambiar archivo';
+      if (card) {
+        card.style.borderColor = 'var(--accent)';
+        card.style.borderStyle = 'solid';
+      }
+    }
+
+    function clearFormDocSlot(key) {
       const file = state.archivos[key];
       if (file && file._previewUrl) {
         try { URL.revokeObjectURL(file._previewUrl); } catch (e) {}
@@ -1211,49 +1789,20 @@
       delete state.archivos[key];
       const input = document.getElementById(`file_${key}`);
       if (input) input.value = '';
-      const chip = document.getElementById(`chip_${key}`);
+
+      const staged = document.getElementById(`slot_staged_${key}`);
+      const btnClear = document.getElementById(`btn_clear_${key}`);
       const btnPrev = document.getElementById(`btn_preview_${key}`);
-      const btnClr = document.getElementById(`btn_clear_${key}`);
       const lblBtn = document.getElementById(`lbl_btn_${key}`);
-      const slot = document.getElementById(`slot_${key}`);
-      if (chip) chip.style.display = 'none';
+      const card = document.getElementById(`dropzone_${key}`) || document.getElementById(`slot_card_${key}`);
+
+      if (staged) staged.style.display = 'none';
+      if (btnClear) btnClear.style.display = 'none';
       if (btnPrev) btnPrev.style.display = 'none';
-      if (btnClr) btnClr.style.display = 'none';
-      if (lblBtn) lblBtn.textContent = key === 'cedula_trabajador' ? 'Cargar Cédula' : 'Seleccionar Archivo';
-      if (slot) slot.classList.remove('has-file');
-    }
-
-    function onFileSelected(key, input) {
-      if (input && input.files && input.files[0]) {
-        asignarArchivoASlot(key, input.files[0]);
-      }
-    }
-
-    function asignarArchivoASlot(key, file) {
-      if (file && !file._previewUrl) {
-        try { file._previewUrl = URL.createObjectURL(file); } catch (e) {}
-      }
-      state.archivos[key] = file;
-      const chip = document.getElementById(`chip_${key}`);
-      const slot = document.getElementById(`slot_${key}`);
-      const btnPrev = document.getElementById(`btn_preview_${key}`);
-      const btnClr = document.getElementById(`btn_clear_${key}`);
-      const lblBtn = document.getElementById(`lbl_btn_${key}`);
-      if (chip) {
-        chip.textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
-        chip.style.display = 'inline-flex';
-      }
-      if (btnPrev) {
-        btnPrev.style.display = 'inline-flex';
-      }
-      if (btnClr) {
-        btnClr.style.display = 'inline-flex';
-      }
-      if (lblBtn) {
-        lblBtn.textContent = key === 'cedula_trabajador' ? 'Cambiar Cédula' : 'Cambiar Archivo';
-      }
-      if (slot) {
-        slot.classList.add('has-file');
+      if (lblBtn) lblBtn.textContent = key === 'cedula_trabajador' ? 'Cargar cédula' : 'Cargar soporte';
+      if (card) {
+        card.style.borderColor = '#cbd5e1';
+        card.style.borderStyle = 'dashed';
       }
     }
 
@@ -1268,30 +1817,25 @@
       }
     }
 
-    function configurarDragAndDrop(element, key) {
-      ['dragenter', 'dragover'].forEach(eventName => {
-        element.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          element.classList.add('dragover');
-        }, false);
-      });
+    function cambiarOpcionCedula(opcion) {
+      state.opcionCedula = opcion;
+      const boxEx = document.getElementById('cedula_existente_preview');
+      const boxNu = document.getElementById('cedula_nueva_upload');
+      const lblEx = document.getElementById('lblCedulaExistente');
+      const lblNu = document.getElementById('lblCedulaNueva');
 
-      ['dragleave', 'drop'].forEach(eventName => {
-        element.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          element.classList.remove('dragover');
-        }, false);
-      });
-
-      element.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        if (files && files.length > 0) {
-          asignarArchivoASlot(key, files[0]);
-        }
-      }, false);
+      if (opcion === 'existente') {
+        if (boxEx) boxEx.style.display = 'flex';
+        if (boxNu) boxNu.style.display = 'none';
+        if (lblEx) { lblEx.style.borderColor = 'var(--accent)'; lblEx.style.background = 'var(--accent-soft)'; }
+        if (lblNu) { lblNu.style.borderColor = 'var(--border)'; lblNu.style.background = '#f8fafc'; }
+        clearFormDocSlot('cedula_trabajador');
+      } else {
+        if (boxEx) boxEx.style.display = 'none';
+        if (boxNu) boxNu.style.display = 'block';
+        if (lblEx) { lblEx.style.borderColor = 'var(--border)'; lblEx.style.background = '#f8fafc'; }
+        if (lblNu) { lblNu.style.borderColor = 'var(--accent)'; lblNu.style.background = 'var(--accent-soft)'; }
+      }
     }
 
     // Configuración de Firma
@@ -1560,6 +2104,48 @@
         sp.style.display = 'none';
       }
     }
+
+    // ── Funciones del Modal Tutorial ─────────────────────────────────────────
+    function abrirModalTutorialCesantias() {
+      const modal = document.getElementById('modalTutorialCesantiasOverlay');
+      if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        history.pushState({ modalTutorialCesantias: true }, '', location.href);
+      }
+    }
+
+    function cerrarModalTutorialCesantias() {
+      const modal = document.getElementById('modalTutorialCesantiasOverlay');
+      if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    }
+
+    function cerrarTutorialSiClickFuera(e) {
+      if (e.target && e.target.id === 'modalTutorialCesantiasOverlay') {
+        cerrarModalTutorialCesantias();
+      }
+    }
+
+    function cambiarTabTutorial(tabId) {
+      document.querySelectorAll('.tut-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tut-content-pane').forEach(p => p.style.display = 'none');
+
+      const btn = document.getElementById(`tut_btn_${tabId}`);
+      const pane = document.getElementById(`tut_pane_${tabId}`);
+      if (btn) btn.classList.add('active');
+      if (pane) pane.style.display = 'block';
+    }
+
+    window.addEventListener('popstate', (e) => {
+      const modal = document.getElementById('modalTutorialCesantiasOverlay');
+      if (modal && modal.style.display === 'flex') {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    });
   </script>
 
 </body>

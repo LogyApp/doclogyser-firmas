@@ -704,11 +704,18 @@ async function crearSolicitudCesantias(datos, files = []) {
         let obs = lMap[f.fieldname] || datos['label_' + f.fieldname] || f.fieldname;
         let urlBucket = '';
 
+        const esCedulaVendedor = f.fieldname === 'soporte_cedula_vendedor' || f.fieldname === 'cedula_vendedor' || String(obs || '').toLowerCase().includes('vendedor');
+
         if (esCedulaTrabajador) {
           tipoDoc = '11';
           prefijo = 'CC';
           obs = 'Cédula de Ciudadanía';
           urlBucket = await subirCedulaTrabajador(identificacion, f.buffer, f.originalname);
+        } else if (esCedulaVendedor) {
+          tipoDoc = '46';
+          prefijo = 'RCES';
+          obs = 'Cédula del Vendedor';
+          urlBucket = await subirSoporteCesantias(identificacion, f.buffer, f.originalname);
         } else {
           if (!obs || obs === 'soporte' || obs.startsWith('soporte_')) {
             obs = `${motivoInfo.motivo_retiro} - Soporte`;
