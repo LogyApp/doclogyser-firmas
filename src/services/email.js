@@ -55,18 +55,18 @@ transporter.sendMail = function (mailOptions, callback) {
 const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
 
 const HEADER = `
-  <div style="border-top:5px solid #e67e22;background:#1B2A5E;padding:2px 20px;border-bottom:1px solid #0f172a;line-height:0">
+  <div style="border-top:4px solid #e67e22;background:#1B2A5E;padding:0px 16px;border-bottom:1px solid #0f172a;line-height:0">
     <!--[if mso]>
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="200" style="width:200px">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="105" style="width:105px">
     <tr>
-    <td width="200" style="width:200px;line-height:0;padding:0">
+    <td width="105" style="width:105px;line-height:0;padding:0">
     <![endif]-->
     <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png"
-         width="200"
-         height="133"
+         width="105"
+         height="70"
          alt="LOG&amp;SER"
          border="0"
-         style="display:block;width:200px;max-width:200px;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic">
+         style="display:block;width:105px;max-width:105px;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic">
     <!--[if mso]>
     </td>
     </tr>
@@ -737,18 +737,18 @@ const DESTINATARIOS_INGRESO_REDUCIDO = [
 
 async function notificarIngreso({ trabajador, identificacion, cargo, operacion, fechaIngreso, destinatarios }) {
   const HEADER_VERDE = `
-    <div style="border-top:5px solid #27ae60;background:#1B2A5E;padding:2px 20px;border-bottom:1px solid #0f172a;line-height:0">
+    <div style="border-top:4px solid #27ae60;background:#1B2A5E;padding:0px 16px;border-bottom:1px solid #0f172a;line-height:0">
       <!--[if mso]>
-      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="200" style="width:200px">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="105" style="width:105px">
       <tr>
-      <td width="200" style="width:200px;line-height:0;padding:0">
+      <td width="105" style="width:105px;line-height:0;padding:0">
       <![endif]-->
       <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png"
-           width="200"
-           height="133"
+           width="105"
+           height="70"
            alt="LOG&amp;SER"
            border="0"
-           style="display:block;width:200px;max-width:200px;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic">
+           style="display:block;width:105px;max-width:105px;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic">
       <!--[if mso]>
       </td>
       </tr>

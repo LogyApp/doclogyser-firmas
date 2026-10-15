@@ -559,6 +559,8 @@ async function crearSolicitudCesantias(datos, files = []) {
   // Actualizar Teléfono (Celular) y Email en Maestro_Segmentación si se editaron
   if (celular || email) {
     try {
+      const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+      const cleanCelular = celular ? String(celular).trim() : null;
       await pool.execute(
         `UPDATE \`Maestro_Segmentación\`
          SET \`Celular\` = COALESCE(?, \`Celular\`),
@@ -566,8 +568,10 @@ async function crearSolicitudCesantias(datos, files = []) {
              \`Fecha de Actualización\` = NOW(),
              \`Usuario\` = ?
          WHERE \`Identificación\` = ?`,
-        [celular || null, email || null, usuario || 'sistema', identificacion]
+        [cleanCelular, cleanEmail, usuario || 'sistema', identificacion]
       );
+      if (cleanEmail) worker.email = cleanEmail;
+      if (cleanCelular) worker.telefono = cleanCelular;
     } catch (eSeg) {
       console.warn('[crearSolicitudCesantias] Advertencia actualizando Maestro_Segmentación:', eSeg.message);
     }

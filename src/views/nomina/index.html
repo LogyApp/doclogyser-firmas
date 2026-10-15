@@ -964,10 +964,28 @@
     #cesantiasModalCompartirOverlay .modal-full {
       width: 100% !important;
       max-width: 100% !important;
-      height: 100vh !important;
-      max-height: 100vh !important;
+      height: 100dvh !important;
+      max-height: 100dvh !important;
       border-radius: 0 !important;
       margin: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    #cesantiasModalNuevaOverlay .modal-ficha-body,
+    #cesantiasModalDetalleOverlay .modal-ficha-body {
+      flex: 1 1 auto !important;
+      overflow-y: auto !important;
+      padding-bottom: calc(60px + env(safe-area-inset-bottom, 24px)) !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    #cesantiasModalNuevaOverlay .ficha-footer,
+    #cesantiasModalDetalleOverlay .ficha-footer {
+      position: sticky !important;
+      bottom: 0 !important;
+      background: var(--card-bg, #ffffff) !important;
+      z-index: 100 !important;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.12) !important;
+      padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 16px)) 16px !important;
     }
     #cesEstadoPills {
       overflow-x: auto;
@@ -6265,20 +6283,29 @@
 
     let dibujando = false;
     let ctx = null;
+    let preparado = false;
 
-    function preparar() {
+    function preparar(forzar = false) {
       const ratio = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
       if (!rect.width) return;
-      canvas.width = Math.round(rect.width * ratio);
-      canvas.height = Math.round(150 * ratio);
+      const targetW = Math.round(rect.width * ratio);
+      const targetH = Math.round(150 * ratio);
+
+      if (preparado && canvas.width === targetW && !forzar) return;
+
+      canvas.width = targetW;
+      canvas.height = targetH;
       ctx = canvas.getContext('2d');
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.strokeStyle = '#000b59';
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
+      preparado = true;
     }
+
+    canvas._prepararCanvas = preparar;
 
     const punto = event => {
       const rect = canvas.getBoundingClientRect();
@@ -6286,12 +6313,14 @@
     };
 
     canvas.addEventListener('pointerdown', event => {
-      preparar();
+      if (!preparado || !ctx || canvas.width === 0) {
+        preparar();
+      }
       dibujando = true;
       const pt = punto(event);
       ctx.beginPath();
       ctx.moveTo(pt.x, pt.y);
-      canvas.setPointerCapture(event.pointerId);
+      try { canvas.setPointerCapture(event.pointerId); } catch(e){}
       if (tipo === 'nueva') _cesantiasState.canvasNuevaInicializado = true;
       if (tipo === 'detalle') _cesantiasState.canvasDetalleInicializado = true;
       event.preventDefault();
@@ -6318,7 +6347,7 @@
     const canvas = document.getElementById('ces_m_canvas_firma');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     _cesantiasState.canvasNuevaInicializado = false;
   }
 
@@ -6326,17 +6355,26 @@
     const canvas = document.getElementById('ces_d_canvas_firma');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     _cesantiasState.canvasDetalleInicializado = false;
   }
 
   function abrirModalNuevaCesantia() {
-    document.getElementById('cesantiasModalNuevaOverlay').style.display = 'flex';
+    const overlay = document.getElementById('cesantiasModalNuevaOverlay');
+    overlay.style.display = 'flex';
     limpiarSeleccionColaboradorCesantias();
+    if (window.registrarModalBack) {
+      overlay._backEntry = registrarModalBack(() => cerrarModalNuevaCesantia());
+    }
   }
 
   function cerrarModalNuevaCesantia() {
-    document.getElementById('cesantiasModalNuevaOverlay').style.display = 'none';
+    const overlay = document.getElementById('cesantiasModalNuevaOverlay');
+    overlay.style.display = 'none';
+    if (window.cerrarModalBack && overlay._backEntry) {
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
   }
 
   function onInputBuscarColaboradorCesantias(val) {
@@ -7041,7 +7079,11 @@
   }
 
   async function abrirModalDetalleCesantia(id) {
-    document.getElementById('cesantiasModalDetalleOverlay').style.display = 'flex';
+    const overlay = document.getElementById('cesantiasModalDetalleOverlay');
+    overlay.style.display = 'flex';
+    if (window.registrarModalBack) {
+      overlay._backEntry = registrarModalBack(() => cerrarModalDetalleCesantia());
+    }
     document.getElementById('ces_d_titulo_radicado').textContent = `Solicitud ${id}`;
     document.getElementById('ces_d_pdf_status_info').textContent = 'Cargando información...';
     document.getElementById('ces_d_btn_ver_pdf').style.display = 'none';
@@ -7145,7 +7187,12 @@
   }
 
   function cerrarModalDetalleCesantia() {
-    document.getElementById('cesantiasModalDetalleOverlay').style.display = 'none';
+    const overlay = document.getElementById('cesantiasModalDetalleOverlay');
+    overlay.style.display = 'none';
+    if (window.cerrarModalBack && overlay._backEntry) {
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
   }
 
   function renderBotonesFlujoCesantia(sol) {
@@ -7335,12 +7382,21 @@
 
   function abrirModalCompartirCesantias() {
     limpiarTrabajadorCompartirCesantias();
-    document.getElementById('cesantiasModalCompartirOverlay').style.display = 'flex';
+    const overlay = document.getElementById('cesantiasModalCompartirOverlay');
+    overlay.style.display = 'flex';
+    if (window.registrarModalBack) {
+      overlay._backEntry = registrarModalBack(() => cerrarModalCompartirCesantias());
+    }
     actualizarEnlaceCompartirCesantias();
   }
 
   function cerrarModalCompartirCesantias() {
-    document.getElementById('cesantiasModalCompartirOverlay').style.display = 'none';
+    const overlay = document.getElementById('cesantiasModalCompartirOverlay');
+    overlay.style.display = 'none';
+    if (window.cerrarModalBack && overlay._backEntry) {
+      cerrarModalBack(overlay._backEntry);
+      overlay._backEntry = null;
+    }
     const acList = document.getElementById('ces_comp_acList');
     if (acList) acList.style.display = 'none';
   }
