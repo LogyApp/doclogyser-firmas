@@ -13,11 +13,17 @@ const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
 const {
   buscarTrabajadorCesantias,
+  buscarColaboradoresCesantias,
+  obtenerFondosCesantias,
+  obtenerCiudadYCiudadesPorOperacion,
+  obtenerFirmaPreviaTrabajador,
   obtenerMotivosCesantias,
   listarSolicitudesCesantias,
   crearSolicitudCesantias,
   obtenerDetalleCesantia,
   actualizarEstadoCesantia,
+  eliminarSolicitudCesantias,
+  obtenerPermisosUsuarioCesantias,
   registrarFirmaTrabajador,
   generarYGuardarPDFCesantias,
 } = require('../services/cesantiasService');
@@ -261,6 +267,23 @@ router.get('/', async (req, res) => {
     const puedeGenerarDocs = puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
+    let permisosCesantias = {
+      puedeValidar: false,
+      puedeAprobar: false,
+      puedeRechazar: false,
+      puedeAnular: false,
+      puedeEliminar: false,
+      puedeTramitar: false,
+      operacionesSinValidacion: ['administracion'],
+    };
+    if (accesoCesantias) {
+      try {
+        permisosCesantias = await obtenerPermisosUsuarioCesantias(base.rol);
+      } catch (ePerm) {
+        console.warn('[nomina GET /] Error obteniendo permisos de cesantías:', ePerm.message);
+      }
+    }
+
     const template = fs.readFileSync(NOMINA_HTML, 'utf8');
     const config = JSON.stringify({
       usuario,
@@ -283,13 +306,17 @@ router.get('/', async (req, res) => {
           opsPorRegional:       accesoTraslados.opsPorRegional,
         } : null,
         cesantias: accesoCesantias ? {
-          sinFiltro:            accesoCesantias.sinFiltro,
-          rol:                  base.rol,
-          puedeValidar:         ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR', 'Asistencial', 'Control', 'Nomina', 'Sistema'].includes(base.rol),
-          puedeAprobar:         ['Juridica', 'Sistema', 'Nomina'].includes(base.rol),
-          puedeTramitar:        ['Nomina', 'Sistema'].includes(base.rol),
-          operacionesFiltro:    accesoCesantias.operacionesFiltro || [],
-          opsPorRegional:       accesoCesantias.opsPorRegional || {},
+          sinFiltro:                accesoCesantias.sinFiltro,
+          rol:                      base.rol,
+          puedeValidar:             permisosCesantias.puedeValidar,
+          puedeAprobar:             permisosCesantias.puedeAprobar,
+          puedeRechazar:            permisosCesantias.puedeRechazar,
+          puedeAnular:              permisosCesantias.puedeAnular,
+          puedeEliminar:            permisosCesantias.puedeEliminar,
+          puedeTramitar:            permisosCesantias.puedeTramitar,
+          operacionesSinValidacion: permisosCesantias.operacionesSinValidacion || [],
+          operacionesFiltro:        accesoCesantias.operacionesFiltro || [],
+          opsPorRegional:           accesoCesantias.opsPorRegional || {},
         } : null,
       },
     }).replace(/<\/script>/gi, '<\\/script>');
@@ -1690,6 +1717,49 @@ router.get('/api/cesantias/motivos', async (req, res) => {
   }
 });
 
+router.get('/api/cesantias/colaboradores', async (req, res) => {
+  try {
+    const q = req.query.q || '';
+    const lista = await buscarColaboradoresCesantias(q);
+    res.json({ ok: true, colaboradores: lista });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error buscando colaboradores:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/api/cesantias/fondos', async (req, res) => {
+  try {
+    const fondos = await obtenerFondosCesantias();
+    res.json({ ok: true, fondos });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error obteniendo fondos:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/api/cesantias/ciudades-operacion', async (req, res) => {
+  try {
+    const operacion = req.query.operacion || '';
+    const data = await obtenerCiudadYCiudadesPorOperacion(operacion);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error obteniendo ciudades por operación:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/api/cesantias/firma-previa/:identificacion', async (req, res) => {
+  try {
+    const { identificacion } = req.params;
+    const data = await obtenerFirmaPreviaTrabajador(identificacion);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error buscando firma previa:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/api/cesantias/trabajador/:identificacion', async (req, res) => {
   try {
     const { identificacion } = req.params;
@@ -1735,6 +1805,8 @@ router.post('/api/cesantias', uploadCesantias.any(), async (req, res) => {
     const resultado = await crearSolicitudCesantias({
       identificacion: body.identificacion,
       usuario: body.usuario,
+      celular: body.celular || body.telefono,
+      email: body.email,
       ciudad_solicitud: body.ciudad_solicitud,
       fondo_cesantias: body.fondo_cesantias,
       monto_solicitado: body.monto_solicitado,
@@ -1745,7 +1817,12 @@ router.post('/api/cesantias', uploadCesantias.any(), async (req, res) => {
       semestre: body.semestre,
       nombre_beneficiario: body.nombre_beneficiario,
       identificacion_beneficiario: body.identificacion_beneficiario,
+      usar_firma_previa: body.usar_firma_previa,
       firma_base64: body.firma_base64,
+      usar_cedula_previa: body.usar_cedula_previa,
+      url_cedula_previa: body.url_cedula_previa,
+      raw_doc_cedula_previa: body.raw_doc_cedula_previa,
+      labels_map: body.labels_map,
       ip_cliente: req.ip || req.headers['x-forwarded-for'],
     }, files);
 
@@ -1778,22 +1855,28 @@ router.post('/api/cesantias/:id/estado', async (req, res) => {
     if (!uRows.length) return res.status(403).json({ ok: false, error: 'Usuario no válido' });
     const rol = uRows[0].Rol;
 
-    // Validar permisos según flujo
-    if (estado === 'validado') {
-      const rolesValidar = ['Auxiliar', 'AuxiliarR', 'Coordinador', 'CoordinadorR', 'Asistencial', 'Control', 'Nomina', 'Sistema'];
-      if (!rolesValidar.includes(rol)) return res.status(403).json({ ok: false, error: 'No tienes permisos para validar la solicitud' });
-    } else if (['aprobado', 'rechazado', 'devuelto', 'cancelado'].includes(estado)) {
-      const rolesAprobar = ['Juridica', 'Sistema', 'Nomina'];
-      if (!rolesAprobar.includes(rol)) return res.status(403).json({ ok: false, error: 'Solo el Rol Jurídica puede gestionar (aprobar/rechazar/devolver/cancelar) esta solicitud' });
-    } else if (estado === 'tramitado') {
-      const rolesTramitar = ['Nomina', 'Sistema'];
-      if (!rolesTramitar.includes(rol)) return res.status(403).json({ ok: false, error: 'Solo el área de Nómina puede marcar como tramitada la solicitud' });
-    }
-
-    const resEstado = await actualizarEstadoCesantia(id, estado, usuario, observaciones);
+    const resEstado = await actualizarEstadoCesantia(id, estado, usuario, observaciones, rol);
     res.json({ ok: true, ...resEstado });
   } catch (err) {
     console.error('[nomina Cesantias API] Error actualizando estado:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.delete('/api/cesantias/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ ok: false, error: 'Parámetro ?usuario requerido' });
+
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!uRows.length) return res.status(403).json({ ok: false, error: 'Usuario no válido' });
+    const rol = uRows[0].Rol;
+
+    const resEliminar = await eliminarSolicitudCesantias(id, usuario, rol);
+    res.json(resEliminar);
+  } catch (err) {
+    console.error('[nomina Cesantias API] Error eliminando solicitud:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

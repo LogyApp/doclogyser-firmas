@@ -338,6 +338,38 @@ async function subirPDFCesantiasSolicitud(identificacion, bufferPdf) {
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+async function subirCedulaTrabajador(identificacion, buffer, originalName) {
+  const ts = getBogotaTimestamp();
+  const ext = (path.extname(originalName || '') || '.pdf').toLowerCase();
+  const nombre = `${identificacion}/${identificacion}.CC.${ts}${ext}`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  let contentType = 'application/pdf';
+  if (ext === '.png') contentType = 'image/png';
+  else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+  await file.save(buffer, { contentType });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
+async function eliminarArchivoBucket(docUrlOrPath) {
+  if (!docUrlOrPath) return false;
+  let pathInBucket = docUrlOrPath;
+  const prefix = `https://storage.googleapis.com/${BUCKET_PDFS}/`;
+  if (docUrlOrPath.startsWith(prefix)) {
+    pathInBucket = docUrlOrPath.slice(prefix.length);
+  } else if (docUrlOrPath.startsWith('http://') || docUrlOrPath.startsWith('https://')) {
+    const parts = docUrlOrPath.split('/');
+    pathInBucket = parts.slice(4).join('/');
+  }
+  pathInBucket = pathInBucket.replace(/^\/+/, '');
+  try {
+    await storage.bucket(BUCKET_PDFS).file(pathInBucket).delete({ ignoreNotFound: true });
+    return true;
+  } catch (err) {
+    console.warn(`[eliminarArchivoBucket] Error al eliminar "${pathInBucket}":`, err.message);
+    return false;
+  }
+}
+
 module.exports = {
   obtenerFirmaBase64Reciente,
   obtenerUrlFirmaReciente,
@@ -350,7 +382,9 @@ module.exports = {
   subirDocumentoRetiro,
   subirPDFCesantias,
   subirSoporteCesantias,
+  subirCedulaTrabajador,
   subirPDFCesantiasSolicitud,
+  eliminarArchivoBucket,
   subirPDFPazYSalvo,
   subirPDFCertificadoRetiro,
   subirPDFEvaluacionRetiro,

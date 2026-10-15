@@ -1,8 +1,86 @@
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const pool = require('./db');
-const { subirSoporteCesantias, subirPDFCesantiasSolicitud } = require('./storage');
+const {
+  subirSoporteCesantias,
+  subirCedulaTrabajador,
+  subirPDFCesantiasSolicitud,
+  eliminarArchivoBucket,
+  obtenerUrlFirmaReciente,
+  obtenerFirmaBase64Reciente,
+  subirFirma
+} = require('./storage');
+const { enviarNotificacionCesantias } = require('./email');
 const { generarPDFDesdeHTML } = require('./renderer');
+
+// ── Helpers de Config_Parametros para Cesantías ─────────────────────────────
+async function obtenerParametroCesantias(concepto) {
+  const [rows] = await pool.execute(
+    `SELECT Parametro FROM Config_Parametros 
+     WHERE Modulo = 'nomina' AND Seccion = 'Cesantias' AND Concepto = ? 
+     LIMIT 1`,
+    [concepto]
+  );
+  if (!rows.length || !rows[0].Parametro) return null;
+  return rows[0].Parametro;
+}
+
+async function obtenerRolesPermisoCesantias(concepto) {
+  const param = await obtenerParametroCesantias(concepto);
+  if (!param) return [];
+  return param.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+
+async function verificarPermisoRolCesantias(rolUsuario, concepto) {
+  if (!rolUsuario) return false;
+  const roles = await obtenerRolesPermisoCesantias(concepto);
+  const rolNorm = String(rolUsuario).trim().toLowerCase();
+  return roles.includes(rolNorm);
+}
+
+async function obtenerOperacionesSinValidacion() {
+  const param = await obtenerParametroCesantias('Operación no requiere Validacion');
+  if (!param) return ['administracion'];
+  return param.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+
+async function obtenerPermisosUsuarioCesantias(rolUsuario) {
+  const [rows] = await pool.execute(
+    `SELECT Concepto, Parametro FROM Config_Parametros 
+     WHERE Modulo = 'nomina' AND Seccion = 'Cesantias'`
+  );
+  const paramMap = {};
+  for (const r of rows) {
+    paramMap[r.Concepto] = (r.Parametro || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  }
+
+  const rolNorm = String(rolUsuario || '').trim().toLowerCase();
+  const check = (concepto, fallbackRoles = []) => {
+    const list = paramMap[concepto];
+    if (list && list.length) {
+      return list.includes(rolNorm);
+    }
+    return fallbackRoles.map(r => r.toLowerCase()).includes(rolNorm);
+  };
+
+  const opsSinVal = (paramMap['Operación no requiere Validacion'] || ['administracion']);
+
+  return {
+    puedeValidar: check('Puede validar registros de Cesantias', ['sistema', 'juridica', 'auxiliar', 'auxiliarr', 'coordinador', 'coordinadorr', 'nomina']),
+    puedeAprobar: check('Puede aprobar registros de Cesantias', ['sistema', 'juridica']),
+    puedeRechazar: check('Puede rechazar registros de Cesantias', ['sistema', 'juridica']),
+    puedeAnular: check('Puede anular registros de Cesantias', ['sistema', 'juridica']),
+    puedeEliminar: check('Puede eliminar registros de Cesantias', ['sistema']),
+    puedeTramitar: ['nomina', 'sistema'].includes(rolNorm),
+    operacionesSinValidacion: opsSinVal,
+  };
+}
+
+function construirUrlTalenthub(docPath) {
+  if (!docPath) return null;
+  if (docPath.startsWith('http://') || docPath.startsWith('https://')) return docPath;
+  return `https://storage.googleapis.com/talenthub_central/${docPath.replace(/^\/+/, '')}`;
+}
 
 function fechaHoraBogota() {
   const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -32,6 +110,117 @@ function formatearMoneda(val) {
   return num.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
+// ── Búsqueda de Colaboradores para Autocompletado (por nombre o cédula) ──────
+async function buscarColaboradoresCesantias(termino) {
+  if (!termino || termino.trim().length < 2) return [];
+  const q = `%${termino.trim()}%`;
+  const [rows] = await pool.execute(
+    `SELECT 
+       v.Identificación AS identificacion,
+       v.Trabajador AS trabajador,
+       v.Cargo AS cargo,
+       v.\`Operación\` AS operacion,
+       v.Regional AS regional,
+       v.Estado AS estado
+     FROM \`Maestro_Vinculación\` v
+     INNER JOIN (
+       SELECT \`Identificación\`, MAX(\`Fecha de Ingreso\`) AS max_ingreso
+       FROM \`Maestro_Vinculación\`
+       GROUP BY \`Identificación\`
+     ) m ON v.\`Identificación\` = m.\`Identificación\` AND v.\`Fecha de Ingreso\` = m.max_ingreso
+     WHERE (v.\`Identificación\` LIKE ? OR v.\`Trabajador\` COLLATE utf8mb4_0900_ai_ci LIKE ?)
+       AND v.Estado = 'Activo'
+     ORDER BY v.\`Trabajador\` ASC
+     LIMIT 25`,
+    [q, q]
+  );
+  return rows.map(r => ({
+    identificacion: String(r.identificacion),
+    nombre: limpiarNombre(r.trabajador),
+    trabajadorCompleto: r.trabajador,
+    cargo: r.cargo || '—',
+    operacion: r.operacion || '—',
+    regional: r.regional || '—',
+    estado: r.estado || 'Activo'
+  }));
+}
+
+// ── Administradoras de Cesantías (Config_Cesantias sin 'NO COTIZA') ───────────
+async function obtenerFondosCesantias() {
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT \`Administradora de Cesantias\` AS fondo
+     FROM Config_Cesantias
+     WHERE \`Administradora de Cesantias\` IS NOT NULL
+       AND \`Administradora de Cesantias\` != 'NO COTIZA'
+       AND TRIM(\`Administradora de Cesantias\`) != ''
+     ORDER BY 1 ASC`
+  );
+  return rows.map(r => r.fondo);
+}
+
+// ── Ciudad por Operación y Lista Desplegable por Zona ────────────────────────
+async function obtenerCiudadYCiudadesPorOperacion(operacion) {
+  if (!operacion) return { prellenar: '', zona: '', ciudades: [] };
+  const [opRows] = await pool.execute(
+    'SELECT `C.C.` AS cc, `ZONA` AS zona FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+    [operacion]
+  );
+  if (!opRows.length) return { prellenar: '', zona: '', ciudades: [] };
+  const cc = opRows[0].cc || '';
+  const zona = opRows[0].zona || '';
+  let ciudades = [];
+  if (zona) {
+    const [ciuRows] = await pool.execute(
+      'SELECT DISTINCT Ciudad FROM Config_Ciudades WHERE Departamento = ? ORDER BY Ciudad ASC',
+      [zona]
+    );
+    ciudades = ciuRows.map(c => c.Ciudad).filter(Boolean);
+  }
+  if (cc && !ciudades.includes(cc)) {
+    ciudades.unshift(cc);
+  }
+  return { prellenar: cc, zona, ciudades };
+}
+
+// ── Firma Previa de Bucket firmas-images ─────────────────────────────────────
+async function obtenerFirmaPreviaTrabajador(identificacion) {
+  if (!identificacion) return { tieneFirma: false, urlFirma: null };
+  try {
+    const url = await obtenerUrlFirmaReciente(identificacion);
+    return { tieneFirma: !!url, urlFirma: url || null };
+  } catch (err) {
+    console.warn('[obtenerFirmaPreviaTrabajador] Error:', err.message);
+    return { tieneFirma: false, urlFirma: null };
+  }
+}
+
+// ── Cédula Previa en Maestro_docTrabajador (TipoDocumento 11) ─────────────────
+async function buscarCedulaPreviaTrabajador(identificacion) {
+  if (!identificacion) return { tieneCedulaPrevia: false, urlCedula: null, rawDoc: null, fecha: null };
+  try {
+    const [rows] = await pool.execute(
+      `SELECT id, Doc, Prefijo, Observaciones, DATE_FORMAT(FechaRegistro, '%Y-%m-%d %H:%i') AS fecha
+       FROM Maestro_docTrabajador
+       WHERE \`Identificación\` = ? AND TipoDocumento = '11'
+       ORDER BY FechaRegistro DESC LIMIT 1`,
+      [identificacion]
+    );
+    if (!rows.length || !rows[0].Doc) {
+      return { tieneCedulaPrevia: false, urlCedula: null, rawDoc: null, fecha: null };
+    }
+    const r = rows[0];
+    return {
+      tieneCedulaPrevia: true,
+      urlCedula: construirUrlTalenthub(r.Doc),
+      rawDoc: r.Doc,
+      fecha: r.fecha || null,
+    };
+  } catch (err) {
+    console.warn('[buscarCedulaPreviaTrabajador] Error:', err.message);
+    return { tieneCedulaPrevia: false, urlCedula: null, rawDoc: null, fecha: null };
+  }
+}
+
 // ── Buscar Datos del Trabajador ──────────────────────────────────────────────
 async function buscarTrabajadorCesantias(identificacion) {
   if (!identificacion) return null;
@@ -55,6 +244,14 @@ async function buscarTrabajadorCesantias(identificacion) {
   if (!vinRows.length) return null;
   const vin = vinRows[0];
 
+  // Req 2: Validar que el registro más reciente tenga Estado = 'Activo'
+  if (vin.Estado !== 'Activo') {
+    const errorMsg = `El colaborador ${limpiarNombre(vin.Trabajador)} (${vin.Identificacion}) no se encuentra activo (Estado actual: "${vin.Estado}"). Solo se permite radicar cesantías a colaboradores con estado Activo.`;
+    const err = new Error(errorMsg);
+    err.status = 400;
+    throw err;
+  }
+
   const [segRows] = await pool.execute(
     `SELECT 
        \`Celular\` AS Telefono,
@@ -66,29 +263,52 @@ async function buscarTrabajadorCesantias(identificacion) {
   );
   const seg = segRows[0] || {};
 
-  let ciudad = '';
-  if (vin.Regional) {
+  // Operación -> C.C. para prellenar y ZONA -> Ciudades de Config_Ciudades
+  let ciudadPrellenar = '';
+  let zona = '';
+  let ciudades = [];
+  if (vin.Operacion) {
+    const resOp = await obtenerCiudadYCiudadesPorOperacion(vin.Operacion);
+    ciudadPrellenar = resOp.prellenar;
+    zona = resOp.zona;
+    ciudades = resOp.ciudades;
+  }
+
+  if (!ciudadPrellenar && vin.Regional) {
     const [ciuRows] = await pool.execute(
       'SELECT Ciudad FROM Config_Regionales WHERE Regional = ? LIMIT 1',
       [vin.Regional]
     );
     if (ciuRows.length && ciuRows[0].Ciudad) {
-      ciudad = ciuRows[0].Ciudad;
+      ciudadPrellenar = ciuRows[0].Ciudad;
+      if (!ciudades.includes(ciudadPrellenar)) ciudades.unshift(ciudadPrellenar);
     }
   }
+
+  // Comprobar si existe firma previa en bucket
+  const infoFirma = await obtenerFirmaPreviaTrabajador(identificacion);
+
+  // Req 4: Comprobar si existe cédula previa (TipoDocumento 11) en Maestro_docTrabajador
+  const cedulaPrevia = await buscarCedulaPreviaTrabajador(identificacion);
 
   return {
     identificacion: String(vin.Identificacion),
     nombre: limpiarNombre(vin.Trabajador),
+    trabajadorCompleto: vin.Trabajador,
     cargo: vin.Cargo || '—',
     operacion: vin.Operacion || '—',
     regional: vin.Regional || '—',
     estado: vin.Estado || '—',
     fechaIngreso: vin.FechaIngreso || '—',
-    telefono: seg.Telefono || '—',
-    email: seg.Email || '—',
-    fondoCesantias: seg.Cesantias || '—',
-    ciudadSede: ciudad,
+    telefono: seg.Telefono || '',
+    email: seg.Email || '',
+    fondoCesantias: (seg.Cesantias || '').trim(),
+    ciudadPrellenar: ciudadPrellenar || 'BOGOTÁ D.C.',
+    zona,
+    ciudades,
+    tieneFirmaPrevia: infoFirma.tieneFirma,
+    firmaPreviaUrl: infoFirma.urlFirma,
+    cedulaPrevia,
   };
 }
 
@@ -106,11 +326,11 @@ async function listarSolicitudesCesantias(filtros = {}, acceso = {}) {
   const params = [];
 
   // Control de acceso por regional/operación
-  if (acceso && !acceso.sinFiltro) {
+  if (acceso && acceso.sinFiltro === false) {
     if (!acceso.operacionesFiltro || !acceso.operacionesFiltro.length) {
       return {
         results: [],
-        counts: { total: 0, pendiente: 0, validado: 0, aprobado: 0, tramitado: 0, rechazado: 0, devuelto: 0, cancelado: 0 },
+        counts: { total: 0, pendiente: 0, validado: 0, aprobado: 0, tramitado: 0, rechazado: 0, devuelto: 0, anulado: 0 },
         regionales: [],
         operaciones: []
       };
@@ -130,9 +350,13 @@ async function listarSolicitudesCesantias(filtros = {}, acceso = {}) {
     params.push(filtros.operacion);
   }
 
-  if (filtros.estado) {
-    conds.push('c.estado = ?');
-    params.push(filtros.estado);
+  if (filtros.estado && filtros.estado !== 'todos' && filtros.estado !== '') {
+    if (filtros.estado === 'anulado') {
+      conds.push("(c.estado = 'anulado' OR c.estado = 'cancelado')");
+    } else {
+      conds.push('c.estado = ?');
+      params.push(filtros.estado);
+    }
   }
 
   if (filtros.motivo) {
@@ -177,7 +401,7 @@ async function listarSolicitudesCesantias(filtros = {}, acceso = {}) {
       c.semestre,
       c.nombre_beneficiario,
       c.identificacion_beneficiario,
-      c.estado,
+      IF(c.estado = 'cancelado', 'anulado', c.estado) AS estado,
       c.validado_por,
       DATE_FORMAT(c.fecha_validacion, '%Y-%m-%d %H:%i') AS fecha_validacion,
       c.gestionado_por,
@@ -187,9 +411,16 @@ async function listarSolicitudesCesantias(filtros = {}, acceso = {}) {
       c.observaciones,
       DATE_FORMAT(c.fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro,
       c.token_firma,
-      (c.firma_trabajador IS NOT NULL) AS firmado
+      (c.firma_trabajador IS NOT NULL) AS firmado,
+      pdf.Doc AS pdf_solicitud
     FROM Dynamic_Cesantias c
     LEFT JOIN Config_MotivoCesantias m ON c.motivo_retiro = m.Id
+    LEFT JOIN (
+      SELECT recurso, MAX(Doc) AS Doc
+      FROM Maestro_docTrabajador
+      WHERE TipoDocumento = '46' AND Observaciones = 'Formato de Solicitud de Retiro de Cesantías'
+      GROUP BY recurso
+    ) pdf ON c.Id = pdf.recurso
     LEFT JOIN (
       SELECT 
         v1.\`Identificación\`, v1.\`Trabajador\`, v1.\`Cargo\`, v1.\`Regional\`, v1.\`Operación\`
@@ -206,6 +437,11 @@ async function listarSolicitudesCesantias(filtros = {}, acceso = {}) {
   `;
 
   const [results] = await pool.execute(query, params);
+  results.forEach(r => {
+    if (r.pdf_solicitud) {
+      r.pdf_solicitud = construirUrlTalenthub(r.pdf_solicitud);
+    }
+  });
 
   // Conteos por estado en base al filtro de seguridad
   const baseConds = [];
@@ -242,11 +478,12 @@ async function listarSolicitudesCesantias(filtros = {}, acceso = {}) {
     tramitado: 0,
     rechazado: 0,
     devuelto: 0,
-    cancelado: 0,
+    anulado: 0,
   };
   countRows.forEach(r => {
-    if (counts[r.estado] !== undefined) {
-      counts[r.estado] = r.cant;
+    const st = r.estado === 'cancelado' ? 'anulado' : r.estado;
+    if (counts[st] !== undefined) {
+      counts[st] += r.cant;
     }
     counts.total += r.cant;
   });
@@ -259,6 +496,8 @@ async function crearSolicitudCesantias(datos, files = []) {
   const {
     identificacion,
     usuario,
+    celular,
+    email,
     ciudad_solicitud,
     fondo_cesantias,
     monto_solicitado,
@@ -269,8 +508,13 @@ async function crearSolicitudCesantias(datos, files = []) {
     semestre,
     nombre_beneficiario,
     identificacion_beneficiario,
+    usar_firma_previa,
     firma_base64,
+    usar_cedula_previa,
+    url_cedula_previa,
+    raw_doc_cedula_previa,
     ip_cliente,
+    labels_map,
   } = datos;
 
   if (!identificacion) throw new Error('Identificación requerida.');
@@ -280,6 +524,24 @@ async function crearSolicitudCesantias(datos, files = []) {
   // Obtener datos del colaborador
   const worker = await buscarTrabajadorCesantias(identificacion);
   if (!worker) throw new Error(`No se encontró trabajador con identificación ${identificacion} en Maestro_Vinculación.`);
+  if (worker.estado !== 'Activo') throw new Error(`El colaborador con identificación ${identificacion} no registra estado Activo.`);
+
+  // Actualizar Teléfono (Celular) y Email en Maestro_Segmentación si se editaron
+  if (celular || email) {
+    try {
+      await pool.execute(
+        `UPDATE \`Maestro_Segmentación\`
+         SET \`Celular\` = COALESCE(?, \`Celular\`),
+             \`Email\` = COALESCE(?, \`Email\`),
+             \`Fecha de Actualización\` = NOW(),
+             \`Usuario\` = ?
+         WHERE \`Identificación\` = ?`,
+        [celular || null, email || null, usuario || 'sistema', identificacion]
+      );
+    } catch (eSeg) {
+      console.warn('[crearSolicitudCesantias] Advertencia actualizando Maestro_Segmentación:', eSeg.message);
+    }
+  }
 
   // Obtener motivo de retiro
   const [motivos] = await pool.execute(
@@ -288,6 +550,30 @@ async function crearSolicitudCesantias(datos, files = []) {
   );
   if (!motivos.length) throw new Error('Motivo de retiro no válido.');
   const motivoInfo = motivos[0];
+
+  // Resolver Firma del Trabajador: ¿Previa de firmas-images o Nueva del Canvas?
+  let firmaFinalBase64 = null;
+  const esFirmaPrevia = usar_firma_previa === true || usar_firma_previa === 'true' || usar_firma_previa === '1';
+
+  if (esFirmaPrevia) {
+    try {
+      firmaFinalBase64 = await obtenerFirmaBase64Reciente(identificacion);
+    } catch (eFirmaP) {
+      console.warn('[crearSolicitudCesantias] Error obteniendo firma previa:', eFirmaP.message);
+    }
+  } else if (firma_base64) {
+    firmaFinalBase64 = firma_base64;
+    // Guardar también esta nueva firma en el bucket firmas-images para futuras solicitudes
+    try {
+      const match = firma_base64.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (match) {
+        const buf = Buffer.from(match[2], 'base64');
+        await subirFirma(identificacion, buf);
+      }
+    } catch (eSubirFirma) {
+      console.warn('[crearSolicitudCesantias] No se pudo guardar firma en bucket firmas-images:', eSubirFirma.message);
+    }
+  }
 
   // Generar ID único amigable de solicitud: CES-YYYYMMDD-HHMMSS
   const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -321,7 +607,7 @@ async function crearSolicitudCesantias(datos, files = []) {
     radicadoId,
     identificacion,
     usuario || 'sistema',
-    ciudad_solicitud || worker.ciudadSede || 'BOGOTÁ D.C.',
+    ciudad_solicitud || worker.ciudadPrellenar || 'BOGOTÁ D.C.',
     fondo_cesantias || worker.fondoCesantias || '—',
     monto_solicitado,
     motivo_retiro,
@@ -329,28 +615,80 @@ async function crearSolicitudCesantias(datos, files = []) {
     institucion_educativa || null,
     programa_academico || null,
     semestre || null,
-    nombre_beneficiario || null,
+    nombre_beneficiario ? String(nombre_beneficiario).trim().toUpperCase() : null,
     identificacion_beneficiario || null,
     tokenFirma,
-    firma_base64 || null,
-    firma_base64 ? fechaActual : null,
+    firmaFinalBase64 || null,
+    firmaFinalBase64 ? fechaActual : null,
     ip_cliente || null,
   ]);
 
-  // Guardar soportes documentales en GCS y registrar en Maestro_docTrabajador
+  // Req 4: Si se seleccionó usar la cédula previa registrada (TipoDocumento 11, Prefijo CC)
+  const esCedulaPrevia = usar_cedula_previa === true || usar_cedula_previa === 'true' || usar_cedula_previa === '1';
+  if (esCedulaPrevia) {
+    const docUrlCedula = url_cedula_previa || (worker.cedulaPrevia && worker.cedulaPrevia.urlCedula) || raw_doc_cedula_previa || (worker.cedulaPrevia && worker.cedulaPrevia.rawDoc);
+    if (docUrlCedula) {
+      const docId = uuidv4();
+      await pool.execute(
+        `INSERT INTO Maestro_docTrabajador (
+          id, \`Validación\`, Regional, \`Operación\`, \`Identificación\`, Estado,
+          Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Observaciones,
+          Visualizar, Solicitud, Justificacion_Solicitud, Usuario, recurso
+        ) VALUES (?, 'PEND', ?, ?, ?, ?, ?, '11', 'CC', ?, 'Cédula de Ciudadanía', NULL, NULL, NULL, ?, ?)`,
+        [
+          docId,
+          worker.regional || null,
+          worker.operacion || null,
+          identificacion,
+          worker.estado || 'Activo',
+          worker.fechaIngreso && worker.fechaIngreso !== '—' ? worker.fechaIngreso : null,
+          docUrlCedula,
+          usuario || 'sistema',
+          radicadoId,
+        ]
+      );
+    }
+  }
+
+  // Parsear mapa de etiquetas de soportes si se pasó
+  let lMap = {};
+  if (labels_map) {
+    try {
+      lMap = typeof labels_map === 'string' ? JSON.parse(labels_map) : labels_map;
+    } catch (eJson) {
+      lMap = {};
+    }
+  }
+
+  // Guardar cada soporte documental individual en GCS y registrar en Maestro_docTrabajador
   if (files && files.length) {
     for (const f of files) {
       try {
-        const urlBucket = await subirSoporteCesantias(identificacion, f.buffer, f.originalname);
-        const docId = uuidv4();
-        const obs = `${motivoInfo.motivo_retiro}${f.fieldname ? ' - ' + f.fieldname : ''}`;
+        const esCedulaTrabajador = f.fieldname === 'soporte_cedula_trabajador' || f.fieldname === 'cedula_trabajador';
+        let tipoDoc = '46';
+        let prefijo = 'RCES';
+        let obs = lMap[f.fieldname] || datos['label_' + f.fieldname] || f.fieldname;
+        let urlBucket = '';
 
+        if (esCedulaTrabajador) {
+          tipoDoc = '11';
+          prefijo = 'CC';
+          obs = 'Cédula de Ciudadanía';
+          urlBucket = await subirCedulaTrabajador(identificacion, f.buffer, f.originalname);
+        } else {
+          if (!obs || obs === 'soporte' || obs.startsWith('soporte_')) {
+            obs = `${motivoInfo.motivo_retiro} - Soporte`;
+          }
+          urlBucket = await subirSoporteCesantias(identificacion, f.buffer, f.originalname);
+        }
+
+        const docId = uuidv4();
         await pool.execute(
           `INSERT INTO Maestro_docTrabajador (
             id, \`Validación\`, Regional, \`Operación\`, \`Identificación\`, Estado,
             Fecha_Ingreso, TipoDocumento, Prefijo, Doc, Observaciones,
             Visualizar, Solicitud, Justificacion_Solicitud, Usuario, recurso
-          ) VALUES (?, 'PEND', ?, ?, ?, ?, ?, '46', 'RCES', ?, ?, NULL, NULL, NULL, ?, ?)`,
+          ) VALUES (?, 'PEND', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
           [
             docId,
             worker.regional || null,
@@ -358,6 +696,8 @@ async function crearSolicitudCesantias(datos, files = []) {
             identificacion,
             worker.estado || 'Activo',
             worker.fechaIngreso && worker.fechaIngreso !== '—' ? worker.fechaIngreso : null,
+            tipoDoc,
+            prefijo,
             urlBucket,
             obs,
             usuario || 'sistema',
@@ -370,13 +710,36 @@ async function crearSolicitudCesantias(datos, files = []) {
     }
   }
 
-  // Si ya vino con firma digital del trabajador, generamos el PDF automáticamente
-  if (firma_base64) {
+  // Si ya vino firmado por el colaborador, generamos el PDF automáticamente
+  if (firmaFinalBase64) {
     try {
       await generarYGuardarPDFCesantias(radicadoId, usuario || 'sistema');
     } catch (errPdf) {
       console.error('[crearSolicitudCesantias] Error generando PDF firmado:', errPdf);
     }
+  }
+
+  // Notificación por correo: Radicación de solicitud en estado 'pendiente'
+  try {
+    enviarNotificacionCesantias({
+      evento: 'pendiente',
+      solicitud: {
+        Id: radicadoId,
+        monto_solicitado,
+        fondo_cesantias,
+        motivo_retiro,
+        motivo_texto: motivoInfo.motivo_retiro,
+        identificacion,
+        email: email || worker.email,
+        operacion: worker.operacion,
+      },
+      trabajador: worker,
+      usuarioAccion: usuario || 'sistema',
+    }).catch(errMail => {
+      console.error('[crearSolicitudCesantias] Error al enviar notificación por correo:', errMail.message);
+    });
+  } catch (errDisparador) {
+    console.warn('[crearSolicitudCesantias] Error disparando correo inicial:', errDisparador.message);
   }
 
   return { id: radicadoId, tokenFirma };
@@ -412,23 +775,56 @@ async function obtenerDetalleCesantia(idCesantia) {
        \`Identificación\` AS identificacion, Estado, Fecha_Ingreso, TipoDocumento,
        Prefijo, Doc, Observaciones, Url, FechaRegistro, Usuario, recurso
      FROM Maestro_docTrabajador
-     WHERE recurso = ? AND TipoDocumento = '46'
+     WHERE recurso = ? AND TipoDocumento IN ('46', '11')
      ORDER BY FechaRegistro DESC`,
     [idCesantia]
   );
 
+  const docsNormalizados = docs.map(d => ({
+    ...d,
+    Doc: construirUrlTalenthub(d.Doc) || d.Doc,
+    Url: d.Url ? (construirUrlTalenthub(d.Url) || d.Url) : (construirUrlTalenthub(d.Doc) || d.Doc),
+  }));
+
   return {
     solicitud: sol,
     trabajador: worker,
-    documentos: docs,
+    documentos: docsNormalizados,
   };
 }
 
 // ── Transición de Estado ─────────────────────────────────────────────────────
-async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observaciones = '') {
-  const estadosValidos = ['pendiente', 'validado', 'aprobado', 'tramitado', 'rechazado', 'cancelado', 'devuelto'];
-  if (!estadosValidos.includes(nuevoEstado)) {
+async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observaciones = '', rolUsuario = null) {
+  let estadoNormalizado = nuevoEstado === 'cancelado' ? 'anulado' : nuevoEstado;
+  const estadosValidos = ['pendiente', 'validado', 'aprobado', 'tramitado', 'rechazado', 'anulado', 'devuelto'];
+  if (!estadosValidos.includes(estadoNormalizado)) {
     throw new Error(`Estado "${nuevoEstado}" no es válido.`);
+  }
+
+  // Resolver rol del usuario si no fue provisto directamente
+  if (!rolUsuario && usuario) {
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (uRows.length) rolUsuario = uRows[0].Rol;
+  }
+
+  // Req. 5, 6, 7, 8: Validar permisos contra Config_Parametros
+  if (estadoNormalizado === 'validado') {
+    const puedeValidar = await verificarPermisoRolCesantias(rolUsuario, 'Puede validar registros de Cesantias');
+    if (!puedeValidar) throw new Error('No tienes permisos para validar solicitudes de Cesantías.');
+  } else if (estadoNormalizado === 'aprobado') {
+    const puedeAprobar = await verificarPermisoRolCesantias(rolUsuario, 'Puede aprobar registros de Cesantias');
+    if (!puedeAprobar) throw new Error('No tienes permisos para aprobar solicitudes de Cesantías.');
+  } else if (estadoNormalizado === 'rechazado') {
+    const puedeRechazar = await verificarPermisoRolCesantias(rolUsuario, 'Puede rechazar registros de Cesantias');
+    if (!puedeRechazar) throw new Error('No tienes permisos para rechazar solicitudes de Cesantías.');
+  } else if (estadoNormalizado === 'anulado') {
+    const puedeAnular = await verificarPermisoRolCesantias(rolUsuario, 'Puede anular registros de Cesantias');
+    if (!puedeAnular) throw new Error('No tienes permisos para anular registros de Cesantías.');
+  } else if (estadoNormalizado === 'tramitado') {
+    const rolNorm = String(rolUsuario || '').trim().toLowerCase();
+    if (!['nomina', 'sistema'].includes(rolNorm)) {
+      throw new Error('Solo el área de Nómina puede tramitar solicitudes de Cesantías.');
+    }
   }
 
   const [exist] = await pool.execute('SELECT Id, estado, identificacion, firma_trabajador FROM Dynamic_Cesantias WHERE Id = ? LIMIT 1', [idCesantia]);
@@ -438,7 +834,7 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
   let query = '';
   let params = [];
 
-  if (nuevoEstado === 'validado') {
+  if (estadoNormalizado === 'validado') {
     query = `
       UPDATE Dynamic_Cesantias 
       SET estado = 'validado',
@@ -449,7 +845,7 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
       WHERE Id = ?
     `;
     params = [usuario, fechaActual, observaciones, observaciones, idCesantia];
-  } else if (['aprobado', 'rechazado', 'cancelado', 'devuelto'].includes(nuevoEstado)) {
+  } else if (['aprobado', 'rechazado', 'anulado', 'devuelto'].includes(estadoNormalizado)) {
     query = `
       UPDATE Dynamic_Cesantias 
       SET estado = ?,
@@ -459,8 +855,8 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
           fecha_actualizacion = NOW()
       WHERE Id = ?
     `;
-    params = [nuevoEstado, usuario, fechaActual, observaciones, observaciones, idCesantia];
-  } else if (nuevoEstado === 'tramitado') {
+    params = [estadoNormalizado, usuario, fechaActual, observaciones, observaciones, idCesantia];
+  } else if (estadoNormalizado === 'tramitado') {
     query = `
       UPDATE Dynamic_Cesantias 
       SET estado = 'tramitado',
@@ -479,13 +875,51 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
           fecha_actualizacion = NOW()
       WHERE Id = ?
     `;
-    params = [nuevoEstado, observaciones, observaciones, idCesantia];
+    params = [estadoNormalizado, observaciones, observaciones, idCesantia];
   }
 
   await pool.execute(query, params);
 
+  // Req. 6: Al rechazar debe agregar a la columna Observaciones de los registros en Maestro_docTrabajador la expresión " - Rechazado por "&[usuario]
+  if (estadoNormalizado === 'rechazado') {
+    try {
+      await pool.execute(
+        `UPDATE Maestro_docTrabajador 
+         SET Observaciones = CONCAT(COALESCE(Observaciones, ''), ' - Rechazado por ', ?) 
+         WHERE recurso = ?`,
+        [usuario, idCesantia]
+      );
+    } catch (eRechazo) {
+      console.warn('[actualizarEstadoCesantia] Advertencia al actualizar observaciones de rechazo en docs:', eRechazo.message);
+    }
+  }
+
+  // Req. 5: Al anular debe eliminarse los registros en Maestro_docTrabajador y eliminar los documentos en el bucket
+  if (estadoNormalizado === 'anulado') {
+    try {
+      const [docsAnular] = await pool.execute(
+        'SELECT id, Doc FROM Maestro_docTrabajador WHERE recurso = ?',
+        [idCesantia]
+      );
+      for (const d of docsAnular) {
+        if (d.Doc) {
+          const [usados] = await pool.execute(
+            'SELECT COUNT(*) AS c FROM Maestro_docTrabajador WHERE Doc = ? AND recurso != ?',
+            [d.Doc, idCesantia]
+          );
+          if (!usados.length || usados[0].c === 0) {
+            await eliminarArchivoBucket(d.Doc);
+          }
+        }
+      }
+      await pool.execute('DELETE FROM Maestro_docTrabajador WHERE recurso = ?', [idCesantia]);
+    } catch (eAnulacion) {
+      console.warn('[actualizarEstadoCesantia] Advertencia al limpiar soportes de anulación:', eAnulacion.message);
+    }
+  }
+
   // Si se aprueba y aún no se generó el PDF formal firmado (o se requiere actualizar), lo generamos
-  if (nuevoEstado === 'aprobado' && exist[0].firma_trabajador) {
+  if (estadoNormalizado === 'aprobado' && exist[0].firma_trabajador) {
     try {
       await generarYGuardarPDFCesantias(idCesantia, usuario);
     } catch (e) {
@@ -493,7 +927,67 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
     }
   }
 
-  return { ok: true, estado: nuevoEstado };
+  // Req. 13, 14, 15: Notificaciones por correo para validado, aprobado, tramitado
+  if (['validado', 'aprobado', 'tramitado'].includes(estadoNormalizado)) {
+    try {
+      const detalle = await obtenerDetalleCesantia(idCesantia);
+      if (detalle) {
+        enviarNotificacionCesantias({
+          evento: estadoNormalizado,
+          solicitud: detalle.solicitud,
+          trabajador: detalle.trabajador || {},
+          observaciones: observaciones || '',
+          usuarioAccion: usuario,
+        }).catch(eMail => console.error(`[actualizarEstadoCesantia] Error enviando correo (${estadoNormalizado}):`, eMail.message));
+      }
+    } catch (eDet) {
+      console.warn('[actualizarEstadoCesantia] Advertencia al obtener detalle para correo:', eDet.message);
+    }
+  }
+
+  return { ok: true, estado: estadoNormalizado };
+}
+
+// ── Req. 4: Eliminar Registro de Cesantías ────────────────────────────────────
+async function eliminarSolicitudCesantias(idCesantia, usuario, rolUsuario = null) {
+  if (!rolUsuario && usuario) {
+    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (uRows.length) rolUsuario = uRows[0].Rol;
+  }
+
+  const puedeEliminar = await verificarPermisoRolCesantias(rolUsuario, 'Puede eliminar registros de Cesantias');
+  if (!puedeEliminar) {
+    throw new Error('No tienes permisos para eliminar registros de Cesantías.');
+  }
+
+  const [exist] = await pool.execute('SELECT Id FROM Dynamic_Cesantias WHERE Id = ? LIMIT 1', [idCesantia]);
+  if (!exist.length) throw new Error('Solicitud no encontrada.');
+
+  // Obtener soportes y archivos en Maestro_docTrabajador
+  const [docs] = await pool.execute(
+    'SELECT id, Doc FROM Maestro_docTrabajador WHERE recurso = ?',
+    [idCesantia]
+  );
+
+  for (const d of docs) {
+    if (d.Doc) {
+      const [usados] = await pool.execute(
+        'SELECT COUNT(*) AS c FROM Maestro_docTrabajador WHERE Doc = ? AND recurso != ?',
+        [d.Doc, idCesantia]
+      );
+      if (!usados.length || usados[0].c === 0) {
+        await eliminarArchivoBucket(d.Doc);
+      }
+    }
+  }
+
+  // Eliminar filas en Maestro_docTrabajador
+  await pool.execute('DELETE FROM Maestro_docTrabajador WHERE recurso = ?', [idCesantia]);
+
+  // Eliminar fila en Dynamic_Cesantias
+  await pool.execute('DELETE FROM Dynamic_Cesantias WHERE Id = ?', [idCesantia]);
+
+  return { ok: true, id: idCesantia, mensaje: 'Registro de cesantía y sus soportes eliminados correctamente.' };
 }
 
 // ── Firma del Trabajador ─────────────────────────────────────────────────────
@@ -659,11 +1153,20 @@ async function generarYGuardarPDFCesantias(idCesantia, usuario = 'sistema') {
 
 module.exports = {
   buscarTrabajadorCesantias,
+  buscarColaboradoresCesantias,
+  obtenerFondosCesantias,
+  obtenerCiudadYCiudadesPorOperacion,
+  obtenerFirmaPreviaTrabajador,
+  buscarCedulaPreviaTrabajador,
   obtenerMotivosCesantias,
   listarSolicitudesCesantias,
   crearSolicitudCesantias,
   obtenerDetalleCesantia,
   actualizarEstadoCesantia,
+  eliminarSolicitudCesantias,
+  obtenerPermisosUsuarioCesantias,
+  verificarPermisoRolCesantias,
+  obtenerOperacionesSinValidacion,
   registrarFirmaTrabajador,
   generarYGuardarPDFCesantias,
 };
