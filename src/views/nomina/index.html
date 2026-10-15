@@ -7273,7 +7273,7 @@
     abrirModalDetalleCesantia(id);
   }
 
-  function regenerarPdfCesantiaDetalle() {
+  async function regenerarPdfCesantiaDetalle() {
     if (!_cesantiasState.detalleActual) return;
     const sol = _cesantiasState.detalleActual.solicitud;
     if (!confirm('¿Desea regenerar el documento PDF oficial con la plantilla actualizada?')) return;
