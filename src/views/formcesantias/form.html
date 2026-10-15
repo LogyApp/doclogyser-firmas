@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Solicitud de Retiro de Cesantías | Logyser</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-hover: #1e40af;
+      --primary-light: #eff6ff;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --warning: #f59e0b;
+      --warning-light: #fffbeb;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-bar {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+    }
+
+    .header-content {
+      max-width: 820px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-img {
+      height: 38px;
+      max-width: 140px;
+      object-fit: contain;
+    }
+
+    .badge-portal {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 5px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--accent-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .main-container {
+      max-width: 820px;
+      width: 100%;
+      margin: 20px auto 40px auto;
+      padding: 0 16px;
+      flex: 1;
+    }
+
+    .hero-card {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+      color: #ffffff;
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .hero-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .hero-subtitle {
+      font-size: 0.86rem;
+      opacity: 0.9;
+      line-height: 1.45;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    @media (min-width: 640px) {
+      .form-grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+      .form-grid-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    label {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .req {
+      color: var(--danger);
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    input[type="email"],
+    input[type="number"],
+    select {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px;
+      font-family: inherit;
+      font-size: 0.92rem;
+      color: var(--text);
+      background-color: #ffffff;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    input:read-only,
+    select:disabled {
+      background-color: #f1f5f9;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    .field-hint {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      height: 48px;
+      padding: 0 20px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 2px 4px rgba(30, 58, 138, 0.25);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 8px rgba(30, 58, 138, 0.35);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid var(--border);
+      height: 38px;
+      font-size: 0.85rem;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    /* Tarjetas de Selección (Tipo Retiro / Opciones de Firma) */
+    .option-cards {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    @media (min-width: 640px) {
+      .option-cards {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .option-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      background: #ffffff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .option-card:hover {
+      border-color: #cbd5e1;
+    }
+
+    .option-card.active {
+      border-color: var(--accent);
+      background-color: var(--accent-soft);
+    }
+
+    .option-card input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .option-card-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .option-card-sub {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    /* Worker Info Banner */
+    .worker-badge {
+      background: var(--primary-light);
+      border: 1px solid var(--accent-soft);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .worker-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .worker-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 0.8rem;
+    }
+
+    .worker-meta-item span:first-child {
+      display: block;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+    }
+
+    .worker-meta-item span:last-child {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Alert Banners */
+    .alert-box {
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+
+    .alert-danger {
+      background: var(--danger-light);
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    .alert-warning {
+      background: var(--warning-light);
+      border: 1.5px solid #fde68a;
+      color: #92400e;
+    }
+
+    .alert-success {
+      background: var(--success-light);
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+
+    /* Document Slots */
+    .doc-slot {
+      background: #f8fafc;
+      border: 1.5px dashed #cbd5e1;
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .doc-slot.dragover {
+      border-color: var(--accent);
+      background-color: var(--accent-soft);
+    }
+
+    .doc-slot.has-file {
+      border-style: solid;
+      border-color: var(--success);
+      background-color: var(--success-light);
+    }
+
+    .doc-slot-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .doc-slot-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .doc-slot-hint {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .file-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .file-chip {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 100%;
+      word-break: break-all;
+    }
+
+    /* Canvas Firma */
+    .signature-pad-container {
+      background: #ffffff;
+      border: 2px dashed #94a3b8;
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      text-align: center;
+      touch-action: none;
+    }
+
+    .signature-canvas {
+      width: 100%;
+      height: 180px;
+      background: #ffffff;
+      border-radius: 4px;
+      cursor: crosshair;
+      display: block;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 20px 16px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      background: #ffffff;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2.5px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #ffffff;
+      animation: spin 0.8s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra Superior -->
+  <header class="header-bar">
+    <div class="header-content">
+      <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser_sin_Nit.png" alt="Logyser" class="logo-img">
+      <span class="badge-portal">Autogestión de Cesantías</span>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="main-container">
+
+    <!-- Hero Card -->
+    <section class="hero-card">
+      <h1 class="hero-title">Solicitud de Retiro Parcial de Cesantías</h1>
+      <p class="hero-subtitle">
+        Radica tu solicitud digital conforme al Art. 256 del C.S.T. y Decreto 1072 de 2015 para fines de Vivienda o Educación Superior.
+      </p>
+    </section>
+
+    <!-- Paso 1: Identificación del Colaborador -->
+    <div class="card" id="card_identificacion">
+      <div class="card-title">
+        <span>👤 1. Identificación del Colaborador</span>
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="input_identificacion">Número de Documento (Cédula de Ciudadanía) <span class="req">*</span></label>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="input_identificacion" placeholder="Ej: 1023456789" inputmode="numeric" autocomplete="off">
+          <button type="button" class="btn btn-primary" id="btn_consultar_id" style="width:auto; padding:0 18px;" onclick="consultarTrabajador()">
+            Consultar
+          </button>
+        </div>
+        <span class="field-hint">Ingresa tu cédula sin puntos ni comas para validar tu vinculación activa.</span>
+      </div>
+
+      <!-- Alerta de Error / Bloqueo -->
+      <div id="alert_bloqueo_activa" class="alert-box alert-warning" style="display:none;">
+        <span style="font-size:1.3rem;">⚠️</span>
+        <div>
+          <strong style="display:block; margin-bottom:3px;" id="alert_activa_titulo">Solicitud activa en trámite</strong>
+          <span id="alert_activa_mensaje">Ya registras una solicitud en proceso.</span>
+        </div>
+      </div>
+
+      <div id="alert_error_identificacion" class="alert-box alert-danger" style="display:none;">
+        <span style="font-size:1.3rem;">❌</span>
+        <span id="alert_error_mensaje">No fue posible encontrar el colaborador.</span>
+      </div>
+
+      <!-- Tarjeta Informativa del Trabajador -->
+      <div id="worker_info_card" class="worker-badge" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div class="worker-name" id="disp_nombre">—</div>
+            <div style="color:var(--text-muted); font-size:0.82rem;" id="disp_cargo">—</div>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="resetConsultaTrabajador()" style="width:auto; padding:0 10px; height:32px;">
+            ↺ Cambiar
+          </button>
+        </div>
+        <div class="worker-meta-grid">
+          <div class="worker-meta-item">
+            <span>Cédula:</span>
+            <span id="disp_cedula">—</span>
+          </div>
+          <div class="worker-meta-item">
+            <span>Operación:</span>
+            <span id="disp_operacion">—</span>
+          </div>
+          <div class="worker-meta-item">
+            <span>Regional:</span>
+            <span id="disp_regional">—</span>
+          </div>
+          <div class="worker-meta-item">
+            <span>Fecha de Ingreso:</span>
+            <span id="disp_ingreso">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN DE FORMULARIO COMPLETO (Se muestra solo tras consultar cédula válida sin solicitud activa) -->
+    <form id="form_cesantias_completo" style="display:none;" onsubmit="enviarSolicitudCesantias(event)">
+
+      <!-- Paso 2: Datos de Contacto Actualizables -->
+      <div class="card">
+        <div class="card-title">
+          <span>📞 2. Datos de Contacto del Colaborador</span>
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label for="form_celular">Teléfono Celular <span class="req">*</span></label>
+            <input type="tel" id="form_celular" required placeholder="Ej: 3101234567">
+            <span class="field-hint">Se actualizará en la Sociodemografica.</span>
+          </div>
+          <div class="form-group">
+            <label for="form_email">Correo Electrónico <span class="req">*</span></label>
+            <input type="email" id="form_email" required placeholder="Ej: colaborador@correo.com">
+            <span class="field-hint">Se actualizará en la Sociodemografica.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paso 3: Fondo, Ciudad y Monto Solicitado -->
+      <div class="card">
+        <div class="card-title">
+          <span>💰 3. Fondo, Ciudad y Monto Solicitado</span>
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label for="form_fondo">Fondo Administrador de Cesantías <span class="req">*</span></label>
+            <select id="form_fondo" required>
+              <option value="">-- Seleccione Fondo --</option>
+            </select>
+            <span class="field-hint">Prellenado según la Sociodemografica.</span>
+          </div>
+          <div class="form-group">
+            <label for="form_ciudad">Ciudad de Solicitud <span class="req">*</span></label>
+            <select id="form_ciudad" required>
+              <option value="">-- Seleccione Ciudad --</option>
+            </select>
+            <span class="field-hint">Prellenada según centro de costo de tu operación.</span>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="form_monto">Monto Solicitado (Pesos Colombianos - COP) <span class="req">*</span></label>
+            <input type="text" id="form_monto" required placeholder="Ej: 2.500.000" oninput="formatearMontoInput(this)" style="font-size:1.15rem; font-weight:700; color:var(--primary);">
+            <span class="field-hint">Digita el valor en pesos que deseas retirar de tu fondo.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Paso 4: Modalidad y Motivo de Retiro de Cesantias -->
+      <div class="card">
+        <div class="card-title">
+          <span>🎯 4. Modalidad y Motivo de Retiro de Cesantias</span>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Selecciona la Modalidad de Retiro <span class="req">*</span></label>
+          <div class="option-cards">
+            <label class="option-card" id="card_modalidad_vivienda">
+              <input type="radio" name="modalidad_retiro" value="Vivienda" onchange="seleccionarModalidad('Vivienda')">
+              <div>
+                <div class="option-card-title">🏠 Vivienda</div>
+                <div class="option-card-sub">Compra, mejora/ampliación o pago hipotecario/predial</div>
+              </div>
+            </label>
+            <label class="option-card" id="card_modalidad_educacion">
+              <input type="radio" name="modalidad_retiro" value="Educación" onchange="seleccionarModalidad('Educación')">
+              <div>
+                <div class="option-card-title">🎓 Educación</div>
+                <div class="option-card-sub">Estudios superiores del colaborador, cónyuge o hijos</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px;">
+          <label for="form_motivo">Motivo Específico de Retiro de Cesantias <span class="req">*</span></label>
+          <select id="form_motivo" required disabled onchange="cambiarMotivoEspecifico()">
+            <option value="">-- Primero elija la modalidad arriba --</option>
+          </select>
+        </div>
+
+        <!-- Sub-bloque Vivienda: Aplica Cónyuge -->
+        <div id="bloque_vivienda_extra" style="display:none; background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px; margin-top:14px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:0.86rem; font-weight:600;">
+            <input type="checkbox" id="check_aplica_conyuge" onchange="renderizarSlotsDocumentos()" style="width:18px; height:18px; accent-color:var(--accent);">
+            <span>El inmueble está a nombre del cónyuge o compañero(a) permanente</span>
+          </label>
+          <span class="field-hint" style="display:block; margin-top:4px; margin-left:28px;">
+            Si marcas esta casilla, deberás adjuntar también el registro de matrimonio o acta de unión marital y la cédula de tu cónyuge.
+          </span>
+        </div>
+
+        <!-- Sub-bloque Educación: Datos de la Universidad y Beneficiario -->
+        <div id="bloque_educacion_extra" style="display:none; background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px; margin-top:14px;">
+          <div style="font-weight:700; color:var(--primary); font-size:0.9rem; margin-bottom:12px;">Datos del Programa Académico y Beneficiario</div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group">
+              <label for="form_edu_institucion">Institución de Educación Superior <span class="req">*</span></label>
+              <input type="text" id="form_edu_institucion" placeholder="Universidad, Institución tecnológica...">
+            </div>
+            <div class="form-group">
+              <label for="form_edu_programa">Programa Académico <span class="req">*</span></label>
+              <input type="text" id="form_edu_programa" placeholder="Ej: Psicología, Ing. de Sistemas...">
+            </div>
+            <div class="form-group">
+              <label for="form_edu_semestre">Semestre / Ciclo <span class="req">*</span></label>
+              <input type="text" id="form_edu_semestre" placeholder="Ej: IV Semestre, Módulo 2...">
+            </div>
+            <div class="form-group">
+              <label for="form_edu_beneficiario_nom">Nombre Completo del Beneficiario <span class="req">*</span></label>
+              <input type="text" id="form_edu_beneficiario_nom" placeholder="Nombres y apellidos..." style="text-transform:uppercase;" oninput="this.value = this.value.toUpperCase()">
+              <span class="field-hint" id="hint_beneficiario_nom"></span>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="form_edu_beneficiario_id">Documento de Identidad del Beneficiario <span class="req">*</span></label>
+              <input type="text" id="form_edu_beneficiario_id" placeholder="Cédula de Ciudadanía o Tarjeta de Identidad">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Paso 5: Soportes Documentales Requeridos (Individual con Drag & Drop) -->
+      <div class="card" id="card_documentos" style="display:none;">
+        <div class="card-title">
+          <span>📎 5. Carga de Soportes Documentales Requeridos</span>
+        </div>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:16px;">
+          Adjunta individualmente cada uno de los soportes en formato PDF o imagen legible. Puedes arrastrar los archivos a cada casilla.
+        </p>
+
+        <div id="container_documentos_slots">
+          <!-- Renderizado dinámicamente según el motivo -->
+        </div>
+      </div>
+
+      <!-- Paso 6: Declaración Juramentada y Firma Electrónica -->
+      <div class="card">
+        <div class="card-title">
+          <span>✍️ 6. Declaración de Veracidad y Firma Electrónica</span>
+        </div>
+
+        <div class="alert-box alert-warning" style="margin-bottom:14px; font-size:0.82rem;">
+          <span>⚖️</span>
+          <div>
+            Yo, en calidad de colaborador solicitante, declaro bajo la gravedad de juramento que la información suministrada y los soportes adjuntos son auténticos y gozan de total veracidad legal (Art. 256 C.S.T. y D.U.R. 1072 de 2015).
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:18px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; font-size:0.88rem;">
+            <input type="checkbox" id="check_declaracion" required checked style="width:18px; height:18px; accent-color:var(--accent);">
+            <span>Acepto la declaración juramentada de veracidad y destinación <span class="req">*</span></span>
+          </label>
+        </div>
+
+        <!-- Métodos de Firma: Si tiene firma previa o dibuja en canvas -->
+        <div id="bloque_opciones_firma" style="display:none; margin-bottom:14px;">
+          <label style="display:block; margin-bottom:8px; font-weight:600; font-size:0.85rem;">Método de Firma Electrónica:</label>
+          <div class="option-cards">
+            <label class="option-card active" id="opt_firma_previa">
+              <input type="radio" name="metodo_firma" value="previa" checked onchange="cambiarMetodoFirma('previa')">
+              <div>
+                <div class="option-card-title">Usar firma registrada en el sistema</div>
+                <div class="option-card-sub">Firma oficial previa registrada en el expediente</div>
+              </div>
+            </label>
+            <label class="option-card" id="opt_firma_nueva">
+              <input type="radio" name="metodo_firma" value="nueva" onchange="cambiarMetodoFirma('nueva')">
+              <div>
+                <div class="option-card-title">Dibujar nueva firma</div>
+                <div class="option-card-sub">Hacer un nuevo trazo para este radicado</div>
+              </div>
+            </label>
+          </div>
+
+          <div id="preview_firma_previa_wrap" style="text-align:center; padding:12px; background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm);">
+            <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:6px;">Firma registrada actualmente:</span>
+            <img id="img_firma_previa" src="" alt="Firma registrada" style="max-height:80px; max-width:100%; object-fit:contain;">
+          </div>
+        </div>
+
+        <!-- Contenedor Canvas para Dibujar Firma -->
+        <div id="contenedor_canvas_wrap" style="margin-top:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">Dibuja tu firma en el recuadro blanco:</label>
+            <button type="button" class="btn btn-secondary" onclick="limpiarCanvasFirma()" style="width:auto; height:30px; font-size:0.75rem; padding:0 10px;">
+              ↺ Limpiar trazo
+            </button>
+          </div>
+          <div class="signature-pad-container">
+            <canvas id="canvas_firma" class="signature-canvas"></canvas>
+          </div>
+          <span class="field-hint" style="display:block; margin-top:4px;">
+            Puedes firmar usando la pantalla táctil de tu celular o el ratón en tu computadora.
+          </span>
+        </div>
+
+      </div>
+
+      <!-- Botón de Envío -->
+      <div style="margin-top:20px; margin-bottom:40px;">
+        <button type="submit" class="btn btn-primary" id="btn_enviar_solicitud" style="font-size:1.05rem; height:52px;">
+          <span id="btn_submit_text">Radicar Solicitud de Cesantías</span>
+          <span id="btn_submit_spinner" class="spinner" style="display:none;"></span>
+        </button>
+      </div>
+
+    </form>
+
+    <!-- PANTALLA DE ÉXITO -->
+    <div id="pantalla_exito" class="card" style="display:none; text-align:center; padding:36px 20px;">
+      <div style="width:72px; height:72px; background:var(--success-light); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto; font-size:2.2rem; color:var(--success);">
+        ✓
+      </div>
+      <h2 style="font-size:1.4rem; font-weight:800; color:var(--text); margin-bottom:8px;">¡Solicitud Radicada con Éxito!</h2>
+      <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">
+        Tu solicitud ha sido radicada correctamente y ha entrado al flujo de validación y gestión.
+      </p>
+
+      <div style="background:#f1f5f9; border-radius:var(--radius-sm); padding:16px; max-width:400px; margin:0 auto 24px auto;">
+        <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block;">Número de Radicado:</span>
+        <strong id="exito_radicado_id" style="font-size:1.35rem; color:var(--primary); font-family:monospace; display:block; margin-top:4px;">CES-...</strong>
+      </div>
+
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:24px;">
+        Se enviará una notificación a tu correo con los detalles de tu trámite. Puedes guardar este número de radicado para hacer seguimiento.
+      </p>
+
+      <button type="button" class="btn btn-primary" onclick="window.location.reload()" style="max-width:280px; margin:0 auto;">
+        Radicar otra solicitud
+      </button>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>© 2026 Logyser S.A.S. — Todos los derechos reservados.</p>
+    <p style="margin-top:4px;">Módulo de Autogestión de Colaboradores | Proceso de Cesantías</p>
+  </footer>
+
+  <script>
+    // Catálogo de soportes requeridos por motivo
+    const SOPORTES_POR_MOTIVO = {
+      1: [
+        { key: 'cedula_trabajador', label: 'Cédula de Ciudadanía del Trabajador', req: true, hint: 'Fotocopia legible ampliada al 150%' },
+        { key: 'promesa_compraventa', label: 'Promesa de Compraventa o Carta de Intención', req: true, hint: 'Con firmas de comprador y vendedor o constructora' },
+        { key: 'cert_tradicion_vivienda', label: 'Certificado de Tradición y Libertad', req: false, hint: 'Vigencia menor a 30 días (si ya cuenta con matrícula)' }
+      ],
+      2: [
+        { key: 'cedula_trabajador', label: 'Cédula de Ciudadanía del Trabajador', req: true, hint: 'Fotocopia legible ampliada al 150%' },
+        { key: 'cert_tradicion_mejora', label: 'Certificado de Tradición y Libertad del Inmueble', req: true, hint: 'A nombre del colaborador o su cónyuge' },
+        { key: 'contrato_obra_cotizacion', label: 'Contrato de Obra Civil o Cotización Detallada', req: true, hint: 'Desglose de mano de obra y materiales' }
+      ],
+      3: [
+        { key: 'cedula_trabajador', label: 'Cédula de Ciudadanía del Trabajador', req: true, hint: 'Fotocopia legible ampliada al 150%' },
+        { key: 'cert_tradicion_hipoteca', label: 'Certificado de Tradición y Libertad del Inmueble', req: true, hint: 'Con gravamen hipotecario registrado' },
+        { key: 'recibo_hipoteca_predial', label: 'Extracto de Crédito Hipotecario o Impuesto Predial', req: true, hint: 'Recibo oficial del banco o liquidación predial' }
+      ],
+      4: [
+        { key: 'cedula_trabajador', label: 'Cédula de Ciudadanía del Trabajador', req: true, hint: 'Fotocopia legible del documento de identidad' },
+        { key: 'recibo_matricula', label: 'Recibo o Volante de Matrícula de la Institución Superior', req: true, hint: 'Con valor a pagar, semestre y acreditación MEN' }
+      ],
+      5: [
+        { key: 'cedula_trabajador', label: 'Cédula de Ciudadanía del Trabajador', req: true, hint: 'Fotocopia legible del documento del colaborador' },
+        { key: 'cedula_conyuge', label: 'Cédula de Ciudadanía del Cónyuge o Compañero(a)', req: true, hint: 'Documento de identidad de quien estudia' },
+        { key: 'registro_matrimonio_union', label: 'Registro Civil de Matrimonio o Declaración de Unión', req: true, hint: 'Acredita el vínculo formal o marital de hecho' },
+        { key: 'recibo_matricula', label: 'Recibo o Volante de Matrícula de la Institución Superior', req: true, hint: 'Con valor a pagar y datos de la institución' }
+      ],
+      6: [
+        { key: 'cedula_trabajador', label: 'Cédula de Ciudadanía del Trabajador', req: true, hint: 'Fotocopia legible del documento del colaborador' },
+        { key: 'registro_nacimiento_hijo', label: 'Registro Civil de Nacimiento del Hijo(a)', req: true, hint: 'Donde consta el parentesco con el colaborador' },
+        { key: 'documento_hijo', label: 'Documento de Identidad del Hijo(a) (T.I. o C.C.)', req: true, hint: 'Tarjeta de identidad o cédula del estudiante' },
+        { key: 'recibo_matricula', label: 'Recibo o Volante de Matrícula de la Institución Superior', req: true, hint: 'Con valor a pagar y datos de la institución' }
+      ]
+    };
+
+    const SOPORTES_CONYUGE_VIVIENDA = [
+      { key: 'cedula_conyuge', label: 'Cédula del Cónyuge o Compañero(a) Permanente', req: true, hint: 'Copia del documento de identidad del cónyuge' },
+      { key: 'registro_matrimonio_union', label: 'Registro Civil de Matrimonio o Declaración de Unión Marital', req: true, hint: 'Acredita el vínculo formal o marital de hecho' }
+    ];
+
+    // Estado local
+    const state = {
+      trabajador: null,
+      motivos: [],
+      fondos: [],
+      modalidadSeleccionada: null,
+      opcionCedula: 'existente',
+      metodoFirma: 'previa',
+      archivos: {}, // key -> File
+      canvas: null,
+      ctx: null,
+      dibujando: false,
+      haDibujado: false
+    };
+
+    // Inicialización al cargar la página
+    document.addEventListener('DOMContentLoaded', async () => {
+      initCanvas();
+      await cargarCatalogos();
+      revisarParametroURL();
+    });
+
+    async function cargarCatalogos() {
+      try {
+        const [resM, resF] = await Promise.all([
+          fetch('/empleado/formcesantias/api/motivos').then(r => r.json()),
+          fetch('/empleado/formcesantias/api/fondos').then(r => r.json())
+        ]);
+        if (resM.ok) state.motivos = resM.motivos;
+        if (resF.ok) {
+          state.fondos = resF.fondos;
+          const selFondo = document.getElementById('form_fondo');
+          state.fondos.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f;
+            opt.textContent = f;
+            selFondo.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.error('Error cargando catálogos:', e);
+      }
+    }
+
+    function revisarParametroURL() {
+      const search = window.location.search || '';
+      if (!search) return;
+      let id = '';
+      if (search.includes('=')) {
+        const params = new URLSearchParams(search);
+        id = params.get('identificacion') || params.get('id') || '';
+      } else {
+        id = search.replace('?', '').trim();
+      }
+      if (id && /^\d+$/.test(id)) {
+        document.getElementById('input_identificacion').value = id;
+        consultarTrabajador();
+      }
+    }
+
+    async function consultarTrabajador() {
+      const idInput = document.getElementById('input_identificacion');
+      const id = (idInput.value || '').trim();
+      const btn = document.getElementById('btn_consultar_id');
+      const alertBloqueo = document.getElementById('alert_bloqueo_activa');
+      const alertError = document.getElementById('alert_error_identificacion');
+      const cardWorker = document.getElementById('worker_info_card');
+      const formCompleto = document.getElementById('form_cesantias_completo');
+
+      alertBloqueo.style.display = 'none';
+      alertError.style.display = 'none';
+      cardWorker.style.display = 'none';
+      formCompleto.style.display = 'none';
+
+      if (!id) {
+        alertError.style.display = 'flex';
+        document.getElementById('alert_error_mensaje').textContent = 'Por favor ingresa un número de cédula válido.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Buscando...';
+
+      try {
+        const res = await fetch(`/empleado/formcesantias/api/trabajador/${encodeURIComponent(id)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          alertError.style.display = 'flex';
+          document.getElementById('alert_error_mensaje').textContent = data.error || 'No fue posible encontrar el colaborador.';
+          return;
+        }
+
+        const tra = data.trabajador;
+        state.trabajador = tra;
+
+        // Mostrar tarjeta del trabajador
+        document.getElementById('disp_nombre').textContent = tra.nombre;
+        document.getElementById('disp_cargo').textContent = tra.cargo;
+        document.getElementById('disp_cedula').textContent = tra.identificacion;
+        document.getElementById('disp_operacion').textContent = tra.operacion;
+        document.getElementById('disp_regional').textContent = tra.regional;
+        document.getElementById('disp_ingreso').textContent = tra.fechaIngreso || '—';
+        cardWorker.style.display = 'block';
+
+        // Req 13: Comprobar si ya registra solicitud activa
+        if (tra.solicitudActiva) {
+          alertBloqueo.style.display = 'flex';
+          document.getElementById('alert_activa_titulo').textContent = 'Solicitud Activa en Trámite';
+          document.getElementById('alert_activa_mensaje').textContent = 
+            `Ya tienes una solicitud de cesantías en trámite (Radicado: ${tra.solicitudActiva.Id}, Estado: ${String(tra.solicitudActiva.estado).toUpperCase()}). No es posible radicar una nueva solicitud hasta que la actual finalice.`;
+          return; // Detener aquí, no mostrar el formulario
+        }
+
+        // Si no tiene solicitud activa, configurar el formulario
+        prellenarFormulario(tra);
+        formCompleto.style.display = 'block';
+        window.scrollTo({ top: cardWorker.offsetTop - 20, behavior: 'smooth' });
+
+      } catch (err) {
+        alertError.style.display = 'flex';
+        document.getElementById('alert_error_mensaje').textContent = 'Error de conexión con el servidor. Intente nuevamente.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Consultar';
+      }
+    }
+
+    function resetConsultaTrabajador() {
+      state.trabajador = null;
+      document.getElementById('input_identificacion').value = '';
+      document.getElementById('worker_info_card').style.display = 'none';
+      document.getElementById('alert_bloqueo_activa').style.display = 'none';
+      document.getElementById('alert_error_identificacion').style.display = 'none';
+      document.getElementById('form_cesantias_completo').style.display = 'none';
+      document.getElementById('input_identificacion').focus();
+    }
+
+    async function prellenarFormulario(tra) {
+      document.getElementById('form_celular').value = tra.telefono || '';
+      document.getElementById('form_email').value = tra.email || '';
+
+      // Prellenar fondo de cesantías
+      const selFondo = document.getElementById('form_fondo');
+      if (tra.fondoCesantias) {
+        let matching = Array.from(selFondo.options).find(o => o.value.trim().toUpperCase() === tra.fondoCesantias.trim().toUpperCase());
+        if (matching) {
+          selFondo.value = matching.value;
+        } else {
+          const opt = document.createElement('option');
+          opt.value = tra.fondoCesantias;
+          opt.textContent = tra.fondoCesantias;
+          selFondo.appendChild(opt);
+          selFondo.value = tra.fondoCesantias;
+        }
+      }
+
+      // Prellenar ciudades según operación
+      const selCiudad = document.getElementById('form_ciudad');
+      selCiudad.innerHTML = '<option value="">-- Seleccione Ciudad --</option>';
+      const ciudades = tra.ciudades || [];
+      ciudades.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        selCiudad.appendChild(opt);
+      });
+      if (tra.ciudadPrellenar) {
+        selCiudad.value = tra.ciudadPrellenar;
+      }
+
+      // Configurar Firma
+      configurarOpcionesFirma(tra);
+    }
+
+    function seleccionarModalidad(tipo) {
+      state.modalidadSeleccionada = tipo;
+      const cardViv = document.getElementById('card_modalidad_vivienda');
+      const cardEdu = document.getElementById('card_modalidad_educacion');
+
+      if (tipo === 'Vivienda') {
+        cardViv.classList.add('active');
+        cardEdu.classList.remove('active');
+      } else {
+        cardEdu.classList.add('active');
+        cardViv.classList.remove('active');
+      }
+
+      const selMotivo = document.getElementById('form_motivo');
+      selMotivo.disabled = false;
+      selMotivo.innerHTML = `<option value="">-- Selecciona el motivo de ${tipo} --</option>`;
+
+      const motivosFiltrados = state.motivos.filter(m => m.tipo_retiro === tipo);
+      motivosFiltrados.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.Id;
+        opt.textContent = m.motivo_retiro;
+        selMotivo.appendChild(opt);
+      });
+
+      document.getElementById('bloque_vivienda_extra').style.display = 'none';
+      document.getElementById('bloque_educacion_extra').style.display = 'none';
+      document.getElementById('card_documentos').style.display = 'none';
+      state.archivos = {};
+    }
+
+    function cambiarMotivoEspecifico() {
+      const selMotivo = document.getElementById('form_motivo');
+      const motivoId = Number(selMotivo.value);
+      const motivo = state.motivos.find(m => m.Id === motivoId);
+
+      const blqViv = document.getElementById('bloque_vivienda_extra');
+      const blqEdu = document.getElementById('bloque_educacion_extra');
+
+      if (!motivo) {
+        blqViv.style.display = 'none';
+        blqEdu.style.display = 'none';
+        document.getElementById('card_documentos').style.display = 'none';
+        return;
+      }
+
+      if (motivo.tipo_retiro === 'Vivienda') {
+        blqViv.style.display = 'block';
+        blqEdu.style.display = 'none';
+      } else {
+        blqViv.style.display = 'none';
+        blqEdu.style.display = 'block';
+
+        const nomBen = document.getElementById('form_edu_beneficiario_nom');
+        const idBen = document.getElementById('form_edu_beneficiario_id');
+        const hintBen = document.getElementById('hint_beneficiario_nom');
+
+        // Req 7: Si es "Educación superior del Trabajador", bloquear y prellenar
+        if (motivo.motivo_retiro.includes('Trabajador') && state.trabajador) {
+          nomBen.value = state.trabajador.nombre.toUpperCase();
+          idBen.value = state.trabajador.identificacion;
+          nomBen.readOnly = true;
+          idBen.readOnly = true;
+          hintBen.textContent = 'Informativo: Bloqueado con tus datos de colaborador solicitante.';
+        } else {
+          nomBen.value = '';
+          idBen.value = '';
+          nomBen.readOnly = false;
+          idBen.readOnly = false;
+          hintBen.textContent = 'Escribe el nombre en MAYÚSCULAS.';
+        }
+      }
+
+      renderizarSlotsDocumentos();
+    }
+
+    function renderizarSlotsDocumentos() {
+      const selMotivo = document.getElementById('form_motivo');
+      const motivoId = Number(selMotivo.value);
+      if (!motivoId) return;
+
+      const container = document.getElementById('container_documentos_slots');
+      const cardDocs = document.getElementById('card_documentos');
+      container.innerHTML = '';
+      cardDocs.style.display = 'block';
+
+      let lista = [...(SOPORTES_POR_MOTIVO[motivoId] || [])];
+
+      // Si es vivienda y marcó cónyuge
+      const conyugeCheck = document.getElementById('check_aplica_conyuge');
+      if (conyugeCheck && conyugeCheck.checked && state.modalidadSeleccionada === 'Vivienda') {
+        lista.push(...SOPORTES_CONYUGE_VIVIENDA);
+      }
+
+      const tieneCedulaPrevia = !!(state.trabajador?.cedulaPrevia?.tieneCedulaPrevia);
+      const cp = state.trabajador?.cedulaPrevia || {};
+
+      lista.forEach(s => {
+        const slotEl = document.createElement('div');
+        slotEl.className = 'doc-slot';
+        slotEl.id = `slot_${s.key}`;
+
+        // Caso especial: Cédula de Ciudadanía con cédula previa en el sistema
+        if (s.key === 'cedula_trabajador' && tieneCedulaPrevia) {
+          const esExistente = state.opcionCedula === 'existente';
+          slotEl.innerHTML = `
+            <div class="doc-slot-header">
+              <span class="doc-slot-title">🪪 ${s.label} <span class="req">*</span></span>
+              <span style="font-size:0.75rem; background:#dcfce7; color:#166534; font-weight:700; padding:2px 8px; border-radius:12px;">En Expediente</span>
+            </div>
+            <div class="doc-slot-hint">Se encontró una cédula previamente cargada en tu expediente laboral.</div>
+            
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; cursor:pointer;">
+                <input type="radio" name="opc_cedula" value="existente" ${esExistente ? 'checked' : ''} onchange="cambiarOpcionCedula('existente')">
+                <span>Usar cédula registrada</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; cursor:pointer;">
+                <input type="radio" name="opc_cedula" value="nueva" ${!esExistente ? 'checked' : ''} onchange="cambiarOpcionCedula('nueva')">
+                <span>Cargar nuevo documento</span>
+              </label>
+            </div>
+
+            <div id="cedula_existente_preview" style="display:${esExistente ? 'block' : 'none'}; padding:8px 12px; background:#ffffff; border:1px solid var(--border); border-radius:6px; font-size:0.8rem;">
+              <span>Documento registrado en el sistema: </span>
+              <a href="${cp.urlCedula}" target="_blank" style="color:var(--accent); font-weight:600; text-decoration:underline;">Ver Cédula Actual ↗</a>
+            </div>
+
+            <div id="cedula_nueva_upload" style="display:${!esExistente ? 'block' : 'none'};">
+              <input type="file" id="file_${s.key}" accept=".pdf,image/*" onchange="onFileSelected('${s.key}', this)" style="display:none;">
+              <div class="file-input-wrapper">
+                <button type="button" class="btn btn-secondary" style="width:auto;" onclick="document.getElementById('file_${s.key}').click()">
+                  📎 Seleccionar Archivo
+                </button>
+                <span class="file-chip" id="chip_${s.key}" style="display:none;"></span>
+              </div>
+            </div>
+          `;
+        } else {
+          // Slot normal
+          const fileStaged = state.archivos[s.key];
+          slotEl.innerHTML = `
+            <div class="doc-slot-header">
+              <span class="doc-slot-title">📄 ${s.label} ${s.req ? '<span class="req">*</span>' : '<span style="font-size:0.75rem; color:var(--text-muted);">(Opcional)</span>'}</span>
+            </div>
+            <div class="doc-slot-hint">${s.hint}</div>
+            <input type="file" id="file_${s.key}" accept=".pdf,image/*" onchange="onFileSelected('${s.key}', this)" style="display:none;">
+            <div class="file-input-wrapper">
+              <button type="button" class="btn btn-secondary" style="width:auto;" onclick="document.getElementById('file_${s.key}').click()">
+                📎 Seleccionar Archivo
+              </button>
+              <span class="file-chip" id="chip_${s.key}" style="display:${fileStaged ? 'inline-flex' : 'none'};">
+                ${fileStaged ? `✓ ${fileStaged.name} (${(fileStaged.size/1024).toFixed(0)} KB)` : ''}
+              </span>
+            </div>
+          `;
+        }
+
+        // Configurar Drag & Drop
+        configurarDragAndDrop(slotEl, s.key);
+        container.appendChild(slotEl);
+      });
+    }
+
+    function cambiarOpcionCedula(opcion) {
+      state.opcionCedula = opcion;
+      const prev = document.getElementById('cedula_existente_preview');
+      const up = document.getElementById('cedula_nueva_upload');
+      if (prev) prev.style.display = opcion === 'existente' ? 'block' : 'none';
+      if (up) up.style.display = opcion === 'nueva' ? 'block' : 'none';
+      if (opcion === 'existente') {
+        delete state.archivos['cedula_trabajador'];
+      }
+    }
+
+    function onFileSelected(key, input) {
+      if (input.files && input.files[0]) {
+        asignarArchivoASlot(key, input.files[0]);
+      }
+    }
+
+    function asignarArchivoASlot(key, file) {
+      state.archivos[key] = file;
+      const chip = document.getElementById(`chip_${key}`);
+      const slot = document.getElementById(`slot_${key}`);
+      if (chip) {
+        chip.textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+        chip.style.display = 'inline-flex';
+      }
+      if (slot) {
+        slot.classList.add('has-file');
+      }
+    }
+
+    function configurarDragAndDrop(element, key) {
+      ['dragenter', 'dragover'].forEach(eventName => {
+        element.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          element.classList.add('dragover');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        element.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          element.classList.remove('dragover');
+        }, false);
+      });
+
+      element.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+          asignarArchivoASlot(key, files[0]);
+        }
+      }, false);
+    }
+
+    // Configuración de Firma
+    function configurarOpcionesFirma(tra) {
+      const blqOpciones = document.getElementById('bloque_opciones_firma');
+      const canvasWrap = document.getElementById('contenedor_canvas_wrap');
+      const imgPrev = document.getElementById('img_firma_previa');
+
+      if (tra.tieneFirmaPrevia && tra.firmaPreviaUrl) {
+        state.metodoFirma = 'previa';
+        blqOpciones.style.display = 'block';
+        imgPrev.src = tra.firmaPreviaUrl;
+        canvasWrap.style.display = 'none';
+      } else {
+        state.metodoFirma = 'nueva';
+        blqOpciones.style.display = 'none';
+        canvasWrap.style.display = 'block';
+        ajustarTamanioCanvas();
+      }
+    }
+
+    function cambiarMetodoFirma(metodo) {
+      state.metodoFirma = metodo;
+      const canvasWrap = document.getElementById('contenedor_canvas_wrap');
+      const optP = document.getElementById('opt_firma_previa');
+      const optN = document.getElementById('opt_firma_nueva');
+
+      if (metodo === 'previa') {
+        optP.classList.add('active');
+        optN.classList.remove('active');
+        canvasWrap.style.display = 'none';
+      } else {
+        optN.classList.add('active');
+        optP.classList.remove('active');
+        canvasWrap.style.display = 'block';
+        ajustarTamanioCanvas();
+      }
+    }
+
+    function initCanvas() {
+      const canvas = document.getElementById('canvas_firma');
+      if (!canvas) return;
+      state.canvas = canvas;
+      state.ctx = canvas.getContext('2d');
+
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: (clientX - rect.left) * (canvas.width / rect.width),
+          y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+      };
+
+      const startDrawing = (e) => {
+        e.preventDefault();
+        state.dibujando = true;
+        state.haDibujado = true;
+        const pos = getPos(e);
+        state.ctx.beginPath();
+        state.ctx.moveTo(pos.x, pos.y);
+      };
+
+      const draw = (e) => {
+        if (!state.dibujando) return;
+        e.preventDefault();
+        const pos = getPos(e);
+        state.ctx.lineWidth = 2.5;
+        state.ctx.lineCap = 'round';
+        state.ctx.lineJoin = 'round';
+        state.ctx.strokeStyle = '#0f172a';
+        state.ctx.lineTo(pos.x, pos.y);
+        state.ctx.stroke();
+      };
+
+      const stopDrawing = (e) => {
+        if (state.dibujando) {
+          e.preventDefault();
+          state.dibujando = false;
+        }
+      };
+
+      canvas.addEventListener('mousedown', startDrawing);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stopDrawing);
+      canvas.addEventListener('mouseleave', stopDrawing);
+
+      canvas.addEventListener('touchstart', startDrawing, { passive: false });
+      canvas.addEventListener('touchmove', draw, { passive: false });
+      canvas.addEventListener('touchend', stopDrawing, { passive: false });
+
+      window.addEventListener('resize', () => {
+        if (state.metodoFirma === 'nueva') ajustarTamanioCanvas();
+      });
+    }
+
+    function ajustarTamanioCanvas() {
+      const canvas = state.canvas;
+      if (!canvas) return;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      if (rect.width > 0) {
+        canvas.width = rect.width - 16;
+        canvas.height = 180;
+      }
+    }
+
+    function limpiarCanvasFirma() {
+      if (!state.canvas || !state.ctx) return;
+      state.ctx.clearRect(0, 0, state.canvas.width, state.canvas.height);
+      state.haDibujado = false;
+    }
+
+    function formatearMontoInput(input) {
+      const raw = input.value.replace(/\D/g, '');
+      if (!raw) { input.value = ''; return; }
+      input.value = Number(raw).toLocaleString('es-CO');
+    }
+
+    // Envío del Formulario
+    async function enviarSolicitudCesantias(e) {
+      e.preventDefault();
+      if (!state.trabajador) {
+        alert('Por favor consulte y confirme su cédula primero.');
+        return;
+      }
+
+      const motivoId = Number(document.getElementById('form_motivo').value);
+      if (!motivoId) {
+        alert('Por favor seleccione el motivo de retiro.');
+        return;
+      }
+
+      const motivo = state.motivos.find(m => m.Id === motivoId);
+      const montoRaw = document.getElementById('form_monto').value.replace(/\D/g, '');
+      if (!montoRaw || Number(montoRaw) <= 0) {
+        alert('Por favor ingrese un monto válido.');
+        return;
+      }
+
+      // Validar archivos obligatorios
+      let listaSlots = [...(SOPORTES_POR_MOTIVO[motivoId] || [])];
+      if (motivo.tipo_retiro === 'Vivienda' && document.getElementById('check_aplica_conyuge').checked) {
+        listaSlots.push(...SOPORTES_CONYUGE_VIVIENDA);
+      }
+
+      const faltantes = [];
+      listaSlots.forEach(s => {
+        if (s.key === 'cedula_trabajador') {
+          if (state.opcionCedula === 'existente' && state.trabajador?.cedulaPrevia?.tieneCedulaPrevia) {
+            return;
+          }
+        }
+        if (s.req && !state.archivos[s.key]) {
+          faltantes.push(s.label);
+        }
+      });
+
+      if (faltantes.length) {
+        alert('Faltan los siguientes soportes requeridos:\n• ' + faltantes.join('\n• '));
+        return;
+      }
+
+      // Validar firma si seleccionó nueva
+      let firmaBase64 = null;
+      if (state.metodoFirma === 'nueva') {
+        if (!state.haDibujado) {
+          alert('Por favor dibuja tu firma en el recuadro antes de continuar.');
+          return;
+        }
+        firmaBase64 = state.canvas.toDataURL('image/png');
+      }
+
+      // Preparar FormData
+      const fd = new FormData();
+      fd.append('identificacion', state.trabajador.identificacion);
+      fd.append('celular', document.getElementById('form_celular').value);
+      fd.append('email', document.getElementById('form_email').value);
+      fd.append('ciudad_solicitud', document.getElementById('form_ciudad').value);
+      fd.append('fondo_cesantias', document.getElementById('form_fondo').value);
+      fd.append('monto_solicitado', montoRaw);
+      fd.append('motivo_retiro', motivoId);
+
+      if (motivo.tipo_retiro === 'Vivienda') {
+        fd.append('aplica_conyuge', document.getElementById('check_aplica_conyuge').checked ? '1' : '0');
+      } else {
+        fd.append('institucion_educativa', document.getElementById('form_edu_institucion').value);
+        fd.append('programa_academico', document.getElementById('form_edu_programa').value);
+        fd.append('semestre', document.getElementById('form_edu_semestre').value);
+        fd.append('nombre_beneficiario', document.getElementById('form_edu_beneficiario_nom').value);
+        fd.append('identificacion_beneficiario', document.getElementById('form_edu_beneficiario_id').value);
+      }
+
+      // Opciones de firma
+      if (state.metodoFirma === 'previa') {
+        fd.append('usar_firma_previa', 'true');
+      } else if (firmaBase64) {
+        fd.append('firma_base64', firmaBase64);
+      }
+
+      // Opciones de cédula
+      if (state.opcionCedula === 'existente' && state.trabajador?.cedulaPrevia?.tieneCedulaPrevia) {
+        fd.append('usar_cedula_previa', 'true');
+        fd.append('url_cedula_previa', state.trabajador.cedulaPrevia.urlCedula || '');
+        fd.append('raw_doc_cedula_previa', state.trabajador.cedulaPrevia.rawDoc || '');
+      }
+
+      // Mapa de etiquetas
+      const labelsMap = {};
+      listaSlots.forEach(s => { labelsMap[s.key] = s.label; });
+      fd.append('labels_map', JSON.stringify(labelsMap));
+
+      // Adjuntar archivos al FormData
+      Object.entries(state.archivos).forEach(([k, file]) => {
+        fd.append(k, file, file.name);
+      });
+
+      // UI Loading
+      const btn = document.getElementById('btn_enviar_solicitud');
+      const txt = document.getElementById('btn_submit_text');
+      const sp = document.getElementById('btn_submit_spinner');
+
+      btn.disabled = true;
+      txt.textContent = 'Radicando solicitud...';
+      sp.style.display = 'inline-block';
+
+      try {
+        const res = await fetch('/empleado/formcesantias/api/solicitar', {
+          method: 'POST',
+          body: fd
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'No fue posible radicar la solicitud.');
+        }
+
+        // Mostrar pantalla de éxito
+        document.getElementById('card_identificacion').style.display = 'none';
+        document.getElementById('form_cesantias_completo').style.display = 'none';
+        document.getElementById('pantalla_exito').style.display = 'block';
+        document.getElementById('exito_radicado_id').textContent = data.id || 'CES-EXITO';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      } catch (err) {
+        alert('Error al radicar la solicitud:\n' + err.message);
+      } finally {
+        btn.disabled = false;
+        txt.textContent = 'Radicar Solicitud de Cesantías';
+        sp.style.display = 'none';
+      }
+    }
+  </script>
+
+</body>
+</html>

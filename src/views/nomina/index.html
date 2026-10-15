@@ -924,6 +924,59 @@
   .badge-ces-devuelto  { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
   .badge-ces-cancelado, .badge-ces-anulado { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 
+  /* Pills de estado de Cesantías con colores sincronizados con las badges */
+  .ces-pill {
+    padding: 5px 12px; border-radius: 999px; font-size: .76rem; font-weight: 600;
+    border: 1px solid var(--border); background: var(--card-bg); color: var(--text-muted);
+    cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .ces-pill:hover { filter: brightness(0.95); }
+  .ces-pill.active { box-shadow: 0 0 0 2px var(--accent); font-weight: 800; transform: translateY(-1px); }
+
+  .ces-pill[data-estado=""] { background: var(--bg-elevated); color: var(--text); border-color: var(--border); }
+  .ces-pill[data-estado=""].active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .ces-pill[data-estado="pendiente"] { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+  .ces-pill[data-estado="pendiente"].active { background: #f59e0b; color: #ffffff; border-color: #d97706; }
+
+  .ces-pill[data-estado="validado"] { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+  .ces-pill[data-estado="validado"].active { background: #0284c7; color: #ffffff; border-color: #0369a1; }
+
+  .ces-pill[data-estado="aprobado"] { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+  .ces-pill[data-estado="aprobado"].active { background: #16a34a; color: #ffffff; border-color: #15803d; }
+
+  .ces-pill[data-estado="tramitado"] { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+  .ces-pill[data-estado="tramitado"].active { background: #7c3aed; color: #ffffff; border-color: #6d28d9; }
+
+  .ces-pill[data-estado="rechazado"] { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+  .ces-pill[data-estado="rechazado"].active { background: #dc2626; color: #ffffff; border-color: #b91c1c; }
+
+  .ces-pill[data-estado="devuelto"] { background: #ffedd5; color: #c2410c; border-color: #fed7aa; }
+  .ces-pill[data-estado="devuelto"].active { background: #ea580c; color: #ffffff; border-color: #c2410c; }
+
+  .ces-pill[data-estado="anulado"] { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+  .ces-pill[data-estado="anulado"].active { background: #475569; color: #ffffff; border-color: #334155; }
+
+  @media (max-width: 600px) {
+    #cesantiasModalNuevaOverlay .modal-full,
+    #cesantiasModalDetalleOverlay .modal-full,
+    #cesantiasModalCompartirOverlay .modal-full {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: 100vh !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+    }
+    #cesEstadoPills {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      padding-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
   .btn-icon-circle {
     width: 28px;
     height: 28px;
@@ -1697,7 +1750,12 @@
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-        <button type="button" class="btn-guardar-ficha" onclick="abrirModalNuevaCesantia()">+ Nueva Solicitud</button>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <button type="button" class="btn-guardar-ficha" onclick="abrirModalNuevaCesantia()">+ Nueva Solicitud</button>
+          <button type="button" class="btn-reset" onclick="abrirModalCompartirCesantias()" style="margin:0; background:var(--bg-elevated); border:1.5px solid var(--accent); color:var(--accent); font-weight:700; display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:6px; cursor:pointer;">
+            <span>🔗 Compartir Enlace</span>
+          </button>
+        </div>
         <button type="button" class="btn-reset" onclick="fetchCesantiasData()" style="margin:0;">↻ Actualizar</button>
       </div>
 
@@ -1920,7 +1978,7 @@
       <!-- FORMULARIO COMPLETO: OCULTO HASTA SELECCIONAR COLABORADOR -->
       <div id="ces_m_formulario_completo" style="display:none;">
 
-        <!-- Paso 2: Teléfono y Email Editables (Actualizan Maestro_Segmentación) -->
+        <!-- Paso 2: Teléfono y Email Editables (Actualizan la Sociodemografica) -->
         <div class="ces-form-section">
           <div class="ces-form-section-title">
             <span>📞 2. Datos de Contacto del Colaborador (Actualizables)</span>
@@ -1929,12 +1987,12 @@
             <div class="ficha-field">
               <label>Teléfono / Celular <span style="color:#ef4444;">*</span></label>
               <input type="tel" id="ces_m_celular" placeholder="Ej: 3101234567" style="width:100%;">
-              <span style="font-size:.72rem; color:var(--text-muted); margin-top:2px;">Se actualizará directamente en Maestro_Segmentación.</span>
+              <span style="font-size:.72rem; color:var(--text-muted); margin-top:2px;">Se actualizará directamente en la Sociodemografica.</span>
             </div>
             <div class="ficha-field">
               <label>Correo Electrónico <span style="color:#ef4444;">*</span></label>
               <input type="email" id="ces_m_email" placeholder="Ej: colaborador@empresa.com" style="width:100%;">
-              <span style="font-size:.72rem; color:var(--text-muted); margin-top:2px;">Se actualizará directamente en Maestro_Segmentación.</span>
+              <span style="font-size:.72rem; color:var(--text-muted); margin-top:2px;">Se actualizará directamente en la Sociodemografica.</span>
             </div>
           </div>
         </div>
@@ -1950,7 +2008,7 @@
               <select id="ces_m_fondo" style="width:100%;">
                 <option value="">-- Seleccione Fondo --</option>
               </select>
-              <span style="font-size:.72rem; color:var(--text-muted); margin-top:2px;">Prellenado según Maestro_Segmentación.</span>
+              <span style="font-size:.72rem; color:var(--text-muted); margin-top:2px;">Prellenado según la Sociodemografica.</span>
             </div>
             <div class="ficha-field">
               <label>Ciudad de Solicitud <span style="color:#ef4444;">*</span></label>
@@ -1969,7 +2027,7 @@
         <!-- Paso 4: Selección de Modalidad y Motivo en Dos Pasos -->
         <div class="ces-form-section">
           <div class="ces-form-section-title">
-            <span>🎯 4. Modalidad y Motivo de Retiro</span>
+            <span>🎯 4. Modalidad y Motivo de Retiro de Cesantias</span>
           </div>
           
           <div style="margin-bottom:14px;">
@@ -1995,7 +2053,7 @@
           </div>
 
           <div class="ficha-field" style="margin-bottom:14px;">
-            <label>Motivo Específico de Retiro <span style="color:#ef4444;">*</span></label>
+            <label>Motivo Específico de Retiro de Cesantias <span style="color:#ef4444;">*</span></label>
             <select id="ces_m_motivo" onchange="cambiarMotivoEspecificoCesantias()" disabled style="width:100%;">
               <option value="">-- Primero elija el Tipo de Retiro arriba --</option>
             </select>
@@ -2224,6 +2282,78 @@
       <div id="ces_d_workflow_actions" style="display:flex; gap:8px; flex-wrap:wrap;">
         <!-- Botones dinámicos de flujo -->
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Compartir Enlace de Autogestión de Cesantías -->
+<div class="modal-full-overlay" id="cesantiasModalCompartirOverlay" style="display:none">
+  <div class="modal-full" style="max-width:600px; height:auto; max-height:90vh; overflow-y:auto;">
+    <div class="modal-full-header">
+      <span>🔗 Compartir Enlace de Autogestión de Cesantías</span>
+      <button type="button" onclick="cerrarModalCompartirCesantias()">&#10005; Cerrar</button>
+    </div>
+    <div class="modal-ficha-body" style="padding: 20px;">
+      
+      <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:14px; line-height:1.45;">
+        Comparte el enlace del formulario independiente para que el colaborador radique su solicitud de retiro de cesantías desde su celular o computador.
+      </p>
+
+      <!-- Búsqueda opcional del colaborador para pre-llenar -->
+      <div style="margin-bottom:14px;">
+        <label style="display:block; font-size:.84rem; font-weight:600; margin-bottom:5px;">
+          Personalizar para un Colaborador (Opcional):
+        </label>
+        <div style="position:relative;">
+          <input type="text" id="ces_comp_buscar_trabajador" placeholder="Buscar por cédula o nombre para generar enlace personalizado..." autocomplete="off" oninput="onInputBuscarCompartirCesantias(this.value)" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text);">
+          <div id="ces_comp_acList" style="position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--card-bg); border:1.5px solid var(--accent); border-radius:6px; max-height:200px; overflow-y:auto; z-index:1000; display:none; box-shadow:0 6px 20px rgba(0,0,0,.25);"></div>
+        </div>
+      </div>
+
+      <!-- Tarjeta del Colaborador Seleccionado en Compartir -->
+      <div id="ces_comp_worker_card" style="display:none; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <strong id="ces_comp_w_nombre" style="font-size:.95rem; color:var(--text); display:block;">—</strong>
+            <span id="ces_comp_w_cargo" style="font-size:.78rem; color:var(--text-muted);">—</span>
+          </div>
+          <button type="button" class="btn-reset" onclick="limpiarTrabajadorCompartirCesantias()" style="margin:0; padding:2px 8px; font-size:.72rem;">↺ Quitar</button>
+        </div>
+        <div style="margin-top:6px; font-size:.8rem; display:flex; gap:12px; flex-wrap:wrap;">
+          <span>Cédula: <strong id="ces_comp_w_id">—</strong></span>
+          <span>Celular: <strong id="ces_comp_w_tel">—</strong></span>
+          <span>Email: <strong id="ces_comp_w_email">—</strong></span>
+        </div>
+      </div>
+
+      <!-- Alerta Bloqueo Solicitud Activa en Compartir -->
+      <div id="ces_comp_alerta_activa" class="alert-box alert-warning" style="display:none; margin-bottom:14px; background:#fffbeb; border:1.5px solid #fde68a; color:#92400e; padding:12px; border-radius:8px;">
+        <span style="font-size:1.2rem;">⚠️</span>
+        <div id="ces_comp_alerta_activa_txt" style="font-size:0.83rem; line-height:1.4;">
+          El colaborador ya tiene una solicitud activa en trámite.
+        </div>
+      </div>
+
+      <!-- Cuadro de Enlace Generado -->
+      <div id="ces_comp_enlace_container" style="margin-bottom:16px;">
+        <label style="display:block; font-size:.84rem; font-weight:600; margin-bottom:6px;">Enlace Web:</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="ces_comp_link_input" readonly style="flex:1; background:var(--bg); font-family:monospace; font-size:.82rem; padding:8px 10px; border:1px solid var(--border); border-radius:6px; cursor:text; color:var(--text);">
+          <button type="button" class="btn-guardar-ficha" onclick="copiarEnlaceCompartirCesantias()" id="btn_copiar_enlace_ces" style="width:auto; padding:0 14px; font-size:.84rem; margin:0; white-space:nowrap;">📋 Copiar</button>
+        </div>
+        <span id="ces_comp_copiado_msg" style="display:none; color:#10b981; font-weight:700; font-size:.78rem; margin-top:4px;">✓ ¡Enlace copiado al portapapeles!</span>
+      </div>
+
+      <!-- Botones de Acción Rápida (WhatsApp / Email) -->
+      <div id="ces_comp_acciones_container" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" class="btn-reset" onclick="compartirWhatsAppCesantias()" id="btn_share_wa_ces" style="flex:1; min-width:140px; margin:0; background:#25d366; color:#ffffff; font-weight:700; border:none; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px; border-radius:6px; cursor:pointer;">
+          <span>💬 WhatsApp</span>
+        </button>
+        <button type="button" class="btn-reset" onclick="compartirEmailCesantias()" id="btn_share_mail_ces" style="flex:1; min-width:140px; margin:0; background:#0284c7; color:#ffffff; font-weight:700; border:none; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px; border-radius:6px; cursor:pointer;">
+          <span>✉️ Correo</span>
+        </button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -5836,14 +5966,14 @@
     const total = c.total || 0;
     const activo = _cesantiasState.estadoActivo || '';
 
-    let html = `<button type="button" class="bio-pill${activo === '' ? ' active' : ''}" data-estado="">Todos (${total})</button>`;
+    let html = `<button type="button" class="ces-pill${activo === '' ? ' active' : ''}" data-estado="">Todos (${total})</button>`;
     CES_ESTADOS.forEach(e => {
       const cant = c[e.key] || 0;
-      html += `<button type="button" class="bio-pill${activo === e.key ? ' active' : ''}" data-estado="${e.key}">${e.label} (${cant})</button>`;
+      html += `<button type="button" class="ces-pill${activo === e.key ? ' active' : ''}" data-estado="${e.key}"><span>${e.label}</span> <strong style="opacity:0.85;">(${cant})</strong></button>`;
     });
     cont.innerHTML = html;
 
-    cont.querySelectorAll('.bio-pill').forEach(btn => {
+    cont.querySelectorAll('.ces-pill').forEach(btn => {
       btn.addEventListener('click', () => {
         _cesantiasState.estadoActivo = btn.dataset.estado;
         const selEst = document.getElementById('cesFilterEstado');
@@ -6110,7 +6240,7 @@
         <td>${badgeEstado}</td>
         <td>${r.identificacion}</td>
         <td>
-          <div style="font-weight:600; white-space:normal;">${r.trabajador || '—'}</div>
+          <div style="font-weight:600; white-space:normal;">${limpiarNombreCesantias(r.trabajador) || '—'}</div>
           <div style="font-size:.72rem; color:var(--text-muted);">${r.cargo || ''}</div>
         </td>
         <td>
@@ -6269,6 +6399,13 @@
       document.getElementById('ces_w_ingreso').textContent = tra.fechaIngreso;
       document.getElementById('ces_m_worker_card').style.display = 'block';
       document.getElementById('ces_m_busqueda_colaborador').value = `${tra.identificacion} - ${tra.nombre}`;
+
+      // Req 13: Bloqueo si ya existe solicitud activa
+      if (tra.solicitudActiva) {
+        document.getElementById('ces_m_formulario_completo').style.display = 'none';
+        alert(`⚠️ El colaborador ${tra.nombre} (${tra.identificacion}) ya registra una solicitud activa en trámite (Radicado: ${tra.solicitudActiva.Id}, Estado: ${String(tra.solicitudActiva.estado).toUpperCase()}).\n\nNo es posible radicar una nueva solicitud hasta que la actual finalice o sea anulada.`);
+        return;
+      }
 
       // Contacto (Req 3): Celular y Email editables
       document.getElementById('ces_m_celular').value = tra.telefono || '';
@@ -7136,7 +7273,7 @@
     abrirModalDetalleCesantia(id);
   }
 
-  async function regenerarPdfCesantiaDetalle() {
+  function regenerarPdfCesantiaDetalle() {
     if (!_cesantiasState.detalleActual) return;
     const sol = _cesantiasState.detalleActual.solicitud;
     if (!confirm('¿Desea regenerar el documento PDF oficial con la plantilla actualizada?')) return;
@@ -7155,6 +7292,214 @@
     } catch (err) {
       alert('Error: ' + err.message);
     }
+  }
+
+  function limpiarNombreCesantias(nombre) {
+    if (!nombre) return '';
+    const partes = String(nombre).split(' ** ');
+    return (partes.length > 1 ? partes[1] : nombre).trim();
+  }
+
+  // ── Compartir Enlace de Cesantías ──────────────────────────────────────────
+  let _cesCompartirTrabajador = null;
+  let _cesCompartirTimer = null;
+
+  function abrirModalCompartirCesantias() {
+    limpiarTrabajadorCompartirCesantias();
+    document.getElementById('cesantiasModalCompartirOverlay').style.display = 'flex';
+    actualizarEnlaceCompartirCesantias();
+  }
+
+  function cerrarModalCompartirCesantias() {
+    document.getElementById('cesantiasModalCompartirOverlay').style.display = 'none';
+    const acList = document.getElementById('ces_comp_acList');
+    if (acList) acList.style.display = 'none';
+  }
+
+  function onInputBuscarCompartirCesantias(val) {
+    const q = (val || '').trim();
+    const acList = document.getElementById('ces_comp_acList');
+    if (q.length < 2) {
+      if (acList) acList.style.display = 'none';
+      return;
+    }
+    clearTimeout(_cesCompartirTimer);
+    _cesCompartirTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/nomina/api/cesantias/colaboradores?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (!data.ok || !data.colaboradores || !data.colaboradores.length) {
+          acList.innerHTML = '<div style="padding:10px 14px; font-size:.84rem; color:var(--text-muted);">No se encontraron colaboradores activos.</div>';
+          acList.style.display = 'block';
+          return;
+        }
+        acList.innerHTML = data.colaboradores.map(c => `
+          <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:.85rem;" 
+               onclick="seleccionarTrabajadorCompartirCesantias('${c.identificacion}')">
+            <div><strong style="color:var(--text);">${c.identificacion}</strong> - <span style="font-weight:600;">${c.nombre}</span></div>
+            <div style="font-size:.73rem; color:var(--text-muted); margin-top:2px;">${c.cargo} • ${c.operacion} (${c.regional})</div>
+          </div>
+        `).join('');
+        acList.style.display = 'block';
+      } catch (err) {
+        console.warn('[Compartir Cesantías] Error buscando colaborador:', err);
+      }
+    }, 250);
+  }
+
+  async function seleccionarTrabajadorCompartirCesantias(identificacion) {
+    const acList = document.getElementById('ces_comp_acList');
+    if (acList) acList.style.display = 'none';
+
+    try {
+      const res = await fetch(`/nomina/api/cesantias/trabajador/${encodeURIComponent(identificacion)}`);
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Trabajador no encontrado.');
+
+      const tra = data.trabajador;
+      _cesCompartirTrabajador = tra;
+
+      document.getElementById('ces_comp_buscar_trabajador').value = `${tra.identificacion} - ${tra.nombre}`;
+      document.getElementById('ces_comp_w_nombre').textContent = tra.nombre;
+      document.getElementById('ces_comp_w_cargo').textContent = `${tra.cargo} • ${tra.operacion} (${tra.regional})`;
+      document.getElementById('ces_comp_w_id').textContent = tra.identificacion;
+      document.getElementById('ces_comp_w_tel').textContent = tra.telefono || 'Sin teléfono';
+      document.getElementById('ces_comp_w_email').textContent = tra.email || 'Sin correo';
+      document.getElementById('ces_comp_worker_card').style.display = 'block';
+
+      // Req 13: Bloqueo si ya existe solicitud activa
+      const alerta = document.getElementById('ces_comp_alerta_activa');
+      const alertaTxt = document.getElementById('ces_comp_alerta_activa_txt');
+      const btnCopiar = document.getElementById('btn_copiar_enlace_ces');
+      const btnWa = document.getElementById('btn_share_wa_ces');
+      const btnMail = document.getElementById('btn_share_mail_ces');
+
+      if (tra.solicitudActiva) {
+        alerta.style.display = 'flex';
+        alertaTxt.textContent = `⚠️ El colaborador ${tra.nombre} ya tiene una solicitud activa en trámite (Radicado: ${tra.solicitudActiva.Id}, Estado: ${String(tra.solicitudActiva.estado).toUpperCase()}). No es posible compartir el enlace para una nueva solicitud mientras esté activa.`;
+        btnCopiar.disabled = true;
+        btnWa.disabled = true;
+        btnMail.disabled = true;
+        btnCopiar.style.opacity = '0.5';
+        btnWa.style.opacity = '0.5';
+        btnMail.style.opacity = '0.5';
+      } else {
+        alerta.style.display = 'none';
+        btnCopiar.disabled = false;
+        btnWa.disabled = false;
+        btnMail.disabled = false;
+        btnCopiar.style.opacity = '1';
+        btnWa.style.opacity = '1';
+        btnMail.style.opacity = '1';
+      }
+
+      actualizarEnlaceCompartirCesantias();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  function limpiarTrabajadorCompartirCesantias() {
+    _cesCompartirTrabajador = null;
+    const inp = document.getElementById('ces_comp_buscar_trabajador');
+    if (inp) inp.value = '';
+    const card = document.getElementById('ces_comp_worker_card');
+    if (card) card.style.display = 'none';
+    const alerta = document.getElementById('ces_comp_alerta_activa');
+    if (alerta) alerta.style.display = 'none';
+
+    const btnCopiar = document.getElementById('btn_copiar_enlace_ces');
+    const btnWa = document.getElementById('btn_share_wa_ces');
+    const btnMail = document.getElementById('btn_share_mail_ces');
+    if (btnCopiar) { btnCopiar.disabled = false; btnCopiar.style.opacity = '1'; }
+    if (btnWa) { btnWa.disabled = false; btnWa.style.opacity = '1'; }
+    if (btnMail) { btnMail.disabled = false; btnMail.style.opacity = '1'; }
+
+    actualizarEnlaceCompartirCesantias();
+  }
+
+  function actualizarEnlaceCompartirCesantias() {
+    const input = document.getElementById('ces_comp_link_input');
+    if (!input) return;
+    const baseUrl = `${window.location.origin}/empleado/formcesantias`;
+    if (_cesCompartirTrabajador && _cesCompartirTrabajador.identificacion) {
+      input.value = `${baseUrl}?${_cesCompartirTrabajador.identificacion}`;
+    } else {
+      input.value = baseUrl;
+    }
+    const msg = document.getElementById('ces_comp_copiado_msg');
+    if (msg) msg.style.display = 'none';
+  }
+
+  function copiarEnlaceCompartirCesantias() {
+    const input = document.getElementById('ces_comp_link_input');
+    if (!input || !input.value) return;
+    if (_cesCompartirTrabajador && _cesCompartirTrabajador.solicitudActiva) {
+      alert('No se puede compartir el enlace porque el colaborador tiene una solicitud activa en trámite.');
+      return;
+    }
+    navigator.clipboard.writeText(input.value).then(() => {
+      const msg = document.getElementById('ces_comp_copiado_msg');
+      if (msg) {
+        msg.style.display = 'block';
+        setTimeout(() => { msg.style.display = 'none'; }, 3000);
+      }
+    }).catch(err => {
+      input.select();
+      document.execCommand('copy');
+      alert('¡Enlace copiado al portapapeles!');
+    });
+  }
+
+  function compartirWhatsAppCesantias() {
+    const input = document.getElementById('ces_comp_link_input');
+    if (!input || !input.value) return;
+    if (_cesCompartirTrabajador && _cesCompartirTrabajador.solicitudActiva) {
+      alert('No se puede compartir el enlace porque el colaborador tiene una solicitud activa en trámite.');
+      return;
+    }
+
+    const link = input.value;
+    const tra = _cesCompartirTrabajador;
+    let mensaje = '';
+    if (tra) {
+      mensaje = `Hola ${tra.nombre}, te compartimos el enlace para que realices tu solicitud de retiro de cesantías desde tu celular:\n${link}`;
+    } else {
+      mensaje = `Cordial saludo, compartimos el enlace para radicar la solicitud de retiro de cesantías en línea:\n${link}`;
+    }
+
+    let urlWa = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+    if (tra && tra.telefono) {
+      const cleanPhone = tra.telefono.replace(/\D/g, '');
+      if (cleanPhone.length >= 10) {
+        const fullPhone = cleanPhone.startsWith('57') ? cleanPhone : ('57' + cleanPhone);
+        urlWa = `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(mensaje)}`;
+      }
+    }
+    window.open(urlWa, '_blank');
+  }
+
+  function compartirEmailCesantias() {
+    const input = document.getElementById('ces_comp_link_input');
+    if (!input || !input.value) return;
+    if (_cesCompartirTrabajador && _cesCompartirTrabajador.solicitudActiva) {
+      alert('No se puede compartir el enlace porque el colaborador tiene una solicitud activa en trámite.');
+      return;
+    }
+
+    const link = input.value;
+    const tra = _cesCompartirTrabajador;
+    const email = (tra && tra.email) ? tra.email : '';
+    const asunto = 'Solicitud de Retiro de Cesantías - Logyser';
+    let cuerpo = '';
+    if (tra) {
+      cuerpo = `Estimado(a) ${tra.nombre},\n\nA través del siguiente enlace puedes radicar digitalmente tu solicitud de retiro parcial de cesantías:\n${link}\n\nCordialmente,\nEquipo de Gestión Humana - Logyser`;
+    } else {
+      cuerpo = `Cordial saludo,\n\nA través del siguiente enlace puedes radicar digitalmente tu solicitud de retiro parcial de cesantías:\n${link}\n\nCordialmente,\nEquipo de Gestión Humana - Logyser`;
+    }
+
+    const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+    window.location.href = mailto;
   }
 
   if (tabs.retiro) updateFilterOptionsWithCountsRetiros();

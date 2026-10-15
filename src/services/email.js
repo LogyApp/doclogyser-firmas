@@ -2758,8 +2758,115 @@ async function notificarCreacionRequisicion({
 /**
  * Notificaciones automáticas por correo para el proceso de Cesantías (Req. 9, 10, 11, 12, 13, 14, 15)
  */
+/**
+ * Resolución dinámica de correos para Cesantías (Req. 1)
+ * Para roles territoriales (Auxiliar, AuxiliarR, Coordinador, CoordinadorR), filtra
+ * según la Operación del colaborador:
+ * 1. Busca Operación en Maestro_Usuarios para obtener la Regional -> AuxiliarR y CoordinadorR de esa Regional.
+ * 2. Busca Operación en Maestro_Usuarios -> Auxiliar y Coordinador de esa Operación.
+ * 3. Fallback: Si no hay ninguno, busca Operación en Maestro_Operaciones para obtener SOCIODEMOGRAFICA ->
+ *    busca usuarios donde Dispositivo contenga SOCIODEMOGRAFICA con esos roles territoriales.
+ */
+async function resolverEmailsRolesCesantias(rolesArray, operacionTrabajador) {
+  if (!rolesArray || !rolesArray.length) return [];
+  const rolesNorm = rolesArray.map(r => r.trim().toLowerCase()).filter(Boolean);
+  const territorialRoles = ['auxiliar', 'auxiliarr', 'coordinador', 'coordinadorr'];
+
+  const nonTerritorial = rolesNorm.filter(r => !territorialRoles.includes(r));
+  const reqTerritorial = rolesNorm.filter(r => territorialRoles.includes(r));
+
+  const emails = new Set();
+
+  // 1. Roles globales/no-territoriales (ej: Sistema, Juridica, Nomina)
+  if (nonTerritorial.length) {
+    const ph = nonTerritorial.map(() => '?').join(',');
+    const [rows] = await pool.query(
+      `SELECT DISTINCT Email FROM Maestro_Usuarios WHERE LOWER(TRIM(Rol)) IN (${ph}) AND Email IS NOT NULL AND Email != ''`,
+      nonTerritorial
+    );
+    rows.forEach(r => {
+      const e = (r.Email || '').trim().toLowerCase();
+      if (e.includes('@')) emails.add(e);
+    });
+  }
+
+  // 2. Roles territoriales (Auxiliar, AuxiliarR, Coordinador, CoordinadorR)
+  if (reqTerritorial.length && operacionTrabajador) {
+    const territorialEmails = new Set();
+    const op = String(operacionTrabajador).trim();
+
+    // Paso A: Buscar la Operación del trabajador en Maestro_Usuarios para obtener la Regional
+    const [regRows] = await pool.execute(
+      `SELECT DISTINCT Regional FROM Maestro_Usuarios WHERE Operación = ? AND Regional IS NOT NULL AND TRIM(Regional) != ''`,
+      [op]
+    );
+    const regionales = regRows.map(r => r.Regional.trim()).filter(Boolean);
+
+    // Si pide AuxiliarR o CoordinadorR y encontramos Regional
+    const rolesRegional = reqTerritorial.filter(r => ['auxiliarr', 'coordinadorr'].includes(r));
+    if (rolesRegional.length && regionales.length) {
+      const phReg = regionales.map(() => '?').join(',');
+      const phRoles = rolesRegional.map(() => '?').join(',');
+      const [uRegRows] = await pool.query(
+        `SELECT DISTINCT Email FROM Maestro_Usuarios 
+         WHERE Regional IN (${phReg}) AND LOWER(TRIM(Rol)) IN (${phRoles}) AND Email IS NOT NULL AND Email != ''`,
+        [...regionales, ...rolesRegional]
+      );
+      uRegRows.forEach(r => {
+        const e = (r.Email || '').trim().toLowerCase();
+        if (e.includes('@')) territorialEmails.add(e);
+      });
+    }
+
+    // Paso B: Buscar por Operación en Maestro_Usuarios para Auxiliar o Coordinador
+    const rolesOp = reqTerritorial.filter(r => ['auxiliar', 'coordinador'].includes(r));
+    if (rolesOp.length) {
+      const phRolesOp = rolesOp.map(() => '?').join(',');
+      const [uOpRows] = await pool.query(
+        `SELECT DISTINCT Email FROM Maestro_Usuarios 
+         WHERE Operación = ? AND LOWER(TRIM(Rol)) IN (${phRolesOp}) AND Email IS NOT NULL AND Email != ''`,
+        [op, ...rolesOp]
+      );
+      uOpRows.forEach(r => {
+        const e = (r.Email || '').trim().toLowerCase();
+        if (e.includes('@')) territorialEmails.add(e);
+      });
+    }
+
+    // Paso C: Si no se encontró ningún correo en A y B:
+    if (!territorialEmails.size) {
+      const [opRows] = await pool.execute(
+        `SELECT SOCIODEMOGRAFICA FROM Maestro_Operaciones WHERE OPERACIÓN = ? LIMIT 1`,
+        [op]
+      );
+      if (opRows.length && opRows[0].SOCIODEMOGRAFICA) {
+        const socio = String(opRows[0].SOCIODEMOGRAFICA).trim();
+        if (socio) {
+          const phReqTerr = reqTerritorial.map(() => '?').join(',');
+          const [uDispRows] = await pool.query(
+            `SELECT DISTINCT Email FROM Maestro_Usuarios 
+             WHERE Dispositivo LIKE CONCAT('%', ?, '%') AND LOWER(TRIM(Rol)) IN (${phReqTerr}) AND Email IS NOT NULL AND Email != ''`,
+            [socio, ...reqTerritorial]
+          );
+          uDispRows.forEach(r => {
+            const e = (r.Email || '').trim().toLowerCase();
+            if (e.includes('@')) territorialEmails.add(e);
+          });
+        }
+      }
+    }
+
+    territorialEmails.forEach(e => emails.add(e));
+  }
+
+  return Array.from(emails);
+}
+
+/**
+ * Notificaciones por correo para el ciclo de vida de Cesantías
+ */
 async function enviarNotificacionCesantias({
-  evento, // 'pendiente' | 'validado' | 'aprobado' | 'tramitado'
+  evento, // 'pendiente' | 'validado' | 'aprobado' | 'devuelto' | 'rechazado' | 'tramitado'
   solicitud = {},
   trabajador = {},
   observaciones = '',
@@ -2779,22 +2886,37 @@ async function enviarNotificacionCesantias({
     }
 
     const radicadoId = solicitud.Id || solicitud.id || 'CES-...';
-    const nombreColab = trabajador.nombre || solicitud.nombre_trabajador || 'Colaborador';
+    let nombreColab = trabajador.nombre || solicitud.nombre_trabajador || 'Colaborador';
+    const partesColab = String(nombreColab).split(' ** ');
+    if (partesColab.length > 1) nombreColab = partesColab[1].trim();
+
     const emailColab = (trabajador.email || solicitud.email || '').trim().toLowerCase();
     const operacionColab = String(trabajador.operacion || solicitud.operacion || '').trim();
     const montoFmt = solicitud.monto_solicitado ? `$ ${Number(solicitud.monto_solicitado).toLocaleString('es-CO')}` : '—';
     const fondoFmt = solicitud.fondo_cesantias || '—';
     const motivoFmt = solicitud.motivo_texto || solicitud.motivo_retiro || '—';
 
-    let conceptoRoles = '';
+    let conceptoPara = '';
+    let conceptoCC = '';
     let toEmails = [];
+    let ccEmails = [];
     let asunto = '';
     let tituloBadge = '';
     let colorBadge = '#2563eb';
     let mensajePrincipal = '';
 
+    const obtenerRolesConcepto = async (concepto) => {
+      if (!concepto) return [];
+      const [rows] = await pool.execute(
+        'SELECT `Parametro` FROM `Config_Parametros` WHERE `Concepto` = ? LIMIT 1',
+        [concepto]
+      );
+      if (!rows.length || !rows[0].Parametro) return [];
+      return rows[0].Parametro.split(',').map(r => r.trim()).filter(Boolean);
+    };
+
     if (evento === 'pendiente') {
-      // Req. 10: Determinar si la operación requiere o no validación
+      // Determinar si la operación requiere validación
       const [opRows] = await pool.execute(
         'SELECT `Parametro` FROM `Config_Parametros` WHERE `Concepto` = "Operación no requiere Validacion" LIMIT 1'
       );
@@ -2805,15 +2927,13 @@ async function enviarNotificacionCesantias({
       const noRequiereVal = opsExentas.some(o => opNorm.includes(o) || o.includes(opNorm));
 
       if (noRequiereVal) {
-        // Req. 11: Notificación Cesantias registro pendiente Adm
-        conceptoRoles = 'Notificación Cesantias registro pendiente Adm';
+        conceptoCC = 'Notificación Cesantias registro pendiente Adm';
         asunto = `Solicitud de Cesantías Radicada — ${radicadoId} — ${nombreColab}`;
         tituloBadge = 'RADICADA · PENDIENTE DE REVISIÓN Y APROBACIÓN (JURÍDICA)';
         colorBadge = '#3b82f6';
         mensajePrincipal = `Tu solicitud de retiro de cesantías con radicado <strong>${radicadoId}</strong> ha sido radicada exitosamente y se encuentra <strong>pendiente de revisión y aprobación</strong> directa por parte del área Jurídica.`;
       } else {
-        // Req. 12: Notificación Cesantias registro pendiente Operación
-        conceptoRoles = 'Notificación Cesantias registro pendiente Operación';
+        conceptoCC = 'Notificación Cesantias registro pendiente Operación';
         asunto = `Solicitud de Cesantías Radicada — ${radicadoId} — ${nombreColab}`;
         tituloBadge = 'RADICADA · PENDIENTE DE VALIDACIÓN';
         colorBadge = '#f59e0b';
@@ -2822,32 +2942,40 @@ async function enviarNotificacionCesantias({
 
       if (emailColab && emailColab.includes('@')) toEmails.push(emailColab);
     } else if (evento === 'validado') {
-      // Req. 13: Notificación Cesantias registro validado
-      conceptoRoles = 'Notificación Cesantias registro validado';
+      // Req. 2 & Req. 13: Notificación Cesantias registro validado - Para: y CC
+      conceptoPara = 'Notificación Cesantias registro validado - Para:';
+      conceptoCC   = 'Notificación Cesantias registro validado';
       asunto = `Solicitud de Cesantías Validada por Operación — ${radicadoId} — ${nombreColab}`;
-      tituloBadge = 'VALIDADO · PENDIENTE DE APROBACIÓN (JURÍDICA)';
+      tituloBadge = 'VALIDADO · PENDIENTE DE APROBACIÓN';
       colorBadge = '#2563eb';
-      mensajePrincipal = `La Operación ha validado satisfactoriamente los documentos y soportes de la solicitud de cesantías <strong>${radicadoId}</strong> del colaborador <strong>${nombreColab}</strong> (${trabajador.identificacion || solicitud.identificacion}). La solicitud se encuentra pendiente de ser aprobada por Jurídica.`;
-
-      const [jurRows] = await pool.query(
-        'SELECT DISTINCT Email FROM Maestro_Usuarios WHERE LOWER(TRIM(Rol)) IN ("juridica", "jurídica") AND Email IS NOT NULL AND Email != ""'
-      );
-      toEmails = jurRows.map(u => (u.Email || '').trim().toLowerCase()).filter(e => e.includes('@'));
+      mensajePrincipal = `La Operación ha validado satisfactoriamente los documentos y soportes de la solicitud de cesantías <strong>${radicadoId}</strong> del colaborador <strong>${nombreColab}</strong> (${trabajador.identificacion || solicitud.identificacion}). La solicitud se encuentra pendiente de ser aprobada.`;
     } else if (evento === 'aprobado') {
-      // Req. 14: Notificación Cesantias registro aprobado
-      conceptoRoles = 'Notificación Cesantias registro aprobado';
+      // Req. 3 & Req. 14: Notificación Cesantias registro aprobado - Para: y CC
+      conceptoPara = 'Notificación Cesantias registro aprobado - Para:';
+      conceptoCC   = 'Notificación Cesantias registro aprobado';
       asunto = `Solicitud de Cesantías Aprobada — ${radicadoId} — ${nombreColab}`;
       tituloBadge = 'APROBADO · A LA ESPERA DE TRÁMITE Y PAGO (NÓMINA)';
       colorBadge = '#10b981';
       mensajePrincipal = `La solicitud de retiro de cesantías con radicado <strong>${radicadoId}</strong> del colaborador <strong>${nombreColab}</strong> (${trabajador.identificacion || solicitud.identificacion}) ha sido aprobada por el área correspondiente y se encuentra a la espera de ser tramitada y pagada por Nómina.`;
-
-      const [nomRows] = await pool.query(
-        'SELECT DISTINCT Email FROM Maestro_Usuarios WHERE LOWER(TRIM(Rol)) IN ("nomina", "nómina") AND Email IS NOT NULL AND Email != ""'
-      );
-      toEmails = nomRows.map(u => (u.Email || '').trim().toLowerCase()).filter(e => e.includes('@'));
+    } else if (evento === 'devuelto') {
+      // Req. 4: Notificación Cesantias registro devuelto - Para: y CC
+      conceptoPara = 'Notificación Cesantias registro devuelto - Para:';
+      conceptoCC   = 'Notificación Cesantias registro devuelto';
+      asunto = `Novedad en Solicitud de Cesantías Devuelta — ${radicadoId} — ${nombreColab}`;
+      tituloBadge = 'DEVUELTO · CON NOVEDAD';
+      colorBadge = '#d97706';
+      mensajePrincipal = `La solicitud de retiro de cesantías con radicado <strong>${radicadoId}</strong> del colaborador <strong>${nombreColab}</strong> tiene una novedad y debe ser atendida por la operación o el colaborador.`;
+    } else if (evento === 'rechazado') {
+      // Req. 5: Notificación Cesantias registro rechazado - Para: y CC
+      conceptoPara = 'Notificación Cesantias registro rechazado - Para:';
+      conceptoCC   = 'Notificación Cesantias registro rechazado';
+      asunto = `Solicitud de Cesantías Rechazada — ${radicadoId} — ${nombreColab}`;
+      tituloBadge = 'RECHAZADO';
+      colorBadge = '#dc2626';
+      mensajePrincipal = `La solicitud de retiro de cesantías con radicado <strong>${radicadoId}</strong> del colaborador <strong>${nombreColab}</strong> ha sido rechazada por el área correspondiente.`;
     } else if (evento === 'tramitado') {
       // Req. 15: Notificación Cesantias registro tramitado
-      conceptoRoles = 'Notificación Cesantias registro tramitado';
+      conceptoCC = 'Notificación Cesantias registro tramitado';
       asunto = `Solicitud de Cesantías Tramitada y Pagada — ${radicadoId} — ${nombreColab}`;
       tituloBadge = 'TRAMITADO · PAGO APLICADO';
       colorBadge = '#059669';
@@ -2856,23 +2984,54 @@ async function enviarNotificacionCesantias({
       if (emailColab && emailColab.includes('@')) toEmails.push(emailColab);
     }
 
-    // Obtener roles en copia (CC) desde Config_Parametros
-    let ccEmails = [];
-    if (conceptoRoles) {
-      const [pRows] = await pool.execute(
-        'SELECT `Parametro` FROM `Config_Parametros` WHERE `Concepto` = ? LIMIT 1',
-        [conceptoRoles]
-      );
-      if (pRows.length && pRows[0].Parametro) {
-        const rolesCC = pRows[0].Parametro.split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
-        if (rolesCC.length) {
-          const ph = rolesCC.map(() => '?').join(',');
-          const [uRows] = await pool.query(
-            `SELECT DISTINCT Email FROM Maestro_Usuarios WHERE LOWER(TRIM(Rol)) IN (${ph}) AND Email IS NOT NULL AND Email != ''`,
-            rolesCC
-          );
-          ccEmails = uRows.map(u => (u.Email || '').trim().toLowerCase()).filter(e => e.includes('@'));
+    // Resolver destinatarios TO desde Config_Parametros
+    if (conceptoPara) {
+      const rolesPara = await obtenerRolesConcepto(conceptoPara);
+      const resEmails = await resolverEmailsRolesCesantias(rolesPara, operacionColab);
+      resEmails.forEach(e => { if (!toEmails.includes(e)) toEmails.push(e); });
+    }
+
+    // Resolver destinatarios CC desde Config_Parametros
+    if (conceptoCC) {
+      const rolesCC = await obtenerRolesConcepto(conceptoCC);
+      ccEmails = await resolverEmailsRolesCesantias(rolesCC, operacionColab);
+    }
+
+    // Req. 6: Hipervínculos a los documentos relacionados en validado y aprobado
+    let seccionDocumentosHtml = '';
+    if (evento === 'validado' || evento === 'aprobado') {
+      try {
+        const [docsRows] = await pool.execute(
+          `SELECT Doc, Observaciones, TipoDocumento, Prefijo 
+           FROM Maestro_docTrabajador 
+           WHERE recurso = ? AND Doc IS NOT NULL AND TRIM(Doc) != ''
+           ORDER BY FechaRegistro ASC`,
+          [radicadoId]
+        );
+        if (docsRows.length) {
+          const links = docsRows.map(d => {
+            const docUrl = d.Doc.startsWith('http') ? d.Doc : `https://storage.googleapis.com/talenthub_central/${d.Doc.replace(/^\/+/, '')}`;
+            const nombre = d.Observaciones || `${d.Prefijo || 'Soporte'} (${d.TipoDocumento})`;
+            return `<li style="margin-bottom:8px;">
+              <a href="${docUrl}" target="_blank" style="color:#1d4ed8; font-weight:700; text-decoration:underline;">
+                📄 ${nombre}
+              </a>
+            </li>`;
+          }).join('');
+
+          seccionDocumentosHtml = `
+            <div style="margin:20px 0; padding:16px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
+              <strong style="display:block; color:#0f172a; margin-bottom:10px; font-size:0.9rem;">
+                📎 Documentos y Soportes Adjuntos:
+              </strong>
+              <ul style="margin:0; padding-left:22px; font-size:0.86rem; line-height:1.6;">
+                ${links}
+              </ul>
+            </div>
+          `;
         }
+      } catch (eDocs) {
+        console.warn('[enviarNotificacionCesantias] Error cargando enlaces de soportes:', eDocs.message);
       }
     }
 
@@ -2926,10 +3085,11 @@ async function enviarNotificacionCesantias({
             </tr>
             ${observaciones ? `
             <tr>
-              <td style="padding:10px 14px;color:#64748b;">Observaciones:</td>
-              <td style="padding:10px 14px;color:#b91c1c;font-weight:600;">${observaciones}</td>
+              <td style="padding:10px 14px;color:#64748b;background:#fef2f2;">Observaciones / Novedad:</td>
+              <td style="padding:10px 14px;color:#b91c1c;font-weight:700;background:#fef2f2;">${observaciones}</td>
             </tr>` : ''}
           </table>
+          ${seccionDocumentosHtml}
           <p style="font-size:0.8rem;color:#94a3b8;margin-top:16px;">
             Este es un mensaje generado automáticamente por el sistema corporativo de gestión de cesantías de LOG&amp;SER S.A.S.
           </p>

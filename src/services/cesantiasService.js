@@ -221,6 +221,23 @@ async function buscarCedulaPreviaTrabajador(identificacion) {
   }
 }
 
+// ── Req 13: Comprobar si existe solicitud activa en Dynamic_Cesantias ───────
+async function verificarSolicitudActivaTrabajador(identificacion) {
+  if (!identificacion) return { tieneSolicitudActiva: false, solicitud: null };
+  const [rows] = await pool.execute(
+    `SELECT Id, estado, monto_solicitado, fondo_cesantias, 
+            DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS fecha_registro
+     FROM Dynamic_Cesantias
+     WHERE identificacion = ? 
+       AND estado NOT IN ('tramitado', 'anulado', 'cancelado', 'rechazado')
+     ORDER BY fecha_registro DESC 
+     LIMIT 1`,
+    [identificacion]
+  );
+  if (!rows.length) return { tieneSolicitudActiva: false, solicitud: null };
+  return { tieneSolicitudActiva: true, solicitud: rows[0] };
+}
+
 // ── Buscar Datos del Trabajador ──────────────────────────────────────────────
 async function buscarTrabajadorCesantias(identificacion) {
   if (!identificacion) return null;
@@ -251,6 +268,9 @@ async function buscarTrabajadorCesantias(identificacion) {
     err.status = 400;
     throw err;
   }
+
+  // Req 13: Comprobar si ya existe solicitud activa en Dynamic_Cesantias
+  const infoActiva = await verificarSolicitudActivaTrabajador(identificacion);
 
   const [segRows] = await pool.execute(
     `SELECT 
@@ -309,6 +329,7 @@ async function buscarTrabajadorCesantias(identificacion) {
     tieneFirmaPrevia: infoFirma.tieneFirma,
     firmaPreviaUrl: infoFirma.urlFirma,
     cedulaPrevia,
+    solicitudActiva: infoActiva.tieneSolicitudActiva ? infoActiva.solicitud : null,
   };
 }
 
@@ -438,6 +459,9 @@ async function listarSolicitudesCesantias(filtros = {}, acceso = {}) {
 
   const [results] = await pool.execute(query, params);
   results.forEach(r => {
+    if (r.trabajador) {
+      r.trabajador = limpiarNombre(r.trabajador);
+    }
     if (r.pdf_solicitud) {
       r.pdf_solicitud = construirUrlTalenthub(r.pdf_solicitud);
     }
@@ -525,6 +549,11 @@ async function crearSolicitudCesantias(datos, files = []) {
   const worker = await buscarTrabajadorCesantias(identificacion);
   if (!worker) throw new Error(`No se encontró trabajador con identificación ${identificacion} en Maestro_Vinculación.`);
   if (worker.estado !== 'Activo') throw new Error(`El colaborador con identificación ${identificacion} no registra estado Activo.`);
+
+  // Req 13: Bloquear si ya existe una solicitud activa en Dynamic_Cesantias
+  if (worker.solicitudActiva) {
+    throw new Error(`El colaborador ${worker.nombre} (${identificacion}) ya registra una solicitud de cesantías en trámite (Radicado: ${worker.solicitudActiva.Id}, Estado: ${String(worker.solicitudActiva.estado).toUpperCase()}). No es posible radicar una nueva solicitud hasta que la actual finalice o sea anulada.`);
+  }
 
   // Actualizar Teléfono (Celular) y Email en Maestro_Segmentación si se editaron
   if (celular || email) {
@@ -927,8 +956,8 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
     }
   }
 
-  // Req. 13, 14, 15: Notificaciones por correo para validado, aprobado, tramitado
-  if (['validado', 'aprobado', 'tramitado'].includes(estadoNormalizado)) {
+  // Req. 4, 5, 13, 14, 15: Notificaciones por correo para validado, aprobado, tramitado, devuelto, rechazado
+  if (['validado', 'aprobado', 'tramitado', 'devuelto', 'rechazado'].includes(estadoNormalizado)) {
     try {
       const detalle = await obtenerDetalleCesantia(idCesantia);
       if (detalle) {
@@ -1154,6 +1183,7 @@ async function generarYGuardarPDFCesantias(idCesantia, usuario = 'sistema') {
 module.exports = {
   buscarTrabajadorCesantias,
   buscarColaboradoresCesantias,
+  verificarSolicitudActivaTrabajador,
   obtenerFondosCesantias,
   obtenerCiudadYCiudadesPorOperacion,
   obtenerFirmaPreviaTrabajador,
