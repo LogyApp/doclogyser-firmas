@@ -562,8 +562,7 @@ router.get('/api/activos', async (req, res) => {
 // Contratación confirma que un ingreso nuevo sí tomó el cargo. Reutiliza la
 // columna `Motivo del Retiro` con el valor centinela 'SI' (ya usado en el
 // resto del sistema para distinguir "sin motivo real de retiro").
-// Notifica por correo a contratacionnacional@logyser.com, con copia a admin@logyser.com
-// y a los Auxiliares/Coordinadores de la Operación (o Regional).
+// Los destinatarios de la notificación se resuelven desde Config_Parametros.
 router.post('/api/tomo-cargo', async (req, res) => {
   try {
     const { idVinculacion, usuario } = req.body;
@@ -605,9 +604,6 @@ router.post('/api/tomo-cargo', async (req, res) => {
           }
         } catch (_) {}
 
-        const responsables = await obtenerResponsablesOperacionRegional(vin['Operación'], vin.Regional);
-        const ccEmails = responsables.map(r => r.Email).filter(Boolean);
-
         await notificarTomoCargoConfirmado({
           trabajador: vin.Trabajador,
           identificacion: vin['Identificación'],
@@ -617,9 +613,8 @@ router.post('/api/tomo-cargo', async (req, res) => {
           fechaIngreso: vin['Fecha de Ingreso'],
           fechaConfirmacion: fechaActualizacion,
           usuarioConfirmador,
-          destinatariosCC: ccEmails,
         });
-        console.log(`[nomina] Notificación 'Tomó Cargo' enviada para ${vin['Identificación']} (${vin.Trabajador}) | CC:`, ccEmails);
+        console.log(`[nomina] Notificación 'Tomó Cargo' enviada para ${vin['Identificación']} (${vin.Trabajador})`);
       } catch (errEmail) {
         console.error('[nomina] Error enviando correo de confirmación de tomó cargo:', errEmail);
       }

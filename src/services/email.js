@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const path = require('path');
 const pool = require('./db');
 
 const authConfig = process.env.SMTP_USER
@@ -73,6 +74,26 @@ const HEADER = `
     </table>
     <![endif]-->
   </div>`;
+
+// Encabezado compacto de color con logo incrustado (CID). Se usa en tabla con
+// bgcolor y tamaños fijos porque Outlook de escritorio ignora el CSS de imágenes remotas.
+const LOGO_HEADER_CID = 'logo-logyser-header';
+const LOGO_HEADER_ATTACHMENT = {
+  filename: 'logo-logyser.png',
+  path: path.join(__dirname, '../assets/email/logo-logyser-header.png'),
+  cid: LOGO_HEADER_CID,
+  contentDisposition: 'inline',
+};
+function encabezadoLogo(color) {
+  return `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${color}" style="background-color:${color};border-collapse:collapse">
+        <tr>
+          <td align="center" bgcolor="${color}" style="background-color:${color};padding:10px 24px;line-height:0;font-size:0">
+            <img src="cid:${LOGO_HEADER_CID}" width="210" height="59" alt="LOG&amp;SER Apoyo Logístico y Operativo" style="display:block;width:210px;height:59px;border:0;-ms-interpolation-mode:bicubic">
+          </td>
+        </tr>
+      </table>`;
+}
 
 const FOOTER = `
   <div style="padding:14px 24px;background:#f8f9fb;font-size:.78rem;color:#aaa;text-align:center">
@@ -484,9 +505,7 @@ async function notificarRetiro({
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
-      </div>
+${encabezadoLogo('#c0392b')}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
 
         <div style="display:inline-block;background:#fdf0f0;border:1px solid #f5c6c6;
@@ -551,6 +570,7 @@ async function notificarRetiro({
     cc,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -2297,10 +2317,7 @@ async function notificarTomoCargoPendiente({ destinatarios, scopeLabel, registro
 }
 
 // ── Notificación de Confirmación de "Tomó Cargo" ─────────────────────────
-// Se dispara cuando Contratación confirma que el colaborador tomó el cargo
-// en Nómina (botón "Tomó Cargo"). Se notifica a contratacionnacional@logyser.com
-// con copia a admin@logyser.com y a los Auxiliares/Coordinadores de la Operación
-// (o Regional si no hay asignados en la Operación).
+// Para y Copia se resuelven desde Config_Parametros según los roles configurados.
 async function notificarTomoCargoConfirmado({
   trabajador,
   identificacion,
@@ -2310,24 +2327,43 @@ async function notificarTomoCargoConfirmado({
   fechaIngreso,
   fechaConfirmacion,
   usuarioConfirmador,
-  destinatariosCC = [],
 }) {
   const partes = String(trabajador || '').split(' ** ');
   const nombreLimpio = (partes.length > 1 ? partes[1] : (trabajador || '')).trim();
   const opLabel = operacion || regional || 'LOG&SER';
   const asunto = `Confirmación de toma de cargo — ${nombreLimpio} — ${opLabel} — LOG&SER`;
 
-  // Deduplicar destinatarios en CC asegurando admin@logyser.com
-  const ccEmails = ['admin@logyser.com', ...(Array.isArray(destinatariosCC) ? destinatariosCC : [destinatariosCC])]
-    .map(e => (typeof e === 'string' ? e.trim().toLowerCase() : ''))
-    .filter(e => e && e !== 'contratacionnacional@logyser.com');
-  const ccUnicos = [...new Set(ccEmails)];
+  const conceptos = [
+    'Notificación toma de cargo - Para:',
+    'Notificación toma de cargo - Copia:',
+  ];
+  const [paramRows] = await pool.execute(
+    'SELECT Concepto, Parametro FROM Config_Parametros WHERE Concepto IN (?, ?)',
+    conceptos
+  );
+  const parametros = new Map(paramRows.map(row => [row.Concepto, row.Parametro || '']));
+  const obtenerRoles = concepto => (parametros.get(concepto) || '')
+    .split(',')
+    .map(rol => rol.trim())
+    .filter(Boolean);
+  const destinatariosPara = await resolverEmailsRolesPorOperacion(
+    obtenerRoles(conceptos[0]),
+    operacion
+  );
+  const destinatariosCC = await resolverEmailsRolesPorOperacion(
+    obtenerRoles(conceptos[1]),
+    operacion
+  );
+  if (!destinatariosPara.length) {
+    throw new Error(`No hay destinatarios configurados para "${conceptos[0]}"`);
+  }
+  const paraUnicos = [...new Set(destinatariosPara)];
+  const paraSet = new Set(paraUnicos);
+  const ccUnicos = [...new Set(destinatariosCC)].filter(email => !paraSet.has(email));
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #27ae60;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
-      </div>
+${encabezadoLogo('#27ae60')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #a9dfbf;border-radius:6px;padding:6px 14px;margin-bottom:18px">
           <span style="color:#1e8449;font-weight:bold;font-size:.88rem">
@@ -2384,10 +2420,11 @@ async function notificarTomoCargoConfirmado({
 
   await transporter.sendMail({
     from: `"LOG&SER Nómina" <${EMAIL_FROM}>`,
-    to: 'contratacionnacional@logyser.com',
+    to: paraUnicos.join(', '),
     cc: ccUnicos.length ? ccUnicos.join(', ') : undefined,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -2785,15 +2822,10 @@ async function notificarCreacionRequisicion({
  * Notificaciones automáticas por correo para el proceso de Cesantías (Req. 9, 10, 11, 12, 13, 14, 15)
  */
 /**
- * Resolución dinámica de correos para Cesantías (Req. 1)
- * Para roles territoriales (Auxiliar, AuxiliarR, Coordinador, CoordinadorR), filtra
- * según la Operación del colaborador:
- * 1. Busca Operación en Maestro_Usuarios para obtener la Regional -> AuxiliarR y CoordinadorR de esa Regional.
- * 2. Busca Operación en Maestro_Usuarios -> Auxiliar y Coordinador de esa Operación.
- * 3. Fallback: Si no hay ninguno, busca Operación en Maestro_Operaciones para obtener SOCIODEMOGRAFICA ->
- *    busca usuarios donde Dispositivo contenga SOCIODEMOGRAFICA con esos roles territoriales.
+ * Resuelve roles configurados a correos, limitando los roles territoriales al
+ * alcance de la operación del trabajador y usando SOCIODEMOGRAFICA como fallback.
  */
-async function resolverEmailsRolesCesantias(rolesArray, operacionTrabajador) {
+async function resolverEmailsRolesPorOperacion(rolesArray, operacionTrabajador) {
   if (!rolesArray || !rolesArray.length) return [];
   const rolesNorm = rolesArray.map(r => r.trim().toLowerCase()).filter(Boolean);
   const territorialRoles = ['auxiliar', 'auxiliarr', 'coordinador', 'coordinadorr'];
@@ -3013,14 +3045,14 @@ async function enviarNotificacionCesantias({
     // Resolver destinatarios TO desde Config_Parametros
     if (conceptoPara) {
       const rolesPara = await obtenerRolesConcepto(conceptoPara);
-      const resEmails = await resolverEmailsRolesCesantias(rolesPara, operacionColab);
+      const resEmails = await resolverEmailsRolesPorOperacion(rolesPara, operacionColab);
       resEmails.forEach(e => { if (!toEmails.includes(e)) toEmails.push(e); });
     }
 
     // Resolver destinatarios CC desde Config_Parametros
     if (conceptoCC) {
       const rolesCC = await obtenerRolesConcepto(conceptoCC);
-      ccEmails = await resolverEmailsRolesCesantias(rolesCC, operacionColab);
+      ccEmails = await resolverEmailsRolesPorOperacion(rolesCC, operacionColab);
     }
 
     // Req. 6: Hipervínculos a los documentos relacionados en validado y aprobado
