@@ -23,6 +23,16 @@ async function obtenerIngresosPendientes() {
             mv.\`Fecha de Ingreso\`          AS fechaIngreso,
             mv.\`Observaciones Vinculación\` AS observaciones
      FROM \`Maestro_Vinculación\` mv
+     -- Un trabajador con reingreso (o con filas repetidas) tiene varias vinculaciones: solo se
+     -- considera la más reciente por Identificación para no generar solicitudes duplicadas.
+     JOIN (
+       SELECT \`Id Vinculación\` AS idVin,
+              ROW_NUMBER() OVER (
+                PARTITION BY TRIM(\`Identificación\`)
+                ORDER BY \`Fecha de Ingreso\` DESC, \`Id Vinculación\` DESC
+              ) AS rn
+       FROM \`Maestro_Vinculación\`
+     ) ult ON ult.idVin = mv.\`Id Vinculación\` AND ult.rn = 1
      LEFT JOIN \`Dynamic_AutoIngreso_Procesados\` p ON p.IdVinculacion = mv.\`Id Vinculación\`
      WHERE p.IdVinculacion IS NULL
        -- Excluir trabajadores retirados o con marcas de notificación de retiro
@@ -52,7 +62,69 @@ async function obtenerIngresosPendientes() {
  * Genera las solicitudes en estado PENDIENTE (DOTACIÓN y EPP) con sus respectivos ítems
  * de acuerdo a las reglas de Maestro_Dotacion_Cargos y Dynamic_Articulos.
  */
+// Evita ejecuciones solapadas dentro de esta instancia (setInterval + botón manual).
+let enEjecucion = false;
+const LOCK_NAME = 'solicitudesAutoIngreso';
+
+/**
+ * Indica si ya se generaron solicitudes automáticas para este mismo ingreso a través de
+ * otra fila de Maestro_Vinculación del trabajador (filas repetidas / reingresos).
+ */
+async function yaTieneSolicitudesDeIngreso(conn, vin, identificacion) {
+  const [procRows] = await conn.execute(
+    `SELECT 1
+     FROM \`Dynamic_AutoIngreso_Procesados\` p
+     JOIN \`Maestro_Vinculación\` mv2 ON mv2.\`Id Vinculación\` = p.IdVinculacion
+     WHERE TRIM(mv2.\`Identificación\`) = ?
+       AND mv2.\`Id Vinculación\` <> ?
+       AND DATE(mv2.\`Fecha de Ingreso\`) = DATE(?)
+       AND (p.IdSolicitudDotacion IS NOT NULL OR p.IdSolicitudEpp IS NOT NULL)
+     LIMIT 1`,
+    [identificacion, vin.id, vin.fechaIngreso]
+  );
+  if (procRows.length) return true;
+
+  const [solRows] = await conn.execute(
+    `SELECT 1
+     FROM Dynamic_Solicitudes
+     WHERE \`Justificación\` = ?
+       AND Usuario = 'Sistema'
+       AND Observaciones LIKE 'AUTOMATICO:%'
+       AND FechaSolicitud >= DATE_SUB(COALESCE(?, NOW()), INTERVAL 30 DAY)
+     LIMIT 1`,
+    [identificacion, vin.fechaIngreso || null]
+  );
+  return solRows.length > 0;
+}
+
 async function verificarSolicitudesNuevosIngresos() {
+  if (enEjecucion) return { procesados: 0, solicitudesCreadas: 0, omitido: 'en ejecución' };
+  enEjecucion = true;
+
+  // Lock a nivel de base de datos: con varias instancias del servidor (Cloud Run) cada una
+  // corre su propio setInterval, y sin este lock dos instancias podían procesar el mismo
+  // ingreso al tiempo y crear las solicitudes dos veces.
+  let lockConn = null;
+  try {
+    lockConn = await pool.getConnection();
+    const [[{ got }]] = await lockConn.execute('SELECT GET_LOCK(?, 0) AS got', [LOCK_NAME]);
+    if (got !== 1) {
+      return { procesados: 0, solicitudesCreadas: 0, omitido: 'en ejecución en otra instancia' };
+    }
+    return await procesarIngresos();
+  } catch (err) {
+    console.error('[solicitudesAutoIngreso] Error general:', err.message);
+    return { error: err.message };
+  } finally {
+    if (lockConn) {
+      try { await lockConn.execute('SELECT RELEASE_LOCK(?)', [LOCK_NAME]); } catch (_) { /* noop */ }
+      lockConn.release();
+    }
+    enEjecucion = false;
+  }
+}
+
+async function procesarIngresos() {
   try {
     const ingresos = await obtenerIngresosPendientes();
 
@@ -93,6 +165,19 @@ async function verificarSolicitudesNuevosIngresos() {
         // Condición temporal: Solo procesar registros de Regional Antioquia
         if (norm(regional) !== 'ANTIOQUIA') {
           conn.release();
+          continue;
+        }
+
+        // Ingreso ya atendido por otra fila de vinculación del mismo trabajador: se marca como
+        // procesado sin crear solicitudes nuevas.
+        if (identificacion && await yaTieneSolicitudesDeIngreso(conn, vin, identificacion)) {
+          await conn.execute(
+            `INSERT INTO \`Dynamic_AutoIngreso_Procesados\` (IdVinculacion, IdSolicitudDotacion, IdSolicitudEpp, FechaProcesado)
+             VALUES (?, NULL, NULL, NOW())`,
+            [vin.id]
+          );
+          await conn.commit();
+          console.log(`[solicitudesAutoIngreso] id=${vin.id} trabajador="${vin.Trabajador}" ya tenía solicitudes automáticas; se omite (duplicado)`);
           continue;
         }
 

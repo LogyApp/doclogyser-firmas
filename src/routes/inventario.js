@@ -2283,7 +2283,11 @@ router.get('/api/kardex-pendiente', async (req, res) => {
         k.Observaciones AS ObservacionesItem,
         k.Novedad AS NovedadItem,
         k.UsuarioAsignado,
-        mv.Trabajador AS NombreTrabajador,
+        -- Subconsulta (no JOIN): un trabajador con reingreso tiene varias filas en
+        -- Maestro_Vinculación y el JOIN duplicaba los ítems del pedido.
+        (SELECT mv.Trabajador FROM \`Maestro_Vinculación\` mv
+          WHERE TRIM(mv.\`Identificación\`) = TRIM(k.UsuarioAsignado)
+          ORDER BY mv.\`Fecha de Ingreso\` DESC LIMIT 1) AS NombreTrabajador,
         a.Articulo,
         a.Imagen,
         a.Categoria,
@@ -2292,7 +2296,6 @@ router.get('/api/kardex-pendiente', async (req, res) => {
       FROM Kardex_Pendiente kp
       LEFT JOIN Dynamic_Kardex k ON (k.Kpendiente = kp.Id OR (kp.IdKardexOriginal IS NOT NULL AND k.IdKardex = kp.IdKardexOriginal))
       LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
-      LEFT JOIN \`Maestro_Vinculación\` mv ON TRIM(mv.\`Identificación\`) = TRIM(k.UsuarioAsignado)
       WHERE ${securityConds.join(' AND ')}
       ORDER BY kp.FechaDespacho DESC, k.FechaMovimiento DESC
     `;
@@ -2361,43 +2364,190 @@ router.get('/api/kardex-pendiente', async (req, res) => {
       };
     });
 
-    res.json({ results });
+    const puedeEliminar = await puedeEliminarPendientes(acceso.rol);
+    res.json({ results, puedeEliminar });
   } catch (err) {
     console.error('[inventario] GET /api/kardex-pendiente error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE /api/kardex-pendiente/:id - elimina un pedido de Kardex_Pendiente (sólo Inventario o
-// Sistema), únicamente si no tiene ningún ítem relacionado en Dynamic_Kardex.
-router.delete('/api/kardex-pendiente/:id', async (req, res) => {
+// ── Eliminación completa de pedidos pendientes por recibir ───────────────────
+// Los roles autorizados se configuran en Config_Parametros (columna Parametro, separados por ",").
+const CONCEPTO_ELIMINAR_PENDIENTE = 'Puede eliminar registros pendientes por recibir';
+
+async function puedeEliminarPendientes(rol) {
+  if (!rol) return false;
+  const [rows] = await pool.execute(
+    'SELECT Parametro FROM Config_Parametros WHERE Concepto = ? LIMIT 1',
+    [CONCEPTO_ELIMINAR_PENDIENTE]
+  );
+  if (!rows.length || !rows[0].Parametro) return false;
+  const roles = String(rows[0].Parametro).split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
+  return roles.includes(String(rol).trim().toLowerCase());
+}
+
+/**
+ * Identifica todos los registros de Dynamic_Kardex que generó un pedido de Kardex_Pendiente:
+ *  1. Las TRANSFERENCIAS del pedido (Kpendiente = Id, o IdKardexOriginal en pedidos antiguos).
+ *  2. La ENTRADA automática que se registra en el origen al despachar "Dotación de Ley"
+ *     (guardar-masivo), que no queda ligada por Kpendiente: se empareja por artículo,
+ *     operación, cantidad, usuario y hora de registro.
+ *  3. La ENTRADA en Administración que crea la aprobación de una solicitud (pedidos SOL-),
+ *     referenciada desde Dynamic_Solicitudes_Items.IdKardex.
+ */
+async function obtenerRegistrosRelacionadosPendiente(conn, kp, forUpdate = false) {
+  const lock = forUpdate ? ' FOR UPDATE' : '';
+  const [transferencias] = await conn.execute(
+    `SELECT k.IdKardex, k.TipoMovimiento, k.FechaMovimiento, k.FechaRegistro, k.\`Operación\` AS Operacion,
+            k.IdArticulo, k.Cantidad, k.UsuarioRegistro, k.Observaciones, k.Acta, a.Articulo
+     FROM Dynamic_Kardex k
+     LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
+     WHERE k.Kpendiente = ? OR (? IS NOT NULL AND k.IdKardex = ?)${lock}`,
+    [kp.Id, kp.IdKardexOriginal, kp.IdKardexOriginal]
+  );
+
+  const entradas = [];
+  const itemsSolicitud = [];
+  const usados = new Set(transferencias.map(t => t.IdKardex));
+
+  for (const t of transferencias) {
+    if (t.TipoMovimiento !== 'TRANSFERENCIA') continue;
+    const cantidad = Math.abs(Number(t.Cantidad) || 0);
+
+    if (t.Observaciones === 'Dotación de Ley') {
+      const [cand] = await conn.execute(
+        `SELECT k.IdKardex, k.TipoMovimiento, k.Cantidad, k.Observaciones, a.Articulo
+         FROM Dynamic_Kardex k
+         LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
+         WHERE k.TipoMovimiento = 'ENTRADA'
+           AND k.Observaciones = 'Ingreso automático para despacho de Dotación de Ley'
+           AND k.Kpendiente IS NULL
+           AND k.IdArticulo = ?
+           AND k.\`Operación\` <=> ?
+           AND k.Cantidad = ?
+           AND k.UsuarioRegistro <=> ?
+           AND ABS(TIMESTAMPDIFF(SECOND, k.FechaRegistro, ?)) <= 120
+         ORDER BY ABS(TIMESTAMPDIFF(SECOND, k.FechaRegistro, ?))${lock}`,
+        [t.IdArticulo, t.Operacion, cantidad, t.UsuarioRegistro, t.FechaRegistro, t.FechaRegistro]
+      );
+      const match = cand.find(c => !usados.has(c.IdKardex));
+      if (match) {
+        usados.add(match.IdKardex);
+        entradas.push(match);
+      }
+    }
+
+    if (String(kp.Id).startsWith('SOL-')) {
+      const [cand] = await conn.execute(
+        `SELECT k.IdKardex, k.TipoMovimiento, k.Cantidad, k.Observaciones, a.Articulo, i.IdElemento
+         FROM Dynamic_Solicitudes_Items i
+         JOIN Dynamic_Kardex k ON k.IdKardex = i.IdKardex
+         LEFT JOIN Dynamic_Articulos a ON a.Id = k.IdArticulo
+         WHERE k.TipoMovimiento = 'ENTRADA'
+           AND k.IdArticulo = ?
+           AND k.Cantidad = ?
+           AND k.Observaciones <=> ?
+           AND k.UsuarioRegistro <=> ?
+           AND k.FechaMovimiento <=> ?${lock}`,
+        [t.IdArticulo, cantidad, t.Observaciones, t.UsuarioRegistro, t.FechaMovimiento]
+      );
+      const match = cand.find(c => !usados.has(c.IdKardex));
+      if (match) {
+        usados.add(match.IdKardex);
+        entradas.push(match);
+        itemsSolicitud.push(match.IdElemento);
+      }
+    }
+  }
+
+  return { transferencias, entradas, itemsSolicitud };
+}
+
+async function cargarPedidoPendienteEliminable(usuario, id) {
+  const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
+  if (!acceso || !(await puedeEliminarPendientes(acceso.rol))) {
+    return { status: 403, error: 'No autorizado para eliminar pedidos pendientes por recibir.' };
+  }
+  const [[kp]] = await pool.execute(
+    'SELECT Id, IdKardexOriginal, Procesado, Procesando FROM Kardex_Pendiente WHERE Id = ? LIMIT 1',
+    [id]
+  );
+  if (!kp) return { status: 404, error: 'Pedido no encontrado' };
+  if (Number(kp.Procesado) === 1) return { status: 400, error: 'El pedido ya fue recibido; no se puede eliminar.' };
+  if (Number(kp.Procesando) === 1) return { status: 409, error: 'El pedido se está recibiendo en este momento; intente más tarde.' };
+  return { kp };
+}
+
+// GET /api/kardex-pendiente/:id/relacionados - vista previa de lo que se eliminará
+router.get('/api/kardex-pendiente/:id/relacionados', async (req, res) => {
   try {
-    const { id } = req.params;
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
-    if (!acceso || !['Inventario', 'Sistema'].includes(acceso.rol)) {
-      return res.status(403).json({ error: 'No autorizado. Permisos exclusivos de Inventario o Sistema.' });
-    }
+    const r = await cargarPedidoPendienteEliminable(usuario, req.params.id);
+    if (r.error) return res.status(r.status).json({ error: r.error });
 
-    const [[kp]] = await pool.execute('SELECT Id, IdKardexOriginal FROM Kardex_Pendiente WHERE Id = ? LIMIT 1', [id]);
-    if (!kp) return res.status(404).json({ error: 'Pedido no encontrado' });
-
-    const [[{ itemCount }]] = await pool.execute(
-      `SELECT COUNT(*) AS itemCount FROM Dynamic_Kardex
-       WHERE Kpendiente = ? OR (? IS NOT NULL AND IdKardex = ?)`,
-      [id, kp.IdKardexOriginal, kp.IdKardexOriginal]
-    );
-    if (itemCount > 0) {
-      return res.status(400).json({ error: 'No se puede eliminar: el pedido tiene artículos relacionados en el Kardex.' });
-    }
-
-    await pool.execute('DELETE FROM Kardex_Pendiente WHERE Id = ?', [id]);
-    res.json({ success: true, message: 'Pedido eliminado correctamente.' });
+    const { transferencias, entradas } = await obtenerRegistrosRelacionadosPendiente(pool, r.kp);
+    const mapear = (x) => ({ IdKardex: x.IdKardex, TipoMovimiento: x.TipoMovimiento, Articulo: x.Articulo || 'Artículo sin nombre', Cantidad: x.Cantidad });
+    res.json({ transferencias: transferencias.map(mapear), entradas: entradas.map(mapear) });
   } catch (err) {
+    console.error('[inventario] GET /api/kardex-pendiente/:id/relacionados error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/kardex-pendiente/:id - elimina el pedido de Kardex_Pendiente junto con todos sus
+// registros relacionados en Dynamic_Kardex, como si el pedido nunca se hubiera realizado.
+router.delete('/api/kardex-pendiente/:id', async (req, res) => {
+  const { id } = req.params;
+  const { usuario } = req.query;
+  if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+  let conn;
+  try {
+    const r = await cargarPedidoPendienteEliminable(usuario, id);
+    if (r.error) return res.status(r.status).json({ error: r.error });
+
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    // Re-verificar estado dentro de la transacción (bloqueando la fila) por si se empezó a recibir.
+    const [[kp]] = await conn.execute(
+      'SELECT Id, IdKardexOriginal, Procesado, Procesando FROM Kardex_Pendiente WHERE Id = ? FOR UPDATE',
+      [id]
+    );
+    if (!kp || Number(kp.Procesado) === 1 || Number(kp.Procesando) === 1) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'El pedido cambió de estado; recargue la lista.' });
+    }
+
+    const { transferencias, entradas, itemsSolicitud } = await obtenerRegistrosRelacionadosPendiente(conn, kp, true);
+    const idsKardex = [...transferencias, ...entradas].map(x => x.IdKardex);
+
+    if (itemsSolicitud.length) {
+      const ph = itemsSolicitud.map(() => '?').join(',');
+      await conn.execute(`UPDATE Dynamic_Solicitudes_Items SET IdKardex = NULL WHERE IdElemento IN (${ph})`, itemsSolicitud);
+    }
+    if (idsKardex.length) {
+      const ph = idsKardex.map(() => '?').join(',');
+      await conn.execute(`DELETE FROM Dynamic_Kardex WHERE IdKardex IN (${ph})`, idsKardex);
+    }
+    await conn.execute('DELETE FROM Kardex_Pendiente WHERE Id = ?', [id]);
+
+    await conn.commit();
+    console.log(`[inventario] Pedido pendiente ${id} eliminado por ${usuario}: ${transferencias.length} transferencia(s), ${entradas.length} entrada(s) automática(s)`);
+    res.json({
+      success: true,
+      message: 'Pedido eliminado correctamente.',
+      eliminados: { transferencias: transferencias.length, entradas: entradas.length }
+    });
+  } catch (err) {
+    if (conn) { try { await conn.rollback(); } catch (_) { /* noop */ } }
     console.error('[inventario] DELETE /api/kardex-pendiente/:id error:', err);
     res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
