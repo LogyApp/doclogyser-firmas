@@ -2,10 +2,10 @@
 #
 # Qué hace:
 #   1. Construye la imagen Docker de la rama.
-#   2. Copia las variables de entorno del servicio de producción (logyser-docs)
+#   2. Copia las variables de entorno del servicio de producción (digital-logyser, us-east1)
 #      directamente desde Cloud Run, sin guardarlas en el repositorio.
-#   3. Despliega en un servicio APARTE: logyser-docs-prueba.
-#      Producción (logyser-docs) no se toca en ningún momento.
+#   3. Despliega en un servicio APARTE: digital-logyser-prueba.
+#      Producción (digital-logyser) no se toca en ningún momento.
 #   4. Activa DISABLE_BACKGROUND_JOBS=true para que la versión de prueba NO envíe
 #      correos automáticos ni procese tareas programadas (comparte la base de datos
 #      de producción).
@@ -13,10 +13,10 @@
 # Se usa con un activador de Cloud Build que escucha las ramas claude/*.
 
 substitutions:
-  _REGION: europe-west1
-  _SERVICIO_PROD: logyser-docs
-  _SERVICIO_PRUEBA: logyser-docs-prueba
-  _IMAGEN: europe-west1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/logyapp-logyser-docs/logyser-docs-prueba
+  _REGION: us-east1
+  _SERVICIO_PROD: digital-logyser
+  _SERVICIO_PRUEBA: digital-logyser-prueba
+  _IMAGEN: europe-west1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/doclogyser-firmas/digital-logyser-prueba
 
 steps:
   - id: construir
@@ -50,6 +50,10 @@ steps:
         lineas.append('DISABLE_BACKGROUND_JOBS: "true"')
         open('env-prueba.yaml', 'w').write('\n'.join(lineas) + '\n')
         open('cuenta-servicio.txt', 'w').write(spec.get('serviceAccountName', ''))
+        lim = c.get('resources', {}).get('limits', {})
+        open('memoria.txt', 'w').write(lim.get('memory', '1Gi'))
+        open('cpu.txt', 'w').write(str(lim.get('cpu', '1')))
+        open('timeout.txt', 'w').write(str(spec.get('timeoutSeconds', 300)))
         PY
 
   - id: desplegar-prueba
@@ -60,14 +64,16 @@ steps:
       - |
         CUENTA=$$(cat cuenta-servicio.txt)
         RAMA="${BRANCH_NAME}"
+        MEMORIA=$$(cat memoria.txt); CPU=$$(cat cpu.txt); TIEMPO=$$(cat timeout.txt)
         gcloud run deploy ${_SERVICIO_PRUEBA} \
           --image=${_IMAGEN}:${SHORT_SHA} \
           --region=${_REGION} \
           --env-vars-file=env-prueba.yaml \
           $${CUENTA:+--service-account=$$CUENTA} \
           --port=8080 \
-          --memory=512Mi \
-          --timeout=80 \
+          --memory=$$MEMORIA \
+          --cpu=$$CPU \
+          --timeout=$$TIEMPO \
           --min-instances=0 \
           --max-instances=2 \
           --allow-unauthenticated \
