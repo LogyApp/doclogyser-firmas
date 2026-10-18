@@ -154,67 +154,77 @@ app.listen(PORT, () => {
   }
 });
 
-// Notificador de ingresos: detecta nuevos colaboradores con cargos críticos
-// y envía correo al equipo administrativo para programar capacitación
-const { verificarIngresos } = require('./src/services/ingresoNotifier');
-verificarIngresos(); // verificación inicial al arrancar
-setInterval(verificarIngresos, 2 * 60 * 1000); // cada 2 minutos
+// Interruptor de tareas en segundo plano.
+// En producción no se define y todas las tareas corren como siempre.
+// En las revisiones de prueba de Cloud Run (ver cloudbuild-preview.yaml) se define
+// DISABLE_BACKGROUND_JOBS=true: comparten la base de datos de producción, y sin este
+// interruptor enviarían correos duplicados o procesarían registros dos veces.
+const tareasDesactivadas = ['true', '1', 'yes', 'si', 'sí']
+  .includes(String(process.env.DISABLE_BACKGROUND_JOBS || '').trim().toLowerCase());
 
-// Generador automático de CT cuando el token expira sin firma del trabajador
-const { verificarCTExpirados } = require('./src/services/ctExpiryNotifier');
-verificarCTExpirados(); // verificación inicial al arrancar
-setInterval(verificarCTExpirados, 5 * 60 * 1000); // cada 5 minutos
+if (tareasDesactivadas) {
+  console.warn('[tareas] DISABLE_BACKGROUND_JOBS activo: no se inician las tareas en segundo plano (revisión de prueba).');
+} else {
+  // Notificador de ingresos: detecta nuevos colaboradores con cargos críticos
+  // y envía correo al equipo administrativo para programar capacitación
+  const { verificarIngresos } = require('./src/services/ingresoNotifier');
+  verificarIngresos(); // verificación inicial al arrancar
+  setInterval(verificarIngresos, 2 * 60 * 1000); // cada 2 minutos
 
-// Generador automático de AR cuando el token expira sin firma del trabajador
-const { verificarARExpirados } = require('./src/services/arExpiryNotifier');
-verificarARExpirados(); // verificación inicial al arrancar
-setInterval(verificarARExpirados, 5 * 60 * 1000); // cada 5 minutos
+  // Generador automático de CT cuando el token expira sin firma del trabajador
+  const { verificarCTExpirados } = require('./src/services/ctExpiryNotifier');
+  verificarCTExpirados(); // verificación inicial al arrancar
+  setInterval(verificarCTExpirados, 5 * 60 * 1000); // cada 5 minutos
 
-// Generador automático de EMOE cuando el token expira sin firma del trabajador
-const { verificarEMOEExpirados } = require('./src/services/emoeExpiryNotifier');
-verificarEMOEExpirados(); // verificación inicial al arrancar
-setInterval(verificarEMOEExpirados, 5 * 60 * 1000); // cada 5 minutos
+  // Generador automático de AR cuando el token expira sin firma del trabajador
+  const { verificarARExpirados } = require('./src/services/arExpiryNotifier');
+  verificarARExpirados(); // verificación inicial al arrancar
+  setInterval(verificarARExpirados, 5 * 60 * 1000); // cada 5 minutos
 
-// Generador automático de CRS cuando el token expira sin firma del trabajador
-const { verificarCRSExpirados } = require('./src/services/crsExpiryNotifier');
-verificarCRSExpirados(); // verificación inicial al arrancar
-setInterval(verificarCRSExpirados, 5 * 60 * 1000); // cada 5 minutos
+  // Generador automático de EMOE cuando el token expira sin firma del trabajador
+  const { verificarEMOEExpirados } = require('./src/services/emoeExpiryNotifier');
+  verificarEMOEExpirados(); // verificación inicial al arrancar
+  setInterval(verificarEMOEExpirados, 5 * 60 * 1000); // cada 5 minutos
 
-// Generador automático de PZ cuando el token expira sin firmas completas
-const { verificarPZExpirados } = require('./src/services/pzExpiryNotifier');
-verificarPZExpirados(); // verificación inicial al arrancar
-setInterval(verificarPZExpirados, 10 * 60 * 1000); // cada 10 minutos
+  // Generador automático de CRS cuando el token expira sin firma del trabajador
+  const { verificarCRSExpirados } = require('./src/services/crsExpiryNotifier');
+  verificarCRSExpirados(); // verificación inicial al arrancar
+  setInterval(verificarCRSExpirados, 5 * 60 * 1000); // cada 5 minutos
 
-// Generador automático de CPC (Prueba Consumo) desactivado: el documento debe permanecer en Sin firmar (pendiente)
-// const { verificarCPCExpirados } = require('./src/services/cpcExpiryNotifier');
-// verificarCPCExpirados();
-// setInterval(verificarCPCExpirados, 5 * 60 * 1000);
+  // Generador automático de PZ cuando el token expira sin firmas completas
+  const { verificarPZExpirados } = require('./src/services/pzExpiryNotifier');
+  verificarPZExpirados(); // verificación inicial al arrancar
+  setInterval(verificarPZExpirados, 10 * 60 * 1000); // cada 10 minutos
 
-// Generador automático de EVSST (Evaluación SST) cuando el token expira sin firma
-const { verificarEVSSTExpirados } = require('./src/services/evsstExpiryNotifier');
-verificarEVSSTExpirados(); // verificación inicial al arrancar
-setInterval(verificarEVSSTExpirados, 5 * 60 * 1000); // cada 5 minutos
+  // Generador automático de CPC (Prueba Consumo) desactivado: el documento debe permanecer en Sin firmar (pendiente)
+  // const { verificarCPCExpirados } = require('./src/services/cpcExpiryNotifier');
+  // verificarCPCExpirados();
+  // setInterval(verificarCPCExpirados, 5 * 60 * 1000);
 
-// Actualizador diario automático de Forma de Pago y reportador de pendientes (a las 7:30 AM Colombia)
-const { iniciarProgramadorFormaPago } = require('./src/services/formaPagoUpdater');
-iniciarProgramadorFormaPago();
+  // Generador automático de EVSST (Evaluación SST) cuando el token expira sin firma
+  const { verificarEVSSTExpirados } = require('./src/services/evsstExpiryNotifier');
+  verificarEVSSTExpirados(); // verificación inicial al arrancar
+  setInterval(verificarEVSSTExpirados, 5 * 60 * 1000); // cada 5 minutos
 
-// Reporte diario de ingresos sin confirmar "Tomó Cargo" (a las 7:30 AM Colombia)
-const { iniciarProgramadorTomoCargo } = require('./src/services/tomoCargoNotifier');
-iniciarProgramadorTomoCargo();
+  // Actualizador diario automático de Forma de Pago y reportador de pendientes (a las 7:30 AM Colombia)
+  const { iniciarProgramadorFormaPago } = require('./src/services/formaPagoUpdater');
+  iniciarProgramadorFormaPago();
 
-// Programador de envíos de correos de Logysign en la fecha/hora seleccionada
-const { iniciarProgramadorEnvios } = require('./src/services/logysignScheduler');
-iniciarProgramadorEnvios();
+  // Reporte diario de ingresos sin confirmar "Tomó Cargo" (a las 7:30 AM Colombia)
+  const { iniciarProgramadorTomoCargo } = require('./src/services/tomoCargoNotifier');
+  iniciarProgramadorTomoCargo();
 
-// Generador automático de solicitudes iniciales de Dotación y EPP en BORRADOR para nuevos ingresos
-const { verificarSolicitudesNuevosIngresos } = require('./src/services/solicitudesAutoIngresoService');
-verificarSolicitudesNuevosIngresos(); // verificación inicial al arrancar
-setInterval(verificarSolicitudesNuevosIngresos, 2 * 60 * 1000); // cada 2 minutos
+  // Programador de envíos de correos de Logysign en la fecha/hora seleccionada
+  const { iniciarProgramadorEnvios } = require('./src/services/logysignScheduler');
+  iniciarProgramadorEnvios();
 
-// Generador automático de actas de entrega cuando expira el plazo de 48 horas sin firma del trabajador
-const { verificarActasExpiradas } = require('./src/services/actasExpiryNotifier');
-verificarActasExpiradas(); // verificación inicial al arrancar
-setInterval(verificarActasExpiradas, 5 * 60 * 1000); // cada 5 minutos
+  // Generador automático de solicitudes iniciales de Dotación y EPP en BORRADOR para nuevos ingresos
+  const { verificarSolicitudesNuevosIngresos } = require('./src/services/solicitudesAutoIngresoService');
+  verificarSolicitudesNuevosIngresos(); // verificación inicial al arrancar
+  setInterval(verificarSolicitudesNuevosIngresos, 2 * 60 * 1000); // cada 2 minutos
 
-
+  // Generador automático de actas de entrega cuando expira el plazo de 48 horas sin firma del trabajador
+  const { verificarActasExpiradas } = require('./src/services/actasExpiryNotifier');
+  verificarActasExpiradas(); // verificación inicial al arrancar
+  setInterval(verificarActasExpiradas, 5 * 60 * 1000); // cada 5 minutos
+}

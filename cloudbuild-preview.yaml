@@ -1,0 +1,83 @@
+# Despliegue de PRUEBA (vista previa) para ramas que no son main.
+#
+# Qué hace:
+#   1. Construye la imagen Docker de la rama.
+#   2. Copia las variables de entorno del servicio de producción (logyser-docs)
+#      directamente desde Cloud Run, sin guardarlas en el repositorio.
+#   3. Despliega en un servicio APARTE: logyser-docs-prueba.
+#      Producción (logyser-docs) no se toca en ningún momento.
+#   4. Activa DISABLE_BACKGROUND_JOBS=true para que la versión de prueba NO envíe
+#      correos automáticos ni procese tareas programadas (comparte la base de datos
+#      de producción).
+#
+# Se usa con un activador de Cloud Build que escucha las ramas claude/*.
+
+substitutions:
+  _REGION: europe-west1
+  _SERVICIO_PROD: logyser-docs
+  _SERVICIO_PRUEBA: logyser-docs-prueba
+  _IMAGEN: europe-west1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/logyapp-logyser-docs/logyser-docs-prueba
+
+steps:
+  - id: construir
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_IMAGEN}:${SHORT_SHA}', '.']
+
+  - id: subir-imagen
+    name: gcr.io/cloud-builders/docker
+    args: ['push', '${_IMAGEN}:${SHORT_SHA}']
+
+  - id: copiar-configuracion
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        gcloud run services describe ${_SERVICIO_PROD} --region=${_REGION} --format=json > prod.json
+        python3 - <<'PY'
+        import json
+        s = json.load(open('prod.json'))
+        spec = s['spec']['template']['spec']
+        c = spec['containers'][0]
+        lineas = []
+        for e in c.get('env', []):
+            if e['name'] == 'DISABLE_BACKGROUND_JOBS':
+                continue
+            if 'value' not in e:
+                print('AVISO: la variable %s viene de Secret Manager y no se copia.' % e['name'])
+                continue
+            lineas.append('%s: %s' % (e['name'], json.dumps(e['value'])))
+        lineas.append('DISABLE_BACKGROUND_JOBS: "true"')
+        open('env-prueba.yaml', 'w').write('\n'.join(lineas) + '\n')
+        open('cuenta-servicio.txt', 'w').write(spec.get('serviceAccountName', ''))
+        PY
+
+  - id: desplegar-prueba
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        CUENTA=$$(cat cuenta-servicio.txt)
+        RAMA="${BRANCH_NAME}"
+        gcloud run deploy ${_SERVICIO_PRUEBA} \
+          --image=${_IMAGEN}:${SHORT_SHA} \
+          --region=${_REGION} \
+          --env-vars-file=env-prueba.yaml \
+          $${CUENTA:+--service-account=$$CUENTA} \
+          --port=8080 \
+          --memory=512Mi \
+          --timeout=80 \
+          --min-instances=0 \
+          --max-instances=2 \
+          --allow-unauthenticated \
+          --labels=entorno=prueba,rama=$${RAMA//\//-}
+        echo "URL de prueba:"
+        gcloud run services describe ${_SERVICIO_PRUEBA} --region=${_REGION} --format='value(status.url)'
+
+images:
+  - '${_IMAGEN}:${SHORT_SHA}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  dynamic_substitutions: true
