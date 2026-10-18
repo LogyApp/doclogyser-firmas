@@ -54,6 +54,21 @@ steps:
         open('memoria.txt', 'w').write(lim.get('memory', '1Gi'))
         open('cpu.txt', 'w').write(str(lim.get('cpu', '1')))
         open('timeout.txt', 'w').write(str(spec.get('timeoutSeconds', 300)))
+        # Conexión a la base de datos y red: Cloud SQL (socket /cloudsql) y conector VPC.
+        ann = s['spec']['template'].get('metadata', {}).get('annotations', {})
+        extra = []
+        if ann.get('run.googleapis.com/cloudsql-instances'):
+            extra.append('--set-cloudsql-instances=' + ann['run.googleapis.com/cloudsql-instances'])
+        if ann.get('run.googleapis.com/vpc-access-connector'):
+            extra.append('--vpc-connector=' + ann['run.googleapis.com/vpc-access-connector'])
+        if ann.get('run.googleapis.com/vpc-access-egress'):
+            extra.append('--vpc-egress=' + ann['run.googleapis.com/vpc-access-egress'])
+        if ann.get('run.googleapis.com/network-interfaces'):
+            ni = json.loads(ann['run.googleapis.com/network-interfaces'])[0]
+            if ni.get('network'): extra.append('--network=' + ni['network'])
+            if ni.get('subnetwork'): extra.append('--subnet=' + ni['subnetwork'])
+        open('red.txt', 'w').write(' '.join(extra))
+        print('Conexiones copiadas de producción:', extra or 'ninguna')
         PY
 
   - id: desplegar-prueba
@@ -64,7 +79,7 @@ steps:
       - |
         CUENTA=$$(cat cuenta-servicio.txt)
         RAMA="${BRANCH_NAME}"
-        MEMORIA=$$(cat memoria.txt); CPU=$$(cat cpu.txt); TIEMPO=$$(cat timeout.txt)
+        MEMORIA=$$(cat memoria.txt); CPU=$$(cat cpu.txt); TIEMPO=$$(cat timeout.txt); RED=$$(cat red.txt)
         gcloud run deploy ${_SERVICIO_PRUEBA} \
           --image=${_IMAGEN}:${SHORT_SHA} \
           --region=${_REGION} \
@@ -77,6 +92,7 @@ steps:
           --min-instances=0 \
           --max-instances=2 \
           --allow-unauthenticated \
+          $$RED \
           --labels=entorno=prueba,rama=$${RAMA//\//-}
         echo "URL de prueba:"
         gcloud run services describe ${_SERVICIO_PRUEBA} --region=${_REGION} --format='value(status.url)'
