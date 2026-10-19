@@ -7,7 +7,7 @@ const { computarAccesoNomina } = require('../services/accesoNomina');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
-const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido, obtenerResponsablesOperacionRegional } = require('../services/configRetiro');
+const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido } = require('../services/configRetiro');
 const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
@@ -264,7 +264,7 @@ router.get('/', async (req, res) => {
     }
 
     const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias;
-    const puedeGenerarDocs = puedeGenerarDocumentosRetiro(base.rol, base.regional);
+    const puedeGenerarDocs = await puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
     let permisosCesantias = {
@@ -663,20 +663,18 @@ router.post('/api/confirmar-estado-retirado', async (req, res) => {
 
     // Este es el momento en que Estado realmente pasa a Retirado (caso Antioquia,
     // Nómina ya había generado documentos antes sin marcarlo) — notificación completa.
-    obtenerResponsablesOperacionRegional(vin['Operación'], vin.Regional)
-      .then(destinatariosResponsables => notificarRetiro({
-        trabajador:     vin.Trabajador,
-        identificacion: String(vin['Identificación']),
-        cargo:          vin.Cargo,
-        operacion:      vin['Operación'],
-        fechaRetiro:    vin['Fecha de Retiro'],
-        motivoRetiro:   motivo,
-        registradoPor:    usuData.Nombre || usuario,
-        emailRegistrador: usuData.Email || null,
-        rolRegistrador:   usuData.Rol,
-        destinatariosResponsables,
-      }))
-      .then(() => marcarNotificado(idVinculacion))
+    notificarRetiro({
+      trabajador:     vin.Trabajador,
+      identificacion: String(vin['Identificación']),
+      cargo:          vin.Cargo,
+      operacion:      vin['Operación'],
+      fechaRetiro:    vin['Fecha de Retiro'],
+      motivoRetiro:   motivo,
+      registradoPor:    usuData.Nombre || usuario,
+      emailRegistrador: usuData.Email || null,
+      rolRegistrador:   usuData.Rol,
+    })
+      .then(enviado => enviado && marcarNotificado(idVinculacion))
       .catch(e => console.error('[confirmar-estado-retirado email]', e.message));
 
     res.json({ ok: true });

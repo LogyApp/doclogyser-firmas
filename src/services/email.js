@@ -429,29 +429,9 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
 
 // ── Notificación de retiro ───────────────────────────────────────────────────
 
-const CARGOS_ADMIN = [
-  'AUXILIAR ADMINISTRATIVO DE OPERACIÓN',
-  'AUXILIAR ADMINISTRATIVO REGIONAL',
-  'COORDINADOR LOGISTICO',
-  'COORDINADOR REGIONAL',
-  'SUBGERENTE DE OPERACIONES',
-];
-const CARGOS_SST = ['ANALISTA DE SST', 'AUXILIAR SST'];
-
-const CC_ADMIN = [
-  'jefe.facturacion@logyser.com',
-  'jefe.contabilidad@logyser.com',
-  'gestioncalidad@logyser.com',
-  'controlcuentas@logyser.com',
-  'directorrh@logyser.com',
-  'subgerenciaoperaciones@logyser.com',
-  'administradorti@logyser.com',
-  'nomina@logyser.com',
-  'seleccion@logyser.com',
-];
-const CC_SST = ['sstadmon@logyser.com'];
-
-const ID_RETIRO_EXCLUIDO = 1117517812;
+// Para, Copia, cargos con copia adicional e interruptor de envío se configuran en
+// Config_Parametros (Modulo 'nomina', Seccion 'Retiros') — ver
+// obtenerDestinatariosNotificacionRetiro en configRetiro.js.
 
 // Roles que la lógica de "responsables por Operación/Regional" ya cubre —
 // si quien registra el retiro tiene uno de estos roles, no se le duplica
@@ -473,21 +453,30 @@ function diasDesdeRetiro(fechaRetiro) {
   return Math.round((hoyLocal - fr) / 86400000);
 }
 
+// Devuelve true si el correo se envió (false si las notificaciones de Retiros
+// están desactivadas o no hay destinatarios).
 async function notificarRetiro({
   trabajador, identificacion, cargo, operacion,
   fechaRetiro, motivoRetiro, registradoPor, emailRegistrador,
-  rolRegistrador, destinatariosResponsables,
+  rolRegistrador,
 }) {
-  if (Number(identificacion) === ID_RETIRO_EXCLUIDO) return;
+  const { obtenerDestinatariosNotificacionRetiro } = require('./configRetiro');
+  const { habilitado, para, copia } = await obtenerDestinatariosNotificacionRetiro({ operacion, cargo });
+  if (!habilitado) {
+    console.log('[notificarRetiro] Notificaciones de Retiros desactivadas por Config_Parametros.');
+    return false;
+  }
 
-  const cargoNorm = (cargo || '').trim().toUpperCase();
   const notificarAlRegistrador = emailRegistrador && !ROLES_YA_CUBIERTOS_RESPONSABLES.includes(rolRegistrador);
-  const ccResponsables = (destinatariosResponsables || []).map(r => r.Email).filter(Boolean);
-  const ccBase  = ['admin@logyser.com', notificarAlRegistrador ? emailRegistrador : null, ...ccResponsables].filter(Boolean);
-  const ccExtra = CARGOS_ADMIN.includes(cargoNorm) ? CC_ADMIN
-                : CARGOS_SST.includes(cargoNorm)   ? CC_SST
-                : [];
-  const cc = [...new Set([...ccBase, ...ccExtra])].join(', ');
+  const enPara = new Set(para.map(c => c.toLowerCase()));
+  const ccLista = [...copia, notificarAlRegistrador ? emailRegistrador : null]
+    .filter(Boolean)
+    .filter((c, i, arr) => !enPara.has(c.toLowerCase()) && arr.findIndex(x => x.toLowerCase() === c.toLowerCase()) === i);
+  if (!para.length && !ccLista.length) {
+    console.warn('[notificarRetiro] Sin destinatarios configurados en Config_Parametros; no se envía el correo.');
+    return false;
+  }
+  const cc = ccLista.join(', ');
 
   const asunto = `Retiro de personal — ${trabajador}`;
 
@@ -566,12 +555,13 @@ ${encabezadoLogo('#c0392b')}
 
   await transporter.sendMail({
     from:    `"LOG&SER Notificaciones" <${EMAIL_FROM}>`,
-    to:      'retiros@logyser.com',
-    cc,
+    to:      para.length ? para.join(', ') : cc,
+    cc:      para.length ? cc : undefined,
     subject: asunto,
     html:    cuerpo,
     attachments: [LOGO_HEADER_ATTACHMENT],
   });
+  return true;
 }
 
 // Nómina llenó el Módulo 1 (fecha/motivo) sin marcar Estado='Retirado' — el

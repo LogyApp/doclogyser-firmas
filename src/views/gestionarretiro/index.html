@@ -576,7 +576,8 @@
 <script>
   const _cfg = __CONFIG__;
   const {
-    estadoPagina, idVinculacion, usuario, usuarioNombre, rolUsuario, esNominaOSistema,
+    estadoPagina, idVinculacion, usuario, usuarioNombre, rolUsuario,
+    puedeEditarFechaRetiro, puedeModificarArticulosPz, puedeReenviarPzAreas,
     trabajador, cargo, identificacion, motivoRetiro, tipoRenuncia, fechaRetiro, fechaRetiroISO, ciudadRegional,
     firmaResponsableUrl, ciudadSugerida, docs, docsOpcionales, terminacionContrato,
     legalizacionPendientes,
@@ -615,8 +616,11 @@
   document.getElementById('badgeUsuario').textContent = '\u{1F464} ' + usuarioNombre;
   document.getElementById('badgeMotivo').textContent  = motivoRetiro + (tipoRenuncia ? ` (${tipoRenuncia})` : '');
   document.getElementById('headerSub').textContent    = trabajador + ' · CC ' + identificacion + ' · ' + (fechaRetiro || '');
-  if (esNominaOSistema && fechaRetiroISO) {
+  if (puedeEditarFechaRetiro && fechaRetiroISO) {
     document.getElementById('fechaRetiroEditRow').style.display = 'block';
+  }
+  if (!puedeReenviarPzAreas) {
+    document.getElementById('btnReenviarPZ').style.display = 'none';
   }
 
   // ── Mostrar estado correcto ───────────────────────────────────────────────
@@ -1143,7 +1147,7 @@
       bloquearArticulos(pazYSalvo.articulos);
       document.getElementById('artsGuardadosOk').style.display   = 'block';
       document.getElementById('btnGuardarArts').style.display     = 'none';
-      if (esNominaOSistema && pazYSalvo.estado !== 'completado') {
+      if (puedeModificarArticulosPz && pazYSalvo.estado !== 'completado') {
         document.getElementById('btnEditarArts').style.display = 'inline-block';
       }
       if (pazYSalvo.workerSigned) {
@@ -1286,7 +1290,7 @@
         btn.style.display = 'none';
         document.getElementById('artsGuardadosOk').style.display = 'block';
         bloquearArticulos(arts);   // pasar arts directamente — sin leer del DOM
-        if (esNominaOSistema) {
+        if (puedeModificarArticulosPz) {
           document.getElementById('btnEditarArts').style.display = 'inline-block';
         }
         if (d.urlFirma) {

@@ -14,7 +14,7 @@ const { marcarNotificado } = require('../services/retiroNotifier');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenEVR, reconstruirToken } = require('../services/token');
 const { determinarNivelYAreas } = require('../services/pazYSalvoService');
-const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, puedeGenerarDocumentosRetiro, obtenerResponsablesOperacionRegional } = require('../services/configRetiro');
+const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, obtenerPermisosRetiro, nominaDebeMarcarRetirado, obtenerResponsablesConfirmarRetiro } = require('../services/configRetiro');
 
 const router   = express.Router();
 const FORM_HTML = path.join(__dirname, '../views/formretiro/form.html');
@@ -190,13 +190,15 @@ router.post('/api/actualizar-articulos-pz', async (req, res) => {
       return res.status(403).json({ ok: false, error: 'El Paz y Salvo ya está completado y no puede modificarse' });
     }
 
-    // Si ya hay token (artículos previamente guardados) → solo Nómina/Sistema pueden modificar
+    // Si ya hay token (artículos previamente guardados) → solo los roles de
+    // "Puede modificar artículos de Paz y Salvo guardados" (Config_Parametros)
     if (pzActual.token_trabajador && usuarioParam) {
       const [uRows] = await pool.execute(
-        'SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioParam]
+        'SELECT Rol, Regional FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioParam]
       );
-      if (!uRows.length || !['Nomina', 'Sistema'].includes(uRows[0].Rol)) {
-        return res.status(403).json({ ok: false, error: 'Solo Nómina o Sistema pueden modificar artículos ya guardados' });
+      const permisos = uRows.length ? await obtenerPermisosRetiro(uRows[0].Rol, uRows[0].Regional) : null;
+      if (!permisos || !permisos.puedeModificarArticulosPz) {
+        return res.status(403).json({ ok: false, error: 'Su rol no puede modificar artículos ya guardados del Paz y Salvo' });
       }
     }
 
@@ -637,8 +639,11 @@ router.get('/:idVinculacion', async (req, res) => {
     );
     if (!usuRows.length) return res.status(403).send(htmlError('Usuario no autorizado'));
     const rolUsuario      = usuRows[0].Rol || '';
-    const esNominaOSistema = ['Nomina', 'Sistema'].includes(rolUsuario);
-    const puedeGenerarDocs = puedeGenerarDocumentosRetiro(rolUsuario, usuRows[0].Regional);
+    const permisosRetiro  = await obtenerPermisosRetiro(rolUsuario, usuRows[0].Regional);
+    // "Puede editar retiro registrado" (Config_Parametros). Se conserva el nombre
+    // esNominaOSistema porque así lo usa la vista del formulario.
+    const esNominaOSistema = permisosRetiro.puedeEditarRetiroRegistrado;
+    const puedeGenerarDocs = permisosRetiro.puedeGenerarDocs;
 
     const idVinculacion = decodeURIComponent(req.params.idVinculacion);
 
@@ -732,8 +737,9 @@ router.post('/:idVinculacion', async (req, res) => {
     if (!usuRows.length) return res.status(403).json({ ok: false, error: 'Usuario no autorizado' });
     const usuData = usuRows[0];
     const rolUsuario = usuData.Rol || '';
-    const esNominaOSistema = ['Nomina', 'Sistema'].includes(rolUsuario);
-    const puedeGenerarDocs = puedeGenerarDocumentosRetiro(rolUsuario, usuData.Regional);
+    const permisosRetiro   = await obtenerPermisosRetiro(rolUsuario, usuData.Regional);
+    const esNominaOSistema = permisosRetiro.puedeEditarRetiroRegistrado;
+    const puedeGenerarDocs = permisosRetiro.puedeGenerarDocs;
 
     const idVinculacion = decodeURIComponent(req.params.idVinculacion);
     const { fechaRetiro, motivoRetiro, tipoRenuncia, crBase64, edBase64, estado } = req.body;
@@ -756,10 +762,10 @@ router.post('/:idVinculacion', async (req, res) => {
     const vin = vinRows[0];
     const identificacion = vin['Identificación'];
 
-    // Roles distintos de Nómina/Sistema siempre deben confirmar "Retirado". Nómina
-    // también queda obligada cuando el trabajador pertenece a la Operación
-    // "Administracion" (no tiene Coordinador/Auxiliar propio que lo haga después).
-    const nominaObligadaAdministracion = rolUsuario === 'Nomina' && vin['Operación'] === 'Administracion';
+    // Roles fuera de "Puede editar retiro registrado" siempre deben confirmar
+    // "Retirado". Nómina también queda obligada en las Operaciones de "Operación
+    // donde Nómina debe marcar Retirado" (no tienen Coordinador/Auxiliar propio).
+    const nominaObligadaAdministracion = rolUsuario === 'Nomina' && nominaDebeMarcarRetirado(permisosRetiro.params, vin['Operación']);
     if ((!esNominaOSistema || nominaObligadaAdministracion) && estado !== 'Retirado') {
       return res.status(400).json({ ok: false, error: 'Debe seleccionar el estado "Retirado" para continuar' });
     }
@@ -802,25 +808,24 @@ router.post('/:idVinculacion', async (req, res) => {
 
     if (estado === 'Retirado') {
       // Estado sí cambió en esta petición: notificación completa de retiro.
-      obtenerResponsablesOperacionRegional(vin['Operación'], vin.Regional)
-        .then(destinatariosResponsables => notificarRetiro({
-          trabajador:     vin.Trabajador,
-          identificacion: String(identificacion),
-          cargo:          vin.Cargo,
-          operacion:      vin['Operación'],
-          fechaRetiro,
-          motivoRetiro,
-          registradoPor:    usuData.Nombre || usuario,
-          emailRegistrador: usuData.Email || null,
-          rolRegistrador:   rolUsuario,
-          destinatariosResponsables,
-        }))
-        .then(() => marcarNotificado(idVin))
+      notificarRetiro({
+        trabajador:     vin.Trabajador,
+        identificacion: String(identificacion),
+        cargo:          vin.Cargo,
+        operacion:      vin['Operación'],
+        fechaRetiro,
+        motivoRetiro,
+        registradoPor:    usuData.Nombre || usuario,
+        emailRegistrador: usuData.Email || null,
+        rolRegistrador:   rolUsuario,
+      })
+        .then(enviado => enviado && marcarNotificado(idVin))
         .catch(e => console.error('[retiro email]', e.message));
     } else if (rolUsuario === 'Nomina') {
-      // Nómina inició la legalización sin marcar Retirado: avisar al responsable
-      // (Coordinador/Auxiliar u su fallback regional) para que lo confirme pronto.
-      obtenerResponsablesOperacionRegional(vin['Operación'], vin.Regional)
+      // Nómina inició la legalización sin marcar Retirado: avisar a los
+      // responsables de la Operación (roles de "Notificación de retiro - Copia:")
+      // para que lo confirmen pronto.
+      obtenerResponsablesConfirmarRetiro(vin['Operación'])
         .then(destinatarios => notificarInicioLegalizacionSinRetirar({
           trabajador:     vin.Trabajador,
           identificacion: String(identificacion),

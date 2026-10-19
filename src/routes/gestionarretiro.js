@@ -4,7 +4,7 @@ const path    = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool    = require('../services/db');
 const { reconstruirToken, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenPZ } = require('../services/token');
-const { obtenerCondicionRetiro, obtenerEstadoLogysign, obtenerPrefijoDoc, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro, obtenerPendientesLegalizacion } = require('../services/configRetiro');
+const { obtenerCondicionRetiro, obtenerEstadoLogysign, obtenerPrefijoDoc, ID_DOC_TCR, ID_DOC_TCRP, puedeGenerarDocumentosRetiro, obtenerPermisosRetiro, obtenerPendientesLegalizacion } = require('../services/configRetiro');
 const { subirDocumentoRetiro } = require('../services/storage');
 const { regenerarCertificadoRetiro } = require('./firmarcertificadoretiro');
 const { regenerarAceptacionRenuncia } = require('./firmarenuncia');
@@ -90,8 +90,8 @@ router.get('/:idVinculacion', async (req, res) => {
     if (!usuRows.length) return res.status(403).send(paginaError('Usuario no autorizado'));
     const usu             = usuRows[0];
     const rolUsuario      = usu.Rol || '';
-    const esNominaOSistema = ['Nomina', 'Sistema'].includes(rolUsuario);
-    if (!puedeGenerarDocumentosRetiro(rolUsuario, usu.Regional)) {
+    const permisosRetiro  = await obtenerPermisosRetiro(rolUsuario, usu.Regional);
+    if (!permisosRetiro.puedeGenerarDocs) {
       return res.status(403).send(paginaError('No tiene permiso para gestionar los documentos de este retiro. Esta gestión está a cargo del área de Nómina.'));
     }
 
@@ -321,7 +321,10 @@ router.get('/:idVinculacion', async (req, res) => {
       usuario,
       usuarioNombre:    usu.Nombre || usuario,
       rolUsuario,
-      esNominaOSistema,
+      // Permisos (Config_Parametros, nomina / Retiros)
+      puedeEditarFechaRetiro:    permisosRetiro.puedeEditarFechaRetiro,
+      puedeModificarArticulosPz: permisosRetiro.puedeModificarArticulosPz,
+      puedeReenviarPzAreas:      permisosRetiro.puedeReenviarPzAreas,
       // Trabajador
       trabajador:       limpiarNombre(vin.Trabajador),
       cargo:            vin.Cargo || '',
@@ -367,9 +370,10 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
     if (!idPz) return res.status(400).json({ ok: false, error: 'idPz requerido' });
 
     const [uRows] = await pool.execute(
-      'SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]
+      'SELECT Rol, Regional FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]
     );
-    if (!uRows.length || !['Nomina', 'Sistema'].includes(uRows[0].Rol)) {
+    const permisos = uRows.length ? await obtenerPermisosRetiro(uRows[0].Rol, uRows[0].Regional) : null;
+    if (!permisos || !permisos.puedeReenviarPzAreas) {
       return res.status(403).json({ ok: false, error: 'Sin permiso' });
     }
 
@@ -440,7 +444,7 @@ router.post('/api/subir-terminacion-contrato', async (req, res) => {
     }
 
     const [uRows] = await pool.execute('SELECT Rol, Regional FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
-    if (!uRows.length || !puedeGenerarDocumentosRetiro(uRows[0].Rol, uRows[0].Regional)) {
+    if (!uRows.length || !(await puedeGenerarDocumentosRetiro(uRows[0].Rol, uRows[0].Regional))) {
       return res.status(403).json({ ok: false, error: 'Sin permiso para cargar este documento' });
     }
 
@@ -519,9 +523,10 @@ router.post('/api/actualizar-fecha-retiro', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Fecha inválida' });
     }
 
-    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
-    if (!uRows.length || !['Nomina', 'Sistema'].includes(uRows[0].Rol)) {
-      return res.status(403).json({ ok: false, error: 'Solo Nómina o Sistema pueden editar la Fecha de Retiro' });
+    const [uRows] = await pool.execute('SELECT Rol, Regional FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const permisos = uRows.length ? await obtenerPermisosRetiro(uRows[0].Rol, uRows[0].Regional) : null;
+    if (!permisos || !permisos.puedeEditarFechaRetiro) {
+      return res.status(403).json({ ok: false, error: 'Su rol no puede editar la Fecha de Retiro' });
     }
 
     const [vinRows] = await pool.execute(
