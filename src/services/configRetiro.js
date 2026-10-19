@@ -99,11 +99,11 @@ const DEFAULTS_RETIROS = {
   [P.MODIFICAR_ARTICULOS_PZ]:    'Nomina, Sistema',
   [P.REENVIAR_PZ_AREAS]:         'Nomina, Sistema',
   [P.NOTIF_PARA]:                'retiros@logyser.com',
-  [P.NOTIF_COPIA]:               'admin@logyser.com, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
+  [P.NOTIF_COPIA]:               'Sistema, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
   [P.CARGOS_COPIA_ADMIN]:        'AUXILIAR ADMINISTRATIVO DE OPERACIÓN, AUXILIAR ADMINISTRATIVO REGIONAL, COORDINADOR LOGISTICO, COORDINADOR REGIONAL, SUBGERENTE DE OPERACIONES',
-  [P.NOTIF_COPIA_ADMIN]:         'jefe.facturacion@logyser.com, jefe.contabilidad@logyser.com, gestioncalidad@logyser.com, controlcuentas@logyser.com, directorrh@logyser.com, subgerenciaoperaciones@logyser.com, administradorti@logyser.com, nomina@logyser.com, seleccion@logyser.com',
+  [P.NOTIF_COPIA_ADMIN]:         'Facturación, Contabilidad, Calidad, Cuentas, Directorth, Nomina, CoorSelección, LiderSst',
   [P.CARGOS_COPIA_SST]:          'ANALISTA DE SST, AUXILIAR SST',
-  [P.NOTIF_COPIA_SST]:           'sstadmon@logyser.com',
+  [P.NOTIF_COPIA_SST]:           'LiderSst',
   [P.HABILITAR_NOTIFICACIONES]:  '1',
 };
 
@@ -300,10 +300,11 @@ async function obtenerDestinatariosNotificacionRetiro({ operacion, cargo }) {
   const para  = await resolverCorreosParametro(listaParametro(params, P.NOTIF_PARA), operacion);
   const copia = await resolverCorreosParametro(listaParametro(params, P.NOTIF_COPIA), operacion);
 
+  // Copias por cargo: roles (Email de Maestro_Usuarios) o correos directos.
   if (estaEnParametro(params, P.CARGOS_COPIA_ADMIN, cargo)) {
-    copia.push(...listaParametro(params, P.NOTIF_COPIA_ADMIN));
+    copia.push(...await resolverCorreosParametro(listaParametro(params, P.NOTIF_COPIA_ADMIN), operacion));
   } else if (estaEnParametro(params, P.CARGOS_COPIA_SST, cargo)) {
-    copia.push(...listaParametro(params, P.NOTIF_COPIA_SST));
+    copia.push(...await resolverCorreosParametro(listaParametro(params, P.NOTIF_COPIA_SST), operacion));
   }
 
   const paraUnicos = unicos(para);

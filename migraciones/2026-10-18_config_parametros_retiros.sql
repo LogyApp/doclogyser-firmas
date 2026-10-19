@@ -4,7 +4,8 @@
 -- hasta que se editen en la tabla.
 --
 -- Notas:
---  * "Notificación de retiro - Copia:" acepta correos (con @) y roles. Auxiliar,
+--  * Las listas de notificación aceptan roles (se envía al Email de Maestro_Usuarios)
+--    y correos directos (con @). En "Notificación de retiro - Copia:", Auxiliar,
 --    AuxiliarR, Coordinador y CoordinadorR se resuelven según la Operación del
 --    trabajador; otros roles envían a todos los usuarios con ese Rol.
 --  * Las listas se separan con coma.
@@ -73,7 +74,7 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro)
-SELECT 'nomina', 'Retiros', 'Notificación de retiro - Copia:', 'Rol', 'admin@logyser.com, Auxiliar, AuxiliarR, Coordinador, CoordinadorR'
+SELECT 'nomina', 'Retiros', 'Notificación de retiro - Copia:', 'Rol', 'Sistema, Auxiliar, AuxiliarR, Coordinador, CoordinadorR'
 FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM Config_Parametros WHERE Modulo = 'nomina' AND Seccion = 'Retiros' AND Concepto = 'Notificación de retiro - Copia:'
@@ -87,7 +88,7 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro)
-SELECT 'nomina', 'Retiros', 'Notificación de retiro - Copia cargos administrativos:', 'Correo', 'jefe.facturacion@logyser.com, jefe.contabilidad@logyser.com, gestioncalidad@logyser.com, controlcuentas@logyser.com, directorrh@logyser.com, subgerenciaoperaciones@logyser.com, administradorti@logyser.com, nomina@logyser.com, seleccion@logyser.com'
+SELECT 'nomina', 'Retiros', 'Notificación de retiro - Copia cargos administrativos:', 'Rol', 'Facturación, Contabilidad, Calidad, Cuentas, Directorth, Nomina, CoorSelección, LiderSst'
 FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM Config_Parametros WHERE Modulo = 'nomina' AND Seccion = 'Retiros' AND Concepto = 'Notificación de retiro - Copia cargos administrativos:'
@@ -101,7 +102,7 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro)
-SELECT 'nomina', 'Retiros', 'Notificación de retiro - Copia cargos SST:', 'Correo', 'sstadmon@logyser.com'
+SELECT 'nomina', 'Retiros', 'Notificación de retiro - Copia cargos SST:', 'Rol', 'LiderSst'
 FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM Config_Parametros WHERE Modulo = 'nomina' AND Seccion = 'Retiros' AND Concepto = 'Notificación de retiro - Copia cargos SST:'
