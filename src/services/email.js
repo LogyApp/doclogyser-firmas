@@ -84,8 +84,8 @@ const LOGO_HEADER_ATTACHMENT = {
   cid: LOGO_HEADER_CID,
   contentDisposition: 'inline',
 };
-// Azul corporativo del encabezado de las notificaciones de Traslados.
-const COLOR_ENCABEZADO_TRASLADOS = '#1B2A5E';
+// Azul corporativo del encabezado de las notificaciones de Traslados y Cesantías.
+const COLOR_ENCABEZADO_AZUL = '#1B2A5E';
 
 function encabezadoLogo(color) {
   return `
@@ -179,7 +179,7 @@ async function notificarNuevoTraslado({ trabajador, identificacion, operacionOri
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-${encabezadoLogo(COLOR_ENCABEZADO_TRASLADOS)}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h2 style="color:#1a1a2e;margin-top:0">Nuevo traslado registrado</h2>
         <p style="color:#555">Se ha registrado un nuevo traslado que requiere revisión y validación.</p>
@@ -219,7 +219,7 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       <div style="border-radius:8px 8px 0 0;overflow:hidden">
-${encabezadoLogo(COLOR_ENCABEZADO_TRASLADOS)}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreCorto}</h2>
@@ -373,7 +373,7 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-${encabezadoLogo(COLOR_ENCABEZADO_TRASLADOS)}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso completado</span>
@@ -3071,8 +3071,20 @@ async function enviarNotificacionCesantias({
       }
     }
 
-    const toSet = new Set(toEmails);
-    const ccFinal = ccEmails.filter(e => !toSet.has(e));
+    // Quien registró la solicitud va en copia de todas las notificaciones.
+    const idRegistrador = solicitud.usuario || (evento === 'pendiente' ? usuarioAccion : '');
+    if (idRegistrador) {
+      try {
+        const [regRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [idRegistrador]);
+        const emailRegistrador = String((regRows[0] && regRows[0].Email) || '').trim().toLowerCase();
+        if (emailRegistrador.includes('@') && !ccEmails.includes(emailRegistrador)) ccEmails.push(emailRegistrador);
+      } catch (eReg) {
+        console.warn('[enviarNotificacionCesantias] No se pudo obtener el correo de quien registró:', eReg.message);
+      }
+    }
+
+    const toSet = new Set(toEmails.map(e => String(e).toLowerCase()));
+    const ccFinal = ccEmails.filter(e => !toSet.has(String(e).toLowerCase()));
 
     if (!toEmails.length && !ccFinal.length) {
       console.warn(`[enviarNotificacionCesantias] No se encontraron destinatarios de correo para evento "${evento}".`);
@@ -3085,7 +3097,7 @@ async function enviarNotificacionCesantias({
 
     const cuerpoHtml = `
       <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:620px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
-        ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
         <div style="padding:28px 24px;color:#0F172A;line-height:1.55">
           <div style="display:inline-block;background:${colorBadge}15;border:1px solid ${colorBadge}50;border-radius:6px;padding:6px 14px;margin-bottom:18px">
             <span style="color:${colorBadge};font-weight:700;font-size:0.82rem;letter-spacing:0.02em">${tituloBadge}</span>
@@ -3145,6 +3157,7 @@ async function enviarNotificacionCesantias({
           cc: ccFinal.length ? ccFinal.join(',') : undefined,
           subject: asunto,
           html: cuerpoHtml,
+          attachments: [LOGO_HEADER_ATTACHMENT],
         });
         sendSuccess = true;
         console.log(`[enviarNotificacionCesantias] Correo enviado exitosamente para ${radicadoId} (${evento}). To: ${toEmails.join(',')} | CC: ${ccFinal.join(',')}`);

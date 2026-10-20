@@ -272,6 +272,8 @@ router.get('/', async (req, res) => {
       puedeAnular: false,
       puedeEliminar: false,
       puedeTramitar: false,
+      puedeDevolver: false,
+      maxSoporteMB: 15,
       operacionesSinValidacion: ['administracion'],
     };
     if (accesoCesantias) {
@@ -312,6 +314,8 @@ router.get('/', async (req, res) => {
           puedeAnular:              permisosCesantias.puedeAnular,
           puedeEliminar:            permisosCesantias.puedeEliminar,
           puedeTramitar:            permisosCesantias.puedeTramitar,
+          puedeDevolver:            permisosCesantias.puedeDevolver,
+          maxSoporteMB:             permisosCesantias.maxSoporteMB,
           operacionesSinValidacion: permisosCesantias.operacionesSinValidacion || [],
           operacionesFiltro:        accesoCesantias.operacionesFiltro || [],
           opsPorRegional:           accesoCesantias.opsPorRegional || {},
@@ -1696,7 +1700,10 @@ router.get('/api/biometrico/reportes/sin-registro', verificarAccesoBiometricoAPI
 });
 
 // ── API Cesantías ──────────────────────────────────────────────────────────
-const uploadCesantias = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+// Techo técnico de multer. El límite real por archivo es "Tamaño máximo de
+// soportes (MB)" en Config_Parametros (se valida en crearSolicitudCesantias).
+// Cloud Run no acepta peticiones de más de 32 MB en total.
+const uploadCesantias = multer({ storage: multer.memoryStorage(), limits: { fileSize: 32 * 1024 * 1024 } });
 
 router.get('/api/cesantias/motivos', async (req, res) => {
   try {

@@ -39,6 +39,30 @@ async function verificarPermisoRolCesantias(rolUsuario, concepto) {
   return roles.includes(rolNorm);
 }
 
+// Igual que verificarPermisoRolCesantias, pero si la fila no existe o está
+// vacía usa los roles de respaldo (los mismos que tenía el código).
+async function verificarPermisoConRespaldo(rolUsuario, concepto, rolesRespaldo) {
+  if (!rolUsuario) return false;
+  let roles = await obtenerRolesPermisoCesantias(concepto);
+  if (!roles.length) roles = rolesRespaldo.map(r => r.toLowerCase());
+  return roles.includes(String(rolUsuario).trim().toLowerCase());
+}
+
+const RESPALDO_TRAMITAR = ['nomina', 'sistema'];
+const RESPALDO_DEVOLVER = ['sistema', 'juridica'];
+const RESPALDO_DIAS_ENLACE = 30;
+const RESPALDO_MAX_SOPORTE_MB = 15;
+
+// Límites configurables de Cesantías (Config_Parametros).
+async function obtenerLimitesCesantias() {
+  const dias = parseInt(await obtenerParametroCesantias('Días de vigencia del enlace de firma'), 10);
+  const mb = parseFloat(await obtenerParametroCesantias('Tamaño máximo de soportes (MB)'));
+  return {
+    diasVigenciaEnlace: dias > 0 ? dias : RESPALDO_DIAS_ENLACE,
+    maxSoporteMB: mb > 0 ? mb : RESPALDO_MAX_SOPORTE_MB,
+  };
+}
+
 async function obtenerOperacionesSinValidacion() {
   const param = await obtenerParametroCesantias('Operación no requiere Validacion');
   if (!param) return ['administracion'];
@@ -72,8 +96,10 @@ async function obtenerPermisosUsuarioCesantias(rolUsuario) {
     puedeRechazar: check('Puede rechazar registros de Cesantias', ['sistema', 'juridica']),
     puedeAnular: check('Puede anular registros de Cesantias', ['sistema', 'juridica']),
     puedeEliminar: check('Puede eliminar registros de Cesantias', ['sistema']),
-    puedeTramitar: ['nomina', 'sistema'].includes(rolNorm),
+    puedeTramitar: check('Puede tramitar registros de Cesantias', RESPALDO_TRAMITAR),
+    puedeDevolver: check('Puede devolver registros de Cesantias', RESPALDO_DEVOLVER),
     operacionesSinValidacion: opsSinVal,
+    maxSoporteMB: (await obtenerLimitesCesantias()).maxSoporteMB,
   };
 }
 
@@ -544,6 +570,13 @@ async function crearSolicitudCesantias(datos, files = []) {
 
   if (!identificacion) throw new Error('Identificación requerida.');
   if (!monto_solicitado || Number(monto_solicitado) <= 0) throw new Error('Monto solicitado inválido.');
+
+  // Tamaño máximo por soporte ("Tamaño máximo de soportes (MB)" en Config_Parametros)
+  const limites = await obtenerLimitesCesantias();
+  const archivoGrande = (files || []).find(f => f && f.size > limites.maxSoporteMB * 1024 * 1024);
+  if (archivoGrande) {
+    throw new Error(`El archivo "${archivoGrande.originalname || 'adjunto'}" supera el tamaño máximo de ${limites.maxSoporteMB} MB.`);
+  }
   if (!motivo_retiro) throw new Error('Motivo de retiro requerido.');
 
   // Obtener datos del colaborador
@@ -631,7 +664,7 @@ async function crearSolicitudCesantias(datos, files = []) {
       ?, ?, ?,
       ?, ?, ?,
       ?, ?,
-      1, ?, DATE_ADD(NOW(), INTERVAL 30 DAY),
+      1, ?, DATE_ADD(NOW(), INTERVAL ? DAY),
       ?, ?, ?,
       'pendiente', NOW(), NOW()
     )
@@ -652,6 +685,7 @@ async function crearSolicitudCesantias(datos, files = []) {
     nombre_beneficiario ? String(nombre_beneficiario).trim().toUpperCase() : null,
     identificacion_beneficiario || null,
     tokenFirma,
+    limites.diasVigenciaEnlace,
     firmaFinalBase64 || null,
     firmaFinalBase64 ? fechaActual : null,
     ip_cliente || null,
@@ -773,6 +807,7 @@ async function crearSolicitudCesantias(datos, files = []) {
         identificacion,
         email: email || worker.email,
         operacion: worker.operacion,
+        usuario: usuario || null,
       },
       trabajador: worker,
       usuarioAccion: usuario || 'sistema',
@@ -862,10 +897,11 @@ async function actualizarEstadoCesantia(idCesantia, nuevoEstado, usuario, observ
     const puedeAnular = await verificarPermisoRolCesantias(rolUsuario, 'Puede anular registros de Cesantias');
     if (!puedeAnular) throw new Error('No tienes permisos para anular registros de Cesantías.');
   } else if (estadoNormalizado === 'tramitado') {
-    const rolNorm = String(rolUsuario || '').trim().toLowerCase();
-    if (!['nomina', 'sistema'].includes(rolNorm)) {
-      throw new Error('Solo el área de Nómina puede tramitar solicitudes de Cesantías.');
-    }
+    const puedeTramitar = await verificarPermisoConRespaldo(rolUsuario, 'Puede tramitar registros de Cesantias', RESPALDO_TRAMITAR);
+    if (!puedeTramitar) throw new Error('No tienes permisos para tramitar solicitudes de Cesantías.');
+  } else if (estadoNormalizado === 'devuelto') {
+    const puedeDevolver = await verificarPermisoConRespaldo(rolUsuario, 'Puede devolver registros de Cesantias', RESPALDO_DEVOLVER);
+    if (!puedeDevolver) throw new Error('No tienes permisos para devolver solicitudes de Cesantías.');
   }
 
   const [exist] = await pool.execute('SELECT Id, estado, identificacion, firma_trabajador FROM Dynamic_Cesantias WHERE Id = ? LIMIT 1', [idCesantia]);
@@ -1213,6 +1249,7 @@ module.exports = {
   actualizarEstadoCesantia,
   eliminarSolicitudCesantias,
   obtenerPermisosUsuarioCesantias,
+  obtenerLimitesCesantias,
   verificarPermisoRolCesantias,
   obtenerOperacionesSinValidacion,
   registrarFirmaTrabajador,

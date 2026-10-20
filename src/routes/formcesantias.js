@@ -10,16 +10,31 @@ const {
   obtenerMotivosCesantias,
   crearSolicitudCesantias,
   verificarSolicitudActivaTrabajador,
+  obtenerLimitesCesantias,
 } = require('../services/cesantiasService');
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+// Techo técnico de multer. El límite real por archivo es "Tamaño máximo de
+// soportes (MB)" en Config_Parametros (se valida en crearSolicitudCesantias).
+// Cloud Run no acepta peticiones de más de 32 MB en total.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 32 * 1024 * 1024 } });
 
 const FORM_HTML = path.join(__dirname, '../views/formcesantias/form.html');
 
 // ── GET / ── Servir la vista del formulario independiente
 router.get('/', (req, res) => {
   res.sendFile(FORM_HTML);
+});
+
+// ── GET /api/config ── Límites que el formulario muestra y valida
+router.get('/api/config', async (req, res) => {
+  try {
+    const { maxSoporteMB } = await obtenerLimitesCesantias();
+    res.json({ ok: true, maxSoporteMB });
+  } catch (err) {
+    console.error('[formcesantias] Error obteniendo configuración:', err);
+    res.json({ ok: true, maxSoporteMB: 15 });
+  }
 });
 
 // ── GET /api/motivos ──

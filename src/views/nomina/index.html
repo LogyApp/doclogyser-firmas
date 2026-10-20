@@ -6912,7 +6912,7 @@
                    style="border:2px dashed ${fileStaged ? 'var(--accent)' : 'var(--border)'}; border-radius:6px; padding:12px 16px; background:var(--bg); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; transition:all .15s;">
                 <div style="flex:1; min-width:200px;">
                   <div style="font-size:.82rem; font-weight:600; color:var(--text);">📁 Arrastre la nueva cédula aquí o use el botón</div>
-                  <div style="font-size:.72rem; color:var(--text-muted);">PDF, JPG o PNG (máx. 15MB)</div>
+                  <div style="font-size:.72rem; color:var(--text-muted);">PDF, JPG o PNG (máx. ${(tabs.cesantias || {}).maxSoporteMB || 15}MB)</div>
                   <div id="slot_staged_${s.key}" style="font-size:.78rem; color:#10b981; font-weight:700; margin-top:4px; display:${fileStaged ? 'block' : 'none'};">
                     ✓ Archivo cargado: <span id="slot_staged_name_${s.key}">${fileStaged ? fileStaged.name : ''}</span>
                   </div>
@@ -7032,8 +7032,9 @@
       alert('Formato no válido. Solo se admiten archivos PDF o imágenes (PNG, JPG, JPEG).');
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      alert('El archivo no debe superar los 15 MB.');
+    const maxMbCes = (tabs.cesantias || {}).maxSoporteMB || 15;
+    if (file.size > maxMbCes * 1024 * 1024) {
+      alert(`El archivo no debe superar los ${maxMbCes} MB.`);
       return;
     }
 
@@ -7408,8 +7409,12 @@
     if (conf.puedeAprobar && ['pendiente', 'validado'].includes(sol.estado)) {
       wrap.innerHTML += `
         <button type="button" class="btn-guardar-ficha" style="background:#10b981;" onclick="ejecutarAccionEstadoCesantia('${sol.Id}', 'aprobado')">✓ Aprobar Solicitud</button>
-        <button type="button" class="ba br" style="padding:7px 12px; font-size:.82rem;" onclick="ejecutarAccionEstadoCesantia('${sol.Id}', 'devuelto', true)">Devolver con Observación</button>
       `;
+    }
+
+    // Devolver ("Puede devolver registros de Cesantias" en Config_Parametros)
+    if (conf.puedeDevolver && ['pendiente', 'validado'].includes(sol.estado)) {
+      wrap.innerHTML += `<button type="button" class="ba br" style="padding:7px 12px; font-size:.82rem;" onclick="ejecutarAccionEstadoCesantia('${sol.Id}', 'devuelto', true)">Devolver con Observación</button>`;
     }
 
     // Rechazar

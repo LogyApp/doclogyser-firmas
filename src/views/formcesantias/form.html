@@ -1253,7 +1253,7 @@
             </details>
             <details class="tut-faq-item">
               <summary><strong>¿Qué hago si mi documento tiene varias páginas?</strong></summary>
-              <div class="tut-faq-body">Te recomendamos escanear o unificar las páginas en un único archivo PDF. El sistema admite archivos en formato PDF, JPG y PNG de hasta 15MB por documento.</div>
+              <div class="tut-faq-body">Te recomendamos escanear o unificar las páginas en un único archivo PDF. El sistema admite archivos en formato PDF, JPG y PNG de hasta <span class="max-soporte-mb">15</span>MB por documento.</div>
             </details>
             <details class="tut-faq-item">
               <summary><strong>¿Cómo me entero cuando mi solicitud cambie de estado?</strong></summary>
@@ -1346,12 +1346,20 @@
       revisarParametroURL();
     });
 
+    // Tamaño máximo por soporte ("Tamaño máximo de soportes (MB)" en Config_Parametros)
+    let MAX_SOPORTE_MB = 15;
+
     async function cargarCatalogos() {
       try {
-        const [resM, resF] = await Promise.all([
+        const [resM, resF, resC] = await Promise.all([
           fetch('/empleado/formcesantias/api/motivos').then(r => r.json()),
-          fetch('/empleado/formcesantias/api/fondos').then(r => r.json())
+          fetch('/empleado/formcesantias/api/fondos').then(r => r.json()),
+          fetch('/empleado/formcesantias/api/config').then(r => r.json()).catch(() => ({}))
         ]);
+        if (resC && resC.maxSoporteMB > 0) {
+          MAX_SOPORTE_MB = resC.maxSoporteMB;
+          document.querySelectorAll('.max-soporte-mb').forEach(el => { el.textContent = MAX_SOPORTE_MB; });
+        }
         if (resM.ok) state.motivos = resM.motivos;
         if (resF.ok) {
           state.fondos = resF.fondos;
@@ -1651,7 +1659,7 @@
                      style="border:2px dashed ${fileStaged ? 'var(--accent)' : 'var(--border)'}; border-radius:6px; padding:14px 16px; background:#f8fafc; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; transition:all .15s;">
                   <div style="flex:1; min-width:200px;">
                     <div style="font-size:.84rem; font-weight:600; color:var(--text);">📁 Arrastre la nueva cédula aquí o use el botón</div>
-                    <div style="font-size:.73rem; color:var(--text-muted); margin-top:2px;">PDF, JPG o PNG (máx. 15MB)</div>
+                    <div style="font-size:.73rem; color:var(--text-muted); margin-top:2px;">PDF, JPG o PNG (máx. ${MAX_SOPORTE_MB}MB)</div>
                     <div id="slot_staged_${s.key}" style="font-size:.78rem; color:#10b981; font-weight:700; margin-top:4px; display:${fileStaged ? 'block' : 'none'};">
                       ✓ Archivo cargado: <span id="slot_staged_name_${s.key}">${fileStaged ? fileStaged.name : ''}</span>
                     </div>
@@ -1754,8 +1762,8 @@
         alert('Formato no válido. Solo se admiten archivos PDF o imágenes (PNG, JPG, JPEG).');
         return;
       }
-      if (file.size > 15 * 1024 * 1024) {
-        alert('El archivo no debe superar los 15 MB.');
+      if (file.size > MAX_SOPORTE_MB * 1024 * 1024) {
+        alert(`El archivo no debe superar los ${MAX_SOPORTE_MB} MB.`);
         return;
       }
       if (!file._previewUrl) {
