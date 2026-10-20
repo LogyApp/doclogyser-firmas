@@ -11,6 +11,7 @@ const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRe
 const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
+const { obtenerPermisosTraslados } = require('../services/configTraslados');
 const {
   buscarTrabajadorCesantias,
   buscarColaboradoresCesantias,
@@ -218,13 +219,9 @@ router.post('/api/perfil', (req, res, next) => {
   }
 });
 
-// Roles que pueden Validar/Revisar/Anular/No-Firma y editar la plantilla de
-// Traslados — condición aparte de "quién ve la pestaña" (eso ya lo cubre
-// Maestro_Menu_Nomina vía computarAccesoNomina, igual que Retiro/Activo).
-// Misma condición que ya tenía el panel /admin/traslados.
-const ROLES_VALIDAR_TRASLADOS   = ['Juridica', 'Sistema'];
-const ROLES_PLANTILLA_TRASLADOS = ['Juridica', 'Sistema'];
-const ROLES_PREVIEW_TRASLADOS   = ['Juridica', 'Sistema'];
+// Permisos de acciones de Traslados (Validar/Revisar/Anular/No Firma, plantilla,
+// vista previa): Config_Parametros, Seccion 'Traslados' — ver configTraslados.js.
+// Quién ve la pestaña lo define Maestro_Menu_Nomina vía computarAccesoNomina.
 
 // ── GET / ────────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
@@ -251,6 +248,7 @@ router.get('/', async (req, res) => {
     }
 
     const accesoTraslados = await computarAccesoNomina(usuario, 'Traslados');
+    const permisosTraslados = accesoTraslados ? await obtenerPermisosTraslados(accesoTraslados.rol) : null;
     let accesoCesantias = await computarAccesoNomina(usuario, 'Cesantias');
     if (!accesoCesantias) {
       const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
@@ -298,9 +296,9 @@ router.get('/', async (req, res) => {
         biometrico: accesoBiometrico ? { sinFiltro: accesoBiometrico.sinFiltro, isSstOnly, puedeEditarCoordenadas } : null,
         incapacidades: Boolean(accesoBiometrico),
         traslados: accesoTraslados ? {
-          puedeValidar:         ROLES_VALIDAR_TRASLADOS.includes(accesoTraslados.rol),
-          puedeEditarPlantilla: ROLES_PLANTILLA_TRASLADOS.includes(accesoTraslados.rol),
-          puedePrevisualizar:   ROLES_PREVIEW_TRASLADOS.includes(accesoTraslados.rol),
+          puedeValidar:         permisosTraslados.puedeValidar,
+          puedeEditarPlantilla: permisosTraslados.puedeEditarPlantilla,
+          puedePrevisualizar:   permisosTraslados.puedePrevisualizar,
           sinFiltro:            accesoTraslados.sinFiltro,
           operacionesFiltro:    accesoTraslados.operacionesFiltro,
           opsPorRegional:       accesoTraslados.opsPorRegional,

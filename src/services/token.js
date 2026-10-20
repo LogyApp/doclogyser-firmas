@@ -5,11 +5,13 @@ const pool = require('./db');
 const SECRET = process.env.JWT_SECRET;
 const EXPIRY_HOURS = 48;
 
-async function generarToken(tabla, campoFk, idValor, columnaToken = 'token_firma', columnaExpira = 'token_expira') {
+// `horas` es opcional: si no se envía (o no es un número válido) se usa EXPIRY_HOURS.
+async function generarToken(tabla, campoFk, idValor, columnaToken = 'token_firma', columnaExpira = 'token_expira', horas) {
   const jti = crypto.randomBytes(32).toString('hex');
-  const expiraEn = new Date(Date.now() + EXPIRY_HOURS * 3600 * 1000);
+  const vigencia = Number(horas) > 0 ? Number(horas) : EXPIRY_HOURS;
+  const expiraEn = new Date(Date.now() + vigencia * 3600 * 1000);
 
-  const token = jwt.sign({ jti, id: idValor }, SECRET, { expiresIn: `${EXPIRY_HOURS}h` });
+  const token = jwt.sign({ jti, id: idValor }, SECRET, { expiresIn: `${vigencia}h` });
 
   await pool.execute(
     `UPDATE \`${tabla}\` SET \`${columnaToken}\` = ?, \`${columnaExpira}\` = ? WHERE \`${campoFk}\` = ?`,

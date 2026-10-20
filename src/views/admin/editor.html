@@ -89,7 +89,7 @@
       statusEl.textContent = 'Guardando…';
       statusEl.className = 'status';
       try {
-        const resp = await fetch(window.location.pathname, {
+        const resp = await fetch(window.location.pathname + window.location.search, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contenido_html: quill.root.innerHTML })

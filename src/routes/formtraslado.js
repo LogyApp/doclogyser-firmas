@@ -4,10 +4,31 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { notificarNuevoTraslado } = require('../services/email');
+const { computarAccesoNomina } = require('../services/accesoNomina');
 
 const router = express.Router();
 
 const FORM_HTML = path.join(__dirname, '../views/formtraslado/form.html');
+
+// Solo pueden registrar traslados los roles con la Sección 'Traslados' en
+// Maestro_Menu_Nomina, y solo de trabajadores activos de las operaciones que ven.
+async function accesoTraslados(usuario) {
+  return computarAccesoNomina(usuario, 'Traslados');
+}
+
+// Vinculación activa más reciente del trabajador, si está dentro del alcance.
+async function trabajadorEnAlcance(acceso, nombre) {
+  const [rows] = await pool.execute(
+    `SELECT \`Identificación\`, \`Operación\`, Cargo FROM \`Maestro_Vinculación\`
+     WHERE Trabajador = ? AND Estado = 'Activo'
+     ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+    [nombre]
+  );
+  if (!rows.length) return null;
+  const vin = rows[0];
+  if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(vin['Operación'])) return null;
+  return vin;
+}
 
 function fechaHoraBogota() {
   const bogota = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -20,15 +41,24 @@ router.get('/', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).send(htmlError('Parámetro ?usuario requerido'));
 
-    const [usuRows] = await pool.execute('SELECT ID, Nombre FROM Maestro_Usuarios WHERE ID = ?', [usuario]);
-    if (!usuRows.length) return res.status(403).send(htmlError('Usuario no autorizado'));
+    const acceso = await accesoTraslados(usuario);
+    if (!acceso) return res.status(403).send(htmlError('Usuario no autorizado para registrar traslados'));
 
-    const usuarioNombre = usuRows[0].Nombre || usuario;
+    const usuarioNombre = acceso.usuarioNombre || usuario;
 
-    const [trabRows] = await pool.execute(
-      'SELECT DISTINCT Trabajador FROM `Maestro_Vinculación` WHERE Estado = ? ORDER BY Trabajador',
-      ['Activo']
-    );
+    let trabRows = [];
+    if (acceso.sinFiltro) {
+      [trabRows] = await pool.execute(
+        'SELECT DISTINCT Trabajador FROM `Maestro_Vinculación` WHERE Estado = ? ORDER BY Trabajador',
+        ['Activo']
+      );
+    } else if (acceso.operacionesFiltro.length) {
+      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+      [trabRows] = await pool.execute(
+        `SELECT DISTINCT Trabajador FROM \`Maestro_Vinculación\` WHERE Estado = ? AND \`Operación\` IN (${ph}) ORDER BY Trabajador`,
+        ['Activo', ...acceso.operacionesFiltro]
+      );
+    }
 
     const [opRows] = await pool.execute(
       "SELECT DISTINCT OPERACIÓN FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN"
@@ -52,8 +82,9 @@ router.post('/', async (req, res) => {
   try {
     const usuario = req.query.usuario || req.body.usuario;
 
+    const acceso = await accesoTraslados(usuario);
+    if (!acceso) return res.status(403).json({ ok: false, error: 'Usuario no autorizado para registrar traslados' });
     const [usuRows] = await pool.execute('SELECT ID, Email FROM Maestro_Usuarios WHERE ID = ?', [usuario]);
-    if (!usuRows.length) return res.status(403).json({ ok: false, error: 'Usuario no autorizado' });
 
     const {
       Trabajador,
@@ -70,6 +101,10 @@ router.post('/', async (req, res) => {
 
     if (!Trabajador || !operacion_destino || !fecha_traslado) {
       return res.status(400).json({ ok: false, error: 'Campos obligatorios incompletos' });
+    }
+    const vinTrabajador = await trabajadorEnAlcance(acceso, Trabajador);
+    if (!vinTrabajador) {
+      return res.status(403).json({ ok: false, error: 'El trabajador no está activo en las operaciones que usted gestiona' });
     }
 
     const ahora = fechaHoraBogota();
@@ -100,11 +135,7 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    const [cargoRows] = await pool.execute(
-      'SELECT Cargo FROM `Maestro_Vinculación` WHERE Trabajador = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
-      [Trabajador]
-    );
-    const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
+    const cargo = vinTrabajador.Cargo || '';
 
     notificarNuevoTraslado({
       trabajador:       Trabajador,
@@ -130,23 +161,19 @@ router.post('/', async (req, res) => {
 
 router.get('/api/trabajador', async (req, res) => {
   try {
-    const { nombre } = req.query;
+    const { nombre, usuario } = req.query;
     if (!nombre) return res.json({});
 
-    const [vinRows] = await pool.execute(
-      `SELECT Identificación, Operación FROM \`Maestro_Vinculación\`
-       WHERE Trabajador = ?
-       ORDER BY \`Fecha de Ingreso\` DESC
-       LIMIT 1`,
-      [nombre]
-    );
+    const acceso = await accesoTraslados(usuario);
+    if (!acceso) return res.status(403).json({});
+    const vin = await trabajadorEnAlcance(acceso, nombre);
+    if (!vin) return res.status(403).json({});
 
     const [segRows] = await pool.execute(
       'SELECT Celular, Email FROM `Maestro_Segmentación` WHERE Trabajador = ? LIMIT 1',
       [nombre]
     );
 
-    const vin = vinRows[0] || {};
     const seg = segRows[0] || {};
 
     res.json({

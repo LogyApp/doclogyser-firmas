@@ -5,7 +5,8 @@ const pool = require('../services/db');
 const { obtenerPlantilla, preprocesarDatos, reemplazarVariables } = require('../services/plantilla');
 const { generarToken } = require('../services/token');
 const { notificarFirmaTrabajador, notificarDocumentoGenerado } = require('../services/email');
-const { obtenerCorreosOperacionDestino } = require('../services/traslados');
+const { computarAccesoNomina } = require('../services/accesoNomina');
+const { obtenerPermisosTraslados, horasVigenciaEnlace } = require('../services/configTraslados');
 const { v4: uuidv4 } = require('uuid');
 const { generarPDF } = require('../services/renderer');
 const { subirPDF } = require('../services/storage');
@@ -18,18 +19,23 @@ const TABLA_TR       = 'Dynamic_traslados_trabajador';
 const CAMPO_FK       = 'IdTraslado';
 const ESTADOS_VALIDOS_CAMBIO = ['revisar', 'anulado', 'pendiente'];
 
-const ROLES_ACCESO      = ['AuxiliarR','CoordinadorR','Auxiliar','Coordinador','Control','Nomina','Sistema','Juridica'];
-const ROLES_VALIDAR      = ['Juridica','Sistema'];
-const ROLES_PLANTILLA    = ['Juridica','Sistema'];
-const ROLES_PREVIEW      = ['Juridica','Sistema'];
-const ROLES_SIN_FILTRO  = ['Control','Nomina','Sistema','Juridica'];
-const ROLES_REGIONAL    = ['AuxiliarR','CoordinadorR'];
-const ROLES_DISPOSITIVO = ['Auxiliar','Coordinador'];
+// El editor de plantillas solo se usa para el documento de traslado.
+const PLANTILLAS_EDITABLES = ['traslado'];
 
 // ── Editor plantilla ────────────────────────────────────────────────────────
 
+// Solo los roles de "Puede editar plantilla de traslados" (Config_Parametros).
+async function puedeEditarPlantilla(usuarioId, proceso) {
+  if (!PLANTILLAS_EDITABLES.includes(String(proceso || '').toLowerCase())) return false;
+  const acceso = await computarAcceso(usuarioId);
+  return !!(acceso && acceso.puedeEditarPlantilla);
+}
+
 router.get('/plantillas/editar/:proceso', async (req, res) => {
   try {
+    if (!(await puedeEditarPlantilla(req.query.Usuario || req.query.usuario, req.params.proceso))) {
+      return res.status(403).send(paginaNoAcceso());
+    }
     const plantilla = await obtenerPlantilla(req.params.proceso);
     const template = fs.readFileSync(EDITOR_HTML, 'utf8');
     const contenidoSafe = JSON.stringify(plantilla.contenido_html || '')
@@ -46,6 +52,9 @@ router.get('/plantillas/editar/:proceso', async (req, res) => {
 
 router.post('/plantillas/editar/:proceso', async (req, res) => {
   try {
+    if (!(await puedeEditarPlantilla(req.query.Usuario || req.query.usuario, req.params.proceso))) {
+      return res.status(403).json({ ok: false, error: 'Sin autorización para editar la plantilla' });
+    }
     const { contenido_html } = req.body;
     await pool.execute(
       `UPDATE Maestro_Plantillas
@@ -85,59 +94,42 @@ function paginaNoAcceso() {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sin acceso</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0f0f0}.card{background:#fff;padding:2.5rem 2rem;border-radius:10px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.12);max-width:400px;width:90%}h2{color:#1a1a2e;margin-bottom:10px;font-size:1.2rem}p{color:#888;font-size:.9rem;margin:0}.icon{font-size:2.5rem;margin-bottom:12px}</style></head><body><div class="card"><div class="icon">🔒</div><h2>Sin acceso</h2><p>No tienes permiso para ver este módulo.</p></div></body></html>`;
 }
 
+// Acceso a Traslados: mismo origen que la pestaña en Nómina (Maestro_Menu_Nomina,
+// Sección 'Traslados'). Permisos de acciones desde Config_Parametros.
 async function computarAcceso(usuarioId) {
   if (!usuarioId) return null;
-  const [uRows] = await pool.execute(
-    'SELECT ID, Rol, Regional, Dispositivo, `Operación` FROM Maestro_Usuarios WHERE ID = ?',
-    [usuarioId]
-  );
-  if (!uRows.length) return null;
-  const u = uRows[0];
-  if (!ROLES_ACCESO.includes(u.Rol)) return null;
+  const accesoNomina = await computarAccesoNomina(usuarioId, 'Traslados');
+  if (!accesoNomina) return null;
+  const permisos = await obtenerPermisosTraslados(accesoNomina.rol);
 
-  const acceso = {
+  return {
     usuarioId,
-    rol: u.Rol,
-    puedeValidar:          ROLES_VALIDAR.includes(u.Rol),
-    puedeEditarPlantilla:  ROLES_PLANTILLA.includes(u.Rol),
-    puedePrevisualizar:    ROLES_PREVIEW.includes(u.Rol),
-    sinFiltro:             ROLES_SIN_FILTRO.includes(u.Rol),
-    filtroSQL:           [],
-    operacionesFiltro:   [],
-    opsPorRegional:      {},
+    rol:                  accesoNomina.rol,
+    params:               permisos.params,
+    puedeValidar:         permisos.puedeValidar,
+    puedeEditarPlantilla: permisos.puedeEditarPlantilla,
+    puedePrevisualizar:   permisos.puedePrevisualizar,
+    sinFiltro:            accesoNomina.sinFiltro,
+    filtroSQL:            accesoNomina.sinFiltro ? [] : accesoNomina.operacionesFiltro,
+    operacionesFiltro:    accesoNomina.operacionesFiltro,
+    opsPorRegional:       accesoNomina.opsPorRegional,
   };
+}
 
-  if (acceso.sinFiltro) {
-    const [opRows] = await pool.execute(
-      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
-    );
-    opRows.forEach(r => {
-      const reg = r.REGIONAL;
-      if (!acceso.opsPorRegional[reg]) acceso.opsPorRegional[reg] = [];
-      acceso.opsPorRegional[reg].push(r['OPERACIÓN']);
-    });
-    acceso.operacionesFiltro = opRows.map(r => r['OPERACIÓN']).filter(Boolean);
-  } else if (ROLES_REGIONAL.includes(u.Rol)) {
-    const [opRows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [u.Regional]
-    );
-    acceso.operacionesFiltro = opRows.map(r => r['OPERACIÓN']).filter(Boolean);
-    acceso.filtroSQL = acceso.operacionesFiltro;
-  } else {
-    if (u.Dispositivo) {
-      const [opRows] = await pool.execute(
-        "SELECT DISTINCT OPERACIÓN FROM Maestro_Operaciones WHERE SOCIODEMOGRAFICA = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-        [u.Dispositivo]
-      );
-      acceso.operacionesFiltro = opRows.map(r => r['OPERACIÓN']).filter(Boolean);
-    } else {
-      acceso.operacionesFiltro = u['Operación'] ? [u['Operación']] : [];
-    }
-    acceso.filtroSQL = acceso.operacionesFiltro;
-  }
+// Un usuario puede ver/actuar sobre un traslado si su alcance cubre la
+// operación de origen o la de destino (igual que el listado).
+function trasladoEnAlcance(acceso, traslado) {
+  if (!acceso || !traslado) return false;
+  if (acceso.sinFiltro) return true;
+  const ops = new Set(acceso.operacionesFiltro);
+  return ops.has(traslado.operacion_origen) || ops.has(traslado.operacion_destino);
+}
 
-  return acceso;
+async function obtenerTrasladoEnAlcance(acceso, id) {
+  const [rows] = await pool.execute('SELECT * FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?', [id]);
+  if (!rows.length) return { traslado: null, status: 404 };
+  if (!trasladoEnAlcance(acceso, rows[0])) return { traslado: null, status: 403 };
+  return { traslado: rows[0], status: 200 };
 }
 
 function generarFiltroHTML(acceso) {
@@ -265,14 +257,11 @@ router.get('/traslados/:id/preview', async (req, res) => {
     if (!acceso || !acceso.puedePrevisualizar) return res.status(403).send(paginaNoAcceso());
 
     const { id } = req.params;
-    const [rows] = await pool.execute(
-      'SELECT * FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
-      [id]
-    );
-    if (!rows.length) return res.status(404).send('<p>Registro no encontrado</p>');
+    const { traslado, status } = await obtenerTrasladoEnAlcance(acceso, id);
+    if (!traslado) return res.status(status).send(status === 404 ? '<p>Registro no encontrado</p>' : paginaNoAcceso());
 
     const plantilla = await obtenerPlantilla('traslado');
-    const datos = rows[0];
+    const datos = traslado;
 
     let htmlDoc = plantilla.contenido_html || '';
     htmlDoc = htmlDoc
@@ -340,8 +329,10 @@ router.post('/traslados/:id/validar', async (req, res) => {
     const acceso = await computarAcceso(req.query.Usuario);
     if (!acceso || !acceso.puedeValidar) return res.status(403).json({ ok: false, error: 'Sin autorización' });
     const { id } = req.params;
+    const alcance = await obtenerTrasladoEnAlcance(acceso, id);
+    if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
     await pool.execute("UPDATE Dynamic_traslados_trabajador SET estado_doc = 'validado' WHERE IdTraslado = ?", [id]);
-    const token = await generarToken(TABLA_TR, CAMPO_FK, id);
+    const token = await generarToken(TABLA_TR, CAMPO_FK, id, 'token_firma', 'token_expira', horasVigenciaEnlace(acceso.params));
     const url = `${req.protocol}://${req.get('host')}/doclogyser/traslado/${id}?token=${encodeURIComponent(token)}`;
 
     const [rows] = await pool.execute(
@@ -371,8 +362,6 @@ router.post('/traslados/:id/validar', async (req, res) => {
         ? t.fecha_traslado.toISOString().slice(0, 10)
         : String(t.fecha_traslado || '').slice(0, 10);
 
-      const ccOperacionDestino = await obtenerCorreosOperacionDestino(t.operacion_destino);
-
       try {
         await notificarFirmaTrabajador({
           email:            t.email_trabajador,
@@ -384,7 +373,6 @@ router.post('/traslados/:id/validar', async (req, res) => {
           urlFirma:         url,
           emailUsuario:     emailRegistrador,
           cargo,
-          ccExtra:          ccOperacionDestino,
         });
         correoEnviado = true;
       } catch (e) {
@@ -404,7 +392,9 @@ router.post('/traslados/:id/enlace', async (req, res) => {
     const acceso = await computarAcceso(req.query.Usuario);
     if (!acceso) return res.status(403).json({ ok: false, error: 'Sin autorización' });
     const { id } = req.params;
-    const token = await generarToken(TABLA_TR, CAMPO_FK, id);
+    const alcance = await obtenerTrasladoEnAlcance(acceso, id);
+    if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
+    const token = await generarToken(TABLA_TR, CAMPO_FK, id, 'token_firma', 'token_expira', horasVigenciaEnlace(acceso.params));
     const url = `${req.protocol}://${req.get('host')}/doclogyser/traslado/${id}?token=${encodeURIComponent(token)}`;
     res.json({ ok: true, url });
   } catch (err) {
@@ -420,6 +410,8 @@ router.post('/traslados/:id/estado', async (req, res) => {
     const { id } = req.params;
     const { estado } = req.body;
     if (!ESTADOS_VALIDOS_CAMBIO.includes(estado)) return res.status(400).json({ ok: false, error: 'Estado no permitido' });
+    const alcance = await obtenerTrasladoEnAlcance(acceso, id);
+    if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
     await pool.execute(
       'UPDATE Dynamic_traslados_trabajador SET estado_doc = ?, token_firma = NULL, token_expira = NULL WHERE IdTraslado = ?',
       [estado, id]
@@ -437,12 +429,9 @@ router.post('/traslados/:id/correo', async (req, res) => {
     if (!acceso) return res.status(403).json({ ok: false, error: 'Sin autorización' });
     const { id } = req.params;
 
-    const [rows] = await pool.execute(
-      'SELECT Trabajador, email_trabajador, operacion_destino, direccion_destino, fecha_traslado, hora_traslado, Usuario FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
-      [id]
-    );
-    if (!rows.length) return res.status(404).json({ ok: false, error: 'Registro no encontrado' });
-    const t = rows[0];
+    const alcance = await obtenerTrasladoEnAlcance(acceso, id);
+    if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
+    const t = alcance.traslado;
     if (!t.email_trabajador) return res.status(400).json({ ok: false, error: 'El trabajador no tiene correo registrado' });
 
     const [uRows] = await pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ?', [t.Usuario]);
@@ -454,7 +443,7 @@ router.post('/traslados/:id/correo', async (req, res) => {
     );
     const cargo = (cargoRows[0] && cargoRows[0].Cargo) || '';
 
-    const token = await generarToken(TABLA_TR, CAMPO_FK, id);
+    const token = await generarToken(TABLA_TR, CAMPO_FK, id, 'token_firma', 'token_expira', horasVigenciaEnlace(acceso.params));
     const url   = `${req.protocol}://${req.get('host')}/doclogyser/traslado/${id}?token=${encodeURIComponent(token)}`;
 
     const partes = (t.Trabajador || '').split(' ** ');
@@ -492,9 +481,9 @@ router.get('/traslados/:id/datos', async (req, res) => {
   try {
     const acceso = await computarAcceso(req.query.Usuario);
     if (!acceso) return res.status(403).json({ ok: false, error: 'Sin autorización' });
-    const [rows] = await pool.execute('SELECT * FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ ok: false });
-    res.json({ ok: true, datos: rows[0] });
+    const alcance = await obtenerTrasladoEnAlcance(acceso, req.params.id);
+    if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
+    res.json({ ok: true, datos: alcance.traslado });
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, error: err.message });
@@ -506,6 +495,8 @@ router.post('/traslados/:id/editar', async (req, res) => {
     const acceso = await computarAcceso(req.query.Usuario);
     if (!acceso) return res.status(403).json({ ok: false, error: 'Sin autorización' });
     const { id } = req.params;
+    const alcance = await obtenerTrasladoEnAlcance(acceso, id);
+    if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro no encontrado' : 'Sin autorización' });
     const { operacion_origen, operacion_destino, direccion_destino,
             fecha_traslado, hora_traslado, celular_trabajador, email_trabajador } = req.body;
     const [result] = await pool.execute(
@@ -534,12 +525,9 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
     const { id } = req.params;
     const { anotacion = 'El trabajador no firma,\nse soporta por correo electrónico' } = req.body;
 
-    const [rows] = await pool.execute(
-      'SELECT * FROM Dynamic_traslados_trabajador WHERE IdTraslado = ?',
-      [id]
-    );
-    if (!rows.length) return res.status(404).json({ ok: false, error: 'Registro de traslado no encontrado' });
-    const t = rows[0];
+    const alcance = await obtenerTrasladoEnAlcance(acceso, id);
+    if (!alcance.traslado) return res.status(alcance.status).json({ ok: false, error: alcance.status === 404 ? 'Registro de traslado no encontrado' : 'Sin autorización' });
+    const t = alcance.traslado;
 
     if (t.estado_doc === 'generado' && t.url_doc) {
       return res.status(400).json({ ok: false, error: 'El documento ya fue generado anteriormente' });
@@ -699,8 +687,6 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
     const partesTrab = (t.Trabajador || '').split(' ** ');
     const nombreTrabajador = partesTrab.length > 1 ? partesTrab[1].trim() : t.Trabajador;
 
-    const ccOperacionDestino = await obtenerCorreosOperacionDestino(t.operacion_destino);
-
     notificarDocumentoGenerado({
       nombreTrabajador,
       operacionDestino:  t.operacion_destino,
@@ -710,7 +696,6 @@ router.post('/traslados/:id/no-firma', async (req, res) => {
       urlDoc,
       emailUsuario,
       cargo,
-      ccExtra:           ccOperacionDestino,
     }).catch(e => console.error('[admin] Error correo generado (no-firma):', e.message));
 
     res.json({ ok: true, url_doc: urlDoc });

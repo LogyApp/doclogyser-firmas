@@ -161,23 +161,17 @@ function buildCC(emailUsuario) {
     .filter(Boolean).join(', ');
 }
 
-const CARGOS_GESTION_CALIDAD = [
-  'COORDINADOR LOGISTICO',
-  'AUXILIAR ADMINISTRATIVO DE OPERACIÓN',
-  'AUXILIAR ADMINISTRATIVO REGIONAL',
-  'COORDINADOR REGIONAL',
-];
-
-function ccTraslado(emailUsuario, cargo) {
-  const base = ['admin@logyser.com', emailUsuario];
-  if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
-    base.push('gestioncalidad@logyser.com');
-    base.push('directorrh@logyser.com');
-  }
-  return [...new Set(base.filter(Boolean))].join(', ');
+// Destinatarios de las notificaciones de Traslados: Config_Parametros
+// (Modulo 'nomina', Seccion 'Traslados') — ver configTraslados.js.
+function destinatariosTraslado(tipo, datos) {
+  const { obtenerDestinatariosTraslado } = require('./configTraslados');
+  return obtenerDestinatariosTraslado(tipo, datos);
 }
 
 async function notificarNuevoTraslado({ trabajador, identificacion, operacionOrigen, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, usuario, emailUsuario, observaciones, cargo }) {
+  const dest = await destinatariosTraslado('nuevo', { operacionDestino, cargo, emailRegistrador: emailUsuario });
+  if (!dest.habilitado) { console.log('[notificarNuevoTraslado] Notificaciones de Traslados desactivadas por Config_Parametros.'); return false; }
+  if (!dest.para.length && !dest.copia.length) { console.warn('[notificarNuevoTraslado] Sin destinatarios configurados.'); return false; }
   const asunto = `Nuevo traslado pendiente de revisión — ${trabajador}`;
 
   const cuerpo = `
@@ -205,14 +199,17 @@ async function notificarNuevoTraslado({ trabajador, identificacion, operacionOri
 
   await transporter.sendMail({
     from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
-    to:      'juridica@logyser.com',
-    cc:      ccTraslado(emailUsuario, cargo),
+    to:      (dest.para.length ? dest.para : dest.copia).join(', '),
+    cc:      dest.para.length && dest.copia.length ? dest.copia.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
   });
+  return true;
 }
 
-async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlFirma, emailUsuario, cargo, ccExtra }) {
+// El trabajador siempre recibe su enlace de firma. Las copias (Config_Parametros)
+// solo se envían si las notificaciones de Traslados están habilitadas.
+async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlFirma, emailUsuario, cargo }) {
   const asunto = 'Documento de traslado laboral pendiente de firma — LOG&SER';
 
   const cuerpo = `
@@ -260,16 +257,13 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
       </p>
     </div>`;
 
-  const ccFirma = ['juridica@logyser.com', 'admin@logyser.com', emailUsuario, ...(Array.isArray(ccExtra) ? ccExtra : [])];
-  if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
-    ccFirma.push('gestioncalidad@logyser.com');
-    ccFirma.push('directorrh@logyser.com');
-  }
+  const dest = await destinatariosTraslado('firma', { operacionDestino, cargo, emailRegistrador: emailUsuario });
+  const ccFirma = dest.copia.filter(c => c.toLowerCase() !== String(email || '').trim().toLowerCase());
 
   await transporter.sendMail({
     from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
     to:      email,
-    cc:      [...new Set(ccFirma.filter(Boolean))].join(', '),
+    cc:      ccFirma.length ? ccFirma.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
   });
@@ -366,7 +360,10 @@ async function notificarDotacionLey({ email, nombreTrabajador, tallas = {} }) {
   });
 }
 
-async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlDoc, emailUsuario, cargo, ccExtra }) {
+async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, direccionDestino, fechaTraslado, horaTraslado, urlDoc, emailUsuario, cargo }) {
+  const dest = await destinatariosTraslado('documento', { operacionDestino, cargo, emailRegistrador: emailUsuario });
+  if (!dest.habilitado) { console.log('[notificarDocumentoGenerado] Notificaciones de Traslados desactivadas por Config_Parametros.'); return false; }
+  if (!dest.para.length && !dest.copia.length) { console.warn('[notificarDocumentoGenerado] Sin destinatarios configurados.'); return false; }
   const asunto = `Traslado firmado y completado — ${nombreTrabajador}`;
 
   const cuerpo = `
@@ -402,29 +399,14 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
       ${FOOTER}
     </div>`;
 
-  const ccList = [
-    'gestor.nomina@logyser.com',
-    'admin@logyser.com',
-    'seleccion@logyser.com',
-    'contratacionnacional@logyser.com',
-    'sstadmon@logyser.com',
-    'logyserinventarios@gmail.com',
-    'auxiliarcompras@logyser.com',
-    emailUsuario,
-    ...(Array.isArray(ccExtra) ? ccExtra : [])
-  ];
-  if (cargo && CARGOS_GESTION_CALIDAD.includes((cargo).trim().toUpperCase())) {
-    ccList.push('gestioncalidad@logyser.com');
-    ccList.push('directorrh@logyser.com');
-  }
-
   await transporter.sendMail({
     from:    `"LOG&SER Documentos" <${EMAIL_FROM}>`,
-    to:      'juridica@logyser.com, subgerenciaoperaciones@logyser.com',
-    cc:      [...new Set(ccList.filter(Boolean))].join(', '),
+    to:      (dest.para.length ? dest.para : dest.copia).join(', '),
+    cc:      dest.para.length && dest.copia.length ? dest.copia.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
   });
+  return true;
 }
 
 // ── Notificación de retiro ───────────────────────────────────────────────────

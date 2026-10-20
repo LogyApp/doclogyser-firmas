@@ -345,7 +345,7 @@
     document.getElementById('hidTrabajador').value = nombre;
     document.getElementById('errTrabajador').classList.remove('visible');
     try {
-      const r = await fetch('/formtraslado/api/trabajador?nombre=' + encodeURIComponent(nombre));
+      const r = await fetch('/formtraslado/api/trabajador?nombre=' + encodeURIComponent(nombre) + '&usuario=' + encodeURIComponent(USUARIO));
       const d = await r.json();
       document.getElementById('Identificacion').value     = d.Identificación   || '';
       document.getElementById('operacion_origen').value   = d.operacion_origen || '';

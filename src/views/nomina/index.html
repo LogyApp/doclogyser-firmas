@@ -5326,7 +5326,7 @@
     document.getElementById('trasSubpanelPlantilla').style.display = subTab === 'plantilla' ? 'block' : 'none';
     if (subTab === 'plantilla') {
       const ifr = document.getElementById('trasPlantillaIframe');
-      if (ifr.src === 'about:blank' || !ifr.src) ifr.src = '/admin/plantillas/editar/traslado';
+      if (ifr.src === 'about:blank' || !ifr.src) ifr.src = '/admin/plantillas/editar/traslado?Usuario=' + encodeURIComponent(usuario);
     }
   }
 
