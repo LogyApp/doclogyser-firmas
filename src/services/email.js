@@ -84,6 +84,9 @@ const LOGO_HEADER_ATTACHMENT = {
   cid: LOGO_HEADER_CID,
   contentDisposition: 'inline',
 };
+// Azul corporativo del encabezado de las notificaciones de Traslados.
+const COLOR_ENCABEZADO_TRASLADOS = '#1B2A5E';
+
 function encabezadoLogo(color) {
   return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${color}" style="background-color:${color};border-collapse:collapse">
@@ -176,7 +179,7 @@ async function notificarNuevoTraslado({ trabajador, identificacion, operacionOri
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_TRASLADOS)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h2 style="color:#1a1a2e;margin-top:0">Nuevo traslado registrado</h2>
         <p style="color:#555">Se ha registrado un nuevo traslado que requiere revisión y validación.</p>
@@ -203,6 +206,7 @@ async function notificarNuevoTraslado({ trabajador, identificacion, operacionOri
     cc:      dest.para.length && dest.copia.length ? dest.copia.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
   return true;
 }
@@ -214,8 +218,8 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #e67e22;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
+      <div style="border-radius:8px 8px 0 0;overflow:hidden">
+${encabezadoLogo(COLOR_ENCABEZADO_TRASLADOS)}
       </div>
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreCorto}</h2>
@@ -266,6 +270,7 @@ async function notificarFirmaTrabajador({ email, nombreCorto, operacionDestino, 
     cc:      ccFirma.length ? ccFirma.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -368,7 +373,7 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_TRASLADOS)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso completado</span>
@@ -405,6 +410,7 @@ async function notificarDocumentoGenerado({ nombreTrabajador, operacionDestino, 
     cc:      dest.para.length && dest.copia.length ? dest.copia.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
   return true;
 }
