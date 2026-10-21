@@ -486,6 +486,20 @@ async function generarPDFDirectoActa(idActa) {
   return { idActa, urlActa, tieneEvidencia, urlFirma: urlFirmaParaGuardar };
 }
 
+// Un Acta "sin firma" es la que se cerró sin firma del trabajador (por vencimiento del
+// enlace o por Generar PDF directo): queda Firmada con la imagen corporativa Sin firma.png.
+// A esas actas se les puede solicitar la firma nuevamente las veces que se necesite.
+const URL_FIRMA_SIN_FIRMA = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/Sin%20firma.png';
+
+function esActaSinFirma(acta) {
+  return Boolean(acta) && acta.Estado === 'Firmada' && acta.Url_Firma === URL_FIRMA_SIN_FIRMA;
+}
+
+// Se puede firmar (o volver a firmar) si está Pendiente o si se cerró sin firma.
+function actaAdmiteFirma(acta) {
+  return Boolean(acta) && (acta.Estado === 'Pendiente' || esActaSinFirma(acta));
+}
+
 async function obtenerContactoTrabajador(identificacion) {
   const [[row]] = await pool.execute(
     'SELECT Email, Celular, Camiseta, Pantalon, Botas, Numero FROM `Maestro_Segmentación` WHERE Identificación = ? LIMIT 1',
@@ -514,4 +528,6 @@ module.exports = {
   regenerarPDFActa,
   generarPDFDirectoActa,
   obtenerContactoTrabajador,
+  esActaSinFirma,
+  actaAdmiteFirma,
 };

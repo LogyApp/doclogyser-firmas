@@ -12,6 +12,8 @@ const {
   construirDatosPlantilla,
   regenerarPDFActa,
   generarPDFDirectoActa,
+  esActaSinFirma,
+  actaAdmiteFirma,
 } = require('../services/actas');
 const { notificarActaFirma } = require('../services/email');
 
@@ -448,6 +450,8 @@ router.get('/api/actas', async (req, res) => {
       totalAnuladas: Number(statsRow.totalAnuladas || 0),
     };
 
+    rows.forEach(r => { r.SinFirma = esActaSinFirma(r); });
+
     res.json({
       results: rows,
       counts,
@@ -490,6 +494,7 @@ router.get('/api/acta/:id', async (req, res) => {
 
     res.json({
       ...acta,
+      SinFirma: esActaSinFirma(acta),
       Trabajador: (vinc && vinc.Trabajador) || '',
       Email: contacto.email,
       Celular: contacto.celular,
@@ -758,6 +763,8 @@ router.post('/api/acta/:id/anular', async (req, res) => {
 });
 
 // ═════ API: POST /api/acta/:id/enlace (genera enlace de firma de 48h, sin correo) ═════
+// También sirve para solicitar la firma nuevamente en actas cerradas "sin firma": el acta
+// conserva su PDF actual y, si el trabajador firma, el PDF se reemplaza (ver firma.js).
 router.post('/api/acta/:id/enlace', async (req, res) => {
   try {
     const { id } = req.params;
@@ -767,10 +774,10 @@ router.post('/api/acta/:id/enlace', async (req, res) => {
     const acceso = await computarAccesoActas(usuario);
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const [[acta]] = await pool.execute('SELECT Estado FROM Dynamic_Actas WHERE IdActa = ?', [id]);
+    const [[acta]] = await pool.execute('SELECT Estado, Url_Firma FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
-    if (acta.Estado !== 'Pendiente') {
-      return res.status(400).json({ error: 'Solo se puede generar el enlace de firma para actas en estado Pendiente' });
+    if (!actaAdmiteFirma(acta)) {
+      return res.status(400).json({ error: 'Solo se puede generar el enlace de firma para actas Pendientes o cerradas sin firma del trabajador' });
     }
 
     const token = await generarToken('Dynamic_Actas', 'IdActa', id);
@@ -816,7 +823,7 @@ router.post('/api/acta/:id/correo', async (req, res) => {
 
     const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
-    if (acta.Estado !== 'Pendiente') {
+    if (!actaAdmiteFirma(acta)) {
       return res.status(400).json({ error: 'El acta ya no está pendiente de firma' });
     }
 

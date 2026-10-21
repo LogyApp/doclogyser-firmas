@@ -16137,6 +16137,20 @@
         const rolUsuario = String((typeof CONFIG !== 'undefined' && CONFIG.rol) || '').trim().toLowerCase();
         const puedeRegenerar = ['sistema', 'inventario'].includes(rolUsuario);
 
+        // Botones para enviar el enlace de firma: en actas Pendientes y, para solicitar la firma
+        // nuevamente, en actas Firmadas "sin firma" del trabajador.
+        const pref = a.SinFirma ? 'Solicitar firma nuevamente: ' : '';
+        const btnsFirmaHtml = `
+              <button type="button" onclick="event.stopPropagation(); accionCopiarEnlaceActa(${a.IdActa})" title="${pref}Copiar enlace de firma" style="background: none; border: none; cursor: pointer; color: var(--text); width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+              </button>
+              <button type="button" onclick="event.stopPropagation(); accionWhatsAppActa(${a.IdActa}, ${a.identificacion})" title="${pref}Enviar por WhatsApp" style="background: none; border: none; cursor: pointer; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#25D366"></circle><path fill="#fff" d="M23.5 8.5c-1.9-1.9-4.5-3-7.3-3-5.7 0-10.3 4.6-10.3 10.3 0 1.8.5 3.6 1.4 5.1L6 26l5.3-1.4c1.5.8 3.1 1.2 4.8 1.2h.01c5.7 0 10.3-4.6 10.3-10.3 0-2.7-1.1-5.3-3-7.1zm-7.3 15.8h-.01c-1.5 0-3-.4-4.3-1.2l-.3-.2-3.2.8.9-3.1-.2-.3c-.9-1.4-1.3-3-1.3-4.6 0-4.7 3.8-8.5 8.5-8.5 2.3 0 4.4.9 6 2.5s2.5 3.7 2.5 6c0 4.7-3.9 8.6-8.6 8.6zm4.7-6.4c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.8 1-.2.2-.3.2-.5.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.8-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.5-.1 0-.3 0-.5 0s-.5.1-.7.3c-.2.3-1 1-1 2.3 0 1.4 1 2.7 1.1 2.9.1.2 2 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.2-.3-.2-.5-.3z"></path></svg>
+              </button>
+              <button type="button" onclick="event.stopPropagation(); accionCorreoActa(${a.IdActa}, ${a.identificacion})" title="${pref}Enviar por correo" style="background: none; border: none; cursor: pointer; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
+              </button>`;
+
         let accionesHtml = '<span style="color: var(--text-muted);">—</span>';
         if (stateUpper === 'FIRMADA') {
           const btnVerPdf = a.Url_Acta ? `
@@ -16149,21 +16163,13 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
             </button>` : '';
 
-          if (btnVerPdf || btnRegenerar) {
-            accionesHtml = `<div style="display: flex; gap: 2px; justify-content: center; align-items: center;">${btnVerPdf}${btnRegenerar}</div>`;
+          const btnsSinFirma = a.SinFirma ? btnsFirmaHtml : '';
+          if (btnVerPdf || btnRegenerar || btnsSinFirma) {
+            accionesHtml = `<div style="display: flex; gap: 2px; justify-content: center; align-items: center;">${btnVerPdf}${btnRegenerar}${btnsSinFirma}</div>`;
           }
         } else if (stateUpper === 'PENDIENTE') {
           accionesHtml = `
-            <div style="display: flex; gap: 2px; justify-content: center; align-items: center;">
-              <button type="button" onclick="event.stopPropagation(); accionCopiarEnlaceActa(${a.IdActa})" title="Copiar enlace de firma" style="background: none; border: none; cursor: pointer; color: var(--text); width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-              </button>
-              <button type="button" onclick="event.stopPropagation(); accionWhatsAppActa(${a.IdActa}, ${a.identificacion})" title="Enviar por WhatsApp" style="background: none; border: none; cursor: pointer; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#25D366"></circle><path fill="#fff" d="M23.5 8.5c-1.9-1.9-4.5-3-7.3-3-5.7 0-10.3 4.6-10.3 10.3 0 1.8.5 3.6 1.4 5.1L6 26l5.3-1.4c1.5.8 3.1 1.2 4.8 1.2h.01c5.7 0 10.3-4.6 10.3-10.3 0-2.7-1.1-5.3-3-7.1zm-7.3 15.8h-.01c-1.5 0-3-.4-4.3-1.2l-.3-.2-3.2.8.9-3.1-.2-.3c-.9-1.4-1.3-3-1.3-4.6 0-4.7 3.8-8.5 8.5-8.5 2.3 0 4.4.9 6 2.5s2.5 3.7 2.5 6c0 4.7-3.9 8.6-8.6 8.6zm4.7-6.4c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.7.8-.8 1-.2.2-.3.2-.5.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.6-1.4-1.8-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.5-.1 0-.3 0-.5 0s-.5.1-.7.3c-.2.3-1 1-1 2.3 0 1.4 1 2.7 1.1 2.9.1.2 2 3 4.7 4.2.7.3 1.2.5 1.6.6.7.2 1.3.2 1.7.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.2-.3-.2-.5-.3z"></path></svg>
-              </button>
-              <button type="button" onclick="event.stopPropagation(); accionCorreoActa(${a.IdActa}, ${a.identificacion})" title="Enviar por correo" style="background: none; border: none; cursor: pointer; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
-              </button>
+            <div style="display: flex; gap: 2px; justify-content: center; align-items: center;">${btnsFirmaHtml}
             </div>`;
         }
 
@@ -16850,6 +16856,9 @@
           btnGuardar.textContent = '💾 Guardar Cambios en Artículos';
         }
 
+        if (btnEnlace) btnEnlace.textContent = '🔗 Generar Enlace de Firma';
+        if (sinFirmaWrap) sinFirmaWrap.textContent = '✍️ Sin firma — notificado por correo electrónico';
+
         if (actaActual.Estado === 'Pendiente') {
           if (sinFirmaWrap) sinFirmaWrap.style.display = 'block';
           if (btnEnlace) btnEnlace.style.display = 'inline-flex';
@@ -16861,6 +16870,17 @@
             if (docWrap) docWrap.style.display = 'block';
             const link = document.getElementById('acta-link-doc-firmado');
             if (link) link.href = actaActual.Url_Acta;
+          }
+          // Acta cerrada sin firma del trabajador: se puede solicitar la firma nuevamente.
+          if (actaActual.SinFirma) {
+            if (sinFirmaWrap) {
+              sinFirmaWrap.textContent = '✍️ El trabajador no firmó esta acta. Puedes solicitar la firma nuevamente: el enlace dura 48h y, si firma, el PDF se reemplaza por uno con su firma.';
+              sinFirmaWrap.style.display = 'block';
+            }
+            if (btnEnlace) {
+              btnEnlace.textContent = '✍️ Solicitar Firma Nuevamente';
+              btnEnlace.style.display = 'inline-flex';
+            }
           }
         }
 
