@@ -383,6 +383,31 @@ async function estaRetiroLegalizado(datos) {
   return legalizado;
 }
 
+// ── Fecha de ingreso más reciente del trabajador ────────────────────────────
+// Un trabajador puede tener varias vinculaciones (reingresos). Para el retiro se
+// toma la Fecha de Ingreso más reciente que no sea posterior a la fecha de retiro.
+// Si no se encuentra, se devuelve `respaldo`.
+async function obtenerFechaIngresoReciente(identificacion, fechaRetiro, respaldo = null) {
+  if (!identificacion) return respaldo;
+  try {
+    const params = [String(identificacion)];
+    let condicionRetiro = '';
+    if (fechaRetiro) {
+      condicionRetiro = ' AND DATE(`Fecha de Ingreso`) <= DATE(?)';
+      params.push(fechaRetiro);
+    }
+    const [rows] = await pool.execute(
+      `SELECT MAX(\`Fecha de Ingreso\`) AS fecha FROM \`Maestro_Vinculación\`
+       WHERE \`Identificación\` = ?${condicionRetiro}`,
+      params
+    );
+    return (rows[0] && rows[0].fecha) || respaldo;
+  } catch (err) {
+    console.error('[configRetiro] No se pudo obtener la fecha de ingreso más reciente:', err.message);
+    return respaldo;
+  }
+}
+
 // ── Responsables de un trabajador (usado por la notificación de Tomó Cargo) ─
 // Las notificaciones de retiro usan obtenerDestinatariosNotificacionRetiro.
 // Busca Auxiliar/Coordinador/AuxiliarR/CoordinadorR de su Operación; si no hay
@@ -439,6 +464,7 @@ module.exports = {
   nominaDebeMarcarRetirado,
   obtenerDestinatariosNotificacionRetiro,
   obtenerResponsablesConfirmarRetiro,
+  obtenerFechaIngresoReciente,
   resolverResponsablesRetiro,
   docTerminacionRequerido,
   estaRetiroLegalizado,

@@ -456,7 +456,8 @@ function partesFecha(valor) {
 }
 
 // Tiempo en la empresa entre la fecha de ingreso y la de retiro, en años,
-// meses y días calendario (ej.: 01/03/2024 → 15/10/2026 = 2 años, 7 meses y 14 días).
+// meses y días calendario, contando ambos días (ej.: 01/10/2026 → 15/10/2026 =
+// 15 días; 01/03/2024 → 15/10/2026 = 2 años, 7 meses y 15 días).
 // Se suman meses completos a la fecha de ingreso (si el día no existe en ese mes,
 // se usa el último día del mes) y luego se cuentan los días restantes.
 function calcularAntiguedad(fechaIngreso, fechaRetiro) {
@@ -464,8 +465,10 @@ function calcularAntiguedad(fechaIngreso, fechaRetiro) {
   const fin = partesFecha(fechaRetiro);
   if (!ini || !fin) return null;
   const inicio = new Date(ini.y, ini.m - 1, ini.d);
-  const final  = new Date(fin.y, fin.m - 1, fin.d);
-  if (final < inicio) return null;
+  const retiro = new Date(fin.y, fin.m - 1, fin.d);
+  if (retiro < inicio) return null;
+  // Se cuenta también el día de ingreso: el periodo termina al final del día de retiro.
+  const final = new Date(fin.y, fin.m - 1, fin.d + 1);
 
   const sumarMeses = n => {
     const y = ini.y + Math.floor((ini.m - 1 + n) / 12);
@@ -474,7 +477,7 @@ function calcularAntiguedad(fechaIngreso, fechaRetiro) {
     return new Date(y, m, Math.min(ini.d, ultimoDia));
   };
 
-  let totalMeses = (fin.y - ini.y) * 12 + (fin.m - ini.m);
+  let totalMeses = (final.getFullYear() - ini.y) * 12 + (final.getMonth() + 1 - ini.m);
   if (sumarMeses(totalMeses) > final) totalMeses -= 1;
   const dias = Math.round((final - sumarMeses(totalMeses)) / 86400000);
   return { anios: Math.floor(totalMeses / 12), meses: totalMeses % 12, dias };
@@ -495,8 +498,10 @@ async function notificarRetiro({
   fechaIngreso, fechaRetiro, motivoRetiro, registradoPor, emailRegistrador,
   rolRegistrador,
 }) {
-  const { obtenerDestinatariosNotificacionRetiro } = require('./configRetiro');
+  const { obtenerDestinatariosNotificacionRetiro, obtenerFechaIngresoReciente } = require('./configRetiro');
   const { habilitado, para, copia } = await obtenerDestinatariosNotificacionRetiro({ operacion, cargo });
+  // Vinculación más reciente (el trabajador pudo tener ingresos anteriores).
+  fechaIngreso = await obtenerFechaIngresoReciente(identificacion, fechaRetiro, fechaIngreso);
   if (!habilitado) {
     console.log('[notificarRetiro] Notificaciones de Retiros desactivadas por Config_Parametros.');
     return false;
