@@ -445,9 +445,54 @@ function diasDesdeRetiro(fechaRetiro) {
 
 // Devuelve true si el correo se envió (false si las notificaciones de Retiros
 // están desactivadas o no hay destinatarios).
+// Fecha (Date de MySQL o 'YYYY-MM-DD') → { y, m, d } en calendario local.
+function partesFecha(valor) {
+  if (!valor) return null;
+  const str = valor instanceof Date
+    ? `${valor.getFullYear()}-${String(valor.getMonth() + 1).padStart(2, '0')}-${String(valor.getDate()).padStart(2, '0')}`
+    : String(valor).slice(0, 10);
+  const [y, m, d] = str.split('-').map(Number);
+  return y && m && d ? { y, m, d } : null;
+}
+
+// Tiempo en la empresa entre la fecha de ingreso y la de retiro, en años,
+// meses y días calendario (ej.: 01/03/2024 → 15/10/2026 = 2 años, 7 meses y 14 días).
+// Se suman meses completos a la fecha de ingreso (si el día no existe en ese mes,
+// se usa el último día del mes) y luego se cuentan los días restantes.
+function calcularAntiguedad(fechaIngreso, fechaRetiro) {
+  const ini = partesFecha(fechaIngreso);
+  const fin = partesFecha(fechaRetiro);
+  if (!ini || !fin) return null;
+  const inicio = new Date(ini.y, ini.m - 1, ini.d);
+  const final  = new Date(fin.y, fin.m - 1, fin.d);
+  if (final < inicio) return null;
+
+  const sumarMeses = n => {
+    const y = ini.y + Math.floor((ini.m - 1 + n) / 12);
+    const m = (ini.m - 1 + n) % 12;
+    const ultimoDia = new Date(y, m + 1, 0).getDate();
+    return new Date(y, m, Math.min(ini.d, ultimoDia));
+  };
+
+  let totalMeses = (fin.y - ini.y) * 12 + (fin.m - ini.m);
+  if (sumarMeses(totalMeses) > final) totalMeses -= 1;
+  const dias = Math.round((final - sumarMeses(totalMeses)) / 86400000);
+  return { anios: Math.floor(totalMeses / 12), meses: totalMeses % 12, dias };
+}
+
+function textoAntiguedad(a) {
+  if (!a) return '—';
+  const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+  const partes = [];
+  if (a.anios) partes.push(plural(a.anios, 'año', 'años'));
+  if (a.meses) partes.push(plural(a.meses, 'mes', 'meses'));
+  if (a.dias || !partes.length) partes.push(plural(a.dias, 'día', 'días'));
+  return partes.length > 1 ? `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}` : partes[0];
+}
+
 async function notificarRetiro({
   trabajador, identificacion, cargo, operacion,
-  fechaRetiro, motivoRetiro, registradoPor, emailRegistrador,
+  fechaIngreso, fechaRetiro, motivoRetiro, registradoPor, emailRegistrador,
   rolRegistrador,
 }) {
   const { obtenerDestinatariosNotificacionRetiro } = require('./configRetiro');
@@ -518,8 +563,16 @@ ${encabezadoLogo('#c0392b')}
             <td style="padding:9px 12px">${operacion || '—'}</td>
           </tr>
           <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Fecha de ingreso</td>
+            <td style="padding:9px 12px">${formatFecha(fechaIngreso) || '—'}</td>
+          </tr>
+          <tr>
             <td style="padding:9px 12px;color:#888">Fecha de retiro</td>
             <td style="padding:9px 12px;font-weight:bold">${formatFecha(fechaRetiro)}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:9px 12px;color:#888">Tiempo en la empresa</td>
+            <td style="padding:9px 12px;font-weight:bold">${textoAntiguedad(calcularAntiguedad(fechaIngreso, fechaRetiro))}</td>
           </tr>
           <tr>
             <td style="padding:9px 12px;color:#888">Motivo del retiro</td>

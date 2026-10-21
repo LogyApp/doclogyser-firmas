@@ -813,6 +813,7 @@ router.post('/:idVinculacion', async (req, res) => {
         identificacion: String(identificacion),
         cargo:          vin.Cargo,
         operacion:      vin['Operación'],
+        fechaIngreso:   vin['Fecha de Ingreso'],
         fechaRetiro,
         motivoRetiro,
         registradoPor:    usuData.Nombre || usuario,

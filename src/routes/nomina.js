@@ -646,7 +646,7 @@ router.post('/api/confirmar-estado-retirado', async (req, res) => {
 
     const [rows] = await pool.execute(
       `SELECT \`Identificación\`, Trabajador, Cargo, \`Operación\`, Regional,
-              \`Fecha de Retiro\`, Estado, \`Motivo del Retiro\`
+              \`Fecha de Ingreso\`, \`Fecha de Retiro\`, Estado, \`Motivo del Retiro\`
        FROM \`Maestro_Vinculación\` WHERE \`Id Vinculación\` = ? LIMIT 1`,
       [idVinculacion]
     );
@@ -670,6 +670,7 @@ router.post('/api/confirmar-estado-retirado', async (req, res) => {
       identificacion: String(vin['Identificación']),
       cargo:          vin.Cargo,
       operacion:      vin['Operación'],
+      fechaIngreso:   vin['Fecha de Ingreso'],
       fechaRetiro:    vin['Fecha de Retiro'],
       motivoRetiro:   motivo,
       registradoPor:    usuData.Nombre || usuario,
