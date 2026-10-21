@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const ExcelJS = require('exceljs');
 const pool = require('../services/db');
 const { storage, obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { computarAccesoTalenthub } = require('../services/accesoTalenthub');
@@ -1191,6 +1192,288 @@ router.get('/api/requisiciones', async (req, res) => {
   }
 });
 
+// ── REPORTE DE REQUISICIONES (Excel / CSV) ───────────────────────────────────
+// Respeta el alcance del rol (Regional / Operación, igual que el listado) y se filtra
+// solo por la Fecha Requisición: por mes y año, por rango de fechas o todo.
+// Los límites de filas están en Config_Parametros (talenthub / Requisiciones).
+const LIMITE_FILAS_EXCEL_DEFECTO = 10000;
+const LIMITE_FILAS_CSV_DEFECTO = 100000;
+const LOTE_REPORTE = 5000;
+
+function leerLimitesReporte(paramsConfig) {
+  const excel = parseInt(paramsConfig['Límite de filas reporte Excel - Requisiciones']);
+  const csv = parseInt(paramsConfig['Límite de filas reporte CSV - Requisiciones']);
+  return {
+    excel: excel > 0 ? excel : LIMITE_FILAS_EXCEL_DEFECTO,
+    csv: csv > 0 ? csv : LIMITE_FILAS_CSV_DEFECTO
+  };
+}
+
+const RE_FECHA_YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+function siguienteDia(ymd) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().substring(0, 10);
+}
+
+// modo: 'mes' (mes, anio) | 'rango' (desde, hasta) | 'todo'.
+// Devuelve { whereSql, params, etiqueta } o { error }.
+function construirFiltroReporte(acceso, query) {
+  const clauses = ['1=1'];
+  const params = [];
+
+  if (!acceso.sinFiltro) {
+    if (acceso.operacionesFiltro && acceso.operacionesFiltro.length > 0) {
+      clauses.push(`r.\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+      params.push(...acceso.operacionesFiltro);
+    } else if (acceso.regional) {
+      clauses.push('r.`Regional` = ?');
+      params.push(acceso.regional);
+    } else {
+      clauses.push('1=0');
+    }
+  }
+
+  const modo = String(query.modo || 'mes').toLowerCase();
+  let etiqueta;
+  if (modo === 'mes') {
+    const mes = parseInt(query.mes);
+    const anio = parseInt(query.anio);
+    if (!(mes >= 1 && mes <= 12) || !(anio >= 2000 && anio <= 2100)) {
+      return { error: 'Selecciona un mes y año válidos.' };
+    }
+    const desde = `${anio}-${String(mes).padStart(2, '0')}-01`;
+    const hasta = mes === 12 ? `${anio + 1}-01-01` : `${anio}-${String(mes + 1).padStart(2, '0')}-01`;
+    clauses.push('r.`Fecha Requisición` >= ? AND r.`Fecha Requisición` < ?');
+    params.push(desde, hasta);
+    etiqueta = `${anio}-${String(mes).padStart(2, '0')}`;
+  } else if (modo === 'rango') {
+    const { desde, hasta } = query;
+    if (!RE_FECHA_YMD.test(desde || '') || !RE_FECHA_YMD.test(hasta || '')) {
+      return { error: 'Selecciona la fecha inicial y la fecha final.' };
+    }
+    if (desde > hasta) {
+      return { error: 'La fecha inicial no puede ser mayor que la fecha final.' };
+    }
+    clauses.push('r.`Fecha Requisición` >= ? AND r.`Fecha Requisición` < ?');
+    params.push(desde, siguienteDia(hasta));
+    etiqueta = `${desde}_a_${hasta}`;
+  } else if (modo === 'todo') {
+    etiqueta = 'todas';
+  } else {
+    return { error: 'Opción de reporte inválida.' };
+  }
+
+  return { whereSql: clauses.join(' AND '), params, etiqueta };
+}
+
+async function contarFilasReporte(filtro) {
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM \`Dynamic_Requisiciones\` r WHERE ${filtro.whereSql}`,
+    filtro.params
+  );
+  return Number(row.total || 0);
+}
+
+// Columnas del reporte: [encabezado, función que obtiene el valor de la fila]
+function columnasReporte(puedeVerSalario) {
+  const campo = (nombre) => (r) => r[nombre];
+  const cols = [
+    ['Requisición', campo('Requisición')],
+    ['Fecha Requisición', campo('fechaRequisicion')],
+    ['Estado', campo('Estado')],
+    ['Regional', campo('Regional')],
+    ['Operación', campo('Operación')],
+    ['Ciudad', campo('Ciudad')],
+    ['Cargo Requerido', campo('Cargo Requerido')],
+    ['N° Personas Requeridas', campo('N° Personas Requeridas')],
+    ['Tipo de Pago', campo('Tipo de Pago')],
+  ];
+  if (puedeVerSalario) cols.push(['Salario', campo('Salario')]);
+  cols.push(
+    ['Solicitante', campo('Solicitante')],
+    ['Cargo Solicitante', campo('Cargo Solicitante')],
+    ['Responsable de Selección', campo('Responsable de Selección')],
+    ['Perfil del Cargo', campo('Perfil del Cargo')],
+    ['Conocimientos Adicionales', campo('Conocimientos Adicionales')],
+    ['Experiencia Requerida', campo('Experiencia Requerida')],
+    ['Turno Requerido', campo('Turno Requerido')],
+    ['Descripción del Turno', campo('Descripción del Turno')],
+    ['Manipulación de Alimentos - BPM', campo('Manipulación de Alimentos - BPM')],
+    ['Requiere Curso por el Cliente', campo('Requiere Curso por el Cliente')],
+    ['Descripción Curso Requerido', campo('Descripción Curso Requerido')],
+    ['Motivo de la Solicitud', campo('Motivo de la Solicitud')],
+    ['Motivo del Reemplazo', campo('Motivo del Reemplazo')],
+    ['Duración de la Temporalidad', campo('Duración de la Temporalidad')],
+    ['Dotación Requerida', campo('Dotación Requerida')],
+    ['EPP Requeridos', campo('EPP Requeridos')],
+    ['Observaciones', campo('Observaciones')],
+    ['Fecha de Finalización', campo('fechaFinalizacion')],
+    ['Fecha Actualización', campo('fechaActualizacion')],
+    ['Usuario Actualización', campo('usuario_actualizacion')],
+    ['Total Aspirantes', campo('total_aspirantes')],
+    ['Aspirantes Cumplen SLA', campo('aspirantes_cumple')],
+    ['Aspirantes No Cumplen SLA', campo('aspirantes_nocumple')],
+    ['Aspirantes Pendientes', campo('aspirantes_pendientes')],
+    ['Aspirantes por Revisar', campo('aspirantes_revisar')],
+    ['% Cumplimiento SLA', campo('sla_pct')],
+    ['Inicio Conteo SLA', campo('sla_inicio_conteo')],
+    ['Días Suspendidos', campo('sla_dias_suspendidos')]
+  );
+  return cols;
+}
+
+// Lee las requisiciones por lotes (con su SLA) y entrega cada lote a `alProcesar`.
+async function recorrerFilasReporte(filtro, puedeVerSalario, paramsConfig, alProcesar) {
+  for (let offset = 0; ; offset += LOTE_REPORTE) {
+    const [rows] = await pool.execute(
+      `SELECT r.IdRequisicion, r.\`Requisición\`,
+              DATE_FORMAT(r.\`Fecha Requisición\`, '%Y-%m-%d %H:%i') as fechaRequisicion,
+              r.\`Estado\`, r.\`Regional\`, r.\`Operación\`, r.\`Ciudad\`, r.\`Cargo Requerido\`, r.\`Tipo de Pago\`,
+              ${puedeVerSalario ? 'r.`Salario`' : 'NULL AS `Salario`'},
+              r.\`Solicitante\`, r.\`Cargo Solicitante\`, r.\`N° Personas Requeridas\`, r.\`Perfil del Cargo\`,
+              r.\`Conocimientos Adicionales\`, r.\`Experiencia Requerida\`, r.\`Turno Requerido\`, r.\`Descripción del Turno\`,
+              r.\`Manipulación de Alimentos - BPM\`, r.\`Requiere Curso por el Cliente\`, r.\`Descripción Curso Requerido\`,
+              r.\`Motivo de la Solicitud\`, r.\`Motivo del Reemplazo\`, r.\`Duración de la Temporalidad\`, r.\`Observaciones\`,
+              r.\`Dotación Requerida\`, r.\`EPP Requeridos\`,
+              DATE_FORMAT(r.\`Fecha de Finalización\`, '%Y-%m-%d') as fechaFinalizacion,
+              r.\`Responsable de Selección\`,
+              DATE_FORMAT(r.\`Fecha Actualización\`, '%Y-%m-%d %H:%i') as fechaActualizacion,
+              r.\`usuario_actualizacion\`
+       FROM \`Dynamic_Requisiciones\` r
+       WHERE ${filtro.whereSql}
+       ORDER BY r.\`Fecha Requisición\` DESC, r.IdRequisicion DESC
+       LIMIT ${LOTE_REPORTE} OFFSET ${offset}`,
+      filtro.params
+    );
+    if (!rows.length) break;
+
+    const ids = rows.map(r => r.IdRequisicion);
+    const [aspRows] = await pool.execute(
+      `SELECT a.IdRequisicion, DATE_FORMAT(v.max_ingreso, '%Y-%m-%d') AS fecha_ingreso
+       FROM \`Dynamic_hv_aspirante\` a
+       LEFT JOIN (
+         SELECT \`Identificación\` AS id_vinc, MAX(\`Fecha de Ingreso\`) AS max_ingreso
+         FROM \`Maestro_Vinculación\`
+         GROUP BY \`Identificación\`
+       ) v ON CAST(v.id_vinc AS CHAR) = CAST(a.identificacion AS CHAR)
+       WHERE a.IdRequisicion IN (${ids.map(() => '?').join(',')})`,
+      ids
+    );
+    const aspirantesPorReq = new Map();
+    aspRows.forEach(a => {
+      if (!aspirantesPorReq.has(a.IdRequisicion)) aspirantesPorReq.set(a.IdRequisicion, []);
+      aspirantesPorReq.get(a.IdRequisicion).push(a);
+    });
+
+    const { porRequisicion } = await calcularSlaRequisiciones(rows, aspirantesPorReq, paramsConfig);
+    await alProcesar(rows.map(r => {
+      const sla = porRequisicion.get(r.IdRequisicion);
+      return { ...r, ...sla.resumen, sla_inicio_conteo: sla.inicioConteo, sla_dias_suspendidos: sla.diasSuspendidosTotal };
+    }));
+
+    if (rows.length < LOTE_REPORTE) break;
+  }
+}
+
+function celdaCsv(valor) {
+  if (valor === null || valor === undefined) return '';
+  return `"${String(valor).replace(/"/g, '""')}"`;
+}
+
+// GET /api/requisiciones/reporte/conteo — cuántas filas tendría el reporte y qué formatos se permiten
+router.get('/api/requisiciones/reporte/conteo', async (req, res) => {
+  try {
+    const acceso = await computarAccesoTalenthub(req.query.usuario, 'Requisiciones');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No tienes permiso para acceder al módulo de Requisiciones.' });
+    }
+    const filtro = construirFiltroReporte(acceso, req.query);
+    if (filtro.error) return res.status(400).json({ error: filtro.error });
+
+    const limites = leerLimitesReporte(await obtenerParametrosTalenthub());
+    const total = await contarFilasReporte(filtro);
+    res.json({
+      ok: true,
+      total,
+      limites,
+      permiteExcel: total > 0 && total <= limites.excel,
+      permiteCsv: total > 0 && total <= limites.csv
+    });
+  } catch (err) {
+    console.error('[talenthub] GET /api/requisiciones/reporte/conteo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/requisiciones/reporte?formato=xlsx|csv — descarga el reporte
+router.get('/api/requisiciones/reporte', async (req, res) => {
+  try {
+    const acceso = await computarAccesoTalenthub(req.query.usuario, 'Requisiciones');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No tienes permiso para acceder al módulo de Requisiciones.' });
+    }
+    const formato = String(req.query.formato || '').toLowerCase();
+    if (formato !== 'xlsx' && formato !== 'csv') {
+      return res.status(400).json({ error: 'Formato inválido. Usa Excel o CSV.' });
+    }
+    const filtro = construirFiltroReporte(acceso, req.query);
+    if (filtro.error) return res.status(400).json({ error: filtro.error });
+
+    const paramsConfig = await obtenerParametrosTalenthub();
+    const limites = leerLimitesReporte(paramsConfig);
+    const total = await contarFilasReporte(filtro);
+    if (total === 0) {
+      return res.status(400).json({ error: 'No hay requisiciones para el periodo seleccionado.' });
+    }
+    if (formato === 'xlsx' && total > limites.excel) {
+      return res.status(400).json({ error: `El reporte tiene ${total} filas. En Excel se permiten hasta ${limites.excel}; descárgalo en CSV.` });
+    }
+    if (total > limites.csv) {
+      return res.status(400).json({ error: `El reporte tiene ${total} filas y el máximo permitido es ${limites.csv}. Elige un periodo más corto.` });
+    }
+
+    const puedeVerSalario = rolPermitidoEnParametro(acceso.rol, paramsConfig['Editar y ver Salario en Requisición']);
+    const columnas = columnasReporte(puedeVerSalario);
+    const nombreArchivo = `Requisiciones_${filtro.etiqueta}.${formato}`;
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
+
+    if (formato === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.write('﻿' + columnas.map(c => celdaCsv(c[0])).join(';') + '\r\n');
+      await recorrerFilasReporte(filtro, puedeVerSalario, paramsConfig, async (filas) => {
+        res.write(filas.map(f => columnas.map(c => celdaCsv(c[1](f))).join(';')).join('\r\n') + '\r\n');
+      });
+      return res.end();
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res, useStyles: true });
+    const hoja = workbook.addWorksheet('Requisiciones', { views: [{ state: 'frozen', ySplit: 1 }] });
+    hoja.columns = columnas.map(c => ({ header: c[0], width: Math.min(Math.max(c[0].length + 4, 14), 40) }));
+    const encabezado = hoja.getRow(1);
+    encabezado.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    encabezado.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2A5E' } };
+    encabezado.commit();
+    await recorrerFilasReporte(filtro, puedeVerSalario, paramsConfig, async (filas) => {
+      filas.forEach(f => hoja.addRow(columnas.map(c => {
+        const v = c[1](f);
+        return v === undefined ? null : v;
+      })).commit());
+    });
+    hoja.commit();
+    await workbook.commit();
+  } catch (err) {
+    console.error('[talenthub] GET /api/requisiciones/reporte:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.end();
+    }
+  }
+});
+
 // 3. GET /api/requisiciones/:id
 // Obtiene el detalle completo de una requisición y los candidatos vinculados (REF_ROWS) con Fecha de Ingreso y Responsable
 router.get('/api/requisiciones/:id', async (req, res) => {
@@ -1833,6 +2116,9 @@ router.post('/api/parametros/requisiciones', async (req, res) => {
       }
       if (p.Condicion === 'Hora' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(val)) {
         return res.status(400).json({ error: `"${p.Concepto}" debe ser una hora válida (HH:mm).` });
+      }
+      if (p.Condicion === 'Filas' && !(/^\d+$/.test(val) && Number(val) >= 1 && Number(val) <= 1000000)) {
+        return res.status(400).json({ error: `"${p.Concepto}" debe ser un número entero entre 1 y 1.000.000.` });
       }
     }
     const verde = parseInt(valorEnviado('Porcentaje semáforo verde SLA'));

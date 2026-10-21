@@ -1544,6 +1544,9 @@
         <button type="button" class="btn btn-outline" id="btnHeaderParametrosReq" onclick="abrirModalParametrosRequisiciones()" style="display:none;" title="Configurar parámetros de Requisiciones">
           <span>⚙️ Parámetros</span>
         </button>
+        <button type="button" class="btn" id="btnHeaderReporteReq" onclick="abrirModalReporteRequisiciones()" style="display:none; background:var(--success); color:#fff; border:1px solid var(--success); padding:8px 11px; box-shadow:0 2px 6px rgba(0,0,0,0.15);" title="Descargar reporte de Requisiciones (Excel o CSV)" aria-label="Descargar reporte de Requisiciones">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
         <button type="button" class="btn btn-primary" id="btnHeaderNuevaRequisicion" onclick="abrirModalCrearRequisicion()" style="display:none;">
           <span>➕ Nueva Requisición</span>
         </button>
@@ -2504,6 +2507,69 @@
     </div>
   </div>
 
+  <!-- ── MODAL: DESCARGAR REPORTE DE REQUISICIONES ──────────────────────── -->
+  <div class="modal-backdrop" id="modalReporteRequisiciones" style="z-index: 1060;">
+    <div class="modal-box" style="max-width: 520px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; padding:0;">
+      <div class="modal-hdr" style="padding:16px 22px; border-bottom:1.5px solid var(--border); margin-bottom:0; flex-shrink:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <div>
+            <h3 style="color:var(--text); margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+              <span>📥</span> Descargar Reporte
+            </h3>
+            <p style="margin:4px 0 0; font-size:0.82rem; color:var(--text-muted);">
+              Incluye las requisiciones de las regionales y operaciones que tu rol puede ver, según la Fecha Requisición.
+            </p>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:4px 9px;" onclick="cerrarModales()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding:18px 22px; overflow-y:auto; flex:1; margin-bottom:0; display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; flex-direction:column; gap:8px; font-size:0.88rem;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="radio" name="reporteReqModo" value="mes" checked onchange="cambiarModoReporteReq()"> Por mes y año
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="radio" name="reporteReqModo" value="rango" onchange="cambiarModoReporteReq()"> De fecha inicial a fecha final
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="radio" name="reporteReqModo" value="todo" onchange="cambiarModoReporteReq()"> Todo
+          </label>
+        </div>
+
+        <div id="reporteReqBloqueMes" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:140px;">
+            <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Mes</label>
+            <select id="reporteReqMes" class="input-field" onchange="actualizarConteoReporteReq()"></select>
+          </div>
+          <div style="flex:1; min-width:110px;">
+            <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Año</label>
+            <select id="reporteReqAnio" class="input-field" onchange="actualizarConteoReporteReq()"></select>
+          </div>
+        </div>
+
+        <div id="reporteReqBloqueRango" style="display:none; gap:10px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:140px;">
+            <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Fecha inicial</label>
+            <input type="date" id="reporteReqDesde" class="input-field" onchange="actualizarConteoReporteReq()">
+          </div>
+          <div style="flex:1; min-width:140px;">
+            <label class="lbl" style="display:block; font-size:0.78rem; font-weight:600; margin-bottom:4px;">Fecha final</label>
+            <input type="date" id="reporteReqHasta" class="input-field" onchange="actualizarConteoReporteReq()">
+          </div>
+        </div>
+
+        <div id="reporteReqInfo" style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:0.84rem; color:var(--text-muted);">
+          Calculando...
+        </div>
+      </div>
+      <div class="modal-ftr" style="padding:12px 22px; border-top:1px solid var(--border); background:var(--bg-elevated); flex-shrink:0; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
+        <button type="button" class="btn btn-outline" id="btnReporteReqCsv" onclick="descargarReporteRequisiciones('csv')" disabled>📄 Descargar CSV</button>
+        <button type="button" class="btn btn-primary" id="btnReporteReqExcel" onclick="descargarReporteRequisiciones('xlsx')" disabled>📊 Descargar Excel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── MODAL: BUSCAR Y VINCULAR ASPIRANTE A LA REQUISICIÓN ───────────────── -->
   <div class="modal-backdrop" id="modalVincularAspirante" style="z-index: 1050;">
     <div class="modal-box modal-box-lg" style="max-width: 680px;">
@@ -2932,6 +2998,10 @@
       const btnHeaderParametros = document.getElementById('btnHeaderParametrosReq');
       if (btnHeaderParametros) {
         btnHeaderParametros.style.display = (tabName === 'Requisiciones' && _reqCatalogos?.permisos?.puedeEditarParametros) ? 'inline-flex' : 'none';
+      }
+      const btnHeaderReporte = document.getElementById('btnHeaderReporteReq');
+      if (btnHeaderReporte) {
+        btnHeaderReporte.style.display = (tabName === 'Requisiciones') ? 'inline-flex' : 'none';
       }
     }
 
@@ -5117,6 +5187,128 @@
     let _parametrosReqData = [];
     let _rolesDisponibles = [];
 
+    // ── REPORTE DE REQUISICIONES (Excel / CSV) ─────────────────────────────
+    const MESES_REPORTE_REQ = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    let _conteoReporteReqSeq = 0;
+
+    function abrirModalReporteRequisiciones() {
+      const hoy = new Date();
+      const selMes = document.getElementById('reporteReqMes');
+      const selAnio = document.getElementById('reporteReqAnio');
+      selMes.innerHTML = MESES_REPORTE_REQ.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+      const anios = [];
+      for (let a = hoy.getFullYear(); a >= hoy.getFullYear() - 10; a--) anios.push(`<option value="${a}">${a}</option>`);
+      selAnio.innerHTML = anios.join('');
+      // Por defecto: mes y año actuales
+      selMes.value = String(hoy.getMonth() + 1);
+      selAnio.value = String(hoy.getFullYear());
+      const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      document.getElementById('reporteReqDesde').value = ymd(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+      document.getElementById('reporteReqHasta').value = ymd(hoy);
+      document.querySelector('input[name="reporteReqModo"][value="mes"]').checked = true;
+      cambiarModoReporteReq();
+
+      const el = document.getElementById('modalReporteRequisiciones');
+      el.style.display = 'flex';
+      el._backEntry = registrarModalBack(() => cerrarModales());
+    }
+
+    function modoReporteReq() {
+      const r = document.querySelector('input[name="reporteReqModo"]:checked');
+      return r ? r.value : 'mes';
+    }
+
+    function cambiarModoReporteReq() {
+      const modo = modoReporteReq();
+      document.getElementById('reporteReqBloqueMes').style.display = modo === 'mes' ? 'flex' : 'none';
+      document.getElementById('reporteReqBloqueRango').style.display = modo === 'rango' ? 'flex' : 'none';
+      actualizarConteoReporteReq();
+    }
+
+    function paramsReporteReq() {
+      const params = new URLSearchParams({ usuario: CONFIG.usuarioId, modo: modoReporteReq() });
+      if (params.get('modo') === 'mes') {
+        params.set('mes', document.getElementById('reporteReqMes').value);
+        params.set('anio', document.getElementById('reporteReqAnio').value);
+      } else if (params.get('modo') === 'rango') {
+        params.set('desde', document.getElementById('reporteReqDesde').value);
+        params.set('hasta', document.getElementById('reporteReqHasta').value);
+      }
+      return params;
+    }
+
+    async function actualizarConteoReporteReq() {
+      const info = document.getElementById('reporteReqInfo');
+      const btnExcel = document.getElementById('btnReporteReqExcel');
+      const btnCsv = document.getElementById('btnReporteReqCsv');
+      btnExcel.disabled = true;
+      btnCsv.disabled = true;
+      info.style.color = 'var(--text-muted)';
+      info.textContent = 'Calculando cantidad de filas...';
+      const seq = ++_conteoReporteReqSeq;
+
+      try {
+        const res = await fetch(`/talenthub/api/requisiciones/reporte/conteo?${paramsReporteReq().toString()}`);
+        const data = await res.json();
+        if (seq !== _conteoReporteReqSeq) return; // llegó una respuesta de una selección anterior
+        if (!res.ok || !data.ok) {
+          info.style.color = 'var(--danger)';
+          info.textContent = data.error || 'No se pudo calcular el reporte.';
+          return;
+        }
+        const fmt = (n) => Number(n).toLocaleString('es-CO');
+        btnExcel.disabled = !data.permiteExcel;
+        btnCsv.disabled = !data.permiteCsv;
+        if (data.total === 0) {
+          info.textContent = 'No hay requisiciones para el periodo seleccionado.';
+        } else if (data.permiteExcel) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> filas. Puedes descargarlo en Excel o CSV.`;
+        } else if (data.permiteCsv) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> filas. Supera el límite de Excel (${fmt(data.limites.excel)} filas), solo se puede descargar en CSV.`;
+        } else {
+          info.style.color = 'var(--danger)';
+          info.innerHTML = `<strong>${fmt(data.total)}</strong> filas. Supera el máximo permitido (${fmt(data.limites.csv)} filas). Elige un periodo más corto.`;
+        }
+      } catch (err) {
+        if (seq !== _conteoReporteReqSeq) return;
+        info.style.color = 'var(--danger)';
+        info.textContent = 'Error de red al calcular el reporte.';
+      }
+    }
+
+    async function descargarReporteRequisiciones(formato) {
+      const btn = document.getElementById(formato === 'csv' ? 'btnReporteReqCsv' : 'btnReporteReqExcel');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        const params = paramsReporteReq();
+        params.set('formato', formato);
+        const res = await fetch(`/talenthub/api/requisiciones/reporte?${params.toString()}`);
+        if (!res.ok) {
+          let msg = 'No se pudo generar el reporte.';
+          try { msg = (await res.json()).error || msg; } catch {}
+          throw new Error(msg);
+        }
+        const blob = await res.blob();
+        const disp = res.headers.get('Content-Disposition') || '';
+        const match = disp.match(/filename="([^"]+)"/);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = match ? match[1] : `Requisiciones.${formato}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+        showToast('Reporte descargado.', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.innerHTML = textoOriginal;
+        btn.disabled = false;
+      }
+    }
+
     async function abrirModalParametrosRequisiciones() {
       const body = document.getElementById('bodyParametrosRequisiciones');
       if (body) {
@@ -5209,6 +5401,14 @@
                 <span style="font-weight:700; color:var(--text-muted);">%</span>
               </div>
               <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Porcentaje mínimo de aspirantes contratados en tiempo</small>
+            </div>
+          `;
+        } else if (condicion === 'Filas') {
+          html += `
+            <div style="margin-top:8px; max-width:200px;">
+              <input type="number" class="input-field" min="1" max="1000000" step="1" value="${esc(parametroVal)}"
+                     onchange="actualizarNumeroParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
+              <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Máximo de filas permitidas en el reporte</small>
             </div>
           `;
         } else if (condicion === 'Hora') {
@@ -6552,6 +6752,7 @@
       cerrarModalConBack(document.getElementById('modalFormRequisicion'));
       cerrarModalConBack(document.getElementById('modalVincularAspirante'));
       cerrarModalConBack(document.getElementById('modalParametrosRequisiciones'));
+      cerrarModalConBack(document.getElementById('modalReporteRequisiciones'));
       cerrarModalConBack(document.getElementById('modalFichaAspirante'));
     }
 
