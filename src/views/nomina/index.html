@@ -188,6 +188,13 @@
 
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: .9rem; }
   .contador-resultados { font-size: .8rem; color: var(--text-muted); margin-bottom: 10px; }
+  .barra-descarga { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .barra-descarga .contador-resultados { margin-bottom: 0; }
+  .descarga-botones { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn-descarga { background: var(--bg-elevated); border: 1.5px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; font-size: .8rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-descarga:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .btn-descarga:disabled { opacity: .45; cursor: not-allowed; }
+  .descarga-aviso { font-size: .75rem; color: var(--text-muted); }
 
   /* Incapacidades: conservar la misma interfaz que Gestión Médica de SST. */
   #panelIncapacidades .tab-header {
@@ -1228,7 +1235,14 @@
       </div>
 
       <div class="card">
-        <div class="contador-resultados" id="actContador"></div>
+        <div class="barra-descarga">
+          <div class="contador-resultados" id="actContador"></div>
+          <div class="descarga-botones">
+            <span class="descarga-aviso" id="actDescargaAviso"></span>
+            <button type="button" class="btn-descarga" id="btnActDescargarXlsx" onclick="descargarReporteActivos('xlsx')" disabled>&#11015; Excel</button>
+            <button type="button" class="btn-descarga" id="btnActDescargarCsv" onclick="descargarReporteActivos('csv')" disabled>&#11015; CSV</button>
+          </div>
+        </div>
         <div class="table-container">
           <table class="retiros-table" id="activosTable">
             <thead>
@@ -3659,10 +3673,63 @@
       if (!resp.ok) { alert('Error: ' + (data.error || 'No se pudo cargar la información')); return; }
       _activosState.allData = data.results || [];
       _activosState.counts  = data.counts || { regionales: {}, operaciones: {} };
+      _activosState.descarga = data.descarga || null;
       _activosState.cargado = true;
       updateFilterOptionsWithCountsActivos();
       sortAndRenderActivos();
+      actualizarBotonesDescargaActivos();
     } catch { alert('Error de conexión al cargar los activos.'); }
+  }
+
+  // ── Descarga del reporte de Activos (mismos filtros y alcance de la tabla) ──
+  // Excel hasta "Máximo de filas para descargar en Excel"; si pasa, solo CSV
+  // hasta "Máximo de filas para descargar en CSV" (Config_Parametros, nomina / Activos).
+  function actualizarBotonesDescargaActivos() {
+    const d = _activosState.descarga;
+    const btnX = document.getElementById('btnActDescargarXlsx');
+    const btnC = document.getElementById('btnActDescargarCsv');
+    const aviso = document.getElementById('actDescargaAviso');
+    if (!d) { btnX.disabled = true; btnC.disabled = true; aviso.textContent = ''; return; }
+    const fmt = n => Number(n).toLocaleString('es-CO');
+    btnX.disabled = d.total === 0 || d.total > d.maxExcel;
+    btnC.disabled = d.total === 0 || d.total > d.maxCsv;
+    btnX.title = d.total > d.maxExcel ? `Excel permite hasta ${fmt(d.maxExcel)} filas` : `Descargar ${fmt(d.total)} fila(s) en Excel`;
+    btnC.title = d.total > d.maxCsv ? `El máximo es ${fmt(d.maxCsv)} filas` : `Descargar ${fmt(d.total)} fila(s) en CSV`;
+    aviso.textContent = d.total > d.maxCsv
+      ? `Más de ${fmt(d.maxCsv)} filas: aplique filtros para descargar`
+      : (d.total > d.maxExcel ? `Más de ${fmt(d.maxExcel)} filas: solo CSV` : '');
+  }
+
+  async function descargarReporteActivos(formato) {
+    const params = new URLSearchParams({ usuario, formato });
+    if (actFilterRegional.value) params.set('regional', actFilterRegional.value);
+    if (actFilterOperacion.value) params.set('operacion', actFilterOperacion.value);
+    if (actFilterIdentificacion.value.trim()) params.set('busqueda', actFilterIdentificacion.value.trim());
+    const btn = document.getElementById(formato === 'xlsx' ? 'btnActDescargarXlsx' : 'btnActDescargarCsv');
+    const textoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Generando…';
+    try {
+      const resp = await fetch('/nomina/api/activos/descargar?' + params.toString());
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        alert(err.error || 'No se pudo generar el reporte.');
+        return;
+      }
+      const blob = await resp.blob();
+      const disp = resp.headers.get('Content-Disposition') || '';
+      const nombre = (disp.match(/filename="([^"]+)"/) || [])[1] || `Activos.${formato}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = nombre;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch {
+      alert('Error de conexión al descargar el reporte.');
+    } finally {
+      btn.innerHTML = textoOriginal;
+      actualizarBotonesDescargaActivos();
+    }
   }
 
   function sortAndRenderActivos() {
@@ -3705,7 +3772,10 @@
   function renderTableActivos() {
     const body = document.getElementById('activosBody');
     body.innerHTML = '';
-    document.getElementById('actContador').textContent = `${_activosState.allData.length} registro(s)`;
+    const totalAct = _activosState.descarga ? _activosState.descarga.total : _activosState.allData.length;
+    document.getElementById('actContador').textContent = totalAct > _activosState.allData.length
+      ? `Mostrando ${_activosState.allData.length} de ${totalAct.toLocaleString('es-CO')} registro(s) — el reporte descargado incluye todos`
+      : `${_activosState.allData.length} registro(s)`;
     document.getElementById('actEmptyState').style.display = _activosState.allData.length ? 'none' : 'block';
     const ROLES_CONFIRMAN_ESTADO = ['Coordinador', 'CoordinadorR', 'Auxiliar', 'AuxiliarR'];
     _activosState.allData.forEach(row => {

@@ -12,6 +12,7 @@ const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/e
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
 const { obtenerPermisosTraslados } = require('../services/configTraslados');
+const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
 const {
   buscarTrabajadorCesantias,
   buscarColaboradoresCesantias,
@@ -486,6 +487,83 @@ router.get('/api/retiros', async (req, res) => {
   }
 });
 
+// ── Activos: filtros compartidos (tabla y descarga) ────────────────────────
+// Seguridad: solo las operaciones que el usuario ve según Maestro_Menu_Nomina
+// (Sección 'Activo'). Filtros: los mismos que aplica en pantalla.
+function construirFiltrosActivos(acceso, { regional, operacion, busqueda }) {
+  const securityConds  = ["v.Estado = 'Activo'"];
+  const securityParams = [];
+  if (!acceso.sinFiltro) {
+    if (!acceso.operacionesFiltro.length) return null; // sin operaciones → sin datos
+    const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+    securityConds.push(`v.\`Operación\` IN (${ph})`);
+    securityParams.push(...acceso.operacionesFiltro);
+  }
+  const fReg = regional  ? { cond: 'v.`Regional` = ?',  param: regional }  : null;
+  const fOp  = operacion ? { cond: 'v.`Operación` = ?', param: operacion } : null;
+  const fBus = filtroBusqueda(busqueda);
+  const buildWhere = (filtersList) => {
+    const c = [...securityConds];
+    const p = [...securityParams];
+    filtersList.forEach(f => { if (f) { c.push(f.cond); p.push(...(f.params || [f.param])); } });
+    return { where: c.length ? `WHERE ${c.join(' AND ')}` : '', params: p };
+  };
+  return { fReg, fOp, fBus, buildWhere, todos: buildWhere([fReg, fOp, fBus]) };
+}
+
+// Límites de descarga (Config_Parametros, nomina / Activos). Sin la fila → valores por defecto.
+const LIMITES_DESCARGA_DEFECTO = { maxExcel: 10000, maxCsv: 100000 };
+async function obtenerLimitesDescargaActivos() {
+  const limites = { ...LIMITES_DESCARGA_DEFECTO };
+  try {
+    const [rows] = await pool.execute(
+      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'nomina' AND Seccion = 'Activos' AND Concepto IN (?, ?)",
+      ['Máximo de filas para descargar en Excel', 'Máximo de filas para descargar en CSV']
+    );
+    rows.forEach(r => {
+      const n = parseInt(r.Parametro, 10);
+      if (!(n > 0)) return;
+      if (r.Concepto === 'Máximo de filas para descargar en Excel') limites.maxExcel = n;
+      if (r.Concepto === 'Máximo de filas para descargar en CSV') limites.maxCsv = n;
+    });
+  } catch (err) {
+    console.error('[nomina] No se pudieron leer los límites de descarga de Activos:', err.message);
+  }
+  return limites;
+}
+
+// Columnas del reporte de Activos
+const COLUMNAS_REPORTE_ACTIVOS = [
+  { titulo: 'Identificación',      campo: 'Identificacion',     tipo: 'numero', ancho: 16 },
+  { titulo: 'Trabajador',          campo: 'Trabajador',         tipo: 'texto',  ancho: 38 },
+  { titulo: 'Cargo',               campo: 'Cargo',              tipo: 'texto',  ancho: 32 },
+  { titulo: 'Regional',            campo: 'Regional',           tipo: 'texto',  ancho: 16 },
+  { titulo: 'Operación',           campo: 'Operacion',          tipo: 'texto',  ancho: 24 },
+  { titulo: 'Fecha de Ingreso',    campo: 'FechaIngreso',       tipo: 'fecha',  ancho: 15 },
+  { titulo: 'Usuario',             campo: 'Usuario',            tipo: 'texto',  ancho: 24 },
+  { titulo: 'Fecha Actualización', campo: 'FechaActualizacion', tipo: 'fechaHora', ancho: 19 },
+  { titulo: 'Id Vinculación',      campo: 'IdVinculacion',      tipo: 'texto',  ancho: 38 },
+];
+
+const SELECT_REPORTE_ACTIVOS = `
+  SELECT
+    v.\`Identificación\`      AS Identificacion,
+    v.\`Trabajador\`          AS Trabajador,
+    v.\`Cargo\`               AS Cargo,
+    v.\`Regional\`            AS Regional,
+    v.\`Operación\`           AS Operacion,
+    v.\`Fecha de Ingreso\`    AS FechaIngreso,
+    v.\`Usuario\`             AS Usuario,
+    v.\`Fecha Actualización\` AS FechaActualizacion,
+    v.\`Id Vinculación\`      AS IdVinculacion
+  FROM \`Maestro_Vinculación\` v`;
+
+// "Identificación ** NOMBRE" → "NOMBRE"
+function nombreSinIdentificacion(trabajador) {
+  const partes = String(trabajador || '').split(' ** ');
+  return (partes.length > 1 ? partes[1] : trabajador || '').trim();
+}
+
 // ── GET /api/activos ─────────────────────────────────────────────────────
 router.get('/api/activos', async (req, res) => {
   try {
@@ -495,30 +573,13 @@ router.get('/api/activos', async (req, res) => {
     const acceso = await computarAccesoNomina(usuario, 'Activo');
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const securityConds  = ["v.Estado = 'Activo'"];
-    const securityParams = [];
-
-    if (!acceso.sinFiltro) {
-      if (!acceso.operacionesFiltro.length) {
-        return res.json({ results: [], counts: { regionales: {}, operaciones: {} } });
-      }
-      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      securityConds.push(`v.\`Operación\` IN (${ph})`);
-      securityParams.push(...acceso.operacionesFiltro);
+    const limites = await obtenerLimitesDescargaActivos();
+    const filtros = construirFiltrosActivos(acceso, { regional, operacion, busqueda });
+    if (!filtros) {
+      return res.json({ results: [], counts: { regionales: {}, operaciones: {} }, descarga: { total: 0, ...limites } });
     }
+    const { fReg, fOp, fBus, buildWhere, todos: listFilter } = filtros;
 
-    const fReg = regional  ? { cond: 'v.`Regional` = ?',  param: regional }  : null;
-    const fOp  = operacion ? { cond: 'v.`Operación` = ?', param: operacion } : null;
-    const fBus = filtroBusqueda(busqueda);
-
-    const buildWhere = (filtersList) => {
-      const c = [...securityConds];
-      const p = [...securityParams];
-      filtersList.forEach(f => { if (f) { c.push(f.cond); p.push(...(f.params || [f.param])); } });
-      return { where: c.length ? `WHERE ${c.join(' AND ')}` : '', params: p };
-    };
-
-    const listFilter = buildWhere([fReg, fOp, fBus]);
     const listQuery = `
       SELECT
         v.\`Id Vinculación\`     AS IdVinculacion,
@@ -539,10 +600,11 @@ router.get('/api/activos', async (req, res) => {
     const cReg = buildWhere([fOp, fBus]);
     const cOp  = buildWhere([fReg, fBus]);
 
-    const [[results], [regRows], [opRows]] = await Promise.all([
+    const [[results], [regRows], [opRows], [totRows]] = await Promise.all([
       pool.execute(listQuery, listFilter.params),
       pool.execute(`SELECT v.\`Regional\` AS Regional, COUNT(*) as total FROM \`Maestro_Vinculación\` v ${cReg.where} GROUP BY v.\`Regional\``, cReg.params),
       pool.execute(`SELECT v.\`Operación\` AS Operacion, COUNT(*) as total FROM \`Maestro_Vinculación\` v ${cOp.where} GROUP BY v.\`Operación\``, cOp.params),
+      pool.execute(`SELECT COUNT(*) AS total FROM \`Maestro_Vinculación\` v ${listFilter.where}`, listFilter.params),
     ]);
 
     const regCounts = {};
@@ -553,10 +615,79 @@ router.get('/api/activos', async (req, res) => {
     res.json({
       results,
       counts: { regionales: regCounts, operaciones: opCounts },
+      descarga: { total: Number(totRows[0].total), ...limites },
     });
   } catch (err) {
     console.error('[nomina] GET /api/activos', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/activos/descargar?formato=xlsx|csv ─────────────────────────────
+// Mismo alcance y filtros que la tabla. Excel hasta "Máximo de filas para
+// descargar en Excel"; CSV (generado fila por fila) hasta "Máximo de filas
+// para descargar en CSV".
+router.get('/api/activos/descargar', async (req, res) => {
+  try {
+    const { usuario, regional, operacion, busqueda } = req.query;
+    const formato = String(req.query.formato || 'xlsx').toLowerCase();
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!['xlsx', 'csv'].includes(formato)) return res.status(400).json({ error: 'Formato no válido. Use xlsx o csv.' });
+
+    const acceso = await computarAccesoNomina(usuario, 'Activo');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const limites = await obtenerLimitesDescargaActivos();
+    const filtros = construirFiltrosActivos(acceso, { regional, operacion, busqueda });
+    const where = filtros ? filtros.todos : null;
+
+    let total = 0;
+    if (where) {
+      const [[{ total: t }]] = await pool.execute(`SELECT COUNT(*) AS total FROM \`Maestro_Vinculación\` v ${where.where}`, where.params);
+      total = Number(t);
+    }
+    if (formato === 'xlsx' && total > limites.maxExcel) {
+      return res.status(413).json({ error: `El reporte tiene ${total.toLocaleString('es-CO')} filas y Excel permite hasta ${limites.maxExcel.toLocaleString('es-CO')}. Descárguelo en CSV o aplique filtros.` });
+    }
+    if (total > limites.maxCsv) {
+      return res.status(413).json({ error: `El reporte tiene ${total.toLocaleString('es-CO')} filas y el máximo es ${limites.maxCsv.toLocaleString('es-CO')}. Aplique filtros (regional u operación) para reducirlo.` });
+    }
+
+    const sql = where ? `${SELECT_REPORTE_ACTIVOS} ${where.where} ORDER BY v.\`Regional\`, v.\`Operación\`, v.\`Trabajador\`` : null;
+    const prepararFila = fila => ({ ...fila, Trabajador: nombreSinIdentificacion(fila.Trabajador) });
+
+    if (formato === 'xlsx') {
+      const [rows] = sql ? await pool.execute(sql, where.params) : [[]];
+      const buffer = generarXlsx({ hoja: 'Activos', columnas: COLUMNAS_REPORTE_ACTIVOS, filas: rows.map(prepararFila) });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo('Activos', 'xlsx')}"`);
+      return res.send(buffer);
+    }
+
+    // CSV fila por fila (no carga todo el resultado en memoria)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo('Activos', 'csv')}"`);
+    res.write(encabezadoCsv(COLUMNAS_REPORTE_ACTIVOS));
+    if (!sql) return res.end();
+
+    const stream = pool.pool.query(sql, where.params).stream({ highWaterMark: 500 });
+    let cancelado = false;
+    req.on('close', () => { if (!res.writableEnded) { cancelado = true; stream.destroy(); } });
+    stream.on('data', fila => {
+      if (!res.write(filaCsv(COLUMNAS_REPORTE_ACTIVOS, prepararFila(fila)))) {
+        stream.pause();
+        res.once('drain', () => stream.resume());
+      }
+    });
+    stream.on('end', () => res.end());
+    stream.on('error', err => {
+      if (!cancelado) console.error('[nomina] Error generando CSV de Activos:', err.message);
+      res.end();
+    });
+  } catch (err) {
+    console.error('[nomina] GET /api/activos/descargar', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.end();
   }
 });
 
