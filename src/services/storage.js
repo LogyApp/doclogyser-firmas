@@ -235,7 +235,9 @@ async function subirCertificadoBancario(identificacion, formattedDate, buffer, o
 async function subirPDFActa(identificacion, prefijo, idActa, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.${prefijo}.${idActa}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
-  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  // Sin caché: el PDF de un acta puede reemplazarse (p. ej. al firmarse un acta "sin firma")
+  // y la URL pública debe mostrar de inmediato la versión nueva.
+  await file.save(bufferPdf, { contentType: 'application/pdf', metadata: { cacheControl: 'no-cache, max-age=0' } });
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 

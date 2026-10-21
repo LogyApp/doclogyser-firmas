@@ -18,6 +18,7 @@ const {
   construirDatosPlantilla,
   resolverTipoDocumentoActa,
   registrarDocumentoTrabajadorActa,
+  actaAdmiteFirma,
 } = require('../services/actas');
 const {
   construirDatosPlantillaCasoMedico,
@@ -212,7 +213,9 @@ router.post('/:proceso/:id', async (req, res) => {
     }
 
     if (proc === 'acta_entrega') {
-      if (t.Estado !== 'Pendiente') {
+      // Pendiente, o cerrada "sin firma" con firma solicitada nuevamente: en ese caso el PDF
+      // se genera en la misma ruta del bucket y reemplaza al anterior.
+      if (!actaAdmiteFirma(t)) {
         return res.status(409).json({ ok: false, error: 'El acta no está disponible para firma' });
       }
 
@@ -241,7 +244,14 @@ router.post('/:proceso/:id', async (req, res) => {
         [urlFirmaActa, urlActa, id]
       );
 
-      await registrarDocumentoTrabajadorActa({ acta: t, tipoDocumento, prefijo, urlActa });
+      // Si el acta ya tenía PDF "sin firma", el documento ya está registrado con la misma URL.
+      const [[docExistente]] = await pool.execute(
+        'SELECT id FROM Maestro_docTrabajador WHERE Doc = ? LIMIT 1',
+        [urlActa]
+      );
+      if (!docExistente) {
+        await registrarDocumentoTrabajadorActa({ acta: t, tipoDocumento, prefijo, urlActa });
+      }
 
       return res.json({ ok: true, url_doc: urlActa });
     }
