@@ -8,6 +8,15 @@ const {
   obtenerMotivosCesantias,
   obtenerLimitesCesantias,
 } = require('../services/cesantiasService');
+const {
+  obtenerLimitesInspeccion,
+  obtenerResumenPlantillasInspeccion,
+  obtenerPlantillaInspeccion,
+  listarInspeccionesColaborador,
+  calcularEstadisticasMesColaborador,
+  crearInspeccionVehiculo,
+  generarFormatoBlancoPDF,
+} = require('../services/inspeccionesVehiculoService');
 
 const router = express.Router();
 const HTML_INDEX_PATH = path.join(__dirname, '../views/empleado/index.html');
@@ -164,6 +173,31 @@ async function obtenerDatosPortalPorVinculacion(idVinculacion) {
     errorCesantiasForm = err.message;
   }
 
+  // Firma registrada del colaborador (para cesantías e inspecciones)
+  let firmaUrl = datosCesantiasForm ? datosCesantiasForm.firmaUrl : null;
+  if (!firmaUrl) {
+    try {
+      const [fRows] = await pool.execute(
+        `SELECT Doc FROM Maestro_docTrabajador
+         WHERE Identificacion = ? AND TipoDocumento = '22'
+         ORDER BY Fecha DESC LIMIT 1`,
+        [identificacion]
+      );
+      if (fRows.length && fRows[0].Doc) {
+        firmaUrl = construirUrlTalenthub(fRows[0].Doc);
+      }
+    } catch (_) { /* ignorar error de firma opcional */ }
+  }
+
+  // Consultar estadísticas e historial de inspecciones preoperacionales del colaborador
+  const [inspeccionesStats, inspeccionesRecientes, limitesInspeccion] = await Promise.all([
+    calcularEstadisticasMesColaborador(identificacion).catch(() => ({
+      totalMonth: 0, aptoCount: 0, novedadCount: 0, noAptoCount: 0, uniqueVehicles: 0,
+    })),
+    listarInspeccionesColaborador(identificacion, 30).catch(() => []),
+    obtenerLimitesInspeccion().catch(() => ({ maxFotos: 4 })),
+  ]);
+
   return {
     idVinculacion: vin.idVinculacion,
     identificacion,
@@ -175,6 +209,7 @@ async function obtenerDatosPortalPorVinculacion(idVinculacion) {
     estado: vin.estado || seg.Estado || '—',
     fechaIngreso: vin.fechaIngreso || null,
     fechaRetiro: vin.fechaRetiro || null,
+    firmaUrl: firmaUrl || null,
     datosPersonales: {
       trabajador: vin.trabajador || seg.Trabajador || '',
       operacion: seg.Operacion || vin.operacion || '',
@@ -198,6 +233,12 @@ async function obtenerDatosPortalPorVinculacion(idVinculacion) {
     solicitudesCesantias,
     datosCesantiasForm,
     errorCesantiasForm,
+    inspecciones: {
+      stats: inspeccionesStats,
+      recent: inspeccionesRecientes,
+      templates: obtenerResumenPlantillasInspeccion(),
+      maxFotos: limitesInspeccion.maxFotos || 4,
+    },
   };
 }
 
@@ -263,6 +304,60 @@ router.get('/api/datos', async (req, res) => {
   }
 });
 
+// ── API Inspecciones: Obtener plantilla completa por tipo/subtipo ─────────────
+router.get('/api/inspecciones/plantilla', (req, res) => {
+  try {
+    const { type, subtype } = req.query;
+    const template = obtenerPlantillaInspeccion(type, subtype);
+    res.json({ ok: true, template });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || 'Plantilla no encontrada.' });
+  }
+});
+
+// ── API Inspecciones: Descargar formato en blanco en PDF ─────────────────────
+router.get('/api/inspecciones/formato-blanco', async (req, res) => {
+  try {
+    const { type, subtype } = req.query;
+    const { buffer, filename } = await generarFormatoBlancoPDF(type, subtype);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error('[empleado] Error generando formato en blanco de inspección:', err);
+    res.status(400).json({ ok: false, error: err.message || 'No se pudo generar el formato en blanco.' });
+  }
+});
+
+// ── API Inspecciones: Guardar inspección preoperacional y generar PDF ─────────
+router.post('/api/inspecciones/guardar', async (req, res) => {
+  try {
+    const { idVinculacion } = req.body || {};
+    if (!idVinculacion) {
+      return res.status(400).json({ ok: false, error: 'Falta el Id de Vinculación del colaborador.' });
+    }
+
+    const portalData = await obtenerDatosPortalPorVinculacion(idVinculacion);
+    if (!portalData) {
+      return res.status(404).json({ ok: false, error: 'No se encontró la vinculación del colaborador.' });
+    }
+
+    const resultado = await crearInspeccionVehiculo(req.body, {
+      idVinculacion: portalData.idVinculacion,
+      identificacion: portalData.identificacion,
+      nombre: portalData.nombre,
+      cargo: portalData.cargo,
+      regional: portalData.regional,
+      operacion: portalData.operacion,
+    });
+
+    res.json(resultado);
+  } catch (err) {
+    console.error('[empleado] Error guardando inspección de vehículo:', err);
+    res.status(400).json({ ok: false, error: err.message || 'Error al registrar la inspección.' });
+  }
+});
+
 // ── Vista Principal: /empleado y /empleado/:tab ──────────────────────────────
 router.get(['/', '/:tab'], async (req, res, next) => {
   try {
@@ -272,7 +367,7 @@ router.get(['/', '/:tab'], async (req, res, next) => {
       return next();
     }
 
-    const tabsValidas = ['inicio', 'cesantias', 'actualizardatos'];
+    const tabsValidas = ['inicio', 'cesantias', 'actualizardatos', 'inspecciones'];
     const tabInicial = tabsValidas.includes(tabParam)
       ? tabParam
       : (tabsValidas.includes(String(req.query.tab || '').toLowerCase()) ? String(req.query.tab).toLowerCase() : 'inicio');

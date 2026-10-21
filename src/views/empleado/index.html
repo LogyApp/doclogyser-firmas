@@ -220,6 +220,9 @@
       align-items: center;
       gap: 6px;
       padding: 6px 14px;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: background 0.18s ease, transform 0.12s ease;
       flex-shrink: 0;
     }
 
@@ -1239,6 +1242,367 @@
     .toast.error   { background: var(--danger); }
     .toast.info    { background: var(--info); }
 
+    .brand-lockup:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .brand-lockup:active {
+      transform: scale(0.98);
+    }
+
+    .mobile-logo-app {
+      cursor: pointer;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       PESTAÑA 4: INSPECCIONES PREOPERACIONALES DE VEHÍCULOS
+    ══════════════════════════════════════════════════════════ */
+    .ins-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .ins-kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ins-kpi-card.kpi-success { border-top-color: var(--success); }
+    .ins-kpi-card.kpi-warning { border-top-color: var(--warning); }
+    .ins-kpi-card.kpi-info    { border-top-color: var(--info); }
+
+    .ins-kpi-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .ins-kpi-value {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.1;
+    }
+
+    .ins-kpi-sub {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .ins-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .ins-equip-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition);
+    }
+
+    .ins-equip-card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+
+    .ins-equip-img-wrap {
+      height: 150px;
+      background: linear-gradient(180deg, rgba(10, 49, 93, 0.05) 0%, rgba(245, 84, 0, 0.06) 100%);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      position: relative;
+    }
+
+    .ins-equip-img-wrap img {
+      max-height: 126px;
+      max-width: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.12));
+    }
+
+    .ins-equip-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .ins-equip-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .ins-equip-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .ins-equip-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .ins-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .ins-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 680px;
+    }
+
+    .ins-table th {
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .ins-table td {
+      padding: 12px;
+      font-size: 0.85rem;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .ins-table tr:hover td {
+      background: var(--bg);
+    }
+
+    /* Modal de Inspección Preoperacional */
+    .ins-modal-dialog {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 960px;
+      max-height: 92vh;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .ins-section-box {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      margin-bottom: 14px;
+      background: var(--card-bg);
+    }
+
+    .ins-section-header {
+      background: var(--primary);
+      color: #ffffff;
+      padding: 9px 14px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ins-item-row {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .ins-item-row:last-child {
+      border-bottom: none;
+    }
+
+    .ins-item-row.state-nc {
+      background: var(--danger-soft);
+    }
+
+    .ins-item-row.state-c {
+      background: rgba(22, 163, 74, 0.04);
+    }
+
+    .ins-item-text {
+      font-size: 0.87rem;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .ins-crit-pill {
+      background: var(--danger-soft);
+      color: var(--danger-dark);
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      font-size: 0.66rem;
+      font-weight: 800;
+      padding: 1px 7px;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    .ins-choice-group {
+      display: inline-flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .ins-choice-btn {
+      min-width: 46px;
+      height: 36px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border-strong);
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .ins-choice-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .ins-choice-btn.active-c {
+      background: var(--success);
+      border-color: var(--success);
+      color: #ffffff;
+    }
+
+    .ins-choice-btn.active-nc {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #ffffff;
+    }
+
+    .ins-choice-btn.active-na {
+      background: #475569;
+      border-color: #475569;
+      color: #ffffff;
+    }
+
+    .ins-item-obs-wrap {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+    }
+
+    .ins-item-obs-input {
+      width: 100%;
+      height: 34px;
+      padding: 0 10px;
+      font-family: inherit;
+      font-size: 0.8rem;
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text);
+    }
+
+    .ins-photos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .ins-photo-thumb {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      height: 96px;
+      background: var(--bg);
+    }
+
+    .ins-photo-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .ins-photo-remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(220, 38, 38, 0.9);
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (max-width: 640px) {
+      .ins-item-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .ins-choice-group {
+        width: 100%;
+      }
+      .ins-choice-btn {
+        flex: 1;
+      }
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(4px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -1373,19 +1737,19 @@
     <header class="mobile-header">
       <div class="mobile-header-left">
         <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir menú">☰</button>
-        <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp" role="button" tabindex="0" title="Ir a Mi Resumen · recargar datos" onclick="volverAlInicioPortal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();volverAlInicioPortal();}">
       </div>
       <div class="mobile-title"><span id="mobileHeaderTitle">Mi Portal — Inicio</span></div>
       <div class="mobile-header-right">
         <button type="button" class="mobile-icon-btn" onclick="alternarTemaPortal()" title="Cambiar tema Claro / Oscuro">🌓</button>
-        <button type="button" class="mobile-icon-btn" onclick="cerrarSesionPortal()" title="Salir o cambiar documento">🚪</button>
+        <button type="button" class="mobile-icon-btn" onclick="cerrarSesionPortal()" title="Cerrar Sesión">🚪</button>
       </div>
     </header>
 
     <!-- SIDEBAR IZQUIERDO -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
-        <div class="brand-lockup">
+        <div class="brand-lockup" role="button" tabindex="0" title="Ir a Mi Resumen · recargar datos" onclick="volverAlInicioPortal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();volverAlInicioPortal();}">
           <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
           <div class="brand-divider"></div>
           <div class="brand-logo-company-crop">
@@ -1438,10 +1802,22 @@
           </div>
           <span>Actualizar Datos</span>
         </li>
+
+        <li class="nav-item" data-tab="inspecciones" onclick="switchTab('inspecciones')">
+          <div class="nav-icon" title="Inspecciones de Vehículo">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-5h14v5z"/>
+              <circle cx="7.5" cy="14.5" r="1.5"/>
+              <circle cx="16.5" cy="14.5" r="1.5"/>
+            </svg>
+          </div>
+          <span>Inspecciones Vehículo</span>
+          <span class="nav-badge" id="nav-badge-inspecciones" style="display: none;">0</span>
+        </li>
       </ul>
 
-      <div class="sidebar-footer">
-        <button type="button" class="sidebar-btn" onclick="recargarDatosPortal()">
+      <div class="sidebar-footer" id="sidebar-footer-wrap">
+        <button type="button" class="sidebar-btn" onclick="recargarDatosPortal()" style="display:none;">
           <span id="icon-refresh-portal">🔄</span>
           <span>Actualizar datos</span>
         </button>
@@ -1451,7 +1827,7 @@
         </button>
         <button type="button" class="sidebar-btn sidebar-btn-logout" onclick="cerrarSesionPortal()">
           <span>🚪</span>
-          <span>Cambiar documento</span>
+          <span>Cerrar Sesión</span>
         </button>
       </div>
     </aside>
@@ -1529,6 +1905,29 @@
             </div>
             <div class="service-card-footer">
               <span>Actualizar mi información</span>
+              <span>→</span>
+            </div>
+          </div>
+
+          <div class="service-card" onclick="switchTab('inspecciones')">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div class="service-icon-box">🚗</div>
+                <span class="badge badge-info" id="card-inspecciones-status-pill">Preoperacional</span>
+              </div>
+              <div class="service-card-title">Inspecciones Vehículo</div>
+              <div class="service-card-desc">
+                Realiza la inspección preoperacional de vehículos, camiones, montacargas eléctricas o transpaletas y descarga tu PDF.
+              </div>
+            </div>
+            <div class="service-card-footer">
+              <span>Ir a Inspecciones</span>
+              <span>(→)</span>
+            </div>
+          </div>
+          <div style="display:none;">
+            <div>
+              <span>Oculto</span>
               <span>→</span>
             </div>
           </div>
@@ -2031,7 +2430,444 @@
         </div>
       </section>
 
+      <!-- ──────────────────────────────────────────────────────────
+           PESTAÑA 4: INSPECCIONES DE VEHÍCULO Y EQUIPOS
+      ────────────────────────────────────────────────────────── -->
+      <section class="tab-pane" id="pane-inspecciones">
+        <div class="tab-header">
+          <div class="tab-header-left">
+            <h1 class="tab-title">
+              <span>🚗 Inspecciones Preoperacionales</span>
+            </h1>
+            <p class="tab-subtitle">Selecciona el vehículo o equipo a inspeccionar, registra hallazgos y descarga el formato firmado en PDF</p>
+          </div>
+          <div class="tab-actions">
+            <button type="button" class="btn btn-secondary" onclick="abrirModalFormatosBlanco()">
+              <span>📄</span> Formatos en blanco
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="abrirModalInstructivoInspeccion()">
+              <span>📘</span> Instructivo y apoyo
+            </button>
+          </div>
+        </div>
+
+        <!-- Banner de última inspección registrada -->
+        <div id="ins-last-result-banner" class="alert-box alert-success" style="display: none; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span style="font-size:1.35rem;">✅</span>
+            <div>
+              <strong id="ins-last-result-title" style="display:block;">Inspección registrada con éxito</strong>
+              <span id="ins-last-result-sub" style="font-size:0.82rem;">El documento PDF oficial fue generado y almacenado.</span>
+            </div>
+          </div>
+          <a id="ins-last-result-pdf" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+            📄 Ver / Descargar PDF ↗
+          </a>
+        </div>
+
+        <!-- Tarjetas de Selección de Equipo / Vehículo -->
+        <div class="ins-cards-grid">
+          <!-- Tarjeta 1: Vehículo (Carro / Moto / Camioneta) -->
+          <div class="ins-equip-card">
+            <div class="ins-equip-img-wrap">
+              <span class="ins-equip-badge">Automotor</span>
+              <img src="/img/inspecciones/vehiculo.png" alt="Vehículo">
+            </div>
+            <div class="ins-equip-body">
+              <div>
+                <div class="ins-equip-title">Vehículo</div>
+                <div class="ins-equip-desc">Inspección preoperacional para automóvil, motocicleta o camioneta asignada a la operación.</div>
+                <div class="form-group" style="margin-top:10px;">
+                  <label class="form-label" for="sel-subtipo-vehiculo" style="font-size:0.76rem;">Tipo de vehículo:</label>
+                  <select id="sel-subtipo-vehiculo" class="form-control" style="height:36px; font-size:0.84rem;">
+                    <option value="carro">Carro / Automóvil</option>
+                    <option value="moto">Motocicleta</option>
+                    <option value="camioneta">Camioneta</option>
+                  </select>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary" style="width:100%;" onclick="abrirModalInspeccion('vehiculo')">
+                Iniciar inspección →
+              </button>
+            </div>
+          </div>
+
+          <!-- Tarjeta 2: Camión -->
+          <div class="ins-equip-card">
+            <div class="ins-equip-img-wrap">
+              <span class="ins-equip-badge">Carga Pesada</span>
+              <img src="/img/inspecciones/camion.png" alt="Camión">
+            </div>
+            <div class="ins-equip-body">
+              <div>
+                <div class="ins-equip-title">Camión</div>
+                <div class="ins-equip-desc">Verificación preoperacional de documentos, cabina, frenos, luces, llantas y equipo de carretera.</div>
+              </div>
+              <button type="button" class="btn btn-primary" style="width:100%;" onclick="abrirModalInspeccion('camion', 'camion')">
+                Iniciar inspección →
+              </button>
+            </div>
+          </div>
+
+          <!-- Tarjeta 3: Montacarga Eléctrica -->
+          <div class="ins-equip-card">
+            <div class="ins-equip-img-wrap">
+              <span class="ins-equip-badge">Izaje y Bodega</span>
+              <img src="/img/inspecciones/montacarga.png" alt="Montacarga Eléctrica">
+            </div>
+            <div class="ins-equip-body">
+              <div>
+                <div class="ins-equip-title">Montacarga Eléctrica</div>
+                <div class="ins-equip-desc">Revisión de horquillas, cadenas, sistema hidráulico, frenos, batería, controles y seguridad.</div>
+              </div>
+              <button type="button" class="btn btn-primary" style="width:100%;" onclick="abrirModalInspeccion('montacarga', 'electrica')">
+                Iniciar inspección →
+              </button>
+            </div>
+          </div>
+
+          <!-- Tarjeta 4: Montacarga Manual / Transpaleta -->
+          <div class="ins-equip-card">
+            <div class="ins-equip-img-wrap">
+              <span class="ins-equip-badge">Equipo Manual</span>
+              <img src="/img/inspecciones/transpaleta.png" alt="Montacarga Manual Transpaleta">
+            </div>
+            <div class="ins-equip-body">
+              <div>
+                <div class="ins-equip-title">Montacarga Manual</div>
+                <div class="ins-equip-desc">Lista de chequeo para estibador / transpaleta manual: estructura, gato hidráulico y ruedas.</div>
+              </div>
+              <button type="button" class="btn btn-primary" style="width:100%;" onclick="abrirModalInspeccion('montacarga', 'transpaleta')">
+                Iniciar inspección →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs de Mis Inspecciones del Mes -->
+        <div class="ins-kpi-grid">
+          <div class="ins-kpi-card">
+            <span class="ins-kpi-label">Mis inspecciones (mes)</span>
+            <span class="ins-kpi-value" id="ins-kpi-total">0</span>
+            <span class="ins-kpi-sub">Registradas en el mes actual</span>
+          </div>
+          <div class="ins-kpi-card kpi-success">
+            <span class="ins-kpi-label">Aptos para operación</span>
+            <span class="ins-kpi-value" id="ins-kpi-aptos">0</span>
+            <span class="ins-kpi-sub">100% cumplimiento sin hallazgos</span>
+          </div>
+          <div class="ins-kpi-card kpi-warning">
+            <span class="ins-kpi-label">Con novedades / No apto</span>
+            <span class="ins-kpi-value" id="ins-kpi-novedades">0</span>
+            <span class="ins-kpi-sub">Con hallazgos reportados</span>
+          </div>
+          <div class="ins-kpi-card kpi-info">
+            <span class="ins-kpi-label">Placas / Equipos</span>
+            <span class="ins-kpi-value" id="ins-kpi-equipos">0</span>
+            <span class="ins-kpi-sub">Unidades distintas inspeccionadas</span>
+          </div>
+        </div>
+
+        <!-- Historial de Mis Inspecciones -->
+        <div class="card">
+          <div class="card-title">
+            <span>📋 Mis Inspecciones Registradas</span>
+            <span class="badge badge-info" id="ins-recent-count">0 registros</span>
+          </div>
+          <div class="ins-table-wrap">
+            <table class="ins-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Radicado</th>
+                  <th>Equipo / Tipo</th>
+                  <th>Placa / N° Interno</th>
+                  <th>Resultado</th>
+                  <th>Puntaje</th>
+                  <th>Formato PDF</th>
+                </tr>
+              </thead>
+              <tbody id="ins-recent-tbody">
+                <tr>
+                  <td colspan="7" style="text-align:center; color:var(--text-muted); padding:24px;">
+                    Aún no registras inspecciones preoperacionales.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
     </main>
+  </div>
+
+  <!-- MODAL DE DILIGENCIAMIENTO DE INSPECCIÓN PREOPERACIONAL -->
+  <div class="tutorial-modal-overlay" id="modalInspeccionOverlay" style="display:none;" onclick="cerrarModalInspeccionSiClickFuera(event)">
+    <div class="ins-modal-dialog" onclick="event.stopPropagation()">
+      <div class="tutorial-modal-header">
+        <div>
+          <h2 id="ins-modal-title" style="font-size:1.1rem; font-weight:800; margin:0;">🚗 Inspección Preoperacional</h2>
+          <span id="ins-modal-progress" style="font-size:0.76rem; opacity:0.9;">0 / 0 ítems calificados</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalInspeccion()">✕ Cerrar</button>
+      </div>
+
+      <div class="tutorial-modal-body" id="ins-modal-body">
+        <form id="form-inspeccion-vehiculo" onsubmit="guardarInspeccionVehiculo(event)">
+          <!-- Resumen de Inspector y Datos del Vehículo/Equipo -->
+          <div class="info-grid" style="margin-bottom:14px;">
+            <div class="info-item">
+              <span class="info-label">Inspector</span>
+              <span class="info-val" id="ins-form-trabajador">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Identificación</span>
+              <span class="info-val" id="ins-form-identificacion">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Cargo</span>
+              <span class="info-val" id="ins-form-cargo">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Operación / Regional</span>
+              <span class="info-val" id="ins-form-operacion">—</span>
+            </div>
+          </div>
+
+          <div class="card" style="padding:16px; margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:12px;">
+              <span>🔧 1. Identificación del Vehículo o Equipo</span>
+            </div>
+            <div class="form-grid form-grid-2">
+              <div class="form-group" id="ins-group-placa">
+                <label class="form-label" for="ins_input_placa">Placa del Vehículo <span class="req" id="ins_req_placa">*</span></label>
+                <input type="text" class="form-control" id="ins_input_placa" placeholder="Ej: ABC123" style="text-transform:uppercase;" oninput="this.value = this.value.toUpperCase()">
+              </div>
+              <div class="form-group" id="ins-group-equipo">
+                <label class="form-label" for="ins_input_equipo">N° Interno / Código del Equipo <span class="req" id="ins_req_equipo" style="display:none;">*</span></label>
+                <input type="text" class="form-control" id="ins_input_equipo" placeholder="Ej: MC-04 / EQ-12">
+              </div>
+              <div class="form-group" id="ins-group-odometro">
+                <label class="form-label" for="ins_input_odometro"><span id="ins_lbl_odometro">Kilometraje / Horómetro Actual</span> <span class="req" id="ins_req_odometro">*</span></label>
+                <input type="text" class="form-control" id="ins_input_odometro" placeholder="Ej: 45230">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="ins_input_reporta">Persona a quien reporta (Jefe / Coordinador / SST)</label>
+                <input type="text" class="form-control" id="ins_input_reporta" placeholder="Obligatorio si marcas algún ítem en NC">
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de Chequeo por Secciones -->
+          <div class="card" style="padding:16px; margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:12px;">
+              <span>📋 2. Lista de Chequeo Preoperacional</span>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="marcarTodosInspeccion('C')">
+                ✓ Marcar todos Cumple (C)
+              </button>
+            </div>
+            <p style="font-size:0.79rem; color:var(--text-muted); margin-bottom:12px;">
+              Califica cada ítem con <strong>C</strong> (Cumple), <strong>NC</strong> (No cumple) o <strong>NA</strong> (No aplica). Los ítems marcados con <span class="ins-crit-pill">CRÍTICO</span> en <strong>NC</strong> clasifican automáticamente el equipo como <strong>NO APTO</strong>.
+            </p>
+            <div id="ins-checklist-container"></div>
+          </div>
+
+          <!-- Observaciones Generales, Plan de Acción y Fotos -->
+          <div class="card" style="padding:16px; margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:12px;">
+              <span>📝 3. Observaciones, Plan de Acción y Registro Fotográfico</span>
+            </div>
+            <div class="form-grid form-grid-2" style="margin-bottom:14px;">
+              <div class="form-group">
+                <label class="form-label" for="ins_obs_generales">Observaciones generales</label>
+                <textarea id="ins_obs_generales" class="form-control" rows="3" style="height:auto; padding:10px;" placeholder="Describe cualquier novedad adicional del vehículo o equipo..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="ins_plan_accion">Plan de acción / Medidas de control <span class="req" id="ins_req_plan" style="display:none;">*</span></label>
+                <textarea id="ins_plan_accion" class="form-control" rows="3" style="height:auto; padding:10px;" placeholder="Obligatorio cuando existen hallazgos (NC): acción correctiva acordada..."></textarea>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <label class="form-label">Evidencia fotográfica opcional (máx. <span id="ins-max-fotos-lbl">4</span> fotos)</label>
+                <input type="file" id="ins_input_fotos" accept="image/*" multiple style="display:none;" onchange="agregarFotosInspeccion(this)">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('ins_input_fotos').click()">
+                  📷 Adjuntar o tomar foto
+                </button>
+              </div>
+              <span class="field-hint">Las fotografías se comprimen automáticamente y se incluyen dentro del reporte PDF.</span>
+              <div class="ins-photos-grid" id="ins-photos-preview"></div>
+            </div>
+          </div>
+
+          <!-- Firma del Colaborador -->
+          <div class="card" style="padding:16px; margin-bottom:8px;">
+            <div class="card-title" style="margin-bottom:12px;">
+              <span>✍️ 4. Firma de Quien Realiza la Inspección</span>
+            </div>
+
+            <div id="ins_bloque_opciones_firma" style="display:none; margin-bottom:12px;">
+              <div class="option-cards" style="margin-bottom:10px;">
+                <label class="option-card active" id="ins_opt_firma_previa">
+                  <input type="radio" name="ins_metodo_firma" value="previa" checked onchange="cambiarMetodoFirmaInspeccion('previa')">
+                  <div>
+                    <div class="option-card-title">Usar mi firma registrada</div>
+                    <div class="option-card-sub">Firma oficial almacenada en tu expediente</div>
+                  </div>
+                </label>
+                <label class="option-card" id="ins_opt_firma_nueva">
+                  <input type="radio" name="ins_metodo_firma" value="nueva" onchange="cambiarMetodoFirmaInspeccion('nueva')">
+                  <div>
+                    <div class="option-card-title">Dibujar firma en pantalla</div>
+                    <div class="option-card-sub">Realizar un trazo nuevo para esta inspección</div>
+                  </div>
+                </label>
+              </div>
+              <div id="ins_preview_firma_previa_wrap" style="text-align:center; padding:10px; background:#ffffff; border:1px solid var(--border); border-radius:var(--radius-sm);">
+                <img id="ins_img_firma_previa" src="" alt="Firma registrada" style="max-height:70px; max-width:100%; object-fit:contain;">
+              </div>
+            </div>
+
+            <div id="ins_contenedor_canvas_wrap">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">Firma en el recuadro blanco:</label>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="limpiarCanvasInspeccion()">↺ Limpiar firma</button>
+              </div>
+              <div class="signature-pad-container">
+                <canvas id="canvas_firma_inspeccion" class="signature-canvas"></canvas>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="tutorial-modal-footer" style="flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.78rem; color:var(--text-muted);">Estado preliminar:</span>
+          <span class="badge badge-muted" id="ins-live-status-badge">Pendiente completar</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalInspeccion()">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-guardar-inspeccion" onclick="document.getElementById('form-inspeccion-vehiculo').requestSubmit()">
+            💾 Guardar y Generar PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE FORMATOS EN BLANCO PARA IMPRIMIR -->
+  <div class="tutorial-modal-overlay" id="modalFormatosBlancoOverlay" style="display:none;" onclick="if(event.target===this)cerrarModalFormatosBlanco()">
+    <div class="tutorial-modal" style="max-width:640px;" onclick="event.stopPropagation()">
+      <div class="tutorial-modal-header">
+        <div>
+          <h2 style="font-size:1.08rem; font-weight:800; margin:0;">📄 Descargar Formatos Preoperacionales en Blanco</h2>
+          <span style="font-size:0.75rem; opacity:0.85;">Listos para imprimir en caso de contingencia operativa</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalFormatosBlanco()">✕</button>
+      </div>
+      <div class="tutorial-modal-body">
+        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:14px;">
+          Selecciona el formato oficial que deseas descargar en PDF para diligenciamiento físico:
+        </p>
+        <div class="tut-req-grid">
+          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+            <div>
+              <strong>🚗 Vehículo — Carro / Automóvil</strong>
+              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">25 ítems de documentos, luces, cabina, llantas y seguridad.</p>
+            </div>
+            <a href="/empleado/api/inspecciones/formato-blanco?type=vehiculo&subtype=carro" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
+          </div>
+          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+            <div>
+              <strong>🏍️ Vehículo — Motocicleta</strong>
+              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">17 ítems de documentos, luces, mandos, llantas y EPP.</p>
+            </div>
+            <a href="/empleado/api/inspecciones/formato-blanco?type=vehiculo&subtype=moto" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
+          </div>
+          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+            <div>
+              <strong>🚙 Vehículo — Camioneta</strong>
+              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">27 ítems incluyendo tracción, suspensión y sujeción de carga.</p>
+            </div>
+            <a href="/empleado/api/inspecciones/formato-blanco?type=vehiculo&subtype=camioneta" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
+          </div>
+          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+            <div>
+              <strong>🚛 Camión de Carga</strong>
+              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">23 ítems de documentos, frenos, llantas, carrocería y emergencias.</p>
+            </div>
+            <a href="/empleado/api/inspecciones/formato-blanco?type=camion&subtype=camion" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
+          </div>
+          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+            <div>
+              <strong>🏗️ Montacarga Eléctrica</strong>
+              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">23 ítems de estructura, sistema hidráulico, frenos y batería.</p>
+            </div>
+            <a href="/empleado/api/inspecciones/formato-blanco?type=montacarga&subtype=electrica" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
+          </div>
+          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
+            <div>
+              <strong>🔧 Montacarga Manual (Transpaleta)</strong>
+              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">13 ítems de chasis, horquillas, sistema hidráulico y ruedas.</p>
+            </div>
+            <a href="/empleado/api/inspecciones/formato-blanco?type=montacarga&subtype=transpaleta" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
+          </div>
+        </div>
+      </div>
+      <div class="tutorial-modal-footer">
+        <span style="font-size:0.75rem; color:var(--text-muted);">LOGYSER S.A.S. · Seguridad Vial y SST</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalFormatosBlanco()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL INSTRUCTIVO Y APOYO DE INSPECCIONES -->
+  <div class="tutorial-modal-overlay" id="modalInstructivoInspeccionOverlay" style="display:none;" onclick="if(event.target===this)cerrarModalInstructivoInspeccion()">
+    <div class="tutorial-modal" style="max-width:680px;" onclick="event.stopPropagation()">
+      <div class="tutorial-modal-header">
+        <div>
+          <h2 style="font-size:1.08rem; font-weight:800; margin:0;">📘 Instructivo de Inspección Preoperacional</h2>
+          <span style="font-size:0.75rem; opacity:0.85;">Criterios de evaluación y protocolo ante hallazgos críticos</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalInstructivoInspeccion()">✕</button>
+      </div>
+      <div class="tutorial-modal-body">
+        <div class="tut-step-card">
+          <div class="tut-step-num">1</div>
+          <div>
+            <strong>¿Cuándo debo realizar la inspección?</strong>
+            <p style="font-size:0.82rem; color:var(--text-muted);">Antes de iniciar el turno o poner en marcha el vehículo, camión, montacarga eléctrica o transpaleta manual.</p>
+          </div>
+        </div>
+        <div class="tut-step-card">
+          <div class="tut-step-num">2</div>
+          <div>
+            <strong>Criterios de calificación (C / NC / NA)</strong>
+            <p style="font-size:0.82rem; color:var(--text-muted);">
+              • <strong>C (Cumple):</strong> El elemento está en buen estado y funciona de forma segura.<br>
+              • <strong>NC (No Cumple):</strong> Presenta falla, desgaste o ausencia. Exige describir el plan de acción y a quién se reporta.<br>
+              • <strong>NA (No Aplica):</strong> El accesorio o condición no aplica para el equipo inspeccionado.
+            </p>
+          </div>
+        </div>
+        <div class="tut-step-card">
+          <div class="tut-step-num">3</div>
+          <div>
+            <strong>Ítems Críticos y Estado NO APTO</strong>
+            <p style="font-size:0.82rem; color:var(--text-muted);">
+              Si cualquier ítem etiquetado como <span class="ins-crit-pill">CRÍTICO</span> se califica en <strong>NC</strong>, el vehículo o equipo queda clasificado como <strong>NO APTO PARA OPERAR</strong>. No debe movilizarse hasta contar con revisión y autorización del jefe inmediato o SST.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="tutorial-modal-footer">
+        <span style="font-size:0.75rem; color:var(--text-muted);">Mi Portal Colaborador · LOGYSER S.A.S.</span>
+        <button type="button" class="btn btn-primary btn-sm" onclick="cerrarModalInstructivoInspeccion()">Entendido</button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL GUÍA Y TUTORIAL DE CESANTÍAS -->
@@ -2216,6 +3052,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       initCanvas();
+      initCanvasInspeccion();
 
       if (!window.CONFIG || window.CONFIG.modo === 'login' || !window.CONFIG.colaborador) {
         mostrarPantallaLogin(window.CONFIG ? window.CONFIG.errorInicial : null);
@@ -2335,7 +3172,8 @@
       const titles = {
         inicio: 'Mi Portal — Inicio',
         cesantias: 'Mi Portal — Cesantías',
-        actualizardatos: 'Mi Portal — Actualizar Datos'
+        actualizardatos: 'Mi Portal — Actualizar Datos',
+        inspecciones: 'Mi Portal — Inspecciones Vehículo'
       };
       const mTitle = document.getElementById('mobileHeaderTitle');
       if (mTitle) mTitle.textContent = titles[tabName] || 'Mi Portal';
@@ -2424,6 +3262,9 @@
 
       // Configurar Formulario de Actualizar Datos
       poblarFormularioActualizarDatos(col);
+
+      // Configurar Sección de Inspecciones de Vehículo
+      configurarSeccionInspecciones(col);
     }
 
     async function recargarDatosPortal() {
@@ -3258,6 +4099,637 @@
       document.getElementById(`tut_btn_${tabId}`)?.classList.add('active');
       const pane = document.getElementById(`tut_pane_${tabId}`);
       if (pane) pane.style.display = 'block';
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // NAVEGACIÓN DESDE EL LOGO CORPORATIVO (RECARGA A MI RESUMEN)
+    // ══════════════════════════════════════════════════════════
+    function hayProcesoActivoPortal() {
+      const modalIns = document.getElementById('modalInspeccionOverlay');
+      if (modalIns && modalIns.style.display !== 'none') return true;
+      if (Object.keys(stateCesantias.archivos || {}).length > 0) return true;
+      return false;
+    }
+
+    function volverAlInicioPortal() {
+      if (!window.CONFIG || !window.CONFIG.idVinculacion) {
+        window.location.href = '/empleado';
+        return;
+      }
+      if (hayProcesoActivoPortal()) {
+        const ok = window.confirm('Tienes un formulario en diligenciamiento. ¿Deseas recargar el portal y volver a "Mi Resumen"?');
+        if (!ok) return;
+      }
+      window.location.href = `/empleado?idvinculacion=${encodeURIComponent(window.CONFIG.idVinculacion)}`;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // LÓGICA DE INSPECCIONES PREOPERACIONALES DE VEHÍCULO / EQUIPO
+    // ══════════════════════════════════════════════════════════
+    const stateInspeccion = {
+      type: null,
+      subtype: null,
+      template: null,
+      items: [],
+      photos: [],
+      maxFotos: 4,
+      metodoFirma: 'nueva',
+      tieneFirmaPrevia: false,
+      firmaPreviaUrl: null,
+      canvas: null,
+      ctx: null,
+      dibujando: false,
+      haDibujado: false
+    };
+
+    function escHtmlClient(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function configurarSeccionInspecciones(col) {
+      const ins = col.inspecciones || {};
+      const stats = ins.stats || { totalMonth: 0, aptoCount: 0, novedadCount: 0, noAptoCount: 0, uniqueVehicles: 0 };
+      const recent = Array.isArray(ins.recent) ? ins.recent : [];
+      stateInspeccion.maxFotos = Number(ins.maxFotos) > 0 ? Number(ins.maxFotos) : 4;
+
+      const maxLbl = document.getElementById('ins-max-fotos-lbl');
+      if (maxLbl) maxLbl.textContent = stateInspeccion.maxFotos;
+
+      const firmaUrl = col.firmaUrl || (col.datosCesantiasForm && col.datosCesantiasForm.firmaPreviaUrl) || null;
+      stateInspeccion.tieneFirmaPrevia = !!firmaUrl;
+      stateInspeccion.firmaPreviaUrl = firmaUrl;
+
+      renderizarEstadisticasYTablaInspecciones(stats, recent);
+    }
+
+    function badgeResultadoInspeccion(resultado) {
+      const r = String(resultado || '').toUpperCase();
+      if (r === 'APTO') return '<span class="badge badge-success">APTO</span>';
+      if (r === 'NO APTO') return '<span class="badge badge-danger">NO APTO</span>';
+      return '<span class="badge badge-warning">APTO CON NOVEDADES</span>';
+    }
+
+    function renderizarEstadisticasYTablaInspecciones(stats, recent) {
+      const s = stats || {};
+      const totalMes = Number(s.totalMonth || 0);
+      const aptos = Number(s.aptoCount || 0);
+      const novedades = Number(s.novedadCount || 0) + Number(s.noAptoCount || 0);
+      const equipos = Number(s.uniqueVehicles || 0);
+
+      document.getElementById('ins-kpi-total').textContent = totalMes;
+      document.getElementById('ins-kpi-aptos').textContent = aptos;
+      document.getElementById('ins-kpi-novedades').textContent = novedades;
+      document.getElementById('ins-kpi-equipos').textContent = equipos;
+
+      const navBadge = document.getElementById('nav-badge-inspecciones');
+      const cardPill = document.getElementById('card-inspecciones-status-pill');
+      if (totalMes > 0) {
+        if (navBadge) {
+          navBadge.textContent = totalMes;
+          navBadge.style.display = 'inline-flex';
+        }
+        if (cardPill) {
+          cardPill.textContent = `${totalMes} este mes`;
+          cardPill.className = 'badge badge-success';
+        }
+      } else {
+        if (navBadge) navBadge.style.display = 'none';
+        if (cardPill) {
+          cardPill.textContent = 'Preoperacional';
+          cardPill.className = 'badge badge-info';
+        }
+      }
+
+      const countBadge = document.getElementById('ins-recent-count');
+      const tbody = document.getElementById('ins-recent-tbody');
+      const lista = Array.isArray(recent) ? recent : [];
+
+      if (countBadge) {
+        countBadge.textContent = `${lista.length} ${lista.length === 1 ? 'registro' : 'registros'}`;
+      }
+
+      if (!lista.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center; color:var(--text-muted); padding:24px;">
+              Aún no registras inspecciones preoperacionales. Selecciona una tarjeta arriba para iniciar.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = lista.map(row => {
+        const unidad = [row.plate, row.equipmentId].filter(Boolean).join(' · ') || '—';
+        const pdfBtn = row.pdfUrl
+          ? `<a href="${escHtmlClient(row.pdfUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">📄 Ver PDF ↗</a>`
+          : '<span style="color:var(--text-muted); font-size:0.78rem;">—</span>';
+        return `
+          <tr>
+            <td style="white-space:nowrap;">${escHtmlClient(row.timestamp || '—')}</td>
+            <td><strong style="font-family:monospace; font-size:0.82rem;">${escHtmlClient(row.id)}</strong></td>
+            <td>${escHtmlClient(row.typeLabel || row.subtype || row.type)}</td>
+            <td><strong>${escHtmlClient(unidad)}</strong></td>
+            <td>${badgeResultadoInspeccion(row.status)}</td>
+            <td><strong>${Number(row.score || 0)}%</strong></td>
+            <td>${pdfBtn}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function abrirModalInspeccion(type, explicitSubtype) {
+      const col = window.CONFIG && window.CONFIG.colaborador;
+      if (!col) return;
+
+      const subtype = explicitSubtype || (type === 'vehiculo'
+        ? (document.getElementById('sel-subtipo-vehiculo').value || 'carro')
+        : type);
+
+      try {
+        const res = await fetch(`/empleado/api/inspecciones/plantilla?type=${encodeURIComponent(type)}&subtype=${encodeURIComponent(subtype)}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok || !data.template) {
+          throw new Error(data.error || 'No se pudo cargar la plantilla de inspección.');
+        }
+
+        const tpl = data.template;
+        stateInspeccion.type = tpl.type;
+        stateInspeccion.subtype = tpl.subtype;
+        stateInspeccion.template = tpl;
+        stateInspeccion.items = (tpl.items || []).map(it => ({
+          id: it.id,
+          section: it.section,
+          text: it.text,
+          critical: !!it.critical,
+          result: '',
+          observation: ''
+        }));
+        stateInspeccion.photos = [];
+
+        document.getElementById('ins-modal-title').textContent = `🚗 Inspección: ${tpl.label}`;
+        document.getElementById('ins-form-trabajador').textContent = col.nombre || '—';
+        document.getElementById('ins-form-identificacion').textContent = col.identificacion || '—';
+        document.getElementById('ins-form-cargo').textContent = col.cargo || '—';
+        document.getElementById('ins-form-operacion').textContent = `${col.operacion || '—'} · ${col.regional || '—'}`;
+
+        const inpPlaca = document.getElementById('ins_input_placa');
+        const inpEquipo = document.getElementById('ins_input_equipo');
+        const inpOdometro = document.getElementById('ins_input_odometro');
+        const inpReporta = document.getElementById('ins_input_reporta');
+        inpPlaca.value = '';
+        inpEquipo.value = '';
+        inpOdometro.value = '';
+        inpReporta.value = '';
+        document.getElementById('ins_obs_generales').value = '';
+        document.getElementById('ins_plan_accion').value = '';
+        document.getElementById('ins-photos-preview').innerHTML = '';
+
+        const esMontacarga = tpl.type === 'montacarga';
+        const esTranspaleta = tpl.subtype === 'transpaleta';
+
+        document.getElementById('ins_req_placa').style.display = esMontacarga ? 'none' : 'inline';
+        inpPlaca.required = !esMontacarga;
+
+        document.getElementById('ins_req_equipo').style.display = esMontacarga ? 'inline' : 'none';
+        inpEquipo.required = esMontacarga;
+
+        document.getElementById('ins-group-odometro').style.display = esTranspaleta ? 'none' : 'flex';
+        inpOdometro.required = !esTranspaleta;
+        document.getElementById('ins_lbl_odometro').textContent = esMontacarga ? 'Horómetro Actual' : 'Kilometraje Actual';
+
+        const blqFirma = document.getElementById('ins_bloque_opciones_firma');
+        const imgPrev = document.getElementById('ins_img_firma_previa');
+        const canvasWrap = document.getElementById('ins_contenedor_canvas_wrap');
+
+        if (stateInspeccion.tieneFirmaPrevia && stateInspeccion.firmaPreviaUrl) {
+          stateInspeccion.metodoFirma = 'previa';
+          blqFirma.style.display = 'block';
+          imgPrev.src = stateInspeccion.firmaPreviaUrl;
+          document.querySelector('input[name="ins_metodo_firma"][value="previa"]').checked = true;
+          document.getElementById('ins_opt_firma_previa').classList.add('active');
+          document.getElementById('ins_opt_firma_nueva').classList.remove('active');
+          canvasWrap.style.display = 'none';
+        } else {
+          stateInspeccion.metodoFirma = 'nueva';
+          blqFirma.style.display = 'none';
+          canvasWrap.style.display = 'block';
+        }
+
+        renderizarChecklistInspeccion();
+        actualizarEstadoPreliminarInspeccion();
+
+        document.getElementById('modalInspeccionOverlay').style.display = 'flex';
+        document.getElementById('ins-modal-body').scrollTop = 0;
+
+        if (stateInspeccion.metodoFirma === 'nueva') {
+          setTimeout(() => ajustarTamanioCanvasInspeccion(true), 60);
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function cerrarModalInspeccion() {
+      document.getElementById('modalInspeccionOverlay').style.display = 'none';
+    }
+
+    function cerrarModalInspeccionSiClickFuera(e) {
+      if (e.target && e.target.id === 'modalInspeccionOverlay') {
+        cerrarModalInspeccion();
+      }
+    }
+
+    function renderizarChecklistInspeccion() {
+      const container = document.getElementById('ins-checklist-container');
+      const items = stateInspeccion.items || [];
+
+      const sections = [];
+      const mapSec = new Map();
+      items.forEach((it, idx) => {
+        if (!mapSec.has(it.section)) {
+          const group = { name: it.section, list: [] };
+          mapSec.set(it.section, group);
+          sections.push(group);
+        }
+        mapSec.get(it.section).list.push({ ...it, index: idx });
+      });
+
+      container.innerHTML = sections.map(sec => {
+        const rowsHtml = sec.list.map(it => {
+          const rowCls = it.result === 'NC' ? 'state-nc' : (it.result === 'C' ? 'state-c' : '');
+          const critBadge = it.critical ? '<span class="ins-crit-pill">CRÍTICO</span>' : '';
+          const showObs = it.result === 'NC' || (it.observation && it.observation.trim().length > 0);
+          return `
+            <div class="ins-item-row ${rowCls}" id="ins_row_${it.id}">
+              <div class="ins-item-text">
+                <span><strong>${it.index + 1}.</strong> ${escHtmlClient(it.text)}</span>
+                ${critBadge}
+              </div>
+              <div class="ins-choice-group">
+                <button type="button" class="ins-choice-btn ${it.result === 'C' ? 'active-c' : ''}" id="ins_btn_${it.id}_C" onclick="seleccionarRespuestaItem('${it.id}', 'C')">C</button>
+                <button type="button" class="ins-choice-btn ${it.result === 'NC' ? 'active-nc' : ''}" id="ins_btn_${it.id}_NC" onclick="seleccionarRespuestaItem('${it.id}', 'NC')">NC</button>
+                <button type="button" class="ins-choice-btn ${it.result === 'NA' ? 'active-na' : ''}" id="ins_btn_${it.id}_NA" onclick="seleccionarRespuestaItem('${it.id}', 'NA')">NA</button>
+              </div>
+              <div class="ins-item-obs-wrap" id="ins_obs_wrap_${it.id}" style="display:${showObs ? 'block' : 'none'};">
+                <input type="text" class="ins-item-obs-input" placeholder="Observación de este ítem (ej: desgaste, bombillo fundido...)" value="${escHtmlClient(it.observation)}" oninput="actualizarObservacionItem('${it.id}', this.value)">
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="ins-section-box">
+            <div class="ins-section-header">
+              <span>${escHtmlClient(sec.name)}</span>
+              <span style="font-size:0.72rem; opacity:0.85;">${sec.list.length} ítems</span>
+            </div>
+            <div>${rowsHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function seleccionarRespuestaItem(itemId, valor) {
+      const item = stateInspeccion.items.find(x => x.id === itemId);
+      if (!item) return;
+      item.result = valor;
+
+      const row = document.getElementById(`ins_row_${itemId}`);
+      if (row) {
+        row.classList.toggle('state-c', valor === 'C');
+        row.classList.toggle('state-nc', valor === 'NC');
+      }
+
+      ['C', 'NC', 'NA'].forEach(opt => {
+        const btn = document.getElementById(`ins_btn_${itemId}_${opt}`);
+        if (btn) {
+          btn.classList.remove('active-c', 'active-nc', 'active-na');
+          if (opt === valor) {
+            btn.classList.add(`active-${opt.toLowerCase()}`);
+          }
+        }
+      });
+
+      const obsWrap = document.getElementById(`ins_obs_wrap_${itemId}`);
+      if (obsWrap) {
+        obsWrap.style.display = (valor === 'NC' || (item.observation && item.observation.trim())) ? 'block' : 'none';
+      }
+
+      actualizarEstadoPreliminarInspeccion();
+    }
+
+    function actualizarObservacionItem(itemId, texto) {
+      const item = stateInspeccion.items.find(x => x.id === itemId);
+      if (item) item.observation = texto;
+    }
+
+    function marcarTodosInspeccion(valor) {
+      stateInspeccion.items.forEach(it => {
+        it.result = valor;
+      });
+      renderizarChecklistInspeccion();
+      actualizarEstadoPreliminarInspeccion();
+    }
+
+    function actualizarEstadoPreliminarInspeccion() {
+      const items = stateInspeccion.items || [];
+      const total = items.length;
+      const respondidos = items.filter(x => x.result).length;
+
+      const prog = document.getElementById('ins-modal-progress');
+      if (prog) prog.textContent = `${respondidos} / ${total} ítems calificados`;
+
+      const tieneNc = items.some(x => x.result === 'NC');
+      const tieneCriticoNc = items.some(x => x.critical && x.result === 'NC');
+
+      const reqPlan = document.getElementById('ins_req_plan');
+      if (reqPlan) reqPlan.style.display = tieneNc ? 'inline' : 'none';
+
+      const badge = document.getElementById('ins-live-status-badge');
+      if (!badge) return;
+
+      if (respondidos === 0) {
+        badge.className = 'badge badge-muted';
+        badge.textContent = 'Pendiente completar';
+      } else if (tieneCriticoNc) {
+        badge.className = 'badge badge-danger';
+        badge.textContent = 'NO APTO (Ítem crítico en NC)';
+      } else if (tieneNc) {
+        badge.className = 'badge badge-warning';
+        badge.textContent = 'APTO CON NOVEDADES';
+      } else if (respondidos < total) {
+        badge.className = 'badge badge-info';
+        badge.textContent = `En progreso (${respondidos}/${total})`;
+      } else {
+        badge.className = 'badge badge-success';
+        badge.textContent = 'APTO PARA OPERAR (100%)';
+      }
+    }
+
+    function comprimirImagenInspeccion(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('Formato de imagen no válido.'));
+          img.onload = () => {
+            const maxDim = 1280;
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w >= h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            const c = document.createElement('canvas');
+            c.width = w;
+            c.height = h;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve({
+              name: file.name,
+              data: c.toDataURL('image/jpeg', 0.76)
+            });
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function agregarFotosInspeccion(input) {
+      const files = Array.from(input.files || []);
+      input.value = '';
+      if (!files.length) return;
+
+      const disponibles = stateInspeccion.maxFotos - stateInspeccion.photos.length;
+      if (disponibles <= 0) {
+        showToast(`Máximo ${stateInspeccion.maxFotos} fotografías permitidas por inspección.`, 'error');
+        return;
+      }
+
+      const seleccionadas = files.slice(0, disponibles);
+      for (const f of seleccionadas) {
+        try {
+          const comprimida = await comprimirImagenInspeccion(f);
+          stateInspeccion.photos.push(comprimida);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      }
+      renderizarFotosInspeccion();
+    }
+
+    function eliminarFotoInspeccion(idx) {
+      stateInspeccion.photos.splice(idx, 1);
+      renderizarFotosInspeccion();
+    }
+
+    function renderizarFotosInspeccion() {
+      const wrap = document.getElementById('ins-photos-preview');
+      if (!wrap) return;
+      wrap.innerHTML = stateInspeccion.photos.map((p, idx) => `
+        <div class="ins-photo-thumb">
+          <img src="${p.data}" alt="Evidencia ${idx + 1}">
+          <button type="button" class="ins-photo-remove" onclick="eliminarFotoInspeccion(${idx})" title="Quitar foto">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function cambiarMetodoFirmaInspeccion(metodo) {
+      stateInspeccion.metodoFirma = metodo;
+      const canvasWrap = document.getElementById('ins_contenedor_canvas_wrap');
+      document.getElementById('ins_opt_firma_previa').classList.toggle('active', metodo === 'previa');
+      document.getElementById('ins_opt_firma_nueva').classList.toggle('active', metodo === 'nueva');
+
+      if (metodo === 'previa') {
+        canvasWrap.style.display = 'none';
+      } else {
+        canvasWrap.style.display = 'block';
+        setTimeout(() => ajustarTamanioCanvasInspeccion(false), 50);
+      }
+    }
+
+    function initCanvasInspeccion() {
+      const canvas = document.getElementById('canvas_firma_inspeccion');
+      if (!canvas) return;
+      stateInspeccion.canvas = canvas;
+      stateInspeccion.ctx = canvas.getContext('2d');
+
+      const punto = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - rect.left) * (canvas.width / rect.width),
+          y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+      };
+
+      canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        stateInspeccion.dibujando = true;
+        stateInspeccion.haDibujado = true;
+        const pos = punto(e);
+        stateInspeccion.ctx.lineWidth = 2.5;
+        stateInspeccion.ctx.lineCap = 'round';
+        stateInspeccion.ctx.lineJoin = 'round';
+        stateInspeccion.ctx.strokeStyle = '#0f172a';
+        stateInspeccion.ctx.beginPath();
+        stateInspeccion.ctx.moveTo(pos.x, pos.y);
+        try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (!stateInspeccion.dibujando) return;
+        e.preventDefault();
+        const pos = punto(e);
+        stateInspeccion.ctx.lineTo(pos.x, pos.y);
+        stateInspeccion.ctx.stroke();
+      });
+
+      const stop = (e) => {
+        if (stateInspeccion.dibujando) {
+          e.preventDefault();
+          stateInspeccion.dibujando = false;
+          try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+      };
+      canvas.addEventListener('pointerup', stop);
+      canvas.addEventListener('pointercancel', stop);
+    }
+
+    function ajustarTamanioCanvasInspeccion(forzar = false) {
+      const canvas = stateInspeccion.canvas;
+      if (!canvas || !canvas.parentElement) return;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      if (rect.width > 0) {
+        const targetW = Math.round(rect.width - 14);
+        if (canvas.width === targetW && !forzar) return;
+        canvas.width = targetW;
+        canvas.height = 170;
+        stateInspeccion.ctx.lineWidth = 2.5;
+        stateInspeccion.ctx.lineCap = 'round';
+        stateInspeccion.ctx.lineJoin = 'round';
+        stateInspeccion.ctx.strokeStyle = '#0f172a';
+        if (forzar) stateInspeccion.haDibujado = false;
+      }
+    }
+
+    function limpiarCanvasInspeccion() {
+      if (!stateInspeccion.canvas || !stateInspeccion.ctx) return;
+      stateInspeccion.ctx.clearRect(0, 0, stateInspeccion.canvas.width, stateInspeccion.canvas.height);
+      stateInspeccion.haDibujado = false;
+    }
+
+    async function guardarInspeccionVehiculo(e) {
+      e.preventDefault();
+      if (!window.CONFIG || !window.CONFIG.idVinculacion) return;
+
+      const sinCalificar = stateInspeccion.items.filter(x => !x.result);
+      if (sinCalificar.length > 0) {
+        showToast(`Faltan ${sinCalificar.length} ítems por calificar (C, NC o NA).`, 'error');
+        const firstRow = document.getElementById(`ins_row_${sinCalificar[0].id}`);
+        if (firstRow) firstRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      const tieneNc = stateInspeccion.items.some(x => x.result === 'NC');
+      const planAccion = document.getElementById('ins_plan_accion').value.trim();
+      const reportaA = document.getElementById('ins_input_reporta').value.trim();
+
+      if (tieneNc && !planAccion) {
+        showToast('Al existir ítems en NC es obligatorio diligenciar el Plan de acción.', 'error');
+        document.getElementById('ins_plan_accion').focus();
+        return;
+      }
+
+      let firmaBase64 = null;
+      if (stateInspeccion.metodoFirma === 'nueva') {
+        if (!stateInspeccion.haDibujado) {
+          showToast('Por favor dibuja tu firma para finalizar la inspección.', 'error');
+          return;
+        }
+        firmaBase64 = stateInspeccion.canvas.toDataURL('image/png');
+      }
+
+      const btn = document.getElementById('btn-guardar-inspeccion');
+      const txtOriginal = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '⏳ Generando PDF y guardando...';
+
+      try {
+        const res = await fetch('/empleado/api/inspecciones/guardar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idVinculacion: window.CONFIG.idVinculacion,
+            type: stateInspeccion.type,
+            subtype: stateInspeccion.subtype,
+            plate: document.getElementById('ins_input_placa').value.trim(),
+            equipmentId: document.getElementById('ins_input_equipo').value.trim(),
+            meter: document.getElementById('ins_input_odometro').value.trim(),
+            reportTo: reportaA,
+            generalObservations: document.getElementById('ins_obs_generales').value.trim(),
+            actionPlan: planAccion,
+            items: stateInspeccion.items,
+            photos: stateInspeccion.photos,
+            usarFirmaPrevia: stateInspeccion.metodoFirma === 'previa',
+            firmaBase64
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'No fue posible guardar la inspección.');
+        }
+
+        cerrarModalInspeccion();
+        renderizarEstadisticasYTablaInspecciones(data.stats, data.recent);
+
+        const banner = document.getElementById('ins-last-result-banner');
+        const titleEl = document.getElementById('ins-last-result-title');
+        const subEl = document.getElementById('ins-last-result-sub');
+        const pdfLink = document.getElementById('ins-last-result-pdf');
+
+        if (banner && data.pdfUrl) {
+          titleEl.textContent = `Inspección ${data.id} registrada — Resultado: ${data.status} (${data.score}%)`;
+          subEl.textContent = 'El reporte oficial en PDF ya está disponible para visualizar o descargar.';
+          pdfLink.href = data.pdfUrl;
+          banner.style.display = 'flex';
+        }
+
+        showToast(`¡Inspección ${data.id} guardada con éxito!`, 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = txtOriginal;
+      }
+    }
+
+    function abrirModalFormatosBlanco() {
+      document.getElementById('modalFormatosBlancoOverlay').style.display = 'flex';
+    }
+    function cerrarModalFormatosBlanco() {
+      document.getElementById('modalFormatosBlancoOverlay').style.display = 'none';
+    }
+    function abrirModalInstructivoInspeccion() {
+      document.getElementById('modalInstructivoInspeccionOverlay').style.display = 'flex';
+    }
+    function cerrarModalInstructivoInspeccion() {
+      document.getElementById('modalInstructivoInspeccionOverlay').style.display = 'none';
+    }
+    if (false) {
     }
   </script>
   <script src="/js/theme.js" defer></script>
