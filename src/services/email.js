@@ -186,12 +186,13 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
         <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:.93rem">
           <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Trabajador</td><td style="padding:8px 12px;font-weight:bold">${trabajador}</td></tr>
           <tr><td style="padding:8px 12px;color:#888">Identificación</td><td style="padding:8px 12px">${identificacion}</td></tr>
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Operación origen</td><td style="padding:8px 12px">${operacionOrigen || '—'}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Operación destino</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${operacionDestino}</td></tr>
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Dirección destino</td><td style="padding:8px 12px">${direccionDestino || '—'}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Fecha de traslado</td><td style="padding:8px 12px">${formatFecha(fechaTraslado)}${horaTraslado ? ' — ' + horaTraslado : ''}</td></tr>
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Registrado por</td><td style="padding:8px 12px">${usuario}</td></tr>
-          ${observaciones ? `<tr><td style="padding:8px 12px;color:#888;vertical-align:top">Observaciones</td><td style="padding:8px 12px">${observaciones}</td></tr>` : ''}
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Cargo</td><td style="padding:8px 12px">${cargo || '—'}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Operación origen</td><td style="padding:8px 12px">${operacionOrigen || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Operación destino</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${operacionDestino}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Dirección destino</td><td style="padding:8px 12px">${direccionDestino || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Fecha de traslado</td><td style="padding:8px 12px">${formatFecha(fechaTraslado)}${horaTraslado ? ' — ' + horaTraslado : ''}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Registrado por</td><td style="padding:8px 12px">${usuario}</td></tr>
+          ${observaciones ? `<tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;vertical-align:top">Observaciones</td><td style="padding:8px 12px">${observaciones}</td></tr>` : ''}
         </table>
         <div style="margin-top:24px;padding:12px 16px;background:#fffbea;border-left:4px solid #f0d060;color:#7a6000;font-size:.88rem">
           Estado: <strong>Pendiente de revisión</strong>
@@ -386,9 +387,10 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
         </p>
         <table style="width:100%;border-collapse:collapse;font-size:.93rem;margin-bottom:24px">
           <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Trabajador</td><td style="padding:8px 12px;font-weight:bold">${nombreTrabajador}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Operación destino</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${operacionDestino}</td></tr>
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Dirección</td><td style="padding:8px 12px">${direccionDestino || '—'}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Fecha de presentación</td><td style="padding:8px 12px;font-weight:bold">${formatFecha(fechaTraslado)}${horaTraslado ? ' — ' + horaTraslado : ''}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Cargo</td><td style="padding:8px 12px">${cargo || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Operación destino</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${operacionDestino}</td></tr>
+          <tr><td style="padding:8px 12px;color:#888">Dirección</td><td style="padding:8px 12px">${direccionDestino || '—'}</td></tr>
+          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Fecha de presentación</td><td style="padding:8px 12px;font-weight:bold">${formatFecha(fechaTraslado)}${horaTraslado ? ' — ' + horaTraslado : ''}</td></tr>
         </table>
         <div style="text-align:center;margin-bottom:20px">
           <a href="${urlDoc}"
@@ -3095,6 +3097,17 @@ async function enviarNotificacionCesantias({
       toEmails.push(ccFinal.shift());
     }
 
+    // El cargo es información interna: solo se muestra si el correo no le llega
+    // al trabajador (radicación y tramitado sí le llegan).
+    const llegaAlTrabajador = !!emailColab && [...toEmails, ...ccFinal]
+      .some(e => String(e).trim().toLowerCase() === emailColab);
+    const cargoColab = String(trabajador.cargo || solicitud.cargo || '').trim();
+    const filaCargoHtml = llegaAlTrabajador ? '' : `
+            <tr>
+              <td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0">Cargo:</td>
+              <td style="padding:10px 14px;color:#0f172a;border-bottom:1px solid #e2e8f0">${cargoColab && cargoColab !== '—' ? cargoColab : '—'}</td>
+            </tr>`;
+
     const cuerpoHtml = `
       <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:620px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
 ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
@@ -3114,7 +3127,7 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
             <tr>
               <td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0">Colaborador:</td>
               <td style="padding:10px 14px;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0">${nombreColab} (${trabajador.identificacion || solicitud.identificacion})</td>
-            </tr>
+            </tr>${filaCargoHtml}
             <tr>
               <td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e2e8f0">Operación:</td>
               <td style="padding:10px 14px;color:#0f172a;border-bottom:1px solid #e2e8f0">${operacionColab || '—'}</td>
