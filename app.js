@@ -165,11 +165,8 @@ const tareasDesactivadas = ['true', '1', 'yes', 'si', 'sí']
 if (tareasDesactivadas) {
   console.warn('[tareas] DISABLE_BACKGROUND_JOBS activo: no se inician las tareas en segundo plano (revisión de prueba).');
 } else {
-  // Notificador de ingresos: detecta nuevos colaboradores con cargos críticos
-  // y envía correo al equipo administrativo para programar capacitación
-  const { verificarIngresos } = require('./src/services/ingresoNotifier');
-  verificarIngresos(); // verificación inicial al arrancar
-  setInterval(verificarIngresos, 2 * 60 * 1000); // cada 2 minutos
+  // La notificación de nuevo ingreso ya no es una tarea periódica: se envía al
+  // finalizar la contratación en Selección (ver src/services/notificacionIngreso.js).
 
   // Generador automático de CT cuando el token expira sin firma del trabajador
   const { verificarCTExpirados } = require('./src/services/ctExpiryNotifier');

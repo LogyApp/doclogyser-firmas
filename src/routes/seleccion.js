@@ -5,7 +5,9 @@ const multer = require('multer');
 const { Storage } = require('@google-cloud/storage');
 const { GoogleAuth } = require('google-auth-library');
 const pool = require('../services/db');
+const crypto = require('crypto');
 const { notificarBloqueoAspirante, enviarCorreoPortalAspirante } = require('../services/email');
+const { notificarNuevoIngreso } = require('../services/notificacionIngreso');
 const {
   DOCS_FIRMA_SELECCION,
   obtenerDocsFirmaParaOperacion,
@@ -1316,12 +1318,13 @@ router.post('/finalizar-contratacion', async (req, res) => {
 
     await connection.query(sqlInsertSegmentacion, valuesSegmentacion);
 
-    // 5. Maestro_Vinculación
+    // 5. Maestro_Vinculación (el Id se genera aquí para poder notificar el ingreso después)
+    const idVinculacionNueva = crypto.randomUUID();
     await connection.query(`
         INSERT INTO Maestro_Vinculación 
         (\`Id Vinculación\`, Trabajador, Identificación, Regional, Operación, Cargo, \`Cod Siesa\`, \`Fecha de Ingreso\`, Estado, \`Fecha Actualización\`, Usuario)
-        VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, 'Activo', ${horaBogotaSQL}, ?)
-    `, [nombreTrabajador, a.identificacion, regional, operacion, cargoRequerido, codSiesa, fecha_ingreso, nombreUsuario]);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Activo', ${horaBogotaSQL}, ?)
+    `, [idVinculacionNueva, nombreTrabajador, a.identificacion, regional, operacion, cargoRequerido, codSiesa, fecha_ingreso, nombreUsuario]);
 
     // 6. Maestro_Examenes
     await connection.query(`
@@ -1353,6 +1356,20 @@ router.post('/finalizar-contratacion', async (req, res) => {
     await connection.query('UPDATE Dynamic_hv_aspirante SET estado_proceso = "contratado", Usuario = ? WHERE id_aspirante = ?', [nombreUsuario, id_aspirante]);
 
     await connection.commit();
+
+    // Notificación de nuevo ingreso: solo después de confirmar la transacción y en
+    // segundo plano, para no demorar ni afectar la contratación.
+    setImmediate(() => notificarNuevoIngreso({
+      idVinculacion:   idVinculacionNueva,
+      trabajador:      nombreTrabajador,
+      identificacion:  a.identificacion,
+      cargo:           cargoRequerido,
+      operacion,
+      fechaIngreso:    fecha_ingreso,
+      usuarioRegistro: usuario,
+      nombreRegistro:  nombreUsuario,
+    }));
+
     res.redirect(`/seleccion/admin/${id_aspirante}?usuario=${usuario}&msg=success&info=${encodeURIComponent(mensajeFinal)}`);
 
   } catch (error) {

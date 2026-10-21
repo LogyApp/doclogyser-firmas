@@ -765,60 +765,17 @@ async function notificarRenunciaFirmada({ nombreTrabajador, identificacion, urlD
 
 // ── Notificación de nuevo ingreso ────────────────────────────────────────────
 
-// Grupo 1 (Config_Cargo_Laboral.Notificar = 1)
-const DESTINATARIOS_INGRESO = [
-  'nomina@logyser.com',
-  'jefe.facturacion@logyser.com',
-  'jefe.contabilidad@logyser.com',
-  'administradorti@logyser.com',
-  'subgerenciaoperaciones@logyser.com',
-  'sst.nacional@logyser.com',
-  'sstadmon@logyser.com',
-  'seleccion@logyser.com',
-  'auxiliarcompras@logyser.com',
-  'controlcuentas@logyser.com',
-  'directorrh@logyser.com',
-  'gestioncalidad@logyser.com',
-];
-
-// Grupo 2 (Config_Cargo_Laboral.Notificar = 2)
-const DESTINATARIOS_INGRESO_REDUCIDO = [
-  'nomina@logyser.com',
-  'administradorti@logyser.com',
-  'subgerenciaoperaciones@logyser.com',
-  'sst.nacional@logyser.com',
-  'sstadmon@logyser.com',
-  'seleccion@logyser.com',
-  'directorrh@logyser.com',
-  'gestioncalidad@logyser.com',
-];
-
-async function notificarIngreso({ trabajador, identificacion, cargo, operacion, fechaIngreso, destinatarios }) {
-  const HEADER_VERDE = `
-    <div style="border-top:4px solid #27ae60;background:#1B2A5E;padding:0px 16px;border-bottom:1px solid #0f172a;line-height:0">
-      <!--[if mso]>
-      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="105" style="width:105px">
-      <tr>
-      <td width="105" style="width:105px;line-height:0;padding:0">
-      <![endif]-->
-      <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png"
-           width="105"
-           height="70"
-           alt="LOG&amp;SER"
-           border="0"
-           style="display:block;width:105px;max-width:105px;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic">
-      <!--[if mso]>
-      </td>
-      </tr>
-      </table>
-      <![endif]-->
-    </div>`;
-
+// Destinatarios: Config_Parametros (talenthub / Sociodemografica) según el grupo
+// Notificar del cargo en Config_Cargo_Laboral — ver notificacionIngreso.js.
+async function notificarIngreso({ trabajador, identificacion, cargo, operacion, fechaIngreso, registradoPor, para = [], copia = [] }) {
+  // "Identificación ** NOMBRE" → solo el nombre
+  const partesNombre = String(trabajador || '').split(' ** ');
+  trabajador = (partesNombre.length > 1 ? partesNombre[1] : trabajador || '').trim();
   const asunto = `Nuevo ingreso de personal — ${trabajador}`;
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER_VERDE}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
 
         <div style="display:inline-block;background:#eafaf1;border:1px solid #a9dfbf;
@@ -854,7 +811,11 @@ async function notificarIngreso({ trabajador, identificacion, cargo, operacion, 
           <tr style="background:#f8f9fb">
             <td style="padding:9px 12px;color:#888">Fecha de ingreso</td>
             <td style="padding:9px 12px;font-weight:bold">${formatFecha(fechaIngreso)}</td>
-          </tr>
+          </tr>${registradoPor ? `
+          <tr>
+            <td style="padding:9px 12px;color:#888">Registrado por</td>
+            <td style="padding:9px 12px">${registradoPor}</td>
+          </tr>` : ''}
         </table>
 
         <div style="padding:14px 16px;background:#eafaf1;border-left:4px solid #27ae60;
@@ -868,14 +829,18 @@ async function notificarIngreso({ trabajador, identificacion, cargo, operacion, 
       ${FOOTER}
     </div>`;
 
-  const destino = (destinatarios && destinatarios.length) ? destinatarios : DESTINATARIOS_INGRESO;
+  const to = para.length ? para : copia;
+  if (!to.length) return false;
 
   await transporter.sendMail({
     from:    `"LOG&SER Notificaciones" <${EMAIL_FROM}>`,
-    to:      destino.join(', '),
+    to:      to.join(', '),
+    cc:      para.length && copia.length ? copia.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
+  return true;
 }
 
 // ── Paz y Salvo: notificación al trabajador ──────────────────────────────────
@@ -2143,7 +2108,6 @@ module.exports = {
   notificarFirmaRenuncia,
   notificarRenunciaFirmada,
   notificarIngreso,
-  DESTINATARIOS_INGRESO_REDUCIDO,
   notificarAreaPazYSalvo,
   notificarPazYSalvoTrabajador,
   notificarPazYSalvoCompletado,
@@ -3265,7 +3229,6 @@ module.exports = {
   notificarFirmaRenuncia,
   notificarRenunciaFirmada,
   notificarIngreso,
-  DESTINATARIOS_INGRESO_REDUCIDO,
   notificarAreaPazYSalvo,
   notificarPazYSalvoTrabajador,
   notificarPazYSalvoCompletado,
