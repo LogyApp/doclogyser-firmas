@@ -1201,8 +1201,8 @@ const LIMITE_FILAS_CSV_DEFECTO = 100000;
 const LOTE_REPORTE = 5000;
 
 function leerLimitesReporte(paramsConfig) {
-  const excel = parseInt(paramsConfig['Límite de filas reporte Excel']);
-  const csv = parseInt(paramsConfig['Límite de filas reporte CSV']);
+  const excel = parseInt(paramsConfig['Límite de filas reporte Excel - Requisiciones']);
+  const csv = parseInt(paramsConfig['Límite de filas reporte CSV - Requisiciones']);
   return {
     excel: excel > 0 ? excel : LIMITE_FILAS_EXCEL_DEFECTO,
     csv: csv > 0 ? csv : LIMITE_FILAS_CSV_DEFECTO
