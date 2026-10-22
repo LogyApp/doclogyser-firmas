@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 const pool = require('../services/db');
 const { transporter } = require('../services/email');
+const { storage } = require('../services/storage');
+const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
 const { obtenerCcEmails } = require('../services/logysignScheduler');
 
@@ -113,6 +115,92 @@ router.get('/api/registros', async (req, res) => {
   } catch (err) {
     console.error('[registrologysign] Error fetching records:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ¿El usuario puede ver este registro? Misma regla que /api/registros: Sistema ve todo;
+// Contratación/Archivo/Asistencial ven "Documentos de Ingreso" y lo que crearon; el resto,
+// solo lo que crearon. Devuelve el registro (con sus coordenadas) o null.
+async function obtenerRegistroVisible(usuario, id) {
+  const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ?', [usuario]);
+  if (!uRows.length) return null;
+  const rol = uRows[0].Rol || '';
+  const [rows] = await pool.execute(
+    `SELECT dl.id, dl.estado, dl.identificacion, dl.prefijo, dl.usuario_creador, dl.original_pdf_url,
+            dl.firmas_coordenadas, dl.firma_page, dl.firma_x, dl.firma_y, dl.firma_w, dl.firma_h,
+            cdt.Clasificacion
+     FROM Dynamic_Logysign dl
+     LEFT JOIN Config_Doc_Trabajador cdt ON dl.id_config_doc = cdt.Id
+     WHERE dl.id = ?`,
+    [id]
+  );
+  if (!rows.length) return null;
+  const reg = rows[0];
+  if (rol === 'Sistema') return reg;
+  if (reg.usuario_creador === usuario) return reg;
+  if (['Contratación', 'Archivo', 'Asistencial'].includes(rol) && String(reg.Clasificacion || '').includes('Documentos de Ingreso')) return reg;
+  return null;
+}
+
+// API: Vista previa de un documento pendiente de firma: el PDF que se subió con el/los
+// cuadro(s) de firma marcados donde firmará el trabajador. No guarda nada.
+router.get('/api/vista-previa/:id', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).send('Usuario requerido');
+
+    const reg = await obtenerRegistroVisible(usuario, req.params.id);
+    if (!reg) return res.status(404).send('Documento no encontrado o sin permiso para verlo');
+    if (!reg.original_pdf_url) return res.status(404).send('El registro no tiene documento cargado');
+
+    const bucketName = process.env.BUCKET_PDFS || 'talenthub_central';
+    const pathInBucket = new URL(reg.original_pdf_url).pathname.replace(/^\/[^\/]+\//, ''); // sin el nombre del bucket
+    const [pdfBuffer] = await storage.bucket(bucketName).file(pathInBucket).download();
+
+    // Cuadros de firma: mismas coordenadas y misma conversión que al firmar (logysign /api/firmar)
+    let boxes = [];
+    if (reg.firmas_coordenadas) {
+      try { boxes = JSON.parse(reg.firmas_coordenadas); } catch { boxes = []; }
+    }
+    if (!Array.isArray(boxes) || !boxes.length) {
+      boxes = reg.firma_page ? [{ page: reg.firma_page, x: reg.firma_x, y: reg.firma_y, w: reg.firma_w, h: reg.firma_h }] : [];
+    }
+
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    const fuente = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const pages = pdfDoc.getPages();
+    const azul = rgb(0.106, 0.165, 0.369); // #1B2A5E
+    for (const box of boxes) {
+      const pageIdx = Math.min(Number(box.page), pages.length) - 1;
+      if (!(pageIdx >= 0)) continue;
+      const page = pages[pageIdx];
+      const { width: pw, height: ph } = page.getSize();
+      const x = Number(box.x) * pw;
+      const y = (1 - Number(box.y) - Number(box.h)) * ph;
+      const w = Number(box.w) * pw;
+      const h = Number(box.h) * ph;
+      page.drawRectangle({
+        x, y, width: w, height: h,
+        color: azul, opacity: 0.07,
+        borderColor: azul, borderWidth: 1.2, borderOpacity: 0.9, borderDashArray: [4, 3],
+      });
+      const texto = 'Firma del trabajador';
+      const size = Math.max(5, Math.min(10, h * 0.28, (w * 0.9) / (fuente.widthOfTextAtSize(texto, 1) || 1)));
+      page.drawText(texto, {
+        x: x + (w - fuente.widthOfTextAtSize(texto, size)) / 2,
+        y: y + (h - size) / 2,
+        size, font: fuente, color: azul, opacity: 0.85,
+      });
+    }
+
+    const salida = await pdfDoc.save();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Vista_previa_${reg.identificacion}.${reg.prefijo || 'documento'}.pdf"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(Buffer.from(salida));
+  } catch (err) {
+    console.error('[registrologysign] Error generando vista previa:', err);
+    res.status(500).send('Error al generar la vista previa del documento');
   }
 });
 
