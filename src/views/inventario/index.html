@@ -129,6 +129,28 @@
       overflow: hidden;
     }
 
+    /* Campos de formulario: el navegador no les hereda el color del body y los pinta en
+       negro, que en tema oscuro casi no se ve. Se usa el color del tema; los campos con
+       color propio (estilo en línea o regla más específica) lo conservan. */
+    input, select, textarea {
+      color: var(--text);
+    }
+    input::placeholder, textarea::placeholder {
+      color: var(--text-muted);
+      opacity: 1;
+    }
+    input:disabled, select:disabled, textarea:disabled {
+      color: var(--text-muted);
+    }
+    select option, select optgroup {
+      background-color: var(--card-bg);
+      color: var(--text);
+    }
+    /* Controles nativos (calendario de fechas, flechas, barras de desplazamiento) en oscuro */
+    :root[data-theme="oscuro"] {
+      color-scheme: dark;
+    }
+
     .wrapper {
       margin-left: 280px;
       flex: 1;
