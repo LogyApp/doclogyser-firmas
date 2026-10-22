@@ -2804,19 +2804,36 @@
               </div>
             </div>
 
-            <!-- 5. Transpaleta / Estibador Manual -->
+            <!-- 5. Transpaleta (General: Manual o Eléctrica) -->
             <div class="ins-equip-card" onclick="abrirModalInspeccion('montacarga', 'transpaleta')" style="cursor:pointer;">
               <div class="ins-equip-img-wrap">
-                <span class="ins-equip-badge">Equipo Manual</span>
-                <img src="/img/inspecciones/transpaleta.png" alt="Transpaleta Manual">
+                <span class="ins-equip-badge">Equipo Bodega</span>
+                <img src="/img/inspecciones/transpaleta.png" alt="Transpaleta">
               </div>
               <div class="ins-equip-body">
                 <div>
-                  <div class="ins-equip-title">🔧 Transpaleta Manual</div>
-                  <div class="ins-equip-desc">Chequeo rápido de estibador hidráulico manual antes de turno (10 puntos).</div>
+                  <div class="ins-equip-title">🔧 Transpaleta</div>
+                  <div class="ins-equip-desc">Chequeo rápido de estibador / transpaleta (manual o eléctrica) antes de iniciar turno (10 a 13 puntos).</div>
                 </div>
                 <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('montacarga', 'transpaleta')">
                   Iniciar chequeo →
+                </button>
+              </div>
+            </div>
+
+            <!-- 6. Transporte Público (Solo confirmación) -->
+            <div class="ins-equip-card" onclick="abrirModalInspeccion('transporte_publico', 'publico')" style="cursor:pointer;">
+              <div class="ins-equip-img-wrap">
+                <span class="ins-equip-badge">Desplazamiento</span>
+                <img src="/img/inspecciones/transporte_publico.svg" alt="Transporte Público">
+              </div>
+              <div class="ins-equip-body">
+                <div>
+                  <div class="ins-equip-title">🚌 Transporte Público</div>
+                  <div class="ins-equip-desc">Confirmación directa para colaboradores que se desplazan en transporte público o masivo (sin preguntas).</div>
+                </div>
+                <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('transporte_publico', 'publico')">
+                  Confirmar medio →
                 </button>
               </div>
             </div>
@@ -2900,7 +2917,7 @@
       </div>
 
       <!-- Barra de 3 Pasos del Asistente -->
-      <div class="ins-wizard-steps">
+      <div class="ins-wizard-steps" id="ins-wizard-steps-bar">
         <button type="button" class="ins-wizard-step active" id="ins-wiz-btn-1" onclick="irAPasoInspeccion(1)">
           <span class="ins-wizard-num">1</span>
           <span>Mi Vehículo / Equipo</span>
@@ -2952,6 +2969,29 @@
                   ⚡ Selecciona con 1 toque tu vehículo o equipo frecuente:
                 </div>
                 <div class="ins-plate-chips" id="ins-chips-habituales"></div>
+              </div>
+
+              <!-- Selector Manual vs Eléctrica (exclusivo para Transpaleta) -->
+              <div id="ins-group-tipo-transpaleta" style="display:none; margin-bottom:16px;">
+                <label class="form-label" style="margin-bottom:8px; display:block;">
+                  Selecciona el tipo de Transpaleta <span class="req">*</span>
+                </label>
+                <div class="option-cards">
+                  <label class="option-card active" id="ins_opt_transp_manual">
+                    <input type="radio" name="ins_tipo_transpaleta" value="transpaleta" checked onchange="cambiarTipoTranspaleta('transpaleta')">
+                    <div>
+                      <div class="option-card-title">🔧 Transpaleta Manual</div>
+                      <div class="option-card-sub">Estibador hidráulico manual (10 puntos de chequeo)</div>
+                    </div>
+                  </label>
+                  <label class="option-card" id="ins_opt_transp_electrica">
+                    <input type="radio" name="ins_tipo_transpaleta" value="transpaleta_electrica" onchange="cambiarTipoTranspaleta('transpaleta_electrica')">
+                    <div>
+                      <div class="option-card-title">⚡ Transpaleta Eléctrica</div>
+                      <div class="option-card-sub">Incluye botón de ascenso/descenso, movilidad y cableado (13 puntos)</div>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div class="form-grid form-grid-2">
@@ -3021,6 +3061,26 @@
                PASO 3: DICTAMEN, NOVEDADES, FOTOS Y FIRMA
           ═══════════════════════════════════════════════════════ -->
           <div id="ins-step-pane-3" style="display:none;">
+            <!-- Datos del colaborador visibles cuando es Confirmación de Transporte Público -->
+            <div id="ins-step3-publico-info" class="info-grid" style="display:none; margin-bottom:16px;">
+              <div class="info-item">
+                <span class="info-label">Colaborador</span>
+                <span class="info-val" id="ins-pub-trabajador">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Identificación</span>
+                <span class="info-val" id="ins-pub-identificacion">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Cargo</span>
+                <span class="info-val" id="ins-pub-cargo">—</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Operación / Regional</span>
+                <span class="info-val" id="ins-pub-operacion">—</span>
+              </div>
+            </div>
+
             <!-- Resumen visual del resultado -->
             <div id="ins-step3-summary-box" class="alert-box alert-success" style="margin-bottom:16px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
               <div>
@@ -3033,7 +3093,7 @@
             <!-- Campos de reporte de novedad y plan de acción -->
             <div class="card" style="padding:16px; margin-bottom:16px;">
               <div class="card-title" style="margin-bottom:12px;">
-                <span>📝 Observaciones, Plan de Acción y Evidencia Fotográfica</span>
+                <span id="ins-step3-obs-card-title">📝 Observaciones, Plan de Acción y Evidencia Fotográfica</span>
               </div>
               <div class="form-grid form-grid-2" style="margin-bottom:14px;">
                 <div class="form-group">
@@ -3044,13 +3104,13 @@
                   <label class="form-label" for="ins_obs_generales">Observaciones generales (Opcional)</label>
                   <input type="text" class="form-control" id="ins_obs_generales" placeholder="Algún detalle adicional del vehículo o ruta...">
                 </div>
-                <div class="form-group" style="grid-column: 1 / -1;">
+                <div class="form-group" id="ins-group-plan-accion" style="grid-column: 1 / -1;">
                   <label class="form-label" for="ins_plan_accion">Plan de acción / Compromiso ante novedades <span class="req" id="ins_req_plan" style="display:none;">*</span></label>
                   <textarea id="ins_plan_accion" class="form-control" rows="2" style="height:auto; padding:10px;" placeholder="Si marcaste algún punto en 'No cumple', indica qué medida se tomará..."></textarea>
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="form-group" id="ins-group-fotos">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                   <label class="form-label">Fotografías de evidencia (Opcional, máx. <span id="ins-max-fotos-lbl">4</span> fotos)</label>
                   <input type="file" id="ins_input_fotos" accept="image/*" multiple style="display:none;" onchange="agregarFotosInspeccion(this)">
@@ -4634,11 +4694,29 @@
         stateInspeccion.sections = agruparSeccionesInspeccion(stateInspeccion.items);
         stateInspeccion.photos = [];
 
-        document.getElementById('ins-modal-title').textContent = `🚗 ${tpl.title || ('Inspección: ' + tpl.label)}`;
+        const esTransportePublico = tpl.type === 'transporte_publico';
+        const esMontacarga = tpl.type === 'montacarga';
+        const esTranspaleta = tpl.subtype === 'transpaleta' || tpl.subtype === 'transpaleta_electrica';
+
+        document.getElementById('ins-modal-title').textContent = esTransportePublico
+          ? `🚌 ${tpl.title || 'Transporte Público'}`
+          : `🚗 ${tpl.title || ('Inspección: ' + tpl.label)}`;
         document.getElementById('ins-form-trabajador').textContent = col.nombre || '—';
         document.getElementById('ins-form-identificacion').textContent = col.identificacion || '—';
         document.getElementById('ins-form-cargo').textContent = col.cargo || '—';
         document.getElementById('ins-form-operacion').textContent = `${col.operacion || '—'} · ${col.regional || '—'}`;
+
+        document.getElementById('ins-pub-trabajador').textContent = col.nombre || '—';
+        document.getElementById('ins-pub-identificacion').textContent = col.identificacion || '—';
+        document.getElementById('ins-pub-cargo').textContent = col.cargo || '—';
+        document.getElementById('ins-pub-operacion').textContent = `${col.operacion || '—'} · ${col.regional || '—'}`;
+        document.getElementById('ins-step3-publico-info').style.display = esTransportePublico ? 'grid' : 'none';
+        document.getElementById('ins-wizard-steps-bar').style.display = esTransportePublico ? 'none' : 'flex';
+        document.getElementById('ins-group-plan-accion').style.display = esTransportePublico ? 'none' : 'flex';
+        document.getElementById('ins-group-fotos').style.display = esTransportePublico ? 'none' : 'flex';
+        document.getElementById('ins-step3-obs-card-title').textContent = esTransportePublico
+          ? '📝 Datos de Reporte y Observaciones (Opcional)'
+          : '📝 Observaciones, Plan de Acción y Evidencia Fotográfica';
 
         const inpPlaca = document.getElementById('ins_input_placa');
         const inpEquipo = document.getElementById('ins_input_equipo');
@@ -4652,23 +4730,39 @@
         document.getElementById('ins_plan_accion').value = '';
         document.getElementById('ins-photos-preview').innerHTML = '';
 
-        const esMontacarga = tpl.type === 'montacarga';
-        const esTranspaleta = tpl.subtype === 'transpaleta';
+        // Selector Manual vs Eléctrica solo cuando se abre Transpaleta
+        const grpTipoTransp = document.getElementById('ins-group-tipo-transpaleta');
+        if (grpTipoTransp) {
+          grpTipoTransp.style.display = esTranspaleta ? 'block' : 'none';
+          if (esTranspaleta) {
+            const esElec = tpl.subtype === 'transpaleta_electrica';
+            const rMan = document.querySelector('input[name="ins_tipo_transpaleta"][value="transpaleta"]');
+            const rElec = document.querySelector('input[name="ins_tipo_transpaleta"][value="transpaleta_electrica"]');
+            if (rMan) rMan.checked = !esElec;
+            if (rElec) rElec.checked = esElec;
+            document.getElementById('ins_opt_transp_manual').classList.toggle('active', !esElec);
+            document.getElementById('ins_opt_transp_electrica').classList.toggle('active', esElec);
+          }
+        }
 
-        document.getElementById('ins-group-placa').style.display = esMontacarga ? 'none' : 'flex';
-        document.getElementById('ins_req_placa').style.display = esMontacarga ? 'none' : 'inline';
-        inpPlaca.required = !esMontacarga;
+        document.getElementById('ins-group-placa').style.display = (esMontacarga || esTransportePublico) ? 'none' : 'flex';
+        document.getElementById('ins_req_placa').style.display = (esMontacarga || esTransportePublico) ? 'none' : 'inline';
+        inpPlaca.required = !(esMontacarga || esTransportePublico);
 
         document.getElementById('ins-group-equipo').style.display = esMontacarga ? 'flex' : 'none';
         document.getElementById('ins_req_equipo').style.display = esMontacarga ? 'inline' : 'none';
         inpEquipo.required = esMontacarga;
 
-        document.getElementById('ins-group-odometro').style.display = esTranspaleta ? 'none' : 'flex';
-        inpOdometro.required = !esTranspaleta;
+        document.getElementById('ins-group-odometro').style.display = (esTranspaleta || esTransportePublico) ? 'none' : 'flex';
+        inpOdometro.required = !(esTranspaleta || esTransportePublico);
         document.getElementById('ins_lbl_odometro').textContent = esMontacarga ? 'Horómetro Actual' : 'Kilometraje Actual';
 
         // Renderizar chips de placas o equipos frecuentes y prellenar el más reciente
-        renderizarChipsVehiculosHabituales(esMontacarga);
+        if (!esTransportePublico) {
+          renderizarChipsVehiculosHabituales(esMontacarga);
+        } else {
+          document.getElementById('ins-habituales-box').style.display = 'none';
+        }
 
         // Configurar firma
         const blqFirma = document.getElementById('ins_bloque_opciones_firma');
@@ -4691,10 +4785,49 @@
 
         renderizarChecklistInspeccion();
         actualizarEstadoPreliminarInspeccion();
-        mostrarPasoInspeccion(1);
+        mostrarPasoInspeccion(esTransportePublico ? 3 : 1);
 
         document.getElementById('modalInspeccionOverlay').style.display = 'flex';
         document.getElementById('ins-modal-body').scrollTop = 0;
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function cambiarTipoTranspaleta(nuevoSubtipo) {
+      const esElec = nuevoSubtipo === 'transpaleta_electrica';
+      document.getElementById('ins_opt_transp_manual').classList.toggle('active', !esElec);
+      document.getElementById('ins_opt_transp_electrica').classList.toggle('active', esElec);
+
+      try {
+        const res = await fetch(`/empleado/api/inspecciones/plantilla?type=montacarga&subtype=${encodeURIComponent(nuevoSubtipo)}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok || !data.template) {
+          throw new Error(data.error || 'No se pudo cargar la plantilla de transpaleta.');
+        }
+        const tpl = data.template;
+        const respuestasPrevias = new Map();
+        (stateInspeccion.items || []).forEach(it => {
+          respuestasPrevias.set(it.id, { result: it.result || '', observation: it.observation || '' });
+        });
+
+        stateInspeccion.subtype = tpl.subtype;
+        stateInspeccion.template = tpl;
+        stateInspeccion.items = (tpl.items || []).map(it => {
+          const prev = respuestasPrevias.get(it.id) || { result: '', observation: '' };
+          return {
+            id: it.id,
+            section: it.section,
+            text: it.text,
+            critical: !!it.critical,
+            result: prev.result,
+            observation: prev.observation
+          };
+        });
+        stateInspeccion.sections = agruparSeccionesInspeccion(stateInspeccion.items);
+        document.getElementById('ins-modal-title').textContent = `🚗 ${tpl.title || ('Inspección: ' + tpl.label)}`;
+        renderizarChecklistInspeccion();
+        actualizarEstadoPreliminarInspeccion();
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -4772,8 +4905,9 @@
     }
 
     function validarPaso1Inspeccion() {
+      if (stateInspeccion.type === 'transporte_publico') return true;
       const esMontacarga = stateInspeccion.type === 'montacarga';
-      const esTranspaleta = stateInspeccion.subtype === 'transpaleta';
+      const esTranspaleta = stateInspeccion.subtype === 'transpaleta' || stateInspeccion.subtype === 'transpaleta_electrica';
       const placa = document.getElementById('ins_input_placa').value.trim();
       const equipo = document.getElementById('ins_input_equipo').value.trim();
       const odometro = document.getElementById('ins_input_odometro').value.trim();
@@ -4797,6 +4931,7 @@
     }
 
     function validarPaso2Inspeccion() {
+      if (stateInspeccion.type === 'transporte_publico') return true;
       const sinCalificar = stateInspeccion.items.filter(x => !x.result);
       if (sinCalificar.length > 0) {
         showToast(`Te faltan ${sinCalificar.length} puntos por responder. Puedes usar "✓ Todo este bloque Cumple" para agilizar.`, 'error');
@@ -4819,11 +4954,12 @@
         }
       });
 
+      const esTransportePublico = stateInspeccion.type === 'transporte_publico';
       const btnPrev = document.getElementById('btn-ins-prev');
       const btnNext = document.getElementById('btn-ins-next');
       const btnSave = document.getElementById('btn-guardar-inspeccion');
 
-      btnPrev.style.display = stepNum > 1 ? 'inline-flex' : 'none';
+      btnPrev.style.display = (stepNum > 1 && !esTransportePublico) ? 'inline-flex' : 'none';
       if (stepNum === 1) {
         btnNext.style.display = 'inline-flex';
         btnNext.textContent = 'Siguiente: Chequeo Rápido →';
@@ -4835,6 +4971,9 @@
       } else {
         btnNext.style.display = 'none';
         btnSave.style.display = 'inline-flex';
+        btnSave.textContent = esTransportePublico
+          ? '💾 Confirmar Transporte Público y Generar PDF'
+          : '💾 Finalizar y Generar PDF';
         if (stateInspeccion.metodoFirma === 'nueva') {
           setTimeout(() => ajustarTamanioCanvasInspeccion(false), 60);
         }
@@ -5009,6 +5148,7 @@
     }
 
     function actualizarEstadoPreliminarInspeccion() {
+      const esTransportePublico = stateInspeccion.type === 'transporte_publico';
       const items = stateInspeccion.items || [];
       const total = items.length;
       const respondidos = items.filter(x => x.result).length;
@@ -5018,7 +5158,11 @@
       const score = respondidos > 0 ? Math.round((totalC / evaluables) * 100) : 100;
 
       const prog = document.getElementById('ins-modal-progress');
-      if (prog) prog.textContent = `${respondidos} / ${total} puntos respondidos`;
+      if (prog) {
+        prog.textContent = esTransportePublico
+          ? 'Confirmación directa (sin lista de chequeo)'
+          : `${respondidos} / ${total} puntos respondidos`;
+      }
 
       const tieneNc = items.some(x => x.result === 'NC');
       const tieneCriticoNc = items.some(x => x.critical && x.result === 'NC');
@@ -5033,6 +5177,21 @@
       const sumTitle = document.getElementById('ins-step3-summary-title');
       const sumSub = document.getElementById('ins-step3-summary-sub');
       const scorePill = document.getElementById('ins-step3-score-pill');
+
+      if (esTransportePublico) {
+        if (scorePill) {
+          scorePill.textContent = 'CONFIRMADO';
+          scorePill.className = 'badge badge-success';
+        }
+        if (badge) {
+          badge.className = 'badge badge-success';
+          badge.textContent = 'TRANSPORTE PÚBLICO';
+        }
+        if (sumBox) sumBox.className = 'alert-box alert-success';
+        if (sumTitle) sumTitle.textContent = '🚌 Confirmación de Desplazamiento en Transporte Público';
+        if (sumSub) sumSub.textContent = 'Confirmo que para mis desplazamientos utilizo transporte público o masivo. Solo debes firmar y confirmar abajo.';
+        return;
+      }
 
       if (scorePill) scorePill.textContent = `${score}%`;
 

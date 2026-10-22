@@ -140,7 +140,7 @@ const INSPECTION_TEMPLATES = {
     transpaleta: {
       type: 'montacarga',
       subtype: 'transpaleta',
-      label: 'Transpaleta / Estibador Manual',
+      label: 'Transpaleta Manual',
       shortLabel: 'TRANSPALETA MANUAL',
       title: 'Inspección Preoperacional — Transpaleta Manual',
       items: [
@@ -158,6 +158,42 @@ const INSPECTION_TEMPLATES = {
         { id: 'tm9', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Capacidad máxima de carga visible o conocida por el operador', critical: false },
         { id: 'tm10', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Colaborador con botas de seguridad con puntera y guantes de trabajo', critical: true }
       ]
+    },
+    transpaleta_electrica: {
+      type: 'montacarga',
+      subtype: 'transpaleta_electrica',
+      label: 'Transpaleta Eléctrica',
+      shortLabel: 'TRANSPALETA ELÉCTRICA',
+      title: 'Inspección Preoperacional — Transpaleta Eléctrica',
+      items: [
+        // Bloque 1: Estructura
+        { id: 'tm1', section: '1. ESTRUCTURA Y HORQUILLAS', text: 'Chasis y horquillas rectas, sin fisuras, dobleces ni bordes cortantes', critical: true },
+        { id: 'tm2', section: '1. ESTRUCTURA Y HORQUILLAS', text: 'Maneral / timón de tracción firme, con retorno automático a posición vertical', critical: true },
+        { id: 'tm3', section: '1. ESTRUCTURA Y HORQUILLAS', text: 'Equipo limpio y libre de objetos atascados en su estructura', critical: false },
+        // Bloque 2: Sistema Hidráulico
+        { id: 'tm4', section: '2. SISTEMA HIDRÁULICO', text: 'Palanca / mando de control (Subir / Neutro / Bajar) funcionando correctamente', critical: true },
+        { id: 'tm5', section: '2. SISTEMA HIDRÁULICO', text: 'Gato / cilindro hidráulico sin fugas de aceite', critical: true },
+        { id: 'tm6', section: '2. SISTEMA HIDRÁULICO', text: 'Eleva y sostiene la carga sin bajarse sola y desciende de forma controlada', critical: true },
+        // Bloque 3: Ruedas y Operación Segura
+        { id: 'tm7', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Ruedas direccionales y rodillos de carga completos, girando sin bloqueos', critical: true },
+        { id: 'tm8', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Pasadores, ejes y articulaciones completos y asegurados', critical: true },
+        { id: 'tm9', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Capacidad máxima de carga visible o conocida por el operador', critical: false },
+        { id: 'tm10', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Colaborador con botas de seguridad con puntera y guantes de trabajo', critical: true },
+        // Bloque 4: Mandos Eléctricos y Cableado (Adicionales de Transpaleta Eléctrica)
+        { id: 'tm11', section: '4. MANDOS ELÉCTRICOS Y CABLEADO', text: 'Tiene bueno el botón de ascenso y descenso', critical: true },
+        { id: 'tm12', section: '4. MANDOS ELÉCTRICOS Y CABLEADO', text: 'Tiene bueno el botón de movilidad', critical: true },
+        { id: 'tm13', section: '4. MANDOS ELÉCTRICOS Y CABLEADO', text: 'El cableado está en buen estado', critical: true }
+      ]
+    }
+  },
+  transporte_publico: {
+    publico: {
+      type: 'transporte_publico',
+      subtype: 'publico',
+      label: 'Transporte Público',
+      shortLabel: 'TRANSPORTE PÚBLICO',
+      title: 'Confirmación de Medio de Desplazamiento — Transporte Público',
+      items: []
     }
   }
 };
@@ -543,6 +579,32 @@ function construirHTMLPDFInspeccion({
     `;
   }).join('');
 
+  const esTransportePublico = template.type === 'transporte_publico' || !items || !items.length;
+  const cuerpoVerificacionHtml = esTransportePublico
+    ? `
+  <div style="border:1.5px solid #16a34a;background:#f0fdf4;border-radius:6px;padding:12px 14px;margin-bottom:8px;">
+    <div style="font-size:9pt;font-weight:700;color:#15803d;text-transform:uppercase;margin-bottom:4px;">
+      ✓ Confirmación de Desplazamiento en Transporte Público
+    </div>
+    <div style="font-size:8.2pt;color:#1e293b;line-height:1.45;">
+      El colaborador confirma y declara que para sus desplazamientos laborales u operativos utiliza <strong>Transporte Público</strong>, por lo cual no aplica lista de chequeo preoperacional de vehículo propio ni de equipo asignado.
+    </div>
+  </div>`
+    : `
+  <table style="margin-bottom:6px;">
+    <thead>
+      <tr style="background:#0A315D;color:#ffffff;">
+        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:22%;font-size:7.5pt;">BLOQUE</th>
+        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:44%;font-size:7.5pt;">PUNTO DE VERIFICACIÓN</th>
+        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:center;width:14%;font-size:7.5pt;">ESTADO</th>
+        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:20%;font-size:7.5pt;">OBSERVACIÓN</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsRowsHtml}
+    </tbody>
+  </table>`;
+
   let fotosHtml = '';
   if (Array.isArray(fotosDataUrls) && fotosDataUrls.length) {
     const cells = fotosDataUrls.map((src, i) => `
@@ -637,19 +699,7 @@ function construirHTMLPDFInspeccion({
     </tr>
   </table>
 
-  <table style="margin-bottom:6px;">
-    <thead>
-      <tr style="background:#0A315D;color:#ffffff;">
-        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:22%;font-size:7.5pt;">BLOQUE</th>
-        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:44%;font-size:7.5pt;">PUNTO DE VERIFICACIÓN</th>
-        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:center;width:14%;font-size:7.5pt;">ESTADO</th>
-        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:20%;font-size:7.5pt;">OBSERVACIÓN</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemsRowsHtml}
-    </tbody>
-  </table>
+  ${cuerpoVerificacionHtml}
 
   <table style="margin-bottom:6px;page-break-inside:avoid;">
     <tr>
@@ -778,18 +828,20 @@ async function crearInspeccionVehiculo(payload, colaborador) {
   } = payload || {};
 
   const template = obtenerPlantillaInspeccion(type, subtype);
+  const esTransportePublico = type === 'transporte_publico';
+  const esTranspaleta = subtype === 'transpaleta' || subtype === 'transpaleta_electrica';
 
   if ((type === 'vehiculo' || type === 'camion') && !String(plate || '').trim()) {
     throw new Error('La placa del vehículo es obligatoria.');
   }
   if (type === 'montacarga' && !String(equipmentId || '').trim()) {
-    throw new Error('El número interno o código del equipo es obligatorio para montacargas.');
+    throw new Error('El número interno o código del equipo es obligatorio para montacargas y transpaletas.');
   }
-  if (subtype !== 'transpaleta' && !String(meter || '').trim()) {
+  if (!esTransportePublico && !esTranspaleta && !String(meter || '').trim()) {
     throw new Error('El kilometraje u horómetro actual es obligatorio.');
   }
 
-  if (!Array.isArray(items) || items.length !== template.items.length) {
+  if (!esTransportePublico && (!Array.isArray(items) || items.length !== template.items.length)) {
     throw new Error('La lista de chequeo está incompleta.');
   }
 
@@ -915,12 +967,14 @@ async function crearInspeccionVehiculo(payload, colaborador) {
     }
   }
 
-  const placaClean = String(plate || '').replace(/[^0-9A-Za-z-]/g, '').trim().toUpperCase();
+  const placaClean = esTransportePublico
+    ? 'TRANSPORTE PÚBLICO'
+    : String(plate || '').replace(/[^0-9A-Za-z-]/g, '').trim().toUpperCase();
   const equipoClean = String(equipmentId || '').trim().toUpperCase();
-  const odometroClean = String(meter || '').trim();
+  const odometroClean = esTransportePublico ? 'N/A' : String(meter || '').trim();
 
   // Sincronizar placa en Maestro_Placas (columnas tipo_vehiculo y empleado) si aplica
-  if (placaClean) {
+  if (placaClean && !esTransportePublico) {
     await sincronizarPlacaEnMaestroPlacas({
       placa: placaClean,
       tipoVehiculo: template.shortLabel || template.label,
