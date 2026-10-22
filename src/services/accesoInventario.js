@@ -1,4 +1,5 @@
 const pool = require('./db');
+const { obtenerCategoriasRestringidas } = require('./configInventario');
 
 function agruparOperacionesPorRegional(rows) {
   const opsPorRegional = {};
@@ -62,16 +63,17 @@ async function computarAccesoInventario(usuarioId, seccionRequested = null) {
     sinFiltro: false,
     operacionesFiltro: [],
     opsPorRegional: {},
-    filtroCategorias: null // null es acceso a todas, de lo contrario restringido a ['EPP', 'DOTACION']
+    filtroCategorias: null // null es acceso a todas; si no, solo las categorías del acceso restringido
   };
 
   menuRows.forEach(r => {
     acceso.seccionAcceso[r.seccion] = r.acceso;
   });
 
-  // Códigos 4, 5 y 6 restringen a categorías EPP y DOTACIÓN
+  // Códigos 4, 5 y 6 restringen a las categorías de "Categorías permitidas en acceso
+  // restringido" (Config_Parametros, inventario / General; por defecto EPP y DOTACIÓN).
   if ([4, 5, 6].includes(activeAccesoCode)) {
-    acceso.filtroCategorias = ['EPP', 'DOTACIÓN', 'DOTACION'];
+    acceso.filtroCategorias = await obtenerCategoriasRestringidas();
   }
 
   // Resolver el filtro de operaciones según el código de acceso (normalizado de 1 a 3)

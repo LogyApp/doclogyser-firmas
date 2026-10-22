@@ -10,6 +10,15 @@ const { computarAccesoInventario, agruparOperacionesPorRegional } = require('../
 const { registrarKardexActa, construirDatosPlantilla, obtenerContactoTrabajador } = require('../services/actas');
 const { generarToken } = require('../services/token');
 const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
+const {
+  obtenerConfigPestanaInventario,
+  mesConfirmacionPermitido,
+  obtenerCategoriasConfirmacion,
+  obtenerCondicionesCategoria,
+  categoriaEsRecuperable,
+  obtenerDestinatariosConfirmacion,
+  normalizarTexto,
+} = require('../services/configInventario');
 const multer = require('multer');
 
 const router = express.Router();
@@ -36,15 +45,6 @@ async function getLookupsBase() {
   lastLookupsBaseFetch = now;
   return cachedLookupsBase;
 }
-
-const ROLES_SIN_FILTRO = [
-  'AdmSst', 'Archivo', 'Calidad', 'Contabilidad', 'Control',
-  'Cuentas', 'Facturación', 'Juridica', 'Jurídica', 'Nomina', 'Nómina', 'LiderSst',
-  'Sistema', 'Dirección RRHH'
-];
-const ROLES_REGIONAL = ['AuxiliarR', 'CoordinadorR'];
-const ROLES_MODALIDAD = ['AnaSst'];
-const ROLES_EXCLUIDOS = ['Generalista', 'Selección Centro', 'Selección', 'Contratación'];
 
 // Resuelve los correos de Auxiliar/Coordinador/AuxiliarR/CoordinadorR responsables de una
 // Operación destino (para notificaciones de transferencia de Kardex). Si no hay nadie asignado
@@ -105,10 +105,18 @@ router.get('/', async (req, res) => {
       return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
     }
 
+    // Reglas de la pestaña Inventario (Config_Parametros, inventario / Inventario)
+    const [cfgInventario, categoriasConfirmacion, condicionesCategoria] = await Promise.all([
+      obtenerConfigPestanaInventario(acceso.rol),
+      obtenerCategoriasConfirmacion(acceso.filtroCategorias),
+      obtenerCondicionesCategoria(),
+    ]);
+
     const html = fs.readFileSync(HTML_PATH, 'utf8');
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
+      inventario: { ...cfgInventario, categoriasConfirmacion, condicionesCategoria },
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -436,6 +444,21 @@ router.post('/api/placa', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
+    // Rol con permiso ("Roles que pueden editar placa", Config_Parametros inventario / Inventario)
+    const cfg = await obtenerConfigPestanaInventario(acceso.rol);
+    if (!cfg.puedeEditarPlaca) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para editar la placa.' });
+    }
+
+    // La placa solo aplica a categorías con Condición 'Recuperable' (Config_Categoria_Inventario)
+    const [[artPlaca]] = await pool.execute('SELECT Categoria FROM Dynamic_Articulos WHERE Id = ? LIMIT 1', [idArticulo]);
+    if (!artPlaca) {
+      return res.status(404).json({ error: 'Artículo no encontrado en la base de datos' });
+    }
+    if (!(await categoriaEsRecuperable(artPlaca.Categoria))) {
+      return res.status(400).json({ error: 'La placa solo aplica para artículos de categorías Recuperables.' });
+    }
+
     // Validar que placa sea solo números o vacía
     if (placa && placa.trim() !== '' && !/^\d+$/.test(placa)) {
       return res.status(400).json({ error: 'La placa solo debe contener números' });
@@ -518,8 +541,18 @@ router.post('/api/confirmar', async (req, res) => {
     }
 
     // Si el rol tiene categorías restringidas, verificar que la categoría elegida esté permitida
-    if (acceso.filtroCategorias && !acceso.filtroCategorias.includes(categoria)) {
-      return res.status(403).json({ error: `Su rol solo le permite confirmar las categorías: ${acceso.filtroCategorias.join(', ')}` });
+    if (acceso.filtroCategorias && !acceso.filtroCategorias.some((c) => normalizarTexto(c) === normalizarTexto(categoria))) {
+      // Se muestran sin repetir la misma categoría con y sin tilde
+      const visibles = [];
+      acceso.filtroCategorias.forEach((c) => { if (!visibles.some((v) => normalizarTexto(v) === normalizarTexto(c))) visibles.push(c); });
+      return res.status(403).json({ error: `Su rol solo le permite confirmar las categorías: ${visibles.join(', ')}` });
+    }
+
+    // Mes permitido ("Mes inicial de confirmación de inventario" hasta hoy + "Meses hacia
+    // adelante permitidos para confirmar", Config_Parametros inventario / Inventario)
+    const cfgInv = await obtenerConfigPestanaInventario(acceso.rol);
+    if (!mesConfirmacionPermitido(cfgInv, mes)) {
+      return res.status(400).json({ error: 'El mes seleccionado no está habilitado para confirmar inventario.' });
     }
 
     // 1. Validar registro único por mes
@@ -746,38 +779,27 @@ router.post('/api/confirmar', async (req, res) => {
       console.error('[inventario] Error insertando en Maestro_docEmpresa:', errDocEmp);
     }
 
-    // 9. Configurar destinatarios del correo según Categoría
-    let emailRecipients = ['admin@logyser.com'];
-    const catUpper = categoria.trim().toUpperCase();
-
-    if (catUpper === 'TECNOLOGIA') {
-      emailRecipients.push('administradorti@logyser.com');
-    } else if (catUpper === 'ACTIVO FIJO' || catUpper === 'ACTIVOS FIJOS') {
-      emailRecipients.push('controlcuentas@logyser.com');
-    } else if (catUpper === 'HERRAMIENTA' || catUpper === 'HERRAMIENTAS') {
-      emailRecipients.push('controlcuentas@logyser.com');
-    } else if (catUpper === 'DOTACION' || catUpper === 'DOTACIÓN') {
-      emailRecipients.push('controlcuentas@logyser.com', 'auxiliarcompras@logyser.com');
-    } else if (catUpper === 'EPP') {
-      emailRecipients.push('sstadmon@logyser.com', 'analistasst@logyser.com');
-    } else if (catUpper === 'PAPELERIA' || catUpper === 'PAPELERÍA') {
-      emailRecipients.push('controlcuentas@logyser.com');
-    }
-
-    if (catUpper !== 'EPP') {
-      emailRecipients.push('subgerenciaoperaciones@logyser.com');
-    }
-
-    // Disparar correo en segundo plano
-    notificarConfirmacionInventario({
-      operacion,
-      categoria,
-      mes,
-      usuarioNombre: colaborador,
-      emailUsuario: emailUsuario,
-      pdfUrl,
-      destinatarios: emailRecipients
-    }).catch(mailErr => console.error('[inventario] Error enviando correo de confirmación:', mailErr));
+    // 9. Destinatarios por Rol según la Categoría ("Notificación confirmación inventario
+    // <CATEGORÍA> - Para:", Config_Parametros inventario / Inventario). Quien confirma va en copia.
+    // Correo en segundo plano: no detiene la respuesta.
+    obtenerDestinatariosConfirmacion(categoria, operacion)
+      .then(({ habilitado, para }) => {
+        if (!habilitado) return;
+        if (!para.length) {
+          console.warn(`[inventario] Confirmación ${categoria} / ${operacion}: no hay destinatarios configurados para la categoría.`);
+          return;
+        }
+        return notificarConfirmacionInventario({
+          operacion,
+          categoria,
+          mes,
+          usuarioNombre: colaborador,
+          emailUsuario: emailUsuario,
+          pdfUrl,
+          destinatarios: para
+        });
+      })
+      .catch(mailErr => console.error('[inventario] Error enviando correo de confirmación:', mailErr));
 
     res.json({ ok: true, pdfUrl });
   } catch (err) {
@@ -3781,6 +3803,16 @@ router.post('/api/inventario/ajustar', async (req, res) => {
     const acceso = await computarAccesoInventario(usuario, 'Inventario');
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado.' });
+    }
+
+    // Rol con permiso ("Roles que pueden ajustar stock", Config_Parametros inventario / Inventario).
+    // Las operaciones que puede ajustar las define Maestro_Menu_Inventario (alcance del rol).
+    const cfgAjuste = await obtenerConfigPestanaInventario(acceso.rol);
+    if (!cfgAjuste.puedeAjustarStock) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para ajustar stock.' });
+    }
+    if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacion)) {
+      return res.status(403).json({ error: 'No tiene acceso a la operación seleccionada.' });
     }
 
     const parsedNueva = parseInt(nuevaCantidad);

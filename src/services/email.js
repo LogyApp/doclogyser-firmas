@@ -2068,22 +2068,48 @@ async function notificarBloqueoAspirante({ emailUsuario, nombreAspirante, regist
 async function notificarConfirmacionInventario({ operacion, categoria, mes, usuarioNombre, emailUsuario, pdfUrl, destinatarios }) {
   const asunto = `Confirmación de Inventario ${categoria} — ${operacion} — ${mes}`;
 
+  // Mismo formato que las notificaciones de Retiro y Toma de Cargo: encabezado de color con
+  // el logo incrustado (CID) y centrado; azul corporativo.
   const cuerpo = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
-      <div style="padding:24px;background:#fff;border:1px solid #eee">
-        <h2 style="color:#1a1a2e;margin-top:0;border-bottom:2px solid #edf2f7;padding-bottom:12px;">Confirmación de Inventario Exitosa</h2>
-        <p style="color:#555">Se ha registrado de forma oficial el acta de confirmación de inventario con los siguientes detalles:</p>
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:.93rem">
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Operación / Sede</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${operacion}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Categoría</td><td style="padding:8px 12px;font-weight:bold">${categoria}</td></tr>
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Período (Mes)</td><td style="padding:8px 12px">${mes}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Confirmado por</td><td style="padding:8px 12px">${usuarioNombre}</td></tr>
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Área</td><td style="padding:8px 12px">Inventario</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Tipo Período</td><td style="padding:8px 12px">Mensual</td></tr>
+    <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f4f4f4;padding:24px">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="display:inline-block;background:#eaf0fb;border:1px solid #b9c8e6;border-radius:6px;padding:6px 14px;margin-bottom:18px">
+          <span style="color:${COLOR_ENCABEZADO_AZUL};font-weight:bold;font-size:.88rem">
+            &#10004; INVENTARIO CONFIRMADO
+          </span>
+        </div>
+
+        <h2 style="color:#1a1a2e;margin:0 0 8px">Confirmación de Inventario</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.92rem;line-height:1.5">
+          Se ha registrado de forma oficial el acta de confirmación de inventario con los siguientes detalles:
+        </p>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.92rem;border:1px solid #e0e0e0">
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;width:38%;border:1px solid #e0e0e0">Operación / Sede</td>
+            <td style="padding:10px 14px;font-weight:bold;border:1px solid #e0e0e0;color:#1a1a2e">${operacion}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Categoría</td>
+            <td style="padding:10px 14px;font-weight:bold;color:${COLOR_ENCABEZADO_AZUL};border:1px solid #e0e0e0">${categoria}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Período (Mes)</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${mes} (Mensual)</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Confirmado por</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${usuarioNombre || '—'}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Área</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">Inventario</td>
+          </tr>
         </table>
-        <div style="margin-top:24px;text-align:center;">
-          <a href="${pdfUrl}" target="_blank" style="display:inline-block;padding:12px 24px;background-color:#1e3c72;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:6px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">Ver Acta Firmada (PDF)</a>
+
+        <div style="text-align:center;margin-top:8px">
+          <a href="${pdfUrl}" target="_blank" style="display:inline-block;padding:12px 24px;background-color:${COLOR_ENCABEZADO_AZUL};color:#ffffff;text-decoration:none;font-weight:bold;border-radius:6px">Ver Acta Firmada (PDF)</a>
         </div>
       </div>
       ${FOOTER}
@@ -2095,6 +2121,7 @@ async function notificarConfirmacionInventario({ operacion, categoria, mes, usua
     cc:      emailUsuario || undefined,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
