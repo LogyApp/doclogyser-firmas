@@ -8607,13 +8607,20 @@
       if (isKardexInitialized) return; // Prevent double initialization
       isKardexInitialized = true;
 
-      const isAdmin = CONFIG.rol === 'Inventario' || CONFIG.rol === 'Sistema';
+      // "Roles que pueden editar / eliminar registros de Kardex" (Config_Parametros, inventario / Kardex)
+      const kardexCfg = CONFIG.kardex || {};
+      const isAdmin = Boolean(kardexCfg.puedeEditar || kardexCfg.puedeEliminar);
 
       // Show admin controls
       if (isAdmin) {
         document.querySelectorAll('.kardex-admin-only').forEach(el => {
           el.style.setProperty('display', el.tagName === 'TH' || el.tagName === 'TD' ? 'table-cell' : 'inline-flex', 'important');
         });
+      }
+      // Sin permiso de eliminar no hay selección masiva
+      if (!kardexCfg.puedeEliminar) {
+        const selectAll = document.getElementById('kardex-select-all');
+        if (selectAll) selectAll.style.display = 'none';
       }
 
       // 0. Populate articles list for edit modal
@@ -9425,7 +9432,9 @@
         return;
       }
 
-      const isAdmin = CONFIG.rol === 'Inventario' || CONFIG.rol === 'Sistema';
+      // "Roles que pueden editar / eliminar registros de Kardex" (Config_Parametros, inventario / Kardex)
+      const kardexCfg = CONFIG.kardex || {};
+      const isAdmin = Boolean(kardexCfg.puedeEditar || kardexCfg.puedeEliminar);
 
       items.forEach(item => {
         const tr = document.createElement('tr');
@@ -9481,15 +9490,16 @@
         }
 
         // Checkbox column HTML
+        // La casilla (eliminación masiva) y 🗑️ dependen de eliminar; ✏️ de editar
         const checkboxHtml = `<td style="text-align: center;" class="kardex-admin-only" onclick="event.stopPropagation()">
-               <input type="checkbox" class="kardex-row-select" data-id="${item.IdKardex}" ${selectedKardexIds.has(item.IdKardex) ? 'checked' : ''}>
+               ${kardexCfg.puedeEliminar ? `<input type="checkbox" class="kardex-row-select" data-id="${item.IdKardex}" ${selectedKardexIds.has(item.IdKardex) ? 'checked' : ''}>` : ''}
              </td>`;
 
         // Actions column HTML
         const actionsHtml = `<td style="text-align: center;" class="kardex-admin-only" onclick="event.stopPropagation()">
                <div style="display: flex; gap: 8px; justify-content: center;">
-                 <button class="kardex-btn-edit btn" data-id="${item.IdKardex}" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 0.95rem;" title="Editar">✏️</button>
-                 <button class="kardex-btn-delete btn" data-id="${item.IdKardex}" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 0.95rem;" title="Eliminar">🗑️</button>
+                 ${kardexCfg.puedeEditar ? `<button class="kardex-btn-edit btn" data-id="${item.IdKardex}" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 0.95rem;" title="Editar">✏️</button>` : ''}
+                 ${kardexCfg.puedeEliminar ? `<button class="kardex-btn-delete btn" data-id="${item.IdKardex}" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 0.95rem;" title="Eliminar">🗑️</button>` : ''}
                </div>
              </td>`;
 
@@ -9674,8 +9684,8 @@
     }
 
     function openEditKardexModal(item) {
-      if (!['Sistema', 'Inventario'].includes(CONFIG.rol)) {
-        alert('Solo los roles Sistema e Inventario pueden editar registros de Kardex.');
+      if (!(CONFIG.kardex && CONFIG.kardex.puedeEditar)) {
+        alert('Su rol no tiene permiso para editar registros de Kardex.');
         return;
       }
       const modal = document.getElementById('kardex-edit-modal');
@@ -13061,10 +13071,16 @@
       if (artHidden) artHidden.value = '';
       if (artList) artList.style.display = 'none';
       if (stockInput) stockInput.value = '0';
-      if (tipoSel) tipoSel.value = 'AJUSTE';
+      if (tipoSel) {
+        // "Tipos de movimiento permitidos en Agregar Kardex" (Config_Parametros, inventario / Kardex)
+        const tipos = tiposPermitidosKardex();
+        tipoSel.innerHTML = tipos.map(t => `<option value="${t}">${t}</option>`).join('');
+        tipoSel.value = tipos.includes('AJUSTE') ? 'AJUSTE' : (tipos[0] || '');
+      }
       if (usrAsignadoInput) usrAsignadoInput.value = '';
       if (usrAsignadoWrap) {
-        usrAsignadoWrap.style.display = ['Sistema', 'Inventario'].includes(CONFIG.rol) ? 'block' : 'none';
+        // "Roles que pueden asignar trabajador en Kardex"
+        usrAsignadoWrap.style.display = (CONFIG.kardex && CONFIG.kardex.puedeAsignarTrabajador) ? 'block' : 'none';
       }
 
       const now = new Date();
@@ -13083,16 +13099,29 @@
       if (isTransfer) populateFkSingleOpDestino();
     }
 
+    // Reglas de "Agregar Kardex" (Config_Parametros, inventario / Kardex). El servidor las vuelve a validar.
+    function tiposPermitidosKardex() {
+      const tipos = (CONFIG.kardex && CONFIG.kardex.tiposPermitidos) || [];
+      return tipos.length ? tipos : ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA'];
+    }
+
+    // Destinos de transferencia: "Roles que pueden transferir a cualquier operación" ven todas;
+    // los demás, las de su regional y las "Operaciones destino permitidas para todos".
+    function destinosTransferenciaPermitidos(destPool, regional) {
+      const cfg = CONFIG.kardex || {};
+      if (cfg.puedeTransferirCualquiera) return destPool;
+      const norm = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase();
+      const destinosTodos = (cfg.destinosTodos || []).map(norm);
+      return destPool.filter(o => o.regional === regional || destinosTodos.includes(norm(o.operacion)));
+    }
+
     function populateFkSingleOpDestino() {
       const regSel = document.getElementById('fk-single-regional');
       const opDestSel = document.getElementById('fk-single-opdestino');
       if (!opDestSel) return;
       const regional = regSel ? regSel.value : '';
-      const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
       const destPool = kardexLookups.operacionesTodas || kardexLookups.operaciones;
-      const allowedDestOps = isPrivileged
-        ? destPool
-        : destPool.filter(o => o.regional === regional || (o.operacion || '').normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase() === 'ADMINISTRACION');
+      const allowedDestOps = destinosTransferenciaPermitidos(destPool, regional);
       opDestSel.innerHTML = '<option value="">Seleccione</option>' + allowedDestOps.map(o => `<option value="${o.operacion}">${o.operacion}</option>`).join('');
     }
 
@@ -13265,8 +13294,9 @@
         const tipoMovRaw = clean(0).toUpperCase();
         if (!tipoMovRaw || tipoMovRaw === 'TIPOMOVIMIENTO' || tipoMovRaw === 'TIPO') continue;
 
-        if (!['ENTRADA', 'AJUSTE', 'TRANSFERENCIA'].includes(tipoMovRaw)) {
-          alert(`Fila ${i + 1}: El Tipo de Movimiento "${tipoMovRaw}" no es válido. Solo se acepta ENTRADA, AJUSTE y TRANSFERENCIA en carga desde excel.`);
+        const tiposExcel = tiposPermitidosKardex();
+        if (!tiposExcel.includes(tipoMovRaw)) {
+          alert(`Fila ${i + 1}: El Tipo de Movimiento "${tipoMovRaw}" no es válido. Solo se acepta ${tiposExcel.join(', ')} en carga desde excel.`);
           return;
         }
 
@@ -13410,7 +13440,8 @@
 
       tbody.innerHTML = '';
 
-      const isPrivilegedUser = ['Sistema', 'Inventario'].includes(CONFIG.rol);
+      // "Roles que pueden asignar trabajador en Kardex" (Config_Parametros, inventario / Kardex)
+      const isPrivilegedUser = Boolean(CONFIG.kardex && CONFIG.kardex.puedeAsignarTrabajador);
       const thUser = document.querySelector('.col-usuario-asignado-th');
       if (thUser) thUser.style.display = isPrivilegedUser ? '' : 'none';
 
@@ -13423,21 +13454,19 @@
       // Operación y Artículo son ahora la selección primaria (Regional y Categoría se derivan
       // automáticamente, como al cargar desde Excel), así que sus datalists muestran el catálogo
       // completo en vez de filtrarse por una Regional/Categoría elegida antes.
-      const allowedTypes = ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA'];
+      const allowedTypes = tiposPermitidosKardex();
       const tipoOptionsHtml = allowedTypes.map(t => `<option value="${t}"></option>`).join('');
       const operacionOptionsHtml = (kardexLookups.operaciones || []).map(o => `<option value="${o.operacion}"></option>`).join('');
       const articuloOptionsHtml = (kardexLookups.articulos || []).map(a => `<option value="${a.Articulo}"></option>`).join('');
 
-      const isPrivileged = ['Sistema', 'Inventario', 'Cuentas', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+      const isPrivileged = Boolean(CONFIG.kardex && CONFIG.kardex.puedeTransferirCualquiera);
       const destPool = kardexLookups.operacionesTodas || kardexLookups.operaciones || [];
       const destOpCache = {};
 
       const getDestOpOptionsHtml = (reg) => {
         const key = isPrivileged ? '__all__' : (reg || '__none__');
         if (destOpCache[key] !== undefined) return destOpCache[key];
-        let allowed = isPrivileged
-          ? destPool
-          : destPool.filter(o => o.regional === reg || (o.operacion || '').normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase() === 'ADMINISTRACION');
+        let allowed = destinosTransferenciaPermitidos(destPool, reg);
         destOpCache[key] = allowed.map(o => `<option value="${o.operacion}"></option>`).join('');
         return destOpCache[key];
       };
@@ -13517,7 +13546,7 @@
 
         tipoInput.addEventListener('input', () => {
           const val = tipoInput.value.toUpperCase();
-          const validTypes = ['ENTRADA', 'AJUSTE', 'TRANSFERENCIA', 'BAJA', 'REPARACION'];
+          const validTypes = tiposPermitidosKardex();
           if (validTypes.includes(val)) {
             row.TipoMovimiento = val;
             if (row.TipoMovimiento !== 'TRANSFERENCIA') {

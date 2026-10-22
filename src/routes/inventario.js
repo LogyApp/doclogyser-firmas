@@ -17,6 +17,9 @@ const {
   obtenerCondicionesCategoria,
   categoriaEsRecuperable,
   obtenerDestinatariosConfirmacion,
+  obtenerConfigKardex,
+  destinoTransferenciaPermitido,
+  obtenerDestinatariosTransferencia,
   normalizarTexto,
 } = require('../services/configInventario');
 const multer = require('multer');
@@ -46,52 +49,6 @@ async function getLookupsBase() {
   return cachedLookupsBase;
 }
 
-// Resuelve los correos de Auxiliar/Coordinador/AuxiliarR/CoordinadorR responsables de una
-// Operación destino (para notificaciones de transferencia de Kardex). Si no hay nadie asignado
-// puntualmente a esa Operación, cae a AuxiliarR/CoordinadorR de la Regional (misma lógica que
-// obtenerCcEmails en logysignScheduler.js).
-async function resolverDestinatariosTransferencia(operacionDestino, regionalDestino) {
-  const emails = [];
-  try {
-    if (operacionDestino) {
-      const [opRows] = await pool.execute(
-        'SELECT Email FROM Maestro_Usuarios WHERE `Operación` = ? AND Rol IN ("Auxiliar", "Coordinador", "AuxiliarR", "CoordinadorR") AND Email IS NOT NULL AND Email != ""',
-        [operacionDestino]
-      );
-      opRows.forEach(r => emails.push(r.Email));
-
-      // Fallback por SOCIODEMOGRAFICA de Maestro_Operaciones -> Dispositivo en Maestro_Usuarios
-      if (!emails.length) {
-        const [moRows] = await pool.execute(
-          'SELECT SOCIODEMOGRAFICA FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
-          [operacionDestino]
-        );
-        const sociodemografica = moRows.length ? (moRows[0].SOCIODEMOGRAFICA || '').trim() : '';
-        if (sociodemografica) {
-          const [dispRows] = await pool.execute(
-            `SELECT Email FROM Maestro_Usuarios
-             WHERE LOWER(Dispositivo) LIKE ?
-               AND Rol IN ("Auxiliar", "Coordinador", "AuxiliarR", "CoordinadorR")
-               AND Email IS NOT NULL AND Email != ""`,
-            [`%${sociodemografica.toLowerCase()}%`]
-          );
-          dispRows.forEach(r => emails.push(r.Email));
-        }
-      }
-    }
-    if (!emails.length && regionalDestino) {
-      const [regRows] = await pool.execute(
-        'SELECT Email FROM Maestro_Usuarios WHERE Regional = ? AND Rol IN ("AuxiliarR", "CoordinadorR") AND Email IS NOT NULL AND Email != ""',
-        [regionalDestino]
-      );
-      regRows.forEach(r => emails.push(r.Email));
-    }
-  } catch (err) {
-    console.error('[inventario] Error resolviendo destinatarios de transferencia:', err.message);
-  }
-  return [...new Set(emails.filter(Boolean).map(e => e.trim()))];
-}
-
 // Servir la interfaz HTML
 router.get('/', async (req, res) => {
   try {
@@ -106,10 +63,11 @@ router.get('/', async (req, res) => {
     }
 
     // Reglas de la pestaña Inventario (Config_Parametros, inventario / Inventario)
-    const [cfgInventario, categoriasConfirmacion, condicionesCategoria] = await Promise.all([
+    const [cfgInventario, categoriasConfirmacion, condicionesCategoria, cfgKardex] = await Promise.all([
       obtenerConfigPestanaInventario(acceso.rol),
       obtenerCategoriasConfirmacion(acceso.filtroCategorias),
       obtenerCondicionesCategoria(),
+      obtenerConfigKardex(acceso.rol), // Reglas de la pestaña Kardex (inventario / Kardex)
     ]);
 
     const html = fs.readFileSync(HTML_PATH, 'utf8');
@@ -117,6 +75,7 @@ router.get('/', async (req, res) => {
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
       inventario: { ...cfgInventario, categoriasConfirmacion, condicionesCategoria },
+      kardex: cfgKardex,
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -1346,9 +1305,10 @@ router.post('/api/kardex/eliminar', async (req, res) => {
       return res.status(400).json({ error: 'ids (array) es requerido' });
     }
 
+    // "Roles que pueden eliminar registros de Kardex" (Config_Parametros, inventario / Kardex)
     const acceso = await computarAccesoInventario(usuario, 'Kardex');
-    if (!acceso || (acceso.rol !== 'Inventario' && acceso.rol !== 'Sistema')) {
-      return res.status(403).json({ error: 'No autorizado. Permisos exclusivos de Inventario o Sistema.' });
+    if (!acceso || !(await obtenerConfigKardex(acceso.rol)).puedeEliminar) {
+      return res.status(403).json({ error: 'No autorizado. Su rol no tiene permiso para eliminar registros de Kardex.' });
     }
 
     const placeholders = ids.map(() => '?').join(',');
@@ -1390,9 +1350,10 @@ router.post('/api/kardex/editar', async (req, res) => {
       return res.status(400).json({ error: 'IdKardex es requerido' });
     }
 
+    // "Roles que pueden editar registros de Kardex" (Config_Parametros, inventario / Kardex)
     const acceso = await computarAccesoInventario(usuario, 'Kardex');
-    if (!acceso || (acceso.rol !== 'Inventario' && acceso.rol !== 'Sistema')) {
-      return res.status(403).json({ error: 'No autorizado. Permisos exclusivos de Inventario o Sistema.' });
+    if (!acceso || !(await obtenerConfigKardex(acceso.rol)).puedeEditar) {
+      return res.status(403).json({ error: 'No autorizado. Su rol no tiene permiso para editar registros de Kardex.' });
     }
 
     const kpendienteVal = Kpendiente ? String(Kpendiente).trim() : null;
@@ -2372,6 +2333,54 @@ async function generarYGuardarActaRecepcionTransferencia({
   return { pdfUrl, fileName, prefijo };
 }
 
+// Valida en el servidor cada fila de "Agregar Kardex" (antes solo lo hacía la pantalla):
+// tipo permitido, operación de origen dentro del alcance del rol (Maestro_Menu_Inventario),
+// categoría permitida si el rol es restringido, trabajador asignado solo con permiso y,
+// en transferencias, que el destino esté permitido. Devuelve el texto del error o null.
+async function validarMovimientosKardex(acceso, cfg, movimientos) {
+  const { opRows } = await getLookupsBase();
+  const regionalDe = new Map(opRows.map((o) => [normalizarTexto(o.operacion), o.regional]));
+  const permitidas = new Set(acceso.operacionesFiltro.map(normalizarTexto));
+
+  for (let i = 0; i < movimientos.length; i++) {
+    const mov = movimientos[i] || {};
+    const fila = `Fila ${i + 1}`;
+    const tipo = String(mov.TipoMovimiento || '').trim().toUpperCase();
+    const origen = String(mov.Operacion || '').trim();
+
+    if (!cfg.tiposPermitidos.includes(tipo)) {
+      return `${fila}: el tipo de movimiento "${mov.TipoMovimiento || ''}" no está permitido (${cfg.tiposPermitidos.join(', ')}).`;
+    }
+    if (!origen || !regionalDe.has(normalizarTexto(origen))) {
+      return `${fila}: la operación "${origen}" no existe o está inactiva.`;
+    }
+    if (!acceso.sinFiltro && !permitidas.has(normalizarTexto(origen))) {
+      return `${fila}: no tiene acceso a la operación "${origen}".`;
+    }
+    if (acceso.filtroCategorias && !acceso.filtroCategorias.some((c) => normalizarTexto(c) === normalizarTexto(mov.Categoria))) {
+      return `${fila}: su rol no tiene permiso para la categoría "${mov.Categoria || ''}".`;
+    }
+    if (String(mov.UsuarioAsignado || '').trim() && !cfg.puedeAsignarTrabajador) {
+      return `${fila}: su rol no tiene permiso para asignar trabajador.`;
+    }
+    if (tipo === 'TRANSFERENCIA') {
+      const destino = String(mov.OperacionDestino || '').trim();
+      if (!destino || !regionalDe.has(normalizarTexto(destino))) {
+        return `${fila}: seleccione una Operación Destino válida para la transferencia.`;
+      }
+      if (normalizarTexto(destino) === normalizarTexto(origen)) {
+        return `${fila}: la Operación Destino no puede ser igual a la de origen.`;
+      }
+      const regOrigen = regionalDe.get(normalizarTexto(origen));
+      const regDestino = regionalDe.get(normalizarTexto(destino));
+      if (!destinoTransferenciaPermitido(cfg, regOrigen, destino, regDestino)) {
+        return `${fila}: solo puede transferir a operaciones de su misma regional (${regOrigen}) o a: ${cfg.destinosTodos.join(', ')}.`;
+      }
+    }
+  }
+  return null;
+}
+
 // POST /api/kardex/guardar-masivo - saves list of kardex rows and groups transfers under Kardex_Pendiente parent orders
 router.post('/api/kardex/guardar-masivo', async (req, res) => {
   const conn = await pool.getConnection();
@@ -2382,6 +2391,17 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
     }
     if (!Array.isArray(movimientos) || movimientos.length === 0) {
       return res.status(400).json({ error: 'Debe enviar al menos un movimiento' });
+    }
+
+    // Seguridad: acceso a Kardex y reglas de Config_Parametros (inventario / Kardex)
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado para registrar movimientos de Kardex.' });
+    }
+    const cfgKardex = await obtenerConfigKardex(acceso.rol);
+    const errorValidacion = await validarMovimientosKardex(acceso, cfgKardex, movimientos);
+    if (errorValidacion) {
+      return res.status(400).json({ error: errorValidacion });
     }
 
     const [uRowsDespacha] = await conn.execute(
@@ -2567,18 +2587,23 @@ router.post('/api/kardex/guardar-masivo', async (req, res) => {
     await conn.commit();
     res.json({ message: 'Movimientos guardados exitosamente.' });
 
-    // Notificar despacho de cada transferencia (en segundo plano, ya con la transacción confirmada)
+    // Notificar despacho de cada transferencia (en segundo plano, ya con la transacción confirmada).
+    // Para: "Notificación transferencia despachada - Para:" (roles, según la Operación destino);
+    // quien despacha va en copia.
     for (const t of transferenciasParaNotificar) {
-      resolverDestinatariosTransferencia(t.operacionDestino, t.regional)
-        .then(rolesEmails => {
-          const destinatarios = [...new Set([usuarioEmailDespacha, ...rolesEmails].filter(Boolean))];
-          if (!destinatarios.length) return;
+      obtenerDestinatariosTransferencia(t.operacionDestino)
+        .then(({ habilitado, para }) => {
+          if (!habilitado) return;
+          const copia = usuarioEmailDespacha && !para.some((c) => c.toLowerCase() === String(usuarioEmailDespacha).trim().toLowerCase())
+            ? [usuarioEmailDespacha] : [];
+          if (!para.length && !copia.length) return;
           return notificarTransferenciaDespachada({
             operacionOrigen: t.operacionOrigen,
             operacionDestino: t.operacionDestino,
             categoria: t.categorias,
             usuarioNombre: usuarioColaborador,
-            destinatarios
+            destinatarios: para.length ? para : copia,
+            copia: para.length ? copia : [],
           });
         })
         .catch(mailErr => console.error('[inventario] Error enviando correo de transferencia despachada:', mailErr));

@@ -17,6 +17,15 @@ const P = {
   HABILITAR_CORREO:   'Habilitar notificaciones de correo en Confirmación de Inventario',
   // Seccion 'General'
   CATEGORIAS_RESTRINGIDAS: 'Categorías permitidas en acceso restringido',
+  // Seccion 'Kardex'
+  EDITAR_KARDEX:         'Roles que pueden editar registros de Kardex',
+  ELIMINAR_KARDEX:       'Roles que pueden eliminar registros de Kardex',
+  ASIGNAR_TRABAJADOR:    'Roles que pueden asignar trabajador en Kardex',
+  TIPOS_AGREGAR:         'Tipos de movimiento permitidos en Agregar Kardex',
+  TRANSFERIR_CUALQUIERA: 'Roles que pueden transferir a cualquier operación',
+  DESTINOS_TODOS:        'Operaciones destino permitidas para todos',
+  TRANSFERENCIA_PARA:    'Notificación transferencia despachada - Para:',
+  HABILITAR_TRANSFERENCIA: 'Habilitar notificaciones de correo en Transferencias',
 };
 
 // Destinatarios del correo de confirmación, una fila por categoría:
@@ -35,6 +44,16 @@ const DEFAULTS = {
   },
   General: {
     [P.CATEGORIAS_RESTRINGIDAS]: 'EPP, DOTACIÓN',
+  },
+  Kardex: {
+    [P.EDITAR_KARDEX]: 'Inventario, Sistema',
+    [P.ELIMINAR_KARDEX]: 'Inventario, Sistema',
+    [P.ASIGNAR_TRABAJADOR]: 'Sistema, Inventario',
+    [P.TIPOS_AGREGAR]: 'ENTRADA, AJUSTE, TRANSFERENCIA',
+    [P.TRANSFERIR_CUALQUIERA]: 'Sistema, Inventario, Cuentas, AdmSst, LiderSst',
+    [P.DESTINOS_TODOS]: 'Administración',
+    [P.TRANSFERENCIA_PARA]: 'Auxiliar, Coordinador, AuxiliarR, CoordinadorR',
+    [P.HABILITAR_TRANSFERENCIA]: '1',
   },
 };
 
@@ -188,6 +207,37 @@ async function obtenerDestinatariosConfirmacion(categoria, operacion) {
   return { habilitado: true, para: await correosPorRoles(roles, operacion) };
 }
 
+// ── Pestaña Kardex ──────────────────────────────────────────────────────────
+// Permisos y reglas de "Agregar Kardex" y de la tabla de movimientos para un rol.
+async function obtenerConfigKardex(rol) {
+  const p = await obtenerParametros('Kardex');
+  return {
+    puedeEditar: enLista(valor(p, 'Kardex', P.EDITAR_KARDEX), rol),
+    puedeEliminar: enLista(valor(p, 'Kardex', P.ELIMINAR_KARDEX), rol),
+    puedeAsignarTrabajador: enLista(valor(p, 'Kardex', P.ASIGNAR_TRABAJADOR), rol),
+    tiposPermitidos: lista(valor(p, 'Kardex', P.TIPOS_AGREGAR)).map((t) => t.toUpperCase()),
+    puedeTransferirCualquiera: enLista(valor(p, 'Kardex', P.TRANSFERIR_CUALQUIERA), rol),
+    destinosTodos: lista(valor(p, 'Kardex', P.DESTINOS_TODOS)),
+  };
+}
+
+// ¿Puede transferir de una operación de la regional `regionalOrigen` a `operacionDestino`
+// (de la regional `regionalDestino`)? Los roles sin restricción, a cualquiera; los demás, a
+// su misma regional o a las "Operaciones destino permitidas para todos".
+function destinoTransferenciaPermitido(cfg, regionalOrigen, operacionDestino, regionalDestino) {
+  if (cfg.puedeTransferirCualquiera) return true;
+  if (cfg.destinosTodos.some((o) => normalizarTexto(o) === normalizarTexto(operacionDestino))) return true;
+  return Boolean(regionalOrigen) && normalizarTexto(regionalOrigen) === normalizarTexto(regionalDestino);
+}
+
+// Destinatarios (Para) del correo de transferencia despachada, por Rol según la Operación
+// destino. Quien despacha va en copia (lo agrega el llamador).
+async function obtenerDestinatariosTransferencia(operacionDestino) {
+  const p = await obtenerParametros('Kardex');
+  if (!activo(valor(p, 'Kardex', P.HABILITAR_TRANSFERENCIA))) return { habilitado: false, para: [] };
+  return { habilitado: true, para: await correosPorRoles(lista(valor(p, 'Kardex', P.TRANSFERENCIA_PARA)), operacionDestino) };
+}
+
 // ── General (todas las pestañas del módulo) ─────────────────────────────────
 // Categorías del acceso restringido (códigos 4, 5 y 6 de Maestro_Menu_Inventario). Se
 // devuelven con y sin tilde, porque Dynamic_Kardex/Vista_Inventario tienen ambas escrituras.
@@ -210,6 +260,9 @@ module.exports = {
   categoriaEsRecuperable,
   obtenerDestinatariosConfirmacion,
   obtenerCategoriasRestringidas,
+  obtenerConfigKardex,
+  destinoTransferenciaPermitido,
+  obtenerDestinatariosTransferencia,
   normalizarTexto,
   conceptoCorreoCategoria,
   PARAMETROS_INVENTARIO: P,

@@ -2459,25 +2459,47 @@ ${encabezadoLogo('#27ae60')}
 
 // ── Notificación de Transferencia de Inventario (Kardex_Pendiente) ─────────
 
-async function notificarTransferenciaDespachada({ operacionOrigen, operacionDestino, categoria, usuarioNombre, destinatarios }) {
+async function notificarTransferenciaDespachada({ operacionOrigen, operacionDestino, categoria, usuarioNombre, destinatarios, copia = [] }) {
   const asunto = `Transferencia de inventario despachada — ${categoria} — ${operacionOrigen} → ${operacionDestino}`;
 
+  // Mismo formato que Confirmación de Inventario, Retiro y Toma de Cargo: encabezado de color
+  // con el logo incrustado (CID) y centrado; azul corporativo.
   const cuerpo = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
-      <div style="padding:24px;background:#fff;border:1px solid #eee">
-        <h2 style="color:#1a1a2e;margin-top:0">Transferencia de inventario registrada</h2>
-        <p style="color:#555">
+    <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f4f4f4;padding:24px">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="display:inline-block;background:#fff8e1;border:1px solid #f0d060;border-radius:6px;padding:6px 14px;margin-bottom:18px">
+          <span style="color:#7a6000;font-weight:bold;font-size:.88rem">
+            &#128666; TRANSFERENCIA DESPACHADA
+          </span>
+        </div>
+
+        <h2 style="color:#1a1a2e;margin:0 0 8px">Transferencia de inventario registrada</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.92rem;line-height:1.5">
           Se ha registrado una transferencia de inventario de <strong>${categoria}</strong> desde la operación de origen.
           Tan pronto llegue a la operación destino, debe confirmarse su recepción en la plataforma <strong>LogyApp</strong>.
         </p>
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:.93rem">
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Categoría</td><td style="padding:8px 12px;font-weight:bold">${categoria}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Operación origen</td><td style="padding:8px 12px">${operacionOrigen}</td></tr>
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Operación destino</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${operacionDestino}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Registrado por</td><td style="padding:8px 12px">${usuarioNombre}</td></tr>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.92rem;border:1px solid #e0e0e0">
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;width:38%;border:1px solid #e0e0e0">Categoría</td>
+            <td style="padding:10px 14px;font-weight:bold;border:1px solid #e0e0e0;color:#1a1a2e">${categoria}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Operación origen</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${operacionOrigen}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Operación destino</td>
+            <td style="padding:10px 14px;font-weight:bold;color:${COLOR_ENCABEZADO_AZUL};border:1px solid #e0e0e0">${operacionDestino}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Registrado por</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${usuarioNombre || '—'}</td>
+          </tr>
         </table>
-        <div style="margin-top:24px;padding:12px 16px;background:#fffbea;border-left:4px solid #f0d060;color:#7a6000;font-size:.88rem">
+
+        <div style="padding:12px 16px;background:#fffbea;border-left:4px solid #f0d060;border-radius:0 4px 4px 0;color:#7a6000;font-size:.88rem;line-height:1.5">
           Estado: <strong>Pendiente de recepción en destino</strong> — ingrese a LogyApp para confirmar la recepción cuando llegue.
         </div>
       </div>
@@ -2487,8 +2509,10 @@ async function notificarTransferenciaDespachada({ operacionOrigen, operacionDest
   await transporter.sendMail({
     from:    `"LOG&SER Inventarios" <${EMAIL_FROM}>`,
     to:      destinatarios.join(', '),
+    cc:      copia.length ? copia.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
