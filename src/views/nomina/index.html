@@ -196,7 +196,7 @@
   .reporte-opciones label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   .reporte-campo { margin-bottom: 14px; }
   .reporte-campo label { display: block; font-size: .78rem; font-weight: 600; margin-bottom: 4px; color: var(--text); }
-  .reporte-campo select { width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: .86rem; }
+  .reporte-campo select, .reporte-campo input { width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: .86rem; }
   .reporte-info { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: .84rem; color: var(--text-muted); }
   .reporte-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px; }
   .reporte-btns button { padding: 8px 14px; border-radius: 6px; font-size: .84rem; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: var(--bg-elevated); color: var(--text); }
@@ -1304,7 +1304,12 @@
       </div>
 
       <div class="card">
-        <div class="contador-resultados" id="retContador"></div>
+        <div class="barra-descarga">
+          <div class="contador-resultados" id="retContador"></div>
+          <button type="button" class="btn-icono-descarga" onclick="abrirModalReporteRetiros()" title="Descargar reporte de Retiros (Excel o CSV)" aria-label="Descargar reporte de Retiros">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
+        </div>
         <div class="table-container">
           <table class="retiros-table" id="retirosTable">
             <thead>
@@ -1923,6 +1928,38 @@
 </div>
 
 <!-- Modal: Enlace de firma generado -->
+<!-- Modal: descargar reporte de Retiros -->
+<div class="modal-full-overlay" id="retReporteModalOverlay">
+  <div class="modal-full" style="max-width:520px; height:auto; max-height:92vh;">
+    <div class="modal-full-header">
+      <span>&#128229; Descargar reporte de Retiros</span>
+      <button type="button" onclick="cerrarModalReporteRetiros()">&#10005; Cerrar</button>
+    </div>
+    <div class="modal-ficha-body">
+      <p style="font-size:.83rem; color:var(--text-muted); margin-bottom:14px;">Según la Fecha de Retiro. Incluye las regionales y operaciones que su rol puede ver.</p>
+      <div class="reporte-opciones">
+        <label><input type="radio" name="retReporteModo" value="mes" checked onchange="cambiarModoReporteRetiros()"> Por mes y año</label>
+        <label><input type="radio" name="retReporteModo" value="rango" onchange="cambiarModoReporteRetiros()"> De fecha inicial a fecha final</label>
+        <label><input type="radio" name="retReporteModo" value="todo" onchange="cambiarModoReporteRetiros()"> Todo</label>
+      </div>
+      <div id="retReporteBloqueMes" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div class="reporte-campo" style="flex:1; min-width:140px;"><label for="retReporteMes">Mes</label><select id="retReporteMes" onchange="actualizarConteoReporteRetiros()"></select></div>
+        <div class="reporte-campo" style="flex:1; min-width:110px;"><label for="retReporteAnio">Año</label><select id="retReporteAnio" onchange="actualizarConteoReporteRetiros()"></select></div>
+      </div>
+      <div id="retReporteBloqueRango" style="display:none; gap:10px; flex-wrap:wrap;">
+        <div class="reporte-campo" style="flex:1; min-width:140px;"><label for="retReporteDesde">Fecha inicial</label><input type="date" id="retReporteDesde" onchange="actualizarConteoReporteRetiros()"></div>
+        <div class="reporte-campo" style="flex:1; min-width:140px;"><label for="retReporteHasta">Fecha final</label><input type="date" id="retReporteHasta" onchange="actualizarConteoReporteRetiros()"></div>
+      </div>
+      <div class="reporte-info" id="retReporteInfo">Calculando...</div>
+      <div class="reporte-btns">
+        <button type="button" onclick="cerrarModalReporteRetiros()">Cancelar</button>
+        <button type="button" id="btnRetReporteCsv" onclick="descargarReporteRetiros('csv')" disabled>&#128196; Descargar CSV</button>
+        <button type="button" class="primario" id="btnRetReporteExcel" onclick="descargarReporteRetiros('xlsx')" disabled>&#128202; Descargar Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: descargar reporte de Activos -->
 <div class="modal-full-overlay" id="actReporteModalOverlay">
   <div class="modal-full" style="max-width:520px; height:auto; max-height:92vh;">
@@ -3721,8 +3758,6 @@
   // Todo / Por regional / Por operación, dentro del alcance del usuario.
   // Excel hasta "Límite de filas reporte Excel - Activos"; si pasa, solo CSV
   // hasta "Límite de filas reporte CSV - Activos" (Config_Parametros, nomina / Activos).
-  let _conteoReporteActSeq = 0;
-
   function abrirModalReporteActivos() {
     const t = tabs.activo || {};
     const ops = t.opsPorRegional || {};
@@ -3768,19 +3803,20 @@
     return params;
   }
 
-  async function actualizarConteoReporteActivos() {
-    const info = document.getElementById('actReporteInfo');
-    const btnExcel = document.getElementById('btnActReporteExcel');
-    const btnCsv = document.getElementById('btnActReporteCsv');
+  // Conteo y descarga compartidos por los reportes de Nómina (Activos, Retiros)
+  async function actualizarConteoReporte(cfg) {
+    const info = document.getElementById(cfg.info);
+    const btnExcel = document.getElementById(cfg.btnExcel);
+    const btnCsv = document.getElementById(cfg.btnCsv);
     btnExcel.disabled = true;
     btnCsv.disabled = true;
     info.style.color = 'var(--text-muted)';
     info.textContent = 'Calculando cantidad de filas...';
-    const seq = ++_conteoReporteActSeq;
+    const seq = ++cfg.seq;
     try {
-      const resp = await fetch('/nomina/api/activos/reporte/conteo?' + paramsReporteActivos().toString());
+      const resp = await fetch(cfg.url + '/conteo?' + cfg.params().toString());
       const data = await resp.json();
-      if (seq !== _conteoReporteActSeq) return; // respuesta de una selección anterior
+      if (seq !== cfg.seq) return; // respuesta de una selección anterior
       if (!resp.ok || !data.ok) {
         info.style.color = 'var(--danger)';
         info.textContent = data.error || 'No se pudo calcular el reporte.';
@@ -3790,31 +3826,31 @@
       btnExcel.disabled = !data.permiteExcel;
       btnCsv.disabled = !data.permiteCsv;
       if (data.total === 0) {
-        info.textContent = 'No hay trabajadores activos para la opción seleccionada.';
+        info.textContent = cfg.sinDatos;
       } else if (data.permiteExcel) {
         info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> filas. Puede descargarlo en Excel o CSV.`;
       } else if (data.permiteCsv) {
         info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> filas. Supera el límite de Excel (${fmt(data.limites.excel)} filas), solo se puede descargar en CSV.`;
       } else {
         info.style.color = 'var(--danger)';
-        info.innerHTML = `<strong>${fmt(data.total)}</strong> filas. Supera el máximo permitido (${fmt(data.limites.csv)} filas). Elija una regional u operación.`;
+        info.innerHTML = `<strong>${fmt(data.total)}</strong> filas. Supera el máximo permitido (${fmt(data.limites.csv)} filas). ${cfg.sugerencia}`;
       }
     } catch {
-      if (seq !== _conteoReporteActSeq) return;
+      if (seq !== cfg.seq) return;
       info.style.color = 'var(--danger)';
       info.textContent = 'Error de red al calcular el reporte.';
     }
   }
 
-  async function descargarReporteActivos(formato) {
-    const btn = document.getElementById(formato === 'csv' ? 'btnActReporteCsv' : 'btnActReporteExcel');
+  async function descargarReporte(cfg, formato) {
+    const btn = document.getElementById(formato === 'csv' ? cfg.btnCsv : cfg.btnExcel);
     const textoOriginal = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '&#9203; Generando...';
     try {
-      const params = paramsReporteActivos();
+      const params = cfg.params();
       params.set('formato', formato);
-      const resp = await fetch('/nomina/api/activos/reporte?' + params.toString());
+      const resp = await fetch(cfg.url + '?' + params.toString());
       if (!resp.ok) {
         let msg = 'No se pudo generar el reporte.';
         try { msg = (await resp.json()).error || msg; } catch {}
@@ -3825,7 +3861,7 @@
       const m = disp.match(/filename\*=UTF-8''([^;]+)/) || disp.match(/filename="([^"]+)"/);
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = m ? decodeURIComponent(m[1]) : `Activos.${formato}`;
+      link.download = m ? decodeURIComponent(m[1]) : `${cfg.nombre}.${formato}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -3834,9 +3870,87 @@
       alert(err.message);
     } finally {
       btn.innerHTML = textoOriginal;
-      actualizarConteoReporteActivos();
+      actualizarConteoReporte(cfg);
     }
   }
+
+  const _reporteActivosCfg = {
+    url: '/nomina/api/activos/reporte', nombre: 'Activos', seq: 0,
+    info: 'actReporteInfo', btnExcel: 'btnActReporteExcel', btnCsv: 'btnActReporteCsv',
+    params: () => paramsReporteActivos(),
+    sinDatos: 'No hay trabajadores activos para la opción seleccionada.',
+    sugerencia: 'Elija una regional u operación.',
+  };
+  function actualizarConteoReporteActivos() { return actualizarConteoReporte(_reporteActivosCfg); }
+  function descargarReporteActivos(formato) { return descargarReporte(_reporteActivosCfg, formato); }
+
+  // ── Reporte de Retiros (ventana emergente) ────────────────────────────────
+  // Por mes, entre fechas o todo, según la Fecha de Retiro, dentro del alcance
+  // del usuario. Límites: "Límite de filas reporte Excel/CSV - Retiros"
+  // (Config_Parametros, nomina / Retiros).
+  const MESES_REPORTE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const _reporteRetirosCfg = {
+    url: '/nomina/api/retiros/reporte', nombre: 'Retiros', seq: 0,
+    info: 'retReporteInfo', btnExcel: 'btnRetReporteExcel', btnCsv: 'btnRetReporteCsv',
+    params: () => paramsReporteRetiros(),
+    sinDatos: 'No hay retiros para el periodo seleccionado.',
+    sugerencia: 'Elija un periodo más corto.',
+  };
+
+  function abrirModalReporteRetiros() {
+    const hoy = new Date();
+    const selMes = document.getElementById('retReporteMes');
+    const selAnio = document.getElementById('retReporteAnio');
+    selMes.innerHTML = MESES_REPORTE.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+    const anios = [];
+    for (let a = hoy.getFullYear(); a >= hoy.getFullYear() - 10; a--) anios.push(`<option value="${a}">${a}</option>`);
+    selAnio.innerHTML = anios.join('');
+    selMes.value = String(hoy.getMonth() + 1);
+    selAnio.value = String(hoy.getFullYear());
+    const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    document.getElementById('retReporteDesde').value = ymd(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+    document.getElementById('retReporteHasta').value = ymd(hoy);
+    document.querySelector('input[name="retReporteModo"][value="mes"]').checked = true;
+    cambiarModoReporteRetiros();
+    const overlay = document.getElementById('retReporteModalOverlay');
+    overlay.classList.add('open');
+    overlay._backEntry = registrarModalBack(() => cerrarModalReporteRetiros());
+  }
+
+  function cerrarModalReporteRetiros() {
+    const overlay = document.getElementById('retReporteModalOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
+  }
+
+  function modoReporteRetiros() {
+    const r = document.querySelector('input[name="retReporteModo"]:checked');
+    return r ? r.value : 'mes';
+  }
+
+  function cambiarModoReporteRetiros() {
+    const modo = modoReporteRetiros();
+    document.getElementById('retReporteBloqueMes').style.display = modo === 'mes' ? 'flex' : 'none';
+    document.getElementById('retReporteBloqueRango').style.display = modo === 'rango' ? 'flex' : 'none';
+    actualizarConteoReporteRetiros();
+  }
+
+  function paramsReporteRetiros() {
+    const modo = modoReporteRetiros();
+    const params = new URLSearchParams({ usuario, modo });
+    if (modo === 'mes') {
+      params.set('mes', document.getElementById('retReporteMes').value);
+      params.set('anio', document.getElementById('retReporteAnio').value);
+    } else if (modo === 'rango') {
+      params.set('desde', document.getElementById('retReporteDesde').value);
+      params.set('hasta', document.getElementById('retReporteHasta').value);
+    }
+    return params;
+  }
+
+  function actualizarConteoReporteRetiros() { return actualizarConteoReporte(_reporteRetirosCfg); }
+  function descargarReporteRetiros(formato) { return descargarReporte(_reporteRetirosCfg, formato); }
 
   function sortAndRenderActivos() {
     const col = _activosState.sortCol;

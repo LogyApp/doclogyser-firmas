@@ -516,23 +516,28 @@ function construirFiltrosActivos(acceso, { regional, operacion, busqueda }) {
 const LIMITES_REPORTE_ACTIVOS_DEFECTO = { excel: 10000, csv: 100000 };
 const CONCEPTO_LIMITE_EXCEL_ACTIVOS = 'Límite de filas reporte Excel - Activos';
 const CONCEPTO_LIMITE_CSV_ACTIVOS   = 'Límite de filas reporte CSV - Activos';
-async function obtenerLimitesReporteActivos() {
+// Lee los límites de filas de un reporte de Nómina (Config_Parametros, Modulo 'nomina').
+async function obtenerLimitesReporte(seccion, conceptoExcel, conceptoCsv) {
   const limites = { ...LIMITES_REPORTE_ACTIVOS_DEFECTO };
   try {
     const [rows] = await pool.execute(
-      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'nomina' AND Seccion = 'Activos' AND Concepto IN (?, ?)",
-      [CONCEPTO_LIMITE_EXCEL_ACTIVOS, CONCEPTO_LIMITE_CSV_ACTIVOS]
+      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'nomina' AND Seccion = ? AND Concepto IN (?, ?)",
+      [seccion, conceptoExcel, conceptoCsv]
     );
     rows.forEach(r => {
       const n = parseInt(r.Parametro, 10);
       if (!(n > 0)) return;
-      if (r.Concepto === CONCEPTO_LIMITE_EXCEL_ACTIVOS) limites.excel = n;
-      if (r.Concepto === CONCEPTO_LIMITE_CSV_ACTIVOS) limites.csv = n;
+      if (r.Concepto === conceptoExcel) limites.excel = n;
+      if (r.Concepto === conceptoCsv) limites.csv = n;
     });
   } catch (err) {
-    console.error('[nomina] No se pudieron leer los límites del reporte de Activos:', err.message);
+    console.error(`[nomina] No se pudieron leer los límites del reporte de ${seccion}:`, err.message);
   }
   return limites;
+}
+
+function obtenerLimitesReporteActivos() {
+  return obtenerLimitesReporte('Activos', CONCEPTO_LIMITE_EXCEL_ACTIVOS, CONCEPTO_LIMITE_CSV_ACTIVOS);
 }
 
 // Filtro del reporte: alcance del usuario (Maestro_Menu_Nomina, Sección 'Activo')
@@ -561,9 +566,39 @@ function construirFiltroReporteActivos(acceso, query) {
   return { where: `WHERE ${conds.join(' AND ')}`, params, etiqueta: etiqueta.replace(/[^\w\-ÁÉÍÓÚáéíóúÑñ ]+/g, '').trim().replace(/\s+/g, '_') || 'Reporte' };
 }
 
-async function contarFilasReporteActivos(filtro) {
+async function contarFilasReporte(filtro) {
   const [[row]] = await pool.execute(`SELECT COUNT(*) AS total FROM \`Maestro_Vinculación\` v ${filtro.where}`, filtro.params);
   return Number(row.total || 0);
+}
+
+// Envía un reporte: Excel (en memoria) o CSV (fila por fila, sin cargar todo
+// el resultado en memoria; se detiene si el usuario cancela la descarga).
+async function enviarReporte(req, res, { formato, sql, params, columnas, hoja, archivo, prepararFila }) {
+  const disposicion = `attachment; filename="${encodeURIComponent(archivo)}"; filename*=UTF-8''${encodeURIComponent(archivo)}`;
+  if (formato === 'xlsx') {
+    const [rows] = await pool.execute(sql, params);
+    const buffer = generarXlsx({ hoja, columnas, filas: rows.map(prepararFila) });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', disposicion);
+    return res.send(buffer);
+  }
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', disposicion);
+  res.write(encabezadoCsv(columnas));
+  const stream = pool.pool.query(sql, params).stream({ highWaterMark: 500 });
+  let cancelado = false;
+  req.on('close', () => { if (!res.writableEnded) { cancelado = true; stream.destroy(); } });
+  stream.on('data', fila => {
+    if (!res.write(filaCsv(columnas, prepararFila(fila)))) {
+      stream.pause();
+      res.once('drain', () => stream.resume());
+    }
+  });
+  stream.on('end', () => res.end());
+  stream.on('error', err => {
+    if (!cancelado) console.error(`[nomina] Error generando CSV de ${hoja}:`, err.message);
+    res.end();
+  });
 }
 
 // Columnas del reporte de Activos
@@ -672,7 +707,7 @@ router.get('/api/activos/reporte/conteo', async (req, res) => {
     const filtro = construirFiltroReporteActivos(acceso, req.query);
     if (filtro && filtro.error) return res.status(400).json({ error: filtro.error });
     const limites = await obtenerLimitesReporteActivos();
-    const total = filtro ? await contarFilasReporteActivos(filtro) : 0;
+    const total = filtro ? await contarFilasReporte(filtro) : 0;
     res.json({
       ok: true,
       total,
@@ -700,7 +735,7 @@ router.get('/api/activos/reporte', async (req, res) => {
     const filtro = construirFiltroReporteActivos(acceso, req.query);
     if (filtro && filtro.error) return res.status(400).json({ error: filtro.error });
     const limites = await obtenerLimitesReporteActivos();
-    const total = filtro ? await contarFilasReporteActivos(filtro) : 0;
+    const total = filtro ? await contarFilasReporte(filtro) : 0;
     const fmt = n => Number(n).toLocaleString('es-CO');
     if (total === 0) return res.status(400).json({ error: 'No hay trabajadores activos para la opción seleccionada.' });
     if (formato === 'xlsx' && total > limites.excel) {
@@ -710,38 +745,177 @@ router.get('/api/activos/reporte', async (req, res) => {
       return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas y el máximo permitido es ${fmt(limites.csv)}. Elija una regional u operación.` });
     }
 
-    const sql = `${SELECT_REPORTE_ACTIVOS} ${filtro.where} ORDER BY v.\`Regional\`, v.\`Operación\`, v.\`Trabajador\``;
-    const prepararFila = fila => ({ ...fila, Trabajador: nombreSinIdentificacion(fila.Trabajador) });
-    const archivo = nombreArchivo(`Activos_${filtro.etiqueta}`, formato);
-
-    if (formato === 'xlsx') {
-      const [rows] = await pool.execute(sql, filtro.params);
-      const buffer = generarXlsx({ hoja: 'Activos', columnas: COLUMNAS_REPORTE_ACTIVOS, filas: rows.map(prepararFila) });
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archivo)}"; filename*=UTF-8''${encodeURIComponent(archivo)}`);
-      return res.send(buffer);
-    }
-
-    // CSV fila por fila (no carga todo el resultado en memoria)
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archivo)}"; filename*=UTF-8''${encodeURIComponent(archivo)}`);
-    res.write(encabezadoCsv(COLUMNAS_REPORTE_ACTIVOS));
-    const stream = pool.pool.query(sql, filtro.params).stream({ highWaterMark: 500 });
-    let cancelado = false;
-    req.on('close', () => { if (!res.writableEnded) { cancelado = true; stream.destroy(); } });
-    stream.on('data', fila => {
-      if (!res.write(filaCsv(COLUMNAS_REPORTE_ACTIVOS, prepararFila(fila)))) {
-        stream.pause();
-        res.once('drain', () => stream.resume());
-      }
-    });
-    stream.on('end', () => res.end());
-    stream.on('error', err => {
-      if (!cancelado) console.error('[nomina] Error generando CSV de Activos:', err.message);
-      res.end();
+    await enviarReporte(req, res, {
+      formato,
+      sql: `${SELECT_REPORTE_ACTIVOS} ${filtro.where} ORDER BY v.\`Regional\`, v.\`Operación\`, v.\`Trabajador\``,
+      params: filtro.params,
+      columnas: COLUMNAS_REPORTE_ACTIVOS,
+      hoja: 'Activos',
+      archivo: nombreArchivo(`Activos_${filtro.etiqueta}`, formato),
+      prepararFila: fila => ({ ...fila, Trabajador: nombreSinIdentificacion(fila.Trabajador) }),
     });
   } catch (err) {
     console.error('[nomina] GET /api/activos/reporte', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.end();
+  }
+});
+
+// ── Reporte de Retiros (ventana "Descargar reporte") ──────────────────────
+// Mismo alcance de operaciones que la pestaña Retiros (Maestro_Menu_Nomina,
+// Sección 'Retiro'), según la Fecha de Retiro: por mes, entre fechas o todo.
+// Límites: Config_Parametros nomina / Retiros, Condición 'Filas'.
+const CONCEPTO_LIMITE_EXCEL_RETIROS = 'Límite de filas reporte Excel - Retiros';
+const CONCEPTO_LIMITE_CSV_RETIROS   = 'Límite de filas reporte CSV - Retiros';
+const RE_FECHA_YMD_REPORTE = /^\d{4}-\d{2}-\d{2}$/;
+
+function obtenerLimitesReporteRetiros() {
+  return obtenerLimitesReporte('Retiros', CONCEPTO_LIMITE_EXCEL_RETIROS, CONCEPTO_LIMITE_CSV_RETIROS);
+}
+
+function diaSiguienteYmd(ymd) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// modo: 'mes' (mes, anio) | 'rango' (desde, hasta) | 'todo'.
+// Devuelve { where, params, etiqueta } o { error } o null (sin operaciones).
+function construirFiltroReporteRetiros(acceso, query) {
+  const conds = ["v.Estado = 'Retirado'"];
+  const params = [];
+  if (!acceso.sinFiltro) {
+    if (!acceso.operacionesFiltro.length) return null;
+    conds.push(`v.\`Operación\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+    params.push(...acceso.operacionesFiltro);
+  }
+  const modo = String(query.modo || 'mes').toLowerCase();
+  let etiqueta;
+  if (modo === 'mes') {
+    const mes = parseInt(query.mes, 10);
+    const anio = parseInt(query.anio, 10);
+    if (!(mes >= 1 && mes <= 12) || !(anio >= 2000 && anio <= 2100)) return { error: 'Seleccione un mes y año válidos.' };
+    const mm = String(mes).padStart(2, '0');
+    const desde = `${anio}-${mm}-01`;
+    const hasta = mes === 12 ? `${anio + 1}-01-01` : `${anio}-${String(mes + 1).padStart(2, '0')}-01`;
+    conds.push('v.`Fecha de Retiro` >= ? AND v.`Fecha de Retiro` < ?');
+    params.push(desde, hasta);
+    etiqueta = `${anio}-${mm}`;
+  } else if (modo === 'rango') {
+    const desde = String(query.desde || '');
+    const hasta = String(query.hasta || '');
+    if (!RE_FECHA_YMD_REPORTE.test(desde) || !RE_FECHA_YMD_REPORTE.test(hasta)) return { error: 'Seleccione la fecha inicial y la fecha final.' };
+    if (desde > hasta) return { error: 'La fecha inicial no puede ser mayor que la fecha final.' };
+    conds.push('v.`Fecha de Retiro` >= ? AND v.`Fecha de Retiro` < ?');
+    params.push(desde, diaSiguienteYmd(hasta));
+    etiqueta = `${desde}_a_${hasta}`;
+  } else if (modo === 'todo') {
+    etiqueta = 'Todo';
+  } else {
+    return { error: 'Opción de reporte inválida.' };
+  }
+  return { where: `WHERE ${conds.join(' AND ')}`, params, etiqueta };
+}
+
+const COLUMNAS_REPORTE_RETIROS = [
+  { titulo: 'Identificación',            campo: 'Identificacion',     tipo: 'numero', ancho: 16 },
+  { titulo: 'Trabajador',                campo: 'Trabajador',         tipo: 'texto',  ancho: 38 },
+  { titulo: 'Cargo',                     campo: 'Cargo',              tipo: 'texto',  ancho: 32 },
+  { titulo: 'Regional',                  campo: 'Regional',           tipo: 'texto',  ancho: 16 },
+  { titulo: 'Operación',                 campo: 'Operacion',          tipo: 'texto',  ancho: 24 },
+  { titulo: 'Fecha de Ingreso',          campo: 'FechaIngreso',       tipo: 'fecha',  ancho: 15 },
+  { titulo: 'Fecha de Retiro',           campo: 'FechaRetiro',        tipo: 'fecha',  ancho: 15 },
+  { titulo: 'Motivo del Retiro',         campo: 'MotivoRetiro',       tipo: 'texto',  ancho: 30 },
+  { titulo: 'Tipo de Renuncia',          campo: 'TipoRenuncia',       tipo: 'texto',  ancho: 24 },
+  { titulo: 'Fecha Legalización Retiro', campo: 'FechaLegalizacion',  tipo: 'fecha',  ancho: 17 },
+  { titulo: 'Usuario',                   campo: 'Usuario',            tipo: 'texto',  ancho: 24 },
+  { titulo: 'Fecha Actualización',       campo: 'FechaActualizacion', tipo: 'fechaHora', ancho: 19 },
+  { titulo: 'Id Vinculación',            campo: 'IdVinculacion',      tipo: 'texto',  ancho: 38 },
+];
+
+const SELECT_REPORTE_RETIROS = `
+  SELECT
+    v.\`Identificación\`            AS Identificacion,
+    v.\`Trabajador\`                AS Trabajador,
+    v.\`Cargo\`                     AS Cargo,
+    v.\`Regional\`                  AS Regional,
+    v.\`Operación\`                 AS Operacion,
+    v.\`Fecha de Ingreso\`          AS FechaIngreso,
+    v.\`Fecha de Retiro\`           AS FechaRetiro,
+    v.\`Motivo del Retiro\`         AS MotivoRetiro,
+    v.\`Archivo Vinculación\`       AS TipoRenuncia,
+    v.\`Fecha Legalización Retiro\` AS FechaLegalizacion,
+    v.\`Usuario\`                   AS Usuario,
+    v.\`Fecha Actualización\`       AS FechaActualizacion,
+    v.\`Id Vinculación\`            AS IdVinculacion
+  FROM \`Maestro_Vinculación\` v`;
+
+// GET /api/retiros/reporte/conteo — cuántas filas tendría y qué formatos se permiten
+router.get('/api/retiros/reporte/conteo', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoNomina(usuario, 'Retiro');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const filtro = construirFiltroReporteRetiros(acceso, req.query);
+    if (filtro && filtro.error) return res.status(400).json({ error: filtro.error });
+    const limites = await obtenerLimitesReporteRetiros();
+    const total = filtro ? await contarFilasReporte(filtro) : 0;
+    res.json({
+      ok: true,
+      total,
+      limites,
+      permiteExcel: total > 0 && total <= limites.excel,
+      permiteCsv:   total > 0 && total <= limites.csv,
+    });
+  } catch (err) {
+    console.error('[nomina] GET /api/retiros/reporte/conteo', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/retiros/reporte?formato=xlsx|csv — descarga el reporte
+router.get('/api/retiros/reporte', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const formato = String(req.query.formato || '').toLowerCase();
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!['xlsx', 'csv'].includes(formato)) return res.status(400).json({ error: 'Formato inválido. Use Excel o CSV.' });
+
+    const acceso = await computarAccesoNomina(usuario, 'Retiro');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const filtro = construirFiltroReporteRetiros(acceso, req.query);
+    if (filtro && filtro.error) return res.status(400).json({ error: filtro.error });
+    const limites = await obtenerLimitesReporteRetiros();
+    const total = filtro ? await contarFilasReporte(filtro) : 0;
+    const fmt = n => Number(n).toLocaleString('es-CO');
+    if (total === 0) return res.status(400).json({ error: 'No hay retiros para el periodo seleccionado.' });
+    if (formato === 'xlsx' && total > limites.excel) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas. En Excel se permiten hasta ${fmt(limites.excel)}; descárguelo en CSV.` });
+    }
+    if (total > limites.csv) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas y el máximo permitido es ${fmt(limites.csv)}. Elija un periodo más corto.` });
+    }
+
+    await enviarReporte(req, res, {
+      formato,
+      sql: `${SELECT_REPORTE_RETIROS} ${filtro.where} ORDER BY v.\`Fecha de Retiro\` DESC, v.\`Regional\`, v.\`Operación\`, v.\`Trabajador\``,
+      params: filtro.params,
+      columnas: COLUMNAS_REPORTE_RETIROS,
+      hoja: 'Retiros',
+      archivo: nombreArchivo(`Retiros_${filtro.etiqueta}`, formato),
+      // "Archivo Vinculación" guarda el tipo de renuncia (Escrita/Verbal); en
+      // registros antiguos tiene la ruta de un archivo, que no se muestra.
+      prepararFila: fila => ({
+        ...fila,
+        Trabajador: nombreSinIdentificacion(fila.Trabajador),
+        TipoRenuncia: /^(escrita|verbal)$/i.test(String(fila.TipoRenuncia || '').trim()) ? String(fila.TipoRenuncia).trim() : '',
+      }),
+    });
+  } catch (err) {
+    console.error('[nomina] GET /api/retiros/reporte', err);
     if (!res.headersSent) res.status(500).json({ error: err.message });
     else res.end();
   }
