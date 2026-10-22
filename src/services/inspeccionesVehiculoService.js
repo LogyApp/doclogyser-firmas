@@ -1,8 +1,7 @@
 const crypto = require('crypto');
 const pool = require('./db');
-const { obtenerParametrosPorSeccion } = require('./configParametros');
-const { generarPDFDesdeHTML } = require('./pdf');
-const { LOGO_BASE64 } = require('../utils/logo');
+const { generarPDFDesdeHTML } = require('./renderer');
+const { LOGO_BASE64 } = require('./assets');
 const {
   subirFirma,
   subirPDFInspeccionVehiculo,
@@ -203,6 +202,20 @@ function textoResultadoItem(res) {
   if (res === 'NC') return 'No cumple';
   if (res === 'NA') return 'No aplica';
   return res || '—';
+}
+
+// Filas de Config_Parametros de un Módulo/Sección (si la tabla falla, se usan los valores por defecto).
+async function obtenerParametrosPorSeccion(modulo, seccion) {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Concepto`, `Condicion`, `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ?',
+      [modulo, seccion]
+    );
+    return rows;
+  } catch (err) {
+    console.error('[inspeccionesVehiculo] Error leyendo Config_Parametros:', err.message);
+    return [];
+  }
 }
 
 async function obtenerLimitesInspeccion() {
