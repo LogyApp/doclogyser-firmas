@@ -8275,6 +8275,8 @@
       initBotonTicket({
         moduloErp: 'nomina',
         usuarioId: usuario,
+        opsPorRegional: (_cfg.ticket && _cfg.ticket.opsPorRegional) || {},
+        regionalesFiltro: (_cfg.ticket && _cfg.ticket.regionalesFiltro) || [],
         obtenerSeccion: () => SECCION_TICKET_NOMINA[_tabActual] || null
       });
     }

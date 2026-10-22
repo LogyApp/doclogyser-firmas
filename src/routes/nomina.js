@@ -83,6 +83,36 @@ function resumenAcceso(acceso) {
   };
 }
 
+// Regionales/Operaciones para el botón "+ Ticket": une las de todas las pestañas de
+// Nómina a las que el usuario tiene acceso (Maestro_Menu_Nomina). Los accesos de respaldo
+// por rol (Biométrico / Cesantías) son sin filtro y no traen operaciones: en ese caso
+// se usan todas las operaciones activas, igual que un acceso nacional.
+async function opsPorRegionalTicket(accesos) {
+  const union = {};
+  let sinFiltroSinOps = false;
+  accesos.filter(Boolean).forEach(acceso => {
+    if (!acceso.opsPorRegional) {
+      if (acceso.sinFiltro) sinFiltroSinOps = true;
+      return;
+    }
+    Object.entries(acceso.opsPorRegional).forEach(([reg, ops]) => {
+      if (!union[reg]) union[reg] = new Set();
+      ops.forEach(op => union[reg].add(op));
+    });
+  });
+
+  if (sinFiltroSinOps) {
+    const [rows] = await pool.execute(
+      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
+    );
+    return agruparOperacionesPorRegional(rows);
+  }
+
+  const resultado = {};
+  Object.keys(union).sort().forEach(reg => { resultado[reg] = Array.from(union[reg]).sort(); });
+  return resultado;
+}
+
 async function obtenerPerfilNomina(usuarioId) {
   if (!usuarioId) return { error: 'Parámetro usuario requerido', status: 400 };
 
@@ -285,6 +315,10 @@ router.get('/', async (req, res) => {
       }
     }
 
+    const opsTicket = await opsPorRegionalTicket([
+      accesoRetiro, accesoActivo, accesoBloqueo, accesoBiometrico, accesoTraslados, accesoCesantias
+    ]);
+
     const template = fs.readFileSync(NOMINA_HTML, 'utf8');
     const config = JSON.stringify({
       usuario,
@@ -292,6 +326,10 @@ router.get('/', async (req, res) => {
       rol:           base.rol,
       puedeGenerarDocs,
       isSstOnly,
+      ticket: {
+        opsPorRegional:   opsTicket,
+        regionalesFiltro: Object.keys(opsTicket),
+      },
       tabs: {
         retiro: resumenAcceso(accesoRetiro),
         activo: resumenAcceso(accesoActivo),
