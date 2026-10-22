@@ -9,6 +9,7 @@ const { generarPDF } = require('../services/renderer');
 const { computarAccesoInventario, agruparOperacionesPorRegional } = require('../services/accesoInventario');
 const { registrarKardexActa, construirDatosPlantilla, obtenerContactoTrabajador } = require('../services/actas');
 const { generarToken } = require('../services/token');
+const { generarXlsx, encabezadoCsv, filaCsv, nombreArchivo } = require('../services/exportarReporte');
 const multer = require('multer');
 
 const router = express.Router();
@@ -250,6 +251,165 @@ router.get('/api/datos', async (req, res) => {
   } catch (err) {
     console.error('[inventario] GET /api/datos:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Reporte de la pestaña Inventario (ventana "Descargar reporte") ──────────
+// Mismo alcance que la consulta (operaciones y categorías del rol, Sección 'Inventario').
+// Modo: todo | regional | operacion. Excel hasta "Límite de filas reporte Excel - Inventario";
+// si pasa, solo CSV hasta "Límite de filas reporte CSV - Inventario"
+// (Config_Parametros, inventario / Inventario). Sin la fila → valores por defecto.
+const LIMITES_REPORTE_INVENTARIO_DEFECTO = { excel: 10000, csv: 100000 };
+const CONCEPTO_LIMITE_EXCEL_INVENTARIO = 'Límite de filas reporte Excel - Inventario';
+const CONCEPTO_LIMITE_CSV_INVENTARIO = 'Límite de filas reporte CSV - Inventario';
+
+async function obtenerLimitesReporteInventario() {
+  const limites = { ...LIMITES_REPORTE_INVENTARIO_DEFECTO };
+  try {
+    const [rows] = await pool.execute(
+      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'inventario' AND Seccion = 'Inventario' AND Concepto IN (?, ?)",
+      [CONCEPTO_LIMITE_EXCEL_INVENTARIO, CONCEPTO_LIMITE_CSV_INVENTARIO]
+    );
+    rows.forEach((r) => {
+      const n = parseInt(r.Parametro, 10);
+      if (!(n > 0)) return;
+      if (r.Concepto === CONCEPTO_LIMITE_EXCEL_INVENTARIO) limites.excel = n;
+      if (r.Concepto === CONCEPTO_LIMITE_CSV_INVENTARIO) limites.csv = n;
+    });
+  } catch (err) {
+    console.error('[inventario] No se pudieron leer los límites del reporte:', err.message);
+  }
+  return limites;
+}
+
+// Devuelve { where, params, etiqueta }, { error } o null (el usuario no tiene operaciones).
+function construirFiltroReporteInventario(acceso, query) {
+  const conds = [];
+  const params = [];
+  if (acceso.filtroCategorias) {
+    conds.push(`\`Categoria\` IN (${acceso.filtroCategorias.map(() => '?').join(',')})`);
+    params.push(...acceso.filtroCategorias);
+  }
+  if (!acceso.sinFiltro) {
+    if (!acceso.operacionesFiltro.length) return null;
+    conds.push(`\`Operacion\` IN (${acceso.operacionesFiltro.map(() => '?').join(',')})`);
+    params.push(...acceso.operacionesFiltro);
+  }
+
+  const modo = String(query.modo || 'todo').toLowerCase();
+  let etiqueta = 'Todo';
+  if (modo === 'regional') {
+    const regional = String(query.regional || '').trim();
+    if (!regional) return { error: 'Seleccione una regional.' };
+    conds.push('`Regional` = ?'); params.push(regional);
+    etiqueta = regional;
+  } else if (modo === 'operacion') {
+    const operacion = String(query.operacion || '').trim();
+    if (!operacion) return { error: 'Seleccione una operación.' };
+    conds.push('`Operacion` = ?'); params.push(operacion);
+    etiqueta = operacion;
+  } else if (modo !== 'todo') {
+    return { error: 'Opción de reporte inválida.' };
+  }
+
+  return {
+    where: conds.length ? `WHERE ${conds.join(' AND ')}` : '',
+    params,
+    etiqueta: etiqueta.replace(/[^\w\-ÁÉÍÓÚáéíóúÑñ ]+/g, '').trim().replace(/\s+/g, '_') || 'Reporte',
+  };
+}
+
+async function contarFilasReporteInventario(filtro) {
+  const [[row]] = await pool.execute(`SELECT COUNT(*) AS total FROM Vista_Inventario ${filtro.where}`, filtro.params);
+  return Number(row.total || 0);
+}
+
+const COLUMNAS_REPORTE_INVENTARIO = [
+  { titulo: 'Regional',         campo: 'Regional',        tipo: 'texto',  ancho: 16 },
+  { titulo: 'Operación',        campo: 'Operacion',       tipo: 'texto',  ancho: 26 },
+  { titulo: 'Id Artículo',      campo: 'IdArticulo',      tipo: 'numero', ancho: 12 },
+  { titulo: 'Artículo',         campo: 'Articulo',        tipo: 'texto',  ancho: 34 },
+  { titulo: 'Talla',            campo: 'Talla',           tipo: 'texto',  ancho: 10 },
+  { titulo: 'Referencia',       campo: 'Referencia',      tipo: 'texto',  ancho: 26 },
+  { titulo: 'Placa',            campo: 'Placa',           tipo: 'texto',  ancho: 14 },
+  { titulo: 'Clasificación',    campo: 'Clasificacion',   tipo: 'texto',  ancho: 24 },
+  { titulo: 'Categoría',        campo: 'Categoria',       tipo: 'texto',  ancho: 16 },
+  { titulo: 'Stock Disponible', campo: 'StockDisponible', tipo: 'numero', ancho: 16 },
+  { titulo: 'Valor Stock',      campo: 'ValorStock',      tipo: 'numero', ancho: 16 },
+  { titulo: 'Observaciones',    campo: 'Observaciones',   tipo: 'texto',  ancho: 40 },
+];
+
+// GET /api/reporte-inventario/conteo — cuántas filas tendría y qué formatos se permiten
+router.get('/api/reporte-inventario/conteo', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const filtro = construirFiltroReporteInventario(acceso, req.query);
+    if (filtro && filtro.error) return res.status(400).json({ error: filtro.error });
+    const limites = await obtenerLimitesReporteInventario();
+    const total = filtro ? await contarFilasReporteInventario(filtro) : 0;
+    res.json({
+      ok: true,
+      total,
+      limites,
+      permiteExcel: total > 0 && total <= limites.excel,
+      permiteCsv: total > 0 && total <= limites.csv,
+    });
+  } catch (err) {
+    console.error('[inventario] GET /api/reporte-inventario/conteo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/reporte-inventario?formato=xlsx|csv — descarga el reporte
+router.get('/api/reporte-inventario', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const formato = String(req.query.formato || '').toLowerCase();
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!['xlsx', 'csv'].includes(formato)) return res.status(400).json({ error: 'Formato inválido. Use Excel o CSV.' });
+
+    const acceso = await computarAccesoInventario(usuario, 'Inventario');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const filtro = construirFiltroReporteInventario(acceso, req.query);
+    if (filtro && filtro.error) return res.status(400).json({ error: filtro.error });
+    const limites = await obtenerLimitesReporteInventario();
+    const total = filtro ? await contarFilasReporteInventario(filtro) : 0;
+    const fmt = (n) => Number(n).toLocaleString('es-CO');
+    if (total === 0) return res.status(400).json({ error: 'No hay inventario para la opción seleccionada.' });
+    if (formato === 'xlsx' && total > limites.excel) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas. En Excel se permiten hasta ${fmt(limites.excel)}; descárguelo en CSV.` });
+    }
+    if (total > limites.csv) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas y el máximo permitido es ${fmt(limites.csv)}. Elija una regional u operación.` });
+    }
+
+    // La vista es pequeña (unos miles de filas): se lee completa con el filtro y se ordena igual que la pestaña.
+    const [filas] = await pool.execute(`
+      SELECT \`Regional\`, \`Operacion\`, \`IdArticulo\`, \`Articulo\`, \`Talla\`, \`Referencia\`, \`Placa\`,
+             \`Clasificación\` AS \`Clasificacion\`, \`Categoria\`,
+             \`Stock Disponible\` AS \`StockDisponible\`, \`Valor Stock\` AS \`ValorStock\`, \`Observaciones\`
+      FROM Vista_Inventario
+      ${filtro.where}
+      ORDER BY \`Regional\`, \`Operacion\`, \`Articulo\`
+    `, filtro.params);
+
+    const archivo = nombreArchivo(`Inventario_${filtro.etiqueta}`, formato);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archivo)}"; filename*=UTF-8''${encodeURIComponent(archivo)}`);
+    if (formato === 'xlsx') {
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(generarXlsx({ hoja: 'Inventario', columnas: COLUMNAS_REPORTE_INVENTARIO, filas }));
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.send(encabezadoCsv(COLUMNAS_REPORTE_INVENTARIO) + filas.map((f) => filaCsv(COLUMNAS_REPORTE_INVENTARIO, f)).join(''));
+  } catch (err) {
+    console.error('[inventario] GET /api/reporte-inventario:', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.end();
   }
 });
 

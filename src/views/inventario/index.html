@@ -151,6 +151,20 @@
       color-scheme: dark;
     }
 
+    /* Botón verde de descarga y ventana de reporte (mismo estilo que Nómina) */
+    .btn-icono-descarga { background: var(--success); color: #fff; border: 1px solid var(--success); padding: 7px 10px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+    .btn-icono-descarga:hover { filter: brightness(1.08); }
+    .reporte-opciones { display: flex; flex-direction: column; gap: 8px; font-size: .88rem; margin-bottom: 14px; }
+    .reporte-opciones label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .reporte-campo { margin-bottom: 14px; }
+    .reporte-campo label { display: block; font-size: .78rem; font-weight: 600; margin-bottom: 4px; color: var(--text); }
+    .reporte-campo select { width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: .86rem; }
+    .reporte-info { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: .84rem; color: var(--text-muted); }
+    .reporte-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px; }
+    .reporte-btns button { padding: 8px 14px; border-radius: 6px; font-size: .84rem; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: var(--bg-elevated); color: var(--text); }
+    .reporte-btns button.primario { background: var(--success); border-color: var(--success); color: #fff; }
+    .reporte-btns button:disabled { opacity: .5; cursor: not-allowed; }
+
     .wrapper {
       margin-left: 280px;
       flex: 1;
@@ -3193,6 +3207,9 @@
           <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
             <div class="results-count" id="results-text">Mostrando 0 artículos</div>
             <div style="display: flex; align-items: center; gap: 12px;">
+              <button type="button" class="btn-icono-descarga" onclick="abrirModalReporteInventario()" title="Descargar reporte de Inventario (Excel o CSV)" aria-label="Descargar reporte de Inventario">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              </button>
               <!-- Add Kardex Button in Inventario Tab -->
               <button id="inventario-btn-agregar-kardex" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: var(--primary); color: var(--text-inverse); cursor: pointer;">
                 <span>➕</span> Agregar Kardex
@@ -4865,6 +4882,38 @@
     <div class="modal-caption" id="modal-caption"></div>
   </div>
 
+  <!-- Modal: Descargar reporte de la pestaña Inventario (Todo / Regional / Operación) -->
+  <div id="reporte-inventario-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 5vh;">
+    <div style="max-width: 520px; width: 95%; margin: auto; background: var(--card-bg); color: var(--text); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border);">
+      <div style="background: var(--bg-elevated); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text);">📥 Descargar reporte de Inventario</h3>
+        <span onclick="cerrarModalReporteInventario()" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+      <div style="padding: 20px 24px;">
+        <p style="font-size: .83rem; color: var(--text-muted); margin: 0 0 14px;">Incluye el stock de las regionales, operaciones y categorías que su rol puede ver.</p>
+        <div class="reporte-opciones">
+          <label><input type="radio" name="invReporteModo" value="todo" checked onchange="cambiarModoReporteInventario()"> Todo</label>
+          <label><input type="radio" name="invReporteModo" value="regional" onchange="cambiarModoReporteInventario()"> Por regional</label>
+          <label><input type="radio" name="invReporteModo" value="operacion" onchange="cambiarModoReporteInventario()"> Por operación</label>
+        </div>
+        <div class="reporte-campo" id="invReporteBloqueRegional" style="display: none;">
+          <label for="invReporteRegional">Regional</label>
+          <select id="invReporteRegional" onchange="actualizarConteoReporteInventario()"></select>
+        </div>
+        <div class="reporte-campo" id="invReporteBloqueOperacion" style="display: none;">
+          <label for="invReporteOperacion">Operación</label>
+          <select id="invReporteOperacion" onchange="actualizarConteoReporteInventario()"></select>
+        </div>
+        <div class="reporte-info" id="invReporteInfo">Calculando...</div>
+        <div class="reporte-btns">
+          <button type="button" onclick="cerrarModalReporteInventario()">Cancelar</button>
+          <button type="button" id="btnInvReporteCsv" onclick="descargarReporteInventario('csv')" disabled>📄 Descargar CSV</button>
+          <button type="button" class="primario" id="btnInvReporteExcel" onclick="descargarReporteInventario('xlsx')" disabled>📊 Descargar Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Crear/Editar Artículo Individual (formarticulos-single) -->
   <div id="articulo-form-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 5vh;">
     <div style="max-width: 550px; width: 95%; margin: auto; background: var(--card-bg); color: var(--text); border-radius: 12px; padding: 0; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border);">
@@ -5935,6 +5984,133 @@
     const CONFIG = __CONFIG__;
   </script>
 
+  <!-- Reporte de la pestaña Inventario (ventana emergente) -->
+  <script>
+    // Todo / Por regional / Por operación, dentro del alcance del usuario.
+    // Excel hasta "Límite de filas reporte Excel - Inventario"; si pasa, solo CSV
+    // hasta "Límite de filas reporte CSV - Inventario" (Config_Parametros, inventario / Inventario).
+    let _reporteInventarioSeq = 0;
+
+    function abrirModalReporteInventario() {
+      const ops = CONFIG.opsPorRegional || {};
+      const regionales = Object.keys(ops).sort();
+      const operaciones = [...new Set(Object.values(ops).flat())].sort();
+      const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      const opt = (v) => `<option value="${esc(v)}">${esc(v)}</option>`;
+      const selReg = document.getElementById('invReporteRegional');
+      const selOp = document.getElementById('invReporteOperacion');
+      selReg.innerHTML = regionales.map(opt).join('');
+      selOp.innerHTML = operaciones.map(opt).join('');
+      // Si la consulta ya está filtrada, se proponen esos valores
+      const fReg = document.getElementById('filter-regional');
+      const fOp = document.getElementById('filter-operacion');
+      if (fReg && fReg.value) selReg.value = fReg.value;
+      if (fOp && fOp.value) selOp.value = fOp.value;
+      const modoInicial = fOp && fOp.value ? 'operacion' : (fReg && fReg.value ? 'regional' : 'todo');
+      document.querySelector(`input[name="invReporteModo"][value="${modoInicial}"]`).checked = true;
+      cambiarModoReporteInventario();
+      const modal = document.getElementById('reporte-inventario-modal');
+      modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => cerrarModalReporteInventario());
+    }
+
+    function cerrarModalReporteInventario() {
+      const modal = document.getElementById('reporte-inventario-modal');
+      modal.style.display = 'none';
+      cerrarModalBack(modal._backEntry);
+      modal._backEntry = null;
+    }
+
+    function modoReporteInventario() {
+      const r = document.querySelector('input[name="invReporteModo"]:checked');
+      return r ? r.value : 'todo';
+    }
+
+    function cambiarModoReporteInventario() {
+      const modo = modoReporteInventario();
+      document.getElementById('invReporteBloqueRegional').style.display = modo === 'regional' ? 'block' : 'none';
+      document.getElementById('invReporteBloqueOperacion').style.display = modo === 'operacion' ? 'block' : 'none';
+      actualizarConteoReporteInventario();
+    }
+
+    function paramsReporteInventario() {
+      const params = new URLSearchParams({ usuario: CONFIG.usuarioId, modo: modoReporteInventario() });
+      if (params.get('modo') === 'regional') params.set('regional', document.getElementById('invReporteRegional').value);
+      if (params.get('modo') === 'operacion') params.set('operacion', document.getElementById('invReporteOperacion').value);
+      return params;
+    }
+
+    async function actualizarConteoReporteInventario() {
+      const info = document.getElementById('invReporteInfo');
+      const btnExcel = document.getElementById('btnInvReporteExcel');
+      const btnCsv = document.getElementById('btnInvReporteCsv');
+      btnExcel.disabled = true;
+      btnCsv.disabled = true;
+      info.style.color = 'var(--text-muted)';
+      info.textContent = 'Calculando cantidad de filas...';
+      const seq = ++_reporteInventarioSeq;
+      try {
+        const resp = await fetch('/inventario/api/reporte-inventario/conteo?' + paramsReporteInventario().toString());
+        const data = await resp.json();
+        if (seq !== _reporteInventarioSeq) return; // respuesta de una selección anterior
+        if (!resp.ok || !data.ok) {
+          info.style.color = 'var(--danger)';
+          info.textContent = data.error || 'No se pudo calcular el reporte.';
+          return;
+        }
+        const fmt = (n) => Number(n).toLocaleString('es-CO');
+        btnExcel.disabled = !data.permiteExcel;
+        btnCsv.disabled = !data.permiteCsv;
+        if (data.total === 0) {
+          info.textContent = 'No hay inventario para la opción seleccionada.';
+        } else if (data.permiteExcel) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> filas. Puede descargarlo en Excel o CSV.`;
+        } else if (data.permiteCsv) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> filas. Supera el límite de Excel (${fmt(data.limites.excel)} filas), solo se puede descargar en CSV.`;
+        } else {
+          info.style.color = 'var(--danger)';
+          info.innerHTML = `<strong>${fmt(data.total)}</strong> filas. Supera el máximo permitido (${fmt(data.limites.csv)} filas). Elija una regional u operación.`;
+        }
+      } catch {
+        if (seq !== _reporteInventarioSeq) return;
+        info.style.color = 'var(--danger)';
+        info.textContent = 'Error de red al calcular el reporte.';
+      }
+    }
+
+    async function descargarReporteInventario(formato) {
+      const btn = document.getElementById(formato === 'csv' ? 'btnInvReporteCsv' : 'btnInvReporteExcel');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        const params = paramsReporteInventario();
+        params.set('formato', formato);
+        const resp = await fetch('/inventario/api/reporte-inventario?' + params.toString());
+        if (!resp.ok) {
+          let msg = 'No se pudo generar el reporte.';
+          try { msg = (await resp.json()).error || msg; } catch {}
+          throw new Error(msg);
+        }
+        const blob = await resp.blob();
+        const disp = resp.headers.get('Content-Disposition') || '';
+        const m = disp.match(/filename\*=UTF-8''([^;]+)/) || disp.match(/filename="([^"]+)"/);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = m ? decodeURIComponent(m[1]) : `Inventario.${formato}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.innerHTML = textoOriginal;
+        actualizarConteoReporteInventario();
+      }
+    }
+  </script>
+
   <!-- Interactive script -->
   <script>
     // Elements
@@ -6210,7 +6386,8 @@
         'articulo-stock-modal',
         'sol-add-articles-modal',
         'acta-add-articles-modal',
-        'elementos-manager-modal'
+        'elementos-manager-modal',
+        'reporte-inventario-modal'
       ];
       function closeActiveModals() {
         MODAL_IDS_ACTIVE.forEach(id => {
