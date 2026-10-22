@@ -1,288 +1,414 @@
+const crypto = require('crypto');
 const pool = require('./db');
+const { obtenerParametrosPorSeccion } = require('./configParametros');
+const { generarPDFDesdeHTML } = require('./pdf');
+const { LOGO_BASE64 } = require('../utils/logo');
 const {
   subirFirma,
-  obtenerFirmaBase64Reciente,
-  obtenerUrlFirmaReciente,
   subirPDFInspeccionVehiculo,
   subirFotoInspeccionVehiculo,
 } = require('./storage');
-const { generarPDFDesdeHTML } = require('./renderer');
-const { LOGO_BASE64 } = require('./assets');
 
+// ══════════════════════════════════════════════════════════════════════════════
+// PLANTILLAS SIMPLIFICADAS E INTERACTIVAS (10 A 12 PUNTOS ESENCIALES POR BLOQUES)
+// ══════════════════════════════════════════════════════════════════════════════
 const INSPECTION_TEMPLATES = {
   vehiculo: {
-    label: 'Vehículo',
-    subtypes: {
-      carro: {
-        label: 'Carro',
-        items: [
-          ['Documentación', 'SOAT vigente', true],
-          ['Documentación', 'Revisión técnico-mecánica vigente, cuando aplique', true],
-          ['Documentación', 'Licencia de tránsito disponible', false],
-          ['Exterior', 'Estado general de carrocería, puertas, capó y baúl', false],
-          ['Exterior', 'Parabrisas, vidrios y espejos sin daños que afecten visibilidad', true],
-          ['Exterior', 'Placas legibles y correctamente instaladas', false],
-          ['Llantas', 'Llantas sin cortes, deformaciones ni desgaste excesivo', true],
-          ['Llantas', 'Presión aparente adecuada y rines sin daños', true],
-          ['Llantas', 'Llanta de repuesto y elementos para cambio', false],
-          ['Luces', 'Luces bajas, altas, posición, freno y reversa operativas', true],
-          ['Luces', 'Direccionales y luces de emergencia operativas', true],
-          ['Seguridad', 'Cinturones de seguridad funcionales', true],
-          ['Seguridad', 'Bocina operativa', true],
-          ['Seguridad', 'Extintor vigente y asegurado', true],
-          ['Seguridad', 'Botiquín y equipo de carretera disponibles', false],
-          ['Mecánico', 'Frenos de servicio y estacionamiento funcionales', true],
-          ['Mecánico', 'Dirección sin holguras o anomalías', true],
-          ['Mecánico', 'Niveles de aceite, refrigerante y líquido de frenos adecuados', true],
-          ['Mecánico', 'Sin fugas visibles de fluidos', true],
-          ['Cabina', 'Limpiaparabrisas y lavaparabrisas operativos', false],
-          ['Cabina', 'Tablero sin testigos críticos encendidos', true],
-        ],
-      },
-      moto: {
-        label: 'Moto',
-        items: [
-          ['Documentación', 'SOAT vigente', true],
-          ['Documentación', 'Revisión técnico-mecánica vigente, cuando aplique', true],
-          ['Documentación', 'Licencia de tránsito disponible', false],
-          ['Llantas', 'Llantas sin cortes, deformaciones ni desgaste excesivo', true],
-          ['Llantas', 'Presión aparente adecuada y rines sin daños', true],
-          ['Frenos', 'Freno delantero operativo', true],
-          ['Frenos', 'Freno trasero operativo', true],
-          ['Luces', 'Luz delantera, trasera y de freno operativas', true],
-          ['Luces', 'Direccionales operativas', true],
-          ['Seguridad', 'Bocina operativa', true],
-          ['Seguridad', 'Espejos completos y ajustados', true],
-          ['Seguridad', 'Casco certificado en buen estado', true],
-          ['Seguridad', 'Elementos reflectivos disponibles, cuando aplique', false],
-          ['Mecánico', 'Cadena o sistema de transmisión con tensión adecuada', true],
-          ['Mecánico', 'Sin fugas visibles de combustible o aceite', true],
-          ['Mecánico', 'Nivel de aceite adecuado', true],
-          ['Mecánico', 'Acelerador retorna correctamente', true],
-          ['Controles', 'Manubrio y dirección sin juego excesivo', true],
-          ['Controles', 'Pata lateral/central funcional', false],
-          ['Controles', 'Tablero e indicadores operativos', false],
-        ],
-      },
-      camioneta: {
-        label: 'Camioneta',
-        items: [
-          ['Documentación', 'SOAT vigente', true],
-          ['Documentación', 'Revisión técnico-mecánica vigente, cuando aplique', true],
-          ['Documentación', 'Licencia de tránsito disponible', false],
-          ['Exterior', 'Carrocería, puertas, platón o compartimiento de carga en buen estado', false],
-          ['Exterior', 'Parabrisas, vidrios y espejos sin daños que afecten visibilidad', true],
-          ['Llantas', 'Llantas sin cortes, deformaciones ni desgaste excesivo', true],
-          ['Llantas', 'Presión aparente adecuada y rines sin daños', true],
-          ['Llantas', 'Llanta de repuesto y equipo para cambio', false],
-          ['Luces', 'Sistema completo de luces y direccionales operativo', true],
-          ['Seguridad', 'Cinturones de seguridad funcionales', true],
-          ['Seguridad', 'Bocina operativa', true],
-          ['Seguridad', 'Extintor vigente y asegurado', true],
-          ['Seguridad', 'Botiquín y equipo de carretera disponibles', false],
-          ['Mecánico', 'Frenos de servicio y estacionamiento funcionales', true],
-          ['Mecánico', 'Dirección sin holguras o anomalías', true],
-          ['Mecánico', 'Niveles de aceite, refrigerante y líquido de frenos adecuados', true],
-          ['Mecánico', 'Sin fugas visibles de fluidos', true],
-          ['Carga', 'Elementos de sujeción de carga disponibles y en buen estado', true],
-          ['Cabina', 'Limpiaparabrisas y lavaparabrisas operativos', false],
-          ['Cabina', 'Tablero sin testigos críticos encendidos', true],
-        ],
-      },
+    moto: {
+      type: 'vehiculo',
+      subtype: 'moto',
+      label: 'Motocicleta',
+      shortLabel: 'MOTO',
+      title: 'Inspección Preoperacional — Motocicleta',
+      items: [
+        // Bloque 1: Documentación Legal
+        { id: 'm1', section: '1. DOCUMENTACIÓN LEGAL', text: 'SOAT y Tarjeta de Propiedad vigentes', critical: true },
+        { id: 'm2', section: '1. DOCUMENTACIÓN LEGAL', text: 'Revisión Técnico-Mecánica vigente', critical: true },
+        { id: 'm3', section: '1. DOCUMENTACIÓN LEGAL', text: 'Licencia de conducción vigente y acorde a la categoría', critical: true },
+        // Bloque 2: Luces y Espejos
+        { id: 'm4', section: '2. LUCES Y VISIBILIDAD', text: 'Luz delantera (baja/alta), luz de freno (stop) y direccionales funcionando', critical: true },
+        { id: 'm5', section: '2. LUCES Y VISIBILIDAD', text: 'Espejos retrovisores completos y bien ajustados', critical: true },
+        { id: 'm6', section: '2. LUCES Y VISIBILIDAD', text: 'Pito / bocina e indicadores de tablero funcionando', critical: false },
+        // Bloque 3: Estado Mecánico
+        { id: 'm7', section: '3. ESTADO MECÁNICO Y LLANTAS', text: 'Freno delantero y freno trasero con respuesta segura', critical: true },
+        { id: 'm8', section: '3. ESTADO MECÁNICO Y LLANTAS', text: 'Llantas delantera y trasera con buen labrado y presión adecuada', critical: true },
+        { id: 'm9', section: '3. ESTADO MECÁNICO Y LLANTAS', text: 'Cadena/kit de arrastre, guayas y motor sin fugas de aceite o gasolina', critical: true },
+        // Bloque 4: Elementos de Protección
+        { id: 'm10', section: '4. PROTECCIÓN PERSONAL (EPP)', text: 'Casco reglamentario certificado en buen estado y con visor limpio', critical: true },
+        { id: 'm11', section: '4. PROTECCIÓN PERSONAL (EPP)', text: 'Prenda/chaleco reflectivo, guantes, calzado cerrado y protección impermeable', critical: true }
+      ]
     },
+    carro: {
+      type: 'vehiculo',
+      subtype: 'carro',
+      label: 'Carro / Camioneta',
+      shortLabel: 'CARRO / CAMIONETA',
+      title: 'Inspección Preoperacional — Carro / Camioneta',
+      items: [
+        // Bloque 1: Documentación Legal
+        { id: 'v1', section: '1. DOCUMENTACIÓN LEGAL', text: 'SOAT y Tarjeta de Propiedad vigentes', critical: true },
+        { id: 'v2', section: '1. DOCUMENTACIÓN LEGAL', text: 'Revisión Técnico-Mecánica vigente', critical: true },
+        { id: 'v3', section: '1. DOCUMENTACIÓN LEGAL', text: 'Licencia de conducción vigente', critical: true },
+        // Bloque 2: Visibilidad y Cabina
+        { id: 'v4', section: '2. VISIBILIDAD Y CABINA', text: 'Luces bajas, altas, direccionales, freno y reversa funcionando', critical: true },
+        { id: 'v5', section: '2. VISIBILIDAD Y CABINA', text: 'Parabrisas sin fisuras, limpiabrisas y espejos retrovisores en buen estado', critical: true },
+        { id: 'v6', section: '2. VISIBILIDAD Y CABINA', text: 'Cinturones de seguridad operativos en todos los puestos y pito funcional', critical: true },
+        // Bloque 3: Mecánica y Llantas
+        { id: 'v7', section: '3. MECÁNICA, FRENOS Y LLANTAS', text: 'Freno de pedal y freno de emergencia (mano) en óptimo funcionamiento', critical: true },
+        { id: 'v8', section: '3. MECÁNICA, FRENOS Y LLANTAS', text: 'Llantas (las 4 y repuesto) con buen labrado, presión y pernos completos', critical: true },
+        { id: 'v9', section: '3. MECÁNICA, FRENOS Y LLANTAS', text: 'Dirección y suspensión estables, sin ruidos ni vibraciones anormales', critical: true },
+        { id: 'v10', section: '3. MECÁNICA, FRENOS Y LLANTAS', text: 'Niveles de fluidos normales y ausencia de fugas (aceite, refrigerante, frenos)', critical: true },
+        // Bloque 4: Equipo de Carretera
+        { id: 'v11', section: '4. EQUIPO DE CARRETERA Y EMERGENCIA', text: 'Extintor con carga vigente y botiquín de primeros auxilios completo', critical: true },
+        { id: 'v12', section: '4. EQUIPO DE CARRETERA Y EMERGENCIA', text: 'Kit de carretera (gato, cruceta, 2 señales/conos, 2 tacos, linterna y chaleco)', critical: false }
+      ]
+    },
+    camioneta: {
+      type: 'vehiculo',
+      subtype: 'camioneta',
+      label: 'Camioneta Operativa',
+      shortLabel: 'CAMIONETA',
+      title: 'Inspección Preoperacional — Camioneta Operativa',
+      items: [
+        { id: 'ca1', section: '1. DOCUMENTACIÓN LEGAL', text: 'SOAT y Tarjeta de Propiedad vigentes', critical: true },
+        { id: 'ca2', section: '1. DOCUMENTACIÓN LEGAL', text: 'Revisión Técnico-Mecánica vigente', critical: true },
+        { id: 'ca3', section: '1. DOCUMENTACIÓN LEGAL', text: 'Licencia de conducción vigente', critical: true },
+        { id: 'ca4', section: '2. VISIBILIDAD Y CABINA', text: 'Luces bajas, altas, direccionales, freno y alarma/luz de reversa', critical: true },
+        { id: 'ca5', section: '2. VISIBILIDAD Y CABINA', text: 'Parabrisas, limpiabrisas y espejos retrovisores en buen estado', critical: true },
+        { id: 'ca6', section: '2. VISIBILIDAD Y CABINA', text: 'Cinturones de seguridad operativos y pito funcional', critical: true },
+        { id: 'ca7', section: '3. MECÁNICA, FRENOS Y LLANTAS', text: 'Freno principal y freno de emergencia en óptimo estado', critical: true },
+        { id: 'ca8', section: '3. MECÁNICA, FRENOS Y LLANTAS', text: 'Llantas y repuesto con buen labrado, presión y pernos completos', critical: true },
+        { id: 'ca9', section: '3. MECÁNICA, FRENOS Y LLANTAS', text: 'Dirección, suspensión y platón/compuerta en buen estado', critical: true },
+        { id: 'ca10', section: '3. MECÁNICA, FRENOS Y LLANTAS', text: 'Niveles de fluidos normales y sin fugas activas', critical: true },
+        { id: 'ca11', section: '4. EQUIPO DE CARRETERA Y EMERGENCIA', text: 'Extintor vigente y botiquín de primeros auxilios completo', critical: true },
+        { id: 'ca12', section: '4. EQUIPO DE CARRETERA Y EMERGENCIA', text: 'Kit de carretera completo (gato, cruceta, conos, tacos y linterna)', critical: false }
+      ]
+    }
   },
   camion: {
-    label: 'Camión',
-    subtypes: {
-      camion: {
-        label: 'Camión',
-        items: [
-          ['Documentación', 'SOAT vigente', true],
-          ['Documentación', 'Revisión técnico-mecánica vigente', true],
-          ['Documentación', 'Licencia de tránsito y documentos de operación disponibles', false],
-          ['Cabina', 'Parabrisas, vidrios, espejos y limpiaparabrisas en buen estado', true],
-          ['Cabina', 'Cinturón de seguridad funcional', true],
-          ['Cabina', 'Bocina operativa', true],
-          ['Luces', 'Luces delanteras, traseras, freno, reversa y direccionales operativas', true],
-          ['Luces', 'Luces de emergencia y demarcación operativas', true],
-          ['Llantas', 'Llantas sin daños o desgaste excesivo', true],
-          ['Llantas', 'Tuercas, pernos y rines completos y ajustados', true],
-          ['Llantas', 'Llanta de repuesto disponible', false],
-          ['Mecánico', 'Frenos de servicio y estacionamiento funcionales', true],
-          ['Mecánico', 'Sistema de dirección sin holguras', true],
-          ['Mecánico', 'Niveles de fluidos adecuados', true],
-          ['Mecánico', 'Sin fugas visibles de aceite, combustible o refrigerante', true],
-          ['Mecánico', 'Suspensión sin daños visibles', true],
-          ['Seguridad', 'Extintor vigente y asegurado', true],
-          ['Seguridad', 'Botiquín y equipo de carretera disponibles', false],
-          ['Seguridad', 'Conos o elementos de señalización disponibles', false],
-          ['Carga', 'Carrocería o plataforma en buen estado', true],
-          ['Carga', 'Sistemas de amarre y sujeción disponibles y en buen estado', true],
-          ['Carga', 'Puertas, seguros y cierres funcionales', true],
-        ],
-      },
-    },
+    camion: {
+      type: 'camion',
+      subtype: 'camion',
+      label: 'Camión de Ruta',
+      shortLabel: 'CAMIÓN',
+      title: 'Inspección Preoperacional — Camión de Ruta',
+      items: [
+        // Bloque 1: Documentación Legal
+        { id: 'k1', section: '1. DOCUMENTACIÓN LEGAL Y RUTA', text: 'SOAT, Revisión Técnico-Mecánica y Tarjeta de Propiedad vigentes', critical: true },
+        { id: 'k2', section: '1. DOCUMENTACIÓN LEGAL Y RUTA', text: 'Licencia de conducción vigente para la categoría del vehículo', critical: true },
+        { id: 'k3', section: '1. DOCUMENTACIÓN LEGAL Y RUTA', text: 'Documentos de transporte / planilla de ruta y permisos al día', critical: false },
+        // Bloque 2: Cabina y Luces
+        { id: 'k4', section: '2. CABINA, LUCES Y VISIBILIDAD', text: 'Luces delanteras, direccionales, demarcación, stop y alarma sonora de reversa', critical: true },
+        { id: 'k5', section: '2. CABINA, LUCES Y VISIBILIDAD', text: 'Espejos panorámicos/laterales, parabrisas y limpiabrisas en buen estado', critical: true },
+        { id: 'k6', section: '2. CABINA, LUCES Y VISIBILIDAD', text: 'Cinturones de seguridad (conductor y auxiliar de ruta) y peldaños de acceso seguros', critical: true },
+        // Bloque 3: Frenos y Llantas
+        { id: 'k7', section: '3. FRENOS, LLANTAS Y MOTOR', text: 'Sistema de frenos (presión de aire/líquido) y freno de seguridad operativos', critical: true },
+        { id: 'k8', section: '3. FRENOS, LLANTAS Y MOTOR', text: 'Llantas direccionales, tracción y repuesto con labrado, presión y pernos completos', critical: true },
+        { id: 'k9', section: '3. FRENOS, LLANTAS Y MOTOR', text: 'Motor, dirección y transmisión sin fugas de aceite, ACPM o refrigerante', critical: true },
+        // Bloque 4: Carrocería y Emergencia
+        { id: 'k10', section: '4. CARROCERÍA Y EMERGENCIAS', text: 'Furgón/carrocería, puertas, seguros y elementos de sujeción de carga en buen estado', critical: true },
+        { id: 'k11', section: '4. CARROCERÍA Y EMERGENCIAS', text: 'Extintor reglamentario vigente y botiquín de primeros auxilios completo', critical: true },
+        { id: 'k12', section: '4. CARROCERÍA Y EMERGENCIAS', text: 'Tacos de bloqueo, conos reflectivos, gato, herramienta y EPP de ruta', critical: true }
+      ]
+    }
   },
   montacarga: {
-    label: 'Montacarga eléctrica',
-    subtypes: {
-      electrica: {
-        label: 'Montacarga eléctrica',
-        items: [
-          ['SISTEMA MECÁNICO', 'Rueda de tracción y de carga: sin cortes o desgaste excesivo, sin fisuras en caucho; pernos ajustados y completos', true],
-          ['SISTEMA MECÁNICO', 'Aceite hidráulico: nivel adecuado', true],
-          ['SISTEMA MECÁNICO', 'Mangueras: ajustadas, sin fisuras y sin fugas de aceite', true],
-          ['SISTEMA MECÁNICO', 'Timón o volante: ajustado; responde al giro; comandos y botón de contramarcha funcionales', true],
-          ['SISTEMA MECÁNICO', 'Mecanismo de levante de la torre: desplazamiento libre, sin ruidos extraños, fisuras visibles y correctamente lubricado', true],
-          ['BATERÍA', 'Cables de potencia y conector: ajustados, sin cortes, añadidos ni cables expuestos', true],
-          ['BATERÍA', 'Batería, compartimiento y cama porta batería: anclada, sin golpes ni fugas; seguro y rodillos en buen estado', true],
-          ['BATERÍA', 'Cableado y cargador: ajustados, sin conexiones improvisadas; cargador funcional', true],
-          ['BATERÍA', 'Nivel de agua dentro del rango de funcionamiento', true],
-          ['BATERÍA', 'Porcentaje de voltaje superior a 20%', true],
-          ['SISTEMA ELÉCTRICO', 'Cableado interno: ajustado, sin cortes, peladuras ni cables expuestos', true],
-          ['SISTEMA ELÉCTRICO', 'Medidor: funcionamiento correcto y lectura de carga de batería', true],
-          ['SISTEMA ELÉCTRICO', 'Conexiones: aseguradas y sin añadiduras', true],
-          ['SISTEMA ELÉCTRICO', 'Controlador de velocidad: permite marcha hacia atrás y adelante', true],
-          ['SISTEMA ELÉCTRICO', 'Controlador de desplazamiento: acciona entrada y salida de horquillas', true],
-          ['ASPECTOS A REVISAR', 'Estado de la bocina', true],
-          ['ASPECTOS A REVISAR', 'Extintor multipropósito: recarga vigente y presión adecuada', true],
-          ['ASPECTOS A REVISAR', 'Cinturón de seguridad en buen estado', true],
-          ['ASPECTOS A REVISAR', 'Asiento en buen estado', false],
-          ['ASPECTOS A REVISAR', 'Direccionales en buen estado', true],
-          ['ASPECTOS A REVISAR', 'Estado de frenos', true],
-          ['ASPECTOS A REVISAR', 'Sistema hidráulico: sube y baja el mástil correctamente', true],
-          ['ASPECTOS A REVISAR', 'Contador de horas en buen estado', false],
-          ['ASPECTOS A REVISAR', 'Horquillas bien posicionadas y aseguradas con pin; libres de golpes y abolladuras', true],
-          ['ASPECTOS A REVISAR', 'Mástil: sube y baja correctamente; rodamientos sin anomalías', true],
-          ['ASPECTOS A REVISAR', 'Faros delanteros en buen estado', true],
-          ['ASPECTOS A REVISAR', 'Luces traseras en buen estado', true],
-          ['ASPECTOS A REVISAR', 'Engrase de la máquina adecuado', false],
-          ['ASPECTOS A REVISAR', 'Estado de llantas: sin daños, cortes o desgaste excesivo', true],
-        ],
-      },
+    electrica: {
+      type: 'montacarga',
+      subtype: 'electrica',
+      label: 'Montacarga Eléctrica',
+      shortLabel: 'MONTACARGA ELÉCTRICA',
+      title: 'Inspección Preoperacional — Montacarga Eléctrica',
+      items: [
+        // Bloque 1: Estructura e Izaje
+        { id: 'me1', section: '1. ESTRUCTURA E IZAJE', text: 'Horquillas (uñas) y seguros sin fisuras ni deformación', critical: true },
+        { id: 'me2', section: '1. ESTRUCTURA E IZAJE', text: 'Mástil, cadenas de elevación y carro porta-horquillas en buen estado', critical: true },
+        { id: 'me3', section: '1. ESTRUCTURA E IZAJE', text: 'Tejadillo protector, respaldo de carga y asiento con cinturón de seguridad', critical: true },
+        // Bloque 2: Sistema Hidráulico y Frenos
+        { id: 'me4', section: '2. HIDRÁULICO, DIRECCIÓN Y FRENOS', text: 'Cilindros de elevación/inclinación y mangueras sin fugas de aceite hidráulico', critical: true },
+        { id: 'me5', section: '2. HIDRÁULICO, DIRECCIÓN Y FRENOS', text: 'Freno de servicio, freno de parqueo y botón de parada de emergencia operativos', critical: true },
+        { id: 'me6', section: '2. HIDRÁULICO, DIRECCIÓN Y FRENOS', text: 'Dirección suave y mandos de elevación/inclinación funcionando sin trabas', critical: true },
+        // Bloque 3: Energía y Seguridad
+        { id: 'me7', section: '3. ENERGÍA, RUEDAS Y SEGURIDAD', text: 'Batería con carga adecuada, cables y conector sin sulfatación ni daños', critical: true },
+        { id: 'me8', section: '3. ENERGÍA, RUEDAS Y SEGURIDAD', text: 'Luces de trabajo, licuadora/baliza, pito y alarma sonora de reversa funcionando', critical: true },
+        { id: 'me9', section: '3. ENERGÍA, RUEDAS Y SEGURIDAD', text: 'Ruedas de carga y dirección sin desprendimientos ni desgaste excesivo', critical: true },
+        { id: 'me10', section: '3. ENERGÍA, RUEDAS Y SEGURIDAD', text: 'Extintor cargado y vigente en el equipo', critical: true },
+        { id: 'me11', section: '3. ENERGÍA, RUEDAS Y SEGURIDAD', text: 'Operador con certificación vigente y EPP completo (casco, botas de seguridad)', critical: true }
+      ]
     },
-  },
-  montacarga_manual: {
-    label: 'Montacarga manual (Transpaleta)',
-    subtypes: {
-      transpaleta: {
-        label: 'Montacarga manual (Transpaleta)',
-        items: [
-          ['Estructura', 'Chasis sin deformaciones, fisuras ni soldaduras defectuosas', true],
-          ['Estructura', 'Horquillas rectas, sin grietas ni deformaciones', true],
-          ['Estructura', 'Puntas de horquilla sin daños que comprometan la carga', true],
-          ['Ruedas', 'Ruedas de dirección sin cortes, planos o desgaste excesivo', true],
-          ['Ruedas', 'Rodillos de carga giran libremente y sin daños', true],
-          ['Ruedas', 'Ejes y pasadores completos y asegurados', true],
-          ['Hidráulico', 'Bomba hidráulica eleva la carga de forma uniforme', true],
-          ['Hidráulico', 'Descenso controlado y sin caída brusca', true],
-          ['Hidráulico', 'Sin fugas de aceite hidráulico', true],
-          ['Hidráulico', 'Palanca de mando en elevar/neutro/bajar funciona correctamente', true],
-          ['Mando', 'Timón sin fisuras, deformaciones o juego excesivo', true],
-          ['Mando', 'Empuñadura y mando firmes', true],
-          ['Mando', 'Retorno del timón normal', false],
-          ['Seguridad', 'Capacidad nominal legible', true],
-          ['Seguridad', 'Equipo limpio y libre de grasa en zonas de agarre', false],
-          ['Seguridad', 'No presenta elementos sueltos o faltantes', true],
-          ['Operación', 'Prueba sin carga: desplazamiento suave', true],
-          ['Operación', 'Prueba de elevación y descenso satisfactoria', true],
-        ],
-      },
-    },
-  },
+    transpaleta: {
+      type: 'montacarga',
+      subtype: 'transpaleta',
+      label: 'Transpaleta / Estibador Manual',
+      shortLabel: 'TRANSPALETA MANUAL',
+      title: 'Inspección Preoperacional — Transpaleta Manual',
+      items: [
+        // Bloque 1: Estructura
+        { id: 'tm1', section: '1. ESTRUCTURA Y HORQUILLAS', text: 'Chasis y horquillas rectas, sin fisuras, dobleces ni bordes cortantes', critical: true },
+        { id: 'tm2', section: '1. ESTRUCTURA Y HORQUILLAS', text: 'Maneral / timón de tracción firme, con retorno automático a posición vertical', critical: true },
+        { id: 'tm3', section: '1. ESTRUCTURA Y HORQUILLAS', text: 'Equipo limpio y libre de objetos atascados en su estructura', critical: false },
+        // Bloque 2: Sistema Hidráulico
+        { id: 'tm4', section: '2. SISTEMA HIDRÁULICO', text: 'Palanca de control (Subir / Neutro / Bajar) funcionando correctamente', critical: true },
+        { id: 'tm5', section: '2. SISTEMA HIDRÁULICO', text: 'Gato / cilindro hidráulico sin fugas de aceite', critical: true },
+        { id: 'tm6', section: '2. SISTEMA HIDRÁULICO', text: 'Eleva y sostiene la carga sin bajarse sola y desciende de forma controlada', critical: true },
+        // Bloque 3: Ruedas y Operación Segura
+        { id: 'tm7', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Ruedas direccionales y rodillos de carga completos, girando sin bloqueos', critical: true },
+        { id: 'tm8', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Pasadores, ejes y articulaciones completos y asegurados', critical: true },
+        { id: 'tm9', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Capacidad máxima de carga visible o conocida por el operador', critical: false },
+        { id: 'tm10', section: '3. RUEDAS Y OPERACIÓN SEGURA', text: 'Colaborador con botas de seguridad con puntera y guantes de trabajo', critical: true }
+      ]
+    }
+  }
 };
 
-function escHtml(v) {
-  return String(v ?? '').replace(/[&<>"']/g, m => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[m]));
-}
-
 function getBogotaDateParts() {
-  const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bogota' }));
-  const p = n => String(n).padStart(2, '0');
-  const yyyy = b.getFullYear();
-  const mm = p(b.getMonth() + 1);
-  const dd = p(b.getDate());
-  const hh = p(b.getHours());
-  const min = p(b.getMinutes());
-  const ss = p(b.getSeconds());
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = {};
+  fmt.formatToParts(now).forEach(p => { parts[p.type] = p.value; });
+  const yyyy = parts.year;
+  const mm = parts.month;
+  const dd = parts.day;
+  const hh = parts.hour === '24' ? '00' : parts.hour;
+  const mi = parts.minute;
+  const ss = parts.second;
   return {
-    sqlDateTime: `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`,
-    displayDateTime: `${dd}/${mm}/${yyyy} ${hh}:${min}`,
+    sqlDateTime: `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`,
+    displayDateTime: `${dd}/${mm}/${yyyy} ${hh}:${mi}`,
     yearMonth: `${yyyy}-${mm}`,
-    compactTs: `${yyyy}${mm}${dd}-${hh}${min}${ss}`,
+    compactTs: `${yyyy}${mm}${dd}-${hh}${mi}${ss}`,
   };
 }
 
+function escHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function textoResultadoItem(res) {
+  if (res === 'C') return 'Cumple';
+  if (res === 'NC') return 'No cumple';
+  if (res === 'NA') return 'No aplica';
+  return res || '—';
+}
+
 async function obtenerLimitesInspeccion() {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT Concepto, Parametro FROM Config_Parametros
-       WHERE Modulo = 'empleado' AND Seccion = 'Inspecciones_Vehiculo'`
-    );
-    const map = {};
-    rows.forEach(r => { map[r.Concepto] = r.Parametro; });
-    const maxFotos = parseInt(map['Máximo de fotos de evidencia por inspección'], 10);
-    const maxFotoMB = parseFloat(map['Tamaño máximo por foto de evidencia (MB)']);
-    return {
-      maxFotos: maxFotos > 0 ? maxFotos : 4,
-      maxFotoMB: maxFotoMB > 0 ? maxFotoMB : 10,
-    };
-  } catch (err) {
-    return { maxFotos: 4, maxFotoMB: 10 };
+  const filas = await obtenerParametrosPorSeccion('empleado', 'Inspecciones_Vehiculo');
+  let maxFotos = 4;
+  let maxFotoMB = 10;
+
+  for (const f of filas) {
+    const concepto = String(f.Concepto || '').toLowerCase();
+    const num = Number(String(f.Parametro || '').trim());
+    if (concepto.includes('máximo de fotos') || concepto.includes('maximo de fotos')) {
+      if (Number.isFinite(num) && num > 0 && num <= 10) maxFotos = num;
+    } else if (concepto.includes('tamaño máximo') || concepto.includes('tamano maximo')) {
+      if (Number.isFinite(num) && num > 0) maxFotoMB = num;
+    }
   }
+
+  return { maxFotos, maxFotoMB };
 }
 
 function obtenerResumenPlantillasInspeccion() {
-  const out = [];
+  const out = {};
   Object.keys(INSPECTION_TEMPLATES).forEach(type => {
-    const t = INSPECTION_TEMPLATES[type];
-    Object.keys(t.subtypes).forEach(subtype => {
-      out.push({
-        type,
-        subtype,
-        typeLabel: t.label,
-        label: t.subtypes[subtype].label,
-        totalItems: t.subtypes[subtype].items.length,
-      });
+    out[type] = {};
+    Object.keys(INSPECTION_TEMPLATES[type]).forEach(sub => {
+      const t = INSPECTION_TEMPLATES[type][sub];
+      out[type][sub] = {
+        type: t.type,
+        subtype: t.subtype,
+        label: t.label,
+        shortLabel: t.shortLabel,
+        title: t.title,
+        totalItems: t.items.length,
+        criticalCount: t.items.filter(i => i.critical).length,
+      };
     });
   });
   return out;
 }
 
 function obtenerPlantillaInspeccion(type, subtype) {
-  const t = INSPECTION_TEMPLATES[type];
-  if (!t || !t.subtypes[subtype]) {
-    throw new Error('Tipo de inspección preoperacional no válido.');
+  const t = String(type || '').toLowerCase().trim();
+  const s = String(subtype || t || '').toLowerCase().trim();
+  if (!INSPECTION_TEMPLATES[t] || !INSPECTION_TEMPLATES[t][s]) {
+    throw new Error('No se encontró la plantilla de inspección solicitada.');
   }
-  const s = t.subtypes[subtype];
+  return INSPECTION_TEMPLATES[t][s];
+}
+
+/**
+ * Obtiene las placas y equipos habituales del colaborador desde Maestro_Placas
+ * y desde su historial reciente en Dynamic_Inspecciones_Vehiculo.
+ */
+async function listarVehiculosHabitualesColaborador(identificacion, idVinculacion, nombre) {
+  const placasMap = new Map();
+  const equiposMap = new Map();
+
+  // 1. Consultar Maestro_Placas donde empleado contenga el Id Vinculación o Nit coincida
+  try {
+    const idNum = Number(String(identificacion || '').replace(/\D/g, '')) || 0;
+    const likeVinc = idVinculacion ? `%${idVinculacion}%` : '';
+    const [rowsPlacas] = await pool.execute(
+      `SELECT Placa, tipo_vehiculo AS tipoVehiculo, empleado, \`Fecha Registro\` AS fecha
+       FROM Maestro_Placas
+       WHERE (empleado IS NOT NULL AND empleado LIKE ?)
+          OR (Nit IS NOT NULL AND Nit = ?)
+       ORDER BY \`Fecha Registro\` DESC
+       LIMIT 15`,
+      [likeVinc || '__NO_MATCH__', idNum]
+    );
+    for (const r of rowsPlacas) {
+      const p = String(r.Placa || '').trim().toUpperCase();
+      if (p && !placasMap.has(p)) {
+        placasMap.set(p, {
+          placa: p,
+          tipoVehiculo: r.tipoVehiculo || '',
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[inspecciones] Aviso consultando Maestro_Placas:', err.message);
+  }
+
+  // 2. Consultar historial reciente en Dynamic_Inspecciones_Vehiculo
+  try {
+    const [rowsIns] = await pool.execute(
+      `SELECT placa, equipo_interno AS equipoInterno, tipo, subtipo, tipo_label AS tipoLabel, odometro
+       FROM Dynamic_Inspecciones_Vehiculo
+       WHERE identificacion = ?
+       ORDER BY fecha_registro DESC
+       LIMIT 20`,
+      [String(identificacion || '').trim()]
+    );
+    for (const r of rowsIns) {
+      const p = String(r.placa || '').trim().toUpperCase();
+      if (p && !placasMap.has(p)) {
+        placasMap.set(p, {
+          placa: p,
+          tipoVehiculo: r.tipoLabel || r.subtipo || '',
+          ultimoOdometro: r.odometro || '',
+          subtipo: r.subtipo || '',
+        });
+      } else if (p && placasMap.has(p)) {
+        const prev = placasMap.get(p);
+        if (!prev.ultimoOdometro && r.odometro) prev.ultimoOdometro = r.odometro;
+        if (!prev.subtipo && r.subtipo) prev.subtipo = r.subtipo;
+      }
+
+      const eq = String(r.equipoInterno || '').trim().toUpperCase();
+      if (eq && !equiposMap.has(eq)) {
+        equiposMap.set(eq, {
+          equipoInterno: eq,
+          subtipo: r.subtipo || '',
+          tipoLabel: r.tipoLabel || '',
+          ultimoOdometro: r.odometro || '',
+        });
+      }
+    }
+  } catch (err) {
+    if (err.code !== 'ER_NO_SUCH_TABLE') {
+      console.warn('[inspecciones] Aviso consultando vehículos recientes:', err.message);
+    }
+  }
+
   return {
-    type,
-    subtype,
-    typeLabel: t.label,
-    label: s.label,
-    items: s.items.map((x, i) => ({
-      id: i + 1,
-      section: x[0],
-      text: x[1],
-      critical: !!x[2],
-    })),
+    placas: Array.from(placasMap.values()).slice(0, 8),
+    equipos: Array.from(equiposMap.values()).slice(0, 8),
   };
 }
 
-async function listarInspeccionesColaborador(identificacion, limit = 50) {
-  if (!identificacion) return [];
-  const lim = Math.min(Math.max(Number(limit) || 50, 1), 200);
+/**
+ * Busca placas registradas en Maestro_Placas por texto parcial para autocompletado.
+ */
+async function buscarPlacasEnMaestro(query) {
+  const q = String(query || '').replace(/[^0-9A-Za-z-]/g, '').trim().toUpperCase();
+  if (!q || q.length < 2) return [];
+  try {
+    const [rows] = await pool.execute(
+      `SELECT Placa AS placa, MAX(tipo_vehiculo) AS tipoVehiculo, MAX(empleado) AS empleado
+       FROM Maestro_Placas
+       WHERE Placa LIKE ?
+       GROUP BY Placa
+       ORDER BY MAX(\`Fecha Registro\`) DESC
+       LIMIT 10`,
+      [`%${q}%`]
+    );
+    return rows.map(r => ({
+      placa: String(r.placa || '').trim().toUpperCase(),
+      tipoVehiculo: r.tipoVehiculo || '',
+      empleado: r.empleado || '',
+    }));
+  } catch (err) {
+    console.warn('[inspecciones] Error buscando en Maestro_Placas:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Registra o actualiza la placa en Maestro_Placas en las columnas tipo_vehiculo y empleado
+ * sin alterar las columnas de clientes que se relacionan con Dynamic_Servicios.
+ */
+async function sincronizarPlacaEnMaestroPlacas({ placa, tipoVehiculo, colaborador, sqlDateTime }) {
+  const placaClean = String(placa || '').replace(/[^0-9A-Za-z-]/g, '').trim().toUpperCase();
+  if (!placaClean) return;
+
+  const empleadoStr = `${colaborador.nombre || 'Colaborador'} - ${colaborador.idVinculacion || colaborador.identificacion}`.slice(0, 180);
+  const tipoStr = String(tipoVehiculo || '').trim().slice(0, 60);
+
+  try {
+    const [existentes] = await pool.execute(
+      `SELECT ID FROM Maestro_Placas WHERE Placa = ? LIMIT 1`,
+      [placaClean]
+    );
+
+    if (existentes.length > 0) {
+      await pool.execute(
+        `UPDATE Maestro_Placas
+         SET tipo_vehiculo = ?, empleado = ?
+         WHERE Placa = ?`,
+        [tipoStr || null, empleadoStr, placaClean]
+      );
+    } else {
+      const idNuevo = crypto.randomBytes(4).toString('hex');
+      const nitNum = Number(String(colaborador.identificacion || '').replace(/\D/g, '')) || null;
+      const usuarioCorto = empleadoStr.slice(0, 50);
+
+      await pool.execute(
+        `INSERT INTO Maestro_Placas (ID, Placa, Nit, Usuario, \`Fecha Registro\`, tipo_vehiculo, empleado)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [idNuevo, placaClean, nitNum, usuarioCorto, sqlDateTime, tipoStr || null, empleadoStr]
+      );
+    }
+  } catch (err) {
+    console.warn('[inspecciones] Aviso al sincronizar Maestro_Placas:', err.message);
+  }
+}
+
+async function listarInspeccionesColaborador(identificacion, limit = 30) {
+  const idLimpio = String(identificacion || '').trim();
+  if (!idLimpio) return [];
+
   try {
     const [rows] = await pool.execute(
       `SELECT
          id,
-         id_vinculacion,
+         id_vinculacion AS idVinculacion,
          identificacion,
          trabajador,
          cargo,
@@ -291,62 +417,73 @@ async function listarInspeccionesColaborador(identificacion, limit = 50) {
          tipo,
          subtipo,
          tipo_label AS tipoLabel,
-         equipo_interno AS equipoInterno,
-         placa,
-         odometro,
-         resultado,
-         puntaje,
+         equipo_interno AS equipmentId,
+         placa AS plate,
+         odometro AS meter,
+         resultado AS status,
+         puntaje AS score,
          total_c AS totalC,
          total_nc AS totalNc,
          total_na AS totalNa,
-         observaciones_generales AS observacionesGenerales,
-         plan_accion AS planAccion,
-         reporta_a AS reportaA,
+         observaciones_generales AS generalObservations,
+         plan_accion AS actionPlan,
+         reporta_a AS reportTo,
          pdf_url AS pdfUrl,
-         DATE_FORMAT(fecha_registro, '%d/%m/%Y %H:%i') AS fecha,
-         DATE_FORMAT(fecha_registro, '%Y-%m') AS yearMonth
+         DATE_FORMAT(fecha_registro, '%Y-%m-%d %H:%i') AS timestamp
        FROM Dynamic_Inspecciones_Vehiculo
        WHERE identificacion = ?
        ORDER BY fecha_registro DESC
-       LIMIT ${lim}`,
-      [String(identificacion).trim()]
+       LIMIT ${Number(limit) || 30}`,
+      [idLimpio]
     );
-    return rows.map(r => ({
-      ...r,
-      equipment: r.placa || r.equipoInterno || '—',
-    }));
+    return rows;
   } catch (err) {
-    if (err && (err.code === 'ER_NO_SUCH_TABLE' || String(err.message).includes('doesn\'t exist'))) {
+    if (err.code === 'ER_NO_SUCH_TABLE') {
       return [];
     }
-    console.warn('[inspeccionesVehiculo] Error listando inspecciones:', err.message);
-    return [];
+    throw err;
   }
 }
 
 async function calcularEstadisticasMesColaborador(identificacion) {
-  const vacio = { total: 0, apt: 0, novelty: 0, equipmentTypes: 0 };
-  if (!identificacion) return vacio;
+  const idLimpio = String(identificacion || '').trim();
+  const empty = {
+    totalMonth: 0,
+    aptoCount: 0,
+    novedadCount: 0,
+    noAptoCount: 0,
+    uniqueVehicles: 0,
+  };
+  if (!idLimpio) return empty;
+
+  const { yearMonth } = getBogotaDateParts();
+
   try {
-    const { yearMonth } = getBogotaDateParts();
     const [rows] = await pool.execute(
-      `SELECT resultado, tipo_label, placa, equipo_interno
+      `SELECT
+         COUNT(*) AS totalMonth,
+         SUM(CASE WHEN resultado = 'APTO' THEN 1 ELSE 0 END) AS aptoCount,
+         SUM(CASE WHEN resultado = 'APTO CON NOVEDADES' THEN 1 ELSE 0 END) AS novedadCount,
+         SUM(CASE WHEN resultado = 'NO APTO' THEN 1 ELSE 0 END) AS noAptoCount,
+         COUNT(DISTINCT COALESCE(NULLIF(placa, ''), NULLIF(equipo_interno, ''))) AS uniqueVehicles
        FROM Dynamic_Inspecciones_Vehiculo
        WHERE identificacion = ?
          AND DATE_FORMAT(fecha_registro, '%Y-%m') = ?`,
-      [String(identificacion).trim(), yearMonth]
+      [idLimpio, yearMonth]
     );
-    const equiposSet = new Set(
-      rows.map(r => (r.placa || r.equipo_interno || r.tipo_label || '').trim()).filter(Boolean)
-    );
+    const r = rows[0] || {};
     return {
-      total: rows.length,
-      apt: rows.filter(r => r.resultado === 'APTO').length,
-      novelty: rows.filter(r => r.resultado !== 'APTO').length,
-      equipmentTypes: equiposSet.size,
+      totalMonth: Number(r.totalMonth || 0),
+      aptoCount: Number(r.aptoCount || 0),
+      novedadCount: Number(r.novedadCount || 0),
+      noAptoCount: Number(r.noAptoCount || 0),
+      uniqueVehicles: Number(r.uniqueVehicles || 0),
     };
   } catch (err) {
-    return vacio;
+    if (err.code === 'ER_NO_SUCH_TABLE') {
+      return empty;
+    }
+    throw err;
   }
 }
 
@@ -367,216 +504,257 @@ function construirHTMLPDFInspeccion({
   fotosDataUrls,
   firmaDataUrl,
 }) {
-  const statusBg = status === 'APTO' ? '#DDF4E6' : (status === 'NO APTO' ? '#FDE1E1' : '#FFF0D8');
-  const statusColor = status === 'APTO' ? '#1F9D57' : (status === 'NO APTO' ? '#D83B3B' : '#F36B21');
+  const statusColor = status === 'APTO'
+    ? '#16a34a'
+    : (status === 'NO APTO' ? '#dc2626' : '#d97706');
 
-  const rowsHtml = items.map((it, idx) => {
-    const rowBg = idx % 2 === 1 ? '#F8FAFC' : '#FFFFFF';
-    const r = String(it.result || '');
-    const resBg = r === 'C' ? '#DDF4E6' : (r === 'NC' ? '#FDE1E1' : '#EEF1F4');
-    const resColor = r === 'C' ? '#1F9D57' : (r === 'NC' ? '#D83B3B' : '#6B7C8F');
-    const critBadge = it.critical
-      ? ' <span style="color:#D83B3B;font-size:7pt;font-weight:700;">[CRÍTICO]</span>'
-      : '';
+  const itemsRowsHtml = items.map((it, idx) => {
+    const resBg = it.result === 'NC'
+      ? '#fef2f2'
+      : (it.result === 'C' ? '#f0fdf4' : '#f8fafc');
+    const resColor = it.result === 'NC'
+      ? '#b91c1c'
+      : (it.result === 'C' ? '#15803d' : '#475569');
     return `
-      <tr style="background:${rowBg};">
-        <td style="padding:5px 7px;border:1px solid #D8E1EA;font-weight:700;color:#0A315D;font-size:8pt;">${escHtml(it.section)}</td>
-        <td style="padding:5px 7px;border:1px solid #D8E1EA;color:#173655;font-size:8pt;">${idx + 1}. ${escHtml(it.item)}${critBadge}</td>
-        <td style="padding:5px 7px;border:1px solid #D8E1EA;text-align:center;font-weight:700;background:${resBg};color:${resColor};font-size:8.5pt;">${escHtml(r)}</td>
-        <td style="padding:5px 7px;border:1px solid #D8E1EA;color:#173655;font-size:8pt;">${escHtml(it.observation || '—')}</td>
+      <tr>
+        <td style="padding:5px 7px;border:1px solid #cbd5e1;font-size:8pt;color:#0A315D;font-weight:700;">${escHtml(it.section)}</td>
+        <td style="padding:5px 7px;border:1px solid #cbd5e1;font-size:8pt;color:#1e293b;">
+          ${idx + 1}. ${escHtml(it.text)}
+          ${it.critical ? '<span style="color:#dc2626;font-weight:700;font-size:7pt;"> [CRÍTICO]</span>' : ''}
+        </td>
+        <td style="padding:5px 7px;border:1px solid #cbd5e1;text-align:center;font-weight:700;font-size:8pt;background:${resBg};color:${resColor};">${escHtml(textoResultadoItem(it.result))}</td>
+        <td style="padding:5px 7px;border:1px solid #cbd5e1;font-size:7.8pt;color:#334155;">${escHtml(it.observation || '')}</td>
       </tr>
     `;
   }).join('');
 
-  const fotosHtml = (fotosDataUrls && fotosDataUrls.length)
-    ? `
-      <div class="sec-bar"><span class="sec-orange"></span><span class="sec-title">EVIDENCIAS FOTOGRÁFICAS</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-        ${fotosDataUrls.slice(0, 6).map((src, i) => `
-          <div style="border:1px solid #D8E1EA;border-radius:4px;padding:6px;text-align:center;background:#fff;">
-            <img src="${src}" style="max-width:100%;max-height:150px;object-fit:contain;" />
-            <div style="font-size:7.5pt;color:#6B7C8F;font-weight:700;margin-top:4px;">Evidencia ${i + 1}</div>
-          </div>
-        `).join('')}
+  let fotosHtml = '';
+  if (Array.isArray(fotosDataUrls) && fotosDataUrls.length) {
+    const cells = fotosDataUrls.map((src, i) => `
+      <td style="width:50%;padding:6px;border:1px solid #cbd5e1;text-align:center;vertical-align:top;">
+        <div style="font-size:7.5pt;font-weight:700;color:#475569;margin-bottom:4px;">Evidencia fotográfica #${i + 1}</div>
+        <img src="${src}" style="max-width:220px;max-height:150px;object-fit:contain;border-radius:4px;" />
+      </td>
+    `);
+    const rows = [];
+    for (let i = 0; i < cells.length; i += 2) {
+      const second = cells[i + 1] || '<td style="width:50%;padding:6px;border:1px solid #cbd5e1;"></td>';
+      rows.push(`<tr>${cells[i]}${second}</tr>`);
+    }
+    fotosHtml = `
+      <div style="margin-top:10px;page-break-inside:avoid;">
+        <div style="background:#0A315D;color:#ffffff;padding:5px 9px;font-size:8.5pt;font-weight:700;border-radius:4px 4px 0 0;">
+          REGISTRO FOTOGRÁFICO DE EVIDENCIA
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          ${rows.join('')}
+        </table>
       </div>
-    `
-    : '';
+    `;
+  }
 
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <style>
-    @page { size: letter; margin: 14mm 14mm 16mm 14mm; }
-    * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #173655; margin: 0; }
+    @page { size: letter; margin: 14mm 14mm 14mm 14mm; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #173655;
+      font-size: 8.5pt;
+      margin: 0;
+      padding: 0;
+    }
     table { width: 100%; border-collapse: collapse; }
-    .header-tbl td { vertical-align: middle; }
-    .sec-bar { display: flex; align-items: stretch; margin: 10px 0 6px; }
-    .sec-orange { width: 8px; background: #F36B21; flex-shrink: 0; }
-    .sec-title { flex: 1; background: #0A315D; color: #FFFFFF; font-weight: 700; font-size: 8.5pt; padding: 5px 10px; letter-spacing: 0.4px; }
-    .info-lbl { background: #F3F6F9; color: #0A315D; font-weight: 700; font-size: 7.5pt; padding: 5px 8px; border: 1px solid #D8E1EA; width: 22%; }
-    .info-val { background: #FFFFFF; color: #173655; font-weight: 700; font-size: 8pt; padding: 5px 8px; border: 1px solid #D8E1EA; width: 28%; }
-    .box-title { background: #0A315D; color: #FFFFFF; font-weight: 700; font-size: 7.5pt; padding: 4px 8px; border: 1px solid #D8E1EA; }
-    .box-val { background: #F3F6F9; color: #173655; font-size: 8pt; padding: 6px 8px; border: 1px solid #D8E1EA; margin-bottom: 6px; min-height: 24px; }
   </style>
 </head>
 <body>
-  <table class="header-tbl" style="margin-bottom:4px;">
+  <table style="margin-bottom:8px;border:1px solid #cbd5e1;">
     <tr>
-      <td style="width:36%;padding:6px 10px;border:1px solid #D8E1EA;text-align:center;background:#fff;">
-        <img src="${LOGO_BASE64}" style="max-height:52px;max-width:165px;object-fit:contain;" />
+      <td style="width:32%;padding:8px;text-align:center;border-right:1px solid #cbd5e1;background:#ffffff;">
+        <img src="${LOGO_BASE64}" style="max-height:52px;max-width:160px;object-fit:contain;" />
       </td>
-      <td style="width:64%;background:#0A315D;color:#fff;text-align:center;padding:10px 14px;">
-        <div style="font-size:13pt;font-weight:700;letter-spacing:0.5px;">REGISTRO DE INSPECCIÓN PREOPERACIONAL</div>
-        <div style="font-size:9.5pt;font-weight:700;color:#FFD0B3;margin-top:3px;">${escHtml(template.label.toUpperCase())}</div>
+      <td style="width:68%;background:#0A315D;color:#ffffff;padding:10px 14px;text-align:center;">
+        <div style="font-size:12pt;font-weight:700;letter-spacing:0.3px;">INSPECCIÓN PREOPERACIONAL DE VEHÍCULOS Y EQUIPOS</div>
+        <div style="font-size:9.5pt;color:#FFD0B3;font-weight:700;margin-top:3px;">${escHtml(template.label.toUpperCase())}</div>
+        <div style="font-size:7.5pt;color:#dbeafe;margin-top:3px;">ID Registro: ${escHtml(id)} · Fecha: ${escHtml(fechaHora)}</div>
       </td>
-    </tr>
-  </table>
-  <div style="height:4px;background:#F36B21;margin-bottom:8px;"></div>
-
-  <div class="sec-bar"><span class="sec-orange"></span><span class="sec-title">INFORMACIÓN GENERAL</span></div>
-  <table style="margin-bottom:8px;">
-    <tr>
-      <td class="info-lbl">ID DEL REGISTRO</td>
-      <td class="info-val">${escHtml(id)}</td>
-      <td class="info-lbl">FECHA Y HORA</td>
-      <td class="info-val">${escHtml(fechaHora)}</td>
-    </tr>
-    <tr>
-      <td class="info-lbl">COLABORADOR / INSPECTOR</td>
-      <td class="info-val">${escHtml(colaborador.nombre)}</td>
-      <td class="info-lbl">DOCUMENTO</td>
-      <td class="info-val">${escHtml(colaborador.identificacion)}</td>
-    </tr>
-    <tr>
-      <td class="info-lbl">CARGO</td>
-      <td class="info-val">${escHtml(colaborador.cargo || 'No registrado')}</td>
-      <td class="info-lbl">OPERACIÓN / REGIONAL</td>
-      <td class="info-val">${escHtml((colaborador.operacion || '') + (colaborador.regional ? ' · ' + colaborador.regional : ''))}</td>
-    </tr>
-    <tr>
-      <td class="info-lbl">EQUIPO / INTERNO</td>
-      <td class="info-val">${escHtml(equipoInterno || 'No aplica')}</td>
-      <td class="info-lbl">PLACA / ODÓMETRO</td>
-      <td class="info-val">${escHtml((placa || 'No aplica') + (odometro ? ' · ' + odometro : ''))}</td>
     </tr>
   </table>
 
   <table style="margin-bottom:10px;">
     <tr>
-      <td style="background:#123E6B;color:#fff;font-size:7.5pt;font-weight:700;text-align:center;padding:5px;border:2px solid #fff;width:34%;">RESULTADO</td>
-      <td style="background:#123E6B;color:#fff;font-size:7.5pt;font-weight:700;text-align:center;padding:5px;border:2px solid #fff;width:33%;">CUMPLIMIENTO</td>
-      <td style="background:#123E6B;color:#fff;font-size:7.5pt;font-weight:700;text-align:center;padding:5px;border:2px solid #fff;width:33%;">TIPO DE EQUIPO</td>
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:34%;">
+        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Inspector / Colaborador</div>
+        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(colaborador.nombre)}</div>
+      </td>
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:22%;">
+        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Identificación</div>
+        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(colaborador.identificacion)}</div>
+      </td>
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:22%;">
+        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Cargo</div>
+        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(colaborador.cargo || '—')}</div>
+      </td>
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:22%;">
+        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Operación / Regional</div>
+        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(colaborador.operacion || '—')} (${escHtml(colaborador.regional || '—')})</div>
+      </td>
     </tr>
     <tr>
-      <td style="background:${statusBg};color:${statusColor};font-size:11pt;font-weight:700;text-align:center;padding:7px;border:2px solid #fff;">${escHtml(status)}</td>
-      <td style="background:#F7F9FB;color:#0A315D;font-size:11pt;font-weight:700;text-align:center;padding:7px;border:2px solid #fff;">${score}%</td>
-      <td style="background:#F7F9FB;color:#0A315D;font-size:10pt;font-weight:700;text-align:center;padding:7px;border:2px solid #fff;">${escHtml(template.label)}</td>
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;">
+        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Placa / N° Interno Equipo</div>
+        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml([placa, equipoInterno].filter(Boolean).join(' / ') || '—')}</div>
+      </td>
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;">
+        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Kilometraje / Horómetro</div>
+        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(odometro || 'N/A')}</div>
+      </td>
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;">
+        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Reporta a</div>
+        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(reportaA || '—')}</div>
+      </td>
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;background:${statusColor};color:#ffffff;text-align:center;">
+        <div style="font-size:7pt;text-transform:uppercase;font-weight:700;opacity:0.9;">Resultado (${score}%)</div>
+        <div style="font-size:9.5pt;font-weight:700;margin-top:2px;">${escHtml(status)}</div>
+      </td>
     </tr>
   </table>
 
-  <div class="sec-bar"><span class="sec-orange"></span><span class="sec-title">LISTA DE VERIFICACIÓN (C: Cumple · NC: No Cumple · NA: No Aplica)</span></div>
   <table style="margin-bottom:10px;">
     <thead>
-      <tr style="background:#0A315D;color:#FFFFFF;">
-        <th style="padding:5px 7px;border:1px solid #D8E1EA;text-align:left;font-size:7.5pt;width:19%;">SECCIÓN</th>
-        <th style="padding:5px 7px;border:1px solid #D8E1EA;text-align:left;font-size:7.5pt;width:47%;">ÍTEM A VERIFICAR</th>
-        <th style="padding:5px 7px;border:1px solid #D8E1EA;text-align:center;font-size:7.5pt;width:10%;">ESTADO</th>
-        <th style="padding:5px 7px;border:1px solid #D8E1EA;text-align:left;font-size:7.5pt;width:24%;">OBSERVACIÓN</th>
+      <tr style="background:#0A315D;color:#ffffff;">
+        <th style="padding:5px 7px;border:1px solid #cbd5e1;text-align:left;width:22%;font-size:7.8pt;">BLOQUE</th>
+        <th style="padding:5px 7px;border:1px solid #cbd5e1;text-align:left;width:44%;font-size:7.8pt;">PUNTO DE VERIFICACIÓN</th>
+        <th style="padding:5px 7px;border:1px solid #cbd5e1;text-align:center;width:14%;font-size:7.8pt;">ESTADO</th>
+        <th style="padding:5px 7px;border:1px solid #cbd5e1;text-align:left;width:20%;font-size:7.8pt;">OBSERVACIÓN</th>
       </tr>
     </thead>
     <tbody>
-      ${rowsHtml}
+      ${itemsRowsHtml}
     </tbody>
   </table>
 
-  <div class="sec-bar"><span class="sec-orange"></span><span class="sec-title">OBSERVACIONES Y ACCIONES</span></div>
-  <div class="box-title">OBSERVACIONES GENERALES</div>
-  <div class="box-val">${escHtml(observacionesGenerales || 'Sin observaciones adicionales.')}</div>
-  <div class="box-title">PLAN DE ACCIÓN / MEDIDAS DE CONTROL</div>
-  <div class="box-val">${escHtml(planAccion || 'No aplica.')}</div>
-  ${reportaA ? `<div class="box-title">A QUIÉN SE REPORTA</div><div class="box-val">${escHtml(reportaA)}</div>` : ''}
+  <table style="margin-bottom:10px;page-break-inside:avoid;">
+    <tr>
+      <td style="width:50%;padding:7px 9px;border:1px solid #cbd5e1;vertical-align:top;">
+        <div style="font-size:7.5pt;font-weight:700;color:#0A315D;text-transform:uppercase;margin-bottom:3px;">Observaciones Generales</div>
+        <div style="font-size:8pt;color:#334155;min-height:28px;">${escHtml(observacionesGenerales || 'Sin observaciones adicionales.')}</div>
+      </td>
+      <td style="width:50%;padding:7px 9px;border:1px solid #cbd5e1;vertical-align:top;">
+        <div style="font-size:7.5pt;font-weight:700;color:#0A315D;text-transform:uppercase;margin-bottom:3px;">Plan de Acción / Medidas de Control</div>
+        <div style="font-size:8pt;color:#334155;min-height:28px;">${escHtml(planAccion || 'No aplica.')}</div>
+      </td>
+    </tr>
+  </table>
 
   ${fotosHtml}
 
-  <div class="sec-bar"><span class="sec-orange"></span><span class="sec-title">VALIDACIÓN Y FIRMA</span></div>
-  <table>
+  <table style="margin-top:12px;page-break-inside:avoid;">
     <tr>
-      <td style="width:52%;border:1px solid #D8E1EA;padding:8px;text-align:center;background:#fff;">
-        <div style="font-size:7.5pt;font-weight:700;color:#0A315D;margin-bottom:4px;">FIRMA DEL COLABORADOR / INSPECTOR</div>
-        ${firmaDataUrl ? `<img src="${firmaDataUrl}" style="width:165px;height:62px;object-fit:contain;" />` : '<div style="height:62px;"></div>'}
-        <div style="font-size:8pt;font-weight:700;color:#173655;margin-top:4px;">${escHtml(colaborador.nombre)}</div>
-        <div style="font-size:7.5pt;color:#6B7C8F;">CC ${escHtml(colaborador.identificacion)}</div>
+      <td style="padding:8px 10px;border:1px solid #cbd5e1;width:62%;vertical-align:middle;">
+        <div style="font-size:7.8pt;color:#334155;line-height:1.4;">
+          <strong>Declaración del inspector:</strong> Certifico que he realizado personalmente la inspección preoperacional del vehículo/equipo descrito antes de iniciar su operación y que los datos registrados corresponden al estado real verificado.
+        </div>
       </td>
-      <td style="width:48%;border:1px solid #D8E1EA;padding:8px;text-align:center;background:#F7F9FB;">
-        <div style="font-size:7.5pt;font-weight:700;color:#0A315D;margin-bottom:6px;">VALIDACIÓN DEL REGISTRO</div>
-        <div style="font-size:8pt;line-height:1.5;color:#173655;">
-          <strong>Resultado:</strong> ${escHtml(status)}<br/>
-          <strong>Cumplimiento:</strong> ${score}%<br/>
-          <strong>Registro:</strong> ${escHtml(id)}<br/>
-          <strong>Generado:</strong> ${escHtml(fechaHora)}
+      <td style="padding:8px 10px;border:1px solid #cbd5e1;width:38%;text-align:center;vertical-align:middle;">
+        ${firmaDataUrl ? `<img src="${firmaDataUrl}" style="max-height:55px;max-width:180px;object-fit:contain;" />` : '<div style="height:45px;"></div>'}
+        <div style="border-top:1px solid #334155;margin-top:4px;padding-top:3px;font-size:7.8pt;font-weight:700;">
+          Firma: ${escHtml(colaborador.nombre)} (${escHtml(colaborador.identificacion)})
         </div>
       </td>
     </tr>
   </table>
-  <div style="text-align:center;font-size:7pt;color:#6B7C8F;margin-top:8px;">
-    LOG&amp;SER S.A.S. · Apoyo Logístico y Operativo | Inspección Preoperacional ${escHtml(id)}
-  </div>
 </body>
 </html>`;
 }
 
-async function crearInspeccionVehiculo({
-  colaborador,
-  type,
-  subtype,
-  equipmentId,
-  plate,
-  meter,
-  generalObservations,
-  actionPlan,
-  reportTo,
-  usarFirmaPrevia,
-  firmaBase64,
-  photos,
-  items,
-}) {
-  if (!colaborador || !colaborador.identificacion) {
-    throw new Error('La identificación del colaborador es obligatoria.');
-  }
+async function crearInspeccionVehiculo(payload, colaborador) {
+  const {
+    type,
+    subtype,
+    equipmentId,
+    plate,
+    meter,
+    reportTo,
+    generalObservations,
+    actionPlan,
+    items,
+    photos,
+    usarFirmaPrevia,
+    firmaBase64,
+  } = payload || {};
 
   const template = obtenerPlantillaInspeccion(type, subtype);
-  if (!Array.isArray(items) || items.length !== template.items.length) {
-    throw new Error('Debes responder todos los ítems de la lista de verificación.');
+
+  if ((type === 'vehiculo' || type === 'camion') && !String(plate || '').trim()) {
+    throw new Error('La placa del vehículo es obligatoria.');
+  }
+  if (type === 'montacarga' && !String(equipmentId || '').trim()) {
+    throw new Error('El número interno o código del equipo es obligatorio para montacargas.');
+  }
+  if (subtype !== 'transpaleta' && !String(meter || '').trim()) {
+    throw new Error('El kilometraje u horómetro actual es obligatorio.');
   }
 
-  const itemsNormalizados = template.items.map((tplItem, idx) => {
-    const incoming = items.find(x => Number(x.id) === tplItem.id) || items[idx] || {};
-    const res = String(incoming.result || '').toUpperCase();
-    if (!['C', 'NC', 'NA'].includes(res)) {
-      throw new Error(`Falta respuesta en el ítem ${tplItem.id}: "${tplItem.text}".`);
+  if (!Array.isArray(items) || items.length !== template.items.length) {
+    throw new Error('La lista de chequeo está incompleta.');
+  }
+
+  const mapRespuestas = new Map();
+  items.forEach(it => {
+    if (it && it.id) {
+      mapRespuestas.set(it.id, {
+        result: String(it.result || '').toUpperCase().trim(),
+        observation: String(it.observation || '').trim(),
+      });
+    }
+  });
+
+  const itemsNormalizados = template.items.map(tplItem => {
+    const resp = mapRespuestas.get(tplItem.id);
+    if (!resp || !['C', 'NC', 'NA'].includes(resp.result)) {
+      throw new Error(`Falta responder el punto: "${tplItem.text}".`);
     }
     return {
       id: tplItem.id,
       section: tplItem.section,
-      item: tplItem.text,
-      critical: tplItem.critical,
-      result: res,
-      observation: String(incoming.observation || '').trim(),
+      text: tplItem.text,
+      critical: !!tplItem.critical,
+      result: resp.result,
+      observation: resp.observation,
     };
   });
 
-  // Resolver firma electrónica
-  let firmaDataUrl = null;
+  // Resolver firma del colaborador
   let firmaUrlPublica = null;
-  const esPrevia = usarFirmaPrevia === true || usarFirmaPrevia === 'true' || usarFirmaPrevia === '1';
+  let firmaDataUrl = null;
 
-  if (esPrevia) {
-    firmaDataUrl = await obtenerFirmaBase64Reciente(colaborador.identificacion);
-    firmaUrlPublica = await obtenerUrlFirmaReciente(colaborador.identificacion);
-    if (!firmaDataUrl) {
-      throw new Error('No se encontró una firma previa en el sistema. Por favor selecciona "Dibujar nueva firma".');
+  if (usarFirmaPrevia) {
+    const [fRows] = await pool.execute(
+      `SELECT Doc FROM Maestro_docTrabajador
+       WHERE Identificacion = ? AND TipoDocumento = '22'
+       ORDER BY Fecha DESC LIMIT 1`,
+      [String(colaborador.identificacion)]
+    );
+    if (!fRows.length || !fRows[0].Doc) {
+      throw new Error('No se encontró una firma previa registrada. Por favor dibuja tu firma.');
+    }
+    const rawDoc = String(fRows[0].Doc);
+    firmaUrlPublica = rawDoc.startsWith('http')
+      ? rawDoc
+      : `https://storage.googleapis.com/talenthub_central/${rawDoc.replace(/^\/+/, '')}`;
+    try {
+      const respImg = await fetch(firmaUrlPublica);
+      if (respImg.ok) {
+        const arrBuf = await respImg.arrayBuffer();
+        const b64 = Buffer.from(arrBuf).toString('base64');
+        const cType = respImg.headers.get('content-type') || 'image/png';
+        firmaDataUrl = `data:${cType};base64,${b64}`;
+      }
+    } catch (_) {
+      firmaDataUrl = firmaUrlPublica;
     }
   } else {
     if (!firmaBase64 || !String(firmaBase64).startsWith('data:image/')) {
@@ -629,9 +807,19 @@ async function crearInspeccionVehiculo({
     }
   }
 
-  const placaClean = String(plate || '').trim().toUpperCase();
-  const equipoClean = String(equipmentId || '').trim();
+  const placaClean = String(plate || '').replace(/[^0-9A-Za-z-]/g, '').trim().toUpperCase();
+  const equipoClean = String(equipmentId || '').trim().toUpperCase();
   const odometroClean = String(meter || '').trim();
+
+  // Sincronizar placa en Maestro_Placas (columnas tipo_vehiculo y empleado) si aplica
+  if (placaClean) {
+    await sincronizarPlacaEnMaestroPlacas({
+      placa: placaClean,
+      tipoVehiculo: template.shortLabel || template.label,
+      colaborador,
+      sqlDateTime,
+    });
+  }
 
   // Generar PDF oficial de la inspección
   const htmlPdf = construirHTMLPDFInspeccion({
@@ -694,9 +882,10 @@ async function crearInspeccionVehiculo({
     ]
   );
 
-  const [stats, recent] = await Promise.all([
+  const [stats, recent, vehiculosHabituales] = await Promise.all([
     calcularEstadisticasMesColaborador(colaborador.identificacion),
     listarInspeccionesColaborador(colaborador.identificacion, 30),
+    listarVehiculosHabitualesColaborador(colaborador.identificacion, colaborador.idVinculacion, colaborador.nombre),
   ]);
 
   return {
@@ -707,6 +896,7 @@ async function crearInspeccionVehiculo({
     pdfUrl,
     stats,
     recent,
+    vehiculosHabituales,
   };
 }
 
@@ -714,12 +904,12 @@ async function generarFormatoBlancoPDF(type, subtype) {
   const template = obtenerPlantillaInspeccion(type, subtype);
   const rowsHtml = template.items.map((it, idx) => `
     <tr>
-      <td style="padding:5px 7px;border:1px solid #cbd5e1;font-weight:700;color:#0A315D;font-size:8pt;">${escHtml(it.section)}</td>
-      <td style="padding:5px 7px;border:1px solid #cbd5e1;font-size:8pt;">${idx + 1}. ${escHtml(it.text)}${it.critical ? ' <strong style="color:#dc2626;font-size:7pt;">[CRÍTICO]</strong>' : ''}</td>
-      <td style="padding:5px;border:1px solid #cbd5e1;width:30px;"></td>
-      <td style="padding:5px;border:1px solid #cbd5e1;width:30px;"></td>
-      <td style="padding:5px;border:1px solid #cbd5e1;width:30px;"></td>
-      <td style="padding:5px;border:1px solid #cbd5e1;width:140px;"></td>
+      <td style="padding:6px 7px;border:1px solid #cbd5e1;font-weight:700;color:#0A315D;font-size:8pt;">${escHtml(it.section)}</td>
+      <td style="padding:6px 7px;border:1px solid #cbd5e1;font-size:8pt;">${idx + 1}. ${escHtml(it.text)}${it.critical ? ' <strong style="color:#dc2626;font-size:7pt;">[CRÍTICO]</strong>' : ''}</td>
+      <td style="padding:6px;border:1px solid #cbd5e1;width:48px;"></td>
+      <td style="padding:6px;border:1px solid #cbd5e1;width:54px;"></td>
+      <td style="padding:6px;border:1px solid #cbd5e1;width:52px;"></td>
+      <td style="padding:6px;border:1px solid #cbd5e1;width:130px;"></td>
     </tr>
   `).join('');
 
@@ -760,11 +950,11 @@ async function generarFormatoBlancoPDF(type, subtype) {
   <table style="margin-bottom:12px;">
     <thead>
       <tr style="background:#0A315D;color:#fff;font-size:7.5pt;">
-        <th style="padding:5px;border:1px solid #cbd5e1;text-align:left;">SECCIÓN</th>
-        <th style="padding:5px;border:1px solid #cbd5e1;text-align:left;">ÍTEM</th>
-        <th style="padding:5px;border:1px solid #cbd5e1;text-align:center;">C</th>
-        <th style="padding:5px;border:1px solid #cbd5e1;text-align:center;">NC</th>
-        <th style="padding:5px;border:1px solid #cbd5e1;text-align:center;">NA</th>
+        <th style="padding:5px;border:1px solid #cbd5e1;text-align:left;">BLOQUE</th>
+        <th style="padding:5px;border:1px solid #cbd5e1;text-align:left;">PUNTO DE VERIFICACIÓN</th>
+        <th style="padding:5px;border:1px solid #cbd5e1;text-align:center;">Cumple</th>
+        <th style="padding:5px;border:1px solid #cbd5e1;text-align:center;">No cumple</th>
+        <th style="padding:5px;border:1px solid #cbd5e1;text-align:center;">No aplica</th>
         <th style="padding:5px;border:1px solid #cbd5e1;text-align:left;">OBSERVACIONES</th>
       </tr>
     </thead>
@@ -789,6 +979,8 @@ module.exports = {
   obtenerLimitesInspeccion,
   obtenerResumenPlantillasInspeccion,
   obtenerPlantillaInspeccion,
+  listarVehiculosHabitualesColaborador,
+  buscarPlacasEnMaestro,
   listarInspeccionesColaborador,
   calcularEstadisticasMesColaborador,
   crearInspeccionVehiculo,

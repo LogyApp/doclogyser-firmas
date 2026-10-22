@@ -12,6 +12,8 @@ const {
   obtenerLimitesInspeccion,
   obtenerResumenPlantillasInspeccion,
   obtenerPlantillaInspeccion,
+  listarVehiculosHabitualesColaborador,
+  buscarPlacasEnMaestro,
   listarInspeccionesColaborador,
   calcularEstadisticasMesColaborador,
   crearInspeccionVehiculo,
@@ -190,12 +192,13 @@ async function obtenerDatosPortalPorVinculacion(idVinculacion) {
   }
 
   // Consultar estadísticas e historial de inspecciones preoperacionales del colaborador
-  const [inspeccionesStats, inspeccionesRecientes, limitesInspeccion] = await Promise.all([
+  const [inspeccionesStats, inspeccionesRecientes, limitesInspeccion, vehiculosHabituales] = await Promise.all([
     calcularEstadisticasMesColaborador(identificacion).catch(() => ({
       totalMonth: 0, aptoCount: 0, novedadCount: 0, noAptoCount: 0, uniqueVehicles: 0,
     })),
     listarInspeccionesColaborador(identificacion, 30).catch(() => []),
     obtenerLimitesInspeccion().catch(() => ({ maxFotos: 4 })),
+    listarVehiculosHabitualesColaborador(identificacion, vin.idVinculacion, limpiarNombre(vin.trabajador || '')).catch(() => ({ placas: [], equipos: [] })),
   ]);
 
   return {
@@ -238,6 +241,7 @@ async function obtenerDatosPortalPorVinculacion(idVinculacion) {
       recent: inspeccionesRecientes,
       templates: obtenerResumenPlantillasInspeccion(),
       maxFotos: limitesInspeccion.maxFotos || 4,
+      vehiculosHabituales: vehiculosHabituales || { placas: [], equipos: [] },
     },
   };
 }
@@ -301,6 +305,16 @@ router.get('/api/datos', async (req, res) => {
   } catch (err) {
     console.error('[empleado] Error en GET /api/datos:', err);
     res.status(500).json({ ok: false, error: 'Error interno al cargar los datos del portal.' });
+  }
+});
+
+// ── API Inspecciones: Buscar placas en Maestro_Placas (autocompletado) ────────
+router.get('/api/inspecciones/placas', async (req, res) => {
+  try {
+    const lista = await buscarPlacasEnMaestro(req.query.q || '');
+    res.json({ ok: true, placas: lista });
+  } catch (err) {
+    res.status(500).json({ ok: false, placas: [] });
   }
 });
 

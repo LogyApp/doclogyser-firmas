@@ -36,6 +36,31 @@ CREATE TABLE IF NOT EXISTS `Dynamic_Inspecciones_Vehiculo` (
   INDEX `idx_insp_placa` (`placa`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Nuevas columnas en Maestro_Placas para vincular tipo de vehículo y empleado (Nombre + Id Vinculación)
+SET @col_tipo_veh = (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Maestro_Placas' AND COLUMN_NAME = 'tipo_vehiculo'
+);
+SET @sql_tipo_veh = IF(@col_tipo_veh = 0,
+  'ALTER TABLE `Maestro_Placas` ADD COLUMN `tipo_vehiculo` VARCHAR(60) DEFAULT NULL',
+  'SELECT 1'
+);
+PREPARE stmt_tv FROM @sql_tipo_veh;
+EXECUTE stmt_tv;
+DEALLOCATE PREPARE stmt_tv;
+
+SET @col_empleado = (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Maestro_Placas' AND COLUMN_NAME = 'empleado'
+);
+SET @sql_empleado = IF(@col_empleado = 0,
+  'ALTER TABLE `Maestro_Placas` ADD COLUMN `empleado` VARCHAR(180) DEFAULT NULL',
+  'SELECT 1'
+);
+PREPARE stmt_emp FROM @sql_empleado;
+EXECUTE stmt_emp;
+DEALLOCATE PREPARE stmt_emp;
+
 -- Parámetros configurables en Config_Parametros para Inspecciones de Vehículo
 INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro)
 SELECT 'empleado', 'Inspecciones_Vehiculo', 'Máximo de fotos de evidencia por inspección', 'Número', '4'
