@@ -3,25 +3,41 @@
 Estas reglas aplican a cualquier asistente de IA que trabaje en este repositorio
 (Claude en Visual Studio Code, Claude web, u otros). Léelas antes de cambiar código.
 
-## 1. Flujo de trabajo obligatorio (nunca directo a producción)
+## 1. Flujo de trabajo obligatorio
 
 `main` es **producción**: cada push a `main` despliega automáticamente en Cloud Run
 (`digital-logyser`, us-east1, y `nomina-logyser`, us-central1).
 
-1. **No edites ni hagas commit directamente en `main`.** No hagas `git push` a `main`.
-2. Antes de empezar: `git checkout main && git pull`, y crea una rama nueva con el
-   prefijo **`claude/`** (obligatorio), por ejemplo `claude/nomina-activos-parametros`.
-3. Haz los cambios y los commits en esa rama, y súbela: `git push -u origin claude/<tema>`.
-4. Al subir una rama `claude/...`, Cloud Build la despliega sola en el servicio de
+El flujo depende de **dónde** se está trabajando. En los dos casos, al terminar
+todo debe quedar en `main`, para que al pasar del PC al celular (o al revés) no
+haya cambios a medias.
+
+### A. En el PC de William (carpeta local, Claude en Visual Studio Code)
+Se trabaja **directo en `main`**, en la carpeta principal del repositorio.
+1. Antes de empezar: `git status`. Si hay cambios sin guardar o la carpeta está en
+   otra rama, **avisa a William y no los descartes**. Si está limpia:
+   `git checkout main && git pull`.
+2. **No crees ramas ni copias aparte (worktrees).** Una sola sesión de IA trabaja en
+   la carpeta a la vez.
+3. Haz los cambios y explica cómo probarlos localmente:
+   `$env:DISABLE_BACKGROUND_JOBS="true"; node app.js` (PowerShell). El `.env` local
+   apunta a la **base de datos de producción**, y sin ese interruptor correrían las
+   tareas programadas (PDF, correos) contra datos reales.
+4. **Solo cuando William confirme que lo probó**, haz commit en `main` y
+   `git push origin main` (se despliega a producción en ~10 min).
+
+### B. Desde el celular (Claude en la nube, sin acceso a la carpeta local)
+Se trabaja **por ramas**, nunca directo en `main`.
+1. Parte del último `main` y crea una rama con el prefijo **`claude/`** (obligatorio),
+   por ejemplo `claude/nomina-activos-parametros`.
+2. Haz los cambios y los commits en esa rama, y súbela: `git push -u origin claude/<tema>`.
+3. Al subir una rama `claude/...`, Cloud Build la despliega sola en el servicio de
    **prueba** `digital-logyser-prueba`:
    https://digital-logyser-prueba-aqckcbqh4q-ue.a.run.app
    (tarda ~10 min; el activador solo escucha ramas que empiezan por `claude/`).
-5. Abre un **pull request** hacia `main` explicando qué cambia, y pide a William que
+4. Abre un **pull request** hacia `main` explicando qué cambia, y pide a William que
    lo pruebe en la URL de prueba.
-6. **Solo cuando William lo confirme**, se fusiona a `main`.
-
-Puedes ejecutar la app en local para probar, pero lo que se entrega siempre va por
-rama `claude/...` → URL de prueba → pull request → confirmación → `main`.
+5. **Solo cuando William lo confirme**, se fusiona a `main`.
 
 ### Sobre la URL de prueba
 - Usa la **misma base de datos de producción**: lo que se guarde ahí es real.
