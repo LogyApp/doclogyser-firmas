@@ -407,6 +407,21 @@ module.exports = {
   subirEvidenciaActa,
   subirSoporteGasto,
   subirEvidenciaTicket,
+  subirPDFInspeccionVehiculo: async function (identificacion, idInspeccion, bufferPdf) {
+    const cleanId = String(identificacion || 'general').trim();
+    const nombre = `inspecciones_vehiculo/${cleanId}/${idInspeccion}.pdf`;
+    const file = storage.bucket(BUCKET_PDFS).file(nombre);
+    await file.save(bufferPdf, { contentType: 'application/pdf' });
+    return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+  },
+  subirFotoInspeccionVehiculo: async function (identificacion, idInspeccion, index, bufferImg, contentType) {
+    const cleanId = String(identificacion || 'general').trim();
+    const ext = contentType === 'image/png' ? '.png' : '.jpg';
+    const nombre = `inspecciones_vehiculo/${cleanId}/${idInspeccion}_evidencia_${index}${ext}`;
+    const file = storage.bucket(BUCKET_PDFS).file(nombre);
+    await file.save(bufferImg, { contentType: contentType || 'image/jpeg' });
+    return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+  },
   storage,
   subirArchivoCloudDocs: async function (identificacion, prefix, buffer, originalName, contentType) {
     const ext = path.extname(originalName) || '.pdf';

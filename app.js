@@ -27,6 +27,7 @@ const firmarcertificadoretiroRoutes  = require('./src/routes/firmarcertificadore
 const firmarexamenegresoRoutes       = require('./src/routes/firmarexamenegreso');
 const firmarcesantiasRoutes          = require('./src/routes/firmarcesantias');
 const formcesantiasRoutes            = require('./src/routes/formcesantias');
+const empleadoRoutes                 = require('./src/routes/empleado');
 const pazysalvoRoutes                = require('./src/routes/pazysalvo');
 const pazysalvoareaRoutes            = require('./src/routes/pazysalvoarea');
 const evaluacionretiroRoutes         = require('./src/routes/evaluacionretiro');
@@ -92,6 +93,7 @@ app.use('/firmar-examen-egreso', firmarexamenegresoRoutes);
 app.use('/firmar-cesantias', firmarcesantiasRoutes);
 app.use('/empleado/formcesantias', formcesantiasRoutes);
 app.use('/formcesantias', formcesantiasRoutes);
+app.use('/empleado', empleadoRoutes);
 app.use('/firmar-pazysalvo', pazysalvoRoutes);
 app.use('/pazysalvo-area', pazysalvoareaRoutes);
 app.use('/evaluacion-retiro', evaluacionretiroRoutes);
