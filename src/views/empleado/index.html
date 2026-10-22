@@ -24,7 +24,60 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    :root {
+    :root,
+    :root[data-theme="claro"] {
+      --primary: #000b59;
+      --primary-dark: #00073a;
+      --primary-light: #1c2a7a;
+      --accent: #F55400;
+      --accent-dark: #d64700;
+      --accent-light: #ff8a3d;
+      --accent-soft: rgba(245, 84, 0, 0.1);
+      --accent-contrast: #ffffff;
+      --success: #16a34a; --success-soft: rgba(22, 163, 74, 0.08); --success-dark: #0f7a37;
+      --danger: #dc2626; --danger-soft: rgba(220, 38, 38, 0.08); --danger-dark: #b01f1f;
+      --warning: #d97706; --warning-soft: rgba(217, 119, 6, 0.08); --warning-dark: #a85c04;
+      --info: #2563eb; --info-soft: rgba(37, 99, 235, 0.08); --info-dark: #1d4ed8;
+      --bg: #f4f5f9;
+      --bg-elevated: #eceef5;
+      --card-bg: #ffffff;
+      --text: #101425;
+      --text-muted: #6b7280;
+      --text-inverse: #ffffff;
+      --border: #e7e8ef;
+      --border-strong: #d7d9e4;
+      --overlay: rgba(15, 23, 42, 0.58);
+      --radius-lg: 18px; --radius-md: 12px; --radius-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+      --shadow-md: 0 8px 20px -6px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+      --shadow-lg: 0 20px 40px -12px rgba(0, 11, 89, 0.22);
+      --radius: var(--radius-md);
+      --shadow: var(--shadow-md);
+      --accent-hover: var(--accent-dark);
+      --border-dark: var(--border-strong);
+    }
+
+    :root[data-theme="oscuro"] {
+      --primary: #0b1330;
+      --primary-dark: #060a1c;
+      --primary-light: #1b2550;
+      --accent-soft: rgba(245, 84, 0, 0.16);
+      --success: #22c55e; --success-soft: rgba(34, 197, 94, 0.14); --success-dark: #4ade80;
+      --danger: #f87171; --danger-soft: rgba(248, 113, 113, 0.14); --danger-dark: #fca5a5;
+      --warning: #fbbf24; --warning-soft: rgba(251, 191, 36, 0.14); --warning-dark: #fcd34d;
+      --info: #60a5fa; --info-soft: rgba(96, 165, 250, 0.14); --info-dark: #93c5fd;
+      --bg: #0b0f17;
+      --bg-elevated: #121826;
+      --card-bg: #151c2b;
+      --text: #e6e8ee;
+      --text-muted: #94a0b8;
+      --text-inverse: #ffffff;
+      --border: #232c3d;
+      --border-strong: #2f3b52;
+      --overlay: rgba(0, 0, 0, 0.72);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 8px 20px -6px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.65);
       --radius: var(--radius-md);
       --shadow: var(--shadow-md);
       --accent-hover: var(--accent-dark);
@@ -1257,6 +1310,69 @@
     /* ══════════════════════════════════════════════════════════
        PESTAÑA 4: INSPECCIONES PREOPERACIONALES DE VEHÍCULOS
     ══════════════════════════════════════════════════════════ */
+    .ins-subtabs-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+    }
+
+    .ins-subtab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .ins-subtab-btn:hover {
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .ins-subtab-btn.active {
+      background: var(--accent);
+      color: var(--accent-contrast);
+      box-shadow: 0 4px 10px var(--accent-soft);
+    }
+
+    .ins-subtab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: var(--bg-elevated);
+      color: var(--text);
+    }
+
+    .ins-subtab-btn.active .ins-subtab-badge {
+      background: rgba(255, 255, 255, 0.24);
+      color: #ffffff;
+    }
+
+    :root[data-theme="oscuro"] .ins-equip-img-wrap {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(245, 84, 0, 0.08) 100%);
+    }
+
     .ins-kpi-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -1877,7 +1993,7 @@
       </div>
       <div class="mobile-title"><span id="mobileHeaderTitle">Mi Portal — Inicio</span></div>
       <div class="mobile-header-right">
-        <button type="button" class="mobile-icon-btn" onclick="alternarTemaPortal()" title="Cambiar tema Claro / Oscuro">🌓</button>
+        <button type="button" class="mobile-icon-btn" id="mobile-theme-btn" onclick="alternarTemaPortal()" title="Cambiar tema Claro / Oscuro">🌓</button>
         <button type="button" class="mobile-icon-btn" onclick="cerrarSesionPortal()" title="Cerrar Sesión">🚪</button>
       </div>
     </header>
@@ -1958,8 +2074,8 @@
           <span>Actualizar datos</span>
         </button>
         <button type="button" class="sidebar-btn" onclick="alternarTemaPortal()">
-          <span>🌓</span>
-          <span>Tema Claro / Oscuro</span>
+          <span id="sidebar-theme-icon">🌓</span>
+          <span id="sidebar-theme-text">Tema Claro / Oscuro</span>
         </button>
         <button type="button" class="sidebar-btn sidebar-btn-logout" onclick="cerrarSesionPortal()">
           <span>🚪</span>
@@ -2578,13 +2694,23 @@
             <p class="tab-subtitle">Elige tu medio de transporte o equipo asignado para realizar el chequeo en 3 pasos rápidos y generar el soporte PDF</p>
           </div>
           <div class="tab-actions">
-            <button type="button" class="btn btn-secondary" onclick="abrirModalFormatosBlanco()">
-              <span>📄</span> Formatos en blanco
-            </button>
             <button type="button" class="btn btn-secondary" onclick="abrirModalInstructivoInspeccion()">
               <span>📘</span> Instructivo y apoyo
             </button>
           </div>
+        </div>
+
+        <!-- Barra de Subpestañas: Registrar vs. Inspecciones Realizadas -->
+        <div class="ins-subtabs-bar" role="tablist">
+          <button type="button" class="ins-subtab-btn active" id="ins-subtab-btn-registrar" onclick="cambiarSubtabInspecciones('registrar')">
+            <span>🚗</span>
+            <span>Registrar Inspección</span>
+          </button>
+          <button type="button" class="ins-subtab-btn" id="ins-subtab-btn-historial" onclick="cambiarSubtabInspecciones('historial')">
+            <span>📋</span>
+            <span>Inspecciones Realizadas</span>
+            <span class="ins-subtab-badge" id="ins-subtab-count-badge">0</span>
+          </button>
         </div>
 
         <!-- Banner de última inspección registrada -->
@@ -2596,150 +2722,165 @@
               <span id="ins-last-result-sub" style="font-size:0.82rem;">El documento PDF oficial fue generado y tu placa quedó vinculada en el sistema.</span>
             </div>
           </div>
-          <a id="ins-last-result-pdf" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
-            📄 Ver / Descargar PDF ↗
-          </a>
-        </div>
-
-        <!-- 5 Tarjetas Directas de Selección de Vehículo o Equipo (Sin listas desplegables ocultas) -->
-        <div class="ins-cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-          <!-- 1. Motocicleta -->
-          <div class="ins-equip-card" onclick="abrirModalInspeccion('vehiculo', 'moto')" style="cursor:pointer;">
-            <div class="ins-equip-img-wrap">
-              <span class="ins-equip-badge">Desplazamiento</span>
-              <img src="/img/inspecciones/vehiculo.png" alt="Motocicleta">
-            </div>
-            <div class="ins-equip-body">
-              <div>
-                <div class="ins-equip-title">🏍️ Motocicleta</div>
-                <div class="ins-equip-desc">Para empleados que se movilizan en moto entre sedes o puntos de operación (11 puntos).</div>
-              </div>
-              <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('vehiculo', 'moto')">
-                Iniciar chequeo →
-              </button>
-            </div>
-          </div>
-
-          <!-- 2. Carro / Camioneta -->
-          <div class="ins-equip-card" onclick="abrirModalInspeccion('vehiculo', 'carro')" style="cursor:pointer;">
-            <div class="ins-equip-img-wrap">
-              <span class="ins-equip-badge">Vehículo Liviano</span>
-              <img src="/img/inspecciones/vehiculo.png" alt="Carro o Camioneta">
-            </div>
-            <div class="ins-equip-body">
-              <div>
-                <div class="ins-equip-title">🚗 Carro / Camioneta</div>
-                <div class="ins-equip-desc">Para desplazamientos en automóvil o camioneta operativa (12 puntos).</div>
-              </div>
-              <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('vehiculo', 'carro')">
-                Iniciar chequeo →
-              </button>
-            </div>
-          </div>
-
-          <!-- 3. Camión de Ruta -->
-          <div class="ins-equip-card" onclick="abrirModalInspeccion('camion', 'camion')" style="cursor:pointer;">
-            <div class="ins-equip-img-wrap">
-              <span class="ins-equip-badge">Ruta / Transporte</span>
-              <img src="/img/inspecciones/camion.png" alt="Camión de Ruta">
-            </div>
-            <div class="ins-equip-body">
-              <div>
-                <div class="ins-equip-title">🚛 Camión de Ruta</div>
-                <div class="ins-equip-desc">Para conductores y auxiliares de ruta en vehículo de carga (12 puntos).</div>
-              </div>
-              <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('camion', 'camion')">
-                Iniciar chequeo →
-              </button>
-            </div>
-          </div>
-
-          <!-- 4. Montacarga Eléctrica -->
-          <div class="ins-equip-card" onclick="abrirModalInspeccion('montacarga', 'electrica')" style="cursor:pointer;">
-            <div class="ins-equip-img-wrap">
-              <span class="ins-equip-badge">Operación Bodega</span>
-              <img src="/img/inspecciones/montacarga.png" alt="Montacarga Eléctrica">
-            </div>
-            <div class="ins-equip-body">
-              <div>
-                <div class="ins-equip-title">🏗️ Montacarga Eléctrica</div>
-                <div class="ins-equip-desc">Para operadores encargados de montacarga eléctrica en centro de distribución (11 puntos).</div>
-              </div>
-              <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('montacarga', 'electrica')">
-                Iniciar chequeo →
-              </button>
-            </div>
-          </div>
-
-          <!-- 5. Transpaleta / Estibador Manual -->
-          <div class="ins-equip-card" onclick="abrirModalInspeccion('montacarga', 'transpaleta')" style="cursor:pointer;">
-            <div class="ins-equip-img-wrap">
-              <span class="ins-equip-badge">Equipo Manual</span>
-              <img src="/img/inspecciones/transpaleta.png" alt="Transpaleta Manual">
-            </div>
-            <div class="ins-equip-body">
-              <div>
-                <div class="ins-equip-title">🔧 Transpaleta Manual</div>
-                <div class="ins-equip-desc">Chequeo rápido de estibador hidráulico manual antes de turno (10 puntos).</div>
-              </div>
-              <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('montacarga', 'transpaleta')">
-                Iniciar chequeo →
-              </button>
-            </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="cambiarSubtabInspecciones('historial')">
+              📋 Ver en realizadas
+            </button>
+            <a id="ins-last-result-pdf" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+              📄 Ver / Descargar PDF ↗
+            </a>
           </div>
         </div>
 
-        <!-- KPIs de Mis Inspecciones del Mes -->
-        <div class="ins-kpi-grid">
-          <div class="ins-kpi-card">
-            <span class="ins-kpi-label">Mis inspecciones (mes)</span>
-            <span class="ins-kpi-value" id="ins-kpi-total">0</span>
-            <span class="ins-kpi-sub">Registradas en el mes actual</span>
+        <!-- SUBPESTAÑA 1: REGISTRAR INSPECCIÓN -->
+        <div id="ins-subpane-registrar">
+          <!-- 5 Tarjetas Directas de Selección de Vehículo o Equipo -->
+          <div class="ins-cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <!-- 1. Motocicleta -->
+            <div class="ins-equip-card" onclick="abrirModalInspeccion('vehiculo', 'moto')" style="cursor:pointer;">
+              <div class="ins-equip-img-wrap">
+                <span class="ins-equip-badge">Desplazamiento</span>
+                <img src="/img/inspecciones/moto.png?v=2" alt="Motocicleta">
+              </div>
+              <div class="ins-equip-body">
+                <div>
+                  <div class="ins-equip-title">🏍️ Motocicleta</div>
+                  <div class="ins-equip-desc">Para empleados que se movilizan en moto entre sedes o puntos de operación (11 puntos).</div>
+                </div>
+                <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('vehiculo', 'moto')">
+                  Iniciar chequeo →
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. Carro / Camioneta -->
+            <div class="ins-equip-card" onclick="abrirModalInspeccion('vehiculo', 'carro')" style="cursor:pointer;">
+              <div class="ins-equip-img-wrap">
+                <span class="ins-equip-badge">Vehículo Liviano</span>
+                <img src="/img/inspecciones/carro.png?v=2" alt="Carro o Camioneta">
+              </div>
+              <div class="ins-equip-body">
+                <div>
+                  <div class="ins-equip-title">🚗 Carro / Camioneta</div>
+                  <div class="ins-equip-desc">Para desplazamientos en automóvil o camioneta operativa (12 puntos).</div>
+                </div>
+                <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('vehiculo', 'carro')">
+                  Iniciar chequeo →
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. Camión de Ruta -->
+            <div class="ins-equip-card" onclick="abrirModalInspeccion('camion', 'camion')" style="cursor:pointer;">
+              <div class="ins-equip-img-wrap">
+                <span class="ins-equip-badge">Ruta / Transporte</span>
+                <img src="/img/inspecciones/camion.png" alt="Camión de Ruta">
+              </div>
+              <div class="ins-equip-body">
+                <div>
+                  <div class="ins-equip-title">🚛 Camión de Ruta</div>
+                  <div class="ins-equip-desc">Para conductores y auxiliares de ruta en vehículo de carga (12 puntos).</div>
+                </div>
+                <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('camion', 'camion')">
+                  Iniciar chequeo →
+                </button>
+              </div>
+            </div>
+
+            <!-- 4. Montacarga Eléctrica -->
+            <div class="ins-equip-card" onclick="abrirModalInspeccion('montacarga', 'electrica')" style="cursor:pointer;">
+              <div class="ins-equip-img-wrap">
+                <span class="ins-equip-badge">Operación Bodega</span>
+                <img src="/img/inspecciones/montacarga.png" alt="Montacarga Eléctrica">
+              </div>
+              <div class="ins-equip-body">
+                <div>
+                  <div class="ins-equip-title">🏗️ Montacarga Eléctrica</div>
+                  <div class="ins-equip-desc">Para operadores encargados de montacarga eléctrica en centro de distribución (11 puntos).</div>
+                </div>
+                <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('montacarga', 'electrica')">
+                  Iniciar chequeo →
+                </button>
+              </div>
+            </div>
+
+            <!-- 5. Transpaleta / Estibador Manual -->
+            <div class="ins-equip-card" onclick="abrirModalInspeccion('montacarga', 'transpaleta')" style="cursor:pointer;">
+              <div class="ins-equip-img-wrap">
+                <span class="ins-equip-badge">Equipo Manual</span>
+                <img src="/img/inspecciones/transpaleta.png" alt="Transpaleta Manual">
+              </div>
+              <div class="ins-equip-body">
+                <div>
+                  <div class="ins-equip-title">🔧 Transpaleta Manual</div>
+                  <div class="ins-equip-desc">Chequeo rápido de estibador hidráulico manual antes de turno (10 puntos).</div>
+                </div>
+                <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('montacarga', 'transpaleta')">
+                  Iniciar chequeo →
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="ins-kpi-card kpi-success">
-            <span class="ins-kpi-label">Aptos para operación</span>
-            <span class="ins-kpi-value" id="ins-kpi-aptos">0</span>
-            <span class="ins-kpi-sub">Sin novedades críticas</span>
-          </div>
-          <div class="ins-kpi-card kpi-warning">
-            <span class="ins-kpi-label">Con novedades / No apto</span>
-            <span class="ins-kpi-value" id="ins-kpi-novedades">0</span>
-            <span class="ins-kpi-sub">Con hallazgos reportados</span>
-          </div>
-          <div class="ins-kpi-card kpi-info">
-            <span class="ins-kpi-label">Placas / Equipos</span>
-            <span class="ins-kpi-value" id="ins-kpi-equipos">0</span>
-            <span class="ins-kpi-sub">Unidades distintas registradas</span>
+
+          <!-- KPIs de Mis Inspecciones del Mes -->
+          <div class="ins-kpi-grid">
+            <div class="ins-kpi-card">
+              <span class="ins-kpi-label">Mis inspecciones (mes)</span>
+              <span class="ins-kpi-value" id="ins-kpi-total">0</span>
+              <span class="ins-kpi-sub">Registradas en el mes actual</span>
+            </div>
+            <div class="ins-kpi-card kpi-success">
+              <span class="ins-kpi-label">Aptos para operación</span>
+              <span class="ins-kpi-value" id="ins-kpi-aptos">0</span>
+              <span class="ins-kpi-sub">Sin novedades críticas</span>
+            </div>
+            <div class="ins-kpi-card kpi-warning">
+              <span class="ins-kpi-label">Con novedades / No apto</span>
+              <span class="ins-kpi-value" id="ins-kpi-novedades">0</span>
+              <span class="ins-kpi-sub">Con hallazgos reportados</span>
+            </div>
+            <div class="ins-kpi-card kpi-info">
+              <span class="ins-kpi-label">Placas / Equipos</span>
+              <span class="ins-kpi-value" id="ins-kpi-equipos">0</span>
+              <span class="ins-kpi-sub">Unidades distintas registradas</span>
+            </div>
           </div>
         </div>
 
-        <!-- Historial de Mis Inspecciones -->
-        <div class="card">
-          <div class="card-title">
-            <span>📋 Mis Inspecciones Registradas</span>
-            <span class="badge badge-info" id="ins-recent-count">0 registros</span>
-          </div>
-          <div class="ins-table-wrap">
-            <table class="ins-table">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Radicado</th>
-                  <th>Medio / Equipo</th>
-                  <th>Placa / Código</th>
-                  <th>Resultado</th>
-                  <th>Cumplimiento</th>
-                  <th>Soporte PDF</th>
-                </tr>
-              </thead>
-              <tbody id="ins-recent-tbody">
-                <tr>
-                  <td colspan="7" style="text-align:center; color:var(--text-muted); padding:24px;">
-                    Aún no registras inspecciones preoperacionales.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- SUBPESTAÑA 2: INSPECCIONES REALIZADAS (HISTORIAL) -->
+        <div id="ins-subpane-historial" style="display: none;">
+          <div class="card">
+            <div class="card-title">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span>📋 Mis Inspecciones Realizadas</span>
+                <span class="badge badge-info" id="ins-recent-count">0 registros</span>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" onclick="cambiarSubtabInspecciones('registrar')">
+                + Nueva Inspección
+              </button>
+            </div>
+            <div class="ins-table-wrap">
+              <table class="ins-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Radicado</th>
+                    <th>Medio / Equipo</th>
+                    <th>Placa / Código</th>
+                    <th>Resultado</th>
+                    <th>Cumplimiento</th>
+                    <th>Soporte PDF</th>
+                  </tr>
+                </thead>
+                <tbody id="ins-recent-tbody">
+                  <tr>
+                    <td colspan="7" style="text-align:center; color:var(--text-muted); padding:24px;">
+                      Aún no registras inspecciones preoperacionales.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
@@ -2985,65 +3126,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE FORMATOS EN BLANCO PARA IMPRIMIR -->
-  <div class="tutorial-modal-overlay" id="modalFormatosBlancoOverlay" style="display:none;" onclick="if(event.target===this)cerrarModalFormatosBlanco()">
-    <div class="tutorial-modal" style="max-width:640px;" onclick="event.stopPropagation()">
-      <div class="tutorial-modal-header">
-        <div>
-          <h2 style="font-size:1.08rem; font-weight:800; margin:0;">📄 Descargar Formatos Preoperacionales en Blanco</h2>
-          <span style="font-size:0.75rem; opacity:0.85;">Listos para imprimir en caso de contingencia operativa</span>
-        </div>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalFormatosBlanco()">✕</button>
-      </div>
-      <div class="tutorial-modal-body">
-        <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:14px;">
-          Selecciona el formato simplificado que deseas descargar en PDF para diligenciamiento físico:
-        </p>
-        <div class="tut-req-grid">
-          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
-            <div>
-              <strong>🏍️ Motocicleta</strong>
-              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">11 puntos esenciales de documentos, luces, frenos, llantas y EPP.</p>
-            </div>
-            <a href="/empleado/api/inspecciones/formato-blanco?type=vehiculo&subtype=moto" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
-          </div>
-          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
-            <div>
-              <strong>🚗 Carro / Camioneta</strong>
-              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">12 puntos esenciales de documentos, visibilidad, mecánica y kit de carretera.</p>
-            </div>
-            <a href="/empleado/api/inspecciones/formato-blanco?type=vehiculo&subtype=carro" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
-          </div>
-          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
-            <div>
-              <strong>🚛 Camión de Ruta</strong>
-              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">12 puntos esenciales de documentos, cabina, frenos, llantas y emergencias.</p>
-            </div>
-            <a href="/empleado/api/inspecciones/formato-blanco?type=camion&subtype=camion" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
-          </div>
-          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
-            <div>
-              <strong>🏗️ Montacarga Eléctrica</strong>
-              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">11 puntos de horquillas, sistema hidráulico, frenos, batería y seguridad.</p>
-            </div>
-            <a href="/empleado/api/inspecciones/formato-blanco?type=montacarga&subtype=electrica" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
-          </div>
-          <div class="tut-req-box" style="display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
-            <div>
-              <strong>🔧 Transpaleta Manual</strong>
-              <p style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">10 puntos de chasis, horquillas, gato hidráulico, ruedas y EPP.</p>
-            </div>
-            <a href="/empleado/api/inspecciones/formato-blanco?type=montacarga&subtype=transpaleta" target="_blank" class="btn btn-primary btn-sm">⬇ Descargar PDF</a>
-          </div>
-        </div>
-      </div>
-      <div class="tutorial-modal-footer">
-        <span style="font-size:0.75rem; color:var(--text-muted);">LOGYSER S.A.S. · Seguridad Vial y SST</span>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalFormatosBlanco()">Cerrar</button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL INSTRUCTIVO Y APOYO DE INSPECCIONES -->
   <div class="tutorial-modal-overlay" id="modalInstructivoInspeccionOverlay" style="display:none;" onclick="if(event.target===this)cerrarModalInstructivoInspeccion()">
     <div class="tutorial-modal" style="max-width:680px;" onclick="event.stopPropagation()">
@@ -3274,6 +3356,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       initCanvas();
       initCanvasInspeccion();
+      actualizarBotonTemaPortal(document.documentElement.getAttribute('data-theme') || 'claro');
 
       if (!window.CONFIG || window.CONFIG.modo === 'login' || !window.CONFIG.colaborador) {
         mostrarPantallaLogin(window.CONFIG ? window.CONFIG.errorInicial : null);
@@ -3357,21 +3440,38 @@
       window.location.href = '/empleado';
     }
 
+    function actualizarBotonTemaPortal(tema) {
+      const iconEl = document.getElementById('sidebar-theme-icon');
+      const textEl = document.getElementById('sidebar-theme-text');
+      const mobBtn = document.getElementById('mobile-theme-btn');
+      const esOscuro = tema === 'oscuro';
+      if (iconEl) iconEl.textContent = esOscuro ? '☀️' : '🌙';
+      if (textEl) textEl.textContent = esOscuro ? 'Tema Claro' : 'Tema Oscuro';
+      if (mobBtn) mobBtn.textContent = esOscuro ? '☀️' : '🌙';
+    }
+
     function alternarTemaPortal() {
       const html = document.documentElement;
       const actual = html.getAttribute('data-theme') === 'oscuro' ? 'oscuro' : 'claro';
       const nuevo = actual === 'oscuro' ? 'claro' : 'oscuro';
-      if (window.LogyserTheme && typeof window.LogyserTheme.aplicar === 'function') {
-        const prefs = window.LogyserTheme.leer() || {};
-        window.LogyserTheme.aplicar({ tema: nuevo, acento: prefs.acento || '#F55400' }, true);
+      let colorAcento = '#F55400';
+      try {
+        const prefs = JSON.parse(localStorage.getItem('logyser-ui-prefs') || '{}');
+        if (prefs && /^#[0-9A-Fa-f]{6}$/.test(prefs.colorAcento || '')) {
+          colorAcento = prefs.colorAcento;
+        }
+      } catch (e) {}
+
+      if (typeof window.aplicarPreferenciasUI === 'function') {
+        window.aplicarPreferenciasUI(nuevo, colorAcento, { sinGuardar: true });
       } else {
         html.setAttribute('data-theme', nuevo);
         try {
-          const prefs = JSON.parse(localStorage.getItem('logyser-ui-prefs') || '{}');
-          prefs.tema = nuevo;
-          localStorage.setItem('logyser-ui-prefs', JSON.stringify(prefs));
+          localStorage.setItem('logyser-ui-prefs', JSON.stringify({ tema: nuevo, colorAcento }));
         } catch (e) {}
       }
+      html.setAttribute('data-theme', nuevo);
+      actualizarBotonTemaPortal(nuevo);
     }
 
     function toggleMobileSidebar() {
@@ -4358,6 +4458,7 @@
       photos: [],
       maxFotos: 4,
       vehiculosHabituales: { placas: [], equipos: [] },
+      reportaPorDefecto: '',
       metodoFirma: 'nueva',
       tieneFirmaPrevia: false,
       firmaPreviaUrl: null,
@@ -4384,6 +4485,7 @@
       const recent = Array.isArray(ins.recent) ? ins.recent : [];
       stateInspeccion.maxFotos = Number(ins.maxFotos) > 0 ? Number(ins.maxFotos) : 4;
       stateInspeccion.vehiculosHabituales = ins.vehiculosHabituales || { placas: [], equipos: [] };
+      stateInspeccion.reportaPorDefecto = ins.reportaPorDefecto || '';
 
       const maxLbl = document.getElementById('ins-max-fotos-lbl');
       if (maxLbl) maxLbl.textContent = stateInspeccion.maxFotos;
@@ -4393,6 +4495,19 @@
       stateInspeccion.firmaPreviaUrl = firmaUrl;
 
       renderizarEstadisticasYTablaInspecciones(stats, recent);
+    }
+
+    function cambiarSubtabInspecciones(subtab) {
+      const esHistorial = subtab === 'historial';
+      const btnReg = document.getElementById('ins-subtab-btn-registrar');
+      const btnHist = document.getElementById('ins-subtab-btn-historial');
+      const paneReg = document.getElementById('ins-subpane-registrar');
+      const paneHist = document.getElementById('ins-subpane-historial');
+
+      if (btnReg) btnReg.classList.toggle('active', !esHistorial);
+      if (btnHist) btnHist.classList.toggle('active', esHistorial);
+      if (paneReg) paneReg.style.display = esHistorial ? 'none' : 'block';
+      if (paneHist) paneHist.style.display = esHistorial ? 'block' : 'none';
     }
 
     function badgeResultadoInspeccion(resultado) {
@@ -4434,11 +4549,15 @@
       }
 
       const countBadge = document.getElementById('ins-recent-count');
+      const subtabCountBadge = document.getElementById('ins-subtab-count-badge');
       const tbody = document.getElementById('ins-recent-tbody');
       const lista = Array.isArray(recent) ? recent : [];
 
       if (countBadge) {
         countBadge.textContent = `${lista.length} ${lista.length === 1 ? 'registro' : 'registros'}`;
+      }
+      if (subtabCountBadge) {
+        subtabCountBadge.textContent = lista.length;
       }
 
       if (!lista.length) {
@@ -4528,7 +4647,7 @@
         inpPlaca.value = '';
         inpEquipo.value = '';
         inpOdometro.value = '';
-        inpReporta.value = '';
+        inpReporta.value = stateInspeccion.reportaPorDefecto || '';
         document.getElementById('ins_obs_generales').value = '';
         document.getElementById('ins_plan_accion').value = '';
         document.getElementById('ins-photos-preview').innerHTML = '';
@@ -5207,12 +5326,6 @@
       }
     }
 
-    function abrirModalFormatosBlanco() {
-      document.getElementById('modalFormatosBlancoOverlay').style.display = 'flex';
-    }
-    function cerrarModalFormatosBlanco() {
-      document.getElementById('modalFormatosBlancoOverlay').style.display = 'none';
-    }
     function abrirModalInstructivoInspeccion() {
       document.getElementById('modalInstructivoInspeccionOverlay').style.display = 'flex';
     }

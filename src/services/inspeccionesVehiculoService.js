@@ -4,6 +4,8 @@ const { generarPDFDesdeHTML } = require('./renderer');
 const { LOGO_BASE64 } = require('./assets');
 const {
   subirFirma,
+  obtenerUrlFirmaReciente,
+  obtenerFirmaBase64Reciente,
   subirPDFInspeccionVehiculo,
   subirFotoInspeccionVehiculo,
 } = require('./storage');
@@ -530,13 +532,13 @@ function construirHTMLPDFInspeccion({
       : (it.result === 'C' ? '#15803d' : '#475569');
     return `
       <tr>
-        <td style="padding:5px 7px;border:1px solid #cbd5e1;font-size:8pt;color:#0A315D;font-weight:700;">${escHtml(it.section)}</td>
-        <td style="padding:5px 7px;border:1px solid #cbd5e1;font-size:8pt;color:#1e293b;">
+        <td style="padding:3.5px 6px;border:1px solid #cbd5e1;font-size:7.6pt;color:#0A315D;font-weight:700;">${escHtml(it.section)}</td>
+        <td style="padding:3.5px 6px;border:1px solid #cbd5e1;font-size:7.8pt;color:#1e293b;">
           ${idx + 1}. ${escHtml(it.text)}
-          ${it.critical ? '<span style="color:#dc2626;font-weight:700;font-size:7pt;"> [CRÍTICO]</span>' : ''}
+          ${it.critical ? '<span style="color:#dc2626;font-weight:700;font-size:6.8pt;"> [CRÍTICO]</span>' : ''}
         </td>
-        <td style="padding:5px 7px;border:1px solid #cbd5e1;text-align:center;font-weight:700;font-size:8pt;background:${resBg};color:${resColor};">${escHtml(textoResultadoItem(it.result))}</td>
-        <td style="padding:5px 7px;border:1px solid #cbd5e1;font-size:7.8pt;color:#334155;">${escHtml(it.observation || '')}</td>
+        <td style="padding:3.5px 6px;border:1px solid #cbd5e1;text-align:center;font-weight:700;font-size:7.8pt;background:${resBg};color:${resColor};">${escHtml(textoResultadoItem(it.result))}</td>
+        <td style="padding:3.5px 6px;border:1px solid #cbd5e1;font-size:7.5pt;color:#334155;">${escHtml(it.observation || '')}</td>
       </tr>
     `;
   }).join('');
@@ -544,19 +546,19 @@ function construirHTMLPDFInspeccion({
   let fotosHtml = '';
   if (Array.isArray(fotosDataUrls) && fotosDataUrls.length) {
     const cells = fotosDataUrls.map((src, i) => `
-      <td style="width:50%;padding:6px;border:1px solid #cbd5e1;text-align:center;vertical-align:top;">
-        <div style="font-size:7.5pt;font-weight:700;color:#475569;margin-bottom:4px;">Evidencia fotográfica #${i + 1}</div>
-        <img src="${src}" style="max-width:220px;max-height:150px;object-fit:contain;border-radius:4px;" />
+      <td style="width:50%;padding:5px;border:1px solid #cbd5e1;text-align:center;vertical-align:top;">
+        <div style="font-size:7.2pt;font-weight:700;color:#475569;margin-bottom:3px;">Evidencia fotográfica #${i + 1}</div>
+        <img src="${src}" style="max-width:200px;max-height:115px;object-fit:contain;border-radius:4px;" />
       </td>
     `);
     const rows = [];
     for (let i = 0; i < cells.length; i += 2) {
-      const second = cells[i + 1] || '<td style="width:50%;padding:6px;border:1px solid #cbd5e1;"></td>';
+      const second = cells[i + 1] || '<td style="width:50%;padding:5px;border:1px solid #cbd5e1;"></td>';
       rows.push(`<tr>${cells[i]}${second}</tr>`);
     }
     fotosHtml = `
-      <div style="margin-top:10px;page-break-inside:avoid;">
-        <div style="background:#0A315D;color:#ffffff;padding:5px 9px;font-size:8.5pt;font-weight:700;border-radius:4px 4px 0 0;">
+      <div style="margin-top:6px;page-break-inside:avoid;">
+        <div style="background:#0A315D;color:#ffffff;padding:4px 8px;font-size:8pt;font-weight:700;border-radius:4px 4px 0 0;">
           REGISTRO FOTOGRÁFICO DE EVIDENCIA
         </div>
         <table style="width:100%;border-collapse:collapse;">
@@ -571,11 +573,11 @@ function construirHTMLPDFInspeccion({
 <head>
   <meta charset="UTF-8">
   <style>
-    @page { size: letter; margin: 14mm 14mm 14mm 14mm; }
+    @page { size: A4; margin: 5mm 10mm 7mm 10mm; }
     body {
       font-family: Arial, Helvetica, sans-serif;
       color: #173655;
-      font-size: 8.5pt;
+      font-size: 8.2pt;
       margin: 0;
       padding: 0;
     }
@@ -583,65 +585,65 @@ function construirHTMLPDFInspeccion({
   </style>
 </head>
 <body>
-  <table style="margin-bottom:8px;border:1px solid #cbd5e1;">
+  <table style="margin-bottom:5px;border:1px solid #cbd5e1;">
     <tr>
-      <td style="width:32%;padding:8px;text-align:center;border-right:1px solid #cbd5e1;background:#ffffff;">
-        <img src="${LOGO_BASE64}" style="max-height:52px;max-width:160px;object-fit:contain;" />
+      <td style="width:30%;padding:5px 8px;text-align:center;border-right:1px solid #cbd5e1;background:#ffffff;">
+        <img src="${LOGO_BASE64}" style="max-height:42px;max-width:145px;object-fit:contain;" />
       </td>
-      <td style="width:68%;background:#0A315D;color:#ffffff;padding:10px 14px;text-align:center;">
-        <div style="font-size:12pt;font-weight:700;letter-spacing:0.3px;">INSPECCIÓN PREOPERACIONAL DE VEHÍCULOS Y EQUIPOS</div>
-        <div style="font-size:9.5pt;color:#FFD0B3;font-weight:700;margin-top:3px;">${escHtml(template.label.toUpperCase())}</div>
-        <div style="font-size:7.5pt;color:#dbeafe;margin-top:3px;">ID Registro: ${escHtml(id)} · Fecha: ${escHtml(fechaHora)}</div>
+      <td style="width:70%;background:#0A315D;color:#ffffff;padding:6px 12px;text-align:center;">
+        <div style="font-size:10.5pt;font-weight:700;letter-spacing:0.3px;">INSPECCIÓN PREOPERACIONAL DE VEHÍCULOS Y EQUIPOS</div>
+        <div style="font-size:8.8pt;color:#FFD0B3;font-weight:700;margin-top:2px;">${escHtml(template.label.toUpperCase())}</div>
+        <div style="font-size:7.2pt;color:#dbeafe;margin-top:2px;">ID Registro: ${escHtml(id)} · Fecha: ${escHtml(fechaHora)}</div>
       </td>
     </tr>
   </table>
 
-  <table style="margin-bottom:10px;">
+  <table style="margin-bottom:6px;">
     <tr>
-      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:34%;">
-        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Inspector / Colaborador</div>
-        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(colaborador.nombre)}</div>
+      <td style="padding:4px 7px;border:1px solid #cbd5e1;width:34%;">
+        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">Inspector / Colaborador</div>
+        <div style="font-size:8.2pt;font-weight:700;margin-top:1px;">${escHtml(colaborador.nombre)}</div>
       </td>
-      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:22%;">
-        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Identificación</div>
-        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(colaborador.identificacion)}</div>
+      <td style="padding:4px 7px;border:1px solid #cbd5e1;width:22%;">
+        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">Identificación</div>
+        <div style="font-size:8.2pt;font-weight:700;margin-top:1px;">${escHtml(colaborador.identificacion)}</div>
       </td>
-      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:22%;">
-        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Cargo</div>
-        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(colaborador.cargo || '—')}</div>
+      <td style="padding:4px 7px;border:1px solid #cbd5e1;width:22%;">
+        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">Cargo</div>
+        <div style="font-size:8.2pt;font-weight:700;margin-top:1px;">${escHtml(colaborador.cargo || '—')}</div>
       </td>
-      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:22%;">
-        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Operación / Regional</div>
-        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(colaborador.operacion || '—')} (${escHtml(colaborador.regional || '—')})</div>
+      <td style="padding:4px 7px;border:1px solid #cbd5e1;width:22%;">
+        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">Operación / Regional</div>
+        <div style="font-size:8.2pt;font-weight:700;margin-top:1px;">${escHtml(colaborador.operacion || '—')} (${escHtml(colaborador.regional || '—')})</div>
       </td>
     </tr>
     <tr>
-      <td style="padding:6px 8px;border:1px solid #cbd5e1;">
-        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Placa / N° Interno Equipo</div>
-        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml([placa, equipoInterno].filter(Boolean).join(' / ') || '—')}</div>
+      <td style="padding:4px 7px;border:1px solid #cbd5e1;">
+        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">Placa / N° Interno Equipo</div>
+        <div style="font-size:8.2pt;font-weight:700;margin-top:1px;">${escHtml([placa, equipoInterno].filter(Boolean).join(' / ') || '—')}</div>
       </td>
-      <td style="padding:6px 8px;border:1px solid #cbd5e1;">
-        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Kilometraje / Horómetro</div>
-        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(odometro || 'N/A')}</div>
+      <td style="padding:4px 7px;border:1px solid #cbd5e1;">
+        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">Kilometraje / Horómetro</div>
+        <div style="font-size:8.2pt;font-weight:700;margin-top:1px;">${escHtml(odometro || 'N/A')}</div>
       </td>
-      <td style="padding:6px 8px;border:1px solid #cbd5e1;">
-        <div style="font-size:7pt;color:#64748b;text-transform:uppercase;font-weight:700;">Reporta a</div>
-        <div style="font-size:8.5pt;font-weight:700;margin-top:2px;">${escHtml(reportaA || '—')}</div>
+      <td style="padding:4px 7px;border:1px solid #cbd5e1;">
+        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">Reporta a</div>
+        <div style="font-size:8.2pt;font-weight:700;margin-top:1px;">${escHtml(reportaA || '—')}</div>
       </td>
-      <td style="padding:6px 8px;border:1px solid #cbd5e1;background:${statusColor};color:#ffffff;text-align:center;">
-        <div style="font-size:7pt;text-transform:uppercase;font-weight:700;opacity:0.9;">Resultado (${score}%)</div>
-        <div style="font-size:9.5pt;font-weight:700;margin-top:2px;">${escHtml(status)}</div>
+      <td style="padding:4px 7px;border:1px solid #cbd5e1;background:${statusColor};color:#ffffff;text-align:center;">
+        <div style="font-size:6.8pt;text-transform:uppercase;font-weight:700;opacity:0.9;">Resultado (${score}%)</div>
+        <div style="font-size:9pt;font-weight:700;margin-top:1px;">${escHtml(status)}</div>
       </td>
     </tr>
   </table>
 
-  <table style="margin-bottom:10px;">
+  <table style="margin-bottom:6px;">
     <thead>
       <tr style="background:#0A315D;color:#ffffff;">
-        <th style="padding:5px 7px;border:1px solid #cbd5e1;text-align:left;width:22%;font-size:7.8pt;">BLOQUE</th>
-        <th style="padding:5px 7px;border:1px solid #cbd5e1;text-align:left;width:44%;font-size:7.8pt;">PUNTO DE VERIFICACIÓN</th>
-        <th style="padding:5px 7px;border:1px solid #cbd5e1;text-align:center;width:14%;font-size:7.8pt;">ESTADO</th>
-        <th style="padding:5px 7px;border:1px solid #cbd5e1;text-align:left;width:20%;font-size:7.8pt;">OBSERVACIÓN</th>
+        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:22%;font-size:7.5pt;">BLOQUE</th>
+        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:44%;font-size:7.5pt;">PUNTO DE VERIFICACIÓN</th>
+        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:center;width:14%;font-size:7.5pt;">ESTADO</th>
+        <th style="padding:4px 6px;border:1px solid #cbd5e1;text-align:left;width:20%;font-size:7.5pt;">OBSERVACIÓN</th>
       </tr>
     </thead>
     <tbody>
@@ -649,31 +651,31 @@ function construirHTMLPDFInspeccion({
     </tbody>
   </table>
 
-  <table style="margin-bottom:10px;page-break-inside:avoid;">
+  <table style="margin-bottom:6px;page-break-inside:avoid;">
     <tr>
-      <td style="width:50%;padding:7px 9px;border:1px solid #cbd5e1;vertical-align:top;">
-        <div style="font-size:7.5pt;font-weight:700;color:#0A315D;text-transform:uppercase;margin-bottom:3px;">Observaciones Generales</div>
-        <div style="font-size:8pt;color:#334155;min-height:28px;">${escHtml(observacionesGenerales || 'Sin observaciones adicionales.')}</div>
+      <td style="width:50%;padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;">
+        <div style="font-size:7.2pt;font-weight:700;color:#0A315D;text-transform:uppercase;margin-bottom:2px;">Observaciones Generales</div>
+        <div style="font-size:7.8pt;color:#334155;min-height:20px;">${escHtml(observacionesGenerales || 'Sin observaciones adicionales.')}</div>
       </td>
-      <td style="width:50%;padding:7px 9px;border:1px solid #cbd5e1;vertical-align:top;">
-        <div style="font-size:7.5pt;font-weight:700;color:#0A315D;text-transform:uppercase;margin-bottom:3px;">Plan de Acción / Medidas de Control</div>
-        <div style="font-size:8pt;color:#334155;min-height:28px;">${escHtml(planAccion || 'No aplica.')}</div>
+      <td style="width:50%;padding:5px 8px;border:1px solid #cbd5e1;vertical-align:top;">
+        <div style="font-size:7.2pt;font-weight:700;color:#0A315D;text-transform:uppercase;margin-bottom:2px;">Plan de Acción / Medidas de Control</div>
+        <div style="font-size:7.8pt;color:#334155;min-height:20px;">${escHtml(planAccion || 'No aplica.')}</div>
       </td>
     </tr>
   </table>
 
   ${fotosHtml}
 
-  <table style="margin-top:12px;page-break-inside:avoid;">
+  <table style="margin-top:8px;page-break-inside:avoid;">
     <tr>
-      <td style="padding:8px 10px;border:1px solid #cbd5e1;width:62%;vertical-align:middle;">
-        <div style="font-size:7.8pt;color:#334155;line-height:1.4;">
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:62%;vertical-align:middle;">
+        <div style="font-size:7.5pt;color:#334155;line-height:1.35;">
           <strong>Declaración del inspector:</strong> Certifico que he realizado personalmente la inspección preoperacional del vehículo/equipo descrito antes de iniciar su operación y que los datos registrados corresponden al estado real verificado.
         </div>
       </td>
-      <td style="padding:8px 10px;border:1px solid #cbd5e1;width:38%;text-align:center;vertical-align:middle;">
-        ${firmaDataUrl ? `<img src="${firmaDataUrl}" style="max-height:55px;max-width:180px;object-fit:contain;" />` : '<div style="height:45px;"></div>'}
-        <div style="border-top:1px solid #334155;margin-top:4px;padding-top:3px;font-size:7.8pt;font-weight:700;">
+      <td style="padding:6px 8px;border:1px solid #cbd5e1;width:38%;text-align:center;vertical-align:middle;">
+        ${firmaDataUrl ? `<img src="${firmaDataUrl}" style="max-height:46px;max-width:170px;object-fit:contain;" />` : '<div style="height:40px;"></div>'}
+        <div style="border-top:1px solid #334155;margin-top:3px;padding-top:2px;font-size:7.5pt;font-weight:700;">
           Firma: ${escHtml(colaborador.nombre)} (${escHtml(colaborador.identificacion)})
         </div>
       </td>
@@ -681,6 +683,82 @@ function construirHTMLPDFInspeccion({
   </table>
 </body>
 </html>`;
+}
+
+/**
+ * Resuelve la "Persona a quien reporta (Jefe / Coordinador / SST)" para el colaborador:
+ * 1. Busca la Operación en la columna `Operación` de Maestro_Usuarios; si el Rol es
+ *    Coordinador o CoordinadorR, toma el valor de `Nombre`.
+ * 2. Si no hay coincidencia directa, busca la Operación del trabajador en la columna
+ *    `Operación` de Maestro_Usuarios para obtener su `Regional`, y con ese dato de
+ *    `Regional` busca el Rol `CoordinadorR` y toma el valor de `Nombre`.
+ */
+async function resolverCoordinadorReporta(operacion, regionalTrabajador) {
+  const op = String(operacion || '').trim();
+  const regFallback = String(regionalTrabajador || '').trim();
+
+  if (op && op !== '—') {
+    // Paso 1: Buscar Operación en Maestro_Usuarios donde Rol sea Coordinador o CoordinadorR
+    const [directRows] = await pool.execute(
+      `SELECT Nombre, Rol
+       FROM Maestro_Usuarios
+       WHERE \`Operación\` = ?
+         AND Rol IN ('Coordinador', 'CoordinadorR')
+         AND Nombre IS NOT NULL AND Nombre <> ''
+       ORDER BY CASE WHEN Rol = 'Coordinador' THEN 1 ELSE 2 END, ID ASC
+       LIMIT 1`,
+      [op]
+    );
+    if (directRows.length && directRows[0].Nombre) {
+      return String(directRows[0].Nombre).trim();
+    }
+
+    // Paso 2: Buscar la Operación en Maestro_Usuarios para obtener la columna Regional,
+    // y luego con esa Regional buscar el Rol CoordinadorR
+    const [regRows] = await pool.execute(
+      `SELECT DISTINCT Regional
+       FROM Maestro_Usuarios
+       WHERE \`Operación\` = ?
+         AND Regional IS NOT NULL AND Regional <> ''`,
+      [op]
+    );
+    const regionales = regRows.map(r => String(r.Regional).trim()).filter(Boolean);
+    if (regionales.length) {
+      const placeholders = regionales.map(() => '?').join(',');
+      const [coordRegRows] = await pool.execute(
+        `SELECT Nombre
+         FROM Maestro_Usuarios
+         WHERE Regional IN (${placeholders})
+           AND Rol = 'CoordinadorR'
+           AND Nombre IS NOT NULL AND Nombre <> ''
+         ORDER BY ID ASC
+         LIMIT 1`,
+        regionales
+      );
+      if (coordRegRows.length && coordRegRows[0].Nombre) {
+        return String(coordRegRows[0].Nombre).trim();
+      }
+    }
+  }
+
+  // Respaldo: Si aún no se encontró y tenemos la Regional del trabajador en vinculación
+  if (regFallback && regFallback !== '—') {
+    const [fallbackRows] = await pool.execute(
+      `SELECT Nombre
+       FROM Maestro_Usuarios
+       WHERE Regional = ?
+         AND Rol = 'CoordinadorR'
+         AND Nombre IS NOT NULL AND Nombre <> ''
+       ORDER BY ID ASC
+       LIMIT 1`,
+      [regFallback]
+    );
+    if (fallbackRows.length && fallbackRows[0].Nombre) {
+      return String(fallbackRows[0].Nombre).trim();
+    }
+  }
+
+  return '';
 }
 
 async function crearInspeccionVehiculo(payload, colaborador) {
@@ -745,29 +823,46 @@ async function crearInspeccionVehiculo(payload, colaborador) {
   let firmaDataUrl = null;
 
   if (usarFirmaPrevia) {
-    const [fRows] = await pool.execute(
-      `SELECT Doc FROM Maestro_docTrabajador
-       WHERE Identificacion = ? AND TipoDocumento = '22'
-       ORDER BY Fecha DESC LIMIT 1`,
-      [String(colaborador.identificacion)]
-    );
-    if (!fRows.length || !fRows[0].Doc) {
+    // 1. Intentar desde el bucket de firmas (firmas-images)
+    try {
+      firmaUrlPublica = await obtenerUrlFirmaReciente(colaborador.identificacion);
+      if (firmaUrlPublica) {
+        firmaDataUrl = await obtenerFirmaBase64Reciente(colaborador.identificacion);
+      }
+    } catch (_) { /* continuar a Maestro_docTrabajador si falla */ }
+
+    // 2. Respaldo en Maestro_docTrabajador (columna `Identificación` con tilde y `FechaRegistro`)
+    if (!firmaUrlPublica) {
+      const [fRows] = await pool.execute(
+        `SELECT Doc FROM Maestro_docTrabajador
+         WHERE \`Identificación\` = ? AND TipoDocumento = '22'
+         ORDER BY FechaRegistro DESC LIMIT 1`,
+        [String(colaborador.identificacion)]
+      );
+      if (fRows.length && fRows[0].Doc) {
+        const rawDoc = String(fRows[0].Doc);
+        firmaUrlPublica = rawDoc.startsWith('http')
+          ? rawDoc
+          : `https://storage.googleapis.com/talenthub_central/${rawDoc.replace(/^\/+/, '')}`;
+      }
+    }
+
+    if (!firmaUrlPublica) {
       throw new Error('No se encontró una firma previa registrada. Por favor dibuja tu firma.');
     }
-    const rawDoc = String(fRows[0].Doc);
-    firmaUrlPublica = rawDoc.startsWith('http')
-      ? rawDoc
-      : `https://storage.googleapis.com/talenthub_central/${rawDoc.replace(/^\/+/, '')}`;
-    try {
-      const respImg = await fetch(firmaUrlPublica);
-      if (respImg.ok) {
-        const arrBuf = await respImg.arrayBuffer();
-        const b64 = Buffer.from(arrBuf).toString('base64');
-        const cType = respImg.headers.get('content-type') || 'image/png';
-        firmaDataUrl = `data:${cType};base64,${b64}`;
+
+    if (!firmaDataUrl) {
+      try {
+        const respImg = await fetch(firmaUrlPublica);
+        if (respImg.ok) {
+          const arrBuf = await respImg.arrayBuffer();
+          const b64 = Buffer.from(arrBuf).toString('base64');
+          const cType = respImg.headers.get('content-type') || 'image/png';
+          firmaDataUrl = `data:${cType};base64,${b64}`;
+        }
+      } catch (_) {
+        firmaDataUrl = firmaUrlPublica;
       }
-    } catch (_) {
-      firmaDataUrl = firmaUrlPublica;
     }
   } else {
     if (!firmaBase64 || !String(firmaBase64).startsWith('data:image/')) {
@@ -834,6 +929,15 @@ async function crearInspeccionVehiculo(payload, colaborador) {
     });
   }
 
+  let reportaAFinal = String(reportTo || '').trim();
+  if (!reportaAFinal) {
+    try {
+      reportaAFinal = await resolverCoordinadorReporta(colaborador.operacion, colaborador.regional);
+    } catch (_) {
+      reportaAFinal = '';
+    }
+  }
+
   // Generar PDF oficial de la inspección
   const htmlPdf = construirHTMLPDFInspeccion({
     id,
@@ -848,7 +952,7 @@ async function crearInspeccionVehiculo(payload, colaborador) {
     items: itemsNormalizados,
     observacionesGenerales: String(generalObservations || '').trim(),
     planAccion: String(actionPlan || '').trim(),
-    reportaA: String(reportTo || '').trim(),
+    reportaA: reportaAFinal,
     fotosDataUrls,
     firmaDataUrl,
   });
@@ -886,7 +990,7 @@ async function crearInspeccionVehiculo(payload, colaborador) {
       totalNa,
       String(generalObservations || '').trim() || null,
       String(actionPlan || '').trim() || null,
-      String(reportTo || '').trim() || null,
+      reportaAFinal || null,
       JSON.stringify(itemsNormalizados),
       JSON.stringify(fotosUrls),
       firmaUrlPublica,
@@ -996,6 +1100,7 @@ module.exports = {
   buscarPlacasEnMaestro,
   listarInspeccionesColaborador,
   calcularEstadisticasMesColaborador,
+  resolverCoordinadorReporta,
   crearInspeccionVehiculo,
   generarFormatoBlancoPDF,
 };

@@ -16,9 +16,11 @@ const {
   buscarPlacasEnMaestro,
   listarInspeccionesColaborador,
   calcularEstadisticasMesColaborador,
+  resolverCoordinadorReporta,
   crearInspeccionVehiculo,
   generarFormatoBlancoPDF,
 } = require('../services/inspeccionesVehiculoService');
+const { obtenerUrlFirmaReciente } = require('../services/storage');
 
 const router = express.Router();
 const HTML_INDEX_PATH = path.join(__dirname, '../views/empleado/index.html');
@@ -176,13 +178,20 @@ async function obtenerDatosPortalPorVinculacion(idVinculacion) {
   }
 
   // Firma registrada del colaborador (para cesantías e inspecciones)
-  let firmaUrl = datosCesantiasForm ? datosCesantiasForm.firmaUrl : null;
+  let firmaUrl = datosCesantiasForm
+    ? (datosCesantiasForm.firmaPreviaUrl || datosCesantiasForm.firmaUrl || null)
+    : null;
+  if (!firmaUrl) {
+    try {
+      firmaUrl = await obtenerUrlFirmaReciente(identificacion);
+    } catch (_) { /* ignorar error de bucket opcional */ }
+  }
   if (!firmaUrl) {
     try {
       const [fRows] = await pool.execute(
         `SELECT Doc FROM Maestro_docTrabajador
-         WHERE Identificacion = ? AND TipoDocumento = '22'
-         ORDER BY Fecha DESC LIMIT 1`,
+         WHERE \`Identificación\` = ? AND TipoDocumento = '22'
+         ORDER BY FechaRegistro DESC LIMIT 1`,
         [identificacion]
       );
       if (fRows.length && fRows[0].Doc) {
@@ -191,14 +200,16 @@ async function obtenerDatosPortalPorVinculacion(idVinculacion) {
     } catch (_) { /* ignorar error de firma opcional */ }
   }
 
-  // Consultar estadísticas e historial de inspecciones preoperacionales del colaborador
-  const [inspeccionesStats, inspeccionesRecientes, limitesInspeccion, vehiculosHabituales] = await Promise.all([
+  // Consultar estadísticas, historial y persona a quien reporta para inspecciones preoperacionales
+  const operacionCol = vin.operacion || seg.Operacion || '';
+  const [inspeccionesStats, inspeccionesRecientes, limitesInspeccion, vehiculosHabituales, reportaPorDefecto] = await Promise.all([
     calcularEstadisticasMesColaborador(identificacion).catch(() => ({
       totalMonth: 0, aptoCount: 0, novedadCount: 0, noAptoCount: 0, uniqueVehicles: 0,
     })),
     listarInspeccionesColaborador(identificacion, 30).catch(() => []),
     obtenerLimitesInspeccion().catch(() => ({ maxFotos: 4 })),
     listarVehiculosHabitualesColaborador(identificacion, vin.idVinculacion, limpiarNombre(vin.trabajador || '')).catch(() => ({ placas: [], equipos: [] })),
+    resolverCoordinadorReporta(operacionCol, vin.regional).catch(() => ''),
   ]);
 
   return {
@@ -242,6 +253,7 @@ async function obtenerDatosPortalPorVinculacion(idVinculacion) {
       templates: obtenerResumenPlantillasInspeccion(),
       maxFotos: limitesInspeccion.maxFotos || 4,
       vehiculosHabituales: vehiculosHabituales || { placas: [], equipos: [] },
+      reportaPorDefecto: reportaPorDefecto || '',
     },
   };
 }
