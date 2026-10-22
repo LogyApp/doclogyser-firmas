@@ -4379,6 +4379,12 @@
             </select>
           </div>
           <div class="filter-group">
+            <label for="kardex-filter-mes">Mes (Fecha de Movimiento)</label>
+            <select id="kardex-filter-mes">
+              <option value="">Todos los meses</option>
+            </select>
+          </div>
+          <div class="filter-group">
             <label for="kardex-filter-articulo-search">Artículo</label>
             <input list="kardex-filter-articles-list" id="kardex-filter-articulo-search" placeholder="Todos los artículos" style="width: 100%; height: 42px; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; font-size: 0.85rem; font-weight: 500; color: var(--text); background: var(--card-bg); outline: none; transition: all 0.2s;">
             <datalist id="kardex-filter-articles-list"></datalist>
@@ -4391,6 +4397,12 @@
           <div class="filter-group" style="display: flex; align-items: flex-end;">
             <button id="kardex-btn-limpiar-filtros" class="btn-clear" style="width: 100%; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s;">
               <span>🧹</span> Limpiar Filtros
+            </button>
+          </div>
+          <div class="filter-group" style="display: flex; align-items: flex-end;">
+            <button type="button" class="btn-icono-descarga" onclick="abrirModalReporteKardex()" title="Descargar reporte de Kardex con estos filtros (Excel o CSV)" aria-label="Descargar reporte de Kardex con estos filtros" style="width: 100%; height: 42px; justify-content: center; gap: 8px; border-radius: 8px; font-weight: 600; font-size: 0.85rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Descargar con estos filtros
             </button>
           </div>
         </div>
@@ -4909,6 +4921,29 @@
           <button type="button" onclick="cerrarModalReporteInventario()">Cancelar</button>
           <button type="button" id="btnInvReporteCsv" onclick="descargarReporteInventario('csv')" disabled>📄 Descargar CSV</button>
           <button type="button" class="primario" id="btnInvReporteExcel" onclick="descargarReporteInventario('xlsx')" disabled>📊 Descargar Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Descargar reporte de la pestaña Kardex (según los filtros de la pestaña) -->
+  <div id="reporte-kardex-modal" class="modal" style="display: none; align-items: center; justify-content: center; padding-top: 5vh;">
+    <div style="max-width: 520px; width: 95%; margin: auto; background: var(--card-bg); color: var(--text); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border);">
+      <div style="background: var(--bg-elevated); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text);">📥 Descargar reporte de Kardex</h3>
+        <span onclick="cerrarModalReporteKardex()" style="color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</span>
+      </div>
+      <div style="padding: 20px 24px;">
+        <p style="font-size: .83rem; color: var(--text-muted); margin: 0 0 10px;">Se descargan los movimientos que su rol puede ver, con los filtros que tiene puestos en la pestaña. Para cambiarlos, cierre esta ventana y ajuste los filtros (por ejemplo, el Mes).</p>
+        <div class="reporte-campo">
+          <label>Filtros aplicados</label>
+          <div id="kardexReporteFiltros" style="font-size: .84rem; color: var(--text); line-height: 1.6;"></div>
+        </div>
+        <div class="reporte-info" id="kardexReporteInfo">Calculando...</div>
+        <div class="reporte-btns">
+          <button type="button" onclick="cerrarModalReporteKardex()">Cancelar</button>
+          <button type="button" id="btnKardexReporteCsv" onclick="descargarReporteKardex('csv')" disabled>📄 Descargar CSV</button>
+          <button type="button" class="primario" id="btnKardexReporteExcel" onclick="descargarReporteKardex('xlsx')" disabled>📊 Descargar Excel</button>
         </div>
       </div>
     </div>
@@ -6387,7 +6422,8 @@
         'sol-add-articles-modal',
         'acta-add-articles-modal',
         'elementos-manager-modal',
-        'reporte-inventario-modal'
+        'reporte-inventario-modal',
+        'reporte-kardex-modal'
       ];
       function closeActiveModals() {
         MODAL_IDS_ACTIVE.forEach(id => {
@@ -8523,6 +8559,7 @@
     const kardexFilterDestino = document.getElementById('kardex-filter-destino');
     const kardexFilterCategoriaButtons = document.getElementById('kardex-filter-categoria-buttons');
     const kardexFilterMovimiento = document.getElementById('kardex-filter-movimiento');
+    const kardexFilterMes = document.getElementById('kardex-filter-mes');
     const kardexFilterSearch = document.getElementById('kardex-filter-search');
 
     const kardexStatTotalMov = document.getElementById('kardex-stat-total-mov');
@@ -8620,6 +8657,12 @@
         });
       }
 
+      if (kardexFilterMes) {
+        kardexFilterMes.addEventListener('change', () => {
+          fetchKardexData();
+        });
+      }
+
       if (kardexFilterSearch) {
         kardexFilterSearch.addEventListener('input', debounceSearchKardex);
       }
@@ -8633,8 +8676,9 @@
           if (kardexFilterDestino) kardexFilterDestino.value = '';
           activeKardexCategory = '';
           if (kardexFilterMovimiento) kardexFilterMovimiento.value = '';
+          if (kardexFilterMes) kardexFilterMes.value = '';
           if (kardexFilterSearch) kardexFilterSearch.value = '';
-          
+
           const filterArtSearch = document.getElementById('kardex-filter-articulo-search');
           const filterArtId = document.getElementById('kardex-filter-id-articulo');
           if (filterArtSearch) filterArtSearch.value = '';
@@ -8934,28 +8978,137 @@
       kardexFilterDestino.value = current;
     }
 
+    // Filtros actuales de la pestaña Kardex (los usa la consulta y el reporte de descarga)
+    function paramsFiltrosKardex() {
+      const params = new URLSearchParams({ usuario: CONFIG.usuarioId });
+      const idArtEl = document.getElementById('kardex-filter-id-articulo');
+      const valores = {
+        regional: kardexFilterRegional ? kardexFilterRegional.value : '',
+        operacion: kardexFilterOperacion ? kardexFilterOperacion.value : '',
+        operacionDestino: kardexFilterDestino ? kardexFilterDestino.value : '',
+        categoria: activeKardexCategory,
+        tipoMovimiento: kardexFilterMovimiento ? kardexFilterMovimiento.value : '',
+        mes: kardexFilterMes ? kardexFilterMes.value : '',
+        idArticulo: idArtEl ? idArtEl.value : '',
+        search: kardexFilterSearch ? kardexFilterSearch.value.trim() : '',
+      };
+      Object.entries(valores).forEach(([k, v]) => { if (v) params.set(k, v); });
+      return params;
+    }
+
+    // ── Reporte de Kardex (ventana emergente) ────────────────────────────────
+    // Descarga lo que muestran los filtros de la pestaña. Excel hasta
+    // "Límite de filas reporte Excel - Kardex"; si pasa, solo CSV hasta
+    // "Límite de filas reporte CSV - Kardex" (Config_Parametros, inventario / Kardex).
+    let _reporteKardexSeq = 0;
+
+    window.abrirModalReporteKardex = function() {
+      const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const textoSel = (sel) => (sel && sel.value ? sel.options[sel.selectedIndex].textContent.replace(/\s*\([\d.,]+\)\s*$/, '') : '');
+      const artSearch = document.getElementById('kardex-filter-articulo-search');
+      const filtros = [
+        ['Regional', textoSel(kardexFilterRegional)],
+        ['Operación', textoSel(kardexFilterOperacion)],
+        ['Destino', textoSel(kardexFilterDestino)],
+        ['Categoría', activeKardexCategory],
+        ['Tipo Movimiento', textoSel(kardexFilterMovimiento)],
+        ['Mes', textoSel(kardexFilterMes)],
+        ['Artículo', document.getElementById('kardex-filter-id-articulo')?.value ? (artSearch ? artSearch.value : '') : ''],
+        ['Buscador', kardexFilterSearch ? kardexFilterSearch.value.trim() : ''],
+      ].filter(([, v]) => v);
+      document.getElementById('kardexReporteFiltros').innerHTML = filtros.length
+        ? filtros.map(([k, v]) => `• <strong>${k}:</strong> ${esc(v)}`).join('<br>')
+        : 'Ninguno: se descargan <strong>todos</strong> los movimientos que su rol puede ver.';
+      const modal = document.getElementById('reporte-kardex-modal');
+      modal.style.display = 'flex';
+      modal._backEntry = registrarModalBack(() => window.cerrarModalReporteKardex());
+      actualizarConteoReporteKardex();
+    };
+
+    window.cerrarModalReporteKardex = function() {
+      const modal = document.getElementById('reporte-kardex-modal');
+      modal.style.display = 'none';
+      cerrarModalBack(modal._backEntry);
+      modal._backEntry = null;
+    };
+
+    async function actualizarConteoReporteKardex() {
+      const info = document.getElementById('kardexReporteInfo');
+      const btnExcel = document.getElementById('btnKardexReporteExcel');
+      const btnCsv = document.getElementById('btnKardexReporteCsv');
+      btnExcel.disabled = true;
+      btnCsv.disabled = true;
+      info.style.color = 'var(--text-muted)';
+      info.textContent = 'Calculando cantidad de filas...';
+      const seq = ++_reporteKardexSeq;
+      try {
+        const resp = await fetch('/inventario/api/kardex/reporte/conteo?' + paramsFiltrosKardex().toString());
+        const data = await resp.json();
+        if (seq !== _reporteKardexSeq) return;
+        if (!resp.ok || !data.ok) {
+          info.style.color = 'var(--danger)';
+          info.textContent = data.error || 'No se pudo calcular el reporte.';
+          return;
+        }
+        const fmt = (n) => Number(n).toLocaleString('es-CO');
+        btnExcel.disabled = !data.permiteExcel;
+        btnCsv.disabled = !data.permiteCsv;
+        if (data.total === 0) {
+          info.textContent = 'No hay movimientos con los filtros seleccionados.';
+        } else if (data.permiteExcel) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> movimientos. Puede descargarlo en Excel o CSV.`;
+        } else if (data.permiteCsv) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> movimientos. Supera el límite de Excel (${fmt(data.limites.excel)} filas), solo se puede descargar en CSV.`;
+        } else {
+          info.style.color = 'var(--danger)';
+          info.innerHTML = `<strong>${fmt(data.total)}</strong> movimientos. Supera el máximo permitido (${fmt(data.limites.csv)} filas). Filtre por mes, regional u operación.`;
+        }
+      } catch {
+        if (seq !== _reporteKardexSeq) return;
+        info.style.color = 'var(--danger)';
+        info.textContent = 'Error de red al calcular el reporte.';
+      }
+    }
+
+    window.descargarReporteKardex = async function(formato) {
+      const btn = document.getElementById(formato === 'csv' ? 'btnKardexReporteCsv' : 'btnKardexReporteExcel');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        const params = paramsFiltrosKardex();
+        params.set('formato', formato);
+        const resp = await fetch('/inventario/api/kardex/reporte?' + params.toString());
+        if (!resp.ok) {
+          let msg = 'No se pudo generar el reporte.';
+          try { msg = (await resp.json()).error || msg; } catch {}
+          throw new Error(msg);
+        }
+        const blob = await resp.blob();
+        const disp = resp.headers.get('Content-Disposition') || '';
+        const m = disp.match(/filename\*=UTF-8''([^;]+)/) || disp.match(/filename="([^"]+)"/);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = m ? decodeURIComponent(m[1]) : `Kardex.${formato}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.innerHTML = textoOriginal;
+        actualizarConteoReporteKardex();
+      }
+    };
+
     async function fetchKardexData() {
       if (kardexLoader) kardexLoader.style.display = 'block';
       if (kardexTableBody) kardexTableBody.innerHTML = '';
       if (kardexResultsText) kardexResultsText.textContent = 'Buscando movimientos...';
 
       try {
-        const reg = kardexFilterRegional ? kardexFilterRegional.value : '';
-        const op = kardexFilterOperacion ? kardexFilterOperacion.value : '';
-        const opDest = kardexFilterDestino ? kardexFilterDestino.value : '';
-        const mov = kardexFilterMovimiento ? kardexFilterMovimiento.value : '';
-        const idArt = document.getElementById('kardex-filter-id-articulo') ? document.getElementById('kardex-filter-id-articulo').value : '';
-        const search = kardexFilterSearch ? kardexFilterSearch.value.trim() : '';
-
-        // Query the backend WITH regional, operacion, operacionDestino, tipoMovimiento, idArticulo and search criteria
-        let url = `/inventario/api/kardex/datos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
-        if (reg) url += `&regional=${encodeURIComponent(reg)}`;
-        if (op) url += `&operacion=${encodeURIComponent(op)}`;
-        if (opDest) url += `&operacionDestino=${encodeURIComponent(opDest)}`;
-        if (mov) url += `&tipoMovimiento=${encodeURIComponent(mov)}`;
-        if (idArt) url += `&idArticulo=${encodeURIComponent(idArt)}`;
-        if (search) url += `&search=${encodeURIComponent(search)}`;
-
+        const url = `/inventario/api/kardex/datos?${paramsFiltrosKardex().toString()}`;
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error('Error al cargar datos del Kardex');
@@ -8963,7 +9116,7 @@
 
         const data = await response.json();
         allKardexData = data.results || [];
-        lastKardexFacetedCounts = data.counts || { regionales: {}, operaciones: {}, categorias: {}, movimientos: {} };
+        lastKardexFacetedCounts = data.counts || { regionales: {}, operaciones: {}, categorias: {}, movimientos: {}, meses: {} };
         lastKardexFacetedStats = data.stats || { totalMov: 0, totalEnt: 0, totalSal: 0 };
         
         applyKardexFiltersAndRender();
@@ -9099,7 +9252,31 @@
         if (mov === selectedMov) opt.selected = true;
         kardexFilterMovimiento.appendChild(opt);
       });
-      
+
+      // Mes (Fecha de Movimiento): meses con movimientos, del más reciente al más antiguo
+      if (kardexFilterMes) {
+        const selectedMes = kardexFilterMes.value;
+        const mesCounts = counts.meses || {};
+        const NOMBRES_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const meses = Object.keys(mesCounts);
+        if (selectedMes && !meses.includes(selectedMes)) meses.push(selectedMes);
+        meses.sort().reverse();
+        const totalMes = Object.values(mesCounts).reduce((a, b) => a + Number(b), 0);
+        kardexFilterMes.innerHTML = '';
+        const optAllMes = document.createElement('option');
+        optAllMes.value = '';
+        optAllMes.textContent = `Todos los meses (${totalMes})`;
+        kardexFilterMes.appendChild(optAllMes);
+        meses.forEach(m => {
+          const [anio, num] = m.split('-');
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = `${NOMBRES_MES[Number(num) - 1] || num} ${anio} (${mesCounts[m] || 0})`;
+          if (m === selectedMes) opt.selected = true;
+          kardexFilterMes.appendChild(opt);
+        });
+      }
+
       // Render Category Buttons with counts based on loaded data
       renderKardexCategoryButtons();
     }
@@ -9155,8 +9332,9 @@
       if (kardexFilterDestino && kardexFilterDestino.value) activeCount++;
       if (activeKardexCategory) activeCount++;
       if (kardexFilterMovimiento && kardexFilterMovimiento.value) activeCount++;
+      if (kardexFilterMes && kardexFilterMes.value) activeCount++;
       if (kardexFilterSearch && kardexFilterSearch.value.trim()) activeCount++;
-      
+
       if (activeCount > 0) {
         badge.textContent = activeCount;
         badge.style.display = 'inline-flex';

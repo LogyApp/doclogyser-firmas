@@ -259,27 +259,33 @@ router.get('/api/datos', async (req, res) => {
 // Modo: todo | regional | operacion. Excel hasta "Límite de filas reporte Excel - Inventario";
 // si pasa, solo CSV hasta "Límite de filas reporte CSV - Inventario"
 // (Config_Parametros, inventario / Inventario). Sin la fila → valores por defecto.
-const LIMITES_REPORTE_INVENTARIO_DEFECTO = { excel: 10000, csv: 100000 };
-const CONCEPTO_LIMITE_EXCEL_INVENTARIO = 'Límite de filas reporte Excel - Inventario';
-const CONCEPTO_LIMITE_CSV_INVENTARIO = 'Límite de filas reporte CSV - Inventario';
+const LIMITES_REPORTE_DEFECTO = { excel: 10000, csv: 100000 };
 
-async function obtenerLimitesReporteInventario() {
-  const limites = { ...LIMITES_REPORTE_INVENTARIO_DEFECTO };
+// Límites de filas de un reporte del módulo: Config_Parametros (Modulo 'inventario',
+// Seccion = pestaña), conceptos "Límite de filas reporte Excel/CSV - <pestaña>".
+async function obtenerLimitesReporte(seccion) {
+  const conceptoExcel = `Límite de filas reporte Excel - ${seccion}`;
+  const conceptoCsv = `Límite de filas reporte CSV - ${seccion}`;
+  const limites = { ...LIMITES_REPORTE_DEFECTO };
   try {
     const [rows] = await pool.execute(
-      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'inventario' AND Seccion = 'Inventario' AND Concepto IN (?, ?)",
-      [CONCEPTO_LIMITE_EXCEL_INVENTARIO, CONCEPTO_LIMITE_CSV_INVENTARIO]
+      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'inventario' AND Seccion = ? AND Concepto IN (?, ?)",
+      [seccion, conceptoExcel, conceptoCsv]
     );
     rows.forEach((r) => {
       const n = parseInt(r.Parametro, 10);
       if (!(n > 0)) return;
-      if (r.Concepto === CONCEPTO_LIMITE_EXCEL_INVENTARIO) limites.excel = n;
-      if (r.Concepto === CONCEPTO_LIMITE_CSV_INVENTARIO) limites.csv = n;
+      if (r.Concepto === conceptoExcel) limites.excel = n;
+      if (r.Concepto === conceptoCsv) limites.csv = n;
     });
   } catch (err) {
-    console.error('[inventario] No se pudieron leer los límites del reporte:', err.message);
+    console.error(`[inventario] No se pudieron leer los límites del reporte de ${seccion}:`, err.message);
   }
   return limites;
+}
+
+function obtenerLimitesReporteInventario() {
+  return obtenerLimitesReporte('Inventario');
 }
 
 // Devuelve { where, params, etiqueta }, { error } o null (el usuario no tiene operaciones).
@@ -877,9 +883,71 @@ router.get('/api/confirmaciones', async (req, res) => {
 // ENDPOINTS DE KARDEX INTEGRADOS
 // ==========================================
 
+// Filtros de Kardex, compartidos por la pestaña y su reporte: alcance del rol (operaciones y
+// categorías, Sección 'Kardex') + filtros de la pantalla. `mes` ('AAAA-MM') filtra por la
+// Fecha de Movimiento. Devuelve null si el usuario no tiene operaciones, o { error }.
+function construirFiltrosKardex(acceso, query) {
+  const { regional, operacion, operacionDestino, categoria, tipoMovimiento, idArticulo, search, mes } = query;
+  const securityConds = [];
+  const securityParams = [];
+
+  // Restringir categorías si aplica (Acceso 4, 5, 6)
+  if (acceso.filtroCategorias) {
+    const ph = acceso.filtroCategorias.map(() => '?').join(',');
+    securityConds.push(`k.\`Categoria\` IN (${ph})`);
+    securityParams.push(...acceso.filtroCategorias);
+  }
+
+  // Security filter based on role/permissions
+  if (!acceso.sinFiltro) {
+    if (!acceso.operacionesFiltro.length) return null;
+    const ph = acceso.operacionesFiltro.map(() => '?').join(',');
+    securityConds.push(`k.\`Operación\` IN (${ph})`);
+    securityParams.push(...acceso.operacionesFiltro);
+  }
+
+  let fMes = null;
+  if (mes) {
+    const m = String(mes).match(/^(\d{4})-(\d{2})$/);
+    const anio = m ? Number(m[1]) : 0;
+    const numMes = m ? Number(m[2]) : 0;
+    if (!m || numMes < 1 || numMes > 12) return { error: 'Mes inválido.' };
+    const desde = `${m[1]}-${m[2]}-01`;
+    const hasta = numMes === 12 ? `${anio + 1}-01-01` : `${anio}-${String(numMes + 1).padStart(2, '0')}-01`;
+    fMes = { cond: 'k.FechaMovimiento >= ? AND k.FechaMovimiento < ?', params: [desde, hasta] };
+  }
+
+  const like = search ? `%${search}%` : null;
+  const filtros = {
+    fReg: regional ? { cond: 'k.`Regional` = ?', params: [regional] } : null,
+    fOp: operacion ? { cond: 'k.`Operación` = ?', params: [operacion] } : null,
+    fOpDest: operacionDestino ? { cond: 'k.`OperaciónDestino` = ?', params: [operacionDestino] } : null,
+    fCat: categoria ? { cond: 'k.`Categoria` = ?', params: [categoria] } : null,
+    fMov: tipoMovimiento ? { cond: 'k.`TipoMovimiento` = ?', params: [tipoMovimiento] } : null,
+    fIdArt: idArticulo ? { cond: 'k.`IdArticulo` = ?', params: [idArticulo] } : null,
+    fSearch: search ? { cond: '(a.Articulo LIKE ? OR a.Referencia LIKE ? OR k.UsuarioAsignado LIKE ? OR k.Acta LIKE ? OR k.Observaciones LIKE ? OR k.UsuarioRegistro LIKE ?)', params: [like, like, like, like, like, like] } : null,
+    fMes,
+  };
+
+  // Une el filtro de seguridad con los filtros indicados
+  const buildKardexWhere = (filtersList) => {
+    const c = [...securityConds];
+    const p = [...securityParams];
+    filtersList.forEach((f) => {
+      if (f) {
+        c.push(f.cond);
+        p.push(...f.params);
+      }
+    });
+    return { where: c.length ? `WHERE ${c.join(' AND ')}` : '', params: p };
+  };
+
+  return { securityConds, securityParams, filtros, buildKardexWhere };
+}
+
 router.get('/api/kardex/datos', async (req, res) => {
   try {
-    const { usuario, regional, operacion, operacionDestino, categoria, tipoMovimiento, idArticulo, search } = req.query;
+    const { usuario, regional, operacion, operacionDestino, categoria, tipoMovimiento, idArticulo, search, mes } = req.query;
     if (!usuario) {
       return res.status(400).json({ error: 'usuario es requerido' });
     }
@@ -889,57 +957,16 @@ router.get('/api/kardex/datos', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    const securityConds = [];
-    const securityParams = [];
-
-    // Restringir categorías si aplica (Acceso 4, 5, 6)
-    if (acceso.filtroCategorias) {
-      const ph = acceso.filtroCategorias.map(() => '?').join(',');
-      securityConds.push(`k.\`Categoria\` IN (${ph})`);
-      securityParams.push(...acceso.filtroCategorias);
+    const filtrosKardex = construirFiltrosKardex(acceso, req.query);
+    if (!filtrosKardex) {
+      return res.json({ results: [], counts: { regionales: {}, operaciones: {}, categorias: {}, movimientos: {}, meses: {} } });
     }
-
-    // Security filter based on role/permissions
-    if (!acceso.sinFiltro) {
-      if (!acceso.operacionesFiltro.length) {
-        return res.json({ results: [], counts: { regionales: {}, operaciones: {}, categorias: {}, movimientos: {} } });
-      }
-      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      securityConds.push(`k.\`Operación\` IN (${ph})`);
-      securityParams.push(...acceso.operacionesFiltro);
-    }
-
-    // Build filter objects
-    const fReg = regional ? { cond: 'k.`Regional` = ?', param: regional } : null;
-    const fOp = operacion ? { cond: 'k.`Operación` = ?', param: operacion } : null;
-    const fOpDest = operacionDestino ? { cond: 'k.`OperaciónDestino` = ?', param: operacionDestino } : null;
-    const fCat = categoria ? { cond: 'k.`Categoria` = ?', param: categoria } : null;
-    const fMov = tipoMovimiento ? { cond: 'k.`TipoMovimiento` = ?', param: tipoMovimiento } : null;
-    const fIdArt = idArticulo ? { cond: 'k.`IdArticulo` = ?', param: idArticulo } : null;
-    const fSearch = search ? { cond: '(a.Articulo LIKE ? OR a.Referencia LIKE ? OR k.UsuarioAsignado LIKE ? OR k.Acta LIKE ? OR k.Observaciones LIKE ? OR k.UsuarioRegistro LIKE ?)', param: `%${search}%` } : null;
-
-    // Helper to join filters safely
-    const buildKardexWhere = (filtersList) => {
-      const c = [...securityConds];
-      const p = [...securityParams];
-      filtersList.forEach(f => {
-        if (f) {
-          c.push(f.cond);
-          if (f.cond.includes('LIKE')) {
-            p.push(f.param, f.param, f.param, f.param, f.param, f.param);
-          } else {
-            p.push(f.param);
-          }
-        }
-      });
-      return {
-        where: c.length ? `WHERE ${c.join(' AND ')}` : '',
-        params: p
-      };
-    };
+    if (filtrosKardex.error) return res.status(400).json({ error: filtrosKardex.error });
+    const { securityConds, securityParams, buildKardexWhere } = filtrosKardex;
+    const { fReg, fOp, fOpDest, fCat, fMov, fIdArt, fSearch, fMes } = filtrosKardex.filtros;
 
     // 1. Fetch filtered items (limit 500 rows for speed)
-    const listFilter = buildKardexWhere([fReg, fOp, fOpDest, fCat, fMov, fIdArt, fSearch]);
+    const listFilter = buildKardexWhere([fReg, fOp, fOpDest, fCat, fMov, fIdArt, fSearch, fMes]);
     const listQuery = `
       SELECT
         k.IdKardex,
@@ -986,7 +1013,8 @@ router.get('/api/kardex/datos', async (req, res) => {
           k.Regional, k.\`Operación\` AS Operacion, k.\`OperaciónDestino\` AS OperacionDestino,
           k.Categoria, k.TipoMovimiento, k.IdArticulo, k.Cantidad,
           k.UsuarioAsignado, k.Acta, k.Observaciones, k.UsuarioRegistro,
-          a.Articulo, a.Referencia
+          a.Articulo, a.Referencia,
+          DATE_FORMAT(k.FechaMovimiento, '%Y-%m') AS Mes
         FROM Dynamic_Kardex k
         LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
         ${securityWhereOnly}
@@ -1009,8 +1037,9 @@ router.get('/api/kardex/datos', async (req, res) => {
       (r.Acta && r.Acta.includes(search)) ||
       (r.Observaciones && r.Observaciones.includes(search)) ||
       (r.UsuarioRegistro && r.UsuarioRegistro.includes(search));
+    const matchMes = (r) => !fMes || r.Mes === mes;
 
-    const allFiltered = facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r));
+    const allFiltered = facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r) && matchMes(r));
 
     const sumAbsBy = (rows, keyFn) => {
       const acc = {};
@@ -1022,10 +1051,15 @@ router.get('/api/kardex/datos', async (req, res) => {
       return acc;
     };
 
-    const regCounts = sumAbsBy(facetBase.filter((r) => matchOp(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r)), (r) => r.Regional);
-    const opCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r)), (r) => r.Operacion);
-    const catCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchMov(r) && matchIdArt(r) && matchSearch(r)), (r) => r.Categoria);
-    const movCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchCat(r) && matchIdArt(r) && matchSearch(r)), (r) => r.TipoMovimiento);
+    const regCounts = sumAbsBy(facetBase.filter((r) => matchOp(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r) && matchMes(r)), (r) => r.Regional);
+    const opCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r) && matchMes(r)), (r) => r.Operacion);
+    const catCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchMov(r) && matchIdArt(r) && matchSearch(r) && matchMes(r)), (r) => r.Categoria);
+    const movCounts = sumAbsBy(facetBase.filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchCat(r) && matchIdArt(r) && matchSearch(r) && matchMes(r)), (r) => r.TipoMovimiento);
+    // Meses: cantidad de movimientos (no unidades) por mes de la Fecha de Movimiento
+    const mesCounts = {};
+    facetBase
+      .filter((r) => matchReg(r) && matchOp(r) && matchOpDest(r) && matchCat(r) && matchMov(r) && matchIdArt(r) && matchSearch(r))
+      .forEach((r) => { if (r.Mes) mesCounts[r.Mes] = (mesCounts[r.Mes] || 0) + 1; });
 
     let totalMov = 0;
     let totalEnt = 0;
@@ -1043,13 +1077,167 @@ router.get('/api/kardex/datos', async (req, res) => {
         regionales: regCounts,
         operaciones: opCounts,
         categorias: catCounts,
-        movimientos: movCounts
+        movimientos: movCounts,
+        meses: mesCounts
       },
       stats: { totalMov, totalEnt, totalSal }
     });
   } catch (err) {
     console.error('[inventario] GET /api/kardex/datos error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Reporte de la pestaña Kardex (ícono de descarga) ──────────────────────
+// Descarga exactamente lo que muestran los filtros de la pestaña (incluido el Mes por
+// Fecha de Movimiento), dentro del alcance del rol. Excel hasta
+// "Límite de filas reporte Excel - Kardex"; si pasa, solo CSV hasta
+// "Límite de filas reporte CSV - Kardex" (Config_Parametros, inventario / Kardex).
+const COLUMNAS_REPORTE_KARDEX = [
+  { titulo: 'Id Kardex',          campo: 'IdKardex',           tipo: 'texto',     ancho: 34 },
+  { titulo: 'Fecha Movimiento',   campo: 'FechaMovimiento',    tipo: 'fechaHora', ancho: 18 },
+  { titulo: 'Tipo Movimiento',    campo: 'TipoMovimiento',     tipo: 'texto',     ancho: 16 },
+  { titulo: 'Regional',           campo: 'Regional',           tipo: 'texto',     ancho: 16 },
+  { titulo: 'Operación',          campo: 'Operacion',          tipo: 'texto',     ancho: 26 },
+  { titulo: 'Operación Destino',  campo: 'OperacionDestino',   tipo: 'texto',     ancho: 26 },
+  { titulo: 'Categoría',          campo: 'Categoria',          tipo: 'texto',     ancho: 16 },
+  { titulo: 'Id Artículo',        campo: 'IdArticulo',         tipo: 'numero',    ancho: 12 },
+  { titulo: 'Artículo',           campo: 'Articulo',           tipo: 'texto',     ancho: 34 },
+  { titulo: 'Referencia',         campo: 'Referencia',         tipo: 'texto',     ancho: 24 },
+  { titulo: 'Talla',              campo: 'Talla',              tipo: 'texto',     ancho: 10 },
+  { titulo: 'Cantidad',           campo: 'Cantidad',           tipo: 'numero',    ancho: 11 },
+  { titulo: 'Valor Unitario',     campo: 'ValorUnitario',      tipo: 'numero',    ancho: 14 },
+  { titulo: 'Valor Total',        campo: 'ValorTotal',         tipo: 'numero',    ancho: 14 },
+  { titulo: 'Asignado A (Identificación)', campo: 'UsuarioAsignado', tipo: 'texto', ancho: 18 },
+  { titulo: 'Trabajador Asignado', campo: 'TrabajadorAsignado', tipo: 'texto',    ancho: 34 },
+  { titulo: 'Acta',               campo: 'Acta',               tipo: 'texto',     ancho: 10 },
+  { titulo: 'Observaciones',      campo: 'Observaciones',      tipo: 'texto',     ancho: 40 },
+  { titulo: 'Usuario Registro',   campo: 'UsuarioRegistro',    tipo: 'texto',     ancho: 24 },
+  { titulo: 'Fecha Registro',     campo: 'FechaRegistro',      tipo: 'fechaHora', ancho: 18 },
+];
+
+// "Identificación ** NOMBRE" → "NOMBRE"
+function nombreTrabajadorKardex(trabajador) {
+  const partes = String(trabajador || '').split(' ** ');
+  return (partes.length > 1 ? partes[1] : trabajador || '').trim();
+}
+
+// Filtro del reporte: los mismos filtros de la pestaña. Devuelve { where, params, etiqueta }, { error } o null.
+function construirFiltroReporteKardex(acceso, query) {
+  const fk = construirFiltrosKardex(acceso, query);
+  if (!fk || fk.error) return fk;
+  const f = fk.filtros;
+  const { where, params } = fk.buildKardexWhere([f.fReg, f.fOp, f.fOpDest, f.fCat, f.fMov, f.fIdArt, f.fSearch, f.fMes]);
+  const partes = [query.mes, query.operacion || query.regional].filter(Boolean);
+  const etiqueta = (partes.join('_') || 'Todo').replace(/[^\w\-ÁÉÍÓÚáéíóúÑñ ]+/g, '').trim().replace(/\s+/g, '_') || 'Reporte';
+  return { where, params, etiqueta };
+}
+
+// El buscador filtra por campos del artículo, por eso el conteo también une Dynamic_Articulos.
+async function contarFilasReporteKardex(filtro) {
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM Dynamic_Kardex k LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id ${filtro.where}`,
+    filtro.params
+  );
+  return Number(row.total || 0);
+}
+
+// GET /api/kardex/reporte/conteo — cuántas filas tendría y qué formatos se permiten
+router.get('/api/kardex/reporte/conteo', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const filtro = construirFiltroReporteKardex(acceso, req.query);
+    if (filtro && filtro.error) return res.status(400).json({ error: filtro.error });
+    const limites = await obtenerLimitesReporte('Kardex');
+    const total = filtro ? await contarFilasReporteKardex(filtro) : 0;
+    res.json({
+      ok: true,
+      total,
+      limites,
+      permiteExcel: total > 0 && total <= limites.excel,
+      permiteCsv: total > 0 && total <= limites.csv,
+    });
+  } catch (err) {
+    console.error('[inventario] GET /api/kardex/reporte/conteo:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/kardex/reporte?formato=xlsx|csv — descarga el reporte
+router.get('/api/kardex/reporte', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const formato = String(req.query.formato || '').toLowerCase();
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!['xlsx', 'csv'].includes(formato)) return res.status(400).json({ error: 'Formato inválido. Use Excel o CSV.' });
+
+    const acceso = await computarAccesoInventario(usuario, 'Kardex');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+
+    const filtro = construirFiltroReporteKardex(acceso, req.query);
+    if (filtro && filtro.error) return res.status(400).json({ error: filtro.error });
+    const limites = await obtenerLimitesReporte('Kardex');
+    const total = filtro ? await contarFilasReporteKardex(filtro) : 0;
+    const fmt = (n) => Number(n).toLocaleString('es-CO');
+    if (total === 0) return res.status(400).json({ error: 'No hay movimientos con los filtros seleccionados.' });
+    if (formato === 'xlsx' && total > limites.excel) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas. En Excel se permiten hasta ${fmt(limites.excel)}; descárguelo en CSV.` });
+    }
+    if (total > limites.csv) {
+      return res.status(400).json({ error: `El reporte tiene ${fmt(total)} filas y el máximo permitido es ${fmt(limites.csv)}. Filtre por mes, regional u operación.` });
+    }
+
+    const sql = `
+      SELECT
+        k.IdKardex, k.FechaMovimiento, k.TipoMovimiento, k.Regional,
+        k.\`Operación\` AS Operacion, k.\`OperaciónDestino\` AS OperacionDestino, k.Categoria,
+        k.IdArticulo, a.Articulo, a.Referencia, a.Talla,
+        k.Cantidad, k.ValorUnitario, (k.Cantidad * k.ValorUnitario) AS ValorTotal,
+        k.UsuarioAsignado,
+        (SELECT v.Trabajador FROM \`Maestro_Vinculación\` v
+         WHERE v.\`Identificación\` = k.UsuarioAsignado
+         ORDER BY v.\`Fecha de Ingreso\` DESC LIMIT 1) AS TrabajadorAsignado,
+        k.Acta, k.Observaciones, k.UsuarioRegistro, k.FechaRegistro
+      FROM Dynamic_Kardex k
+      LEFT JOIN Dynamic_Articulos a ON k.IdArticulo = a.Id
+      ${filtro.where}
+      ORDER BY k.FechaMovimiento DESC, k.IdKardex DESC
+    `;
+    const prepararFila = (f) => ({ ...f, TrabajadorAsignado: nombreTrabajadorKardex(f.TrabajadorAsignado) });
+    const archivo = nombreArchivo(`Kardex_${filtro.etiqueta}`, formato);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(archivo)}"; filename*=UTF-8''${encodeURIComponent(archivo)}`);
+
+    if (formato === 'xlsx') {
+      const [filas] = await pool.execute(sql, filtro.params);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(generarXlsx({ hoja: 'Kardex', columnas: COLUMNAS_REPORTE_KARDEX, filas: filas.map(prepararFila) }));
+    }
+
+    // CSV fila por fila (hasta 100.000), sin cargar todo en memoria; se detiene si el usuario cancela.
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.write(encabezadoCsv(COLUMNAS_REPORTE_KARDEX));
+    const stream = pool.pool.query(sql, filtro.params).stream({ highWaterMark: 500 });
+    let cancelado = false;
+    req.on('close', () => { if (!res.writableEnded) { cancelado = true; stream.destroy(); } });
+    stream.on('data', (fila) => {
+      if (!res.write(filaCsv(COLUMNAS_REPORTE_KARDEX, prepararFila(fila)))) {
+        stream.pause();
+        res.once('drain', () => stream.resume());
+      }
+    });
+    stream.on('end', () => res.end());
+    stream.on('error', (err) => {
+      if (!cancelado) console.error('[inventario] Error generando CSV de Kardex:', err.message);
+      res.end();
+    });
+  } catch (err) {
+    console.error('[inventario] GET /api/kardex/reporte:', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.end();
   }
 });
 
