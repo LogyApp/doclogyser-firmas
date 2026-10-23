@@ -9866,7 +9866,7 @@
           dbCategories = data.categories || [];
         } catch (e) {
           console.error("Error fetching categories:", e);
-          dbCategories = ['ACTIVO FIJO', 'DOTACIÓN', 'HERRAMIENTA', 'EPP', 'PAPELERIA', 'TECNOLOGIA'];
+          dbCategories = (CONFIG.categoriasTodas || []);
         }
       }
 
@@ -9899,9 +9899,11 @@
       }
 
       // Check user permissions
-      const opUpper = (CONFIG.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-      const esAdministracion = opUpper === 'ADMINISTRACION' || ['AuxiliarR', 'Auxiliar'].includes(CONFIG.rol);
-      const puedeEliminar = CONFIG.rol === 'Inventario' || CONFIG.rol === 'Sistema';
+      // Permisos de Artículos (Config_Parametros, inventario / Artículos); el servidor los vuelve a validar
+      const cfgArt = CONFIG.articulos || {};
+      const esAdministracion = Boolean(cfgArt.puedeCrearEditar); // "Roles que pueden crear y editar artículos"
+      const puedeEliminar = Boolean(cfgArt.puedeEliminar); // "Roles que pueden eliminar artículos"
+      const puedeGestionarImagenes = Boolean(cfgArt.puedeGestionarImagenes); // "Roles que pueden gestionar imágenes de elementos"
 
       // Set user profile
       const artProfileName = document.getElementById('articulos-profile-name');
@@ -9926,7 +9928,7 @@
       }
 
       const btnElementos = document.getElementById('articulos-btn-elementos');
-      if (btnElementos && puedeEliminar) {
+      if (btnElementos && puedeGestionarImagenes) {
         btnElementos.style.display = 'inline-flex';
       }
 
@@ -10170,9 +10172,11 @@
         return;
       }
 
-      const opUpper = (CONFIG.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-      const esAdministracion = opUpper === 'ADMINISTRACION' || ['AuxiliarR', 'Auxiliar'].includes(CONFIG.rol);
-      const puedeEliminar = CONFIG.rol === 'Inventario' || CONFIG.rol === 'Sistema';
+      // Permisos de Artículos (Config_Parametros, inventario / Artículos); el servidor los vuelve a validar
+      const cfgArt = CONFIG.articulos || {};
+      const esAdministracion = Boolean(cfgArt.puedeCrearEditar); // "Roles que pueden crear y editar artículos"
+      const puedeEliminar = Boolean(cfgArt.puedeEliminar); // "Roles que pueden eliminar artículos"
+      const puedeGestionarImagenes = Boolean(cfgArt.puedeGestionarImagenes); // "Roles que pueden gestionar imágenes de elementos"
 
       allArticlesData.forEach(art => {
         const tr = document.createElement('tr');
@@ -11605,7 +11609,7 @@
       // Categories from db or default fallback
       const categories = kardexLookups.categorias && kardexLookups.categorias.length 
         ? kardexLookups.categorias 
-        : ['ACTIVO FIJO', 'DOTACIÓN', 'HERRAMIENTA', 'EPP', 'PAPELERIA', 'TECNOLOGIA'];
+        : (CONFIG.categoriasTodas || []);
 
       categories.forEach(cat => {
         const count = categoriaCounts[cat] || 0;
@@ -12613,7 +12617,7 @@
       const catSel = document.getElementById('fa-single-categoria');
       const claseList = document.getElementById('fa-single-clase-list');
       if (catSel) {
-        const defaultCats = ['ACTIVO FIJO', 'DOTACIÓN', 'HERRAMIENTA', 'EPP', 'PAPELERIA', 'TECNOLOGIA'];
+        const defaultCats = (CONFIG.categoriasTodas || []);
         const catsList = dbCategories.length > 0 ? dbCategories : defaultCats;
         const current = catSel.value;
         catSel.innerHTML = '<option value="">Seleccione</option>' + catsList.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -12804,7 +12808,7 @@
         tr.style.borderBottom = '1px solid var(--border)';
 
         let categoryOptionsHtml = '<option value="">Seleccione</option>';
-        const defaultCats = ['ACTIVO FIJO', 'DOTACIÓN', 'HERRAMIENTA', 'EPP', 'PAPELERIA', 'TECNOLOGIA'];
+        const defaultCats = (CONFIG.categoriasTodas || []);
         const catsList = dbCategories.length > 0 ? dbCategories : defaultCats;
         catsList.forEach(cat => {
           let isSelected = false;
@@ -15368,7 +15372,7 @@
       if (wrapper) wrapper.style.display = 'none';
 
       try {
-        const res = await fetch('/inventario/api/articulos/elementos');
+        const res = await fetch(`/inventario/api/articulos/elementos?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const data = await res.json();
         
         if (!res.ok) throw new Error(data.error || 'Error al obtener elementos');
@@ -15554,6 +15558,7 @@
       
       const formData = new FormData();
       formData.append('elemento', elemento);
+      formData.append('usuario', CONFIG.usuarioId);
       formData.append('imagen', file);
 
       // Disable input and show status
@@ -15596,7 +15601,7 @@
         const res = await fetch('/inventario/api/articulos/elementos/aplicar-sugerencia', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ elemento })
+          body: JSON.stringify({ elemento, usuario: CONFIG.usuarioId })
         });
 
         const data = await res.json();

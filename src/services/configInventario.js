@@ -35,6 +35,14 @@ const P = {
 
 const SECCION_PENDIENTE = 'Pendiente por recibir';
 const SECCION_SOLICITUDES = 'Solicitudes';
+const SECCION_ARTICULOS = 'Artículos';
+
+// Artículos
+const PA = {
+  CREAR_EDITAR: 'Roles que pueden crear y editar artículos',
+  ELIMINAR:     'Roles que pueden eliminar artículos',
+  IMAGENES:     'Roles que pueden gestionar imágenes de elementos',
+};
 
 // Solicitudes: filas por categoría ("Roles aprobadores de solicitudes <CATEGORÍA>" y
 // "Notificación solicitud <CATEGORÍA> - Para:"); la que no tenga fila usa "- Otras categorías".
@@ -91,6 +99,13 @@ const DEFAULTS = {
     [P.GENERAR_ACTAS]: '',
     [P.RECIBIDA_COPIA]: '',
     [P.HABILITAR_RECIBIDA]: '1',
+  },
+  // Antes: usuarios de la operación Administración + Auxiliar/AuxiliarR. Se pasan a roles con
+  // los que hoy cumplen la regla (los de Administración con la pestaña Artículos).
+  [SECCION_ARTICULOS]: {
+    [PA.CREAR_EDITAR]: 'Auxiliar, AuxiliarR, AdmSst, Asistencial, Calidad, Control, Cuentas, Inventario, LiderSst, Sistema',
+    [PA.ELIMINAR]: 'Inventario, Sistema',
+    [PA.IMAGENES]: 'Inventario, Sistema',
   },
   [SECCION_SOLICITUDES]: {
     [PS.EDITAR_CERRADAS]: 'Sistema',
@@ -354,6 +369,16 @@ async function obtenerDestinatariosSolicitud(categoria, { automatica = false } =
   return { habilitado: true, para: await correosPorRoles(roles, null) };
 }
 
+// ── Pestaña Artículos ───────────────────────────────────────────────────────
+async function obtenerConfigArticulos(rol) {
+  const p = await obtenerParametros(SECCION_ARTICULOS);
+  return {
+    puedeCrearEditar: enLista(valor(p, SECCION_ARTICULOS, PA.CREAR_EDITAR), rol),
+    puedeEliminar: enLista(valor(p, SECCION_ARTICULOS, PA.ELIMINAR), rol),
+    puedeGestionarImagenes: enLista(valor(p, SECCION_ARTICULOS, PA.IMAGENES), rol),
+  };
+}
+
 // ── General (todas las pestañas del módulo) ─────────────────────────────────
 // Categorías del acceso restringido (códigos 4, 5 y 6 de Maestro_Menu_Inventario). Se
 // devuelven con y sin tilde, porque Dynamic_Kardex/Vista_Inventario tienen ambas escrituras.
@@ -387,6 +412,8 @@ module.exports = {
   conceptoAprobadoresSolicitud,
   conceptoNotificacionSolicitud,
   PARAMETROS_SOLICITUDES: PS,
+  obtenerConfigArticulos,
+  PARAMETROS_ARTICULOS: PA,
   normalizarTexto,
   conceptoCorreoCategoria,
   PARAMETROS_INVENTARIO: P,

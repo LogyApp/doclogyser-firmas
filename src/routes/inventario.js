@@ -23,8 +23,28 @@ const {
   obtenerConfigPendiente,
   obtenerCopiaTransferenciaRecibida,
   obtenerConfigSolicitudes,
+  obtenerConfigArticulos,
   normalizarTexto,
 } = require('../services/configInventario');
+
+// ¿La categoría está dentro del acceso del rol? (sin restricción, o una de las categorías del
+// acceso restringido 4/5/6, sin distinguir tildes)
+function categoriaPermitidaParaRol(acceso, categoria) {
+  if (!acceso.filtroCategorias) return true;
+  return acceso.filtroCategorias.some((c) => normalizarTexto(c) === normalizarTexto(categoria));
+}
+
+// Acceso al gestor de imágenes de elementos (pestaña Artículos): usuario con la pestaña y rol en
+// "Roles que pueden gestionar imágenes de elementos". Devuelve el texto del error o null.
+async function validarGestorImagenes(usuario) {
+  if (!usuario) return { status: 400, error: 'usuario es requerido' };
+  const acceso = await computarAccesoInventario(usuario, 'ArtÍculos');
+  if (!acceso) return { status: 403, error: 'Usuario no autorizado' };
+  if (!(await obtenerConfigArticulos(acceso.rol)).puedeGestionarImagenes) {
+    return { status: 403, error: 'Su rol no tiene permiso para gestionar las imágenes de los elementos.' };
+  }
+  return null;
+}
 const multer = require('multer');
 
 const router = express.Router();
@@ -75,6 +95,10 @@ router.get('/', async (req, res) => {
     ]);
     // Reglas de la pestaña Solicitudes (inventario / Solicitudes)
     const cfgSolicitudes = await obtenerConfigSolicitudes(acceso.rol, todasCategorias);
+    // Reglas de la pestaña Artículos (inventario / Artículos) y lista completa de categorías
+    // (Config_Categoria_Inventario), que reemplaza la lista de respaldo que tenía la pantalla.
+    const cfgArticulos = await obtenerConfigArticulos(acceso.rol);
+    const [catRowsTodas] = await pool.execute('SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE Categoria IS NOT NULL ORDER BY Categoria');
 
     const html = fs.readFileSync(HTML_PATH, 'utf8');
     const config = JSON.stringify({
@@ -83,6 +107,8 @@ router.get('/', async (req, res) => {
       inventario: { ...cfgInventario, categoriasConfirmacion, condicionesCategoria },
       kardex: cfgKardex,
       solicitudes: cfgSolicitudes,
+      articulos: cfgArticulos,
+      categoriasTodas: catRowsTodas.map((r) => r.Categoria),
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
@@ -1582,11 +1608,23 @@ router.post('/api/articulos/guardar', upload.single('imagenArchivo'), async (req
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    // Verificar si pertenece a la Operación Administracion o tiene Rol AuxiliarR/Auxiliar
-    const opUpper = (acceso.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-    const esAdministracion = opUpper === 'ADMINISTRACION' || ['AuxiliarR', 'Auxiliar'].includes(acceso.rol);
-    if (!esAdministracion) {
-      return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración o con Rol AuxiliarR/Auxiliar pueden gestionar artículos.' });
+    // "Roles que pueden crear y editar artículos" (Config_Parametros, inventario / Artículos).
+    // Antes: operación Administración o roles Auxiliar/AuxiliarR.
+    if (!(await obtenerConfigArticulos(acceso.rol)).puedeCrearEditar) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para crear o editar artículos.' });
+    }
+
+    // Seguridad: un rol con acceso restringido (Acceso 4/5/6) solo gestiona artículos de sus
+    // categorías, tanto la nueva como la que tenía el artículo al editarlo.
+    if (acceso.filtroCategorias) {
+      const categoriasARevisar = [categoria];
+      if (id) {
+        const [[actual]] = await pool.execute('SELECT Categoria FROM Dynamic_Articulos WHERE Id = ? LIMIT 1', [parseInt(id)]);
+        if (actual) categoriasARevisar.push(actual.Categoria);
+      }
+      if (!categoriasARevisar.every((c) => categoriaPermitidaParaRol(acceso, c))) {
+        return res.status(403).json({ error: 'Su rol solo puede gestionar artículos de sus categorías permitidas.' });
+      }
     }
 
     // Placa solo aplica cuando la Condicion de la Categoria es 'Recuperable' (Config_Categoria_Inventario).
@@ -1695,17 +1733,24 @@ router.post('/api/articulos/guardar-masivo', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    // Verificar si pertenece a la Operación Administracion o tiene Rol AuxiliarR/Auxiliar
-    const opUpper = (acceso.operacion || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-    const esAdministracion = opUpper === 'ADMINISTRACION' || ['AuxiliarR', 'Auxiliar'].includes(acceso.rol);
-    if (!esAdministracion) {
-      return res.status(403).json({ error: 'Solo los usuarios de la Operación Administración o con Rol AuxiliarR/Auxiliar pueden gestionar artículos.' });
+    // "Roles que pueden crear y editar artículos" (Config_Parametros, inventario / Artículos).
+    // Antes: operación Administración o roles Auxiliar/AuxiliarR.
+    if (!(await obtenerConfigArticulos(acceso.rol)).puedeCrearEditar) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para crear o editar artículos.' });
     }
+
+    // Seguridad: categorías del acceso restringido (Acceso 4/5/6)
+    const fueraDeAlcance = articulos.findIndex((art) => !categoriaPermitidaParaRol(acceso, art.categoria));
+    if (fueraDeAlcance >= 0) {
+      return res.status(403).json({ error: `Fila ${fueraDeAlcance + 1}: su rol no puede crear artículos de la categoría "${articulos[fueraDeAlcance].categoria || ''}".` });
+    }
+    // Placa solo para categorías Recuperables (igual que el formulario individual)
+    const condiciones = await obtenerCondicionesCategoria();
 
     await conn.beginTransaction();
 
     const insertQuery = `
-      INSERT INTO Dynamic_Articulos 
+      INSERT INTO Dynamic_Articulos
       (Imagen, Elemento, Talla, Referencia, Categoria, Proveedor, Costo, \`Fecha Registro\`, Usuario, ClaseArticulo, Placa)
       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
     `;
@@ -1714,9 +1759,10 @@ router.post('/api/articulos/guardar-masivo', async (req, res) => {
       if (!art.elemento || !art.elemento.trim()) {
         throw new Error('El campo Elemento es obligatorio en todos los registros.');
       }
-      
+
       const cleanElemento = art.elemento.trim().toUpperCase();
       const cleanClase = art.claseArticulo ? art.claseArticulo.trim().toUpperCase() : null;
+      const placaPermitida = condiciones[normalizarTexto(art.categoria)] === 'Recuperable';
 
       const params = [
         art.imagen || null,
@@ -1728,7 +1774,7 @@ router.post('/api/articulos/guardar-masivo', async (req, res) => {
         art.costo ? parseFloat(art.costo) : null,
         acceso.usuarioNombre,
         cleanClase,
-        art.placa || null
+        placaPermitida ? (art.placa || null) : null
       ];
       await conn.execute(insertQuery, params);
     }
@@ -1762,9 +1808,9 @@ router.post('/api/articulos/eliminar', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
-    // Verificar si el rol es Inventario o Sistema
-    if (acceso.rol !== 'Inventario' && acceso.rol !== 'Sistema') {
-      return res.status(403).json({ error: 'Solo los usuarios con Rol Inventario o Sistema pueden eliminar artículos.' });
+    // "Roles que pueden eliminar artículos" (Config_Parametros, inventario / Artículos)
+    if (!(await obtenerConfigArticulos(acceso.rol)).puedeEliminar) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para eliminar artículos.' });
     }
 
     const placeholders = ids.map(() => '?').join(',');
@@ -1847,6 +1893,10 @@ router.get('/api/articulos/:id/actas', async (req, res) => {
 // 6. GET /api/articulos/elementos - Obtiene los elementos únicos y sus imágenes
 router.get('/api/articulos/elementos', async (req, res) => {
   try {
+    // Seguridad: antes respondía sin usuario
+    const errAcceso = await validarGestorImagenes(req.query.usuario);
+    if (errAcceso) return res.status(errAcceso.status).json({ error: errAcceso.error });
+
     const [uniqueElements] = await pool.execute(`
       SELECT Elemento, COUNT(*) AS total, MAX(Categoria) AS Categoria, MAX(ClaseArticulo) AS ClaseArticulo
       FROM Dynamic_Articulos 
@@ -1908,6 +1958,10 @@ router.post('/api/articulos/elementos/guardar-imagen', upload.single('imagen'), 
     const { elemento } = req.body;
     const file = req.file;
 
+    // Seguridad: antes cualquiera podía cambiar la imagen de todos los artículos de un elemento
+    const errAcceso = await validarGestorImagenes(req.body.usuario);
+    if (errAcceso) return res.status(errAcceso.status).json({ error: errAcceso.error });
+
     if (!elemento || !elemento.trim()) {
       return res.status(400).json({ error: 'El nombre del elemento es requerido.' });
     }
@@ -1951,6 +2005,11 @@ router.post('/api/articulos/elementos/guardar-imagen', upload.single('imagen'), 
 router.post('/api/articulos/elementos/aplicar-sugerencia', async (req, res) => {
   try {
     const { elemento } = req.body;
+
+    // Seguridad: antes cualquiera podía aplicar la sugerencia a todos los artículos del elemento
+    const errAcceso = await validarGestorImagenes(req.body.usuario);
+    if (errAcceso) return res.status(errAcceso.status).json({ error: errAcceso.error });
+
     if (!elemento || !elemento.trim()) {
       return res.status(400).json({ error: 'El nombre del elemento es requerido.' });
     }
