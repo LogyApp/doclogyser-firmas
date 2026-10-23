@@ -9,13 +9,95 @@ const { agruparOperacionesPorRegional } = require('./accesoInventario');
 // quedan en solo-lectura por decisión explícita, no por descuido.
 const ROLES_ESCRITURA_SST = ['AdmSst', 'AnaSst', 'AuxSst', 'LiderSst', 'Sistema'];
 
+function normalizarSeccionSst(s) {
+  return String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+async function consultarOperacionesPorCodigoAcceso(accesoCode, usuario) {
+  const code = Number(accesoCode) || 1;
+  const regional = usuario.Regional || '';
+  const dispositivo = usuario.Dispositivo || '';
+  const operacion = usuario['Operación'] || '';
+
+  let opRows = [];
+  if (code === 1) {
+    const [rows] = await pool.execute(
+      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
+    );
+    opRows = rows;
+  } else if (code === 2) {
+    const [rows] = await pool.execute(
+      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+      [regional]
+    );
+    opRows = rows;
+  } else if (code === 3) {
+    const tieneDispositivo = dispositivo && dispositivo.trim() !== '';
+    if (tieneDispositivo) {
+      const dispositivos = dispositivo.split(',').map(d => d.trim()).filter(Boolean);
+      if (dispositivos.length) {
+        const ph = dispositivos.map(() => '?').join(',');
+        const [rows] = await pool.execute(
+          `SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE (SOCIODEMOGRAFICA IN (${ph}) OR MODALIDAD IN (${ph})) AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN`,
+          [...dispositivos, ...dispositivos]
+        );
+        opRows = rows;
+      }
+    }
+    if (!opRows.length && operacion) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [operacion]
+      );
+      opRows = rows;
+    }
+  } else if (code === 4 || code === 6) {
+    const tieneDispositivo = dispositivo && dispositivo.trim() !== '';
+    if (tieneDispositivo) {
+      const dispositivos = dispositivo.split(',').map(d => d.trim()).filter(Boolean);
+      if (dispositivos.length) {
+        const ph = dispositivos.map(() => '?').join(',');
+        const [rows] = await pool.execute(
+          `SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE MODALIDAD IN (${ph}) AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN`,
+          dispositivos
+        );
+        opRows = rows;
+      }
+    } else if (operacion) {
+      const [rows] = await pool.execute(
+        "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+        [operacion]
+      );
+      opRows = rows;
+    }
+  } else if (operacion) {
+    const [rows] = await pool.execute(
+      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
+      [operacion]
+    );
+    opRows = rows;
+  }
+
+  const opsPorRegional = agruparOperacionesPorRegional(opRows);
+  const operacionesFiltro = opRows.map(row => row['OPERACIÓN'] || row['Operación']).filter(Boolean);
+
+  return {
+    sinFiltro: code === 1,
+    opsPorRegional,
+    operacionesFiltro,
+    regionalesFiltro: Object.keys(opsPorRegional),
+  };
+}
+
 /**
  * Calcula el acceso (Regional/Operación permitidos) de un usuario para una Sección
- * de los módulos de datos de SST (Evaluación SST, Capacitación SST, Prueba de
- * Consumo, Compromiso SST), según Maestro_Menu_Sst.
- * Acceso: 1=sin filtro, 2=por Regional, 3=por Dispositivo (Sociodemográfica),
- * 4=por Modalidad. Mismo modelo que accesoNomina.js/accesoFacturacion.js,
- * extendido con el código 4 que ya usaban estos módulos para el rol AnaSst.
+ * del módulo SST (Evaluación SST, Capacitación SST, Prueba de Consumo,
+ * Participación, Compromiso SST, Casos Medicos, Inspecciones_vehiculos),
+ * gobernado exclusivamente por Maestro_Menu_Sst (mismo modelo que Maestro_Menu_Nomina).
  */
 async function computarAccesoSst(usuarioId, seccionRequested = null) {
   if (!usuarioId) return null;
@@ -33,23 +115,40 @@ async function computarAccesoSst(usuarioId, seccionRequested = null) {
     'SELECT `Sección` as seccion, Acceso as acceso FROM Maestro_Menu_Sst WHERE Rol = ?',
     [rol]
   );
-  if (!menuRows.length) return null; // Sin accesos configurados
+  if (!menuRows.length) return null; // Sin accesos configurados en Maestro_Menu_Sst
 
-  const allowedSecciones = menuRows.map(r => r.seccion);
+  const allowedSecciones = menuRows.map(r => r.seccion).filter(Boolean);
 
-  if (seccionRequested && !allowedSecciones.includes(seccionRequested)) {
-    return null;
-  }
-
-  let accesoCode = 1;
+  let matchedRow = null;
   if (seccionRequested) {
-    const matched = menuRows.find(r => r.seccion === seccionRequested);
-    if (matched) accesoCode = matched.acceso;
+    const reqNorm = normalizarSeccionSst(seccionRequested);
+    matchedRow = menuRows.find(r => normalizarSeccionSst(r.seccion) === reqNorm);
+    if (!matchedRow) {
+      return null;
+    }
   } else {
-    accesoCode = menuRows[0].acceso;
+    matchedRow = menuRows[0];
   }
 
-  const acceso = {
+  const accesoCode = Number(matchedRow.acceso) || 1;
+  const cachePorCodigo = {};
+  cachePorCodigo[accesoCode] = await consultarOperacionesPorAccesoSafe(accesoCode, usuario);
+
+  const seccionAcceso = {};
+  const alcancePorSeccion = {};
+  for (const r of menuRows) {
+    if (!r.seccion) continue;
+    const c = Number(r.acceso) || 1;
+    seccionAcceso[r.seccion] = c;
+    if (!cachePorCodigo[c]) {
+      cachePorCodigo[c] = await consultarOperacionesPorAccesoSafe(c, usuario);
+    }
+    alcancePorSeccion[r.seccion] = cachePorCodigo[c];
+  }
+
+  const principal = cachePorCodigo[accesoCode];
+
+  return {
     usuarioId: usuario.ID,
     usuarioNombre: usuario.Nombre || usuario.ID,
     rol,
@@ -57,50 +156,16 @@ async function computarAccesoSst(usuarioId, seccionRequested = null) {
     dispositivo: usuario.Dispositivo || '',
     operacion: usuario['Operación'] || '',
     secciones: allowedSecciones,
-    seccionAcceso: {},
-    sinFiltro: accesoCode === 1,
-    operacionesFiltro: [],
-    opsPorRegional: {},
+    seccionAcceso,
+    alcancePorSeccion,
+    sinFiltro: principal.sinFiltro,
+    operacionesFiltro: principal.operacionesFiltro,
+    opsPorRegional: principal.opsPorRegional,
   };
-
-  menuRows.forEach(r => { acceso.seccionAcceso[r.seccion] = r.acceso; });
-
-  let opRows = [];
-  if (accesoCode === 1) {
-    const [rows] = await pool.execute(
-      "SELECT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY REGIONAL, OPERACIÓN"
-    );
-    opRows = rows;
-  } else if (accesoCode === 2) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE REGIONAL = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.regional]
-    );
-    opRows = rows;
-  } else if (accesoCode === 3) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE SOCIODEMOGRAFICA = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (accesoCode === 4) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE MODALIDAD = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.dispositivo]
-    );
-    opRows = rows;
-  } else if (acceso.operacion) {
-    const [rows] = await pool.execute(
-      "SELECT DISTINCT OPERACIÓN, REGIONAL FROM Maestro_Operaciones WHERE OPERACIÓN = ? AND REGIONAL != 'INACTIVO' ORDER BY OPERACIÓN",
-      [acceso.operacion]
-    );
-    opRows = rows;
-  }
-
-  acceso.opsPorRegional = agruparOperacionesPorRegional(opRows);
-  acceso.operacionesFiltro = opRows.map(row => row['OPERACIÓN'] || row['Operación']).filter(Boolean);
-
-  return acceso;
 }
 
-module.exports = { computarAccesoSst, ROLES_ESCRITURA_SST };
+async function consultarOperacionesPorAccesoSafe(accesoCode, usuario) {
+  return consultarOperacionesPorCodigoAcceso(accesoCode, usuario);
+}
+
+module.exports = { computarAccesoSst, ROLES_ESCRITURA_SST, normalizarSeccionSst };

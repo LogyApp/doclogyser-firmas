@@ -1145,6 +1145,446 @@ async function generarFormatoBlancoPDF(type, subtype) {
   };
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO SST — CONFIGURACIÓN EN Config_Parametros, LISTADO, FILTROS Y REPORTES
+// ══════════════════════════════════════════════════════════════════════════════
+
+const DEFAULTS_SST_INSPECCIONES = {
+  rolesRegistrar: [
+    'Sistema', 'AdmSst', 'AnaSst', 'AuxSst', 'LiderSst',
+    'Coordinador', 'CoordinadorR', 'Auxiliar', 'AuxiliarR'
+  ],
+  rolesEliminar: ['Sistema', 'AdmSst', 'LiderSst'],
+  limiteExcel: 10000,
+  limiteCsv: 100000,
+};
+
+function normTextoParam(s) {
+  return String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function parseListaParam(valor, fallback = []) {
+  if (valor === undefined || valor === null || String(valor).trim() === '') {
+    return [...fallback];
+  }
+  return String(valor)
+    .split(',')
+    .map(v => v.trim())
+    .filter(Boolean);
+}
+
+function rolEnListaParam(rol, lista) {
+  const r = normTextoParam(rol);
+  if (!r) return false;
+  return (lista || []).some(item => normTextoParam(item) === r);
+}
+
+// Quién ve la pestaña "Inspecciones Vehículos" y qué operaciones ve lo gobierna
+// exclusivamente Maestro_Menu_Sst (Sección = 'Inspecciones_vehiculos') vía computarAccesoSst.
+// Config_Parametros solo guarda permisos de acciones (registrar/eliminar) y límites de reporte.
+async function obtenerConfigInspeccionesSST(rol = '') {
+  const mapa = {};
+  try {
+    const [rows] = await pool.execute(
+      `SELECT Concepto, Parametro
+       FROM Config_Parametros
+       WHERE Modulo = 'sst' AND Seccion = 'Inspecciones_Vehiculo'`
+    );
+    for (const r of rows) {
+      if (r.Concepto) mapa[r.Concepto.trim()] = r.Parametro;
+    }
+  } catch (err) {
+    console.warn('[inspeccionesVehiculoService] No se pudo leer Config_Parametros (sst/Inspecciones_Vehiculo):', err.message);
+  }
+
+  const rolesRegistrar = parseListaParam(
+    mapa['Roles que pueden registrar inspecciones de vehículos en SST'],
+    DEFAULTS_SST_INSPECCIONES.rolesRegistrar
+  );
+  const rolesEliminar = parseListaParam(
+    mapa['Roles que pueden eliminar inspecciones de vehículos en SST'],
+    DEFAULTS_SST_INSPECCIONES.rolesEliminar
+  );
+
+  const limiteExcelRaw = parseInt(mapa['Límite de filas reporte Excel - Inspecciones Vehículos'], 10);
+  const limiteCsvRaw = parseInt(mapa['Límite de filas reporte CSV - Inspecciones Vehículos'], 10);
+
+  return {
+    rolesRegistrar,
+    rolesEliminar,
+    puedeRegistrar: rolEnListaParam(rol, rolesRegistrar),
+    puedeEliminar: rolEnListaParam(rol, rolesEliminar),
+    limitesReporte: {
+      excel: Number.isFinite(limiteExcelRaw) && limiteExcelRaw > 0 ? limiteExcelRaw : DEFAULTS_SST_INSPECCIONES.limiteExcel,
+      csv: Number.isFinite(limiteCsvRaw) && limiteCsvRaw > 0 ? limiteCsvRaw : DEFAULTS_SST_INSPECCIONES.limiteCsv,
+    },
+  };
+}
+
+function construirCondicionBaseAccesoSST(acceso) {
+  const conds = [];
+  const params = [];
+
+  if (!acceso || !acceso.sinFiltro) {
+    const ops = (acceso && Array.isArray(acceso.operacionesFiltro)) ? acceso.operacionesFiltro : [];
+    if (!ops.length) {
+      conds.push('1 = 0');
+    } else {
+      const ph = ops.map(() => '?').join(',');
+      conds.push(`i.operacion IN (${ph})`);
+      params.push(...ops);
+    }
+  }
+  return { conds, params };
+}
+
+function construirCondicionesFiltroEspecifico(query = {}, omitirCampo = null) {
+  const conds = [];
+  const params = [];
+
+  const trabajador = String(query.trabajador || '').trim();
+  const regional = String(query.regional || '').trim();
+  const operacion = String(query.operacion || '').trim();
+  const tipo = String(query.tipo || '').trim();
+  const resultado = String(query.resultado || '').trim();
+  const fechaDesde = String(query.fechaDesde || '').trim();
+  const fechaHasta = String(query.fechaHasta || '').trim();
+
+  if (trabajador && omitirCampo !== 'trabajador') {
+    const like = `%${trabajador}%`;
+    conds.push('(i.trabajador LIKE ? OR i.identificacion LIKE ? OR i.placa LIKE ? OR i.equipo_interno LIKE ?)');
+    params.push(like, like, like, like);
+  }
+  if (regional && omitirCampo !== 'regional') {
+    conds.push('i.regional = ?');
+    params.push(regional);
+  }
+  if (operacion && omitirCampo !== 'operacion') {
+    conds.push('i.operacion = ?');
+    params.push(operacion);
+  }
+  if (tipo && omitirCampo !== 'tipo') {
+    conds.push('i.tipo_label = ?');
+    params.push(tipo);
+  }
+  if (resultado && omitirCampo !== 'resultado') {
+    conds.push('i.resultado = ?');
+    params.push(resultado);
+  }
+  if (fechaDesde && omitirCampo !== 'fechaDesde') {
+    conds.push('DATE(i.fecha_registro) >= ?');
+    params.push(fechaDesde);
+  }
+  if (fechaHasta && omitirCampo !== 'fechaHasta') {
+    conds.push('DATE(i.fecha_registro) <= ?');
+    params.push(fechaHasta);
+  }
+
+  return { conds, params };
+}
+
+async function listarInspeccionesSST(acceso, query = {}) {
+  const base = construirCondicionBaseAccesoSST(acceso);
+  if (base.conds.includes('1 = 0')) {
+    return {
+      results: [],
+      counts: { regionales: {}, operaciones: {}, tipos: {}, resultados: {} },
+      stats: { total: 0, aptos: 0, novedades: 0, noAptos: 0 },
+    };
+  }
+
+  const preConds = [...base.conds];
+  const preParams = [...base.params];
+
+  const trabajador = String(query.trabajador || '').trim();
+  const fechaDesde = String(query.fechaDesde || '').trim();
+  const fechaHasta = String(query.fechaHasta || '').trim();
+
+  if (trabajador) {
+    const like = `%${trabajador}%`;
+    preConds.push('(i.trabajador LIKE ? OR i.identificacion LIKE ? OR i.placa LIKE ? OR i.equipo_interno LIKE ?)');
+    preParams.push(like, like, like, like);
+  }
+  if (fechaDesde) {
+    preConds.push('DATE(i.fecha_registro) >= ?');
+    preParams.push(fechaDesde);
+  }
+  if (fechaHasta) {
+    preConds.push('DATE(i.fecha_registro) <= ?');
+    preParams.push(fechaHasta);
+  }
+
+  const whereSql = preConds.length ? `WHERE ${preConds.join(' AND ')}` : '';
+  const [rows] = await pool.execute(
+    `SELECT
+       i.id, i.id_vinculacion, i.identificacion, i.trabajador, i.cargo,
+       i.regional, i.operacion, i.tipo, i.subtipo, i.tipo_label,
+       i.equipo_interno, i.placa, i.odometro, i.resultado, i.puntaje,
+       i.total_c, i.total_nc, i.total_na, i.observaciones_generales,
+       i.plan_accion, i.reporta_a, i.firma_url, i.pdf_url, i.fecha_registro
+     FROM Dynamic_Inspecciones_Vehiculo i
+     ${whereSql}
+     ORDER BY i.fecha_registro DESC
+     LIMIT 3000`,
+    preParams
+  );
+
+  const fReg = String(query.regional || '').trim();
+  const fOp = String(query.operacion || '').trim();
+  const fTipo = String(query.tipo || '').trim();
+  const fRes = String(query.resultado || '').trim();
+
+  const counts = {
+    regionales: {},
+    operaciones: {},
+    tipos: {},
+    resultados: {},
+  };
+
+  const results = [];
+  for (const r of rows) {
+    const reg = r.regional || '';
+    const op = r.operacion || '';
+    const tp = r.tipo_label || '';
+    const res = r.resultado || '';
+
+    const matchReg = !fReg || reg === fReg;
+    const matchOp = !fOp || op === fOp;
+    const matchTipo = !fTipo || tp === fTipo;
+    const matchRes = !fRes || res === fRes;
+
+    if (matchOp && matchTipo && matchRes && reg) {
+      counts.regionales[reg] = (counts.regionales[reg] || 0) + 1;
+    }
+    if (matchReg && matchTipo && matchRes && op) {
+      counts.operaciones[op] = (counts.operaciones[op] || 0) + 1;
+    }
+    if (matchReg && matchOp && matchRes && tp) {
+      counts.tipos[tp] = (counts.tipos[tp] || 0) + 1;
+    }
+    if (matchReg && matchOp && matchTipo && res) {
+      counts.resultados[res] = (counts.resultados[res] || 0) + 1;
+    }
+
+    if (matchReg && matchOp && matchTipo && matchRes) {
+      results.push(r);
+    }
+  }
+
+  const stats = {
+    total: results.length,
+    aptos: results.filter(x => x.resultado === 'APTO').length,
+    novedades: results.filter(x => x.resultado === 'APTO CON NOVEDADES').length,
+    noAptos: results.filter(x => x.resultado === 'NO APTO').length,
+  };
+
+  return { results, counts, stats };
+}
+
+async function obtenerDetalleInspeccionSST(id, acceso) {
+  const base = construirCondicionBaseAccesoSST(acceso);
+  if (base.conds.includes('1 = 0')) return null;
+
+  const conds = ['i.id = ?', ...base.conds];
+  const params = [id, ...base.params];
+
+  const [rows] = await pool.execute(
+    `SELECT i.*
+     FROM Dynamic_Inspecciones_Vehiculo i
+     WHERE ${conds.join(' AND ')}
+     LIMIT 1`,
+    params
+  );
+  if (!rows.length) return null;
+
+  const row = rows[0];
+  let respuestas = [];
+  let fotos = [];
+  try {
+    respuestas = row.respuestas_json ? JSON.parse(row.respuestas_json) : [];
+  } catch (_) {
+    respuestas = [];
+  }
+  try {
+    fotos = row.fotos_json ? JSON.parse(row.fotos_json) : [];
+  } catch (_) {
+    fotos = [];
+  }
+
+  return {
+    ...row,
+    respuestas,
+    fotos,
+  };
+}
+
+async function eliminarInspeccionSST(id, acceso) {
+  const base = construirCondicionBaseAccesoSST(acceso);
+  if (base.conds.includes('1 = 0')) return { ok: false, error: 'Sin permisos sobre la operación' };
+
+  const conds = ['i.id = ?', ...base.conds];
+  const params = [id, ...base.params];
+
+  const [rows] = await pool.execute(
+    `SELECT i.id FROM Dynamic_Inspecciones_Vehiculo i WHERE ${conds.join(' AND ')} LIMIT 1`,
+    params
+  );
+  if (!rows.length) {
+    return { ok: false, error: 'Inspección no encontrada o fuera de su alcance' };
+  }
+
+  await pool.execute('DELETE FROM Dynamic_Inspecciones_Vehiculo WHERE id = ?', [id]);
+  return { ok: true };
+}
+
+async function buscarColaboradorPorIdentificacionSST(identificacion, acceso) {
+  const cc = String(identificacion || '').trim();
+  if (!cc) return null;
+
+  const [rows] = await pool.execute(
+    `SELECT
+       \`Id Vinculación\` AS idVinculacion,
+       \`Identificación\` AS identificacion,
+       Trabajador AS nombre,
+       Cargo AS cargo,
+       Regional AS regional,
+       \`Operación\` AS operacion,
+       Estado AS estado,
+       \`Fecha de Ingreso\` AS fechaIngreso
+     FROM \`Maestro_Vinculación\`
+     WHERE \`Identificación\` = ?
+     ORDER BY CASE WHEN Estado = 'Activo' THEN 0 ELSE 1 END, \`Fecha de Ingreso\` DESC
+     LIMIT 1`,
+    [cc]
+  );
+
+  if (!rows.length) return null;
+  const col = rows[0];
+
+  if (acceso && !acceso.sinFiltro) {
+    const ops = Array.isArray(acceso.operacionesFiltro) ? acceso.operacionesFiltro : [];
+    if (col.operacion && ops.length && !ops.includes(col.operacion)) {
+      return { fueraDeAlcance: true, colaborador: col };
+    }
+  }
+
+  const [firmaPreviaUrl, vehiculosHabituales, reportaPorDefecto] = await Promise.all([
+    obtenerUrlFirmaReciente(col.identificacion).catch(() => null),
+    listarVehiculosHabitualesColaborador(col.identificacion, col.idVinculacion, col.nombre),
+    resolverCoordinadorReporta(col.operacion, col.regional),
+  ]);
+
+  return {
+    fueraDeAlcance: false,
+    colaborador: col,
+    firmaPreviaUrl,
+    vehiculosHabituales,
+    reportaPorDefecto: reportaPorDefecto || '',
+  };
+}
+
+async function buscarColaboradoresSST(q, acceso) {
+  const term = String(q || '').trim();
+  if (term.length < 2) return [];
+
+  const conds = ["Estado = 'Activo'", '(Trabajador LIKE ? OR `Identificación` LIKE ?)'];
+  const like = `%${term}%`;
+  const params = [like, like];
+
+  if (acceso && !acceso.sinFiltro) {
+    const ops = Array.isArray(acceso.operacionesFiltro) ? acceso.operacionesFiltro : [];
+    if (!ops.length) return [];
+    const ph = ops.map(() => '?').join(',');
+    conds.push(`\`Operación\` IN (${ph})`);
+    params.push(...ops);
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT
+       \`Id Vinculación\` AS idVinculacion,
+       \`Identificación\` AS identificacion,
+       Trabajador AS nombre,
+       Cargo AS cargo,
+       Regional AS regional,
+       \`Operación\` AS operacion
+     FROM \`Maestro_Vinculación\`
+     WHERE ${conds.join(' AND ')}
+     ORDER BY Trabajador ASC
+     LIMIT 15`,
+    params
+  );
+  return rows;
+}
+
+const COLUMNAS_REPORTE_INSPECCIONES = [
+  { titulo: 'ID Inspección',          campo: 'id',                      tipo: 'texto',     ancho: 22 },
+  { titulo: 'Fecha Registro',         campo: 'fecha_registro',          tipo: 'fechaHora', ancho: 20 },
+  { titulo: 'Identificación',         campo: 'identificacion',          tipo: 'texto',     ancho: 16 },
+  { titulo: 'Trabajador',             campo: 'trabajador',              tipo: 'texto',     ancho: 32 },
+  { titulo: 'Id Vinculación',         campo: 'id_vinculacion',          tipo: 'texto',     ancho: 18 },
+  { titulo: 'Cargo',                  campo: 'cargo',                   tipo: 'texto',     ancho: 26 },
+  { titulo: 'Regional',               campo: 'regional',                tipo: 'texto',     ancho: 18 },
+  { titulo: 'Operación',              campo: 'operacion',               tipo: 'texto',     ancho: 26 },
+  { titulo: 'Medio / Tipo Vehículo',  campo: 'tipo_label',              tipo: 'texto',     ancho: 24 },
+  { titulo: 'Placa',                  campo: 'placa',                   tipo: 'texto',     ancho: 14 },
+  { titulo: 'Equipo Interno',         campo: 'equipo_interno',          tipo: 'texto',     ancho: 18 },
+  { titulo: 'Kilometraje / Horómetro',campo: 'odometro',                tipo: 'texto',     ancho: 18 },
+  { titulo: 'Resultado',              campo: 'resultado',               tipo: 'texto',     ancho: 20 },
+  { titulo: 'Puntaje (%)',            campo: 'puntaje',                 tipo: 'numero',    ancho: 14 },
+  { titulo: 'Ítems Cumple',           campo: 'total_c',                 tipo: 'numero',    ancho: 14 },
+  { titulo: 'Ítems No Cumple',        campo: 'total_nc',                tipo: 'numero',    ancho: 16 },
+  { titulo: 'Ítems No Aplica',        campo: 'total_na',                tipo: 'numero',    ancho: 16 },
+  { titulo: 'Reporta A',              campo: 'reporta_a',               tipo: 'texto',     ancho: 28 },
+  { titulo: 'Observaciones Generales',campo: 'observaciones_generales', tipo: 'texto',     ancho: 38 },
+  { titulo: 'Plan de Acción',         campo: 'plan_accion',             tipo: 'texto',     ancho: 38 },
+  { titulo: 'URL Acta PDF',           campo: 'pdf_url',                 tipo: 'texto',     ancho: 45 },
+];
+
+async function contarFilasReporteInspecciones(acceso, query = {}) {
+  const base = construirCondicionBaseAccesoSST(acceso);
+  if (base.conds.includes('1 = 0')) return 0;
+
+  const spec = construirCondicionesFiltroEspecifico(query);
+  const allConds = [...base.conds, ...spec.conds];
+  const allParams = [...base.params, ...spec.params];
+  const whereSql = allConds.length ? `WHERE ${allConds.join(' AND ')}` : '';
+
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS total FROM Dynamic_Inspecciones_Vehiculo i ${whereSql}`,
+    allParams
+  );
+  return Number(rows[0]?.total) || 0;
+}
+
+async function obtenerFilasReporteInspecciones(acceso, query = {}, limite = 100000) {
+  const base = construirCondicionBaseAccesoSST(acceso);
+  if (base.conds.includes('1 = 0')) return [];
+
+  const spec = construirCondicionesFiltroEspecifico(query);
+  const allConds = [...base.conds, ...spec.conds];
+  const allParams = [...base.params, ...spec.params];
+  const whereSql = allConds.length ? `WHERE ${allConds.join(' AND ')}` : '';
+  const maxRows = Math.max(1, Math.min(Number(limite) || 100000, 200000));
+
+  const [rows] = await pool.execute(
+    `SELECT
+       i.id, i.fecha_registro, i.identificacion, i.trabajador, i.id_vinculacion,
+       i.cargo, i.regional, i.operacion, i.tipo_label, i.placa, i.equipo_interno,
+       i.odometro, i.resultado, i.puntaje, i.total_c, i.total_nc, i.total_na,
+       i.reporta_a, i.observaciones_generales, i.plan_accion, i.pdf_url
+     FROM Dynamic_Inspecciones_Vehiculo i
+     ${whereSql}
+     ORDER BY i.fecha_registro DESC
+     LIMIT ${maxRows}`,
+    allParams
+  );
+  return rows;
+}
+
 module.exports = {
   INSPECTION_TEMPLATES,
   obtenerLimitesInspeccion,
@@ -1157,4 +1597,13 @@ module.exports = {
   resolverCoordinadorReporta,
   crearInspeccionVehiculo,
   generarFormatoBlancoPDF,
+  obtenerConfigInspeccionesSST,
+  listarInspeccionesSST,
+  obtenerDetalleInspeccionSST,
+  eliminarInspeccionSST,
+  buscarColaboradorPorIdentificacionSST,
+  buscarColaboradoresSST,
+  COLUMNAS_REPORTE_INSPECCIONES,
+  contarFilasReporteInspecciones,
+  obtenerFilasReporteInspecciones,
 };

@@ -2094,6 +2094,16 @@
         </div>
         <span>Gestión Médica</span>
       </li>
+
+      <!-- 7. Inspecciones Vehículos -->
+      <li class="nav-item" data-tab="inspecciones" onclick="switchTab('inspecciones')">
+        <div class="nav-icon" title="Inspecciones Vehículos">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+          </svg>
+        </div>
+        <span>Inspecciones Vehículos</span>
+      </li>
     </ul>
 
     <!-- Botón Actualizar Global idéntico a Inventario -->
@@ -3061,7 +3071,450 @@
       </div>
     </section>
 
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 7: INSPECCIONES VEHÍCULOS
+    ────────────────────────────────────────────────────────── -->
+    <section class="tab-pane" id="pane-inspecciones" style="display: none;">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title">
+            <span>🚗 Inspecciones Vehículos</span>
+            <span class="badge badge-info" id="badge-total-ins">0 Registros</span>
+            <span class="badge badge-success" id="badge-aptos-ins" style="font-size:0.75rem;">0 Aptos</span>
+            <span class="badge badge-warning" id="badge-novedades-ins" style="font-size:0.75rem;">0 Con Novedades</span>
+            <span class="badge badge-danger" id="badge-noaptos-ins" style="font-size:0.75rem;">0 No Aptos</span>
+          </h1>
+          <p class="tab-subtitle">Control preoperacional de medios de transporte y equipos operativos (motos, carros, camiones, montacargas, transpaletas y transporte público)</p>
+        </div>
+        <div class="tab-actions">
+          <button type="button" class="btn btn-secondary" onclick="abrirModalReporteInspecciones()" title="Descargar reporte en Excel o CSV con los filtros aplicados">
+            <span>📥</span> Descargar Reporte
+          </button>
+          <button type="button" class="btn btn-accent" id="btn-crear-ins" onclick="abrirModalNuevaInspeccionSST()">
+            <span>➕</span> Nueva Inspección
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Plegables con Conteo Interactivo -->
+      <div class="card-filters">
+        <div class="filtros-toggle" onclick="toggleFiltros('ins')">
+          <span class="filtros-toggle-left">
+            Filtros de Búsqueda
+            <span class="filtros-badge" id="filtros-badge-ins">0</span>
+          </span>
+          <span class="filtros-chevron" id="filtros-chevron-ins">▸</span>
+        </div>
+        <div class="filtros-body" id="filtros-body-ins" style="display: none;">
+          <div class="filters-grid">
+            <div class="form-group">
+              <label class="form-label">Trabajador / Cédula / Placa / Equipo</label>
+              <input type="text" class="form-control" id="filtro-ins-trabajador" placeholder="Nombre, cédula, placa o equipo..." oninput="filtrarDebounce('ins')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Regional</label>
+              <select class="form-control" id="filtro-ins-regional" onchange="onRegionalChange('ins')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Operación</label>
+              <select class="form-control" id="filtro-ins-operacion" onchange="filtrarAutomatico('ins')">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Medio / Vehículo</label>
+              <select class="form-control" id="filtro-ins-tipo" onchange="filtrarAutomatico('ins')">
+                <option value="">Todos</option>
+                <option value="Motocicleta">Motocicleta</option>
+                <option value="Carro / Camioneta">Carro / Camioneta</option>
+                <option value="Camión de Ruta">Camión de Ruta</option>
+                <option value="Montacarga Eléctrica">Montacarga Eléctrica</option>
+                <option value="Transpaleta Manual">Transpaleta Manual</option>
+                <option value="Transpaleta Eléctrica">Transpaleta Eléctrica</option>
+                <option value="Transporte Público">Transporte Público</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Resultado</label>
+              <select class="form-control" id="filtro-ins-resultado" onchange="filtrarAutomatico('ins')">
+                <option value="">Todos</option>
+                <option value="APTO">Apto</option>
+                <option value="APTO CON NOVEDADES">Apto con Novedades</option>
+                <option value="NO APTO">No Apto</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Desde</label>
+              <input type="date" class="form-control" id="filtro-ins-desde" onchange="filtrarAutomatico('ins')">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha Hasta</label>
+              <input type="date" class="form-control" id="filtro-ins-hasta" onchange="filtrarAutomatico('ins')">
+            </div>
+            <div class="form-group" style="display:flex; gap:8px; align-items:flex-end;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="limpiarFiltros('ins')" style="height: 38px;">Limpiar</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="abrirModalReporteInspecciones()" style="height: 38px; display:inline-flex; align-items:center; gap:6px;" title="Descargar reporte en Excel o CSV con estos filtros">
+                <span>📥</span> Descargar con estos filtros
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla y Detalle Lateral -->
+      <div class="view-layout" id="layout-ins">
+        <div class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="table-ins">
+              <thead>
+                <tr>
+                  <th style="width: 135px; min-width: 115px;" class="sortable" onclick="toggleSortSst('ins', 'pdf')" id="th-ins-pdf">
+                    <div class="th-content"><span>Documento</span><span class="sort-icon" id="sort-icon-ins-pdf">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 135px; min-width: 110px;" class="sortable" onclick="toggleSortSst('ins', 'fecha')" id="th-ins-fecha">
+                    <div class="th-content"><span>Fecha Registro</span><span class="sort-icon" id="sort-icon-ins-fecha">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 220px; min-width: 160px;" class="sortable" onclick="toggleSortSst('ins', 'trabajador')" id="th-ins-trabajador">
+                    <div class="th-content"><span>Trabajador</span><span class="sort-icon" id="sort-icon-ins-trabajador">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 190px; min-width: 140px;" class="sortable" onclick="toggleSortSst('ins', 'operacion')" id="th-ins-operacion">
+                    <div class="th-content"><span>Operación / Regional</span><span class="sort-icon" id="sort-icon-ins-operacion">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 165px; min-width: 130px;" class="sortable" onclick="toggleSortSst('ins', 'tipo')" id="th-ins-tipo">
+                    <div class="th-content"><span>Medio / Vehículo</span><span class="sort-icon" id="sort-icon-ins-tipo">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 140px; min-width: 110px;" class="sortable" onclick="toggleSortSst('ins', 'placa')" id="th-ins-placa">
+                    <div class="th-content"><span>Placa / Equipo</span><span class="sort-icon" id="sort-icon-ins-placa">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 105px; min-width: 90px;" class="sortable" onclick="toggleSortSst('ins', 'puntaje')" id="th-ins-puntaje">
+                    <div class="th-content"><span>Puntaje</span><span class="sort-icon" id="sort-icon-ins-puntaje">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 145px; min-width: 115px;" class="sortable" onclick="toggleSortSst('ins', 'resultado')" id="th-ins-resultado">
+                    <div class="th-content"><span>Resultado</span><span class="sort-icon" id="sort-icon-ins-resultado">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                  <th style="width: 170px; min-width: 130px;" class="sortable" onclick="toggleSortSst('ins', 'reporta')" id="th-ins-reporta">
+                    <div class="th-content"><span>Reporta A</span><span class="sort-icon" id="sort-icon-ins-reporta">↕</span></div>
+                    <div class="col-resizer"></div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="tbody-ins">
+                <tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando inspecciones de vehículos...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detalle Lateral -->
+        <div class="detail-card" id="detail-ins">
+          <div class="detail-header">
+            <div class="detail-title" id="detail-ins-title">Detalle de Inspección</div>
+            <button class="detail-close" onclick="cerrarDetalle('ins')">&times;</button>
+          </div>
+          <div class="detail-body" id="detail-ins-body"></div>
+        </div>
+      </div>
+    </section>
+
   </main>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL DESCARGAR REPORTE DE INSPECCIONES (EXCEL / CSV)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="reporte-inspecciones-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 520px; width: 95%; background: var(--card-bg); color: var(--text); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border);">
+      <div style="background: var(--bg-elevated); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0; font-size: 1.08rem; font-weight: 700; color: var(--text);">📥 Descargar reporte de Inspecciones</h3>
+        <button type="button" onclick="cerrarModalReporteInspecciones()" style="background:none; border:none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; font-weight: bold; line-height: 1;">&times;</button>
+      </div>
+      <div style="padding: 20px 24px;">
+        <p style="font-size: 0.84rem; color: var(--text-muted); margin: 0 0 12px;">
+          Se descargan las inspecciones de vehículos y equipos que su rol puede ver según su Regional y Operación, aplicando los filtros actuales de la pestaña.
+        </p>
+        <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Filtros aplicados</div>
+          <div id="inspeccionesReporteFiltros" style="font-size: 0.84rem; color: var(--text); line-height: 1.6;"></div>
+        </div>
+        <div id="inspeccionesReporteInfo" style="font-size: 0.86rem; color: var(--text-muted); padding: 10px 12px; border-radius: 8px; background: var(--bg-elevated); margin-bottom: 18px;">
+          Calculando...
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalReporteInspecciones()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" id="btnInsReporteCsv" onclick="descargarReporteInspecciones('csv')" disabled>📄 Descargar CSV</button>
+          <button type="button" class="btn btn-accent" id="btnInsReporteExcel" onclick="descargarReporteInspecciones('xlsx')" disabled>📊 Descargar Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL ADICIONAR NUEVA INSPECCIÓN DESDE SST
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-nueva-inspeccion-sst" style="display: none;">
+    <div class="modal-content" style="max-width: 920px; width: 96%; max-height: 92vh; background: var(--card-bg); color: var(--text); border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--border);">
+      <div style="background: var(--primary); color: #fff; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <div>
+          <div style="font-size: 1.08rem; font-weight: 800;" id="sst-ins-modal-title">➕ Registrar Inspección de Vehículo / Equipo</div>
+          <div style="font-size: 0.78rem; opacity: 0.85;" id="sst-ins-modal-sub">Paso 1: Ingrese la identificación del trabajador para consultar sus datos</div>
+        </div>
+        <button type="button" onclick="cerrarModalNuevaInspeccionSST()" style="background: rgba(255,255,255,0.14); border: none; color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div style="padding: 20px 22px; overflow-y: auto; flex: 1;">
+        <!-- PASO 1: BUSCAR TRABAJADOR POR IDENTIFICACIÓN -->
+        <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+          <div style="font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+            <span style="background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">1</span>
+            <span>Identificación del Trabajador (Maestro_Vinculación)</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; position: relative;">
+            <div style="flex: 1; min-width: 240px; position: relative;">
+              <input type="text" class="form-control" id="sst-ins-input-cc" placeholder="Digite la cédula o nombre del trabajador..." autocomplete="off" oninput="onInputBuscarTrabajadorInspeccionSST(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault(); buscarTrabajadorPorCedulaSST();}">
+              <div id="sst-ins-worker-suggestions" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:50; background:var(--card-bg); border:1px solid var(--border); border-radius:8px; margin-top:4px; max-height:220px; overflow-y:auto; box-shadow:var(--shadow-lg);"></div>
+            </div>
+            <button type="button" class="btn btn-accent" id="btn-sst-ins-buscar-cc" onclick="buscarTrabajadorPorCedulaSST()">
+              🔍 Buscar Trabajador
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-sst-ins-cambiar-trab" onclick="reiniciarTrabajadorInspeccionSST()" style="display:none;">
+              Cambiar Trabajador
+            </button>
+          </div>
+
+          <!-- Tarjeta de datos del trabajador encontrado -->
+          <div id="sst-ins-worker-card" style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px;">
+              <div style="background: var(--card-bg); padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Trabajador</div>
+                <div style="font-size: 0.88rem; font-weight: 700; color: var(--text);" id="sst-ins-w-nombre">—</div>
+              </div>
+              <div style="background: var(--card-bg); padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Identificación / Vinc.</div>
+                <div style="font-size: 0.86rem; font-weight: 700; color: var(--text);" id="sst-ins-w-cc">—</div>
+              </div>
+              <div style="background: var(--card-bg); padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Cargo</div>
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text);" id="sst-ins-w-cargo">—</div>
+              </div>
+              <div style="background: var(--card-bg); padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Operación / Regional</div>
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text);" id="sst-ins-w-operacion">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASO 2: SELECCIÓN DEL MEDIO DE TRANSPORTE / EQUIPO -->
+        <div id="sst-ins-step-selector" style="display: none;">
+          <div style="font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <span style="background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">2</span>
+            <span>Seleccione el Medio de Transporte o Equipo a Inspeccionar</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px;">
+            <!-- 1. Motocicleta -->
+            <div onclick="seleccionarTipoInspeccionSST('vehiculo', 'moto')" style="background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; display: flex; flex-direction: column;">
+              <div style="height: 115px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--border);">
+                <img src="/img/inspecciones/moto.png?v=2" alt="Motocicleta" style="max-height: 95px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="padding: 12px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                <div>
+                  <div style="font-weight: 800; font-size: 0.94rem; color: var(--text);">🏍️ Motocicleta</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Desplazamiento en moto entre sedes o puntos de operación (11 puntos).</div>
+                </div>
+                <span class="btn btn-accent btn-sm" style="width: 100%; justify-content: center;">Elegir Motocicleta →</span>
+              </div>
+            </div>
+
+            <!-- 2. Carro / Camioneta -->
+            <div onclick="seleccionarTipoInspeccionSST('vehiculo', 'carro')" style="background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; display: flex; flex-direction: column;">
+              <div style="height: 115px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--border);">
+                <img src="/img/inspecciones/carro.png?v=2" alt="Carro / Camioneta" style="max-height: 95px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="padding: 12px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                <div>
+                  <div style="font-weight: 800; font-size: 0.94rem; color: var(--text);">🚗 Carro / Camioneta</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Desplazamiento en automóvil o camioneta operativa (12 puntos).</div>
+                </div>
+                <span class="btn btn-accent btn-sm" style="width: 100%; justify-content: center;">Elegir Carro / Camioneta →</span>
+              </div>
+            </div>
+
+            <!-- 3. Camión de Ruta -->
+            <div onclick="seleccionarTipoInspeccionSST('camion', 'camion')" style="background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; display: flex; flex-direction: column;">
+              <div style="height: 115px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--border);">
+                <img src="/img/inspecciones/camion.png" alt="Camión de Ruta" style="max-height: 95px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="padding: 12px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                <div>
+                  <div style="font-weight: 800; font-size: 0.94rem; color: var(--text);">🚛 Camión de Ruta</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Para conductores y auxiliares de ruta en vehículo de carga (12 puntos).</div>
+                </div>
+                <span class="btn btn-accent btn-sm" style="width: 100%; justify-content: center;">Elegir Camión de Ruta →</span>
+              </div>
+            </div>
+
+            <!-- 4. Montacarga Eléctrica -->
+            <div onclick="seleccionarTipoInspeccionSST('montacarga', 'electrica')" style="background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; display: flex; flex-direction: column;">
+              <div style="height: 115px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--border);">
+                <img src="/img/inspecciones/montacarga.png" alt="Montacarga Eléctrica" style="max-height: 95px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="padding: 12px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                <div>
+                  <div style="font-weight: 800; font-size: 0.94rem; color: var(--text);">🏗️ Montacarga Eléctrica</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Para operadores encargados de montacarga eléctrica en bodega (11 puntos).</div>
+                </div>
+                <span class="btn btn-accent btn-sm" style="width: 100%; justify-content: center;">Elegir Montacarga →</span>
+              </div>
+            </div>
+
+            <!-- 5. Transpaleta (Manual o Eléctrica) -->
+            <div onclick="seleccionarTipoInspeccionSST('montacarga', 'transpaleta')" style="background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; display: flex; flex-direction: column;">
+              <div style="height: 115px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--border);">
+                <img src="/img/inspecciones/transpaleta.png" alt="Transpaleta" style="max-height: 95px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="padding: 12px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                <div>
+                  <div style="font-weight: 800; font-size: 0.94rem; color: var(--text);">🔧 Transpaleta</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Chequeo rápido de estibador / transpaleta (manual o eléctrica) antes de turno.</div>
+                </div>
+                <span class="btn btn-accent btn-sm" style="width: 100%; justify-content: center;">Elegir Transpaleta →</span>
+              </div>
+            </div>
+
+            <!-- 6. Transporte Público -->
+            <div onclick="seleccionarTipoInspeccionSST('transporte_publico', 'publico')" style="background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; display: flex; flex-direction: column;">
+              <div style="height: 115px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--border);">
+                <img src="/img/inspecciones/transporte_publico.svg" alt="Transporte Público" style="max-height: 95px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="padding: 12px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                <div>
+                  <div style="font-weight: 800; font-size: 0.94rem; color: var(--text);">🚌 Transporte Público</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Confirmación directa para desplazamiento en transporte público (sin preguntas).</div>
+                </div>
+                <span class="btn btn-accent btn-sm" style="width: 100%; justify-content: center;">Confirmar Transporte Público →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASO 3: FORMULARIO DE INSPECCIÓN Y FIRMA -->
+        <div id="sst-ins-step-form" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="volverSelectorVehiculoSST()">← Cambiar medio / vehículo</button>
+              <span style="font-weight: 800; font-size: 0.98rem; color: var(--text);" id="sst-ins-selected-label">Motocicleta</span>
+            </div>
+            <span class="badge badge-info" id="sst-ins-progress-badge">0 / 0 respondidos</span>
+          </div>
+
+          <!-- Sub-selector Transpaleta (Manual vs Eléctrica) -->
+          <div id="sst-ins-transpaleta-wrap" style="display: none; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 8px;">Seleccione la clase de Transpaleta:</div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-accent btn-sm" id="btn-sst-transp-manual" onclick="cambiarVarianteTranspaletaSST('transpaleta')">🔧 Transpaleta Manual (10 puntos)</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-sst-transp-elec" onclick="cambiarVarianteTranspaletaSST('transpaleta_electrica')">⚡ Transpaleta Eléctrica (13 puntos)</button>
+            </div>
+          </div>
+
+          <!-- Chips de vehículos habituales del colaborador -->
+          <div id="sst-ins-habituales-wrap" style="display: none; margin-bottom: 12px;">
+            <div style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">Vehículos / Equipos habituales de este colaborador (clic para autocompletar):</div>
+            <div id="sst-ins-habituales-chips" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+          </div>
+
+          <!-- Datos de Placa / Equipo / Odómetro / Reporta A -->
+          <div id="sst-ins-fields-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; background: var(--bg); padding: 14px; border-radius: 10px; border: 1px solid var(--border);">
+            <div class="form-group" id="sst-ins-group-placa" style="position: relative;">
+              <label class="form-label">Placa del Vehículo *</label>
+              <input type="text" class="form-control" id="sst-ins-placa" placeholder="Ej: ABC123" style="text-transform: uppercase; font-weight: 700;" oninput="this.value = this.value.toUpperCase(); onInputPlacaSST(this.value)">
+              <div id="sst-ins-placas-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:40; background:var(--card-bg); border:1px solid var(--border); border-radius:8px; max-height:170px; overflow-y:auto; box-shadow:var(--shadow);"></div>
+            </div>
+            <div class="form-group" id="sst-ins-group-equipo">
+              <label class="form-label" id="sst-ins-label-equipo">Código / N° Interno Equipo</label>
+              <input type="text" class="form-control" id="sst-ins-equipo" placeholder="Ej: EQ-04" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+            </div>
+            <div class="form-group" id="sst-ins-group-odometro">
+              <label class="form-label">Kilometraje / Horómetro *</label>
+              <input type="text" class="form-control" id="sst-ins-odometro" placeholder="Ej: 45200">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Persona a quien reporta (Jefe / Coord / SST) *</label>
+              <input type="text" class="form-control" id="sst-ins-reporta" placeholder="Nombre del coordinador o jefe">
+            </div>
+          </div>
+
+          <!-- Aviso Transporte Público -->
+          <div id="sst-ins-publico-notice" style="display: none; background: var(--info-soft); border: 1px solid var(--info); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; color: var(--text); font-size: 0.86rem;">
+            <strong>🚌 Confirmación de Transporte Público:</strong> Esta opción no requiere lista de chequeo mecánico. Verifique el nombre de la persona a quien reporta y firme abajo para generar el soporte PDF.
+          </div>
+
+          <!-- Contenedor de Preguntas del Checklist -->
+          <div id="sst-ins-checklist-wrap" style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+              <div style="font-size: 0.86rem; font-weight: 700; color: var(--text);">📋 Lista de Chequeo Preoperacional</div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="marcarTodoCumpleSST()">✓ Marcar todo "Cumple"</button>
+            </div>
+            <div id="sst-ins-checklist-items" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
+
+          <!-- Observaciones y Plan de Acción -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px;">
+            <div class="form-group">
+              <label class="form-label">Observaciones Generales</label>
+              <textarea class="form-control" id="sst-ins-obs" rows="2" placeholder="Observaciones adicionales sobre el vehículo o desplazamiento..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Plan de Acción / Compromiso (obligatorio si hay No Cumple)</label>
+              <textarea class="form-control" id="sst-ins-plan" rows="2" placeholder="Acción correctiva o medida de control..."></textarea>
+            </div>
+          </div>
+
+          <!-- Firma del Trabajador -->
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+              <div style="font-size: 0.86rem; font-weight: 700; color: var(--text);">✍️ Firma del Trabajador *</div>
+              <div id="sst-ins-firma-mode-btns" style="display: none; gap: 6px;">
+                <button type="button" class="btn btn-accent btn-sm" id="btn-sst-firma-previa" onclick="cambiarModoFirmaSST('saved')">Usar firma registrada</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-sst-firma-dibujar" onclick="cambiarModoFirmaSST('draw')">Dibujar en pantalla</button>
+              </div>
+            </div>
+
+            <div id="sst-ins-firma-saved-box" style="display: none; text-align: center; background: #fff; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px;">
+              <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 6px;">Firma registrada del colaborador en el sistema:</div>
+              <img id="sst-ins-firma-saved-img" src="" alt="Firma" style="max-height: 75px; max-width: 100%; object-fit: contain;">
+            </div>
+
+            <div id="sst-ins-firma-draw-box">
+              <div style="background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
+                <canvas id="sst-ins-signature-canvas" width="620" height="140" style="width: 100%; height: 140px; display: block; touch-action: none; cursor: crosshair;"></canvas>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Firme dentro del recuadro blanco</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="limpiarCanvasFirmaSST()">Borrar firma</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModalNuevaInspeccionSST()">Cancelar</button>
+            <button type="button" class="btn btn-accent" id="btn-sst-ins-guardar" onclick="guardarInspeccionDesdeSST()">
+              💾 Guardar Inspección y Generar PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ══════════════════════════════════════════════════════════
        MODAL INTEGRADO PARA CREACIÓN DE REGISTROS
@@ -3496,7 +3949,8 @@
       part: [],
       csst: [],
       cm: [],
-      inc: []
+      inc: [],
+      ins: []
     };
 
     let countsStore = {
@@ -3506,7 +3960,8 @@
       part: {},
       csst: { regionales: {}, operaciones: {} },
       cm: { regionales: {}, operaciones: {} },
-      inc: { regionales: {}, operaciones: {} }
+      inc: { regionales: {}, operaciones: {} },
+      ins: { regionales: {}, operaciones: {}, tipos: {}, resultados: {} }
     };
 
     let selectedItems = {
@@ -3516,10 +3971,86 @@
       part: null,
       csst: null,
       cm: null,
-      inc: null
+      inc: null,
+      ins: null
     };
 
     let debounceTimers = {};
+
+    // ═════ CONTROL DE ACCESO POR PESTAÑA SEGÚN Maestro_Menu_Sst ═════
+    const MAPA_TAB_SECCION_SST = {
+      evaluacion: 'Evaluación SST',
+      capacitacion: 'Capacitación SST',
+      pruebaconsumo: 'Prueba de Consumo',
+      participacion: 'Participación',
+      compromiso: 'Compromiso SST',
+      gestionmedica: 'Casos Medicos',
+      inspecciones: 'Inspecciones_vehiculos'
+    };
+
+    const MAPA_MODKEY_SECCION_SST = {
+      ev: 'Evaluación SST',
+      cap: 'Capacitación SST',
+      pc: 'Prueba de Consumo',
+      part: 'Participación',
+      csst: 'Compromiso SST',
+      cm: 'Casos Medicos',
+      inc: 'Casos Medicos',
+      ins: 'Inspecciones_vehiculos'
+    };
+
+    function normalizarTextoSeccionSst(s) {
+      return String(s || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+    }
+
+    function tieneAccesoSeccionSst(nombreSeccion) {
+      const secciones = Array.isArray(CONFIG.secciones) ? CONFIG.secciones : [];
+      const buscada = normalizarTextoSeccionSst(nombreSeccion);
+      return secciones.some(sec => normalizarTextoSeccionSst(sec) === buscada);
+    }
+
+    function tieneAccesoTabSst(tabId) {
+      const sec = MAPA_TAB_SECCION_SST[tabId];
+      if (!sec) return false;
+      return tieneAccesoSeccionSst(sec);
+    }
+
+    function obtenerPrimeraPestanaPermitidaSst() {
+      const orden = ['evaluacion', 'capacitacion', 'pruebaconsumo', 'participacion', 'compromiso', 'gestionmedica', 'inspecciones'];
+      return orden.find(t => tieneAccesoTabSst(t)) || null;
+    }
+
+    function aplicarPermisosMenuSst() {
+      document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
+        const tabId = item.getAttribute('data-tab');
+        const permitido = tieneAccesoTabSst(tabId);
+        item.style.display = permitido ? '' : 'none';
+        if (!permitido) {
+          const pane = document.getElementById(`pane-${tabId}`);
+          if (pane) pane.style.display = 'none';
+        }
+      });
+    }
+
+    function obtenerAlcanceModuloSst(modKey) {
+      const sec = MAPA_MODKEY_SECCION_SST[modKey];
+      if (sec && CONFIG.alcancePorSeccion) {
+        const secNorm = normalizarTextoSeccionSst(sec);
+        const keyReal = Object.keys(CONFIG.alcancePorSeccion).find(k => normalizarTextoSeccionSst(k) === secNorm);
+        if (keyReal && CONFIG.alcancePorSeccion[keyReal]) {
+          return CONFIG.alcancePorSeccion[keyReal];
+        }
+      }
+      return {
+        regionalesFiltro: CONFIG.regionalesFiltro || [],
+        opsPorRegional: CONFIG.opsPorRegional || {},
+        operacionesFiltro: CONFIG.operacionesFiltro || [],
+      };
+    }
 
     // ═════ ESTADO Y CONTROL DE ORDENAMIENTO (ASC / DESC) ═════
     let sortStateSst = {
@@ -3529,7 +4060,8 @@
       part: { key: 'fecha', dir: 'desc' },
       csst: { key: 'fecha', dir: 'desc' },
       cm: { key: 'trabajador', dir: 'asc' },
-      inc: { key: 'fecha', dir: 'desc' }
+      inc: { key: 'fecha', dir: 'desc' },
+      ins: { key: 'fecha', dir: 'desc' }
     };
 
     function toggleSortSst(modKey, col) {
@@ -3598,6 +4130,20 @@
           case 'operacion': return String(item.sst_operacion || '').toLowerCase();
           case 'evento': return String(item.sst_evento || '').toLowerCase();
           case 'diagnostico': return (item.sst_cod_diagnosticos || []).join(' ').toLowerCase();
+          default: return String(item[col] || '').toLowerCase();
+        }
+      }
+      if (modKey === 'ins') {
+        switch (col) {
+          case 'pdf': return item.pdf_url ? 1 : 0;
+          case 'fecha': return item.fecha_registro || '';
+          case 'trabajador': return limpiarNombreTrabajador(item.trabajador || '').toLowerCase();
+          case 'operacion': return `${item.operacion || ''} ${item.regional || ''}`.toLowerCase();
+          case 'tipo': return String(item.tipo_label || item.tipo || '').toLowerCase();
+          case 'placa': return String(item.placa || item.equipo_interno || '').toLowerCase();
+          case 'puntaje': return item.puntaje !== null && item.puntaje !== undefined ? Number(item.puntaje) : -1;
+          case 'resultado': return String(item.resultado || '').toLowerCase();
+          case 'reporta': return String(item.reporta_a || '').toLowerCase();
           default: return String(item[col] || '').toLowerCase();
         }
       }
@@ -3672,6 +4218,7 @@
       else if (modKey === 'csst') aplicarFiltroYOrdenCsst();
       else if (modKey === 'cm') aplicarFiltroYOrdenCm();
       else if (modKey === 'inc') aplicarFiltroYOrdenInc();
+      else if (modKey === 'ins') aplicarFiltroYOrdenIns();
     }
 
     // ═════ REDIMENSIÓN DE COLUMNAS (DRAG & RESIZE) ═════
@@ -3715,6 +4262,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       initSidebarUser();
+      aplicarPermisosMenuSst();
       initLinks();
       inicializarRedimensionColumnasSst();
       actualizarIconosOrdenSst('ev');
@@ -3724,20 +4272,22 @@
       actualizarIconosOrdenSst('csst');
       actualizarIconosOrdenSst('cm');
       actualizarIconosOrdenSst('inc');
+      actualizarIconosOrdenSst('ins');
       inicializarCanvasCsst();
-      cargarNotificacionesSST('ev');
-      cargarNotificacionesSST('cap');
-      cargarNotificacionesSST('pc');
-      cargarNotificacionesSST('csst');
+      inicializarCanvasInspeccionSST();
+      if (tieneAccesoTabSst('evaluacion')) cargarNotificacionesSST('ev');
+      if (tieneAccesoTabSst('capacitacion')) cargarNotificacionesSST('cap');
+      if (tieneAccesoTabSst('pruebaconsumo')) cargarNotificacionesSST('pc');
+      if (tieneAccesoTabSst('compromiso')) cargarNotificacionesSST('csst');
       inicializarListenersNotificaciones();
       setInterval(() => {
-        if (currentTab === 'evaluacion') {
+        if (currentTab === 'evaluacion' && tieneAccesoTabSst('evaluacion')) {
           cargarNotificacionesSST('ev');
-        } else if (currentTab === 'capacitacion') {
+        } else if (currentTab === 'capacitacion' && tieneAccesoTabSst('capacitacion')) {
           cargarNotificacionesSST('cap');
-        } else if (currentTab === 'pruebaconsumo') {
+        } else if (currentTab === 'pruebaconsumo' && tieneAccesoTabSst('pruebaconsumo')) {
           cargarNotificacionesSST('pc');
-        } else if (currentTab === 'compromiso') {
+        } else if (currentTab === 'compromiso' && tieneAccesoTabSst('compromiso')) {
           cargarNotificacionesSST('csst');
         }
       }, 60000);
@@ -3778,6 +4328,12 @@
         } else {
           targetSubtab = 'casosmedicos';
         }
+      } else if (['inspecciones', 'inspeccion', 'vehiculos', 'inspeccionesvehiculos', 'ins'].includes(rawTab)) {
+        targetTab = 'inspecciones';
+      }
+
+      if (!tieneAccesoTabSst(targetTab)) {
+        targetTab = obtenerPrimeraPestanaPermitidaSst() || 'evaluacion';
       }
 
       if (targetTab === 'gestionmedica') {
@@ -3812,6 +4368,9 @@
           } else if (targetTab === 'compromiso') {
             if (!dataStore.csst.length) await cargarDatos('csst');
             abrirDetalleCompromiso(idParam);
+          } else if (targetTab === 'inspecciones') {
+            if (!dataStore.ins.length) await cargarDatos('ins');
+            abrirDetalleInspeccionSST(idParam);
           }
         }, 600);
       }
@@ -3821,7 +4380,7 @@
         const SECCION_TICKET_SST = {
           evaluacion: 'Evaluación SST', capacitacion: 'Capacitación SST',
           pruebaconsumo: 'Prueba de Consumo', participacion: 'Participación',
-          compromiso: 'Compromiso SST'
+          compromiso: 'Compromiso SST', inspecciones: 'Inspecciones Vehículos'
         };
         initBotonTicket({
           moduloErp: 'sst',
@@ -3865,7 +4424,7 @@
           }
         }
         if (!id) {
-          ['ev', 'cap', 'pc', 'part', 'csst'].forEach(k => {
+          ['ev', 'cap', 'pc', 'part', 'csst', 'ins'].forEach(k => {
             const det = document.getElementById(`detail-${k}`);
             if (det && det.style.display !== 'none') {
               const lay = document.getElementById(`layout-${k}`);
@@ -3880,6 +4439,7 @@
           else if (t === 'pruebaconsumo') abrirDetallePrueba(id);
           else if (t === 'participacion') abrirDetalleParticipacion(id);
           else if (t === 'compromiso') abrirDetalleCompromiso(id);
+          else if (t === 'inspecciones') abrirDetalleInspeccionSST(id);
         }
       } finally {
         isHandlingPopstate = false;
@@ -3919,6 +4479,10 @@
     // Debe reflejar exactamente ROLES_ESCRITURA_SST en src/services/accesoSst.js.
     const ROLES_ESCRITURA_SST = ['AdmSst', 'AnaSst', 'AuxSst', 'LiderSst', 'Sistema'];
     function actualizarPermisosBotonesCrearSst() {
+      const btnCrearIns = document.getElementById('btn-crear-ins');
+      if (btnCrearIns && CONFIG.inspeccionesConfig && !CONFIG.inspeccionesConfig.puedeRegistrar) {
+        btnCrearIns.style.display = 'none';
+      }
       const puedeCrear = ROLES_ESCRITURA_SST.includes(CONFIG.rol);
       if (puedeCrear) return;
       ['btn-crear-ev', 'btn-crear-cap', 'btn-crear-pc', 'btn-crear-csst'].forEach(id => {
@@ -4423,6 +4987,7 @@
         else if (modulo === 'pc') url = `/pruebaconsumo/api/prueba/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
         else if (modulo === 'part') url = `/participacion/api/asistencia/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
         else if (modulo === 'csst') url = `/compromisosst/api/compromiso/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
+        else if (modulo === 'ins') url = `/sst/api/inspecciones/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
         const res = await fetch(url, { method: 'DELETE' });
         const data = await res.json();
@@ -4569,7 +5134,8 @@
       pruebaconsumo: 'Prueba de Consumo',
       participacion: 'Participación',
       compromiso: 'Compromisos SST',
-      gestionmedica: 'Gestión Médica'
+      gestionmedica: 'Gestión Médica',
+      inspecciones: 'Inspecciones Vehículos'
     };
 
     function actualizarTituloMovilSst(titulo) {
@@ -4578,6 +5144,11 @@
     }
 
     function switchTab(tabId, options = null) {
+      if (!tieneAccesoTabSst(tabId)) {
+        const fallback = obtenerPrimeraPestanaPermitidaSst();
+        if (!fallback) return;
+        tabId = fallback;
+      }
       currentTab = tabId;
 
       document.querySelectorAll('.nav-item').forEach(item => {
@@ -4615,7 +5186,7 @@
         actualizarTituloMovilSst(TITULOS_SST[tabId] || 'Gestión SST');
       }
 
-      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : 'csst';
+      const key = tabId === 'evaluacion' ? 'ev' : tabId === 'capacitacion' ? 'cap' : tabId === 'pruebaconsumo' ? 'pc' : tabId === 'participacion' ? 'part' : tabId === 'inspecciones' ? 'ins' : 'csst';
       actualizarIconosOrdenSst(key);
       inicializarRedimensionColumnasSst();
       if (!dataStore[key].length) {
@@ -4724,7 +5295,7 @@
       const icon = document.getElementById('btn-actualizar-global-icon');
       if (icon) icon.style.animation = 'spin 0.8s linear infinite';
 
-      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'gestionmedica' ? (subtabGestionMedica === 'casosmedicos' ? 'cm' : 'inc') : 'csst';
+      const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'inspecciones' ? 'ins' : currentTab === 'gestionmedica' ? (subtabGestionMedica === 'casosmedicos' ? 'cm' : 'inc') : 'csst';
       cargarDatos(key).finally(() => {
         if (icon) icon.style.animation = 'none';
       });
@@ -4773,6 +5344,11 @@
           const input = document.getElementById(`filtro-inc-${campo}`);
           if (input && input.value.trim()) count++;
         });
+      } else if (modKey === 'ins') {
+        ['trabajador', 'regional', 'operacion', 'tipo', 'resultado', 'desde', 'hasta'].forEach(campo => {
+          const input = document.getElementById(`filtro-ins-${campo}`);
+          if (input && input.value.trim()) count++;
+        });
       } else {
         const trab = document.getElementById(`filtro-${modKey}-trabajador`);
         const reg = document.getElementById(`filtro-${modKey}-regional`);
@@ -4818,7 +5394,8 @@
       }
 
       selOp.innerHTML = '<option value="">Todas</option>';
-      const ops = selReg ? (CONFIG.opsPorRegional[selReg] || []) : (CONFIG.operacionesFiltro || []);
+      const alcance = obtenerAlcanceModuloSst(modKey);
+      const ops = selReg ? ((alcance.opsPorRegional && alcance.opsPorRegional[selReg]) || []) : (alcance.operacionesFiltro || []);
       const opCounts = (countsStore[modKey] && countsStore[modKey].operaciones) || {};
 
       ops.forEach(op => {
@@ -4874,6 +5451,11 @@
           const input = document.getElementById(`filtro-inc-${campo}`);
           if (input) input.value = '';
         });
+      } else if (modKey === 'ins') {
+        ['trabajador', 'regional', 'operacion', 'tipo', 'resultado', 'desde', 'hasta'].forEach(campo => {
+          const input = document.getElementById(`filtro-ins-${campo}`);
+          if (input) input.value = '';
+        });
       } else {
         const trab = document.getElementById(`filtro-${modKey}-trabajador`);
         const reg = document.getElementById(`filtro-${modKey}-regional`);
@@ -4907,6 +5489,7 @@
         if (modKey === 'csst') await cargarCompromisos();
         if (modKey === 'cm') await cargarCasosMedicos();
         if (modKey === 'inc') await cargarIncapacidades();
+        if (modKey === 'ins') await cargarInspeccionesSST();
       } catch (err) {
         console.error(`Error cargando datos de ${modKey}:`, err);
         showToast(modKey === 'inc' && err.message ? err.message : 'Error al cargar datos', 'error');
@@ -8033,6 +8616,16 @@
       if (dDrop && dInput && !dDrop.contains(e.target) && e.target !== dInput) {
         dDrop.style.display = 'none';
       }
+      const insWDrop = document.getElementById('sst-ins-worker-suggestions');
+      const insWInput = document.getElementById('sst-ins-input-cc');
+      if (insWDrop && insWInput && !insWDrop.contains(e.target) && e.target !== insWInput) {
+        insWDrop.style.display = 'none';
+      }
+      const insPDrop = document.getElementById('sst-ins-placas-dropdown');
+      const insPInput = document.getElementById('sst-ins-placa');
+      if (insPDrop && insPInput && !insPDrop.contains(e.target) && e.target !== insPInput) {
+        insPDrop.style.display = 'none';
+      }
     });
 
     // Helper para actualizar options de Regional y Operación con conteos
@@ -8041,9 +8634,10 @@
       const filtroOp = document.getElementById(`filtro-${modKey}-operacion`);
       if (!filtroReg || !filtroOp) return;
 
+      const alcance = obtenerAlcanceModuloSst(modKey);
       const curReg = filtroReg.value;
       filtroReg.innerHTML = '<option value="">Todas</option>';
-      CONFIG.regionalesFiltro.forEach(r => {
+      (alcance.regionalesFiltro || []).forEach(r => {
         const cnt = (counts.regionales && counts.regionales[r]) || 0;
         const opt = document.createElement('option');
         opt.value = r;
@@ -8054,7 +8648,7 @@
 
       const curOp = filtroOp.value;
       filtroOp.innerHTML = '<option value="">Todas</option>';
-      const ops = curReg ? (CONFIG.opsPorRegional[curReg] || []) : (CONFIG.operacionesFiltro || []);
+      const ops = curReg ? ((alcance.opsPorRegional && alcance.opsPorRegional[curReg]) || []) : (alcance.operacionesFiltro || []);
       ops.forEach(op => {
         const cnt = (counts.operaciones && counts.operaciones[op]) || 0;
         const opt = document.createElement('option');
@@ -8076,9 +8670,987 @@
       if (det) det.style.display = 'none';
       selectedItems[modKey] = null;
       document.querySelectorAll(`#tbody-${modKey} tr`).forEach(tr => tr.classList.remove('selected'));
-      const tabMap = { ev: 'evaluacion', cap: 'capacitacion', pc: 'pruebaconsumo', part: 'participacion', csst: 'compromiso' };
+      const tabMap = { ev: 'evaluacion', cap: 'capacitacion', pc: 'pruebaconsumo', part: 'participacion', csst: 'compromiso', ins: 'inspecciones' };
       const currentTabName = tabMap[modKey] || currentTab;
       sincronizarUrlPestana(currentTabName, null, { id: null, push: true });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // 7. INSPECCIONES DE VEHÍCULOS Y EQUIPOS (SST)
+    // ══════════════════════════════════════════════════════════
+    function obtenerParamsFiltrosInspeccionesSST() {
+      const tr = (document.getElementById('filtro-ins-trabajador')?.value || '').trim();
+      const reg = document.getElementById('filtro-ins-regional')?.value || '';
+      const op = document.getElementById('filtro-ins-operacion')?.value || '';
+      const tipo = document.getElementById('filtro-ins-tipo')?.value || '';
+      const resVal = document.getElementById('filtro-ins-resultado')?.value || '';
+      const fd = document.getElementById('filtro-ins-desde')?.value || '';
+      const fh = document.getElementById('filtro-ins-hasta')?.value || '';
+
+      return new URLSearchParams({
+        usuario: CONFIG.usuarioId,
+        trabajador: tr,
+        regional: reg,
+        operacion: op,
+        tipo,
+        resultado: resVal,
+        fechaDesde: fd,
+        fechaHasta: fh
+      });
+    }
+
+    function actualizarSelectConteosInspecciones(counts) {
+      actualizarSelectConteos('ins', counts || {});
+
+      // Conteos interactivos en Medio / Vehículo
+      const selTipo = document.getElementById('filtro-ins-tipo');
+      if (selTipo) {
+        const curTipo = selTipo.value;
+        const tiposBase = [
+          'Motocicleta',
+          'Carro / Camioneta',
+          'Camión de Ruta',
+          'Montacarga Eléctrica',
+          'Transpaleta Manual',
+          'Transpaleta Eléctrica',
+          'Transporte Público'
+        ];
+        selTipo.innerHTML = '<option value="">Todos</option>';
+        tiposBase.forEach(t => {
+          const cnt = (counts && counts.tipos && counts.tipos[t]) || 0;
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = `${t} (${cnt})`;
+          if (t === curTipo) opt.selected = true;
+          selTipo.appendChild(opt);
+        });
+      }
+
+      // Conteos interactivos en Resultado
+      const selRes = document.getElementById('filtro-ins-resultado');
+      if (selRes) {
+        const curRes = selRes.value;
+        const resultadosBase = [
+          { val: 'APTO', label: 'Apto' },
+          { val: 'APTO CON NOVEDADES', label: 'Apto con Novedades' },
+          { val: 'NO APTO', label: 'No Apto' }
+        ];
+        selRes.innerHTML = '<option value="">Todos</option>';
+        resultadosBase.forEach(r => {
+          const cnt = (counts && counts.resultados && counts.resultados[r.val]) || 0;
+          const opt = document.createElement('option');
+          opt.value = r.val;
+          opt.textContent = `${r.label} (${cnt})`;
+          if (r.val === curRes) opt.selected = true;
+          selRes.appendChild(opt);
+        });
+      }
+    }
+
+    async function cargarInspeccionesSST() {
+      const params = obtenerParamsFiltrosInspeccionesSST();
+      const res = await fetch(`/sst/api/inspecciones/datos?${params.toString()}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        dataStore.ins = [];
+        countsStore.ins = { regionales: {}, operaciones: {}, tipos: {}, resultados: {} };
+        showToast((data && data.error) || 'No se pudieron cargar las inspecciones', 'error');
+        actualizarSelectConteosInspecciones({});
+        aplicarFiltroYOrdenIns();
+        return;
+      }
+
+      dataStore.ins = Array.isArray(data.results) ? data.results : [];
+      countsStore.ins = data.counts || { regionales: {}, operaciones: {}, tipos: {}, resultados: {} };
+
+      const stats = data.stats || { total: dataStore.ins.length, aptos: 0, novedades: 0, noAptos: 0 };
+      const bTotal = document.getElementById('badge-total-ins');
+      const bAptos = document.getElementById('badge-aptos-ins');
+      const bNov = document.getElementById('badge-novedades-ins');
+      const bNoAptos = document.getElementById('badge-noaptos-ins');
+      if (bTotal) bTotal.innerText = `${stats.total} Registros`;
+      if (bAptos) bAptos.innerText = `${stats.aptos} Aptos`;
+      if (bNov) bNov.innerText = `${stats.novedades} Con Novedades`;
+      if (bNoAptos) bNoAptos.innerText = `${stats.noAptos} No Aptos`;
+
+      actualizarSelectConteosInspecciones(countsStore.ins);
+      aplicarFiltroYOrdenIns();
+    }
+
+    function aplicarFiltroYOrdenIns() {
+      const ordenados = ordenarDatosSst('ins', (dataStore.ins || []).slice());
+      renderTablaInspeccionesSST(ordenados);
+    }
+
+    function formatearFechaHoraInspeccion(fechaRaw) {
+      if (!fechaRaw) return '—';
+      const s = String(fechaRaw).replace('T', ' ').slice(0, 16);
+      const parts = s.split(' ');
+      const dParts = (parts[0] || '').split('-');
+      if (dParts.length === 3) {
+        return `${dParts[2]}/${dParts[1]}/${dParts[0]}${parts[1] ? ' ' + parts[1] : ''}`;
+      }
+      return s;
+    }
+
+    function renderBadgeResultadoInspeccionSST(res) {
+      const r = String(res || '').toUpperCase();
+      if (r === 'APTO') return '<span class="badge badge-success">✓ Apto</span>';
+      if (r === 'APTO CON NOVEDADES') return '<span class="badge badge-warning">⚠ Con Novedades</span>';
+      if (r === 'NO APTO') return '<span class="badge badge-danger">✗ No Apto</span>';
+      return `<span class="badge badge-info">${res || '—'}</span>`;
+    }
+
+    function renderTablaInspeccionesSST(items) {
+      const tbody = document.getElementById('tbody-ins');
+      if (!tbody) return;
+
+      const bTotal = document.getElementById('badge-total-ins');
+      if (bTotal) bTotal.innerText = `${items.length} Registros`;
+
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron inspecciones de vehículos con los filtros seleccionados.</td></tr>';
+        inicializarRedimensionColumnasSst();
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const isSelected = selectedItems.ins && String(selectedItems.ins) === String(it.id);
+        const fechaFmt = formatearFechaHoraInspeccion(it.fecha_registro);
+        const trabajador = limpiarNombreTrabajador(it.trabajador);
+        const cc = it.identificacion || '—';
+        const op = it.operacion || '—';
+        const reg = it.regional || '—';
+        const unidad = [it.placa, it.equipo_interno].filter(Boolean).join(' · ') || '—';
+        const puntajeTxt = it.puntaje !== null && it.puntaje !== undefined ? `${it.puntaje}%` : '—';
+        const pdfBtn = it.pdf_url
+          ? `<a href="${it.pdf_url}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="color:var(--text); font-weight:700;">📄 Abrir PDF</a>`
+          : '<span style="color:var(--text-muted); font-style:italic;">Sin PDF</span>';
+
+        return `
+          <tr onclick="abrirDetalleInspeccionSST('${it.id}')" id="row-ins-${it.id}" class="${isSelected ? 'selected' : ''}">
+            <td style="text-align:center;">${pdfBtn}</td>
+            <td><strong>${fechaFmt}</strong></td>
+            <td><strong>${trabajador}</strong><br><small style="color:var(--text-muted);">C.C. ${cc}</small></td>
+            <td><strong>${op}</strong><br><small style="color:var(--text-muted);">${reg}</small></td>
+            <td><strong>${it.tipo_label || it.tipo || '—'}</strong></td>
+            <td><strong>${unidad}</strong>${it.odometro ? `<br><small style="color:var(--text-muted);">Km/Hr: ${it.odometro}</small>` : ''}</td>
+            <td style="text-align:center;"><strong>${puntajeTxt}</strong><br><small style="color:var(--text-muted);">C:${it.total_c || 0} · NC:${it.total_nc || 0}</small></td>
+            <td>${renderBadgeResultadoInspeccionSST(it.resultado)}</td>
+            <td>${it.reporta_a || '—'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      inicializarRedimensionColumnasSst();
+    }
+
+    async function abrirDetalleInspeccionSST(id) {
+      selectedItems.ins = id;
+      document.querySelectorAll('#tbody-ins tr').forEach(tr => tr.classList.remove('selected'));
+      const rowEl = document.getElementById(`row-ins-${id}`);
+      if (rowEl) rowEl.classList.add('selected');
+
+      const lay = document.getElementById('layout-ins');
+      const det = document.getElementById('detail-ins');
+      const body = document.getElementById('detail-ins-body');
+      const title = document.getElementById('detail-ins-title');
+      if (!det || !body) return;
+
+      if (lay) lay.classList.add('detail-active');
+      det.style.display = 'flex';
+      title.innerText = `Inspección ${id}`;
+      body.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">Cargando detalle de la inspección...</div>';
+      sincronizarUrlPestana('inspecciones', null, { id, push: true });
+
+      try {
+        const res = await fetch(`/sst/api/inspecciones/detalle/${encodeURIComponent(id)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const it = await res.json();
+        if (!res.ok || !it || it.error) {
+          body.innerHTML = `<div style="padding: 20px; color: var(--danger);">${(it && it.error) || 'No se pudo cargar el detalle.'}</div>`;
+          return;
+        }
+
+        const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const respuestas = Array.isArray(it.respuestas) ? it.respuestas : [];
+        const fotos = Array.isArray(it.fotos) ? it.fotos : [];
+        const puedeBorrar = !!(CONFIG.inspeccionesConfig && CONFIG.inspeccionesConfig.puedeEliminar);
+
+        const itemsHtml = respuestas.length
+          ? `<div style="margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
+                <thead>
+                  <tr style="background: var(--bg-elevated); text-align: left;">
+                    <th style="padding: 7px 8px; border-bottom: 1px solid var(--border);">Punto de Verificación</th>
+                    <th style="padding: 7px 8px; border-bottom: 1px solid var(--border); width: 90px; text-align: center;">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${respuestas.map((r, idx) => {
+                    const ans = String(r.answer || '').toUpperCase();
+                    const pill = ans === 'C'
+                      ? '<span class="badge badge-success" style="font-size:0.68rem;">Cumple</span>'
+                      : ans === 'NC'
+                        ? '<span class="badge badge-danger" style="font-size:0.68rem;">No cumple</span>'
+                        : '<span class="badge badge-info" style="font-size:0.68rem;">No aplica</span>';
+                    return `
+                      <tr>
+                        <td style="padding: 6px 8px; border-bottom: 1px solid var(--border);">
+                          <div style="font-weight: 600; color: var(--text);">${idx + 1}. ${esc(r.text)}</div>
+                          ${r.observation ? `<div style="font-size: 0.73rem; color: var(--danger); margin-top: 2px;">Obs: ${esc(r.observation)}</div>` : ''}
+                        </td>
+                        <td style="padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: center;">${pill}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>`
+          : `<div style="padding: 10px 12px; background: var(--bg); border-radius: 8px; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">Confirmación directa de medio de transporte (sin ítems de chequeo).</div>`;
+
+        const fotosHtml = fotos.length
+          ? `<div class="detail-section">
+              <div class="detail-section-title">Registro Fotográfico (${fotos.length})</div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 6px;">
+                ${fotos.map((u, idx) => `
+                  <a href="${esc(u)}" target="_blank" style="display:block; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:#fff;">
+                    <img src="${esc(u)}" alt="Foto ${idx + 1}" style="width:100%; height:85px; object-fit:cover; display:block;">
+                  </a>
+                `).join('')}
+              </div>
+            </div>`
+          : '';
+
+        body.innerHTML = `
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
+            ${it.pdf_url ? `<a href="${esc(it.pdf_url)}" target="_blank" class="btn btn-accent btn-sm" style="flex:1; justify-content:center;">📄 Ver Formato PDF</a>` : ''}
+            ${puedeBorrar ? `<button type="button" class="btn btn-danger btn-sm" onclick="confirmarEliminarRegistro('ins', '${esc(it.id)}')">🗑️ Eliminar</button>` : ''}
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-section-title">Datos del Colaborador</div>
+            <div class="detail-row"><span class="detail-label">Trabajador:</span><span class="detail-val"><strong>${esc(limpiarNombreTrabajador(it.trabajador))}</strong></span></div>
+            <div class="detail-row"><span class="detail-label">Identificación:</span><span class="detail-val">${esc(it.identificacion || '—')}</span></div>
+            <div class="detail-row"><span class="detail-label">Id Vinculación:</span><span class="detail-val">${esc(it.id_vinculacion || '—')}</span></div>
+            <div class="detail-row"><span class="detail-label">Cargo:</span><span class="detail-val">${esc(it.cargo || '—')}</span></div>
+            <div class="detail-row"><span class="detail-label">Regional / Operación:</span><span class="detail-val">${esc(it.regional || '—')} / ${esc(it.operacion || '—')}</span></div>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-section-title">Datos del Vehículo / Equipo</div>
+            <div class="detail-row"><span class="detail-label">Medio / Tipo:</span><span class="detail-val"><strong>${esc(it.tipo_label || it.tipo || '—')}</strong></span></div>
+            <div class="detail-row"><span class="detail-label">Placa:</span><span class="detail-val">${esc(it.placa || '—')}</span></div>
+            <div class="detail-row"><span class="detail-label">Equipo Interno:</span><span class="detail-val">${esc(it.equipo_interno || '—')}</span></div>
+            <div class="detail-row"><span class="detail-label">Km / Horómetro:</span><span class="detail-val">${esc(it.odometro || '—')}</span></div>
+            <div class="detail-row"><span class="detail-label">Fecha Registro:</span><span class="detail-val">${esc(formatearFechaHoraInspeccion(it.fecha_registro))}</span></div>
+            <div class="detail-row"><span class="detail-label">Reporta A:</span><span class="detail-val"><strong>${esc(it.reporta_a || '—')}</strong></span></div>
+            <div class="detail-row"><span class="detail-label">Resultado:</span><span class="detail-val">${renderBadgeResultadoInspeccionSST(it.resultado)} (${it.puntaje ?? 100}%)</span></div>
+          </div>
+
+          ${(it.observaciones_generales || it.plan_accion) ? `
+            <div class="detail-section">
+              <div class="detail-section-title">Observaciones y Plan de Acción</div>
+              ${it.observaciones_generales ? `<div style="font-size:0.8rem; margin-bottom:6px;"><strong>Observaciones:</strong> ${esc(it.observaciones_generales)}</div>` : ''}
+              ${it.plan_accion ? `<div style="font-size:0.8rem;"><strong>Plan de acción:</strong> ${esc(it.plan_accion)}</div>` : ''}
+            </div>
+          ` : ''}
+
+          <div class="detail-section">
+            <div class="detail-section-title">Puntos Verificados (Cumple: ${it.total_c || 0} · No Cumple: ${it.total_nc || 0} · N/A: ${it.total_na || 0})</div>
+            ${itemsHtml}
+          </div>
+
+          ${fotosHtml}
+        `;
+      } catch (e) {
+        console.error(e);
+        body.innerHTML = '<div style="padding: 20px; color: var(--danger);">Error de red al consultar el detalle.</div>';
+      }
+    }
+
+    // ── Modal Descargar Reporte de Inspecciones (Excel / CSV, estilo Kardex) ──
+    let _reporteInsSeq = 0;
+
+    function abrirModalReporteInspecciones() {
+      const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const textoSel = (id) => {
+        const sel = document.getElementById(id);
+        return sel && sel.value ? sel.options[sel.selectedIndex].textContent.replace(/\s*\([\d.,]+\)\s*$/, '') : '';
+      };
+
+      const filtros = [
+        ['Trabajador / Placa', (document.getElementById('filtro-ins-trabajador')?.value || '').trim()],
+        ['Regional', textoSel('filtro-ins-regional')],
+        ['Operación', textoSel('filtro-ins-operacion')],
+        ['Medio / Vehículo', textoSel('filtro-ins-tipo')],
+        ['Resultado', textoSel('filtro-ins-resultado')],
+        ['Fecha Desde', document.getElementById('filtro-ins-desde')?.value || ''],
+        ['Fecha Hasta', document.getElementById('filtro-ins-hasta')?.value || ''],
+      ].filter(([, v]) => v);
+
+      const boxFiltros = document.getElementById('inspeccionesReporteFiltros');
+      if (boxFiltros) {
+        boxFiltros.innerHTML = filtros.length
+          ? filtros.map(([k, v]) => `• <strong>${k}:</strong> ${esc(v)}`).join('<br>')
+          : 'Ninguno: se descargan <strong>todas</strong> las inspecciones que su rol puede ver.';
+      }
+
+      const modal = document.getElementById('reporte-inspecciones-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal._backEntry = registrarModalBack(() => cerrarModalReporteInspecciones());
+      }
+      actualizarConteoReporteInspecciones();
+    }
+
+    function cerrarModalReporteInspecciones() {
+      const modal = document.getElementById('reporte-inspecciones-modal');
+      if (!modal) return;
+      modal.style.display = 'none';
+      cerrarModalBack(modal._backEntry);
+      modal._backEntry = null;
+    }
+
+    async function actualizarConteoReporteInspecciones() {
+      const info = document.getElementById('inspeccionesReporteInfo');
+      const btnExcel = document.getElementById('btnInsReporteExcel');
+      const btnCsv = document.getElementById('btnInsReporteCsv');
+      if (!info || !btnExcel || !btnCsv) return;
+
+      btnExcel.disabled = true;
+      btnCsv.disabled = true;
+      info.style.color = 'var(--text-muted)';
+      info.textContent = 'Calculando cantidad de filas...';
+      const seq = ++_reporteInsSeq;
+
+      try {
+        const resp = await fetch('/sst/api/inspecciones/reporte/conteo?' + obtenerParamsFiltrosInspeccionesSST().toString());
+        const data = await resp.json();
+        if (seq !== _reporteInsSeq) return;
+        if (!resp.ok || !data.ok) {
+          info.style.color = 'var(--danger)';
+          info.textContent = data.error || 'No se pudo calcular el reporte.';
+          return;
+        }
+        const fmt = (n) => Number(n).toLocaleString('es-CO');
+        btnExcel.disabled = !data.permiteExcel;
+        btnCsv.disabled = !data.permiteCsv;
+        if (data.total === 0) {
+          info.textContent = 'No hay inspecciones con los filtros seleccionados.';
+        } else if (data.permiteExcel) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> inspecciones encontradas. Puede descargar el reporte en Excel (.xlsx) o CSV (.csv).`;
+        } else if (data.permiteCsv) {
+          info.innerHTML = `<strong style="color:var(--text);">${fmt(data.total)}</strong> inspecciones. Supera el límite de Excel (${fmt(data.limites.excel)} filas), solo se puede descargar en CSV.`;
+        } else {
+          info.style.color = 'var(--danger)';
+          info.innerHTML = `<strong>${fmt(data.total)}</strong> inspecciones. Supera el máximo permitido (${fmt(data.limites.csv)} filas). Filtre por rango de fechas, regional u operación.`;
+        }
+      } catch (e) {
+        if (seq !== _reporteInsSeq) return;
+        info.style.color = 'var(--danger)';
+        info.textContent = 'Error de red al calcular el reporte.';
+      }
+    }
+
+    async function descargarReporteInspecciones(formato) {
+      const btn = document.getElementById(formato === 'csv' ? 'btnInsReporteCsv' : 'btnInsReporteExcel');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando...';
+      try {
+        const params = obtenerParamsFiltrosInspeccionesSST();
+        params.set('formato', formato);
+        const resp = await fetch('/sst/api/inspecciones/reporte?' + params.toString());
+        if (!resp.ok) {
+          const msg = await resp.text();
+          throw new Error(msg || 'No se pudo generar el reporte.');
+        }
+        const blob = await resp.blob();
+        const disp = resp.headers.get('Content-Disposition') || '';
+        const m = disp.match(/filename\*=UTF-8''([^;]+)/) || disp.match(/filename="([^"]+)"/);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = m ? decodeURIComponent(m[1]) : `Reporte_Inspecciones_Vehiculos.${formato}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+        showToast('Reporte descargado correctamente', 'success');
+      } catch (err) {
+        showToast(err.message || 'Error al descargar reporte', 'error');
+      } finally {
+        btn.innerHTML = textoOriginal;
+        actualizarConteoReporteInspecciones();
+      }
+    }
+
+    // ── Modal Adicionar Nueva Inspección desde SST ───────────────────────────
+    let sstInsState = {
+      worker: null,
+      firmaPreviaUrl: null,
+      vehiculosHabituales: [],
+      reportaPorDefecto: '',
+      type: null,
+      subtype: null,
+      template: null,
+      answers: {},
+      observations: {},
+      signatureMode: 'draw',
+      hasSignatureStroke: false,
+      searchTimer: null,
+      placaTimer: null,
+    };
+
+    function inicializarCanvasInspeccionSST() {
+      const canvas = document.getElementById('sst-ins-signature-canvas');
+      if (!canvas || canvas._initialized) return;
+      canvas._initialized = true;
+      const ctx = canvas.getContext('2d');
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      let drawing = false;
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY,
+        };
+      }
+
+      canvas.addEventListener('mousedown', (e) => {
+        drawing = true;
+        sstInsState.hasSignatureStroke = true;
+        const p = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      });
+      canvas.addEventListener('mousemove', (e) => {
+        if (!drawing) return;
+        const p = getPos(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      });
+      window.addEventListener('mouseup', () => { drawing = false; });
+
+      canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        drawing = true;
+        sstInsState.hasSignatureStroke = true;
+        const p = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      }, { passive: false });
+      canvas.addEventListener('touchmove', (e) => {
+        if (!drawing) return;
+        e.preventDefault();
+        const p = getPos(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }, { passive: false });
+      canvas.addEventListener('touchend', () => { drawing = false; });
+    }
+
+    function limpiarCanvasFirmaSST() {
+      const canvas = document.getElementById('sst-ins-signature-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      sstInsState.hasSignatureStroke = false;
+    }
+
+    function cambiarModoFirmaSST(mode) {
+      sstInsState.signatureMode = mode;
+      const btnPrevia = document.getElementById('btn-sst-firma-previa');
+      const btnDibujar = document.getElementById('btn-sst-firma-dibujar');
+      const boxSaved = document.getElementById('sst-ins-firma-saved-box');
+      const boxDraw = document.getElementById('sst-ins-firma-draw-box');
+
+      if (mode === 'saved' && sstInsState.firmaPreviaUrl) {
+        if (btnPrevia) { btnPrevia.className = 'btn btn-accent btn-sm'; }
+        if (btnDibujar) { btnDibujar.className = 'btn btn-secondary btn-sm'; }
+        if (boxSaved) boxSaved.style.display = 'block';
+        if (boxDraw) boxDraw.style.display = 'none';
+      } else {
+        sstInsState.signatureMode = 'draw';
+        if (btnPrevia) { btnPrevia.className = 'btn btn-secondary btn-sm'; }
+        if (btnDibujar) { btnDibujar.className = 'btn btn-accent btn-sm'; }
+        if (boxSaved) boxSaved.style.display = 'none';
+        if (boxDraw) boxDraw.style.display = 'block';
+      }
+    }
+
+    function abrirModalNuevaInspeccionSST() {
+      reiniciarTrabajadorInspeccionSST();
+      const modal = document.getElementById('modal-nueva-inspeccion-sst');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal._backEntry = registrarModalBack(() => cerrarModalNuevaInspeccionSST());
+      }
+      setTimeout(() => {
+        document.getElementById('sst-ins-input-cc')?.focus();
+      }, 100);
+    }
+
+    function cerrarModalNuevaInspeccionSST() {
+      const modal = document.getElementById('modal-nueva-inspeccion-sst');
+      if (!modal) return;
+      modal.style.display = 'none';
+      cerrarModalBack(modal._backEntry);
+      modal._backEntry = null;
+    }
+
+    function reiniciarTrabajadorInspeccionSST() {
+      sstInsState.worker = null;
+      sstInsState.firmaPreviaUrl = null;
+      sstInsState.vehiculosHabituales = [];
+      sstInsState.reportaPorDefecto = '';
+      sstInsState.type = null;
+      sstInsState.subtype = null;
+      sstInsState.template = null;
+      sstInsState.answers = {};
+      sstInsState.observations = {};
+
+      const inputCc = document.getElementById('sst-ins-input-cc');
+      if (inputCc) {
+        inputCc.value = '';
+        inputCc.readOnly = false;
+      }
+      const btnBuscar = document.getElementById('btn-sst-ins-buscar-cc');
+      const btnCambiar = document.getElementById('btn-sst-ins-cambiar-trab');
+      if (btnBuscar) btnBuscar.style.display = 'inline-flex';
+      if (btnCambiar) btnCambiar.style.display = 'none';
+
+      document.getElementById('sst-ins-worker-card').style.display = 'none';
+      document.getElementById('sst-ins-step-selector').style.display = 'none';
+      document.getElementById('sst-ins-step-form').style.display = 'none';
+      document.getElementById('sst-ins-modal-sub').innerText = 'Paso 1: Ingrese la identificación del trabajador para consultar sus datos';
+    }
+
+    function onInputBuscarTrabajadorInspeccionSST(val) {
+      clearTimeout(sstInsState.searchTimer);
+      const drop = document.getElementById('sst-ins-worker-suggestions');
+      const term = String(val || '').trim();
+      if (term.length < 2) {
+        if (drop) drop.style.display = 'none';
+        return;
+      }
+      sstInsState.searchTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/sst/api/inspecciones/buscar-trabajador?usuario=${encodeURIComponent(CONFIG.usuarioId)}&q=${encodeURIComponent(term)}`);
+          const data = await res.json();
+          const items = (data && Array.isArray(data.items)) ? data.items : [];
+          if (!items.length || !drop) {
+            if (drop) drop.style.display = 'none';
+            return;
+          }
+          drop.innerHTML = items.map(w => `
+            <div onclick="seleccionarSugerenciaTrabajadorSST('${String(w.identificacion).replace(/'/g, "\\'")}')" style="padding: 9px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.83rem;">
+              <div style="font-weight: 700; color: var(--text);">${w.nombre}</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted);">C.C. ${w.identificacion} · ${w.cargo || 'Sin cargo'} · ${w.operacion || ''} (${w.regional || ''})</div>
+            </div>
+          `).join('');
+          drop.style.display = 'block';
+        } catch (e) {
+          if (drop) drop.style.display = 'none';
+        }
+      }, 260);
+    }
+
+    function seleccionarSugerenciaTrabajadorSST(cc) {
+      const drop = document.getElementById('sst-ins-worker-suggestions');
+      if (drop) drop.style.display = 'none';
+      const input = document.getElementById('sst-ins-input-cc');
+      if (input) input.value = cc;
+      buscarTrabajadorPorCedulaSST();
+    }
+
+    async function buscarTrabajadorPorCedulaSST() {
+      const input = document.getElementById('sst-ins-input-cc');
+      const cc = String(input?.value || '').trim();
+      if (!cc) {
+        showToast('Ingrese el número de identificación del trabajador', 'error');
+        return;
+      }
+
+      const drop = document.getElementById('sst-ins-worker-suggestions');
+      if (drop) drop.style.display = 'none';
+
+      showLoading('Consultando datos del trabajador en Maestro_Vinculación...');
+      try {
+        const res = await fetch(`/sst/api/inspecciones/trabajador/${encodeURIComponent(cc)}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        if (!res.ok || !data || data.error) {
+          showToast((data && data.error) || 'Trabajador no encontrado', 'error');
+          return;
+        }
+
+        const w = data.colaborador;
+        sstInsState.worker = w;
+        sstInsState.firmaPreviaUrl = data.firmaPreviaUrl || null;
+        sstInsState.vehiculosHabituales = Array.isArray(data.vehiculosHabituales) ? data.vehiculosHabituales : [];
+        sstInsState.reportaPorDefecto = data.reportaPorDefecto || '';
+
+        document.getElementById('sst-ins-w-nombre').innerText = w.nombre || '—';
+        document.getElementById('sst-ins-w-cc').innerText = `${w.identificacion}${w.idVinculacion ? ' · #' + w.idVinculacion : ''}`;
+        document.getElementById('sst-ins-w-cargo').innerText = w.cargo || '—';
+        document.getElementById('sst-ins-w-operacion').innerText = `${w.operacion || '—'} (${w.regional || '—'})`;
+
+        if (input) input.readOnly = true;
+        document.getElementById('btn-sst-ins-buscar-cc').style.display = 'none';
+        document.getElementById('btn-sst-ins-cambiar-trab').style.display = 'inline-flex';
+
+        document.getElementById('sst-ins-worker-card').style.display = 'block';
+        document.getElementById('sst-ins-step-selector').style.display = 'block';
+        document.getElementById('sst-ins-step-form').style.display = 'none';
+        document.getElementById('sst-ins-modal-sub').innerText = `Paso 2: Seleccione el vehículo o equipo para ${w.nombre}`;
+      } catch (e) {
+        showToast('Error al consultar el trabajador', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function volverSelectorVehiculoSST() {
+      document.getElementById('sst-ins-step-form').style.display = 'none';
+      document.getElementById('sst-ins-step-selector').style.display = 'block';
+      if (sstInsState.worker) {
+        document.getElementById('sst-ins-modal-sub').innerText = `Paso 2: Seleccione el vehículo o equipo para ${sstInsState.worker.nombre}`;
+      }
+    }
+
+    async function seleccionarTipoInspeccionSST(type, subtype) {
+      if (!sstInsState.worker) {
+        showToast('Primero busque y seleccione al trabajador por su identificación', 'error');
+        return;
+      }
+
+      sstInsState.type = type;
+      sstInsState.subtype = subtype;
+      sstInsState.answers = {};
+      sstInsState.observations = {};
+
+      showLoading('Cargando plantilla de chequeo...');
+      try {
+        const res = await fetch(`/sst/api/inspecciones/plantilla?usuario=${encodeURIComponent(CONFIG.usuarioId)}&type=${encodeURIComponent(type)}&subtype=${encodeURIComponent(subtype)}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok || !data.template) {
+          showToast('No se pudo cargar la plantilla', 'error');
+          return;
+        }
+
+        sstInsState.template = data.template;
+        renderFormularioInspeccionSST();
+      } catch (e) {
+        showToast('Error cargando la plantilla de inspección', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function cambiarVarianteTranspaletaSST(newSubtype) {
+      const btnMan = document.getElementById('btn-sst-transp-manual');
+      const btnElec = document.getElementById('btn-sst-transp-elec');
+      if (btnMan) btnMan.className = newSubtype === 'transpaleta' ? 'btn btn-accent btn-sm' : 'btn btn-secondary btn-sm';
+      if (btnElec) btnElec.className = newSubtype === 'transpaleta_electrica' ? 'btn btn-accent btn-sm' : 'btn btn-secondary btn-sm';
+      await seleccionarTipoInspeccionSST('montacarga', newSubtype);
+    }
+
+    function renderFormularioInspeccionSST() {
+      const tpl = sstInsState.template;
+      if (!tpl) return;
+
+      document.getElementById('sst-ins-step-selector').style.display = 'none';
+      document.getElementById('sst-ins-step-form').style.display = 'block';
+      document.getElementById('sst-ins-selected-label').innerText = tpl.title || tpl.label;
+      document.getElementById('sst-ins-modal-sub').innerText = `Paso 3: Complete la inspección para ${sstInsState.worker.nombre}`;
+
+      // Sub-selector Transpaleta
+      const isTranspaleta = sstInsState.type === 'montacarga' && (sstInsState.subtype === 'transpaleta' || sstInsState.subtype === 'transpaleta_electrica');
+      const transpWrap = document.getElementById('sst-ins-transpaleta-wrap');
+      if (transpWrap) {
+        transpWrap.style.display = isTranspaleta ? 'block' : 'none';
+        const btnMan = document.getElementById('btn-sst-transp-manual');
+        const btnElec = document.getElementById('btn-sst-transp-elec');
+        if (btnMan) btnMan.className = sstInsState.subtype === 'transpaleta' ? 'btn btn-accent btn-sm' : 'btn btn-secondary btn-sm';
+        if (btnElec) btnElec.className = sstInsState.subtype === 'transpaleta_electrica' ? 'btn btn-accent btn-sm' : 'btn btn-secondary btn-sm';
+      }
+
+      const isPublico = sstInsState.type === 'transporte_publico';
+      const isMontacarga = sstInsState.type === 'montacarga';
+
+      document.getElementById('sst-ins-group-placa').style.display = (isPublico || isMontacarga) ? 'none' : 'block';
+      document.getElementById('sst-ins-group-equipo').style.display = isPublico ? 'none' : 'block';
+      document.getElementById('sst-ins-group-odometro').style.display = (isPublico || isTranspaleta) ? 'none' : 'block';
+      document.getElementById('sst-ins-label-equipo').innerText = isMontacarga ? 'Código / Serie del Equipo *' : 'N° Interno / Equipo (Opcional)';
+
+      document.getElementById('sst-ins-placa').value = '';
+      document.getElementById('sst-ins-equipo').value = '';
+      document.getElementById('sst-ins-odometro').value = '';
+      document.getElementById('sst-ins-reporta').value = sstInsState.reportaPorDefecto || '';
+      document.getElementById('sst-ins-obs').value = '';
+      document.getElementById('sst-ins-plan').value = '';
+
+      // Chips de vehículos habituales
+      const habWrap = document.getElementById('sst-ins-habituales-wrap');
+      const habChips = document.getElementById('sst-ins-habituales-chips');
+      const habs = (sstInsState.vehiculosHabituales || []).filter(v => !isPublico && (v.placa || v.equipoInterno));
+      if (habs.length && habWrap && habChips) {
+        habWrap.style.display = 'block';
+        habChips.innerHTML = habs.map((v, idx) => `
+          <button type="button" class="btn btn-secondary btn-sm" onclick="aplicarVehiculoHabitualSST(${idx})" style="font-size:0.75rem; padding:4px 10px;">
+            🚘 ${v.placa || v.equipoInterno} <small style="opacity:0.75;">(${v.tipoLabel || ''})</small>
+          </button>
+        `).join('');
+      } else if (habWrap) {
+        habWrap.style.display = 'none';
+      }
+
+      // Checklist o Transporte Público
+      document.getElementById('sst-ins-publico-notice').style.display = isPublico ? 'block' : 'none';
+      document.getElementById('sst-ins-checklist-wrap').style.display = isPublico ? 'none' : 'block';
+
+      renderItemsChecklistSST();
+
+      // Configurar firma (registrada vs dibujar)
+      const modeBtns = document.getElementById('sst-ins-firma-mode-btns');
+      const savedImg = document.getElementById('sst-ins-firma-saved-img');
+      limpiarCanvasFirmaSST();
+      if (sstInsState.firmaPreviaUrl) {
+        if (modeBtns) modeBtns.style.display = 'inline-flex';
+        if (savedImg) savedImg.src = sstInsState.firmaPreviaUrl;
+        cambiarModoFirmaSST('saved');
+      } else {
+        if (modeBtns) modeBtns.style.display = 'none';
+        cambiarModoFirmaSST('draw');
+      }
+    }
+
+    function aplicarVehiculoHabitualSST(idx) {
+      const habs = (sstInsState.vehiculosHabituales || []).filter(v => v.placa || v.equipoInterno);
+      const v = habs[idx];
+      if (!v) return;
+      if (v.placa) document.getElementById('sst-ins-placa').value = v.placa;
+      if (v.equipoInterno) document.getElementById('sst-ins-equipo').value = v.equipoInterno;
+      if (v.odometro) document.getElementById('sst-ins-odometro').value = v.odometro;
+      if (v.reportaA) document.getElementById('sst-ins-reporta').value = v.reportaA;
+    }
+
+    function onInputPlacaSST(val) {
+      clearTimeout(sstInsState.placaTimer);
+      const drop = document.getElementById('sst-ins-placas-dropdown');
+      const term = String(val || '').trim();
+      if (term.length < 1) {
+        if (drop) drop.style.display = 'none';
+        return;
+      }
+      sstInsState.placaTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/sst/api/inspecciones/placas?usuario=${encodeURIComponent(CONFIG.usuarioId)}&q=${encodeURIComponent(term)}`);
+          const data = await res.json();
+          const items = (data && Array.isArray(data.items)) ? data.items : [];
+          if (!items.length || !drop) {
+            if (drop) drop.style.display = 'none';
+            return;
+          }
+          drop.innerHTML = items.map(p => `
+            <div onclick="seleccionarPlacaSugeridaSST('${String(p.placa).replace(/'/g, "\\'")}')" style="padding: 7px 10px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.8rem;">
+              <strong>${p.placa}</strong> ${p.tipoVehiculo ? `<span style="color:var(--text-muted);">· ${p.tipoVehiculo}</span>` : ''}
+            </div>
+          `).join('');
+          drop.style.display = 'block';
+        } catch (e) {
+          if (drop) drop.style.display = 'none';
+        }
+      }, 220);
+    }
+
+    function seleccionarPlacaSugeridaSST(placa) {
+      const input = document.getElementById('sst-ins-placa');
+      const drop = document.getElementById('sst-ins-placas-dropdown');
+      if (input) input.value = placa;
+      if (drop) drop.style.display = 'none';
+    }
+
+    function renderItemsChecklistSST() {
+      const container = document.getElementById('sst-ins-checklist-items');
+      const badge = document.getElementById('sst-ins-progress-badge');
+      const items = (sstInsState.template && Array.isArray(sstInsState.template.items)) ? sstInsState.template.items : [];
+      if (!container) return;
+
+      const respondidos = items.filter(it => sstInsState.answers[it.id]).length;
+      if (badge) {
+        badge.innerText = items.length ? `${respondidos} / ${items.length} respondidos` : 'Confirmación directa';
+      }
+
+      let currentSection = '';
+      container.innerHTML = items.map((it, idx) => {
+        const ans = sstInsState.answers[it.id] || '';
+        const obs = sstInsState.observations[it.id] || '';
+        let secHeader = '';
+        if (it.section && it.section !== currentSection) {
+          currentSection = it.section;
+          secHeader = `<div style="font-size: 0.76rem; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-top: ${idx === 0 ? '0' : '8px'}; padding: 4px 2px;">${it.section}</div>`;
+        }
+
+        const btnStyle = (val, activeBg, activeColor) => {
+          const isAct = ans === val;
+          return `padding: 6px 11px; border-radius: 7px; font-size: 0.76rem; font-weight: 700; cursor: pointer; border: 1.5px solid ${isAct ? activeBg : 'var(--border)'}; background: ${isAct ? activeBg : 'var(--card-bg)'}; color: ${isAct ? activeColor : 'var(--text)'};`;
+        };
+
+        return `
+          ${secHeader}
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 210px; font-size: 0.84rem; font-weight: 600; color: var(--text);">
+                ${idx + 1}. ${it.text}
+                ${it.critical ? '<span class="badge badge-danger" style="font-size:0.64rem; margin-left:6px;">Crítico</span>' : ''}
+              </div>
+              <div style="display: inline-flex; gap: 6px;">
+                <button type="button" style="${btnStyle('C', '#16a34a', '#ffffff')}" onclick="seleccionarRespuestaItemSST('${it.id}', 'C')">Cumple</button>
+                <button type="button" style="${btnStyle('NC', '#dc2626', '#ffffff')}" onclick="seleccionarRespuestaItemSST('${it.id}', 'NC')">No cumple</button>
+                <button type="button" style="${btnStyle('NA', '#64748b', '#ffffff')}" onclick="seleccionarRespuestaItemSST('${it.id}', 'NA')">No aplica</button>
+              </div>
+            </div>
+            ${ans === 'NC' ? `
+              <div style="margin-top: 8px;">
+                <input type="text" class="form-control" placeholder="Describa el hallazgo o novedad de este punto..." value="${String(obs).replace(/"/g, '&quot;')}" oninput="sstInsState.observations['${it.id}'] = this.value" style="font-size: 0.8rem;">
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function seleccionarRespuestaItemSST(itemId, val) {
+      sstInsState.answers[itemId] = val;
+      renderItemsChecklistSST();
+    }
+
+    function marcarTodoCumpleSST() {
+      const items = (sstInsState.template && Array.isArray(sstInsState.template.items)) ? sstInsState.template.items : [];
+      items.forEach(it => {
+        sstInsState.answers[it.id] = 'C';
+      });
+      renderItemsChecklistSST();
+    }
+
+    async function guardarInspeccionDesdeSST() {
+      if (!sstInsState.worker || !sstInsState.template) return;
+
+      const isPublico = sstInsState.type === 'transporte_publico';
+      const isMontacarga = sstInsState.type === 'montacarga';
+      const isTranspaleta = isMontacarga && (sstInsState.subtype === 'transpaleta' || sstInsState.subtype === 'transpaleta_electrica');
+
+      const placa = document.getElementById('sst-ins-placa').value.trim().toUpperCase();
+      const equipo = document.getElementById('sst-ins-equipo').value.trim().toUpperCase();
+      const odometro = document.getElementById('sst-ins-odometro').value.trim();
+      const reportaA = document.getElementById('sst-ins-reporta').value.trim();
+      const obsGen = document.getElementById('sst-ins-obs').value.trim();
+      const planAcc = document.getElementById('sst-ins-plan').value.trim();
+
+      if (!isPublico && !isMontacarga && !placa) {
+        showToast('La placa del vehículo es obligatoria', 'error');
+        return;
+      }
+      if (isMontacarga && !equipo) {
+        showToast('El código o identificación del equipo es obligatorio', 'error');
+        return;
+      }
+      if (!isPublico && !isTranspaleta && !odometro) {
+        showToast('El kilometraje u horómetro es obligatorio', 'error');
+        return;
+      }
+      if (!reportaA) {
+        showToast('Indique el nombre de la persona a quien reporta', 'error');
+        return;
+      }
+
+      const tplItems = Array.isArray(sstInsState.template.items) ? sstInsState.template.items : [];
+      for (const it of tplItems) {
+        if (!sstInsState.answers[it.id]) {
+          showToast(`Falta responder el punto: "${it.text}"`, 'error');
+          return;
+        }
+      }
+
+      const hayNoCumple = tplItems.some(it => sstInsState.answers[it.id] === 'NC');
+      if (hayNoCumple && !planAcc) {
+        showToast('Cuando existen ítems en "No cumple", debe diligenciar el Plan de Acción', 'error');
+        return;
+      }
+
+      let signatureDataUrl = null;
+      if (sstInsState.signatureMode === 'saved' && sstInsState.firmaPreviaUrl) {
+        signatureDataUrl = null;
+      } else {
+        if (!sstInsState.hasSignatureStroke) {
+          showToast('Debe firmar en el recuadro blanco para guardar la inspección', 'error');
+          return;
+        }
+        const canvas = document.getElementById('sst-ins-signature-canvas');
+        signatureDataUrl = canvas.toDataURL('image/png');
+      }
+
+      const itemsPayload = tplItems.map(it => ({
+        id: it.id,
+        answer: sstInsState.answers[it.id],
+        observation: sstInsState.observations[it.id] || '',
+      }));
+
+      const btn = document.getElementById('btn-sst-ins-guardar');
+      const prevHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generando PDF y guardando...';
+      showLoading('Guardando inspección y generando soporte PDF...');
+
+      try {
+        const res = await fetch(`/sst/api/inspecciones/guardar?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario: CONFIG.usuarioId,
+            identificacion: sstInsState.worker.identificacion,
+            type: sstInsState.type,
+            subtype: sstInsState.subtype,
+            placa,
+            equipoInterno: equipo,
+            odometro,
+            reportaA,
+            generalObservations: obsGen,
+            actionPlan: planAcc,
+            items: itemsPayload,
+            photos: [],
+            signatureMode: sstInsState.signatureMode,
+            signatureDataUrl,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showToast((data && data.error) || 'No se pudo guardar la inspección', 'error');
+          return;
+        }
+
+        showToast(`Inspección ${data.id} registrada exitosamente (${data.status})`, 'success');
+        cerrarModalNuevaInspeccionSST();
+        await cargarInspeccionesSST();
+        if (data.id) {
+          abrirDetalleInspeccionSST(data.id);
+        }
+      } catch (e) {
+        showToast('Error de red al guardar la inspección', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = prevHtml;
+        hideLoading();
+      }
     }
 
     // ══════════════════════════════════════════════════════════
