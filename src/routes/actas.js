@@ -16,18 +16,21 @@ const {
   actaAdmiteFirma,
 } = require('../services/actas');
 const { notificarActaFirma } = require('../services/email');
+const {
+  obtenerConfigActas,
+  horasVigenciaEnlaceActas,
+  correoActasHabilitado,
+  obtenerCategoriasRestringidas,
+  normalizarTexto,
+} = require('../services/configInventario');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ── INTERRUPTOR DE ENVÍO DE CORREO PARA ACTAS ─────────────────────────────
-// Activado: al guardar un Acta se genera el enlace de firma (48h) y se notifica
-// automáticamente al correo registrado del trabajador.
-const ENVIO_CORREO_ACTAS_ACTIVO = true;
-// ───────────────────────────────────────────────────────────────────────
-
+// Reglas de Actas en Config_Parametros (inventario / Actas): interruptor del correo de firma,
+// vigencia del enlace, editar actas firmadas, regenerar PDF y lógica de abastecimiento.
+// Categorías del acceso restringido: inventario / General. Ver services/configInventario.js.
 const SECCION = 'Actas';
-const CATEGORIAS_RESTRINGIDAS = ['EPP', 'DOTACION', 'DOTACIÓN'];
 
 function agruparOperacionesPorRegional(rows) {
   const opsPorRegional = {};
@@ -183,12 +186,97 @@ async function computarConfigCreacionActa(usuarioId) {
   }
 
   const opsPorRegional = agruparOperacionesPorRegional(opRows);
-  const categoriasConds = [4, 5, 6].includes(accesoCode) ? CATEGORIAS_RESTRINGIDAS : null;
+  const categoriasConds = [4, 5, 6].includes(accesoCode) ? await obtenerCategoriasRestringidas() : null;
 
   return { rol, regional, operacion, opsPorRegional, categoriasRestringidas: categoriasConds };
 }
 
 // ═════ Redirección a la interfaz (pestaña Actas dentro del módulo de Inventario) ═════
+// ── Visibilidad de actas según el acceso del rol (Maestro_Menu_Inventario, Sección 'Actas') ──
+// 1 todo · 2 su regional · 3 sus operaciones/dispositivo · 4/5/6 igual que 1/2/3 pero solo las
+// categorías del acceso restringido (Config_Parametros inventario / General), más lo que el
+// propio usuario registró. Sin acceso configurado: solo lo propio.
+async function condicionesVisibilidadActas(acceso) {
+  const code = acceso.accesoCode;
+  const conds = [];
+  const params = [];
+  const restringidas = [4, 5, 6].includes(code) ? await obtenerCategoriasRestringidas() : [];
+  const phCat = restringidas.map(() => '?').join(',');
+  const ops = acceso.operacionesFiltro || [];
+  const phOps = ops.map(() => '?').join(',');
+  const regionalDe = '(SELECT REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = da.operacion LIMIT 1)';
+
+  if (code === null || code === undefined) {
+    conds.push('da.Usuario = ?'); params.push(acceso.usuarioId);
+  } else if (code === 2) {
+    conds.push(`${regionalDe} = ?`); params.push(acceso.regional);
+  } else if (code === 3) {
+    if (ops.length) { conds.push(`da.operacion IN (${phOps})`); params.push(...ops); } else conds.push('1 = 0');
+  } else if (code === 4) {
+    conds.push(`(da.Categoria IN (${phCat}) OR da.Usuario = ?)`); params.push(...restringidas, acceso.usuarioId);
+  } else if (code === 5) {
+    conds.push(`( (${regionalDe} = ? AND da.Categoria IN (${phCat})) OR da.Usuario = ? )`); params.push(acceso.regional, ...restringidas, acceso.usuarioId);
+  } else if (code === 6) {
+    if (ops.length) {
+      conds.push(`( (da.operacion IN (${phOps}) AND da.Categoria IN (${phCat})) OR da.Usuario = ? )`);
+      params.push(...ops, ...restringidas, acceso.usuarioId);
+    } else {
+      conds.push('da.Usuario = ?'); params.push(acceso.usuarioId);
+    }
+  }
+  // code === 1: sin condición (ve todo)
+  return { conds, params };
+}
+
+// La misma regla para una sola acta.
+async function puedeVerActa(acceso, acta) {
+  if (!acceso || !acta) return false;
+  const propia = String(acta.Usuario || '') === String(acceso.usuarioId || '');
+  const code = acceso.accesoCode;
+  if (code === null || code === undefined) return propia;
+  if (code === 1) return true;
+  const enOps = (acceso.operacionesFiltro || []).some((o) => normalizarTexto(o) === normalizarTexto(acta.operacion));
+  let mismaRegional = false;
+  if (code === 2 || code === 5) {
+    const [[op]] = await pool.execute('SELECT REGIONAL FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1', [acta.operacion]);
+    mismaRegional = Boolean(op) && normalizarTexto(op.REGIONAL) === normalizarTexto(acceso.regional);
+  }
+  let catRestringida = false;
+  if ([4, 5, 6].includes(code)) {
+    const restringidas = await obtenerCategoriasRestringidas();
+    catRestringida = restringidas.some((c) => normalizarTexto(c) === normalizarTexto(acta.Categoria));
+  }
+  if (code === 2) return mismaRegional;
+  if (code === 3) return enOps;
+  if (code === 4) return catRestringida || propia;
+  if (code === 5) return (mismaRegional && catRestringida) || propia;
+  if (code === 6) return (enOps && catRestringida) || propia;
+  return propia;
+}
+
+// Carga un acta y verifica que el usuario la pueda ver. Devuelve { acceso, acta } o { status, error }.
+async function cargarActaVisible(usuario, id) {
+  if (!usuario) return { status: 400, error: 'usuario requerido' };
+  const acceso = await computarAccesoActas(usuario);
+  if (!acceso) return { status: 403, error: 'Usuario no autorizado' };
+  const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
+  if (!acta) return { status: 404, error: 'Acta no encontrada' };
+  if (!(await puedeVerActa(acceso, acta))) return { status: 403, error: 'No tiene acceso a esta acta.' };
+  return { acceso, acta };
+}
+
+// ¿Puede el usuario crear actas en esta operación y categoría? (alcance de creación del rol)
+async function validarCreacionActa(usuario, operacion, categoria) {
+  const cfg = await computarConfigCreacionActa(usuario);
+  if (!cfg) return 'Usuario no autorizado para crear actas.';
+  const enAlcance = Object.values(cfg.opsPorRegional).some((ops) => ops.some((o) => normalizarTexto(o) === normalizarTexto(operacion)));
+  if (!enAlcance) return `No tiene permiso para crear actas en la operación ${operacion}.`;
+  if (cfg.categoriasRestringidas && !cfg.categoriasRestringidas.some((c) => normalizarTexto(c) === normalizarTexto(categoria))) {
+    return `Su rol no puede crear actas de la categoría ${categoria}.`;
+  }
+  return null;
+}
+
 router.get('/', async (req, res) => {
   try {
     const { usuario } = req.query;
@@ -205,6 +293,10 @@ router.get('/', async (req, res) => {
 // ═════ API: GET /api/categorias ═════
 router.get('/api/categorias', async (req, res) => {
   try {
+    // Seguridad: exige usuario con la pestaña Actas (antes respondía sin usuario)
+    if (!req.query.usuario || !(await computarAccesoActas(req.query.usuario))) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
     const [rows] = await pool.execute('SELECT Categoria FROM Config_Categoria_Inventario ORDER BY Categoria');
     res.json(rows.map(r => r.Categoria));
   } catch (err) {
@@ -230,6 +322,10 @@ router.get('/api/config-creacion', async (req, res) => {
 // ═════ API: GET /api/trabajadores-buscar ═════
 router.get('/api/trabajadores-buscar', async (req, res) => {
   try {
+    // Seguridad: exige usuario con la pestaña Actas (antes respondía sin usuario)
+    if (!req.query.usuario || !(await computarAccesoActas(req.query.usuario))) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
     const { q } = req.query;
     if (!q || q.trim().length < 2) return res.json([]);
 
@@ -249,6 +345,10 @@ router.get('/api/trabajadores-buscar', async (req, res) => {
 // ═════ API: GET /api/stock-categoria (stock por artículo para una Operación+Categoria) ═════
 router.get('/api/stock-categoria', async (req, res) => {
   try {
+    // Seguridad: exige usuario con la pestaña Actas (antes respondía sin usuario)
+    if (!req.query.usuario || !(await computarAccesoActas(req.query.usuario))) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
     const { operacion, categoria } = req.query;
     if (!operacion || !categoria) return res.status(400).json({ error: 'operacion y categoria requeridos' });
 
@@ -270,6 +370,10 @@ router.get('/api/stock-categoria', async (req, res) => {
 // ═════ API: GET /api/trabajador-contacto (Email/Celular desde Maestro_Segmentación) ═════
 router.get('/api/trabajador-contacto', async (req, res) => {
   try {
+    // Seguridad: exige usuario con la pestaña Actas (antes respondía sin usuario: correo y celular del trabajador)
+    if (!req.query.usuario || !(await computarAccesoActas(req.query.usuario))) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
     const { identificacion } = req.query;
     if (!identificacion) return res.status(400).json({ error: 'identificacion requerida' });
     const contacto = await obtenerContactoTrabajador(identificacion);
@@ -291,40 +395,9 @@ router.get('/api/actas', async (req, res) => {
 
     const conds = [];
     const params = [];
-    const code = acceso.accesoCode;
-
-    if (code === null || code === undefined) {
-      conds.push('da.Usuario = ?');
-      params.push(acceso.usuarioId);
-    } else if (code === 1) {
-      // ver todo
-    } else if (code === 2) {
-      conds.push('(SELECT REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = da.operacion LIMIT 1) = ?');
-      params.push(acceso.regional);
-    } else if (code === 3) {
-      if (acceso.operacionesFiltro.length > 0) {
-        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-        conds.push(`da.operacion IN (${ph})`);
-        params.push(...acceso.operacionesFiltro);
-      } else {
-        conds.push('1 = 0');
-      }
-    } else if (code === 4) {
-      conds.push("(da.Categoria IN ('EPP', 'DOTACION', 'DOTACIÓN') OR da.Usuario = ?)");
-      params.push(acceso.usuarioId);
-    } else if (code === 5) {
-      conds.push("( ((SELECT REGIONAL FROM Maestro_Operaciones o WHERE o.OPERACIÓN = da.operacion LIMIT 1) = ? AND da.Categoria IN ('EPP', 'DOTACION', 'DOTACIÓN')) OR da.Usuario = ? )");
-      params.push(acceso.regional, acceso.usuarioId);
-    } else if (code === 6) {
-      if (acceso.operacionesFiltro.length > 0) {
-        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-        conds.push(`( (da.operacion IN (${ph}) AND da.Categoria IN ('EPP', 'DOTACION', 'DOTACIÓN')) OR da.Usuario = ? )`);
-        params.push(...acceso.operacionesFiltro, acceso.usuarioId);
-      } else {
-        conds.push('da.Usuario = ?');
-        params.push(acceso.usuarioId);
-      }
-    }
+    const visibilidad = await condicionesVisibilidadActas(acceso);
+    conds.push(...visibilidad.conds);
+    params.push(...visibilidad.params);
 
     const { estado, regional, operacion, categoria, search, fechaInicio, fechaFin, sort, order, page, limit } = req.query;
 
@@ -473,8 +546,10 @@ router.get('/api/actas', async (req, res) => {
 router.get('/api/acta/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
-    if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    // Seguridad: exige usuario y que pueda ver el acta (incluye correo y celular del trabajador)
+    const r = await cargarActaVisible(req.query.usuario, id);
+    if (r.error) return res.status(r.status).json({ error: r.error });
+    const { acta } = r;
 
     const [[vinc]] = await pool.execute(
       'SELECT Trabajador FROM `Maestro_Vinculación` WHERE Identificación = ? ORDER BY `Fecha de Ingreso` DESC LIMIT 1',
@@ -515,6 +590,11 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
     if (!identificacion || !operacion || !categoria || !usuario) {
       return res.status(400).json({ error: 'Campos requeridos: identificacion, operacion, categoria, usuario' });
     }
+
+    // Seguridad: crear un acta descuenta inventario en Kardex; antes no se validaba quién la creaba.
+    // Exige la pestaña Actas, la operación dentro de su alcance y, si el rol es restringido, su categoría.
+    const errCreacion = await validarCreacionActa(usuario, operacion, categoria);
+    if (errCreacion) return res.status(403).json({ error: errCreacion });
 
     let itemsParsed = [];
     if (items) {
@@ -592,9 +672,11 @@ router.post('/api/actas', upload.single('evidenciaFile'), async (req, res) => {
         }
         const contacto = await obtenerContactoTrabajador(parseInt(identificacion));
         const emailDestino = (email && email.trim()) || contacto.email;
-        if (!emailDestino || !ENVIO_CORREO_ACTAS_ACTIVO) return;
+        // "Habilitar notificaciones de correo en Actas" (Config_Parametros, inventario / Actas)
+        if (!emailDestino || !(await correoActasHabilitado())) return;
 
-        const token = await generarToken('Dynamic_Actas', 'IdActa', idActa);
+        // "Horas de vigencia del enlace de firma de actas"
+        const token = await generarToken('Dynamic_Actas', 'IdActa', idActa, 'token_firma', 'token_expira', await horasVigenciaEnlaceActas());
         const url = `${req.protocol}://${req.get('host')}/doclogyser/acta_entrega/${idActa}?token=${encodeURIComponent(token)}`;
 
         const { datos } = await construirDatosPlantilla(idActa, {});
@@ -633,8 +715,10 @@ router.put('/api/acta/:id/items', async (req, res) => {
 
     const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    // Seguridad: el acta debe estar en el alcance del usuario (misma regla del listado)
+    if (!(await puedeVerActa(acceso, acta))) return res.status(403).json({ error: 'No tiene acceso a esta acta.' });
 
-    if (acta.Estado !== 'Pendiente' && acceso.rol !== 'Sistema') {
+    if (acta.Estado !== 'Pendiente' && !(await obtenerConfigActas(acceso.rol)).puedeEditarFirmadas /* Roles que pueden editar actas firmadas */) {
       return res.status(403).json({ error: 'Solo se pueden editar los artículos de actas en estado Pendiente' });
     }
 
@@ -708,8 +792,10 @@ router.post('/api/acta/:id/evidencia', upload.single('evidenciaFile'), async (re
 
     const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    // Seguridad: el acta debe estar en el alcance del usuario (misma regla del listado)
+    if (!(await puedeVerActa(acceso, acta))) return res.status(403).json({ error: 'No tiene acceso a esta acta.' });
 
-    if (acta.Estado !== 'Pendiente' && acceso.rol !== 'Sistema') {
+    if (acta.Estado !== 'Pendiente' && !(await obtenerConfigActas(acceso.rol)).puedeEditarFirmadas /* Roles que pueden editar actas firmadas */) {
       return res.status(403).json({ error: 'Solo se puede reemplazar la evidencia de actas en estado Pendiente' });
     }
 
@@ -738,6 +824,8 @@ router.post('/api/acta/:id/anular', async (req, res) => {
 
     const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    // Seguridad: el acta debe estar en el alcance del usuario (misma regla del listado)
+    if (!(await puedeVerActa(acceso, acta))) return res.status(403).json({ error: 'No tiene acceso a esta acta.' });
     if (acta.Estado !== 'Pendiente') {
       return res.status(400).json({ error: 'Solo se pueden anular actas en estado Pendiente' });
     }
@@ -774,13 +862,16 @@ router.post('/api/acta/:id/enlace', async (req, res) => {
     const acceso = await computarAccesoActas(usuario);
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const [[acta]] = await pool.execute('SELECT Estado, Url_Firma FROM Dynamic_Actas WHERE IdActa = ?', [id]);
+    const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    // Seguridad: el acta debe estar en el alcance del usuario (misma regla del listado)
+    if (!(await puedeVerActa(acceso, acta))) return res.status(403).json({ error: 'No tiene acceso a esta acta.' });
     if (!actaAdmiteFirma(acta)) {
       return res.status(400).json({ error: 'Solo se puede generar el enlace de firma para actas Pendientes o cerradas sin firma del trabajador' });
     }
 
-    const token = await generarToken('Dynamic_Actas', 'IdActa', id);
+    // "Horas de vigencia del enlace de firma de actas" (Config_Parametros, inventario / Actas)
+    const token = await generarToken('Dynamic_Actas', 'IdActa', id, 'token_firma', 'token_expira', await horasVigenciaEnlaceActas());
     const url = `${req.protocol}://${req.get('host')}/doclogyser/acta_entrega/${id}?token=${encodeURIComponent(token)}`;
     res.json({ ok: true, url });
   } catch (err) {
@@ -799,8 +890,10 @@ router.post('/api/acta/:id/contacto', async (req, res) => {
     const acceso = await computarAccesoActas(usuario);
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const [[acta]] = await pool.execute('SELECT identificacion FROM Dynamic_Actas WHERE IdActa = ?', [id]);
+    const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    // Seguridad: el acta debe estar en el alcance del usuario (misma regla del listado)
+    if (!(await puedeVerActa(acceso, acta))) return res.status(403).json({ error: 'No tiene acceso a esta acta.' });
 
     await actualizarContactoTrabajador(acta.identificacion, email, celular);
     res.json({ ok: true });
@@ -823,6 +916,8 @@ router.post('/api/acta/:id/correo', async (req, res) => {
 
     const [[acta]] = await pool.execute('SELECT * FROM Dynamic_Actas WHERE IdActa = ?', [id]);
     if (!acta) return res.status(404).json({ error: 'Acta no encontrada' });
+    // Seguridad: el acta debe estar en el alcance del usuario (misma regla del listado)
+    if (!(await puedeVerActa(acceso, acta))) return res.status(403).json({ error: 'No tiene acceso a esta acta.' });
     if (!actaAdmiteFirma(acta)) {
       return res.status(400).json({ error: 'El acta ya no está pendiente de firma' });
     }
@@ -834,7 +929,7 @@ router.post('/api/acta/:id/correo', async (req, res) => {
       return res.status(400).json({ error: 'El trabajador no tiene correo registrado' });
     }
 
-    if (!ENVIO_CORREO_ACTAS_ACTIVO) {
+    if (!(await correoActasHabilitado())) { // "Habilitar notificaciones de correo en Actas"
       return res.json({ ok: true, enviado: false, motivo: 'El envío de correo para Actas está desactivado temporalmente.' });
     }
 
@@ -861,18 +956,12 @@ router.post('/api/acta/:id/regenerar-pdf', async (req, res) => {
       return res.status(400).json({ error: 'usuario requerido' });
     }
 
-    const [uRows] = await pool.execute(
-      'SELECT ID, Nombre, Rol FROM Maestro_Usuarios WHERE ID = ?',
-      [usuario]
-    );
-    if (!uRows.length) {
-      return res.status(403).json({ error: 'Usuario no encontrado' });
-    }
-
-    const rol = (uRows[0].Rol || '').trim().toLowerCase();
-    const ROLES_PERMITIDOS = ['sistema', 'inventario'];
-    if (!ROLES_PERMITIDOS.includes(rol)) {
-      return res.status(403).json({ error: 'No autorizado: Solo usuarios con rol Sistema o Inventario pueden regenerar actas' });
+    // Seguridad: acta dentro del alcance del usuario + "Roles que pueden regenerar PDF de actas"
+    // (Config_Parametros, inventario / Actas)
+    const r = await cargarActaVisible(usuario, id);
+    if (r.error) return res.status(r.status).json({ error: r.error });
+    if (!(await obtenerConfigActas(r.acceso.rol)).puedeRegenerarPdf) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para regenerar el PDF de las actas.' });
     }
 
     const result = await regenerarPDFActa(id, { force: true });
@@ -892,10 +981,9 @@ router.post('/api/acta/:id/generar-pdf-directo', async (req, res) => {
       return res.status(400).json({ error: 'usuario requerido' });
     }
 
-    const acceso = await computarAccesoActas(usuario);
-    if (!acceso) {
-      return res.status(403).json({ error: 'Usuario no autorizado para gestionar actas' });
-    }
+    // Seguridad: el acta debe estar en el alcance del usuario (misma regla del listado)
+    const r = await cargarActaVisible(usuario, id);
+    if (r.error) return res.status(r.status).json({ error: r.error });
 
     const result = await generarPDFDirectoActa(id);
     res.json({ ok: true, url_acta: result.urlActa, mensaje: 'PDF generado exitosamente' });
@@ -908,8 +996,7 @@ router.post('/api/acta/:id/generar-pdf-directo', async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 // ── SUBPESTAÑA: LÓGICA DE ABASTECIMIENTO (Maestro_Dotacion_Cargos) ───────────
 // ══════════════════════════════════════════════════════════════════════════════
-const ROLES_LOGICA_ABASTECIMIENTO = ['Sistema', 'Inventario', 'AdmSst'];
-
+// "Roles que pueden gestionar la lógica de abastecimiento" (Config_Parametros, inventario / Actas)
 async function validarAccesoLogica(usuarioId) {
   if (!usuarioId) return null;
   const [uRows] = await pool.execute(
@@ -918,7 +1005,7 @@ async function validarAccesoLogica(usuarioId) {
   );
   if (!uRows.length) return null;
   const rol = uRows[0].Rol || '';
-  if (!ROLES_LOGICA_ABASTECIMIENTO.includes(rol)) return null;
+  if (!(await obtenerConfigActas(rol)).puedeGestionarLogica) return null;
   return { usuarioId: uRows[0].ID, usuarioNombre: uRows[0].Nombre, rol };
 }
 

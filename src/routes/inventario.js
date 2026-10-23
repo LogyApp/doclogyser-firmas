@@ -24,6 +24,9 @@ const {
   obtenerCopiaTransferenciaRecibida,
   obtenerConfigSolicitudes,
   obtenerConfigArticulos,
+  obtenerConfigActas,
+  horasVigenciaEnlaceActas,
+  correoActasHabilitado,
   normalizarTexto,
 } = require('../services/configInventario');
 
@@ -98,6 +101,7 @@ router.get('/', async (req, res) => {
     // Reglas de la pestaña Artículos (inventario / Artículos) y lista completa de categorías
     // (Config_Categoria_Inventario), que reemplaza la lista de respaldo que tenía la pantalla.
     const cfgArticulos = await obtenerConfigArticulos(acceso.rol);
+    const cfgActas = await obtenerConfigActas(acceso.rol); // Reglas de la pestaña Actas (inventario / Actas)
     const [catRowsTodas] = await pool.execute('SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE Categoria IS NOT NULL ORDER BY Categoria');
 
     const html = fs.readFileSync(HTML_PATH, 'utf8');
@@ -108,6 +112,7 @@ router.get('/', async (req, res) => {
       kardex: cfgKardex,
       solicitudes: cfgSolicitudes,
       articulos: cfgArticulos,
+      actas: cfgActas,
       categoriasTodas: catRowsTodas.map((r) => r.Categoria),
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -3432,9 +3437,10 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
       (async () => {
         for (const actaInfo of actasCreadas) {
           try {
-            const token = await generarToken('Dynamic_Actas', 'IdActa', actaInfo.idActa);
+            // Vigencia y correo según Config_Parametros (inventario / Actas)
+            const token = await generarToken('Dynamic_Actas', 'IdActa', actaInfo.idActa, 'token_firma', 'token_expira', await horasVigenciaEnlaceActas());
             const contacto = await obtenerContactoTrabajador(parseInt(actaInfo.identificacion) || actaInfo.identificacion);
-            if (contacto && contacto.email) {
+            if (contacto && contacto.email && (await correoActasHabilitado())) {
               const url = `${req.protocol}://${req.get('host')}/doclogyser/acta_entrega/${actaInfo.idActa}?token=${encodeURIComponent(token)}`;
               const { datos } = await construirDatosPlantilla(actaInfo.idActa, {});
               await notificarActaFirma({

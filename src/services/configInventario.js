@@ -36,6 +36,16 @@ const P = {
 const SECCION_PENDIENTE = 'Pendiente por recibir';
 const SECCION_SOLICITUDES = 'Solicitudes';
 const SECCION_ARTICULOS = 'Artículos';
+const SECCION_ACTAS = 'Actas';
+
+// Actas
+const PAC = {
+  HABILITAR:        'Habilitar notificaciones de correo en Actas',
+  EDITAR_FIRMADAS:  'Roles que pueden editar actas firmadas',
+  REGENERAR_PDF:    'Roles que pueden regenerar PDF de actas',
+  LOGICA:           'Roles que pueden gestionar la lógica de abastecimiento',
+  HORAS_ENLACE:     'Horas de vigencia del enlace de firma de actas',
+};
 
 // Artículos
 const PA = {
@@ -106,6 +116,13 @@ const DEFAULTS = {
     [PA.CREAR_EDITAR]: 'Auxiliar, AuxiliarR, AdmSst, Asistencial, Calidad, Control, Cuentas, Inventario, LiderSst, Sistema',
     [PA.ELIMINAR]: 'Inventario, Sistema',
     [PA.IMAGENES]: 'Inventario, Sistema',
+  },
+  [SECCION_ACTAS]: {
+    [PAC.HABILITAR]: '1',
+    [PAC.EDITAR_FIRMADAS]: 'Sistema',
+    [PAC.REGENERAR_PDF]: 'Sistema, Inventario',
+    [PAC.LOGICA]: 'Sistema, Inventario, AdmSst',
+    [PAC.HORAS_ENLACE]: '48',
   },
   [SECCION_SOLICITUDES]: {
     [PS.EDITAR_CERRADAS]: 'Sistema',
@@ -379,6 +396,29 @@ async function obtenerConfigArticulos(rol) {
   };
 }
 
+// ── Pestaña Actas ───────────────────────────────────────────────────────────
+async function obtenerConfigActas(rol) {
+  const p = await obtenerParametros(SECCION_ACTAS);
+  return {
+    puedeEditarFirmadas: enLista(valor(p, SECCION_ACTAS, PAC.EDITAR_FIRMADAS), rol),
+    puedeRegenerarPdf: enLista(valor(p, SECCION_ACTAS, PAC.REGENERAR_PDF), rol),
+    puedeGestionarLogica: enLista(valor(p, SECCION_ACTAS, PAC.LOGICA), rol),
+  };
+}
+
+// Horas que dura el enlace de firma de un acta (al crearlo y en la tarea que cierra las vencidas).
+async function horasVigenciaEnlaceActas() {
+  const p = await obtenerParametros(SECCION_ACTAS);
+  const horas = parseInt(valor(p, SECCION_ACTAS, PAC.HORAS_ENLACE), 10);
+  return horas > 0 ? horas : 48;
+}
+
+// ¿Está activo el correo al trabajador con el enlace de firma del acta?
+async function correoActasHabilitado() {
+  const p = await obtenerParametros(SECCION_ACTAS);
+  return activo(valor(p, SECCION_ACTAS, PAC.HABILITAR));
+}
+
 // ── General (todas las pestañas del módulo) ─────────────────────────────────
 // Categorías del acceso restringido (códigos 4, 5 y 6 de Maestro_Menu_Inventario). Se
 // devuelven con y sin tilde, porque Dynamic_Kardex/Vista_Inventario tienen ambas escrituras.
@@ -414,6 +454,10 @@ module.exports = {
   PARAMETROS_SOLICITUDES: PS,
   obtenerConfigArticulos,
   PARAMETROS_ARTICULOS: PA,
+  obtenerConfigActas,
+  horasVigenciaEnlaceActas,
+  correoActasHabilitado,
+  PARAMETROS_ACTAS: PAC,
   normalizarTexto,
   conceptoCorreoCategoria,
   PARAMETROS_INVENTARIO: P,

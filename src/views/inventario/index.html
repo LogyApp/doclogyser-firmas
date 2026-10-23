@@ -6777,7 +6777,7 @@
         tabBtnDotacionLey.style.display = 'none';
       }
 
-      const puedeVerLogica = ['Sistema', 'Inventario', 'AdmSst'].includes(CONFIG.rol);
+      const puedeVerLogica = Boolean(CONFIG.actas && CONFIG.actas.puedeGestionarLogica); // "Roles que pueden gestionar la lógica de abastecimiento"
       const subtabBtnLogica = document.getElementById('actas-subtab-btn-logica');
       if (puedeVerLogica && subtabBtnLogica) {
         subtabBtnLogica.style.display = 'inline-flex';
@@ -9381,7 +9381,7 @@
         return;
       }
       try {
-        const res = await fetch(`/actas/api/acta/${idActa}`);
+        const res = await fetch(`/actas/api/acta/${idActa}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.Url_Acta && data.Url_Acta.trim() !== '') {
@@ -15628,7 +15628,7 @@
       isActasInitialized = true;
 
       // ── Subpestañas: Actas de Entrega vs Lógica de Abastecimiento ──
-      const puedeVerLogica = ['Sistema', 'Inventario', 'AdmSst'].includes(CONFIG.rol);
+      const puedeVerLogica = Boolean(CONFIG.actas && CONFIG.actas.puedeGestionarLogica); // "Roles que pueden gestionar la lógica de abastecimiento"
       const subtabBtnLogica = document.getElementById('actas-subtab-btn-logica');
       if (puedeVerLogica && subtabBtnLogica) {
         subtabBtnLogica.style.display = 'inline-flex';
@@ -15707,7 +15707,7 @@
 
       // Load valid categories domain for Actas (Config_Categoria_Inventario)
       try {
-        const resCat = await fetch('/actas/api/categorias');
+        const resCat = await fetch(`/actas/api/categorias?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         if (resCat.ok) actaAllCategorias = await resCat.json();
       } catch (err) {
         console.error('Error cargando categorías de actas:', err);
@@ -15858,7 +15858,7 @@
           }
           acTimeout = setTimeout(async () => {
             try {
-              const res = await fetch(`/actas/api/trabajadores-buscar?q=${encodeURIComponent(q)}`);
+              const res = await fetch(`/actas/api/trabajadores-buscar?q=${encodeURIComponent(q)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
               if (!res.ok) throw new Error('Search failed');
               const workers = await res.json();
               workerAcList.innerHTML = '';
@@ -15881,7 +15881,7 @@
                     workerAcList.style.display = 'none';
 
                     // Cargar Email/Celular y tallas actuales desde Maestro_Segmentación
-                    fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(w['Identificación'])}`)
+                    fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(w['Identificación'])}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`)
                       .then(r => r.ok ? r.json() : {})
                       .then(contacto => {
                         const emailInput = document.getElementById('acta-form-email');
@@ -15986,7 +15986,7 @@
           actaStockAplica = false;
           actaStockBloquea = false;
           try {
-            const resStock = await fetch(`/actas/api/stock-categoria?operacion=${encodeURIComponent(operacionSel)}&categoria=${encodeURIComponent(cat)}`);
+            const resStock = await fetch(`/actas/api/stock-categoria?operacion=${encodeURIComponent(operacionSel)}&categoria=${encodeURIComponent(cat)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
             if (resStock.ok) {
               const dataStock = await resStock.json();
               actaStockAplica = !!dataStock.aplica;
@@ -16003,7 +16003,7 @@
           if (isDotacion && trabajadorId) {
             if (!actaTrabajadorTallas || String(actaTrabajadorTallas.identificacion) !== String(trabajadorId)) {
               try {
-                const resContacto = await fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(trabajadorId)}`);
+                const resContacto = await fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(trabajadorId)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
                 if (resContacto.ok) {
                   const contacto = await resContacto.json();
                   const wName = document.getElementById('acta-form-trabajador-search').value || trabajadorId;
@@ -16556,8 +16556,8 @@
         const partes = String(a.Trabajador || '').split(' ** ');
         const nombreCorto = partes.length > 1 ? partes[1].trim() : (a.Trabajador || (a.identificacion ? `Doc: ${a.identificacion}` : '—'));
 
-        const rolUsuario = String((typeof CONFIG !== 'undefined' && CONFIG.rol) || '').trim().toLowerCase();
-        const puedeRegenerar = ['sistema', 'inventario'].includes(rolUsuario);
+        // "Roles que pueden regenerar PDF de actas" (Config_Parametros, inventario / Actas)
+        const puedeRegenerar = Boolean(CONFIG.actas && CONFIG.actas.puedeRegenerarPdf);
 
         // Botones para enviar el enlace de firma: en actas Pendientes y, para solicitar la firma
         // nuevamente, en actas Firmadas "sin firma" del trabajador.
@@ -17111,7 +17111,7 @@
       if (celularInput) celularInput.value = data.celular || '';
 
       if (data.identificacion) {
-        fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(data.identificacion)}`)
+        fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(data.identificacion)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`)
           .then(r => r.ok ? r.json() : {})
           .then(contacto => {
             if (contacto.email && emailInput && !emailInput.value) emailInput.value = contacto.email;
@@ -17192,7 +17192,7 @@
 
     async function loadActaDetail(id) {
       try {
-        const res = await fetch(`/actas/api/acta/${id}`);
+        const res = await fetch(`/actas/api/acta/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         if (!res.ok) throw new Error('Error al consultar detalle del acta');
         const acta = await res.json();
 
@@ -17239,7 +17239,7 @@
           Nota: it.Nota || ''
         }));
 
-        actaItemsEditable = (actaActual.Estado === 'Pendiente') || (CONFIG.rol === 'Sistema');
+        actaItemsEditable = (actaActual.Estado === 'Pendiente') || Boolean(CONFIG.actas && CONFIG.actas.puedeEditarFirmadas); // "Roles que pueden editar actas firmadas"
         renderActaFormItems();
 
         const fields = ['acta-form-fecha-entrega', 'acta-form-observaciones', 'acta-form-trabajador-search', 'acta-form-regional', 'acta-form-operacion'];
@@ -17496,7 +17496,7 @@
         const url = await obtenerEnlaceActa(idActa);
         let celular = '';
         try {
-          const res = await fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(identificacion)}`);
+          const res = await fetch(`/actas/api/trabajador-contacto?identificacion=${encodeURIComponent(identificacion)}&usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
           if (res.ok) {
             const data = await res.json();
             celular = data.celular || '';
