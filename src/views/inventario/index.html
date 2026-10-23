@@ -13884,6 +13884,8 @@
     let allPendientes = [];
     // Permiso de eliminar pedidos pendientes: lo resuelve el servidor desde Config_Parametros.
     let puedeEliminarPendientesSrv = false;
+    // "Roles que pueden generar actas de entrega al recibir" (Config_Parametros, inventario / Pendiente por recibir)
+    let puedeGenerarActasSrv = true;
     let selectedPendientesIds = new Set();
     let isPendientesMainInitialized = false;
     let isHistorialIngresosInitialized = false;
@@ -14005,6 +14007,7 @@
         const data = await res.json();
         allPendientes = data.results || [];
         puedeEliminarPendientesSrv = Boolean(data.puedeEliminar);
+        puedeGenerarActasSrv = data.puedeGenerarActas !== false;
         
         // Update stats
         const statCount = document.getElementById('stat-pendientes-count');
@@ -14081,7 +14084,8 @@
       const selectAllCheckbox = document.getElementById('pendiente-select-all');
       if (selectAllCheckbox) selectAllCheckbox.checked = false;
 
-      const puedeGestionarPendiente = ['Sistema', 'Inventario'].includes(CONFIG.rol);
+      // Editar artículos del pedido: misma regla de Kardex ("Roles que pueden editar registros de Kardex")
+      const puedeGestionarPendiente = Boolean(CONFIG.kardex && CONFIG.kardex.puedeEditar);
       const puedeEliminarPendiente = puedeEliminarPendientesSrv;
 
       const selOpOrigen = document.getElementById('pendiente-filter-operacion-origen')?.value || '';
@@ -14619,6 +14623,7 @@
 
       // Listener para seleccionar/deseleccionar todas las actas
       const selectAllActas = itemsDiv.querySelector('#recibir-select-all-actas');
+      if (selectAllActas && !puedeGenerarActasSrv) selectAllActas.style.display = 'none';
       if (selectAllActas) {
         selectAllActas.addEventListener('change', () => {
           const isChecked = selectAllActas.checked;
@@ -14708,7 +14713,7 @@
           ? `<img src="${it.imagen}" alt="" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;">`
           : `<span style="font-size: 1.1rem;">📦</span>`;
 
-        const checkActaHtml = it.hasWorker
+        const checkActaHtml = (it.hasWorker && puedeGenerarActasSrv)
           ? `<input type="checkbox" class="recibir-item-acta-check" data-id-kardex="${it.idKardex}" ${it.actaChecked ? 'checked' : ''} style="background: var(--card-bg); cursor: pointer; width: 16px; height: 16px;" title="Generar acta de entrega a este trabajador">`
           : `<span style="color: var(--border-strong); font-size: 0.85rem;" title="Sin identificación asignada">—</span>`;
 

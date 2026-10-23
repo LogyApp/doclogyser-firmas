@@ -20,6 +20,8 @@ const {
   obtenerConfigKardex,
   destinoTransferenciaPermitido,
   obtenerDestinatariosTransferencia,
+  obtenerConfigPendiente,
+  obtenerCopiaTransferenciaRecibida,
   normalizarTexto,
 } = require('../services/configInventario');
 const multer = require('multer');
@@ -2759,8 +2761,8 @@ router.get('/api/kardex-pendiente', async (req, res) => {
       };
     });
 
-    const puedeEliminar = await puedeEliminarPendientes(acceso.rol);
-    res.json({ results, puedeEliminar });
+    const cfgPendiente = await obtenerConfigPendiente(acceso.rol);
+    res.json({ results, puedeEliminar: cfgPendiente.puedeEliminar, puedeGenerarActas: cfgPendiente.puedeGenerarActas });
   } catch (err) {
     console.error('[inventario] GET /api/kardex-pendiente error:', err);
     res.status(500).json({ error: err.message });
@@ -2768,18 +2770,11 @@ router.get('/api/kardex-pendiente', async (req, res) => {
 });
 
 // ── Eliminación completa de pedidos pendientes por recibir ───────────────────
-// Los roles autorizados se configuran en Config_Parametros (columna Parametro, separados por ",").
-const CONCEPTO_ELIMINAR_PENDIENTE = 'Puede eliminar registros pendientes por recibir';
-
+// "Puede eliminar registros pendientes por recibir" (Config_Parametros, inventario /
+// Pendiente por recibir; roles separados por coma, sin distinguir mayúsculas ni tildes).
 async function puedeEliminarPendientes(rol) {
   if (!rol) return false;
-  const [rows] = await pool.execute(
-    'SELECT Parametro FROM Config_Parametros WHERE Concepto = ? LIMIT 1',
-    [CONCEPTO_ELIMINAR_PENDIENTE]
-  );
-  if (!rows.length || !rows[0].Parametro) return false;
-  const roles = String(rows[0].Parametro).split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
-  return roles.includes(String(rol).trim().toLowerCase());
+  return (await obtenerConfigPendiente(rol)).puedeEliminar;
 }
 
 /**
@@ -2961,6 +2956,37 @@ router.patch('/api/kardex-pendiente/:id/novedad', async (req, res) => {
       return res.status(403).json({ error: 'Usuario no autorizado' });
     }
 
+    // Seguridad: el pedido debe existir, su operación destino debe estar en el alcance del rol
+    // (Maestro_Menu_Inventario) y, si es una novedad de artículo, el artículo debe ser del pedido.
+    const [[pedido]] = await pool.execute(
+      'SELECT Id, IdKardexOriginal, OperacionDestino, Procesado FROM Kardex_Pendiente WHERE Id = ? OR IdKardexOriginal = ? LIMIT 1',
+      [id, id]
+    );
+    if (!pedido) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (Number(pedido.Procesado) === 1) {
+      return res.status(400).json({ error: 'El pedido ya fue recibido; no se puede modificar la novedad.' });
+    }
+
+    let itemPedido = null;
+    if (idKardex) {
+      [[itemPedido]] = await pool.execute(
+        `SELECT IdKardex, \`OperaciónDestino\` AS OperacionDestino FROM Dynamic_Kardex
+         WHERE IdKardex = ? AND (Kpendiente = ? OR (? IS NOT NULL AND IdKardex = ?)) LIMIT 1`,
+        [idKardex, pedido.Id, pedido.IdKardexOriginal, pedido.IdKardexOriginal]
+      );
+      if (!itemPedido) return res.status(404).json({ error: 'El artículo no pertenece a este pedido.' });
+    }
+
+    let operacionDestino = pedido.OperacionDestino || (itemPedido && itemPedido.OperacionDestino);
+    if (!operacionDestino && pedido.IdKardexOriginal) {
+      // Pedidos antiguos: el destino solo está en el registro original de Dynamic_Kardex
+      const [[orig]] = await pool.execute('SELECT `OperaciónDestino` AS OperacionDestino FROM Dynamic_Kardex WHERE IdKardex = ? LIMIT 1', [pedido.IdKardexOriginal]);
+      operacionDestino = orig && orig.OperacionDestino;
+    }
+    if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(operacionDestino)) {
+      return res.status(403).json({ error: 'No tiene acceso a la operación destino de este pedido.' });
+    }
+
     if (idKardex) {
       // Update item novelty in Dynamic_Kardex
       await pool.execute(
@@ -2970,8 +2996,8 @@ router.patch('/api/kardex-pendiente/:id/novedad', async (req, res) => {
     } else {
       // Update general novelty on Kardex_Pendiente
       await pool.execute(
-        'UPDATE Kardex_Pendiente SET NovedadGeneral = ? WHERE Id = ? OR IdKardexOriginal = ?',
-        [novedad || '', id, id]
+        'UPDATE Kardex_Pendiente SET NovedadGeneral = ? WHERE Id = ?',
+        [novedad || '', pedido.Id]
       );
     }
 
@@ -2981,6 +3007,37 @@ router.patch('/api/kardex-pendiente/:id/novedad', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Correo de transferencia recibida (en segundo plano): Para = quien despachó; Copia = roles de
+// "Notificación transferencia recibida - Copia:" + quien recibe (Config_Parametros, inventario /
+// Pendiente por recibir). No detiene la respuesta si falla.
+function enviarCorreoTransferenciaRecibida({ usuarioDespacha, emailReceptor, operacionOrigen, operacionDestino, categoria, colaboradorReceptor, pdfUrl }) {
+  Promise.all([
+    obtenerCopiaTransferenciaRecibida(),
+    pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuarioDespacha]),
+  ])
+    .then(([{ habilitado, copia }, [rows]]) => {
+      if (!habilitado) return;
+      const emailDespacha = rows.length ? String(rows[0].Email || '').trim() : '';
+      const vistos = new Set(emailDespacha ? [emailDespacha.toLowerCase()] : []);
+      const cc = [...copia, emailReceptor].map((c) => String(c || '').trim()).filter((c) => {
+        if (!c || vistos.has(c.toLowerCase())) return false;
+        vistos.add(c.toLowerCase());
+        return true;
+      });
+      if (!emailDespacha && !cc.length) return;
+      return notificarTransferenciaRecibida({
+        operacionOrigen,
+        operacionDestino,
+        categoria,
+        colaboradorReceptor,
+        pdfUrl,
+        emailUsuarioDespacha: emailDespacha || cc.shift(),
+        copia: cc,
+      });
+    })
+    .catch((mailErr) => console.error('[inventario] Error enviando correo de transferencia recibida:', mailErr));
+}
 
 // POST /api/kardex-pendiente/recibir-orden - receive a transfer order with custom quantities, return diff to origin, signature and generate verification acta
 router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
@@ -3003,6 +3060,12 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
     const acceso = await computarAccesoInventario(usuario, 'pendienteRecibir') || await computarAccesoInventario(usuario, 'Inventario');
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
+    // "Roles que pueden generar actas de entrega al recibir" (Config_Parametros, inventario /
+    // Pendiente por recibir). Se valida antes de tocar nada.
+    if (Array.isArray(actasIdsKardex) && actasIdsKardex.length && !(await obtenerConfigPendiente(acceso.rol)).puedeGenerarActas) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para generar actas de entrega al recibir.' });
+    }
+
     // Consultar información del receptor (Maestro_Usuarios y Maestro_Segmentación)
     const [uRows] = await conn.execute(
       'SELECT Colaborador, Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
@@ -3011,6 +3074,7 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
     if (!uRows.length) return res.status(404).json({ error: 'Usuario receptor no encontrado' });
 
     const colaboradorReceptor = uRows[0].Colaborador || usuario;
+    const emailReceptor = uRows[0].Email || null;
     let identificacionReceptor = usuario;
     try {
       const [segRows] = await conn.execute(
@@ -3332,20 +3396,15 @@ router.post('/api/kardex-pendiente/recibir-orden', async (req, res) => {
 
     // Notificar al usuario que despachó que su transferencia ya fue recibida (en segundo plano)
     const categoriaRecibida = [...new Set(itemsParaActa.map(it => it.Categoria || it.CategoriaArticulo).filter(Boolean))].join(', ') || 'General';
-    pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [order.UsuarioDespacha])
-      .then(([rows]) => {
-        const emailDespacha = rows.length ? rows[0].Email : null;
-        if (!emailDespacha) return;
-        return notificarTransferenciaRecibida({
-          operacionOrigen: order.OperacionOrigen,
-          operacionDestino,
-          categoria: categoriaRecibida,
-          colaboradorReceptor,
-          pdfUrl,
-          emailUsuarioDespacha: emailDespacha
-        });
-      })
-      .catch(mailErr => console.error('[inventario] Error enviando correo de transferencia recibida:', mailErr));
+    enviarCorreoTransferenciaRecibida({
+      usuarioDespacha: order.UsuarioDespacha,
+      emailReceptor,
+      operacionOrigen: order.OperacionOrigen,
+      operacionDestino,
+      categoria: categoriaRecibida,
+      colaboradorReceptor,
+      pdfUrl,
+    });
   } catch (err) {
     await conn.rollback();
     console.error('[inventario] POST /api/kardex-pendiente/recibir-orden error:', err);
@@ -3609,20 +3668,15 @@ router.post('/api/kardex-pendiente/recibir-masivo', async (req, res) => {
 
     // Notificar a cada usuario que despachó que su transferencia ya fue recibida (en segundo plano)
     for (const t of pdfUrlsGeneradas) {
-      pool.execute('SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [t.usuarioDespacha])
-        .then(([rows]) => {
-          const emailDespacha = rows.length ? rows[0].Email : null;
-          if (!emailDespacha) return;
-          return notificarTransferenciaRecibida({
-            operacionOrigen: t.operacionOrigen,
-            operacionDestino: t.operacionDestino,
-            categoria: t.categoria,
-            colaboradorReceptor,
-            pdfUrl: t.pdfUrl,
-            emailUsuarioDespacha: emailDespacha
-          });
-        })
-        .catch(mailErr => console.error('[inventario] Error enviando correo de transferencia recibida:', mailErr));
+      enviarCorreoTransferenciaRecibida({
+        usuarioDespacha: t.usuarioDespacha,
+        emailReceptor: uRows[0].Email || null,
+        operacionOrigen: t.operacionOrigen,
+        operacionDestino: t.operacionDestino,
+        categoria: t.categoria,
+        colaboradorReceptor,
+        pdfUrl: t.pdfUrl,
+      });
     }
   } catch (err) {
     await conn.rollback();

@@ -26,7 +26,14 @@ const P = {
   DESTINOS_TODOS:        'Operaciones destino permitidas para todos',
   TRANSFERENCIA_PARA:    'Notificación transferencia despachada - Para:',
   HABILITAR_TRANSFERENCIA: 'Habilitar notificaciones de correo en Transferencias',
+  // Seccion 'Pendiente por recibir'
+  ELIMINAR_PENDIENTE:    'Puede eliminar registros pendientes por recibir',
+  GENERAR_ACTAS:         'Roles que pueden generar actas de entrega al recibir',
+  RECIBIDA_COPIA:        'Notificación transferencia recibida - Copia:',
+  HABILITAR_RECIBIDA:    'Habilitar notificaciones de correo en Transferencia recibida',
 };
+
+const SECCION_PENDIENTE = 'Pendiente por recibir';
 
 // Destinatarios del correo de confirmación, una fila por categoría:
 // "Notificación confirmación inventario <CATEGORÍA> - Para:" (lista de ROLES).
@@ -54,6 +61,14 @@ const DEFAULTS = {
     [P.DESTINOS_TODOS]: 'Administración',
     [P.TRANSFERENCIA_PARA]: 'Auxiliar, Coordinador, AuxiliarR, CoordinadorR',
     [P.HABILITAR_TRANSFERENCIA]: '1',
+  },
+  // Sin fila: nadie elimina (como antes), cualquiera con acceso genera actas (como antes),
+  // y el correo de recibida solo va a quien despachó (Copia vacía, como antes).
+  [SECCION_PENDIENTE]: {
+    [P.ELIMINAR_PENDIENTE]: '',
+    [P.GENERAR_ACTAS]: '',
+    [P.RECIBIDA_COPIA]: '',
+    [P.HABILITAR_RECIBIDA]: '1',
   },
 };
 
@@ -238,6 +253,25 @@ async function obtenerDestinatariosTransferencia(operacionDestino) {
   return { habilitado: true, para: await correosPorRoles(lista(valor(p, 'Kardex', P.TRANSFERENCIA_PARA)), operacionDestino) };
 }
 
+// ── Pestaña Pendiente por recibir ───────────────────────────────────────────
+async function obtenerConfigPendiente(rol) {
+  const p = await obtenerParametros(SECCION_PENDIENTE);
+  const rolesActas = String(valor(p, SECCION_PENDIENTE, P.GENERAR_ACTAS) || '').trim();
+  return {
+    puedeEliminar: enLista(valor(p, SECCION_PENDIENTE, P.ELIMINAR_PENDIENTE), rol),
+    // vacío / sin fila = cualquiera con acceso a la pestaña
+    puedeGenerarActas: rolesActas === '' ? true : enLista(rolesActas, rol),
+  };
+}
+
+// Copia del correo de transferencia recibida (roles). El Para es quien despachó y quien
+// recibe también va en copia (los agrega el llamador).
+async function obtenerCopiaTransferenciaRecibida() {
+  const p = await obtenerParametros(SECCION_PENDIENTE);
+  if (!activo(valor(p, SECCION_PENDIENTE, P.HABILITAR_RECIBIDA))) return { habilitado: false, copia: [] };
+  return { habilitado: true, copia: await correosPorRoles(lista(valor(p, SECCION_PENDIENTE, P.RECIBIDA_COPIA)), null) };
+}
+
 // ── General (todas las pestañas del módulo) ─────────────────────────────────
 // Categorías del acceso restringido (códigos 4, 5 y 6 de Maestro_Menu_Inventario). Se
 // devuelven con y sin tilde, porque Dynamic_Kardex/Vista_Inventario tienen ambas escrituras.
@@ -263,6 +297,8 @@ module.exports = {
   obtenerConfigKardex,
   destinoTransferenciaPermitido,
   obtenerDestinatariosTransferencia,
+  obtenerConfigPendiente,
+  obtenerCopiaTransferenciaRecibida,
   normalizarTexto,
   conceptoCorreoCategoria,
   PARAMETROS_INVENTARIO: P,

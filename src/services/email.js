@@ -2516,25 +2516,46 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   });
 }
 
-async function notificarTransferenciaRecibida({ operacionOrigen, operacionDestino, categoria, colaboradorReceptor, pdfUrl, emailUsuarioDespacha }) {
+async function notificarTransferenciaRecibida({ operacionOrigen, operacionDestino, categoria, colaboradorReceptor, pdfUrl, emailUsuarioDespacha, copia = [] }) {
   const asunto = `Transferencia de inventario recibida — ${categoria} — ${operacionOrigen} → ${operacionDestino}`;
 
+  // Mismo formato que Confirmación de Inventario, Retiro y Toma de Cargo: encabezado de color
+  // con el logo incrustado (CID) y centrado; azul corporativo.
   const cuerpo = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
-      <div style="padding:24px;background:#fff;border:1px solid #eee">
-        <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
-          <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Transferencia recibida</span>
+    <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f4f4f4;padding:24px">
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <div style="display:inline-block;background:#eafaf1;border:1px solid #a9dfbf;border-radius:6px;padding:6px 14px;margin-bottom:18px">
+          <span style="color:#1e8449;font-weight:bold;font-size:.88rem">
+            &#10004; TRANSFERENCIA RECIBIDA
+          </span>
         </div>
+
         <h2 style="color:#1a1a2e;margin:0 0 8px">La transferencia que registraste fue recibida</h2>
-        <p style="color:#555">La transferencia de inventario de <strong>${categoria}</strong> que registraste ya fue confirmada en la operación destino.</p>
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:.93rem">
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Categoría</td><td style="padding:8px 12px;font-weight:bold">${categoria}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Operación origen</td><td style="padding:8px 12px">${operacionOrigen}</td></tr>
-          <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Operación destino</td><td style="padding:8px 12px;font-weight:bold;color:#1a5fa8">${operacionDestino}</td></tr>
-          <tr><td style="padding:8px 12px;color:#888">Recibido por</td><td style="padding:8px 12px">${colaboradorReceptor}</td></tr>
+        <p style="color:#555;margin:0 0 20px;font-size:.92rem;line-height:1.5">
+          La transferencia de inventario de <strong>${categoria}</strong> que registraste ya fue confirmada en la operación destino.
+        </p>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.92rem;border:1px solid #e0e0e0">
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;width:38%;border:1px solid #e0e0e0">Categoría</td>
+            <td style="padding:10px 14px;font-weight:bold;border:1px solid #e0e0e0;color:#1a1a2e">${categoria}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Operación origen</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${operacionOrigen}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Operación destino</td>
+            <td style="padding:10px 14px;font-weight:bold;color:${COLOR_ENCABEZADO_AZUL};border:1px solid #e0e0e0">${operacionDestino}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;color:#777;border:1px solid #e0e0e0">Recibido por</td>
+            <td style="padding:10px 14px;border:1px solid #e0e0e0">${colaboradorReceptor || '—'}</td>
+          </tr>
         </table>
-        ${pdfUrl ? `<div style="margin-top:24px;text-align:center;"><a href="${pdfUrl}" target="_blank" style="display:inline-block;padding:12px 24px;background-color:#1e3c72;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:6px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">Ver Acta de Recepción (PDF)</a></div>` : ''}
+
+        ${pdfUrl ? `<div style="text-align:center;margin-top:8px"><a href="${pdfUrl}" target="_blank" style="display:inline-block;padding:12px 24px;background-color:${COLOR_ENCABEZADO_AZUL};color:#ffffff;text-decoration:none;font-weight:bold;border-radius:6px">Ver Acta de Recepción (PDF)</a></div>` : ''}
       </div>
       ${FOOTER}
     </div>`;
@@ -2542,8 +2563,10 @@ async function notificarTransferenciaRecibida({ operacionOrigen, operacionDestin
   await transporter.sendMail({
     from:    `"LOG&SER Inventarios" <${EMAIL_FROM}>`,
     to:      emailUsuarioDespacha,
+    cc:      copia.length ? copia.join(', ') : undefined,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
