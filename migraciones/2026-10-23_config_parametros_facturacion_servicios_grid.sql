@@ -19,59 +19,12 @@ WHERE NOT EXISTS (
     AND `Concepto` = 'Roles que pueden usar carga masiva de servicios'
 );
 
--- 2. Límites de carga máxima por lote (replicando el bloque de control del Excel V7)
-
-INSERT INTO `Config_Parametros` (`Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro`, `Descripcion`)
-SELECT 'facturacion', 'Servicios', 'Límite máximo de transportadoras nuevas por carga',
-       'Filas', '50',
-       'Cantidad máxima de transportadoras nuevas que se pueden crear automáticamente en Maestro_Transportadora durante una sola carga masiva.'
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM `Config_Parametros`
-  WHERE `Modulo` = 'facturacion'
-    AND `Seccion` = 'Servicios'
-    AND `Concepto` = 'Límite máximo de transportadoras nuevas por carga'
-);
-
-INSERT INTO `Config_Parametros` (`Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro`, `Descripcion`)
-SELECT 'facturacion', 'Servicios', 'Límite máximo de proveedores nuevos por carga',
-       'Filas', '50',
-       'Cantidad máxima de proveedores nuevos que se pueden crear automáticamente en Maestro_Proveedor durante una sola carga masiva.'
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM `Config_Parametros`
-  WHERE `Modulo` = 'facturacion'
-    AND `Seccion` = 'Servicios'
-    AND `Concepto` = 'Límite máximo de proveedores nuevos por carga'
-);
-
-INSERT INTO `Config_Parametros` (`Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro`, `Descripcion`)
-SELECT 'facturacion', 'Servicios', 'Límite máximo de placas nuevas por carga',
-       'Filas', '100',
-       'Cantidad máxima de placas nuevas de 6 caracteres que se pueden crear automáticamente en Maestro_Placas durante una sola carga masiva.'
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM `Config_Parametros`
-  WHERE `Modulo` = 'facturacion'
-    AND `Seccion` = 'Servicios'
-    AND `Concepto` = 'Límite máximo de placas nuevas por carga'
-);
-
-INSERT INTO `Config_Parametros` (`Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro`, `Descripcion`)
-SELECT 'facturacion', 'Servicios', 'Límite máximo de recibos por carga',
-       'Filas', '300',
-       'Cantidad máxima de recibos nuevos que se pueden crear en Dynamic_Recibos durante una sola carga masiva de servicios.'
-FROM DUAL
-WHERE NOT EXISTS (
-  SELECT 1 FROM `Config_Parametros`
-  WHERE `Modulo` = 'facturacion'
-    AND `Seccion` = 'Servicios'
-    AND `Concepto` = 'Límite máximo de recibos por carga'
-);
+-- 2. Límite máximo de filas de servicios por carga (los catálogos nuevos y recibos
+--    quedan atados automáticamente a la cantidad de filas de servicios del lote)
 
 INSERT INTO `Config_Parametros` (`Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro`, `Descripcion`)
 SELECT 'facturacion', 'Servicios', 'Límite máximo de servicios por carga',
-       'Filas', '300',
+       'Filas', '500',
        'Cantidad máxima de filas de servicios que se pueden cargar en un solo lote desde el Editor de Grid de Facturación.'
 FROM DUAL
 WHERE NOT EXISTS (

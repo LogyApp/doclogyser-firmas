@@ -9,20 +9,12 @@ const SECCION_SERVICIOS = 'Servicios';
 
 const P = {
   ROLES_CARGA_MASIVA:    'Roles que pueden usar carga masiva de servicios',
-  LIMITE_TRANSPORTADORA: 'Límite máximo de transportadoras nuevas por carga',
-  LIMITE_PROVEEDOR:      'Límite máximo de proveedores nuevos por carga',
-  LIMITE_PLACAS:         'Límite máximo de placas nuevas por carga',
-  LIMITE_RECIBOS:        'Límite máximo de recibos por carga',
   LIMITE_SERVICIOS:      'Límite máximo de servicios por carga',
 };
 
 const DEFAULTS = {
-  [P.ROLES_CARGA_MASIVA]:    'Sistema, Facturación, AuxiliarR, CoordinadorR',
-  [P.LIMITE_TRANSPORTADORA]: '50',
-  [P.LIMITE_PROVEEDOR]:      '50',
-  [P.LIMITE_PLACAS]:         '100',
-  [P.LIMITE_RECIBOS]:        '300',
-  [P.LIMITE_SERVICIOS]:      '300',
+  [P.ROLES_CARGA_MASIVA]: 'Sistema, Facturación, AuxiliarR, CoordinadorR',
+  [P.LIMITE_SERVICIOS]:   '500',
 };
 
 function normalizarTexto(valor) {
@@ -76,14 +68,15 @@ function enteroPositivo(val, fallback) {
 
 async function obtenerConfigServiciosMasivo(rol) {
   const p = await obtenerParametrosServicios();
+  const maxServicios = enteroPositivo(valor(p, P.LIMITE_SERVICIOS), 500);
   return {
     puedeCargaMasiva: enLista(valor(p, P.ROLES_CARGA_MASIVA), rol),
     limites: {
-      transportadoras: enteroPositivo(valor(p, P.LIMITE_TRANSPORTADORA), 50),
-      proveedores:     enteroPositivo(valor(p, P.LIMITE_PROVEEDOR), 50),
-      placas:          enteroPositivo(valor(p, P.LIMITE_PLACAS), 100),
-      recibos:         enteroPositivo(valor(p, P.LIMITE_RECIBOS), 300),
-      servicios:       enteroPositivo(valor(p, P.LIMITE_SERVICIOS), 300),
+      transportadoras: maxServicios,
+      proveedores:     maxServicios,
+      placas:          maxServicios,
+      recibos:         maxServicios,
+      servicios:       maxServicios,
     },
   };
 }

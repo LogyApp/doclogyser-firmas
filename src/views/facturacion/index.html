@@ -1313,8 +1313,11 @@
             <div class="page-sub">Historial operativo de servicios prestados, liquidación de tarifas e impuestos</div>
           </div>
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn-primary" id="btn-carga-masiva-servicios" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px;">
-              📋 Agregar Servicios (Editor de Grid)
+            <button type="button" class="btn-secondary" id="btn-carga-masiva-servicios" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
+              📋 Carga Masiva (Grid)
+            </button>
+            <button class="btn-primary" onclick="abrirModalRecibo('crear')">
+              ➕ Agregar Recibo
             </button>
           </div>
         </div>
@@ -2725,24 +2728,36 @@
             <span id="gridserv-status-text">Agregue filas o pegue desde Excel para validar la carga.</span>
           </div>
 
-          <!-- KPIs de los 5 Planos -->
+          <!-- KPIs de los Planos (Clickeables para ver lista de nuevos a crear) -->
           <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Transportadoras escritas en el grid que aún no existen en Maestro_Transportadora (se crearán automáticamente)">
-              🚚 Transp. Nuevas: <strong id="gridserv-cnt-transp">0 / 50</strong>
+            <div id="gridserv-kpi-pill-transportadoras" onclick="toggleDetalleNuevosGridServ('transportadoras')" style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem; cursor: pointer; user-select: none; transition: all 0.15s;" title="Clic para ver la lista de transportadoras nuevas que se crearán en Maestro_Transportadora">
+              🚚 Transp. Nuevas: <strong id="gridserv-cnt-transp">0</strong> <span style="font-size:0.65rem; opacity:0.7;">▾</span>
             </div>
-            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Proveedores escritos en el grid que aún no existen en Maestro_Proveedor (se crearán en MAYÚSCULAS)">
-              🏭 Prov. Nuevos: <strong id="gridserv-cnt-prov">0 / 50</strong>
+            <div id="gridserv-kpi-pill-proveedores" onclick="toggleDetalleNuevosGridServ('proveedores')" style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem; cursor: pointer; user-select: none; transition: all 0.15s;" title="Clic para ver la lista de proveedores nuevos que se crearán en Maestro_Proveedor">
+              🏭 Prov. Nuevos: <strong id="gridserv-cnt-prov">0</strong> <span style="font-size:0.65rem; opacity:0.7;">▾</span>
             </div>
-            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Placas de 6 caracteres que aún no existen en Maestro_Placas (se crearán automáticamente)">
-              🪪 Placas Nuevas: <strong id="gridserv-cnt-placas">0 / 100</strong>
+            <div id="gridserv-kpi-pill-placas" onclick="toggleDetalleNuevosGridServ('placas')" style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem; cursor: pointer; user-select: none; transition: all 0.15s;" title="Clic para ver la lista de placas nuevas (6 caracteres) que se crearán en Maestro_Placas">
+              🪪 Placas Nuevas: <strong id="gridserv-cnt-placas">0</strong> <span style="font-size:0.65rem; opacity:0.7;">▾</span>
             </div>
-            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Recibos App distintos que se crearán en Dynamic_Recibos (los ya existentes se reutilizan)">
-              🧾 Recibos Nuevos: <strong id="gridserv-cnt-recibos">0 / 300</strong> <span id="gridserv-cnt-recibos-exist" style="color: var(--text-muted); font-size: 0.7rem;"></span>
+            <div id="gridserv-kpi-pill-clientes" onclick="toggleDetalleNuevosGridServ('clientes')" style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem; cursor: pointer; user-select: none; transition: all 0.15s;" title="Clic para ver la lista de clientes nuevos (Buscar Cliente: NIT ** Nombres) que se crearán en Maestro_Clientes">
+              👤 Clientes Nuevos: <strong id="gridserv-cnt-clientes">0</strong> <span style="font-size:0.65rem; opacity:0.7;">▾</span>
+            </div>
+            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Recibos nuevos distintos que se crearán en Dynamic_Recibos (los ya existentes se reutilizan)">
+              🧾 Recibos Nuevos: <strong id="gridserv-cnt-recibos">0</strong> <span id="gridserv-cnt-recibos-exist" style="color: var(--text-muted); font-size: 0.7rem;"></span>
             </div>
             <div style="padding: 4px 10px; border-radius: 6px; background: var(--accent-soft); border: 1px solid var(--border); font-size: 0.74rem; color: var(--accent);">
-              📦 Servicios: <strong id="gridserv-cnt-servicios">0 / 300</strong>
+              📦 Servicios: <strong id="gridserv-cnt-servicios">0 / 500</strong>
             </div>
           </div>
+        </div>
+
+        <!-- Panel desplegable para previsualizar Transportadoras, Proveedores, Placas o Clientes Nuevos -->
+        <div id="gridserv-nuevos-preview" style="display: none; margin-top: 8px; padding: 10px 14px; border-radius: 8px; background: var(--card-bg); border: 1px solid var(--accent); font-size: 0.76rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <strong id="gridserv-nuevos-preview-title" style="color: var(--accent);">Detalle de registros nuevos a crear</strong>
+            <button type="button" onclick="cerrarDetalleNuevosGridServ()" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; font-weight: 700;" title="Cerrar lista">&times; Cerrar</button>
+          </div>
+          <div id="gridserv-nuevos-preview-body" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 110px; overflow-y: auto;"></div>
         </div>
       </div>
 
@@ -2764,8 +2779,10 @@
 
         <!-- Datalists globales para autocompletado en el Grid y Formulario Rápido -->
         <datalist id="gridserv-dl-operaciones"></datalist>
+        <datalist id="gridserv-dl-consecutivos"></datalist>
         <datalist id="gridserv-dl-transportadoras"></datalist>
         <datalist id="gridserv-dl-proveedores"></datalist>
+        <datalist id="gridserv-dl-placas"></datalist>
         <datalist id="gridserv-dl-clientes-credito"></datalist>
         <datalist id="gridserv-dl-vehiculos"></datalist>
         <datalist id="gridserv-dl-unidades"></datalist>
@@ -2774,18 +2791,18 @@
         <div id="gridserv-panel-single" style="display: none;">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
             <div>
-              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Cargado (Consecutivo) *</label>
-              <input type="text" id="gs-single-cargado" placeholder="Ej: 164" oninput="actualizarPreviewSingleReciboApp()" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">N° Recibo Nuevo (1, 2, 3...) *</label>
+              <input type="number" min="1" step="1" id="gs-single-recnuevo" value="1" placeholder="Ej: 1" oninput="onSingleReciboNuevoInput(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); font-weight:700;">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Consecutivo Recibo (Existente)</label>
+              <input type="text" id="gs-single-consecutivo" list="gridserv-dl-consecutivos" placeholder="Amarillo o pendiente..." onfocus="actualizarDatalistConsecutivosGrid(document.getElementById('gs-single-operacion')?.value, this.value)" oninput="onSingleConsecutivoInput(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); font-family:monospace;">
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Operación *</label>
               <select id="gs-single-operacion" onchange="onSingleOperacionChange()" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
                 <option value="">Seleccione operación...</option>
               </select>
-            </div>
-            <div>
-              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Recibo App (Calculado)</label>
-              <input type="text" id="gs-single-reciboapp" readonly disabled value="-" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg-elevated); color:var(--accent); font-weight:800;">
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Fecha *</label>
@@ -2806,9 +2823,9 @@
               </select>
             </div>
             <div>
-              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Área (Vacío = Operativa por defecto)</label>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Área *</label>
               <select id="gs-single-area" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
-                <option value="">Automática (Operativa 'V')</option>
+                <option value="">Seleccione primero operación...</option>
               </select>
             </div>
             <div>
@@ -2816,20 +2833,36 @@
               <input type="text" id="gs-single-cliente" list="gridserv-dl-clientes-credito" placeholder="Seleccione cliente crédito..." disabled style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg-elevated); color:var(--text);">
             </div>
             <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Origen</label>
+              <input type="text" id="gs-single-origen" placeholder="Opcional" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Destino</label>
+              <input type="text" id="gs-single-destino" placeholder="Opcional" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">NIT (Contado/Recaudo)</label>
               <input type="text" id="gs-single-nit" placeholder="Ej: 900123456" oninput="onSingleNitInput(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
             </div>
             <div>
-              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Razón Social (NIT)</label>
-              <input type="text" id="gs-single-nombres" readonly disabled placeholder="Automático según NIT" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg-elevated); color:var(--text-muted);">
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Nombres (Cliente)</label>
+              <input type="text" id="gs-single-nombres" placeholder="Razón social del NIT" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Teléfono (Cliente)</label>
+              <input type="text" id="gs-single-telefono" placeholder="Teléfono del cliente" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Email / Correo F.E.</label>
+              <input type="text" id="gs-single-email" placeholder="Correo F.E. del cliente" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Transportadora</label>
-              <input type="text" id="gs-single-transportadora" list="gridserv-dl-transportadoras" placeholder="Buscar o escribir nueva..." oninput="sugerirTransportadorasGrid(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+              <input type="text" id="gs-single-transportadora" list="gridserv-dl-transportadoras" placeholder="Buscar o escribir nueva..." onfocus="sugerirTransportadorasGrid(this.value)" oninput="sugerirTransportadorasGrid(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Proveedor</label>
-              <input type="text" id="gs-single-proveedor" list="gridserv-dl-proveedores" placeholder="Buscar o escribir nuevo..." oninput="sugerirProveedoresGrid(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-transform:uppercase;">
+              <input type="text" id="gs-single-proveedor" list="gridserv-dl-proveedores" placeholder="Buscar o escribir nuevo..." onfocus="sugerirProveedoresGrid(this.value)" oninput="sugerirProveedoresGrid(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-transform:uppercase;">
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Vehículo</label>
@@ -2837,7 +2870,7 @@
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Placa (6 caracteres)</label>
-              <input type="text" id="gs-single-placa" maxlength="10" placeholder="Ej: ABC123" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-transform:uppercase;">
+              <input type="text" id="gs-single-placa" list="gridserv-dl-placas" maxlength="10" placeholder="Ej: ABC123" onfocus="sugerirPlacasGrid(this.value)" oninput="sugerirPlacasGrid(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-transform:uppercase;">
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Remolque</label>
@@ -2856,31 +2889,16 @@
               <input type="number" step="any" id="gs-single-vunit" placeholder="0" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-align:right;">
             </div>
             <div>
-              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Hora Inicio (Opcional)</label>
-              <input type="datetime-local" id="gs-single-horainicio" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;" title="Solo hora; el sistema agrega la Fecha automáticamente. Si se deja vacío se asigna 12:00 a.m. (00:00:00)">Hora Inicio (Vacío = 12 a.m.)</label>
+              <input type="time" id="gs-single-horainicio" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
             </div>
             <div>
-              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Hora Final (Opcional)</label>
-              <input type="datetime-local" id="gs-single-horafinal" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
-            </div>
-            <div>
-              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Ruta / Destino</label>
-              <input type="text" id="gs-single-ruta" placeholder="Opcional" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;" title="Solo hora; el sistema agrega la Fecha automáticamente. Si se deja vacío se asigna 1:00 a.m. (01:00:00) con duración 1 Hora">Hora Final (Vacío = 1 a.m.)</label>
+              <input type="time" id="gs-single-horafinal" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Manifiesto</label>
               <input type="text" id="gs-single-manifiesto" placeholder="Opcional" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
-            </div>
-            <div>
-              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">ReteFuente / ReteIVA</label>
-              <div style="display:flex; gap:10px; padding-top:6px;">
-                <label style="display:inline-flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;">
-                  <input type="checkbox" id="gs-single-retefuente"> ReteFuente (V)
-                </label>
-                <label style="display:inline-flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;">
-                  <input type="checkbox" id="gs-single-reteiva"> ReteIVA (V)
-                </label>
-              </div>
             </div>
             <div>
               <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Observaciones</label>
@@ -2916,19 +2934,20 @@
 
           <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
             <div style="max-height: 52vh; overflow: auto;">
-              <table id="gridserv-table" style="width: 100%; border-collapse: collapse; font-size: 0.76rem; min-width: 3150px;">
+              <table id="gridserv-table" style="width: 100%; border-collapse: collapse; font-size: 0.76rem; min-width: 3080px;">
                 <thead>
                   <tr style="background: var(--bg-elevated); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 15; text-align: left;">
                     <th style="padding: 8px 6px; width: 46px; text-align: center;">#</th>
-                    <th style="padding: 8px 6px; width: 135px;">Recibo App (Calc.)</th>
-                    <th style="padding: 8px 6px; width: 90px;">Cargado *</th>
+                    <th style="padding: 8px 6px; width: 105px;" title="Número de grupo (1, 2, 3...) para agrupar varios servicios nuevos dentro de un mismo recibo nuevo">N° Recibo Nuevo</th>
+                    <th style="padding: 8px 6px; width: 160px;" title="Seleccione o escriba un Consecutivo Recibo existente que esté en amarillo o pendiente (deshabilita N° Recibo Nuevo)">Consecutivo Recibo</th>
                     <th style="padding: 8px 6px; width: 155px;">Operación *</th>
                     <th style="padding: 8px 6px; width: 125px;">Fecha *</th>
                     <th style="padding: 8px 6px; width: 135px;">Forma Pago *</th>
-                    <th style="padding: 8px 6px; width: 130px;">Ruta</th>
                     <th style="padding: 8px 6px; width: 175px;">Transportadora</th>
                     <th style="padding: 8px 6px; width: 175px;">Proveedor</th>
                     <th style="padding: 8px 6px; width: 170px;">Cliente a Facturar</th>
+                    <th style="padding: 8px 6px; width: 125px;">Origen</th>
+                    <th style="padding: 8px 6px; width: 125px;">Destino</th>
                     <th style="padding: 8px 6px; width: 135px;">Vehículo</th>
                     <th style="padding: 8px 6px; width: 115px;">Placa</th>
                     <th style="padding: 8px 6px; width: 195px;">Actividad *</th>
@@ -2938,23 +2957,21 @@
                     <th style="padding: 8px 6px; width: 90px; text-align: right;">Cant *</th>
                     <th style="padding: 8px 6px; width: 110px; text-align: right;">V. Unit *</th>
                     <th style="padding: 8px 6px; width: 110px; text-align: right;">V. Base</th>
-                    <th style="padding: 8px 6px; width: 65px; text-align: center;">R.Fte</th>
-                    <th style="padding: 8px 6px; width: 65px; text-align: center;">R.IVA</th>
-                    <th style="padding: 8px 6px; width: 145px;">Hora Inicio</th>
-                    <th style="padding: 8px 6px; width: 145px;">Hora Final</th>
+                    <th style="padding: 8px 6px; width: 115px;" title="Ingrese solo la hora; el sistema le agrega la Fecha automáticamente. Si se deja vacío se envía 12:00 a.m. (00:00:00)">Hora Inicio</th>
+                    <th style="padding: 8px 6px; width: 115px;" title="Ingrese solo la hora; el sistema le agrega la Fecha automáticamente. Si se deja vacío se envía 1:00 a.m. (01:00:00) con duración de 1 Hora">Hora Final</th>
                     <th style="padding: 8px 6px; width: 125px;">Duración (Calc.)</th>
-                    <th style="padding: 8px 6px; width: 155px;">Área</th>
+                    <th style="padding: 8px 6px; width: 155px;" title="Obligatoria (se prellena si la operación solo tiene 1 área con OPERATIVO = V)">Área *</th>
                     <th style="padding: 8px 6px; width: 160px;">Observaciones</th>
                     <th style="padding: 8px 6px; width: 120px;">NIT</th>
-                    <th style="padding: 8px 6px; width: 180px;">Nombres (Cliente)</th>
-                    <th style="padding: 8px 6px; width: 110px;">Teléfono</th>
-                    <th style="padding: 8px 6px; width: 160px;">Email</th>
+                    <th style="padding: 8px 6px; width: 190px;">Nombres (Cliente)</th>
+                    <th style="padding: 8px 6px; width: 120px;">Teléfono</th>
+                    <th style="padding: 8px 6px; width: 170px;">Email</th>
                     <th style="padding: 8px 6px; width: 50px; text-align: center;">Acción</th>
                   </tr>
                 </thead>
                 <tbody id="gridserv-tbody">
                   <tr>
-                    <td colspan="31" style="padding: 28px; text-align: center; color: var(--text-muted);">
+                    <td colspan="30" style="padding: 28px; text-align: center; color: var(--text-muted);">
                       No hay filas en el Editor de Grid. Use <strong>"➕ Agregar Fila Vacía"</strong> o la pestaña <strong>"📋 Pegar desde Excel"</strong>.
                     </td>
                   </tr>
@@ -2967,12 +2984,12 @@
         <!-- TAB 3: PEGAR DESDE EXCEL -->
         <div id="gridserv-panel-excel" style="display: none;">
           <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; font-size: 0.78rem;">
-            <div style="font-weight: 700; color: var(--accent); margin-bottom: 4px;">📌 Orden de columnas esperado al copiar desde la tabla "Datos" de Excel:</div>
+            <div style="font-weight: 700; color: var(--accent); margin-bottom: 4px;">📌 Orden de columnas esperado al copiar desde Excel:</div>
             <div style="color: var(--text-muted); line-height: 1.45;">
-              <code>Cargado</code> | <code>OPERACIÓN</code> | <code>FECHA</code> | <code>FORMA DE PAGO</code> | <code>RUTA</code> | <code>TRANSPORTADORA</code> | <code>PROVEEDOR</code> | <code>CLIENTE A FACTURAR</code> | <code>VEHICULO</code> | <code>PLACA</code> | <code>ACTIVIDAD</code> | <code>MANIFIESTO</code> | <code>REMOLQUE</code> | <code>UNIDAD</code> | <code>CANT</code> | <code>V.UNIT</code> | <code>RETEFUENTE</code> | <code>RETEIVA</code> | <code>HORA INICIO</code> | <code>HORA FINAL</code> | <code>AREA</code> | <code>OBSERVACIONES</code> | <code>NIT</code>
+              <code>N° Recibo (1, 2, 3...) o Consecutivo Recibo</code> | <code>OPERACIÓN</code> | <code>FECHA</code> | <code>FORMA DE PAGO</code> | <code>TRANSPORTADORA</code> | <code>PROVEEDOR</code> | <code>CLIENTE A FACTURAR</code> | <code>ORIGEN</code> | <code>DESTINO</code> | <code>VEHICULO</code> | <code>PLACA</code> | <code>ACTIVIDAD</code> | <code>MANIFIESTO</code> | <code>REMOLQUE</code> | <code>UNIDAD</code> | <code>CANT</code> | <code>V.UNIT</code> | <code>HORA INICIO</code> | <code>HORA FINAL</code> | <code>AREA</code> | <code>OBSERVACIONES</code> | <code>NIT</code>
             </div>
             <div style="margin-top: 6px; font-size: 0.74rem; color: var(--text-muted);">
-              💡 <em>Nota:</em> También puede copiar incluyendo la primera columna calculada <code>Recibo App</code> o la fila de encabezados; el sistema las detecta automáticamente.
+              💡 <em>Nota:</em> Si en la primera columna pega un número corto (<code>1</code>, <code>2</code>, <code>3</code>...) se asignará a <strong>N° Recibo Nuevo</strong>; si pega un consecutivo con guion (ej. <code>102-15194</code>) se asignará a <strong>Consecutivo Recibo</strong> y deshabilitará N° Recibo Nuevo. Las retenciones (ReteFuente, ReteIVA, ReteICA) las calcula automáticamente el sistema según el NIT y <code>Config_Impuestos</code>.
             </div>
           </div>
 
@@ -6578,6 +6595,13 @@
     let gridServList = [];
     let gridServLookups = null;
     let gridServLookupsPromise = null;
+    let gridServDetalleNuevosTipo = null; // 'transportadoras' | 'proveedores' | 'placas' | 'clientes' | null
+    let gridServUltimasListasNuevos = {
+      transportadoras: [],
+      proveedores: [],
+      placas: [],
+      clientes: []
+    };
 
     // Cachés de consulta en lote contra BD (Maestro_Clientes, Maestro_Placas, Dynamic_Recibos, Maestro_Transportadora, Maestro_Proveedor)
     const gridServCacheClientesNit = new Map();
@@ -6588,11 +6612,20 @@
     let gridServValidateTimer = null;
     let gridServTranspSuggestTimer = null;
     let gridServProvSuggestTimer = null;
+    let gridServPlacaSuggestTimer = null;
 
     function sugerirTransportadorasGrid(q) {
       clearTimeout(gridServTranspSuggestTimer);
       const clean = String(q || '').trim();
-      if (clean.length < 2) return;
+      if (clean.length < 1) {
+        const dl = document.getElementById('gridserv-dl-transportadoras');
+        if (dl && gridServLookups && Array.isArray(gridServLookups.transportadorasIniciales)) {
+          dl.innerHTML = gridServLookups.transportadorasIniciales
+            .map(t => `<option value="${esc(t.transportadora || t.nombre || '')}"></option>`)
+            .join('');
+        }
+        return;
+      }
       gridServTranspSuggestTimer = setTimeout(async () => {
         try {
           const resp = await fetch(`/facturacion/api/transportadoras/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(clean)}`);
@@ -6600,20 +6633,33 @@
           const rows = await resp.json();
           const dl = document.getElementById('gridserv-dl-transportadoras');
           if (dl && Array.isArray(rows)) {
-            dl.innerHTML = rows.slice(0, 25).map(t => `<option value="${esc(t.nombre)}"></option>`).join('');
+            dl.innerHTML = rows.slice(0, 30).map(t => {
+              const val = t.transportadora || t.nombre || '';
+              return `<option value="${esc(val)}"></option>`;
+            }).join('');
             rows.forEach(t => {
-              const k = normalizarTextoGrid(t.nombre);
-              if (k) gridServCacheTransportadoras.set(k, { id: t.id, transportadora: t.nombre });
+              const val = t.transportadora || t.nombre || '';
+              const k = normalizarTextoGrid(val);
+              if (k) gridServCacheTransportadoras.set(k, { id: t.id, transportadora: val });
             });
+            actualizarTodasLasMetasDomGridServ();
           }
         } catch (_) {}
-      }, 220);
+      }, 180);
     }
 
     function sugerirProveedoresGrid(q) {
       clearTimeout(gridServProvSuggestTimer);
       const clean = String(q || '').trim();
-      if (clean.length < 2) return;
+      if (clean.length < 1) {
+        const dl = document.getElementById('gridserv-dl-proveedores');
+        if (dl && gridServLookups && Array.isArray(gridServLookups.proveedoresIniciales)) {
+          dl.innerHTML = gridServLookups.proveedoresIniciales
+            .map(p => `<option value="${esc(p.proveedor || p.nombre || '')}"></option>`)
+            .join('');
+        }
+        return;
+      }
       gridServProvSuggestTimer = setTimeout(async () => {
         try {
           const resp = await fetch(`/facturacion/api/proveedores/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(clean)}`);
@@ -6621,14 +6667,138 @@
           const rows = await resp.json();
           const dl = document.getElementById('gridserv-dl-proveedores');
           if (dl && Array.isArray(rows)) {
-            dl.innerHTML = rows.slice(0, 25).map(p => `<option value="${esc(p.nombre)}"></option>`).join('');
+            dl.innerHTML = rows.slice(0, 30).map(p => {
+              const val = p.proveedor || p.nombre || '';
+              return `<option value="${esc(val)}"></option>`;
+            }).join('');
             rows.forEach(p => {
-              const k = normalizarTextoGrid(p.nombre);
-              if (k) gridServCacheProveedores.set(k, { id: p.id, proveedor: p.nombre });
+              const val = p.proveedor || p.nombre || '';
+              const k = normalizarTextoGrid(val);
+              if (k) gridServCacheProveedores.set(k, { id: p.id, proveedor: val });
             });
+            actualizarTodasLasMetasDomGridServ();
           }
         } catch (_) {}
-      }, 220);
+      }, 180);
+    }
+
+    function sugerirPlacasGrid(q) {
+      clearTimeout(gridServPlacaSuggestTimer);
+      const clean = String(q || '').trim().toUpperCase();
+      if (clean.length < 1) {
+        const dl = document.getElementById('gridserv-dl-placas');
+        if (dl && gridServLookups && Array.isArray(gridServLookups.placasIniciales)) {
+          dl.innerHTML = gridServLookups.placasIniciales
+            .map(p => `<option value="${esc(p.placa || '')}"></option>`)
+            .join('');
+        }
+        return;
+      }
+      gridServPlacaSuggestTimer = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/placas/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(clean)}`);
+          if (!resp.ok) return;
+          const rows = await resp.json();
+          const dl = document.getElementById('gridserv-dl-placas');
+          if (dl && Array.isArray(rows)) {
+            dl.innerHTML = rows.slice(0, 30).map(p => `<option value="${esc(p.placa || '')}"></option>`).join('');
+            rows.forEach(p => {
+              const k = String(p.placa || '').trim().toUpperCase();
+              if (k) gridServCachePlacas.set(k, { id: p.id, placa: k });
+            });
+            actualizarTodasLasMetasDomGridServ();
+          }
+        } catch (_) {}
+      }, 180);
+    }
+
+    // Devuelve solo las áreas de la operación en Config_Area donde OPERATIVO = 'V'
+    function obtenerAreasOperativasGrid(operacion) {
+      if (!gridServLookups || !Array.isArray(gridServLookups.areas) || !operacion) return [];
+      const opNorm = normalizarTextoGrid(operacion);
+      return gridServLookups.areas.filter(
+        a => normalizarTextoGrid(a.operacion) === opNorm && String(a.operativo || '').trim().toUpperCase() === 'V'
+      );
+    }
+
+    // Si hay 1 sola área operativa ('V') para la operación, la prellena automáticamente;
+    // si hay más de 1, exige que el usuario la escoja de la lista desplegable.
+    function resolverAreaPorDefectoGrid(operacion, areaActual = '') {
+      const areasOp = obtenerAreasOperativasGrid(operacion);
+      const curClean = limpiarCeldaExcel(areaActual);
+      if (curClean) {
+        const match = areasOp.find(
+          a => normalizarTextoGrid(a.area) === normalizarTextoGrid(curClean) || String(a.id) === String(curClean)
+        );
+        if (match) return match.area;
+      }
+      if (areasOp.length === 1) {
+        return areasOp[0].area;
+      }
+      return '';
+    }
+
+    function toggleDetalleNuevosGridServ(tipo) {
+      if (gridServDetalleNuevosTipo === tipo) {
+        cerrarDetalleNuevosGridServ();
+        return;
+      }
+      gridServDetalleNuevosTipo = tipo;
+      renderDetalleNuevosGridServ();
+    }
+
+    function cerrarDetalleNuevosGridServ() {
+      gridServDetalleNuevosTipo = null;
+      const box = document.getElementById('gridserv-nuevos-preview');
+      if (box) box.style.display = 'none';
+      ['transportadoras', 'proveedores', 'placas', 'clientes'].forEach(t => {
+        const pill = document.getElementById(`gridserv-kpi-pill-${t}`);
+        if (pill) {
+          pill.style.borderColor = 'var(--border)';
+          pill.style.background = 'var(--card-bg)';
+        }
+      });
+    }
+
+    function renderDetalleNuevosGridServ() {
+      const box = document.getElementById('gridserv-nuevos-preview');
+      const titleEl = document.getElementById('gridserv-nuevos-preview-title');
+      const bodyEl = document.getElementById('gridserv-nuevos-preview-body');
+      if (!box || !titleEl || !bodyEl) return;
+
+      ['transportadoras', 'proveedores', 'placas', 'clientes'].forEach(t => {
+        const pill = document.getElementById(`gridserv-kpi-pill-${t}`);
+        if (pill) {
+          const active = gridServDetalleNuevosTipo === t;
+          pill.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+          pill.style.background = active ? 'var(--accent-soft)' : 'var(--card-bg)';
+        }
+      });
+
+      if (!gridServDetalleNuevosTipo) {
+        box.style.display = 'none';
+        return;
+      }
+
+      const configTitulos = {
+        transportadoras: '🚚 Transportadoras nuevas a crear en Maestro_Transportadora',
+        proveedores: '🏭 Proveedores nuevos a crear en Maestro_Proveedor',
+        placas: '🪪 Placas nuevas (6 caracteres) a crear en Maestro_Placas',
+        clientes: '👤 Clientes nuevos a crear en Maestro_Clientes (Buscar Cliente)'
+      };
+      titleEl.textContent = configTitulos[gridServDetalleNuevosTipo] || 'Registros nuevos a crear';
+      const items = gridServUltimasListasNuevos[gridServDetalleNuevosTipo] || [];
+
+      if (!items.length) {
+        bodyEl.innerHTML = `<span style="color: var(--text-muted); font-style: italic;">No hay registros nuevos por crear en esta categoría.</span>`;
+      } else {
+        bodyEl.innerHTML = items.map(item => `
+          <span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--bg-elevated); border: 1px solid var(--border); font-weight: 700; color: var(--text); font-size: 0.73rem;">
+            ✨ ${esc(item)}
+          </span>
+        `).join('');
+      }
+      box.style.display = 'block';
     }
 
     function normalizarTextoGrid(str) {
@@ -6698,11 +6868,14 @@
       return hoyBogotaISO();
     }
 
-    function normalizarHoraInput(raw, fechaBaseISO) {
+    // Normaliza cualquier entrada de hora (con o sin fecha) a formato de solo hora "HH:MM" (24h)
+    function normalizarHoraInput(raw) {
       const s = limpiarCeldaExcel(raw);
       if (!s) return '';
+
       // Si ya viene como YYYY-MM-DDTHH:MM
-      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 16);
+      const dtLocal = s.match(/^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})/);
+      if (dtLocal) return `${dtLocal[1]}:${dtLocal[2]}`;
 
       // Si es solo hora "08:30", "8:30:00 a. m."
       const onlyTime = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([ap]\.?\s*m\.?))?$/i);
@@ -6712,8 +6885,7 @@
         const ampm = (onlyTime[4] || '').toLowerCase().replace(/\./g, '').trim();
         if (ampm === 'pm' && hh < 12) hh += 12;
         if (ampm === 'am' && hh === 12) hh = 0;
-        const base = fechaBaseISO || hoyBogotaISO();
-        return `${base}T${String(hh).padStart(2, '0')}:${mm}`;
+        return `${String(hh).padStart(2, '0')}:${mm}`;
       }
 
       // YYYY-MM-DD HH:MM
@@ -6724,7 +6896,7 @@
         const ampm = (iso[7] || '').toLowerCase().replace(/\./g, '').trim();
         if (ampm === 'pm' && hh < 12) hh += 12;
         if (ampm === 'am' && hh === 12) hh = 0;
-        return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${mm}`;
+        return `${String(hh).padStart(2, '0')}:${mm}`;
       }
 
       // DD/MM/YYYY HH:MM
@@ -6735,7 +6907,7 @@
         const ampm = (dmy[7] || '').toLowerCase().replace(/\./g, '').trim();
         if (ampm === 'pm' && hh < 12) hh += 12;
         if (ampm === 'am' && hh === 12) hh = 0;
-        return `${dmy[3]}-${String(dmy[2]).padStart(2, '0')}-${String(dmy[1]).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${mm}`;
+        return `${String(hh).padStart(2, '0')}:${mm}`;
       }
 
       return '';
@@ -6763,6 +6935,48 @@
       if (!gridServLookups) return;
       const badgeUsr = document.getElementById('gridserv-usuario-badge');
       if (badgeUsr) badgeUsr.textContent = `Usuario: ${gridServLookups.usuarioRegistro || CONFIG.usuario}`;
+
+      // Pre-cargar en caché todos los recibos en amarillo o pendientes
+      (gridServLookups.recibosPendientes || []).forEach(r => {
+        if (r && r.consecutivo) {
+          gridServCacheRecibos.set(r.consecutivo, r);
+        }
+      });
+      actualizarDatalistConsecutivosGrid('', '');
+
+      // Pre-cargar listas iniciales de Transportadoras, Proveedores y Placas
+      const dlTransp = document.getElementById('gridserv-dl-transportadoras');
+      if (dlTransp && Array.isArray(gridServLookups.transportadorasIniciales)) {
+        dlTransp.innerHTML = gridServLookups.transportadorasIniciales
+          .map(t => `<option value="${esc(t.transportadora || '')}"></option>`)
+          .join('');
+        gridServLookups.transportadorasIniciales.forEach(t => {
+          const k = normalizarTextoGrid(t.transportadora);
+          if (k) gridServCacheTransportadoras.set(k, { id: t.id, transportadora: t.transportadora });
+        });
+      }
+
+      const dlProv = document.getElementById('gridserv-dl-proveedores');
+      if (dlProv && Array.isArray(gridServLookups.proveedoresIniciales)) {
+        dlProv.innerHTML = gridServLookups.proveedoresIniciales
+          .map(p => `<option value="${esc(p.proveedor || '')}"></option>`)
+          .join('');
+        gridServLookups.proveedoresIniciales.forEach(p => {
+          const k = normalizarTextoGrid(p.proveedor);
+          if (k) gridServCacheProveedores.set(k, { id: p.id, proveedor: p.proveedor });
+        });
+      }
+
+      const dlPlacas = document.getElementById('gridserv-dl-placas');
+      if (dlPlacas && Array.isArray(gridServLookups.placasIniciales)) {
+        dlPlacas.innerHTML = gridServLookups.placasIniciales
+          .map(p => `<option value="${esc(p.placa || '')}"></option>`)
+          .join('');
+        gridServLookups.placasIniciales.forEach(p => {
+          const k = String(p.placa || '').trim().toUpperCase();
+          if (k) gridServCachePlacas.set(k, { id: p.id, placa: k });
+        });
+      }
 
       const dlOps = document.getElementById('gridserv-dl-operaciones');
       if (dlOps) {
@@ -6863,33 +7077,51 @@
       }
     }
 
-    // Calcula el Recibo App de una fila: CODIGO CO SIESA + "-" + RIGHT("00000" & Cargado, 5)
-    function calcularReciboAppFila(operacion, cargado) {
-      const opTrim = limpiarCeldaExcel(operacion);
-      const carTrim = limpiarCeldaExcel(cargado);
-      if (!opTrim || !carTrim || !gridServLookups) return '';
+    // Filtra y pobla el <datalist id="gridserv-dl-consecutivos"> con los Consecutivos Recibo
+    // que están en amarillo o pendiente (máx 60 opciones para mantener fluidez instantánea)
+    function actualizarDatalistConsecutivosGrid(operacionFiltro, queryTexto) {
+      const dl = document.getElementById('gridserv-dl-consecutivos');
+      if (!dl || !gridServLookups) return;
+      const lista = gridServLookups.recibosPendientes || [];
+      const opNorm = normalizarTextoGrid(operacionFiltro);
+      const qNorm = normalizarTextoGrid(queryTexto);
 
-      if (/^\d{2,5}-\d{1,8}$/.test(carTrim)) {
-        const [co, num] = carTrim.split('-');
-        return `${co}-${String(num).padStart(5, '0')}`;
+      const filtrados = [];
+      for (let i = 0; i < lista.length; i++) {
+        const r = lista[i];
+        if (opNorm && normalizarTextoGrid(r.operacion) !== opNorm) continue;
+        if (qNorm) {
+          const hayMatch =
+            normalizarTextoGrid(r.consecutivo).includes(qNorm) ||
+            normalizarTextoGrid(r.operacion).includes(qNorm) ||
+            normalizarTextoGrid(r.clienteAFacturar).includes(qNorm) ||
+            String(r.nit || '').includes(qNorm);
+          if (!hayMatch) continue;
+        }
+        filtrados.push(r);
+        if (filtrados.length >= 60) break;
       }
 
-      const opObj = (gridServLookups.operaciones || []).find(
-        o => normalizarTextoGrid(o.operacion) === normalizarTextoGrid(opTrim)
-      );
-      if (!opObj || !opObj.codigoSiesa) return '';
-      const limpioNum = carTrim.replace(/^0+/, '') || '0';
-      return `${opObj.codigoSiesa}-${limpioNum.padStart(5, '0')}`;
+      dl.innerHTML = filtrados.map(r => {
+        const punto = r.estado === 'Yellow' ? '🟡' : '🔴';
+        const cliTxt = r.modalidad === 'CREDITO'
+          ? (r.clienteAFacturar ? ` · ${r.clienteAFacturar}` : '')
+          : (r.nit ? ` · NIT ${r.nit}` : '');
+        return `<option value="${esc(r.consecutivo)}">${punto} ${esc(r.operacion)} · ${esc(r.modalidad)}${esc(cliTxt)}</option>`;
+      }).join('');
     }
 
-    // Calcula Total Hora y Duración para una fila
+    // Calcula Total Hora y Duración para una fila combinando internamente la Fecha + Hora Inicio / Hora Final
+    // (Si se dejan vacías, por defecto toma 12:00 a.m. a 1:00 a.m. = "1 Hora")
     function calcularDuracionFila(fila) {
-      const fechaBase = fila.fecha || hoyBogotaISO();
+      const fechaBase = normalizarFechaInput(fila.fecha);
+      const hInicio = normalizarHoraInput(fila.horaInicio);
+      const hFinal = normalizarHoraInput(fila.horaFinal);
       let inicioMs = null;
       let finalMs = null;
 
-      if (fila.horaInicio) {
-        const d1 = new Date(fila.horaInicio);
+      if (hInicio) {
+        const d1 = new Date(`${fechaBase}T${hInicio}:00`);
         if (!isNaN(d1.getTime())) inicioMs = d1.getTime();
       } else {
         const d1 = new Date(`${fechaBase}T00:00:00`);
@@ -6898,8 +7130,8 @@
 
       if (inicioMs === null) return { totalHora: '01:00:00', duracion: '1 Hora' };
 
-      if (fila.horaInicio && fila.horaFinal) {
-        const d2 = new Date(fila.horaFinal);
+      if (hFinal) {
+        const d2 = new Date(`${fechaBase}T${hFinal}:00`);
         if (!isNaN(d2.getTime())) {
           finalMs = d2.getTime();
           if (finalMs < inicioMs) finalMs += 24 * 3600 * 1000;
@@ -6914,6 +7146,10 @@
       const mm = String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0');
       const ss = String(diffSec % 60).padStart(2, '0');
       const totalHora = `${hh}:${mm}:${ss}`;
+
+      if (!hInicio && !hFinal) {
+        return { totalHora: '01:00:00', duracion: '1 Hora' };
+      }
 
       let duracion = 'Otro';
       if (gridServLookups && Array.isArray(gridServLookups.duraciones)) {
@@ -6931,15 +7167,22 @@
         (gridServLookups && gridServLookups.operaciones && gridServLookups.operaciones.length === 1
           ? gridServLookups.operaciones[0].operacion
           : '');
+      const consecutivoRecibo = defaults.consecutivoRecibo || '';
+      const reciboNuevo = consecutivoRecibo
+        ? ''
+        : (defaults.reciboNuevo !== undefined ? String(defaults.reciboNuevo) : '1');
+      const areaDefault = resolverAreaPorDefectoGrid(opDefault, defaults.area || '');
       return {
-        cargado: defaults.cargado || '',
+        reciboNuevo,
+        consecutivoRecibo,
         operacion: opDefault,
         fecha: defaults.fecha || hoyBogotaISO(),
         formaDePago: defaults.formaDePago || '1',
-        ruta: defaults.ruta || '',
         transportadora: defaults.transportadora || '',
         proveedor: defaults.proveedor || '',
         clienteAFacturar: defaults.clienteAFacturar || '',
+        origen: defaults.origen || '',
+        destino: defaults.destino || '',
         vehiculo: defaults.vehiculo || '',
         placa: defaults.placa || '',
         actividad: defaults.actividad || '',
@@ -6948,20 +7191,25 @@
         unidad: defaults.unidad || '',
         cantidad: defaults.cantidad || '',
         valorUnitario: defaults.valorUnitario || '',
-        retefuente: defaults.retefuente || '',
-        reteiva: defaults.reteiva || '',
         horaInicio: defaults.horaInicio || '',
         horaFinal: defaults.horaFinal || '',
-        area: defaults.area || '',
+        area: areaDefault,
         observaciones: defaults.observaciones || '',
         nit: defaults.nit || '',
+        nombres: defaults.nombres || '',
         telefono: defaults.telefono || '',
-        email: defaults.email || ''
+        email: defaults.email || '',
+        _nitPrellenado: defaults._nitPrellenado || ''
       };
     }
 
     function agregarFilaVaciaGridServicios(render = true) {
-      gridServList.push(crearObjetoFilaVacia());
+      let defaultGrupo = '1';
+      if (gridServList.length > 0) {
+        const last = gridServList[gridServList.length - 1];
+        if (last.reciboNuevo) defaultGrupo = last.reciboNuevo;
+      }
+      gridServList.push(crearObjetoFilaVacia({ reciboNuevo: defaultGrupo }));
       if (render) renderGridServicios();
     }
 
@@ -6988,16 +7236,58 @@
     }
 
     // ── Funciones del Tab 1: Formulario Rápido ─────────────────────────────────
-    function actualizarPreviewSingleReciboApp() {
-      const op = document.getElementById('gs-single-operacion')?.value || '';
-      const cargado = document.getElementById('gs-single-cargado')?.value || '';
-      const out = document.getElementById('gs-single-reciboapp');
-      if (out) out.value = calcularReciboAppFila(op, cargado) || '-';
+    function onSingleReciboNuevoInput(val) {
+      const clean = String(val || '').replace(/[^0-9]/g, '');
+      const el = document.getElementById('gs-single-recnuevo');
+      if (el && el.value !== clean) el.value = clean;
+    }
+
+    function onSingleConsecutivoInput(val) {
+      const clean = limpiarCeldaExcel(val);
+      const opActual = document.getElementById('gs-single-operacion')?.value || '';
+      actualizarDatalistConsecutivosGrid(opActual, clean);
+
+      const recNuevoEl = document.getElementById('gs-single-recnuevo');
+      if (recNuevoEl) {
+        if (clean) {
+          recNuevoEl.value = '';
+          recNuevoEl.disabled = true;
+          recNuevoEl.style.background = 'var(--bg-elevated)';
+          recNuevoEl.style.opacity = '0.55';
+        } else {
+          recNuevoEl.disabled = false;
+          recNuevoEl.style.background = 'var(--card-bg)';
+          recNuevoEl.style.opacity = '1';
+          if (!recNuevoEl.value) recNuevoEl.value = '1';
+        }
+      }
+
+      if (clean && gridServCacheRecibos.has(clean)) {
+        const rec = gridServCacheRecibos.get(clean);
+        if (rec) {
+          const selOp = document.getElementById('gs-single-operacion');
+          if (selOp && rec.operacion && selOp.value !== rec.operacion) {
+            selOp.value = rec.operacion;
+            onSingleOperacionChange();
+          }
+          if (rec.modalidad === 'CREDITO' && rec.clienteAFacturar) {
+            const cliEl = document.getElementById('gs-single-cliente');
+            if (cliEl && !cliEl.value) cliEl.value = rec.clienteAFacturar;
+          } else if (rec.modalidad === 'RECAUDO' && rec.nit) {
+            const nitEl = document.getElementById('gs-single-nit');
+            if (nitEl && !nitEl.value) {
+              nitEl.value = String(rec.nit);
+              onSingleNitInput(String(rec.nit));
+            }
+          }
+        }
+      }
     }
 
     function onSingleOperacionChange() {
       const op = document.getElementById('gs-single-operacion')?.value || '';
-      actualizarPreviewSingleReciboApp();
+      const consVal = document.getElementById('gs-single-consecutivo')?.value || '';
+      actualizarDatalistConsecutivosGrid(op, consVal);
 
       const selAct = document.getElementById('gs-single-actividad');
       const selArea = document.getElementById('gs-single-area');
@@ -7011,13 +7301,20 @@
           acts.map(a => `<option value="${esc(a.actividad)}">${esc(a.actividad)}</option>`).join('');
       }
 
-      const areas = (gridServLookups.areas || []).filter(
-        a => normalizarTextoGrid(a.operacion) === normalizarTextoGrid(op)
-      );
-      const defArea = areas.find(a => String(a.operativo || '').toUpperCase() === 'V');
+      const areasOp = obtenerAreasOperativasGrid(op);
       if (selArea) {
-        selArea.innerHTML = `<option value="">Automática (${esc(defArea ? defArea.area : 'Operativa')})</option>` +
-          areas.map(a => `<option value="${esc(a.area)}">${esc(a.area)}${a.operativo === 'V' ? ' (Operativa)' : ''}</option>`).join('');
+        if (!op) {
+          selArea.innerHTML = '<option value="">Seleccione primero operación...</option>';
+        } else if (areasOp.length === 1) {
+          selArea.innerHTML = `<option value="${esc(areasOp[0].area)}" selected>${esc(areasOp[0].area)}</option>`;
+          selArea.value = areasOp[0].area;
+        } else if (areasOp.length > 1) {
+          selArea.innerHTML = '<option value="">Seleccione área...</option>' +
+            areasOp.map(a => `<option value="${esc(a.area)}">${esc(a.area)}</option>`).join('');
+          selArea.value = '';
+        } else {
+          selArea.innerHTML = '<option value="">Sin área operativa configurada</option>';
+        }
       }
     }
 
@@ -7025,20 +7322,20 @@
       const fp = document.getElementById('gs-single-formapago')?.value || '1';
       const cliInput = document.getElementById('gs-single-cliente');
       const nitInput = document.getElementById('gs-single-nit');
+      const nomInput = document.getElementById('gs-single-nombres');
+      const telInput = document.getElementById('gs-single-telefono');
+      const emailInput = document.getElementById('gs-single-email');
       if (cliInput) {
         cliInput.disabled = fp !== '3';
         cliInput.style.background = fp === '3' ? 'var(--card-bg)' : 'var(--bg-elevated)';
         if (fp !== '3') cliInput.value = '';
       }
-      if (nitInput) {
-        nitInput.disabled = fp === '3';
-        nitInput.style.background = fp === '3' ? 'var(--bg-elevated)' : 'var(--card-bg)';
-        if (fp === '3') {
-          nitInput.value = '';
-          const nom = document.getElementById('gs-single-nombres');
-          if (nom) nom.value = '';
-        }
-      }
+      [nitInput, nomInput, telInput, emailInput].forEach(inp => {
+        if (!inp) return;
+        inp.disabled = fp === '3';
+        inp.style.background = fp === '3' ? 'var(--bg-elevated)' : 'var(--card-bg)';
+        if (fp === '3') inp.value = '';
+      });
     }
 
     let singleNitTimer = null;
@@ -7046,13 +7343,21 @@
       clearTimeout(singleNitTimer);
       const clean = String(val || '').replace(/[^0-9]/g, '');
       const nomEl = document.getElementById('gs-single-nombres');
+      const telEl = document.getElementById('gs-single-telefono');
+      const emailEl = document.getElementById('gs-single-email');
       if (!clean) {
         if (nomEl) nomEl.value = '';
+        if (telEl) telEl.value = '';
+        if (emailEl) emailEl.value = '';
         return;
       }
       if (gridServCacheClientesNit.has(clean)) {
         const info = gridServCacheClientesNit.get(clean);
-        if (nomEl) nomEl.value = info ? info.razonSocial : 'No encontrado en Maestro_Clientes';
+        if (info) {
+          if (nomEl) nomEl.value = info.razonSocial || '';
+          if (telEl) telEl.value = info.telefono || '';
+          if (emailEl) emailEl.value = info.correoFE || '';
+        }
         return;
       }
       singleNitTimer = setTimeout(async () => {
@@ -7061,17 +7366,19 @@
           const data = await resp.json();
           if (data && data.encontrado) {
             gridServCacheClientesNit.set(clean, data);
-            if (nomEl) nomEl.value = data.razonSocial;
+            if (nomEl) nomEl.value = data.razonSocial || '';
+            if (telEl) telEl.value = data.telefono || '';
+            if (emailEl) emailEl.value = data.correoFE || '';
           } else {
             gridServCacheClientesNit.set(clean, null);
-            if (nomEl) nomEl.value = 'No encontrado en Maestro_Clientes';
           }
         } catch (_) {}
-      }, 280);
+      }, 250);
     }
 
     function agregarFilaDesdeSingleForm() {
-      const cargado = limpiarCeldaExcel(document.getElementById('gs-single-cargado')?.value);
+      const consecutivoRecibo = limpiarCeldaExcel(document.getElementById('gs-single-consecutivo')?.value);
+      const reciboNuevo = consecutivoRecibo ? '' : limpiarCeldaExcel(document.getElementById('gs-single-recnuevo')?.value).replace(/[^0-9]/g, '');
       const operacion = limpiarCeldaExcel(document.getElementById('gs-single-operacion')?.value);
       const fecha = document.getElementById('gs-single-fecha')?.value || hoyBogotaISO();
       const formaDePago = document.getElementById('gs-single-formapago')?.value || '1';
@@ -7079,6 +7386,9 @@
       const area = limpiarCeldaExcel(document.getElementById('gs-single-area')?.value);
       const clienteAFacturar = limpiarCeldaExcel(document.getElementById('gs-single-cliente')?.value).toUpperCase();
       const nit = limpiarCeldaExcel(document.getElementById('gs-single-nit')?.value).replace(/[^0-9]/g, '');
+      const nombres = limpiarCeldaExcel(document.getElementById('gs-single-nombres')?.value);
+      const telefono = limpiarCeldaExcel(document.getElementById('gs-single-telefono')?.value);
+      const email = limpiarCeldaExcel(document.getElementById('gs-single-email')?.value);
       const transportadora = limpiarCeldaExcel(document.getElementById('gs-single-transportadora')?.value);
       const proveedor = limpiarCeldaExcel(document.getElementById('gs-single-proveedor')?.value).toUpperCase();
       const vehiculo = limpiarCeldaExcel(document.getElementById('gs-single-vehiculo')?.value);
@@ -7089,14 +7399,13 @@
       const valorUnitario = parseNumeroCeldaExcel(document.getElementById('gs-single-vunit')?.value);
       const horaInicio = document.getElementById('gs-single-horainicio')?.value || '';
       const horaFinal = document.getElementById('gs-single-horafinal')?.value || '';
-      const ruta = limpiarCeldaExcel(document.getElementById('gs-single-ruta')?.value);
+      const origen = limpiarCeldaExcel(document.getElementById('gs-single-origen')?.value);
+      const destino = limpiarCeldaExcel(document.getElementById('gs-single-destino')?.value);
       const manifiesto = limpiarCeldaExcel(document.getElementById('gs-single-manifiesto')?.value);
-      const retefuente = document.getElementById('gs-single-retefuente')?.checked ? 'V' : '';
-      const reteiva = document.getElementById('gs-single-reteiva')?.checked ? 'V' : '';
       const observaciones = limpiarCeldaExcel(document.getElementById('gs-single-observaciones')?.value);
 
-      if (!cargado || !operacion || !actividad) {
-        alert('Por favor complete al menos Cargado (Consecutivo), Operación y Actividad.');
+      if ((!reciboNuevo && !consecutivoRecibo) || !operacion || !actividad || !area) {
+        alert('Por favor complete al menos el N° Recibo Nuevo (o Consecutivo Recibo existente), Operación, Actividad y Área.');
         return;
       }
       if (formaDePago === '3' && !clienteAFacturar) {
@@ -7105,19 +7414,63 @@
       }
 
       // Si había una única fila completamente vacía inicial, reemplazarla
-      if (gridServList.length === 1 && !gridServList[0].cargado && !gridServList[0].actividad && !gridServList[0].cantidad) {
+      if (gridServList.length === 1 && !gridServList[0].consecutivoRecibo && !gridServList[0].actividad && !gridServList[0].cantidad) {
         gridServList = [];
       }
 
       gridServList.push(crearObjetoFilaVacia({
-        cargado, operacion, fecha, formaDePago, ruta, transportadora, proveedor,
-        clienteAFacturar, vehiculo, placa, actividad, manifiesto, remolque,
-        unidad, cantidad, valorUnitario, retefuente, reteiva, horaInicio, horaFinal,
-        area, observaciones, nit
+        reciboNuevo, consecutivoRecibo, operacion, fecha, formaDePago, transportadora, proveedor,
+        clienteAFacturar, origen, destino, vehiculo, placa, actividad, manifiesto, remolque,
+        unidad, cantidad, valorUnitario, horaInicio, horaFinal,
+        area, observaciones, nit, nombres, telefono, email,
+        _nitPrellenado: nit
       }));
 
       switchGridServTab('manual');
       programarValidacionRemotaGridServ();
+    }
+
+    // Sincroniza en una fila los datos de Maestro_Clientes cuando el NIT ya fue consultado
+    function aplicarPrellenadoClienteEnFila(f, idx) {
+      if (!f || String(f.formaDePago) === '3') return;
+      const nitClean = String(f.nit || '').replace(/[^0-9]/g, '');
+      if (!nitClean || !gridServCacheClientesNit.has(nitClean)) return;
+
+      const cli = gridServCacheClientesNit.get(nitClean);
+      if (cli) {
+        // Si es la primera vez que se prellena este NIT en la fila, o si algún campo estaba vacío
+        const cambioNit = f._nitPrellenado !== nitClean;
+        if (cambioNit || !limpiarCeldaExcel(f.nombres)) {
+          f.nombres = cli.razonSocial || '';
+          const nomInput = document.getElementById(`gs-cell-nombres-${idx}`);
+          if (nomInput && document.activeElement !== nomInput) nomInput.value = f.nombres;
+        }
+        if (cambioNit || !limpiarCeldaExcel(f.telefono)) {
+          f.telefono = cli.telefono || '';
+          const telInput = document.getElementById(`gs-cell-tel-${idx}`);
+          if (telInput && document.activeElement !== telInput) telInput.value = f.telefono;
+        }
+        if (cambioNit || !limpiarCeldaExcel(f.email)) {
+          f.email = cli.correoFE || '';
+          const emailInput = document.getElementById(`gs-cell-email-${idx}`);
+          if (emailInput && document.activeElement !== emailInput) emailInput.value = f.email;
+        }
+        f._nitPrellenado = nitClean;
+      } else {
+        // NIT nuevo (no existe en Maestro_Clientes): si venía con datos prellenados de otro NIT anterior, limpiarlos
+        if (f._nitPrellenado && f._nitPrellenado !== nitClean) {
+          f.nombres = '';
+          f.telefono = '';
+          f.email = '';
+          const nomInput = document.getElementById(`gs-cell-nombres-${idx}`);
+          const telInput = document.getElementById(`gs-cell-tel-${idx}`);
+          const emailInput = document.getElementById(`gs-cell-email-${idx}`);
+          if (nomInput && document.activeElement !== nomInput) nomInput.value = '';
+          if (telInput && document.activeElement !== telInput) telInput.value = '';
+          if (emailInput && document.activeElement !== emailInput) emailInput.value = '';
+        }
+        f._nitPrellenado = nitClean;
+      }
     }
 
     // ── Validación remota en lote (NITs, Placas y Consecutivos de Recibo) ───────
@@ -7144,9 +7497,9 @@
         if (plClean && !gridServCachePlacas.has(plClean)) {
           placasPend.add(plClean);
         }
-        const recApp = calcularReciboAppFila(f.operacion, f.cargado);
-        if (recApp && !gridServCacheRecibos.has(recApp)) {
-          recibosPend.add(recApp);
+        const consClean = limpiarCeldaExcel(f.consecutivoRecibo);
+        if (consClean && !gridServCacheRecibos.has(consClean)) {
+          recibosPend.add(consClean);
         }
         const trClean = limpiarCeldaExcel(f.transportadora);
         const trNorm = normalizarTextoGrid(trClean);
@@ -7161,6 +7514,7 @@
       });
 
       if (!nitsPend.size && !placasPend.size && !recibosPend.size && !transpPend.size && !provPend.size) {
+        gridServList.forEach((f, idx) => aplicarPrellenadoClienteEnFila(f, idx));
         actualizarTodasLasMetasDomGridServ();
         return;
       }
@@ -7201,22 +7555,19 @@
           gridServCacheProveedores.set(prNorm, info);
         });
 
-        // Autocompletar teléfono/email de NIT cuando están vacíos en la fila
+        // Autocompletar datos de Recibo Existente o de NIT cuando están vacíos en la fila
         gridServList.forEach((f, idx) => {
-          const nitClean = String(f.nit || '').replace(/[^0-9]/g, '');
-          const cli = nitClean ? gridServCacheClientesNit.get(nitClean) : null;
-          if (cli) {
-            if (!f.telefono && cli.telefono) {
-              f.telefono = cli.telefono;
-              const telInput = document.getElementById(`gs-cell-tel-${idx}`);
-              if (telInput) telInput.value = cli.telefono;
-            }
-            if (!f.email && cli.correoFE) {
-              f.email = cli.correoFE;
-              const emailInput = document.getElementById(`gs-cell-email-${idx}`);
-              if (emailInput) emailInput.value = cli.correoFE;
+          const consClean = limpiarCeldaExcel(f.consecutivoRecibo);
+          const recInfo = consClean ? gridServCacheRecibos.get(consClean) : null;
+          if (recInfo && !recInfo.todosEnVerde) {
+            if (!f.operacion && recInfo.operacion) {
+              onGridServOperacionChange(idx, recInfo.operacion);
+              const selOp = document.getElementById(`gs-cell-op-${idx}`);
+              if (selOp) selOp.value = recInfo.operacion;
             }
           }
+
+          aplicarPrellenadoClienteEnFila(f, idx);
         });
 
         actualizarTodasLasMetasDomGridServ();
@@ -7225,16 +7576,17 @@
       }
     }
 
-    // Evalúa el estado de una fila y devuelve { ok, errores, reciboApp, reciboExiste, transpNueva, provNuevo, placaNueva, clienteInfo, subtotal, durInfo }
-    function evaluarFilaGridServ(f) {
+    // Evalúa el estado de una fila y devuelve { ok, errores, reciboNuevoGrupo, consecutivoRecibo, reciboInfo, transpNueva, provNuevo, placaNueva, clienteInfo, clienteNuevo, clienteModificado, subtotal, durInfo }
+    function evaluarFilaGridServ(f, idxFila = -1) {
       const errores = [];
-      const cargado = limpiarCeldaExcel(f.cargado);
+      const consecutivoRecibo = limpiarCeldaExcel(f.consecutivoRecibo);
+      const reciboNuevoRaw = consecutivoRecibo ? '' : limpiarCeldaExcel(f.reciboNuevo);
       const operacion = limpiarCeldaExcel(f.operacion);
       const fp = limpiarCeldaExcel(f.formaDePago);
       const actividad = limpiarCeldaExcel(f.actividad);
+      const area = limpiarCeldaExcel(f.area);
       const clienteAFacturar = limpiarCeldaExcel(f.clienteAFacturar);
 
-      if (!cargado) errores.push('Falta Cargado');
       if (!operacion) errores.push('Falta Operación');
 
       let opValida = null;
@@ -7245,13 +7597,68 @@
         if (!opValida) errores.push('Operación no válida o sin permiso');
       }
 
-      const reciboApp = calcularReciboAppFila(operacion, cargado);
-      const reciboExiste = reciboApp ? Boolean(gridServCacheRecibos.get(reciboApp)) : false;
-
       if (!['1', '2', '3'].includes(fp)) {
         errores.push('Forma de Pago debe ser 1, 2 o 3');
       }
-      if (fp === '3' && !clienteAFacturar) {
+
+      let reciboNuevoGrupo = '';
+      let reciboInfo = null;
+
+      if (!consecutivoRecibo && !reciboNuevoRaw) {
+        errores.push('Indique N° Recibo Nuevo o Consecutivo Recibo');
+      } else if (consecutivoRecibo) {
+        if (gridServCacheRecibos.has(consecutivoRecibo)) {
+          reciboInfo = gridServCacheRecibos.get(consecutivoRecibo);
+          if (!reciboInfo) {
+            errores.push(`Consecutivo "${consecutivoRecibo}" no existe`);
+          } else {
+            if (reciboInfo.todosEnVerde) {
+              errores.push(`Recibo ${consecutivoRecibo} ya está en Verde`);
+            }
+            if (opValida && normalizarTextoGrid(reciboInfo.operacion) !== normalizarTextoGrid(opValida.operacion)) {
+              errores.push(`Recibo ${consecutivoRecibo} pertenece a ${reciboInfo.operacion}`);
+            }
+            // Validar correspondencia entre Consecutivo Recibo y Forma de Pago
+            if (reciboInfo.modalidad === 'RECAUDO' && !['1', '2'].includes(fp)) {
+              errores.push(`Recibo ${consecutivoRecibo} es RECAUDO (Forma de Pago solo 1 o 2)`);
+            }
+            if (reciboInfo.modalidad === 'CREDITO' && fp !== '3') {
+              errores.push(`Recibo ${consecutivoRecibo} es CREDITO (Forma de Pago solo 3)`);
+            }
+          }
+        }
+      } else {
+        const numG = parseInt(reciboNuevoRaw, 10);
+        if (!Number.isFinite(numG) || numG <= 0 || String(numG) !== reciboNuevoRaw.replace(/^0+/, '')) {
+          errores.push('N° Recibo Nuevo debe ser 1, 2, 3...');
+        } else {
+          reciboNuevoGrupo = String(numG);
+          // Validar consistencia con la primera fila del mismo N° Recibo Nuevo
+          const primeraIdx = gridServList.findIndex(
+            otra => !limpiarCeldaExcel(otra.consecutivoRecibo) && limpiarCeldaExcel(otra.reciboNuevo).replace(/^0+/, '') === reciboNuevoGrupo
+          );
+          if (primeraIdx > -1 && primeraIdx !== idxFila) {
+            const primera = gridServList[primeraIdx];
+            const opPrimera = limpiarCeldaExcel(primera.operacion);
+            if (operacion && opPrimera && normalizarTextoGrid(operacion) !== normalizarTextoGrid(opPrimera)) {
+              errores.push(`Recibo Nuevo #${reciboNuevoGrupo} tiene otra Operación (${opPrimera})`);
+            }
+            const modPrimera = String(primera.formaDePago) === '3' ? 'CREDITO' : 'RECAUDO';
+            const modActual = fp === '3' ? 'CREDITO' : 'RECAUDO';
+            if (modActual !== modPrimera) {
+              errores.push(`Recibo Nuevo #${reciboNuevoGrupo} es ${modPrimera} (no mezclar FP 1/2 con 3)`);
+            }
+            if (modPrimera === 'CREDITO' && modActual === 'CREDITO') {
+              const cliPrimera = limpiarCeldaExcel(primera.clienteAFacturar);
+              if (clienteAFacturar && cliPrimera && normalizarTextoGrid(clienteAFacturar) !== normalizarTextoGrid(cliPrimera)) {
+                errores.push(`Recibo Nuevo #${reciboNuevoGrupo} tiene otro Cliente (${cliPrimera})`);
+              }
+            }
+          }
+        }
+      }
+
+      if (fp === '3' && !clienteAFacturar && !(reciboInfo && reciboInfo.clienteAFacturar)) {
         errores.push('Falta Cliente a Facturar (FP=3)');
       }
 
@@ -7263,6 +7670,17 @@
                (normalizarTextoGrid(a.actividad) === normalizarTextoGrid(actividad) || String(a.id) === actividad)
         );
         if (!actMatch) errores.push(`Actividad no pertenece a ${opValida.operacion}`);
+      }
+
+      // Validar Área obligatoria (OPERATIVO = 'V')
+      if (!area) {
+        errores.push('Falta Área');
+      } else if (opValida && gridServLookups) {
+        const areasOp = obtenerAreasOperativasGrid(opValida.operacion);
+        const areaMatch = areasOp.find(
+          a => normalizarTextoGrid(a.area) === normalizarTextoGrid(area) || String(a.id) === String(area)
+        );
+        if (!areaMatch) errores.push(`Área no corresponde a las áreas operativas de ${opValida.operacion}`);
       }
 
       const transp = limpiarCeldaExcel(f.transportadora);
@@ -7289,7 +7707,35 @@
       }
 
       const nitClean = String(f.nit || '').replace(/[^0-9]/g, '');
-      const clienteInfo = nitClean ? (gridServCacheClientesNit.get(nitClean) || null) : null;
+      const nitConsultado = nitClean ? gridServCacheClientesNit.has(nitClean) : false;
+      const clienteInfo = nitConsultado ? (gridServCacheClientesNit.get(nitClean) || null) : null;
+      let clienteNuevo = false;
+      let clienteModificado = false;
+
+      if (fp !== '3') {
+        if (!nitClean) {
+          errores.push('Falta NIT');
+        } else if (nitConsultado) {
+          const nomClean = limpiarCeldaExcel(f.nombres);
+          const telClean = limpiarCeldaExcel(f.telefono);
+          const emailClean = limpiarCeldaExcel(f.email);
+          if (!clienteInfo) {
+            clienteNuevo = true;
+            if (!nomClean || !telClean || !emailClean) {
+              errores.push('NIT nuevo: complete Nombres, Teléfono y Email');
+            }
+          } else {
+            if (!nomClean) {
+              errores.push('Falta Nombres (Cliente)');
+            } else {
+              const modNom = nomClean !== String(clienteInfo.razonSocial || '').trim();
+              const modTel = telClean !== String(clienteInfo.telefono || '').trim();
+              const modEmail = emailClean !== String(clienteInfo.correoFE || '').trim();
+              clienteModificado = modNom || modTel || modEmail;
+            }
+          }
+        }
+      }
 
       const cant = parseFloat(f.cantidad) || 0;
       const vunit = parseFloat(f.valorUnitario) || 0;
@@ -7303,12 +7749,15 @@
       return {
         ok: errores.length === 0,
         errores,
-        reciboApp,
-        reciboExiste,
+        reciboNuevoGrupo,
+        consecutivoRecibo,
+        reciboInfo,
         transpNueva,
         provNuevo,
         placaNueva,
         clienteInfo,
+        clienteNuevo,
+        clienteModificado,
         subtotal,
         durInfo
       };
@@ -7325,7 +7774,7 @@
       if (!gridServList.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="31" style="padding: 28px; text-align: center; color: var(--text-muted);">
+            <td colspan="30" style="padding: 28px; text-align: center; color: var(--text-muted);">
               No hay filas en el Editor de Grid. Use <strong>"➕ Agregar Fila Vacía"</strong> o la pestaña <strong>"📋 Pegar desde Excel"</strong>.
             </td>
           </tr>
@@ -7368,14 +7817,16 @@
       };
 
       const areasOptionsHtml = (operacion, selectedArea) => {
-        const opNorm = normalizarTextoGrid(operacion);
-        const areas = ((gridServLookups && gridServLookups.areas) || []).filter(
-          a => normalizarTextoGrid(a.operacion) === opNorm
-        );
-        const defArea = areas.find(a => String(a.operativo || '').toUpperCase() === 'V');
+        const areasOp = obtenerAreasOperativasGrid(operacion);
+        if (!operacion) {
+          return `<option value="">Seleccione op...</option>`;
+        }
+        if (areasOp.length === 0) {
+          return `<option value="">⚠️ Sin área 'V'</option>`;
+        }
         const areaNorm = normalizarTextoGrid(selectedArea);
         let found = false;
-        const opts = areas.map(a => {
+        const opts = areasOp.map(a => {
           const isSel = areaNorm && (normalizarTextoGrid(a.area) === areaNorm || String(a.id) === String(selectedArea));
           if (isSel) found = true;
           return `<option value="${esc(a.area)}" ${isSel ? 'selected' : ''}>${esc(a.area)}</option>`;
@@ -7383,13 +7834,25 @@
         if (selectedArea && !found) {
           opts.unshift(`<option value="${esc(selectedArea)}" selected>⚠️ ${esc(selectedArea)}</option>`);
         }
-        return `<option value="">Auto (${esc(defArea ? defArea.area : 'Operativa')})</option>` + opts.join('');
+        if (areasOp.length === 1 && found) {
+          return opts.join('');
+        }
+        return `<option value="" ${!found ? 'selected' : ''}>Seleccione área...</option>` + opts.join('');
       };
 
       const cellInputStyle = 'width:100%; padding:5px 6px; border:1px solid var(--border); border-radius:4px; background:var(--card-bg); color:var(--text); font-size:0.75rem;';
 
+      // Asegurar prellenado de Área (si 1 sola opción) y Cliente antes de pintar
+      gridServList.forEach((f, idx) => {
+        if (f.operacion && !limpiarCeldaExcel(f.area)) {
+          f.area = resolverAreaPorDefectoGrid(f.operacion, '');
+        }
+        aplicarPrellenadoClienteEnFila(f, idx);
+      });
+
       tbody.innerHTML = gridServList.map((f, idx) => {
         const esCredito = String(f.formaDePago) === '3';
+        const tieneConsecutivo = Boolean(limpiarCeldaExcel(f.consecutivoRecibo));
         return `
           <tr id="gs-row-${idx}" style="border-bottom: 1px solid var(--border);">
             <td style="padding: 6px; text-align: center; font-weight: 700;">
@@ -7399,11 +7862,12 @@
               </div>
             </td>
             <td style="padding: 6px;">
-              <div id="gs-reciboapp-${idx}" style="font-weight: 800; color: var(--accent); font-family: monospace;">-</div>
-              <div id="gs-recibobadge-${idx}" style="font-size: 0.66rem;"></div>
+              <input type="number" min="1" step="1" id="gs-cell-recnuevo-${idx}" value="${esc(tieneConsecutivo ? '' : f.reciboNuevo)}" placeholder="${tieneConsecutivo ? 'Deshab.' : '1, 2, 3...'}" ${tieneConsecutivo ? 'disabled' : ''} style="${cellInputStyle}; text-align:center; font-weight:800; ${tieneConsecutivo ? 'background:var(--bg-elevated); opacity:0.55;' : ''}" oninput="onGridServReciboNuevoInput(${idx}, this.value)">
+              <div id="gs-recnuevobadge-${idx}" style="font-size: 0.65rem; margin-top: 2px; text-align: center;"></div>
             </td>
             <td style="padding: 6px;">
-              <input type="text" value="${esc(f.cargado)}" placeholder="Ej: 164" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'cargado', this.value)">
+              <input type="text" id="gs-cell-consecutivo-${idx}" list="gridserv-dl-consecutivos" value="${esc(f.consecutivoRecibo)}" placeholder="Buscar pendiente..." style="${cellInputStyle}; font-family:monospace; font-weight:700;" onfocus="actualizarDatalistConsecutivosGrid(gridServList[${idx}]?.operacion, this.value)" oninput="onGridServConsecutivoInput(${idx}, this.value)">
+              <div id="gs-recibobadge-${idx}" style="font-size: 0.66rem; margin-top: 2px;"></div>
             </td>
             <td style="padding: 6px;">
               <select id="gs-cell-op-${idx}" style="${cellInputStyle}" onchange="onGridServOperacionChange(${idx}, this.value)">
@@ -7411,34 +7875,37 @@
               </select>
             </td>
             <td style="padding: 6px;">
-              <input type="date" value="${esc(f.fecha)}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'fecha', this.value)">
+              <input type="date" id="gs-cell-fecha-${idx}" value="${esc(f.fecha)}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'fecha', this.value)">
             </td>
             <td style="padding: 6px;">
-              <select style="${cellInputStyle}" onchange="onGridServFormaPagoChange(${idx}, this.value)">
+              <select id="gs-cell-fp-${idx}" style="${cellInputStyle}" onchange="onGridServFormaPagoChange(${idx}, this.value)">
                 <option value="1" ${String(f.formaDePago) === '1' ? 'selected' : ''}>1 - Efectivo</option>
                 <option value="2" ${String(f.formaDePago) === '2' ? 'selected' : ''}>2 - Transferencia</option>
                 <option value="3" ${String(f.formaDePago) === '3' ? 'selected' : ''}>3 - Crédito</option>
               </select>
             </td>
             <td style="padding: 6px;">
-              <input type="text" value="${esc(f.ruta)}" placeholder="Destino/Ruta" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'ruta', this.value)">
-            </td>
-            <td style="padding: 6px;">
-              <input type="text" list="gridserv-dl-transportadoras" value="${esc(f.transportadora)}" placeholder="Transportadora" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'transportadora', this.value)">
+              <input type="text" list="gridserv-dl-transportadoras" value="${esc(f.transportadora)}" placeholder="Transportadora" style="${cellInputStyle}" onfocus="sugerirTransportadorasGrid(this.value)" oninput="onGridServCellInput(${idx}, 'transportadora', this.value)">
               <div id="gs-transpbadge-${idx}" style="font-size:0.65rem; margin-top:2px;"></div>
             </td>
             <td style="padding: 6px;">
-              <input type="text" list="gridserv-dl-proveedores" value="${esc(f.proveedor)}" placeholder="PROVEEDOR" style="${cellInputStyle}; text-transform:uppercase;" oninput="onGridServCellInput(${idx}, 'proveedor', this.value.toUpperCase())">
+              <input type="text" list="gridserv-dl-proveedores" value="${esc(f.proveedor)}" placeholder="PROVEEDOR" style="${cellInputStyle}; text-transform:uppercase;" onfocus="sugerirProveedoresGrid(this.value)" oninput="onGridServCellInput(${idx}, 'proveedor', this.value.toUpperCase())">
               <div id="gs-provbadge-${idx}" style="font-size:0.65rem; margin-top:2px;"></div>
             </td>
             <td style="padding: 6px;">
               <input type="text" id="gs-cell-clifact-${idx}" list="gridserv-dl-clientes-credito" value="${esc(f.clienteAFacturar)}" placeholder="${esCredito ? 'Obligatorio (FP=3)' : 'N/A'}" ${esCredito ? '' : 'disabled'} style="${cellInputStyle}; ${esCredito ? '' : 'background:var(--bg-elevated); opacity:0.6;'}" oninput="onGridServCellInput(${idx}, 'clienteAFacturar', this.value.toUpperCase())">
             </td>
             <td style="padding: 6px;">
+              <input type="text" value="${esc(f.origen)}" placeholder="Origen" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'origen', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" value="${esc(f.destino)}" placeholder="Destino" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'destino', this.value)">
+            </td>
+            <td style="padding: 6px;">
               <input type="text" list="gridserv-dl-vehiculos" value="${esc(f.vehiculo)}" placeholder="Vehículo" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'vehiculo', this.value)">
             </td>
             <td style="padding: 6px;">
-              <input type="text" maxlength="10" value="${esc(f.placa)}" placeholder="ABC123" style="${cellInputStyle}; text-transform:uppercase; font-family:monospace;" oninput="onGridServCellInput(${idx}, 'placa', this.value.toUpperCase())">
+              <input type="text" list="gridserv-dl-placas" maxlength="10" value="${esc(f.placa)}" placeholder="ABC123" style="${cellInputStyle}; text-transform:uppercase; font-family:monospace;" onfocus="sugerirPlacasGrid(this.value)" oninput="onGridServCellInput(${idx}, 'placa', this.value.toUpperCase())">
               <div id="gs-placabadge-${idx}" style="font-size:0.65rem; margin-top:2px;"></div>
             </td>
             <td style="padding: 6px;">
@@ -7464,17 +7931,11 @@
             <td style="padding: 6px; text-align: right; font-weight: 700; color: var(--accent);">
               <span id="gs-vbase-${idx}">$ 0</span>
             </td>
-            <td style="padding: 6px; text-align: center;">
-              <input type="checkbox" ${String(f.retefuente).toUpperCase() === 'V' ? 'checked' : ''} onchange="onGridServCellInput(${idx}, 'retefuente', this.checked ? 'V' : '')" title="Retefuente = V">
-            </td>
-            <td style="padding: 6px; text-align: center;">
-              <input type="checkbox" ${String(f.reteiva).toUpperCase() === 'V' ? 'checked' : ''} onchange="onGridServCellInput(${idx}, 'reteiva', this.checked ? 'V' : '')" title="ReteIVA = V">
+            <td style="padding: 6px;">
+              <input type="time" value="${esc(normalizarHoraInput(f.horaInicio))}" title="Solo hora; el sistema agrega la Fecha automáticamente. Si se deja vacío se asigna 12:00 a.m. (00:00:00)" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'horaInicio', this.value)" onchange="onGridServCellInput(${idx}, 'horaInicio', this.value)">
             </td>
             <td style="padding: 6px;">
-              <input type="datetime-local" value="${esc(f.horaInicio)}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'horaInicio', this.value)">
-            </td>
-            <td style="padding: 6px;">
-              <input type="datetime-local" value="${esc(f.horaFinal)}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'horaFinal', this.value)">
+              <input type="time" value="${esc(normalizarHoraInput(f.horaFinal))}" title="Solo hora; el sistema agrega la Fecha automáticamente. Si se deja vacío se asigna 1:00 a.m. (01:00:00) con duración 1 Hora" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'horaFinal', this.value)" onchange="onGridServCellInput(${idx}, 'horaFinal', this.value)">
             </td>
             <td style="padding: 6px;">
               <div id="gs-duracion-${idx}" style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">-</div>
@@ -7489,15 +7950,16 @@
             </td>
             <td style="padding: 6px;">
               <input type="text" id="gs-cell-nit-${idx}" value="${esc(f.nit)}" placeholder="${esCredito ? 'Auto Crédito' : 'NIT Cliente'}" ${esCredito ? 'disabled' : ''} style="${cellInputStyle}; ${esCredito ? 'background:var(--bg-elevated); opacity:0.6;' : ''}" oninput="onGridServCellInput(${idx}, 'nit', this.value.replace(/[^0-9]/g, ''))">
+              <div id="gs-nitbadge-${idx}" style="font-size:0.65rem; margin-top:2px;"></div>
             </td>
             <td style="padding: 6px;">
-              <div id="gs-nombres-${idx}" style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:175px;">-</div>
+              <input type="text" id="gs-cell-nombres-${idx}" value="${esc(f.nombres)}" placeholder="${esCredito ? 'Auto Crédito' : 'Razón social / Nombres'}" ${esCredito ? 'disabled' : ''} style="${cellInputStyle}; ${esCredito ? 'background:var(--bg-elevated); opacity:0.6;' : ''}" oninput="onGridServCellInput(${idx}, 'nombres', this.value)">
             </td>
             <td style="padding: 6px;">
-              <input type="text" id="gs-cell-tel-${idx}" value="${esc(f.telefono)}" placeholder="Teléfono" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'telefono', this.value)">
+              <input type="text" id="gs-cell-tel-${idx}" value="${esc(f.telefono)}" placeholder="${esCredito ? 'Auto Crédito' : 'Teléfono'}" ${esCredito ? 'disabled' : ''} style="${cellInputStyle}; ${esCredito ? 'background:var(--bg-elevated); opacity:0.6;' : ''}" oninput="onGridServCellInput(${idx}, 'telefono', this.value)">
             </td>
             <td style="padding: 6px;">
-              <input type="text" id="gs-cell-email-${idx}" value="${esc(f.email)}" placeholder="Correo F.E." style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'email', this.value)">
+              <input type="text" id="gs-cell-email-${idx}" value="${esc(f.email)}" placeholder="${esCredito ? 'Auto Crédito' : 'Correo F.E.'}" ${esCredito ? 'disabled' : ''} style="${cellInputStyle}; ${esCredito ? 'background:var(--bg-elevated); opacity:0.6;' : ''}" oninput="onGridServCellInput(${idx}, 'email', this.value)">
             </td>
             <td style="padding: 6px; text-align: center;">
               <button type="button" onclick="eliminarFilaGridServicios(${idx})" style="background:transparent; border:none; color:var(--danger); cursor:pointer; font-size:0.95rem;" title="Eliminar fila">🗑️</button>
@@ -7509,14 +7971,87 @@
       actualizarTodasLasMetasDomGridServ();
     }
 
+    function onGridServReciboNuevoInput(idx, val) {
+      if (!gridServList[idx]) return;
+      const clean = String(val || '').replace(/[^0-9]/g, '');
+      gridServList[idx].reciboNuevo = clean;
+
+      // Si ya existe otra fila con ese mismo N° Recibo Nuevo, heredar Operación/Cliente si están vacíos
+      if (clean) {
+        const ref = gridServList.find(
+          (otra, oIdx) => oIdx !== idx && !limpiarCeldaExcel(otra.consecutivoRecibo) && limpiarCeldaExcel(otra.reciboNuevo) === clean && limpiarCeldaExcel(otra.operacion)
+        );
+        if (ref && !gridServList[idx].operacion) {
+          onGridServOperacionChange(idx, ref.operacion);
+          const selOp = document.getElementById(`gs-cell-op-${idx}`);
+          if (selOp) selOp.value = ref.operacion;
+        }
+      }
+
+      actualizarTodasLasMetasDomGridServ();
+    }
+
+    function onGridServConsecutivoInput(idx, val) {
+      if (!gridServList[idx]) return;
+      const clean = limpiarCeldaExcel(val);
+      gridServList[idx].consecutivoRecibo = clean;
+      actualizarDatalistConsecutivosGrid(gridServList[idx].operacion, clean);
+
+      const recNuevoInput = document.getElementById(`gs-cell-recnuevo-${idx}`);
+      if (clean) {
+        gridServList[idx].reciboNuevo = '';
+        if (recNuevoInput) {
+          recNuevoInput.value = '';
+          recNuevoInput.disabled = true;
+          recNuevoInput.placeholder = 'Deshab.';
+          recNuevoInput.style.background = 'var(--bg-elevated)';
+          recNuevoInput.style.opacity = '0.55';
+        }
+        // Si el consecutivo ya está en caché y es válido, autocompletar Operación y Cliente/NIT
+        const rec = gridServCacheRecibos.get(clean);
+        if (rec && !rec.todosEnVerde) {
+          if (rec.operacion && gridServList[idx].operacion !== rec.operacion) {
+            onGridServOperacionChange(idx, rec.operacion);
+            const selOp = document.getElementById(`gs-cell-op-${idx}`);
+            if (selOp) selOp.value = rec.operacion;
+          }
+          if (rec.modalidad === 'CREDITO' && rec.clienteAFacturar && !gridServList[idx].clienteAFacturar) {
+            gridServList[idx].clienteAFacturar = rec.clienteAFacturar;
+            const cliInput = document.getElementById(`gs-cell-clifact-${idx}`);
+            if (cliInput) cliInput.value = rec.clienteAFacturar;
+          } else if (rec.modalidad === 'RECAUDO' && rec.nit && !gridServList[idx].nit) {
+            gridServList[idx].nit = String(rec.nit);
+            const nitInput = document.getElementById(`gs-cell-nit-${idx}`);
+            if (nitInput) nitInput.value = String(rec.nit);
+            aplicarPrellenadoClienteEnFila(gridServList[idx], idx);
+          }
+        }
+      } else {
+        if (!gridServList[idx].reciboNuevo) gridServList[idx].reciboNuevo = '1';
+        if (recNuevoInput) {
+          recNuevoInput.disabled = false;
+          recNuevoInput.value = gridServList[idx].reciboNuevo;
+          recNuevoInput.placeholder = '1, 2, 3...';
+          recNuevoInput.style.background = 'var(--card-bg)';
+          recNuevoInput.style.opacity = '1';
+        }
+      }
+
+      actualizarTodasLasMetasDomGridServ();
+      programarValidacionRemotaGridServ();
+    }
+
     function onGridServCellInput(idx, field, value) {
       if (!gridServList[idx]) return;
       gridServList[idx][field] = value;
       if (field === 'transportadora') sugerirTransportadorasGrid(value);
       if (field === 'proveedor') sugerirProveedoresGrid(value);
-      actualizarMetaFilaDomGridServ(idx);
-      actualizarBloqueControlGridServ();
-      if (['cargado', 'operacion', 'placa', 'nit', 'transportadora', 'proveedor'].includes(field)) {
+      if (field === 'placa') sugerirPlacasGrid(value);
+      if (field === 'nit') {
+        aplicarPrellenadoClienteEnFila(gridServList[idx], idx);
+      }
+      actualizarTodasLasMetasDomGridServ();
+      if (['operacion', 'placa', 'nit', 'transportadora', 'proveedor'].includes(field)) {
         programarValidacionRemotaGridServ();
       }
     }
@@ -7524,6 +8059,7 @@
     function onGridServOperacionChange(idx, nuevaOp) {
       if (!gridServList[idx]) return;
       gridServList[idx].operacion = nuevaOp;
+      actualizarDatalistConsecutivosGrid(nuevaOp, gridServList[idx].consecutivoRecibo);
 
       // Actualizar desplegables dependientes (Actividad y Área) de esta fila sin perder foco
       const selAct = document.getElementById(`gs-cell-act-${idx}`);
@@ -7540,15 +8076,23 @@
       }
 
       if (selArea && gridServLookups) {
-        const areas = (gridServLookups.areas || []).filter(a => normalizarTextoGrid(a.operacion) === opNorm);
-        const defArea = areas.find(a => String(a.operativo || '').toUpperCase() === 'V');
-        gridServList[idx].area = '';
-        selArea.innerHTML = `<option value="">Auto (${esc(defArea ? defArea.area : 'Operativa')})</option>` +
-          areas.map(a => `<option value="${esc(a.area)}">${esc(a.area)}</option>`).join('');
+        const areasOp = obtenerAreasOperativasGrid(nuevaOp);
+        const nuevaArea = resolverAreaPorDefectoGrid(nuevaOp, gridServList[idx].area);
+        gridServList[idx].area = nuevaArea;
+        if (!nuevaOp) {
+          selArea.innerHTML = `<option value="">Seleccione op...</option>`;
+        } else if (areasOp.length === 1) {
+          selArea.innerHTML = `<option value="${esc(areasOp[0].area)}" selected>${esc(areasOp[0].area)}</option>`;
+          selArea.value = areasOp[0].area;
+        } else if (areasOp.length > 1) {
+          selArea.innerHTML = `<option value="" ${!nuevaArea ? 'selected' : ''}>Seleccione área...</option>` +
+            areasOp.map(a => `<option value="${esc(a.area)}" ${normalizarTextoGrid(a.area) === normalizarTextoGrid(nuevaArea) ? 'selected' : ''}>${esc(a.area)}</option>`).join('');
+        } else {
+          selArea.innerHTML = `<option value="">⚠️ Sin área 'V'</option>`;
+        }
       }
 
-      actualizarMetaFilaDomGridServ(idx);
-      actualizarBloqueControlGridServ();
+      actualizarTodasLasMetasDomGridServ();
       programarValidacionRemotaGridServ();
     }
 
@@ -7558,6 +8102,9 @@
       const esCredito = String(nuevoFp) === '3';
       const cliInput = document.getElementById(`gs-cell-clifact-${idx}`);
       const nitInput = document.getElementById(`gs-cell-nit-${idx}`);
+      const nomInput = document.getElementById(`gs-cell-nombres-${idx}`);
+      const telInput = document.getElementById(`gs-cell-tel-${idx}`);
+      const emailInput = document.getElementById(`gs-cell-email-${idx}`);
 
       if (cliInput) {
         cliInput.disabled = !esCredito;
@@ -7569,20 +8116,20 @@
           gridServList[idx].clienteAFacturar = '';
         }
       }
-      if (nitInput) {
-        nitInput.disabled = esCredito;
-        nitInput.style.background = esCredito ? 'var(--bg-elevated)' : 'var(--card-bg)';
-        nitInput.style.opacity = esCredito ? '0.6' : '1';
-      }
+      [nitInput, nomInput, telInput, emailInput].forEach(inp => {
+        if (!inp) return;
+        inp.disabled = esCredito;
+        inp.style.background = esCredito ? 'var(--bg-elevated)' : 'var(--card-bg)';
+        inp.style.opacity = esCredito ? '0.6' : '1';
+      });
 
-      actualizarMetaFilaDomGridServ(idx);
-      actualizarBloqueControlGridServ();
+      actualizarTodasLasMetasDomGridServ();
     }
 
     function actualizarMetaFilaDomGridServ(idx) {
       const f = gridServList[idx];
       if (!f) return;
-      const ev = evaluarFilaGridServ(f);
+      const ev = evaluarFilaGridServ(f, idx);
 
       const statusIcon = document.getElementById(`gs-status-icon-${idx}`);
       if (statusIcon) {
@@ -7590,17 +8137,39 @@
         statusIcon.title = ev.ok ? 'Fila válida' : ev.errores.join(' · ');
       }
 
-      const recEl = document.getElementById(`gs-reciboapp-${idx}`);
-      if (recEl) recEl.textContent = ev.reciboApp || '-';
+      const recNuevoBadge = document.getElementById(`gs-recnuevobadge-${idx}`);
+      if (recNuevoBadge) {
+        if (ev.consecutivoRecibo) {
+          recNuevoBadge.innerHTML = '<span style="color:var(--text-muted);">Usa existente</span>';
+        } else if (ev.reciboNuevoGrupo) {
+          recNuevoBadge.innerHTML = `<span style="color:#16a34a; font-weight:700;">✨ Recibo #${esc(ev.reciboNuevoGrupo)}</span>`;
+        } else {
+          recNuevoBadge.innerHTML = '';
+        }
+      }
 
       const recBadge = document.getElementById(`gs-recibobadge-${idx}`);
       if (recBadge) {
-        if (!ev.reciboApp) {
+        if (!ev.consecutivoRecibo) {
           recBadge.innerHTML = '';
-        } else if (ev.reciboExiste) {
-          recBadge.innerHTML = '<span style="color:#0284c7; font-weight:700;">✓ Recibo existente</span>';
+        } else if (!gridServCacheRecibos.has(ev.consecutivoRecibo)) {
+          recBadge.innerHTML = '<span style="color:var(--text-muted);">⏳ Validando...</span>';
+        } else if (!ev.reciboInfo) {
+          recBadge.innerHTML = '<span style="color:var(--danger); font-weight:700;">❌ No existe</span>';
+        } else if (ev.reciboInfo.todosEnVerde) {
+          recBadge.innerHTML = '<span style="color:var(--danger); font-weight:700;">❌ Ya está en Verde</span>';
         } else {
-          recBadge.innerHTML = '<span style="color:#16a34a; font-weight:700;">✨ Recibo nuevo</span>';
+          const fpStr = String(f.formaDePago || '');
+          const errorFp =
+            (ev.reciboInfo.modalidad === 'RECAUDO' && !['1', '2'].includes(fpStr)) ||
+            (ev.reciboInfo.modalidad === 'CREDITO' && fpStr !== '3');
+          if (errorFp) {
+            recBadge.innerHTML = `<span style="color:var(--danger); font-weight:700;">❌ Es ${esc(ev.reciboInfo.modalidad)} (FP incompatible)</span>`;
+          } else {
+            const colorEst = ev.reciboInfo.estado === 'Yellow' ? '#d97706' : '#0284c7';
+            const iconoEst = ev.reciboInfo.estado === 'Yellow' ? '🟡' : '🔴';
+            recBadge.innerHTML = `<span style="color:${colorEst}; font-weight:700;">${iconoEst} ${esc(ev.reciboInfo.modalidad)} (${esc(ev.reciboInfo.operacion)})</span>`;
+          }
         }
       }
 
@@ -7646,20 +8215,22 @@
       const durEl = document.getElementById(`gs-duracion-${idx}`);
       if (durEl) durEl.textContent = `${ev.durInfo.totalHora} (${ev.durInfo.duracion})`;
 
-      const nomEl = document.getElementById(`gs-nombres-${idx}`);
-      if (nomEl) {
-        if (String(f.formaDePago) === '3') {
-          const cc = (gridServLookups?.clientesCredito || []).find(
-            c => normalizarTextoGrid(c.clienteAFacturar) === normalizarTextoGrid(f.clienteAFacturar)
-          );
-          nomEl.textContent = cc ? `${cc.nombre || cc.clienteAFacturar} (NIT: ${cc.nit || '-'})` : '-';
-        } else if (ev.clienteInfo) {
-          nomEl.textContent = ev.clienteInfo.razonSocial;
-          nomEl.title = ev.clienteInfo.razonSocial;
-        } else if (limpiarCeldaExcel(f.nit)) {
-          nomEl.textContent = 'Sin coincidencia en Clientes';
+      const nitBadge = document.getElementById(`gs-nitbadge-${idx}`);
+      if (nitBadge) {
+        const nitClean = String(f.nit || '').replace(/[^0-9]/g, '');
+        if (String(f.formaDePago) === '3' || !nitClean) {
+          nitBadge.innerHTML = '';
+        } else if (!gridServCacheClientesNit.has(nitClean)) {
+          nitBadge.innerHTML = '<span style="color:var(--text-muted);">⏳ Consultando NIT...</span>';
+        } else if (ev.clienteNuevo) {
+          const faltanDatos = !limpiarCeldaExcel(f.nombres) || !limpiarCeldaExcel(f.telefono) || !limpiarCeldaExcel(f.email);
+          nitBadge.innerHTML = faltanDatos
+            ? '<span style="color:var(--danger); font-weight:700;">⚠️ Nuevo: llene Nombres, Tel. y Email</span>'
+            : '<span style="color:#d97706; font-weight:700;">✨ Cliente nuevo (se creará)</span>';
+        } else if (ev.clienteModificado) {
+          nitBadge.innerHTML = '<span style="color:#0284c7; font-weight:700;">✏️ Se actualizará en Maestro</span>';
         } else {
-          nomEl.textContent = '-';
+          nitBadge.innerHTML = '<span style="color:#16a34a;">✓ En Maestro_Clientes</span>';
         }
       }
     }
@@ -7673,16 +8244,17 @@
 
     function actualizarBloqueControlGridServ() {
       const limites = (gridServLookups && gridServLookups.limites) || {
-        transportadoras: 50,
-        proveedores: 50,
-        placas: 100,
-        recibos: 300,
-        servicios: 300
+        transportadoras: 500,
+        proveedores: 500,
+        placas: 500,
+        recibos: 500,
+        servicios: 500
       };
 
-      const setTranspNuevas = new Set();
-      const setProvNuevos = new Set();
+      const mapTranspNuevas = new Map(); // normKey -> display
+      const mapProvNuevos = new Map();   // normKey -> display
       const setPlacasNuevas = new Set();
+      const mapClientesNuevos = new Map(); // nit -> "NIT ** Nombres"
       const setRecibosNuevos = new Set();
       const setRecibosExist = new Set();
 
@@ -7691,53 +8263,72 @@
       let subtotalTotal = 0;
 
       gridServList.forEach((f, idx) => {
-        const ev = evaluarFilaGridServ(f);
+        const ev = evaluarFilaGridServ(f, idx);
         subtotalTotal += ev.subtotal;
         if (!ev.ok) {
           filasConError++;
           if (!primerError) primerError = `Fila ${idx + 1}: ${ev.errores.join(', ')}`;
         }
-        if (ev.transpNueva && limpiarCeldaExcel(f.transportadora)) {
-          setTranspNuevas.add(normalizarTextoGrid(f.transportadora));
+        const trClean = limpiarCeldaExcel(f.transportadora);
+        if (ev.transpNueva && trClean) {
+          const trNorm = normalizarTextoGrid(trClean);
+          if (!mapTranspNuevas.has(trNorm)) mapTranspNuevas.set(trNorm, trClean);
         }
-        if (ev.provNuevo && limpiarCeldaExcel(f.proveedor)) {
-          setProvNuevos.add(normalizarTextoGrid(f.proveedor));
+        const prClean = limpiarCeldaExcel(f.proveedor).toUpperCase();
+        if (ev.provNuevo && prClean) {
+          const prNorm = normalizarTextoGrid(prClean);
+          if (!mapProvNuevos.has(prNorm)) mapProvNuevos.set(prNorm, prClean);
         }
-        if (ev.placaNueva && limpiarCeldaExcel(f.placa).length === 6) {
-          setPlacasNuevas.add(limpiarCeldaExcel(f.placa).toUpperCase());
+        const plClean = limpiarCeldaExcel(f.placa).toUpperCase();
+        if (ev.placaNueva && plClean.length === 6) {
+          setPlacasNuevas.add(plClean);
         }
-        if (ev.reciboApp) {
-          if (ev.reciboExiste) setRecibosExist.add(ev.reciboApp);
-          else setRecibosNuevos.add(ev.reciboApp);
+        const nitClean = String(f.nit || '').replace(/[^0-9]/g, '');
+        if (ev.clienteNuevo && nitClean) {
+          const nomDisplay = limpiarCeldaExcel(f.nombres) || '(Pendiente Nombres)';
+          mapClientesNuevos.set(nitClean, `${nitClean} ** ${nomDisplay}`);
+        }
+        if (ev.consecutivoRecibo) {
+          setRecibosExist.add(ev.consecutivoRecibo);
+        } else if (ev.reciboNuevoGrupo) {
+          setRecibosNuevos.add(ev.reciboNuevoGrupo);
         }
       });
+
+      gridServUltimasListasNuevos = {
+        transportadoras: [...mapTranspNuevas.values()],
+        proveedores: [...mapProvNuevos.values()],
+        placas: [...setPlacasNuevas],
+        clientes: [...mapClientesNuevos.values()]
+      };
 
       const elTransp = document.getElementById('gridserv-cnt-transp');
       const elProv = document.getElementById('gridserv-cnt-prov');
       const elPlacas = document.getElementById('gridserv-cnt-placas');
+      const elClientes = document.getElementById('gridserv-cnt-clientes');
       const elRecibos = document.getElementById('gridserv-cnt-recibos');
       const elRecExist = document.getElementById('gridserv-cnt-recibos-exist');
       const elServicios = document.getElementById('gridserv-cnt-servicios');
       const elSubtotal = document.getElementById('gridserv-subtotal-preview');
 
-      if (elTransp) elTransp.textContent = `${setTranspNuevas.size} / ${limites.transportadoras}`;
-      if (elProv) elProv.textContent = `${setProvNuevos.size} / ${limites.proveedores}`;
-      if (elPlacas) elPlacas.textContent = `${setPlacasNuevas.size} / ${limites.placas}`;
-      if (elRecibos) elRecibos.textContent = `${setRecibosNuevos.size} / ${limites.recibos}`;
+      if (elTransp) elTransp.textContent = `${mapTranspNuevas.size}`;
+      if (elProv) elProv.textContent = `${mapProvNuevos.size}`;
+      if (elPlacas) elPlacas.textContent = `${setPlacasNuevas.size}`;
+      if (elClientes) elClientes.textContent = `${mapClientesNuevos.size}`;
+      if (elRecibos) elRecibos.textContent = `${setRecibosNuevos.size}`;
       if (elRecExist) elRecExist.textContent = setRecibosExist.size ? `(+${setRecibosExist.size} existentes)` : '';
       if (elServicios) elServicios.textContent = `${gridServList.length} / ${limites.servicios}`;
       if (elSubtotal) elSubtotal.textContent = `Subtotal Lote: $ ${formatMiles(subtotalTotal)}`;
+
+      if (gridServDetalleNuevosTipo) {
+        renderDetalleNuevosGridServ();
+      }
 
       const banner = document.getElementById('gridserv-status-banner');
       const text = document.getElementById('gridserv-status-text');
       const btnGuardar = document.getElementById('btn-gridserv-guardar');
 
-      const superaLimites =
-        setTranspNuevas.size > limites.transportadoras ||
-        setProvNuevos.size > limites.proveedores ||
-        setPlacasNuevas.size > limites.placas ||
-        setRecibosNuevos.size > limites.recibos ||
-        gridServList.length > limites.servicios;
+      const superaLimites = gridServList.length > limites.servicios;
 
       if (gridServList.length === 0) {
         if (banner) {
@@ -7760,7 +8351,7 @@
         }
         if (btnGuardar) btnGuardar.disabled = true;
       } else {
-        const nuevosCatalogos = setTranspNuevas.size + setProvNuevos.size + setPlacasNuevas.size;
+        const nuevosCatalogos = mapTranspNuevas.size + mapProvNuevos.size + setPlacasNuevas.size + mapClientesNuevos.size;
         if (banner) {
           banner.style.background = 'rgba(22, 163, 74, 0.12)';
           banner.style.color = '#16a34a';
@@ -7768,8 +8359,8 @@
         }
         if (text) {
           text.textContent = nuevosCatalogos > 0
-            ? `✅ YA SE PUEDE CARGAR A LA BASE DE DATOS (Se crearán automáticamente ${nuevosCatalogos} registro(s) de catálogo nuevos, ${setRecibosNuevos.size} recibo(s) y ${gridServList.length} servicio(s))`
-            : `✅ YA SE PUEDE CARGAR A LA BASE DE DATOS (${setRecibosNuevos.size} recibo(s) nuevos y ${gridServList.length} servicio(s) listos)`;
+            ? `✅ YA SE PUEDE CARGAR A LA BASE DE DATOS (Se crearán ${nuevosCatalogos} catálogo(s) nuevos, ${setRecibosNuevos.size} recibo(s) nuevos, ${setRecibosExist.size} recibo(s) existentes y ${gridServList.length} servicio(s))`
+            : `✅ YA SE PUEDE CARGAR A LA BASE DE DATOS (${setRecibosNuevos.size} recibo(s) nuevos, ${setRecibosExist.size} existente(s) y ${gridServList.length} servicio(s) listos)`;
         }
         if (btnGuardar) btnGuardar.disabled = false;
       }
@@ -7801,20 +8392,19 @@
         const cols = lines[i].split('\t');
         if (!cols.length) continue;
 
-        // Detectar y saltar fila de encabezado si el usuario la incluyó al copiar
         const c0Upper = normalizarTextoGrid(cols[0]);
         const c1Upper = normalizarTextoGrid(cols[1] || '');
         if (
           c0Upper === 'RECIBO APP' ||
           c0Upper === 'CARGADO' ||
-          (c0Upper.includes('RECIBO') && c1Upper === 'CARGADO') ||
+          c0Upper === 'N RECIBO NUEVO' ||
+          c0Upper === 'CONSECUTIVO RECIBO' ||
+          (c0Upper.includes('RECIBO') && (c1Upper === 'CARGADO' || c1Upper === 'OPERACION' || c1Upper.includes('CONSECUTIVO'))) ||
           (c0Upper === 'CARGADO' && c1Upper === 'OPERACION')
         ) {
           continue;
         }
 
-        // Detectar si el usuario copió desde la Columna A ("Recibo App", ej. "325-00164")
-        // junto con la Columna B ("Cargado", ej. "164" o "Cargado") y la Columna C ("OPERACIÓN")
         let offset = 0;
         const c0Trim = limpiarCeldaExcel(cols[0]);
         const c1Trim = limpiarCeldaExcel(cols[1]);
@@ -7833,38 +8423,46 @@
 
         const getCol = (idxBase) => limpiarCeldaExcel(cols[idxBase + offset]);
 
-        let cargadoVal = getCol(0);
-        // Si el usuario copió desde A y en B decía "Cargado" (literal tras correr la macro antes), usar A (Recibo App)
-        if (offset === 1 && normalizarTextoGrid(cargadoVal) === 'CARGADO' && /^\d{2,5}-\d{1,8}$/.test(c0Trim)) {
-          cargadoVal = c0Trim;
+        let primeraCol = getCol(0);
+        if (offset === 1 && normalizarTextoGrid(primeraCol) === 'CARGADO' && /^\d{2,5}-\d{1,8}$/.test(c0Trim)) {
+          primeraCol = c0Trim;
+        }
+
+        let reciboNuevoVal = '';
+        let consecutivoReciboVal = '';
+        if (primeraCol.includes('-')) {
+          consecutivoReciboVal = primeraCol;
+        } else {
+          reciboNuevoVal = primeraCol.replace(/[^0-9]/g, '') || '1';
         }
 
         const operacionVal = getCol(1);
         const fechaRaw = getCol(2);
         const fpRaw = getCol(3);
-        const rutaVal = getCol(4);
-        const transpVal = getCol(5);
-        const provVal = getCol(6).toUpperCase();
-        const cliFactVal = getCol(7).toUpperCase();
-        const vehiculoVal = getCol(8);
-        const placaVal = getCol(9).toUpperCase();
-        const actividadVal = getCol(10);
-        const manifiestoVal = getCol(11);
-        const remolqueVal = getCol(12);
-        const unidadVal = getCol(13);
-        const cantVal = parseNumeroCeldaExcel(getCol(14));
-        const vunitVal = parseNumeroCeldaExcel(getCol(15));
-        const retefuenteVal = getCol(16).toUpperCase() === 'V' ? 'V' : '';
-        const reteivaVal = getCol(17).toUpperCase() === 'V' ? 'V' : '';
-        const horaInicioRaw = getCol(18);
-        const horaFinalRaw = getCol(19);
-        const areaVal = getCol(20);
-        const obsVal = getCol(21);
-        const nitVal = getCol(22).replace(/[^0-9]/g, '');
+        const transpVal = getCol(4);
+        const provVal = getCol(5).toUpperCase();
+        const cliFactVal = getCol(6).toUpperCase();
+        const origenVal = getCol(7);
+        const destinoVal = getCol(8);
+        const vehiculoVal = getCol(9);
+        const placaVal = getCol(10).toUpperCase();
+        const actividadVal = getCol(11);
+        const manifiestoVal = getCol(12);
+        const remolqueVal = getCol(13);
+        const unidadVal = getCol(14);
+        const cantVal = parseNumeroCeldaExcel(getCol(15));
+        const vunitVal = parseNumeroCeldaExcel(getCol(16));
+        const horaInicioRaw = getCol(17);
+        const horaFinalRaw = getCol(18);
+        const areaVal = getCol(19);
+        const obsVal = getCol(20);
+        const nitVal = getCol(21).replace(/[^0-9]/g, '');
+        const nombresVal = getCol(22);
+        const telefonoVal = getCol(23);
+        const emailVal = getCol(24);
 
-        if (!cargadoVal && !operacionVal && !actividadVal && !placaVal) continue;
+        if (!primeraCol && !operacionVal && !actividadVal && !placaVal) continue;
 
-        // Resolver nombre canónico de Operación y Actividad si coinciden sin tildes/mayúsculas
         let opFinal = operacionVal;
         if (gridServLookups && operacionVal) {
           const opMatch = (gridServLookups.operaciones || []).find(
@@ -7882,14 +8480,7 @@
           if (actMatch) actFinal = actMatch.actividad;
         }
 
-        let areaFinal = areaVal;
-        if (gridServLookups && areaVal && opFinal) {
-          const areaMatch = (gridServLookups.areas || []).find(
-            a => normalizarTextoGrid(a.operacion) === normalizarTextoGrid(opFinal) &&
-                 normalizarTextoGrid(a.area) === normalizarTextoGrid(areaVal)
-          );
-          if (areaMatch) areaFinal = areaMatch.area;
-        }
+        const areaFinal = resolverAreaPorDefectoGrid(opFinal, areaVal);
 
         const fechaISO = normalizarFechaInput(fechaRaw);
         const horaInicioISO = normalizarHoraInput(horaInicioRaw, fechaISO);
@@ -7905,14 +8496,16 @@
         }
 
         nuevasFilas.push(crearObjetoFilaVacia({
-          cargado: cargadoVal,
+          reciboNuevo: reciboNuevoVal,
+          consecutivoRecibo: consecutivoReciboVal,
           operacion: opFinal,
           fecha: fechaISO,
           formaDePago: fpFinal,
-          ruta: rutaVal,
           transportadora: transpVal,
           proveedor: provVal,
           clienteAFacturar: fpFinal === '3' ? cliFactVal : '',
+          origen: origenVal,
+          destino: destinoVal,
           vehiculo: vehiculoVal,
           placa: placaVal,
           actividad: actFinal,
@@ -7921,13 +8514,14 @@
           unidad: unidadVal,
           cantidad: cantVal,
           valorUnitario: vunitVal,
-          retefuente: retefuenteVal,
-          reteiva: reteivaVal,
           horaInicio: horaInicioISO,
           horaFinal: horaFinalISO,
           area: areaFinal,
           observaciones: obsVal,
-          nit: nitVal
+          nit: nitVal,
+          nombres: nombresVal,
+          telefono: telefonoVal,
+          email: emailVal
         }));
       }
 
@@ -7951,14 +8545,14 @@
       const titleEl = document.getElementById('gridserv-loading-title');
       const subEl = document.getElementById('gridserv-loading-sub');
 
-      if (!confirm(`¿Confirma cargar ${gridServList.length} servicio(s) a la base de datos?\n\nEl sistema registrará automáticamente las Transportadoras, Proveedores, Placas y Recibos nuevos, y luego insertará todos los Servicios.`)) {
+      if (!confirm(`¿Confirma cargar ${gridServList.length} servicio(s) a la base de datos?\n\nEl sistema registrará automáticamente las Transportadoras, Proveedores, Placas, Clientes y Recibos nuevos, y luego insertará todos los Servicios.`)) {
         return;
       }
 
       try {
         if (btn) btn.disabled = true;
         if (titleEl) titleEl.textContent = 'Guardando lote en Base de Datos...';
-        if (subEl) subEl.textContent = 'Ejecutando transacción: Transportadoras → Proveedores → Placas → Recibos → Servicios';
+        if (subEl) subEl.textContent = 'Ejecutando transacción: Transportadoras → Proveedores → Placas → Clientes → Recibos → Servicios';
         if (overlay) overlay.style.display = 'flex';
 
         const resp = await fetch(`/facturacion/api/servicios/guardar-masivo?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
@@ -7974,20 +8568,29 @@
         }
 
         const r = data.resumen || {};
-        // Invalidar caché de lookups para que incluya las nuevas transportadoras/proveedores
+        // Invalidar caché de lookups para que incluya las nuevas transportadoras/proveedores, clientes y recibos
         gridServLookups = null;
+        gridServCacheClientesNit.clear();
         gridServCachePlacas.clear();
         gridServCacheRecibos.clear();
         gridServCacheTransportadoras.clear();
         gridServCacheProveedores.clear();
         gridServList = [];
+        cerrarDetalleNuevosGridServ();
 
         cerrarModalCargaMasivaServicios();
+
+        const consTxt = Array.isArray(r.consecutivosCreados) && r.consecutivosCreados.length
+          ? ` (${r.consecutivosCreados.join(', ')})`
+          : '';
 
         alert(
           `✅ Proceso completado exitosamente.\n\n` +
           `• Servicios insertados: ${r.serviciosCreados || 0}\n` +
-          `• Recibos nuevos creados: ${r.recibosCreados || 0} (existentes reutilizados: ${r.recibosExistentesUsados || 0})\n` +
+          `• Recibos nuevos creados: ${r.recibosCreados || 0}${consTxt}\n` +
+          `• Recibos existentes reutilizados: ${r.recibosExistentesUsados || 0}\n` +
+          `• Clientes nuevos creados: ${r.clientesCreados || 0}\n` +
+          `• Clientes existentes actualizados: ${r.clientesActualizados || 0}\n` +
           `• Transportadoras nuevas: ${r.transportadorasCreadas || 0}\n` +
           `• Proveedores nuevos: ${r.proveedoresCreados || 0}\n` +
           `• Placas nuevas (6 car.): ${r.placasCreadas || 0}`
