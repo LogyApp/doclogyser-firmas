@@ -1,4 +1,4 @@
-const { transporter } = require('./email');
+const { transporter, encabezadoLogo, LOGO_HEADER_ATTACHMENT } = require('./email');
 
 const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
 
@@ -95,11 +95,9 @@ async function crearSolicitudAcceso(pool, payload) {
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #edf2f7;border-radius:8px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.05)">
-      <div style="background:#1e3c72;color:#ffffff;padding:20px;text-align:center">
-        <h2 style="margin:0;font-size:1.4rem">LOG&SER Gestión Documental</h2>
-        <p style="margin:5px 0 0;font-size:0.9rem;opacity:0.9">Solicitud de Acceso a Archivo Digital</p>
-      </div>
+${encabezadoLogo('#1e3c72')}
       <div style="padding:24px;background:#ffffff">
+        <h2 style="color:#1e3c72;margin:0 0 12px;font-size:1.2rem">Solicitud de Acceso a Archivo Digital</h2>
         <p style="color:#333;font-size:1rem;margin-top:0">Se ha registrado una solicitud para visualizar un documento restringido:</p>
         <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
           <tr style="background:#f8fafc">
@@ -140,6 +138,7 @@ async function crearSolicitudAcceso(pool, payload) {
     to: 'gestiondocumental@logyser.com',
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   };
 
   if (emailUsuario) {
@@ -223,11 +222,9 @@ async function gestionarSolicitudAcceso(pool, payload) {
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #edf2f7;border-radius:8px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.05)">
-      <div style="background:#000b59;color:#ffffff;padding:20px;text-align:center">
-        <h2 style="margin:0;font-size:1.4rem">LOG&SER Gestión Documental</h2>
-        <p style="margin:5px 0 0;font-size:0.9rem;opacity:0.9">Resolución de Solicitud de Acceso</p>
-      </div>
+${encabezadoLogo('#000b59')}
       <div style="padding:24px;background:#ffffff">
+        <h2 style="color:#000b59;margin:0 0 12px;font-size:1.2rem">Resolución de Solicitud de Acceso</h2>
         <p style="color:#333;font-size:1rem;margin-top:0">Hola <strong>${nombreUsuario}</strong>,</p>
         <p style="color:#333;font-size:1rem">Tu solicitud de acceso para visualizar el siguiente documento restringido ha sido procesada:</p>
         <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:0.9rem">
@@ -265,6 +262,7 @@ async function gestionarSolicitudAcceso(pool, payload) {
     cc: ['gestiondocumental@logyser.com', 'admin@logyser.com'],
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 

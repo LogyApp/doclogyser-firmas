@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const pool = require('./db');
-const { transporter, EMAIL_FROM, HEADER, FOOTER } = require('./email');
+const { transporter, EMAIL_FROM, FOOTER, encabezadoLogo, LOGO_HEADER_ATTACHMENT, COLOR_ENCABEZADO_AZUL } = require('./email');
 
 function formatFechaLarga(fecha) {
   if (!fecha) return '—';
@@ -153,7 +153,7 @@ async function notificarActaCasoMedico({ email, nombreTrabajador, tipoActa, codi
   const titulo = tipoActa === 'cierre' ? 'Acta de Cierre de Caso Médico' : 'Acta de Apertura de Caso Médico';
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:28px 24px;color:#222;line-height:1.6">
         <h2 style="color:#1B2A5E;margin-top:0;font-size:1.15rem">${titulo}</h2>
         <p>Hola <strong>${nombreTrabajador}</strong>,</p>
@@ -177,6 +177,7 @@ async function notificarActaCasoMedico({ email, nombreTrabajador, tipoActa, codi
     to: email,
     subject: `Firma requerida: ${titulo} (${codigoCaso})`,
     html,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 
   return true;

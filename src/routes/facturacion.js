@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
+const { obtenerConfigServiciosMasivo } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services/documentRegistry');
 
@@ -113,6 +114,7 @@ router.get('/', async (req, res) => {
     }
 
     const base = accesoServicios || accesoRecibos || accesoBloqueo || accesoClientes;
+    const cfgServiciosMasivo = await obtenerConfigServiciosMasivo(base.rol);
     const template = fs.readFileSync(FACTURACION_HTML, 'utf8');
 
     // Quincena actual de hoy
@@ -135,6 +137,7 @@ router.get('/', async (req, res) => {
       regionalesFiltro: Object.keys(base.opsPorRegional).sort(),
       opsPorRegional: base.opsPorRegional,
       quincenaActual,
+      serviciosMasivo: cfgServiciosMasivo,
       tabs: {
         servicios: resumenAcceso(accesoServicios),
         recibos: resumenAcceso(accesoRecibos || accesoServicios),
@@ -938,6 +941,1034 @@ router.get('/api/servicios/metricas', async (req, res) => {
   } catch (err) {
     console.error('[facturacion] GET /api/servicios/metricas:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── CARGA MASIVA DE SERVICIOS (Editor de Grid — Reemplazo de Plano Servicios V7)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function normalizarClaveCatalogo(str) {
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
+}
+
+function limpiarValorPlano(val) {
+  if (val === null || val === undefined) return '';
+  const s = String(val).trim();
+  if (s === '' || s === '0' || s.toUpperCase() === 'NULL') return '';
+  return s;
+}
+
+function parseNumeroPlano(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number') return Number.isFinite(val) && val !== 0 ? val : null;
+  let s = String(val).replace(/\$/g, '').replace(/\s+/g, '').trim();
+  if (!s || s === '0') return null;
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  if (lastComma > -1 && lastDot > -1) {
+    if (lastComma > lastDot) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      s = s.replace(/,/g, '');
+    }
+  } else if (lastComma > -1) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot > -1) {
+    const parts = s.split('.');
+    if (parts.length > 2) {
+      s = parts.join('');
+    }
+  }
+  const num = parseFloat(s);
+  if (!Number.isFinite(num) || num === 0) return null;
+  return Math.round(num * 1000) / 1000;
+}
+
+// Convierte una fecha ("YYYY-MM-DD", "DD/MM/YYYY", "DD-MM-YYYY", con o sin hora) a "YYYY-MM-DD HH:MM:SS"
+function parseFechaHoraPlano(rawValue, fallbackDateStr = null) {
+  const s = limpiarValorPlano(rawValue);
+  if (!s) return null;
+
+  // Caso solo hora ("08:30", "8:30:00", "14:00") combinada con la fecha base
+  const onlyTimeMatch = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([ap]\.?\s*m\.?))?$/i);
+  if (onlyTimeMatch && fallbackDateStr) {
+    const baseDate = fallbackDateStr.split(' ')[0];
+    let hh = parseInt(onlyTimeMatch[1], 10);
+    const mm = parseInt(onlyTimeMatch[2], 10);
+    const ss = parseInt(onlyTimeMatch[3] || '0', 10);
+    const ampm = (onlyTimeMatch[4] || '').toLowerCase().replace(/\./g, '').trim();
+    if (ampm === 'pm' && hh < 12) hh += 12;
+    if (ampm === 'am' && hh === 12) hh = 0;
+    const pad = n => String(n).padStart(2, '0');
+    return `${baseDate} ${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+  }
+
+  // Reemplazar T de datetime-local
+  const norm = s.replace('T', ' ').trim();
+
+  // Formato YYYY-MM-DD [HH:MM[:SS]]
+  const isoMatch = norm.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([ap]\.?\s*m\.?))?)?$/i);
+  if (isoMatch) {
+    const y = isoMatch[1];
+    const mo = String(isoMatch[2]).padStart(2, '0');
+    const d = String(isoMatch[3]).padStart(2, '0');
+    let hh = parseInt(isoMatch[4] || '0', 10);
+    const mm = String(isoMatch[5] || '00').padStart(2, '0');
+    const ss = String(isoMatch[6] || '00').padStart(2, '0');
+    const ampm = (isoMatch[7] || '').toLowerCase().replace(/\./g, '').trim();
+    if (ampm === 'pm' && hh < 12) hh += 12;
+    if (ampm === 'am' && hh === 12) hh = 0;
+    return `${y}-${mo}-${d} ${String(hh).padStart(2, '0')}:${mm}:${ss}`;
+  }
+
+  // Formato DD/MM/YYYY o DD-MM-YYYY [HH:MM[:SS]]
+  const dmyMatch = norm.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([ap]\.?\s*m\.?))?)?$/i);
+  if (dmyMatch) {
+    const d = String(dmyMatch[1]).padStart(2, '0');
+    const mo = String(dmyMatch[2]).padStart(2, '0');
+    const y = dmyMatch[3];
+    let hh = parseInt(dmyMatch[4] || '0', 10);
+    const mm = String(dmyMatch[5] || '00').padStart(2, '0');
+    const ss = String(dmyMatch[6] || '00').padStart(2, '0');
+    const ampm = (dmyMatch[7] || '').toLowerCase().replace(/\./g, '').trim();
+    if (ampm === 'pm' && hh < 12) hh += 12;
+    if (ampm === 'am' && hh === 12) hh = 0;
+    return `${y}-${mo}-${d} ${String(hh).padStart(2, '0')}:${mm}:${ss}`;
+  }
+
+  return null;
+}
+
+// Caché en memoria (TTL 5 min) de los catálogos pequeños para Carga Masiva
+// (Operaciones, Áreas, Actividades, Vehículos, Unidades, Duraciones, Clientes Crédito).
+// Maestro_Transportadora (~10.800 filas), Maestro_Proveedor (~7.300) y Maestro_Placas (~57.000)
+// NO se descargan completos al navegador para no bloquear la UI; se validan por lote con índice.
+let cachedMasivoLookupsBase = null;
+let lastMasivoLookupsFetch = 0;
+
+async function getMasivoLookupsBase() {
+  const now = Date.now();
+  if (cachedMasivoLookupsBase && (now - lastMasivoLookupsFetch < 300000)) {
+    return cachedMasivoLookupsBase;
+  }
+  const [
+    [opRows],
+    [areaRows],
+    [actRows],
+    [vehRows],
+    [uniRows],
+    [durRows],
+    [cliCredRows]
+  ] = await Promise.all([
+    pool.query(
+      "SELECT `OPERACIÓN` as operacion, REGIONAL as regional, `CODIGO CO SIESA` as codigoSiesa FROM Maestro_Operaciones WHERE REGIONAL != 'INACTIVO' ORDER BY `OPERACIÓN` ASC"
+    ),
+    pool.query(
+      "SELECT ID as id, AREA as area, `OPERACIÓN` as operacion, OPERATIVO as operativo, ADMINISTRATIVO as administrativo FROM Config_Area ORDER BY `OPERACIÓN` ASC, AREA ASC"
+    ),
+    pool.query(
+      "SELECT ID as id, Actividad as actividad, `Operación` as operacion FROM Config_Actividad ORDER BY `Operación` ASC, Actividad ASC"
+    ),
+    pool.query('SELECT Vehiculo as vehiculo FROM Config_Vehiculo ORDER BY Vehiculo ASC'),
+    pool.query('SELECT Unidad as unidad FROM Config_Unidad ORDER BY Unidad ASC'),
+    pool.query('SELECT `Duración` as duracion, CAST(Tiempo AS CHAR) as tiempo FROM `Config_Duración` ORDER BY Tiempo ASC'),
+    pool.query('SELECT ID as id, Bloqueo as bloqueo, `Cliente a Facturar` as clienteAFacturar, Nit as nit, Nombre as nombre FROM Maestro_Clientes_Credito ORDER BY `Cliente a Facturar` ASC')
+  ]);
+
+  cachedMasivoLookupsBase = {
+    opRows,
+    areaRows,
+    actRows,
+    vehiculos: vehRows.map(r => r.vehiculo).filter(Boolean),
+    unidades: uniRows.map(r => r.unidad).filter(Boolean),
+    durRows,
+    cliCredRows
+  };
+  lastMasivoLookupsFetch = now;
+  return cachedMasivoLookupsBase;
+}
+
+// ── GET /api/servicios/masivo-lookups ─────────────────────────────────────────
+router.get('/api/servicios/masivo-lookups', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios')
+                || await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const cfg = await obtenerConfigServiciosMasivo(acceso.rol);
+    if (!cfg.puedeCargaMasiva) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para usar la Carga Masiva de Servicios.' });
+    }
+
+    const [base, impuestos] = await Promise.all([
+      getMasivoLookupsBase(),
+      getImpuestos()
+    ]);
+
+    const operacionesPermitidas = acceso.sinFiltro
+      ? base.opRows
+      : base.opRows.filter(r => (acceso.operacionesFiltro || []).includes(r.operacion));
+
+    res.json({
+      usuarioRegistro: acceso.usuarioId || usuario,
+      limites: cfg.limites,
+      operaciones: operacionesPermitidas,
+      areas: base.areaRows,
+      actividades: base.actRows,
+      vehiculos: base.vehiculos,
+      unidades: base.unidades,
+      duraciones: base.durRows,
+      clientesCredito: base.cliCredRows,
+      impuestos: {
+        iva: impuestos.iva,
+        reteFuente: impuestos.reteFuente,
+        reteIva: impuestos.reteIva,
+        reteFuenteValorBase: impuestos.reteFuenteValorBase,
+        reteIvaValorBase: impuestos.reteIvaValorBase,
+        reteIcaMap: impuestos.reteIcaMap,
+        reteIcaValorBaseMap: impuestos.reteIcaValorBaseMap
+      }
+    });
+  } catch (err) {
+    console.error('[facturacion] GET /api/servicios/masivo-lookups:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/servicios/masivo-validar-lote ───────────────────────────────────
+// Resuelve en lote (usando los índices de cada tabla) NITs (Maestro_Clientes),
+// Placas (Maestro_Placas), Recibos App (Dynamic_Recibos), Transportadoras
+// (Maestro_Transportadora) y Proveedores (Maestro_Proveedor).
+router.post('/api/servicios/masivo-validar-lote', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios')
+                || await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const cfg = await obtenerConfigServiciosMasivo(acceso.rol);
+    if (!cfg.puedeCargaMasiva) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para usar la Carga Masiva de Servicios.' });
+    }
+
+    const body = req.body || {};
+    const rawNits = Array.isArray(body.nits) ? body.nits : [];
+    const rawPlacas = Array.isArray(body.placas) ? body.placas : [];
+    const rawConsecutivos = Array.isArray(body.consecutivos) ? body.consecutivos : [];
+    const rawTransportadoras = Array.isArray(body.transportadoras) ? body.transportadoras : [];
+    const rawProveedores = Array.isArray(body.proveedores) ? body.proveedores : [];
+
+    const nitsLimpios = [...new Set(
+      rawNits
+        .map(n => parseInt(String(n || '').replace(/[^0-9]/g, ''), 10))
+        .filter(n => Number.isFinite(n) && n > 0)
+    )].slice(0, 500);
+
+    const placasLimpias = [...new Set(
+      rawPlacas
+        .map(p => String(p || '').trim().toUpperCase())
+        .filter(Boolean)
+    )].slice(0, 500);
+
+    const consecutivosLimpios = [...new Set(
+      rawConsecutivos
+        .map(c => String(c || '').trim())
+        .filter(Boolean)
+    )].slice(0, 500);
+
+    const transportadorasLimpias = [...new Set(
+      rawTransportadoras
+        .map(t => String(t || '').trim())
+        .filter(Boolean)
+    )].slice(0, 500);
+
+    const proveedoresLimpios = [...new Set(
+      rawProveedores
+        .map(p => String(p || '').trim().toUpperCase())
+        .filter(Boolean)
+    )].slice(0, 500);
+
+    const [clientesRows, placasRows, recibosRows, transpRows, provRows] = await Promise.all([
+      nitsLimpios.length
+        ? pool.query(
+            `SELECT \`Código\` as codigo, \`Razón social\` as razonSocial, Telefono as telefono,
+                    \`Correo F.E.\` as correoFE, RTSERVIC as rtservic, RTIVA as rtiva, RTICA as rtica
+             FROM Maestro_Clientes
+             WHERE \`Código\` IN (?)`,
+            [nitsLimpios]
+          ).then(([r]) => r)
+        : Promise.resolve([]),
+      placasLimpias.length
+        ? pool.query(
+            `SELECT ID as id, Placa as placa, \`Tipo Cliente\` as tipoCliente,
+                    \`Cliente Credito\` as clienteCredito, Nit as nit
+             FROM Maestro_Placas
+             WHERE Placa IN (?)`,
+            [placasLimpias]
+          ).then(([r]) => r)
+        : Promise.resolve([]),
+      consecutivosLimpios.length
+        ? pool.query(
+            `SELECT IdRecibo as idRecibo, \`Consecutivo Recibo\` as consecutivo,
+                    \`Operación\` as operacion, \`Cliente a Facturar\` as clienteAFacturar,
+                    Modalidad as modalidad, Nit as nit
+             FROM Dynamic_Recibos
+             WHERE \`Consecutivo Recibo\` IN (?)`,
+            [consecutivosLimpios]
+          ).then(([r]) => r)
+        : Promise.resolve([]),
+      transportadorasLimpias.length
+        ? pool.query(
+            `SELECT ID as id, Transportadora as transportadora
+             FROM Maestro_Transportadora
+             WHERE Transportadora IN (?)`,
+            [transportadorasLimpias]
+          ).then(([r]) => r)
+        : Promise.resolve([]),
+      proveedoresLimpios.length
+        ? pool.query(
+            `SELECT ID as id, Proveedor as proveedor
+             FROM Maestro_Proveedor
+             WHERE Proveedor IN (?)`,
+            [proveedoresLimpios]
+          ).then(([r]) => r)
+        : Promise.resolve([])
+    ]);
+
+    const clientesPorNit = {};
+    clientesRows.forEach(c => {
+      clientesPorNit[String(c.codigo)] = {
+        codigo: c.codigo,
+        razonSocial: (c.razonSocial || '').trim(),
+        telefono: c.telefono ? String(c.telefono).trim() : '',
+        correoFE: (c.correoFE || '').trim(),
+        rtservic: c.rtservic || '',
+        rtiva: c.rtiva || '',
+        rtica: c.rtica || ''
+      };
+    });
+
+    const placasPorNombre = {};
+    placasRows.forEach(p => {
+      const key = String(p.placa || '').trim().toUpperCase();
+      if (key && !placasPorNombre[key]) {
+        placasPorNombre[key] = {
+          id: p.id,
+          placa: key,
+          tipoCliente: p.tipoCliente || '',
+          clienteCredito: p.clienteCredito || '',
+          nit: p.nit || null
+        };
+      }
+    });
+
+    const recibosPorConsecutivo = {};
+    recibosRows.forEach(r => {
+      const key = String(r.consecutivo || '').trim();
+      if (key && !recibosPorConsecutivo[key]) {
+        recibosPorConsecutivo[key] = {
+          idRecibo: r.idRecibo,
+          consecutivo: key,
+          operacion: r.operacion || '',
+          clienteAFacturar: r.clienteAFacturar || '',
+          modalidad: r.modalidad || '',
+          nit: r.nit || null
+        };
+      }
+    });
+
+    const transportadorasPorNombre = {};
+    transpRows.forEach(t => {
+      const key = normalizarClaveCatalogo(t.transportadora);
+      if (key && !transportadorasPorNombre[key]) {
+        transportadorasPorNombre[key] = {
+          id: t.id,
+          transportadora: String(t.transportadora || '').trim()
+        };
+      }
+    });
+
+    const proveedoresPorNombre = {};
+    provRows.forEach(p => {
+      const key = normalizarClaveCatalogo(p.proveedor);
+      if (key && !proveedoresPorNombre[key]) {
+        proveedoresPorNombre[key] = {
+          id: p.id,
+          proveedor: String(p.proveedor || '').trim().toUpperCase()
+        };
+      }
+    });
+
+    res.json({
+      clientesPorNit,
+      placasPorNombre,
+      recibosPorConsecutivo,
+      transportadorasPorNombre,
+      proveedoresPorNombre
+    });
+  } catch (err) {
+    console.error('[facturacion] POST /api/servicios/masivo-validar-lote:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/servicios/guardar-masivo ────────────────────────────────────────
+// Ejecuta en una única transacción MySQL el flujo completo de los 5 planos:
+// 1) Maestro_Transportadora -> 2) Maestro_Proveedor -> 3) Maestro_Placas
+// -> 4) Dynamic_Recibos -> 5) Dynamic_Servicios.
+router.post('/api/servicios/guardar-masivo', async (req, res) => {
+  let conn = null;
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = await computarAccesoFacturacion(usuario, 'Servicios')
+                || await computarAccesoFacturacion(usuario, 'Recibos');
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const cfg = await obtenerConfigServiciosMasivo(acceso.rol);
+    if (!cfg.puedeCargaMasiva) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para usar la Carga Masiva de Servicios.' });
+    }
+
+    const filasRaw = Array.isArray(req.body && req.body.filas) ? req.body.filas : [];
+    const filasActivas = filasRaw.filter(f => {
+      if (!f || typeof f !== 'object') return false;
+      return Boolean(
+        limpiarValorPlano(f.cargado) ||
+        limpiarValorPlano(f.operacion) ||
+        limpiarValorPlano(f.actividad) ||
+        limpiarValorPlano(f.placa) ||
+        limpiarValorPlano(f.cantidad) ||
+        limpiarValorPlano(f.valorUnitario)
+      );
+    });
+
+    if (!filasActivas.length) {
+      return res.status(400).json({ error: 'No hay filas con datos para importar.' });
+    }
+
+    if (filasActivas.length > cfg.limites.servicios) {
+      return res.status(400).json({
+        error: `La carga tiene ${filasActivas.length} servicios y supera el límite máximo permitido (${cfg.limites.servicios}).`
+      });
+    }
+
+    const base = await getMasivoLookupsBase();
+    const { opRows, areaRows, actRows, durRows, cliCredRows } = base;
+
+    const opMap = new Map();
+    opRows.forEach(r => {
+      opMap.set(normalizarClaveCatalogo(r.operacion), {
+        operacion: r.operacion,
+        codigoSiesa: r.codigoSiesa != null ? String(r.codigoSiesa).trim() : ''
+      });
+    });
+
+    const cliCredMap = new Map();
+    cliCredRows.forEach(r => {
+      cliCredMap.set(normalizarClaveCatalogo(r.clienteAFacturar), {
+        clienteAFacturar: r.clienteAFacturar,
+        nit: r.nit ? parseInt(r.nit, 10) : null
+      });
+    });
+
+    const duracionPorTiempo = new Map();
+    durRows.forEach(r => {
+      if (r.tiempo) {
+        const t = String(r.tiempo).trim();
+        duracionPorTiempo.set(t, r.duracion);
+        if (t.length === 8 && t.startsWith('0')) {
+          duracionPorTiempo.set(t.slice(1), r.duracion);
+        }
+      }
+    });
+
+    // Recolectar solo los valores usados en este lote para consultarlos por índice
+    const nitsParaBuscar = new Set();
+    const placasParaBuscar = new Set();
+    const transpParaBuscar = new Set();
+    const provParaBuscar = new Set();
+
+    filasActivas.forEach(f => {
+      const nitStr = limpiarValorPlano(f.nit).replace(/[^0-9]/g, '');
+      if (nitStr) {
+        const n = parseInt(nitStr, 10);
+        if (Number.isFinite(n) && n > 0) nitsParaBuscar.add(n);
+      }
+      const pl = limpiarValorPlano(f.placa).toUpperCase();
+      if (pl) placasParaBuscar.add(pl);
+      const tr = limpiarValorPlano(f.transportadora);
+      if (tr) transpParaBuscar.add(tr);
+      const pr = limpiarValorPlano(f.proveedor).toUpperCase();
+      if (pr) provParaBuscar.add(pr);
+    });
+
+    const [clientesRows, placasExistRows, transpRows, provRows] = await Promise.all([
+      nitsParaBuscar.size
+        ? pool.query(
+            'SELECT `Código` as codigo, `Razón social` as razonSocial, Telefono as telefono, `Correo F.E.` as correoFE FROM Maestro_Clientes WHERE `Código` IN (?)',
+            [[...nitsParaBuscar]]
+          ).then(([r]) => r)
+        : Promise.resolve([]),
+      placasParaBuscar.size
+        ? pool.query(
+            'SELECT ID as id, Placa as placa FROM Maestro_Placas WHERE Placa IN (?)',
+            [[...placasParaBuscar]]
+          ).then(([r]) => r)
+        : Promise.resolve([]),
+      transpParaBuscar.size
+        ? pool.query(
+            'SELECT ID as id, Transportadora as transportadora FROM Maestro_Transportadora WHERE Transportadora IN (?)',
+            [[...transpParaBuscar]]
+          ).then(([r]) => r)
+        : Promise.resolve([]),
+      provParaBuscar.size
+        ? pool.query(
+            'SELECT ID as id, Proveedor as proveedor FROM Maestro_Proveedor WHERE Proveedor IN (?)',
+            [[...provParaBuscar]]
+          ).then(([r]) => r)
+        : Promise.resolve([])
+    ]);
+
+    const transpMap = new Map();
+    transpRows.forEach(r => {
+      const k = normalizarClaveCatalogo(r.transportadora);
+      if (k && !transpMap.has(k)) transpMap.set(k, { id: r.id, transportadora: r.transportadora.trim() });
+    });
+
+    const provMap = new Map();
+    provRows.forEach(r => {
+      const k = normalizarClaveCatalogo(r.proveedor);
+      if (k && !provMap.has(k)) provMap.set(k, { id: r.id, proveedor: r.proveedor.trim().toUpperCase() });
+    });
+
+    const clientesMap = new Map();
+    clientesRows.forEach(c => {
+      clientesMap.set(Number(c.codigo), {
+        codigo: Number(c.codigo),
+        razonSocial: (c.razonSocial || '').trim(),
+        telefono: c.telefono != null && String(c.telefono).trim() !== '0' ? String(c.telefono).trim() : '',
+        correoFE: (c.correoFE || '').trim()
+      });
+    });
+
+    const placasMap = new Map();
+    placasExistRows.forEach(p => {
+      const k = String(p.placa || '').trim().toUpperCase();
+      if (k && !placasMap.has(k)) placasMap.set(k, { id: p.id, placa: k });
+    });
+
+    const usuarioVal = acceso.usuarioId || usuario;
+    const ahoraBogota = formatearAhoraBogota();
+
+    // Procesar y validar fila por fila (equivalente a las columnas calculadas de la tabla "Datos")
+    const datosProcesados = [];
+    for (let idx = 0; idx < filasActivas.length; idx++) {
+      const f = filasActivas[idx];
+      const numFila = idx + 1;
+
+      const cargadoRaw = limpiarValorPlano(f.cargado);
+      const opRaw = limpiarValorPlano(f.operacion);
+      if (!cargadoRaw || !opRaw) {
+        return res.status(400).json({
+          error: `Fila ${numFila}: Las columnas "Cargado" (Consecutivo) y "Operación" son obligatorias en todas las filas.`
+        });
+      }
+
+      const opInfo = opMap.get(normalizarClaveCatalogo(opRaw));
+      if (!opInfo) {
+        return res.status(400).json({
+          error: `Fila ${numFila}: La Operación "${opRaw}" no existe o está inactiva en Maestro_Operaciones.`
+        });
+      }
+      if (!acceso.sinFiltro && !(acceso.operacionesFiltro || []).includes(opInfo.operacion)) {
+        return res.status(403).json({
+          error: `Fila ${numFila}: No tiene permiso para cargar servicios en la Operación "${opInfo.operacion}".`
+        });
+      }
+      if (!opInfo.codigoSiesa) {
+        return res.status(400).json({
+          error: `Fila ${numFila}: La Operación "${opInfo.operacion}" no tiene configurado CODIGO CO SIESA.`
+        });
+      }
+
+      // A: Recibo App = CODIGO CO SIESA & "-" & RIGHT("00000" & Cargado, 5)
+      let reciboApp = '';
+      if (/^\d{2,5}-\d{1,8}$/.test(cargadoRaw)) {
+        const [coPart, consPart] = cargadoRaw.split('-');
+        reciboApp = `${coPart}-${String(consPart).padStart(5, '0')}`;
+      } else {
+        const soloDigitos = cargadoRaw.replace(/^0+/, '') || '0';
+        reciboApp = `${opInfo.codigoSiesa}-${soloDigitos.padStart(5, '0')}`;
+      }
+
+      // Forma de Pago: 1, 2 (Contado/Recaudo) o 3 (Crédito)
+      const fpRaw = limpiarValorPlano(f.formaDePago);
+      const formaDePago = fpRaw ? parseInt(fpRaw, 10) : null;
+      if (!formaDePago || ![1, 2, 3].includes(formaDePago)) {
+        return res.status(400).json({
+          error: `Fila ${numFila}: Forma de Pago inválida ("${fpRaw}"). Debe ser 1 (Efectivo), 2 (Transferencia) o 3 (Crédito).`
+        });
+      }
+
+      // Fecha base
+      const fechaMysql = parseFechaHoraPlano(f.fecha) || ahoraBogota;
+      const fechaSoloDia = fechaMysql.split(' ')[0];
+
+      // Hora Inicio (W) y Hora Final (X)
+      // W = si HORA INICIO <> "" -> HORA INICIO, si no -> FECHA
+      // X = si HORA INICIO <> "" -> HORA FINAL, si no -> W + 1 hora
+      const horaInicioInput = limpiarValorPlano(f.horaInicio);
+      const horaFinalInput = limpiarValorPlano(f.horaFinal);
+      let horaInicioMysql = fechaMysql;
+      let horaFinalMysql = null;
+
+      if (horaInicioInput) {
+        const parsedInicio = parseFechaHoraPlano(horaInicioInput, fechaMysql);
+        if (!parsedInicio) {
+          return res.status(400).json({
+            error: `Fila ${numFila}: Formato inválido en Hora Inicio ("${horaInicioInput}").`
+          });
+        }
+        horaInicioMysql = parsedInicio;
+
+        if (horaFinalInput) {
+          const parsedFinal = parseFechaHoraPlano(horaFinalInput, horaInicioMysql);
+          if (!parsedFinal) {
+            return res.status(400).json({
+              error: `Fila ${numFila}: Formato inválido en Hora Final ("${horaFinalInput}").`
+            });
+          }
+          let inicioMs = mysqlDateTimeToMs(horaInicioMysql);
+          let finalMs = mysqlDateTimeToMs(parsedFinal);
+          // Manejo de cruce de medianoche (MOD(X - W, 1))
+          if (finalMs < inicioMs) {
+            finalMs += 24 * 3600 * 1000;
+          }
+          horaFinalMysql = msToMysqlDateTime(finalMs);
+        } else {
+          horaFinalMysql = msToMysqlDateTime(mysqlDateTimeToMs(horaInicioMysql) + 3600 * 1000);
+        }
+      } else {
+        horaInicioMysql = fechaMysql;
+        horaFinalMysql = msToMysqlDateTime(mysqlDateTimeToMs(horaInicioMysql) + 3600 * 1000);
+      }
+
+      const diffMs = Math.max(0, mysqlDateTimeToMs(horaFinalMysql) - mysqlDateTimeToMs(horaInicioMysql));
+      const totalHora = msToHHMMSS(diffMs);
+      const duracion = duracionPorTiempo.get(totalHora) || 'Otro';
+
+      // Area (E): si Datos[AREA] vacío -> Area con OPERACIÓN=op Y OPERATIVO="V"; si no -> Area con AREA=Datos[AREA] Y OPERACIÓN=op
+      const areaInput = limpiarValorPlano(f.area);
+      const areasDeOp = areaRows.filter(a => normalizarClaveCatalogo(a.operacion) === normalizarClaveCatalogo(opInfo.operacion));
+      let areaMatch = null;
+      if (!areaInput) {
+        areaMatch = areasDeOp.find(a => String(a.operativo || '').toUpperCase() === 'V') || areasDeOp[0] || null;
+      } else {
+        areaMatch = areasDeOp.find(a =>
+          normalizarClaveCatalogo(a.area) === normalizarClaveCatalogo(areaInput) ||
+          String(a.id) === areaInput
+        );
+      }
+      if (!areaMatch) {
+        return res.status(400).json({
+          error: `Fila ${numFila}: No se encontró el Área "${areaInput || '(Por defecto Operativo)'}" para la Operación "${opInfo.operacion}".`
+        });
+      }
+
+      // Actividad (J): Actividad[ID] donde Operación=op Y Actividad=Datos[ACTIVIDAD]
+      const actInput = limpiarValorPlano(f.actividad);
+      if (!actInput) {
+        return res.status(400).json({
+          error: `Fila ${numFila}: La Actividad es obligatoria.`
+        });
+      }
+      const actsDeOp = actRows.filter(a => normalizarClaveCatalogo(a.operacion) === normalizarClaveCatalogo(opInfo.operacion));
+      const actMatch = actsDeOp.find(a =>
+        normalizarClaveCatalogo(a.actividad) === normalizarClaveCatalogo(actInput) ||
+        String(a.id) === actInput
+      );
+      if (!actMatch) {
+        return res.status(400).json({
+          error: `Fila ${numFila}: La Actividad "${actInput}" no existe para la Operación "${opInfo.operacion}".`
+        });
+      }
+
+      // Cliente a Facturar y NIT (AE: ID Nit)
+      const clienteFactInput = limpiarValorPlano(f.clienteAFacturar).toUpperCase();
+      let clienteAFacturarReal = '';
+      if (formaDePago === 3) {
+        if (!clienteFactInput) {
+          return res.status(400).json({
+            error: `Fila ${numFila}: "Cliente a Facturar" es obligatorio cuando Forma de Pago es 3 (Crédito).`
+          });
+        }
+        const ccMatch = cliCredMap.get(normalizarClaveCatalogo(clienteFactInput));
+        clienteAFacturarReal = ccMatch ? ccMatch.clienteAFacturar : clienteFactInput;
+      }
+
+      const nitCleanStr = limpiarValorPlano(f.nit).replace(/[^0-9]/g, '');
+      const nitNum = nitCleanStr ? parseInt(nitCleanStr, 10) : null;
+      const clienteInfo = (nitNum && clientesMap.get(nitNum)) || null;
+
+      let idNit = null;
+      if (formaDePago === 3) {
+        const ccMatch = cliCredMap.get(normalizarClaveCatalogo(clienteAFacturarReal));
+        idNit = (ccMatch && ccMatch.nit) ? ccMatch.nit : null;
+      } else {
+        idNit = clienteInfo ? clienteInfo.codigo : null;
+      }
+
+      const telefonoResuelto = limpiarValorPlano(f.telefono) || (clienteInfo ? clienteInfo.telefono : '') || '';
+      const emailResuelto = limpiarValorPlano(f.email) || (clienteInfo ? clienteInfo.correoFE : '') || '';
+
+      const ruta = limpiarValorPlano(f.ruta);
+      const observacionesManual = limpiarValorPlano(f.observaciones);
+      const observacionesUnidas = [ruta, observacionesManual].filter(Boolean).join(' / ') || null;
+
+      const transportadoraTexto = limpiarValorPlano(f.transportadora);
+      const proveedorTexto = limpiarValorPlano(f.proveedor).toUpperCase();
+      const placaTexto = limpiarValorPlano(f.placa).toUpperCase();
+
+      const cantidad = parseNumeroPlano(f.cantidad);
+      const valorUnitario = parseNumeroPlano(f.valorUnitario);
+      if (cantidad !== null && valorUnitario !== null && (cantidad * valorUnitario) > 3000000) {
+        return res.status(400).json({
+          error: `Fila ${numFila}: El Valor Base (Cantidad x Valor Unitario) supera el tope de $3.000.000.`
+        });
+      }
+
+      const retefuenteVal = limpiarValorPlano(f.retefuente).toUpperCase() === 'V' ? 'V' : null;
+      const reteivaVal = limpiarValorPlano(f.reteiva).toUpperCase() === 'V' ? 'V' : null;
+
+      datosProcesados.push({
+        numFila,
+        reciboApp,
+        operacion: opInfo.operacion,
+        fechaDia: fechaSoloDia,
+        fechaMysql,
+        formaDePago,
+        ruta: ruta || null,
+        transportadoraTexto,
+        proveedorTexto,
+        clienteAFacturar: formaDePago === 3 ? clienteAFacturarReal : null,
+        vehiculo: limpiarValorPlano(f.vehiculo) || null,
+        placaTexto,
+        actividadId: Number(actMatch.id),
+        manifiesto: limpiarValorPlano(f.manifiesto) || null,
+        remolque: limpiarValorPlano(f.remolque) || null,
+        unidad: limpiarValorPlano(f.unidad) || null,
+        cantidad,
+        valorUnitario,
+        retefuente: retefuenteVal,
+        reteiva: reteivaVal,
+        horaInicioMysql,
+        horaFinalMysql,
+        duracion,
+        totalHora,
+        areaId: Number(areaMatch.id),
+        observacionesUnidas,
+        nitInput: nitNum,
+        idNit,
+        telefono: telefonoResuelto || null,
+        email: emailResuelto || null
+      });
+    }
+
+    // ── 3.1 Plano Transportadora (nuevas transportadoras que no están en Maestro_Transportadora)
+    const nuevasTransportadorasNombres = [];
+    const seenTransp = new Set();
+    datosProcesados.forEach(d => {
+      if (!d.transportadoraTexto) return;
+      const key = normalizarClaveCatalogo(d.transportadoraTexto);
+      if (!transpMap.has(key) && !seenTransp.has(key)) {
+        seenTransp.add(key);
+        nuevasTransportadorasNombres.push(d.transportadoraTexto);
+      }
+    });
+    nuevasTransportadorasNombres.sort((a, b) => a.localeCompare(b, 'es'));
+
+    if (nuevasTransportadorasNombres.length > cfg.limites.transportadoras) {
+      return res.status(400).json({
+        error: `Se detectaron ${nuevasTransportadorasNombres.length} transportadoras nuevas (máximo permitido: ${cfg.limites.transportadoras}).`
+      });
+    }
+
+    const planoTransportadoras = nuevasTransportadorasNombres.map(nombre => {
+      const id = generarId8Hex();
+      transpMap.set(normalizarClaveCatalogo(nombre), { id, transportadora: nombre });
+      return { id, transportadora: nombre, usuario: usuarioVal, fechaIngreso: ahoraBogota };
+    });
+
+    // ── 3.2 Plano Proveedor (nuevos proveedores en MAYÚSCULAS que no están en Maestro_Proveedor)
+    const nuevosProveedoresNombres = [];
+    const seenProv = new Set();
+    datosProcesados.forEach(d => {
+      if (!d.proveedorTexto) return;
+      const key = normalizarClaveCatalogo(d.proveedorTexto);
+      if (!provMap.has(key) && !seenProv.has(key)) {
+        seenProv.add(key);
+        nuevosProveedoresNombres.push(d.proveedorTexto);
+      }
+    });
+    nuevosProveedoresNombres.sort((a, b) => a.localeCompare(b, 'es'));
+
+    if (nuevosProveedoresNombres.length > cfg.limites.proveedores) {
+      return res.status(400).json({
+        error: `Se detectaron ${nuevosProveedoresNombres.length} proveedores nuevos (máximo permitido: ${cfg.limites.proveedores}).`
+      });
+    }
+
+    const planoProveedores = nuevosProveedoresNombres.map(nombreUpper => {
+      const id = generarId8Hex();
+      provMap.set(normalizarClaveCatalogo(nombreUpper), { id, proveedor: nombreUpper });
+      return { id, proveedor: nombreUpper, usuario: usuarioVal, fechaIngreso: ahoraBogota };
+    });
+
+    // ── 3.3 Plano Placas (placas nuevas de exactamente 6 caracteres que no están en Maestro_Placas)
+    const nuevasPlacasCodigos = [];
+    const seenPlacas = new Set();
+    datosProcesados.forEach(d => {
+      if (!d.placaTexto || d.placaTexto.length !== 6) return;
+      const key = d.placaTexto.toUpperCase();
+      if (!placasMap.has(key) && !seenPlacas.has(key)) {
+        seenPlacas.add(key);
+        nuevasPlacasCodigos.push(key);
+      }
+    });
+    nuevasPlacasCodigos.sort((a, b) => a.localeCompare(b, 'es'));
+
+    if (nuevasPlacasCodigos.length > cfg.limites.placas) {
+      return res.status(400).json({
+        error: `Se detectaron ${nuevasPlacasCodigos.length} placas nuevas de 6 caracteres (máximo permitido: ${cfg.limites.placas}).`
+      });
+    }
+
+    const planoPlacas = nuevasPlacasCodigos.map(placaKey => {
+      const primeraFila = datosProcesados.find(d => d.placaTexto === placaKey);
+      const fp = primeraFila ? primeraFila.formaDePago : null;
+      const tipoCliente = (fp === 1 || fp === 2) ? 'CONTADO' : (fp === 3 ? 'CREDITO' : null);
+      const clienteCredito = (tipoCliente === 'CREDITO' && primeraFila) ? (primeraFila.clienteAFacturar || null) : null;
+      const nitCandidato = primeraFila ? primeraFila.idNit : null;
+      const nitFinal = (nitCandidato && String(nitCandidato) !== '222222222222') ? Number(nitCandidato) : null;
+      const id = generarId8Hex();
+      placasMap.set(placaKey, { id, placa: placaKey });
+      return {
+        id,
+        placa: placaKey,
+        tipoCliente,
+        clienteCredito,
+        nit: nitFinal,
+        usuario: usuarioVal,
+        fechaRegistro: ahoraBogota
+      };
+    });
+
+    // ── 3.4 Plano Recibos (1 fila por cada Recibo App distinto que aún NO exista en Dynamic_Recibos)
+    const recibosUnicos = [...new Set(datosProcesados.map(d => d.reciboApp))].sort((a, b) => a.localeCompare(b, 'es'));
+    const [recibosExistentesRows] = await pool.query(
+      'SELECT IdRecibo as idRecibo, `Consecutivo Recibo` as consecutivo FROM Dynamic_Recibos WHERE `Consecutivo Recibo` IN (?)',
+      [recibosUnicos]
+    );
+
+    const mapaReciboId = new Map();
+    recibosExistentesRows.forEach(r => {
+      const k = String(r.consecutivo || '').trim();
+      if (k && !mapaReciboId.has(k)) {
+        mapaReciboId.set(k, r.idRecibo);
+      }
+    });
+
+    const recibosNuevosCodigos = recibosUnicos.filter(rec => !mapaReciboId.has(rec));
+    if (recibosNuevosCodigos.length > cfg.limites.recibos) {
+      return res.status(400).json({
+        error: `Se generaron ${recibosNuevosCodigos.length} recibos nuevos (máximo permitido: ${cfg.limites.recibos}).`
+      });
+    }
+
+    const planoRecibos = recibosNuevosCodigos.map(reciboApp => {
+      const primeraFila = datosProcesados.find(d => d.reciboApp === reciboApp);
+      const idRecibo = generarPackedUUID();
+      mapaReciboId.set(reciboApp, idRecibo);
+
+      const esCredito = primeraFila.formaDePago === 3;
+      const nitRecibo = esCredito ? null : (primeraFila.idNit ? Number(primeraFila.idNit) : null);
+      const telNum = primeraFila.telefono ? parseInt(String(primeraFila.telefono).replace(/[^0-9]/g, ''), 10) : null;
+
+      return {
+        idRecibo,
+        consecutivoRecibo: reciboApp,
+        operacion: primeraFila.operacion,
+        usuario: usuarioVal,
+        fecha: primeraFila.fechaDia,
+        clienteAFacturar: esCredito ? (primeraFila.clienteAFacturar || null) : null,
+        categoria: null,
+        clientePorPlaca: null,
+        placa: primeraFila.placaTexto || null,
+        nit: Number.isFinite(nitRecibo) ? nitRecibo : null,
+        telefono: Number.isFinite(telNum) && telNum > 0 ? telNum : null,
+        email: primeraFila.email || null,
+        retefuente: primeraFila.retefuente || null,
+        reteiva: primeraFila.reteiva || null,
+        reteica: null,
+        modalidad: esCredito ? 'CREDITO' : 'RECAUDO',
+        observaciones: primeraFila.observacionesUnidas || null
+      };
+    });
+
+    // ── 3.5 Plano Servicios (1 fila por cada fila de Datos)
+    const planoServicios = datosProcesados.map(d => {
+      const idServicio = generarPackedUUID();
+      const idRecibo = mapaReciboId.get(d.reciboApp);
+      const estado = d.formaDePago === 2 ? 'Yellow' : 'Green';
+      const transpObj = d.transportadoraTexto ? transpMap.get(normalizarClaveCatalogo(d.transportadoraTexto)) : null;
+      const placaObj = d.placaTexto ? placasMap.get(d.placaTexto.toUpperCase()) : null;
+
+      return {
+        idServicio,
+        idRecibo,
+        estado,
+        usuario: usuarioVal,
+        area: d.areaId,
+        fecha: ahoraBogota,
+        transportadora: transpObj ? transpObj.id : null,
+        proveedor: d.proveedorTexto || null,
+        proveedorTexto: d.proveedorTexto || null,
+        actividad: d.actividadId,
+        vehiculo: d.vehiculo || null,
+        remolque: d.remolque || null,
+        pl1: placaObj ? placaObj.id : null,
+        unidad: d.unidad || null,
+        cantidad: d.cantidad,
+        valorUnitario: d.valorUnitario,
+        origen: null,
+        destino: d.ruta || null,
+        manifiesto: d.manifiesto || null,
+        fotoDocumento: null,
+        etapa: null,
+        muelle: null,
+        horaInicio: d.horaInicioMysql,
+        horaFinal: d.horaFinalMysql,
+        duracion: d.duracion || 'Otro',
+        totalHora: d.totalHora,
+        grupoDtjo: d.horaInicioMysql ? 'GRUPAL' : null,
+        auxiliares: null,
+        notas: d.reciboApp || null,
+        fotoEvidencia: null,
+        formaDePago: d.formaDePago,
+        fotoTransferencia: null,
+        fechaTransferencia: null,
+        observaciones: d.observacionesUnidas || null,
+        telefono: d.telefono || null,
+        firmaRecibido: null,
+        edicion: d.reciboApp ? 'Completado' : 'Pendiente'
+      };
+    });
+
+    // ── Ejecutar inserción transaccional en orden:
+    // 1) Transportadora -> 2) Proveedor -> 3) Placas -> 4) Recibos -> 5) Servicios
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    for (const t of planoTransportadoras) {
+      await conn.execute(
+        'INSERT INTO Maestro_Transportadora (ID, Transportadora, Usuario, `Fecha Ingreso`) VALUES (?, ?, ?, ?)',
+        [t.id, t.transportadora, t.usuario, t.fechaIngreso]
+      );
+    }
+
+    for (const p of planoProveedores) {
+      await conn.execute(
+        'INSERT INTO Maestro_Proveedor (ID, Proveedor, Usuario, `Fecha Ingreso`) VALUES (?, ?, ?, ?)',
+        [p.id, p.proveedor, p.usuario, p.fechaIngreso]
+      );
+    }
+
+    for (const pl of planoPlacas) {
+      await conn.execute(
+        'INSERT INTO Maestro_Placas (ID, Placa, `Tipo Cliente`, `Cliente Credito`, Nit, Usuario, `Fecha Registro`) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [pl.id, pl.placa, pl.tipoCliente, pl.clienteCredito, pl.nit, pl.usuario, pl.fechaRegistro]
+      );
+    }
+
+    for (const rec of planoRecibos) {
+      await conn.execute(
+        `INSERT INTO Dynamic_Recibos (
+          \`IdRecibo\`, \`Consecutivo Recibo\`, \`Operación\`, \`Usuario\`,
+          \`Fecha\`, \`Cliente a Facturar\`, \`Categoria\`, \`Cliente por Placa\`,
+          \`Placa\`, \`Nit\`, \`Telefono\`, \`Email\`,
+          \`Retefuente\`, \`ReteIVA\`, \`ReteICA\`,
+          \`Modalidad\`, \`Observaciones\`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          rec.idRecibo, rec.consecutivoRecibo, rec.operacion, rec.usuario,
+          rec.fecha, rec.clienteAFacturar, rec.categoria, rec.clientePorPlaca,
+          rec.placa, rec.nit, rec.telefono, rec.email,
+          rec.retefuente, rec.reteiva, rec.reteica,
+          rec.modalidad, rec.observaciones
+        ]
+      );
+    }
+
+    for (let i = 0; i < planoServicios.length; i++) {
+      const s = planoServicios[i];
+      await conn.execute(
+        `INSERT INTO Dynamic_Servicios (
+          \`IdServicio\`, \`IdRecibo\`, \`Estado\`, \`Usuario\`, \`Area\`, \`Fecha\`,
+          \`Transportadora\`, \`Proveedor\`, \`Proveedor Texto\`, \`Actividad\`,
+          \`Vehiculo\`, \`Remolque\`, \`PL1\`, \`Unidad\`, \`Cantidad\`, \`Valor Unitario\`,
+          \`Origen\`, \`Destino\`, \`Manifiesto\`, \`Foto Documento\`, \`Etapa\`, \`Muelle\`,
+          \`Hora Inicio\`, \`Hora Final\`, \`Duración\`, \`Total Hora\`, \`Grupo Dtjo\`,
+          \`Auxiliares\`, \`Notas\`, \`Foto Evidencia\`, \`Forma De Pago\`,
+          \`Foto Transferencia\`, \`Fecha Transferencia\`, \`Observaciones\`,
+          \`Telefono\`, \`Firma_Recibido\`, \`Edición\`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          s.idServicio, s.idRecibo, s.estado, s.usuario, s.area, s.fecha,
+          s.transportadora, s.proveedor, s.proveedorTexto, s.actividad,
+          s.vehiculo, s.remolque, s.pl1, s.unidad, s.cantidad, s.valorUnitario,
+          s.origen, s.destino, s.manifiesto, s.fotoDocumento, s.etapa, s.muelle,
+          s.horaInicio, s.horaFinal, s.duracion, s.totalHora, s.grupoDtjo,
+          s.auxiliares, s.notas, s.fotoEvidencia, s.formaDePago,
+          s.fotoTransferencia, s.fechaTransferencia, s.observaciones,
+          s.telefono, s.firmaRecibido, s.edicion
+        ]
+      );
+    }
+
+    await conn.commit();
+    conn.release();
+    conn = null;
+
+    res.json({
+      ok: true,
+      resumen: {
+        transportadorasCreadas: planoTransportadoras.length,
+        proveedoresCreados: planoProveedores.length,
+        placasCreadas: planoPlacas.length,
+        recibosCreados: planoRecibos.length,
+        recibosExistentesUsados: recibosUnicos.length - planoRecibos.length,
+        serviciosCreados: planoServicios.length
+      }
+    });
+  } catch (err) {
+    if (conn) {
+      try { await conn.rollback(); } catch (_) {}
+      try { conn.release(); } catch (_) {}
+    }
+    console.error('[facturacion] POST /api/servicios/guardar-masivo:', err);
+    res.status(500).json({ error: `Error al guardar el lote: ${err.message}` });
   }
 });
 

@@ -6,7 +6,7 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../services/db');
 const { storage, obtenerFirmaBase64Reciente } = require('../services/storage');
-const { transporter } = require('../services/email');
+const { transporter, encabezadoLogo, LOGO_HEADER_ATTACHMENT } = require('../services/email');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -484,10 +484,9 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         mailSubject = `LOG&SER: Documentos pendientes de ingreso (Contrato y Autorización Descuento) — ${trabajador}`;
         mailBody = `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-            <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
-              <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Proceso de Ingreso</h2>
-            </div>
+${encabezadoLogo('#000b59')}
             <div style="padding:24px;background:#ffffff">
+              <h2 style="color:#000b59;margin:0 0 12px;font-size:1.3rem">Proceso de Ingreso</h2>
               <p style="font-size:1.05rem;color:#2d3748">¡Hola <strong>${trabajador}</strong>!</p>
               <p style="color:#4a5568;line-height:1.6">Te saludamos desde el equipo de vinculación de Logyser. Nos da muchísimo gusto darte la bienvenida al equipo.</p>
               <p style="color:#4a5568;line-height:1.6">Para completar tu proceso de ingreso de forma rápida, por favor ingresa a los siguientes enlaces para revisar y firmar digitalmente tus documentos de ingreso obligatorios:</p>
@@ -516,10 +515,9 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
       } else {
         mailBody = `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-            <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
-              <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Firma de Documento</h2>
-            </div>
+${encabezadoLogo('#000b59')}
             <div style="padding:24px;background:#ffffff">
+              <h2 style="color:#000b59;margin:0 0 12px;font-size:1.3rem">Firma de Documento</h2>
               <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${trabajador}</strong>,</p>
               <p style="color:#4a5568;line-height:1.6">Se ha generado un documento oficial que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
               
@@ -551,7 +549,8 @@ router.post('/api/enviar', upload.single('file'), async (req, res) => {
         to: emailTrabajador,
         cc: ccEmails.length ? ccEmails.join(', ') : undefined,
         subject: mailSubject,
-        html: mailBody
+        html: mailBody,
+        attachments: [LOGO_HEADER_ATTACHMENT],
       }).catch(err => {
         console.error(`[logysign] Error enviando email de notificación para ${uuid} (no bloqueante):`, err.message);
       });
@@ -757,10 +756,9 @@ router.post('/api/firmar', async (req, res) => {
     // 9. Send email notification
     const mailBody = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-        <div style="background:#27ae60;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
-          <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Documento Firmado Completado</h2>
-        </div>
+${encabezadoLogo('#27ae60')}
         <div style="padding:24px;background:#ffffff">
+          <h2 style="color:#1e8449;margin:0 0 12px;font-size:1.3rem">Documento Firmado Completado</h2>
           <p style="font-size:1.05rem;color:#2d3748">Hola,</p>
           <p style="color:#4a5568;line-height:1.6">Se informa que el colaborador <strong>${logysign.nombre_trabajador}</strong> ha completado exitosamente la firma del documento.</p>
           
@@ -787,7 +785,8 @@ router.post('/api/firmar', async (req, res) => {
       from: `"LOG&SER Gestión Documental" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
       to: ccEmails.join(', '),
       subject: `LOG&SER: Documento firmado completado (${logysign.nombre_documento || logysign.prefijo}) — ${logysign.nombre_trabajador}`,
-      html: mailBody
+      html: mailBody,
+      attachments: [LOGO_HEADER_ATTACHMENT],
     }).catch(err => {
       console.error(`[logysign] Error enviando email de documento firmado para ${logysign.id} (no bloqueante):`, err.message);
     });

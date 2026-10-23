@@ -1,5 +1,5 @@
 const pool = require('./db');
-const { transporter } = require('./email');
+const { transporter, encabezadoLogo, LOGO_HEADER_ATTACHMENT } = require('./email');
 
 // Helper to resolve CC emails list (shared with logysign router)
 // Prioriza la Operación del trabajador (Maestro_Vinculación) y, solo si no hay
@@ -128,10 +128,9 @@ async function verificarEnviosProgramados() {
         // Build mailBody
         const mailBody = `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-            <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
-              <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Firma de Documento</h2>
-            </div>
+${encabezadoLogo('#000b59')}
             <div style="padding:24px;background:#ffffff">
+              <h2 style="color:#000b59;margin:0 0 12px;font-size:1.3rem">Firma de Documento</h2>
               <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${doc.nombre_trabajador}</strong>,</p>
               <p style="color:#4a5568;line-height:1.6">Se ha generado un documento oficial que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
               
@@ -159,7 +158,8 @@ async function verificarEnviosProgramados() {
           to: doc.email_trabajador,
           cc: ccEmails.length ? ccEmails.join(', ') : undefined,
           subject: `LOG&SER: Documento pendiente de firma (${nombreDocumento}) — ${doc.nombre_trabajador}`,
-          html: mailBody
+          html: mailBody,
+          attachments: [LOGO_HEADER_ATTACHMENT],
         });
 
         // Update state to PENDIENTE

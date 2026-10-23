@@ -1853,13 +1853,14 @@ async function enviarNotificacionErrorRetiros(operacion, documentos) {
       </tr>
     `).join('');
 
+    const { transporter, encabezadoLogo, LOGO_HEADER_ATTACHMENT } = require('../services/email');
+
     const htmlContent = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 24px; color: #334155;">
         <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1.5px solid #e2e8f0;">
-          <div style="border-top: 5px solid #f55400; background: #000b59; padding: 20px 24px; color: #ffffff;">
-            <h2 style="margin: 0; font-size: 1.4rem; font-weight: 700;">Novedad de Nómina: Documentos de Retiro</h2>
-          </div>
+${encabezadoLogo('#000b59')}
           <div style="padding: 24px;">
+            <h2 style="margin: 0 0 14px 0; font-size: 1.25rem; font-weight: 700; color: #000b59;">Novedad de Nómina: Documentos de Retiro</h2>
             <p style="font-size: 1.05rem; line-height: 1.5; color: #1e293b;">
               Hola,
             </p>
@@ -1889,12 +1890,12 @@ async function enviarNotificacionErrorRetiros(operacion, documentos) {
       </div>
     `;
 
-    const { transporter } = require('../services/email');
     await transporter.sendMail({
       from: `"CloudDocs Nómina" <${process.env.EMAIL_FROM || 'noreply@logyser.com'}>`,
       to: emails.join(', '),
       subject: `[Novedad Retiro] Documentos de retiro presentan novedad - Operación ${operacion}`,
-      html: htmlContent
+      html: htmlContent,
+      attachments: [LOGO_HEADER_ATTACHMENT],
     });
     console.log(`[cloud-docs] Email notification sent successfully for operation ${operacion}`);
   } catch (err) {

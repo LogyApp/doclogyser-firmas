@@ -3,7 +3,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const pool = require('../services/db');
-const { transporter } = require('../services/email');
+const { transporter, encabezadoLogo, LOGO_HEADER_ATTACHMENT } = require('../services/email');
 const { storage } = require('../services/storage');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
@@ -248,10 +248,9 @@ router.post('/api/reenviar', async (req, res) => {
       mailSubject = `LOG&SER: RECORDATORIO — Documentos pendientes de ingreso (Contrato y Autorización Descuento) — ${logysign.nombre_trabajador}`;
       mailBody = `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-          <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
-            <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Recordatorio de Ingreso</h2>
-          </div>
+${encabezadoLogo('#000b59')}
           <div style="padding:24px;background:#ffffff">
+            <h2 style="color:#000b59;margin:0 0 12px;font-size:1.3rem">Recordatorio de Ingreso</h2>
             <p style="font-size:1.05rem;color:#2d3748">¡Hola <strong>${logysign.nombre_trabajador}</strong>!</p>
             <p style="color:#4a5568;line-height:1.6">Le recordamos que tiene documentos obligatorios pendientes de firma para completar su proceso de ingreso a Logyser. Por favor acceda a los siguientes enlaces para firmarlos de forma segura:</p>
             
@@ -278,10 +277,9 @@ router.post('/api/reenviar', async (req, res) => {
     } else {
       mailBody = `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #edf2f7;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.05)">
-          <div style="background:#000b59;padding:20px;border-top-left-radius:8px;border-top-right-radius:8px;text-align:center">
-            <h2 style="color:#ffffff;margin:0;font-size:1.5rem">LOG&SER — Recordatorio de Firma</h2>
-          </div>
+${encabezadoLogo('#000b59')}
           <div style="padding:24px;background:#ffffff">
+            <h2 style="color:#000b59;margin:0 0 12px;font-size:1.3rem">Recordatorio de Firma</h2>
             <p style="font-size:1.05rem;color:#2d3748">Hola <strong>${logysign.nombre_trabajador}</strong>,</p>
             <p style="color:#4a5568;line-height:1.6">Le recordamos que tiene un documento oficial pendiente que requiere su firma digital. Por favor haga clic en el siguiente enlace para revisarlo y firmarlo de forma segura:</p>
             
@@ -309,7 +307,8 @@ router.post('/api/reenviar', async (req, res) => {
       to: logysign.email_trabajador,
       cc: ccEmails.length ? ccEmails.join(', ') : undefined,
       subject: mailSubject,
-      html: mailBody
+      html: mailBody,
+      attachments: [LOGO_HEADER_ATTACHMENT],
     });
 
     res.json({ success: true });

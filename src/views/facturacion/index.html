@@ -1312,6 +1312,11 @@
             <div class="page-title">Facturación · Servicios</div>
             <div class="page-sub">Historial operativo de servicios prestados, liquidación de tarifas e impuestos</div>
           </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn-primary" id="btn-carga-masiva-servicios" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px;">
+              📋 Agregar Servicios (Editor de Grid)
+            </button>
+          </div>
         </div>
 
         <!-- Barra de Botones de Forma de Pago con Toggle de Sumas -->
@@ -1575,9 +1580,14 @@
             <div class="page-title">Facturación · Recibos</div>
             <div class="page-sub">Consulta de recibos consolidados, desglose de impuestos y validación operativa</div>
           </div>
-          <button class="btn-primary" onclick="abrirModalRecibo('crear')">
-            ➕ Agregar Recibo
-          </button>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" id="btn-carga-masiva-recibos" onclick="abrirModalCargaMasivaServicios()" style="display: none; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 8px; cursor: pointer;">
+              📋 Carga Masiva (Grid)
+            </button>
+            <button class="btn-primary" onclick="abrirModalRecibo('crear')">
+              ➕ Agregar Recibo
+            </button>
+          </div>
         </div>
 
         <!-- Barra de Botones de Modalidad con Toggle de Sumas -->
@@ -2678,6 +2688,322 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 7: CARGA MASIVA DE SERVICIOS (EDITOR DE GRID)
+       Reemplaza Plano Servicios V7.xlsm (Datos + 5 Planos + 5 Macros)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-carga-masiva-servicios" style="z-index: 2500; padding: 14px;">
+    <div style="position: relative; width: 98%; max-width: 1560px; max-height: 94vh; background: var(--card-bg); color: var(--text); border-radius: 12px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;">
+
+      <!-- Overlay de procesamiento -->
+      <div id="gridserv-loading-overlay" style="display: none; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.72); z-index: 120; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(2px); color: #fff;">
+        <div style="width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.25); border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 14px;"></div>
+        <div id="gridserv-loading-title" style="font-weight: 700; font-size: 1.05rem;">Procesando servicios en el Editor de Grid...</div>
+        <div id="gridserv-loading-sub" style="font-size: 0.82rem; opacity: 0.85; margin-top: 4px;">Validando catálogos de Transportadoras, Proveedores, Placas, Clientes y Recibos</div>
+      </div>
+
+      <!-- Encabezado del Modal -->
+      <div style="background: var(--bg-elevated); padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <h3 style="margin: 0; font-size: 1.08rem; font-weight: 800; color: var(--accent);">📋 Carga Masiva de Servicios · Editor de Grid</h3>
+            <span id="gridserv-usuario-badge" style="font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--border);">Usuario: -</span>
+          </div>
+          <p style="margin: 3px 0 0 0; font-size: 0.76rem; color: var(--text-muted);">
+            Automatiza los 5 planos (Transportadora, Proveedor, Placas, Recibos y Servicios) en una sola operación transaccional.
+          </p>
+        </div>
+        <button type="button" onclick="cerrarModalCargaMasivaServicios()" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.6rem; cursor: pointer; line-height: 1; padding: 4px 8px;" title="Cerrar">&times;</button>
+      </div>
+
+      <!-- Bloque de Control en Vivo (Equivalente a Datos!AG1:AJ7) -->
+      <div style="background: var(--bg); padding: 10px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <!-- Estado General AG1 -->
+          <div id="gridserv-status-banner" style="padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 8px;">
+            <span>ℹ️</span>
+            <span id="gridserv-status-text">Agregue filas o pegue desde Excel para validar la carga.</span>
+          </div>
+
+          <!-- KPIs de los 5 Planos -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Transportadoras escritas en el grid que aún no existen en Maestro_Transportadora (se crearán automáticamente)">
+              🚚 Transp. Nuevas: <strong id="gridserv-cnt-transp">0 / 50</strong>
+            </div>
+            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Proveedores escritos en el grid que aún no existen en Maestro_Proveedor (se crearán en MAYÚSCULAS)">
+              🏭 Prov. Nuevos: <strong id="gridserv-cnt-prov">0 / 50</strong>
+            </div>
+            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Placas de 6 caracteres que aún no existen en Maestro_Placas (se crearán automáticamente)">
+              🪪 Placas Nuevas: <strong id="gridserv-cnt-placas">0 / 100</strong>
+            </div>
+            <div style="padding: 4px 10px; border-radius: 6px; background: var(--card-bg); border: 1px solid var(--border); font-size: 0.74rem;" title="Recibos App distintos que se crearán en Dynamic_Recibos (los ya existentes se reutilizan)">
+              🧾 Recibos Nuevos: <strong id="gridserv-cnt-recibos">0 / 300</strong> <span id="gridserv-cnt-recibos-exist" style="color: var(--text-muted); font-size: 0.7rem;"></span>
+            </div>
+            <div style="padding: 4px 10px; border-radius: 6px; background: var(--accent-soft); border: 1px solid var(--border); font-size: 0.74rem; color: var(--accent);">
+              📦 Servicios: <strong id="gridserv-cnt-servicios">0 / 300</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pestañas de modo (igual que Kardex en Inventario) -->
+      <div style="background: var(--bg-elevated); padding: 8px 22px 0 22px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0;">
+        <button type="button" id="gridserv-tab-btn-single" onclick="switchGridServTab('single')" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 700; font-size: 0.8rem; color: var(--text-muted);">
+          ➕ Agregar Fila Rápida
+        </button>
+        <button type="button" id="gridserv-tab-btn-manual" onclick="switchGridServTab('manual')" style="padding: 8px 16px; border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: var(--card-bg); font-weight: 700; font-size: 0.8rem; color: var(--accent);">
+          ✍️ Editor de Grid (0 filas)
+        </button>
+        <button type="button" id="gridserv-tab-btn-excel" onclick="switchGridServTab('excel')" style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; background: transparent; font-weight: 700; font-size: 0.8rem; color: var(--text-muted);">
+          📋 Pegar desde Excel
+        </button>
+      </div>
+
+      <!-- Cuerpo del Modal -->
+      <div style="flex: 1; overflow-y: auto; padding: 18px 22px; min-height: 0;">
+
+        <!-- Datalists globales para autocompletado en el Grid y Formulario Rápido -->
+        <datalist id="gridserv-dl-operaciones"></datalist>
+        <datalist id="gridserv-dl-transportadoras"></datalist>
+        <datalist id="gridserv-dl-proveedores"></datalist>
+        <datalist id="gridserv-dl-clientes-credito"></datalist>
+        <datalist id="gridserv-dl-vehiculos"></datalist>
+        <datalist id="gridserv-dl-unidades"></datalist>
+
+        <!-- TAB 1: FORMULARIO RÁPIDO PARA AGREGAR AL GRID -->
+        <div id="gridserv-panel-single" style="display: none;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Cargado (Consecutivo) *</label>
+              <input type="text" id="gs-single-cargado" placeholder="Ej: 164" oninput="actualizarPreviewSingleReciboApp()" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Operación *</label>
+              <select id="gs-single-operacion" onchange="onSingleOperacionChange()" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+                <option value="">Seleccione operación...</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Recibo App (Calculado)</label>
+              <input type="text" id="gs-single-reciboapp" readonly disabled value="-" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg-elevated); color:var(--accent); font-weight:800;">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Fecha *</label>
+              <input type="date" id="gs-single-fecha" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Forma de Pago *</label>
+              <select id="gs-single-formapago" onchange="onSingleFormaPagoChange()" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+                <option value="1">1 - Efectivo (Contado)</option>
+                <option value="2">2 - Transferencia (Recaudo)</option>
+                <option value="3">3 - Crédito</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Actividad *</label>
+              <select id="gs-single-actividad" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+                <option value="">Seleccione primero operación...</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Área (Vacío = Operativa por defecto)</label>
+              <select id="gs-single-area" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+                <option value="">Automática (Operativa 'V')</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Cliente a Facturar (Solo FP=3)</label>
+              <input type="text" id="gs-single-cliente" list="gridserv-dl-clientes-credito" placeholder="Seleccione cliente crédito..." disabled style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg-elevated); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">NIT (Contado/Recaudo)</label>
+              <input type="text" id="gs-single-nit" placeholder="Ej: 900123456" oninput="onSingleNitInput(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Razón Social (NIT)</label>
+              <input type="text" id="gs-single-nombres" readonly disabled placeholder="Automático según NIT" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg-elevated); color:var(--text-muted);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Transportadora</label>
+              <input type="text" id="gs-single-transportadora" list="gridserv-dl-transportadoras" placeholder="Buscar o escribir nueva..." oninput="sugerirTransportadorasGrid(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Proveedor</label>
+              <input type="text" id="gs-single-proveedor" list="gridserv-dl-proveedores" placeholder="Buscar o escribir nuevo..." oninput="sugerirProveedoresGrid(this.value)" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-transform:uppercase;">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Vehículo</label>
+              <input type="text" id="gs-single-vehiculo" list="gridserv-dl-vehiculos" placeholder="Tipo de vehículo..." style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Placa (6 caracteres)</label>
+              <input type="text" id="gs-single-placa" maxlength="10" placeholder="Ej: ABC123" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-transform:uppercase;">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Remolque</label>
+              <input type="text" id="gs-single-remolque" placeholder="Opcional" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Unidad</label>
+              <input type="text" id="gs-single-unidad" list="gridserv-dl-unidades" placeholder="Ej: ESTIBA, BULTO..." style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Cantidad *</label>
+              <input type="number" step="any" id="gs-single-cantidad" placeholder="0" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-align:right;">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Valor Unitario *</label>
+              <input type="number" step="any" id="gs-single-vunit" placeholder="0" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text); text-align:right;">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Hora Inicio (Opcional)</label>
+              <input type="datetime-local" id="gs-single-horainicio" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Hora Final (Opcional)</label>
+              <input type="datetime-local" id="gs-single-horafinal" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Ruta / Destino</label>
+              <input type="text" id="gs-single-ruta" placeholder="Opcional" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Manifiesto</label>
+              <input type="text" id="gs-single-manifiesto" placeholder="Opcional" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">ReteFuente / ReteIVA</label>
+              <div style="display:flex; gap:10px; padding-top:6px;">
+                <label style="display:inline-flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;">
+                  <input type="checkbox" id="gs-single-retefuente"> ReteFuente (V)
+                </label>
+                <label style="display:inline-flex; align-items:center; gap:5px; font-size:0.8rem; cursor:pointer;">
+                  <input type="checkbox" id="gs-single-reteiva"> ReteIVA (V)
+                </label>
+              </div>
+            </div>
+            <div>
+              <label style="display:block; font-size:0.75rem; font-weight:700; margin-bottom:4px;">Observaciones</label>
+              <input type="text" id="gs-single-observaciones" placeholder="Opcional" style="width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; background:var(--card-bg); color:var(--text);">
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+            <button type="button" class="btn-primary" onclick="agregarFilaDesdeSingleForm()" style="display:inline-flex; align-items:center; gap:6px;">
+              ➕ Agregar Fila al Editor de Grid
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 2: EDITOR DE GRID INTERACTIVO -->
+        <div id="gridserv-panel-manual" style="display: block;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+            <div style="font-size: 0.79rem; color: var(--text-muted);">
+              Edite cualquier celda directamente. Los IDs de Área, Actividad, Transportadora, Proveedor, Placa y Recibo se resuelven automáticamente.
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span id="gridserv-subtotal-preview" style="font-size: 0.8rem; font-weight: 800; color: var(--accent); margin-right: 6px;">Subtotal Lote: $ 0</span>
+              <button type="button" onclick="agregarFilaVaciaGridServicios()" style="padding: 6px 12px; border: 1px solid var(--accent); border-radius: 6px; background: var(--card-bg); color: var(--accent); font-weight: 700; font-size: 0.76rem; cursor: pointer;">
+                ➕ Agregar Fila Vacía
+              </button>
+              <button type="button" onclick="duplicarUltimaFilaGridServicios()" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated); color: var(--text); font-weight: 600; font-size: 0.76rem; cursor: pointer;">
+                📑 Duplicar Última Fila
+              </button>
+              <button type="button" onclick="limpiarTodoGridServicios()" style="padding: 6px 12px; border: 1px solid var(--danger); border-radius: 6px; background: transparent; color: var(--danger); font-weight: 600; font-size: 0.76rem; cursor: pointer;">
+                🗑️ Vaciar Grid
+              </button>
+            </div>
+          </div>
+
+          <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+            <div style="max-height: 52vh; overflow: auto;">
+              <table id="gridserv-table" style="width: 100%; border-collapse: collapse; font-size: 0.76rem; min-width: 3150px;">
+                <thead>
+                  <tr style="background: var(--bg-elevated); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 15; text-align: left;">
+                    <th style="padding: 8px 6px; width: 46px; text-align: center;">#</th>
+                    <th style="padding: 8px 6px; width: 135px;">Recibo App (Calc.)</th>
+                    <th style="padding: 8px 6px; width: 90px;">Cargado *</th>
+                    <th style="padding: 8px 6px; width: 155px;">Operación *</th>
+                    <th style="padding: 8px 6px; width: 125px;">Fecha *</th>
+                    <th style="padding: 8px 6px; width: 135px;">Forma Pago *</th>
+                    <th style="padding: 8px 6px; width: 130px;">Ruta</th>
+                    <th style="padding: 8px 6px; width: 175px;">Transportadora</th>
+                    <th style="padding: 8px 6px; width: 175px;">Proveedor</th>
+                    <th style="padding: 8px 6px; width: 170px;">Cliente a Facturar</th>
+                    <th style="padding: 8px 6px; width: 135px;">Vehículo</th>
+                    <th style="padding: 8px 6px; width: 115px;">Placa</th>
+                    <th style="padding: 8px 6px; width: 195px;">Actividad *</th>
+                    <th style="padding: 8px 6px; width: 110px;">Manifiesto</th>
+                    <th style="padding: 8px 6px; width: 100px;">Remolque</th>
+                    <th style="padding: 8px 6px; width: 125px;">Unidad</th>
+                    <th style="padding: 8px 6px; width: 90px; text-align: right;">Cant *</th>
+                    <th style="padding: 8px 6px; width: 110px; text-align: right;">V. Unit *</th>
+                    <th style="padding: 8px 6px; width: 110px; text-align: right;">V. Base</th>
+                    <th style="padding: 8px 6px; width: 65px; text-align: center;">R.Fte</th>
+                    <th style="padding: 8px 6px; width: 65px; text-align: center;">R.IVA</th>
+                    <th style="padding: 8px 6px; width: 145px;">Hora Inicio</th>
+                    <th style="padding: 8px 6px; width: 145px;">Hora Final</th>
+                    <th style="padding: 8px 6px; width: 125px;">Duración (Calc.)</th>
+                    <th style="padding: 8px 6px; width: 155px;">Área</th>
+                    <th style="padding: 8px 6px; width: 160px;">Observaciones</th>
+                    <th style="padding: 8px 6px; width: 120px;">NIT</th>
+                    <th style="padding: 8px 6px; width: 180px;">Nombres (Cliente)</th>
+                    <th style="padding: 8px 6px; width: 110px;">Teléfono</th>
+                    <th style="padding: 8px 6px; width: 160px;">Email</th>
+                    <th style="padding: 8px 6px; width: 50px; text-align: center;">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="gridserv-tbody">
+                  <tr>
+                    <td colspan="31" style="padding: 28px; text-align: center; color: var(--text-muted);">
+                      No hay filas en el Editor de Grid. Use <strong>"➕ Agregar Fila Vacía"</strong> o la pestaña <strong>"📋 Pegar desde Excel"</strong>.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: PEGAR DESDE EXCEL -->
+        <div id="gridserv-panel-excel" style="display: none;">
+          <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; font-size: 0.78rem;">
+            <div style="font-weight: 700; color: var(--accent); margin-bottom: 4px;">📌 Orden de columnas esperado al copiar desde la tabla "Datos" de Excel:</div>
+            <div style="color: var(--text-muted); line-height: 1.45;">
+              <code>Cargado</code> | <code>OPERACIÓN</code> | <code>FECHA</code> | <code>FORMA DE PAGO</code> | <code>RUTA</code> | <code>TRANSPORTADORA</code> | <code>PROVEEDOR</code> | <code>CLIENTE A FACTURAR</code> | <code>VEHICULO</code> | <code>PLACA</code> | <code>ACTIVIDAD</code> | <code>MANIFIESTO</code> | <code>REMOLQUE</code> | <code>UNIDAD</code> | <code>CANT</code> | <code>V.UNIT</code> | <code>RETEFUENTE</code> | <code>RETEIVA</code> | <code>HORA INICIO</code> | <code>HORA FINAL</code> | <code>AREA</code> | <code>OBSERVACIONES</code> | <code>NIT</code>
+            </div>
+            <div style="margin-top: 6px; font-size: 0.74rem; color: var(--text-muted);">
+              💡 <em>Nota:</em> También puede copiar incluyendo la primera columna calculada <code>Recibo App</code> o la fila de encabezados; el sistema las detecta automáticamente.
+            </div>
+          </div>
+
+          <textarea id="gridserv-paste-area" rows="12" placeholder="Pegue aquí (Ctrl + V) las filas copiadas desde Excel..." style="width: 100%; padding: 12px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text); font-family: monospace; font-size: 0.78rem; resize: vertical;"></textarea>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;">
+            <button type="button" class="btn-reset" style="margin-top:0;" onclick="document.getElementById('gridserv-paste-area').value = ''">Limpiar Texto</button>
+            <button type="button" class="btn-primary" onclick="procesarPegadoExcelServicios()">
+              ⚡ Procesar y Pasar al Editor de Grid
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Pie del Modal -->
+      <div style="background: var(--bg-elevated); padding: 12px 22px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
+        <div id="gridserv-footer-hint" style="font-size: 0.76rem; color: var(--text-muted);">
+          Orden automático de guardado: 1) Transportadoras → 2) Proveedores → 3) Placas → 4) Recibos → 5) Servicios.
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button type="button" class="btn-reset" style="margin-top: 0;" onclick="cerrarModalCargaMasivaServicios()">Cancelar</button>
+          <button type="button" class="btn-primary" id="btn-gridserv-guardar" onclick="guardarLoteServiciosGrid()" disabled>
+            💾 Guardar Todo en Base de Datos
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- El botón/modal "+ Ticket" lo inyecta public/js/ticket-boton.js (widget
        compartido entre módulos) — ver la llamada a initBotonTicket() más abajo. -->
 
@@ -2736,6 +3062,14 @@
       if (!puedeGestionarClientesCredito) {
         const btnAgregarCliente = document.getElementById('btn-agregar-cliente');
         if (btnAgregarCliente) btnAgregarCliente.style.display = 'none';
+      }
+
+      // Botones de Carga Masiva de Servicios (Editor de Grid) según Config_Parametros
+      if (CONFIG.serviciosMasivo && CONFIG.serviciosMasivo.puedeCargaMasiva) {
+        const btnMasivoServ = document.getElementById('btn-carga-masiva-servicios');
+        const btnMasivoRec = document.getElementById('btn-carga-masiva-recibos');
+        if (btnMasivoServ) btnMasivoServ.style.display = 'inline-flex';
+        if (btnMasivoRec) btnMasivoRec.style.display = 'inline-flex';
       }
 
       // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).
@@ -6235,6 +6569,1441 @@
         `- *Fecha:* ${fechaTexto}\n` +
         `- *Recibo:* ${recibo}\n` +
         '*Estado:* *PENDIENTE* 🚫';
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ── CARGA MASIVA DE SERVICIOS · EDITOR DE GRID (Reemplazo Plano Servicios V7)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    let gridServList = [];
+    let gridServLookups = null;
+    let gridServLookupsPromise = null;
+
+    // Cachés de consulta en lote contra BD (Maestro_Clientes, Maestro_Placas, Dynamic_Recibos, Maestro_Transportadora, Maestro_Proveedor)
+    const gridServCacheClientesNit = new Map();
+    const gridServCachePlacas = new Map();
+    const gridServCacheRecibos = new Map();
+    const gridServCacheTransportadoras = new Map();
+    const gridServCacheProveedores = new Map();
+    let gridServValidateTimer = null;
+    let gridServTranspSuggestTimer = null;
+    let gridServProvSuggestTimer = null;
+
+    function sugerirTransportadorasGrid(q) {
+      clearTimeout(gridServTranspSuggestTimer);
+      const clean = String(q || '').trim();
+      if (clean.length < 2) return;
+      gridServTranspSuggestTimer = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/transportadoras/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(clean)}`);
+          if (!resp.ok) return;
+          const rows = await resp.json();
+          const dl = document.getElementById('gridserv-dl-transportadoras');
+          if (dl && Array.isArray(rows)) {
+            dl.innerHTML = rows.slice(0, 25).map(t => `<option value="${esc(t.nombre)}"></option>`).join('');
+            rows.forEach(t => {
+              const k = normalizarTextoGrid(t.nombre);
+              if (k) gridServCacheTransportadoras.set(k, { id: t.id, transportadora: t.nombre });
+            });
+          }
+        } catch (_) {}
+      }, 220);
+    }
+
+    function sugerirProveedoresGrid(q) {
+      clearTimeout(gridServProvSuggestTimer);
+      const clean = String(q || '').trim();
+      if (clean.length < 2) return;
+      gridServProvSuggestTimer = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/proveedores/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(clean)}`);
+          if (!resp.ok) return;
+          const rows = await resp.json();
+          const dl = document.getElementById('gridserv-dl-proveedores');
+          if (dl && Array.isArray(rows)) {
+            dl.innerHTML = rows.slice(0, 25).map(p => `<option value="${esc(p.nombre)}"></option>`).join('');
+            rows.forEach(p => {
+              const k = normalizarTextoGrid(p.nombre);
+              if (k) gridServCacheProveedores.set(k, { id: p.id, proveedor: p.nombre });
+            });
+          }
+        } catch (_) {}
+      }, 220);
+    }
+
+    function normalizarTextoGrid(str) {
+      return String(str || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase();
+    }
+
+    function limpiarCeldaExcel(val) {
+      if (val === null || val === undefined) return '';
+      const s = String(val).trim();
+      if (s === '' || s === '0' || s.toUpperCase() === 'NULL') return '';
+      return s;
+    }
+
+    function parseNumeroCeldaExcel(val) {
+      if (val === null || val === undefined || val === '') return '';
+      if (typeof val === 'number') return Number.isFinite(val) && val !== 0 ? String(val) : '';
+      let s = String(val).replace(/\$/g, '').replace(/\s+/g, '').trim();
+      if (!s || s === '0') return '';
+      const lastComma = s.lastIndexOf(',');
+      const lastDot = s.lastIndexOf('.');
+      if (lastComma > -1 && lastDot > -1) {
+        if (lastComma > lastDot) {
+          s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      } else if (lastComma > -1) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else if (lastDot > -1) {
+        const parts = s.split('.');
+        if (parts.length > 2) {
+          s = parts.join('');
+        }
+      }
+      const num = parseFloat(s);
+      if (!Number.isFinite(num) || num === 0) return '';
+      return String(Math.round(num * 1000) / 1000);
+    }
+
+    function hoyBogotaISO() {
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Bogota',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      return fmt.format(new Date());
+    }
+
+    function normalizarFechaInput(raw) {
+      const s = limpiarCeldaExcel(raw);
+      if (!s) return hoyBogotaISO();
+      // YYYY-MM-DD
+      const iso = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      if (iso) {
+        return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
+      }
+      // DD/MM/YYYY o DD-MM-YYYY
+      const dmy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+      if (dmy) {
+        return `${dmy[3]}-${String(dmy[2]).padStart(2, '0')}-${String(dmy[1]).padStart(2, '0')}`;
+      }
+      return hoyBogotaISO();
+    }
+
+    function normalizarHoraInput(raw, fechaBaseISO) {
+      const s = limpiarCeldaExcel(raw);
+      if (!s) return '';
+      // Si ya viene como YYYY-MM-DDTHH:MM
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 16);
+
+      // Si es solo hora "08:30", "8:30:00 a. m."
+      const onlyTime = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([ap]\.?\s*m\.?))?$/i);
+      if (onlyTime) {
+        let hh = parseInt(onlyTime[1], 10);
+        const mm = String(onlyTime[2]).padStart(2, '0');
+        const ampm = (onlyTime[4] || '').toLowerCase().replace(/\./g, '').trim();
+        if (ampm === 'pm' && hh < 12) hh += 12;
+        if (ampm === 'am' && hh === 12) hh = 0;
+        const base = fechaBaseISO || hoyBogotaISO();
+        return `${base}T${String(hh).padStart(2, '0')}:${mm}`;
+      }
+
+      // YYYY-MM-DD HH:MM
+      const iso = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([ap]\.?\s*m\.?))?$/i);
+      if (iso) {
+        let hh = parseInt(iso[4], 10);
+        const mm = String(iso[5]).padStart(2, '0');
+        const ampm = (iso[7] || '').toLowerCase().replace(/\./g, '').trim();
+        if (ampm === 'pm' && hh < 12) hh += 12;
+        if (ampm === 'am' && hh === 12) hh = 0;
+        return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${mm}`;
+      }
+
+      // DD/MM/YYYY HH:MM
+      const dmy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*([ap]\.?\s*m\.?))?$/i);
+      if (dmy) {
+        let hh = parseInt(dmy[4], 10);
+        const mm = String(dmy[5]).padStart(2, '0');
+        const ampm = (dmy[7] || '').toLowerCase().replace(/\./g, '').trim();
+        if (ampm === 'pm' && hh < 12) hh += 12;
+        if (ampm === 'am' && hh === 12) hh = 0;
+        return `${dmy[3]}-${String(dmy[2]).padStart(2, '0')}-${String(dmy[1]).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${mm}`;
+      }
+
+      return '';
+    }
+
+    async function ensureGridServLookupsLoaded() {
+      if (gridServLookups) return gridServLookups;
+      if (gridServLookupsPromise) return gridServLookupsPromise;
+      gridServLookupsPromise = (async () => {
+        const resp = await fetch(`/facturacion/api/servicios/masivo-lookups?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'No se pudieron cargar los catálogos de Facturación');
+        gridServLookups = data;
+        poblarDatalistsGridServicios();
+        return gridServLookups;
+      })();
+      try {
+        return await gridServLookupsPromise;
+      } finally {
+        gridServLookupsPromise = null;
+      }
+    }
+
+    function poblarDatalistsGridServicios() {
+      if (!gridServLookups) return;
+      const badgeUsr = document.getElementById('gridserv-usuario-badge');
+      if (badgeUsr) badgeUsr.textContent = `Usuario: ${gridServLookups.usuarioRegistro || CONFIG.usuario}`;
+
+      const dlOps = document.getElementById('gridserv-dl-operaciones');
+      if (dlOps) {
+        dlOps.innerHTML = (gridServLookups.operaciones || [])
+          .map(o => `<option value="${esc(o.operacion)}">${esc(o.codigoSiesa || '')} · ${esc(o.regional || '')}</option>`)
+          .join('');
+      }
+
+      const dlCliCred = document.getElementById('gridserv-dl-clientes-credito');
+      if (dlCliCred) {
+        dlCliCred.innerHTML = (gridServLookups.clientesCredito || [])
+          .map(c => `<option value="${esc(c.clienteAFacturar)}">${esc(c.nombre || '')}</option>`)
+          .join('');
+      }
+
+      const dlVeh = document.getElementById('gridserv-dl-vehiculos');
+      if (dlVeh) {
+        dlVeh.innerHTML = (gridServLookups.vehiculos || [])
+          .map(v => `<option value="${esc(v)}"></option>`)
+          .join('');
+      }
+
+      const dlUni = document.getElementById('gridserv-dl-unidades');
+      if (dlUni) {
+        dlUni.innerHTML = (gridServLookups.unidades || [])
+          .map(u => `<option value="${esc(u)}"></option>`)
+          .join('');
+      }
+
+      // Poblar select de operación en formulario rápido
+      const selSingleOp = document.getElementById('gs-single-operacion');
+      if (selSingleOp) {
+        selSingleOp.innerHTML = '<option value="">Seleccione operación...</option>' +
+          (gridServLookups.operaciones || [])
+            .map(o => `<option value="${esc(o.operacion)}">${esc(o.operacion)} (CO: ${esc(o.codigoSiesa || '-')})</option>`)
+            .join('');
+      }
+    }
+
+    async function abrirModalCargaMasivaServicios() {
+      const modal = document.getElementById('modal-carga-masiva-servicios');
+      if (!modal) return;
+      modal.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        modal._backEntry = registrarModalBack(() => cerrarModalCargaMasivaServicios());
+      }
+
+      const overlay = document.getElementById('gridserv-loading-overlay');
+      try {
+        if (!gridServLookups && overlay) overlay.style.display = 'flex';
+        await ensureGridServLookupsLoaded();
+      } catch (err) {
+        alert('Error cargando catálogos: ' + err.message);
+        cerrarModalCargaMasivaServicios();
+        return;
+      } finally {
+        if (overlay) overlay.style.display = 'none';
+      }
+
+      const fechaSingle = document.getElementById('gs-single-fecha');
+      if (fechaSingle && !fechaSingle.value) fechaSingle.value = hoyBogotaISO();
+
+      if (gridServList.length === 0) {
+        agregarFilaVaciaGridServicios(false);
+      }
+      switchGridServTab('manual');
+      renderGridServicios();
+    }
+
+    function cerrarModalCargaMasivaServicios() {
+      const modal = document.getElementById('modal-carga-masiva-servicios');
+      if (!modal) return;
+      modal.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && modal._backEntry) {
+        cerrarModalBack(modal._backEntry);
+      }
+      modal._backEntry = null;
+    }
+
+    function switchGridServTab(tab) {
+      const tabs = {
+        single: { btn: document.getElementById('gridserv-tab-btn-single'), panel: document.getElementById('gridserv-panel-single') },
+        manual: { btn: document.getElementById('gridserv-tab-btn-manual'), panel: document.getElementById('gridserv-panel-manual') },
+        excel:  { btn: document.getElementById('gridserv-tab-btn-excel'),  panel: document.getElementById('gridserv-panel-excel') }
+      };
+      Object.keys(tabs).forEach(k => {
+        const item = tabs[k];
+        if (!item.btn || !item.panel) return;
+        const active = k === tab;
+        item.btn.style.background = active ? 'var(--card-bg)' : 'transparent';
+        item.btn.style.color = active ? 'var(--accent)' : 'var(--text-muted)';
+        item.btn.style.border = active ? '1px solid var(--border)' : '1px solid transparent';
+        item.btn.style.borderBottom = 'none';
+        item.panel.style.display = active ? 'block' : 'none';
+      });
+      if (tab === 'manual') {
+        renderGridServicios();
+      }
+    }
+
+    // Calcula el Recibo App de una fila: CODIGO CO SIESA + "-" + RIGHT("00000" & Cargado, 5)
+    function calcularReciboAppFila(operacion, cargado) {
+      const opTrim = limpiarCeldaExcel(operacion);
+      const carTrim = limpiarCeldaExcel(cargado);
+      if (!opTrim || !carTrim || !gridServLookups) return '';
+
+      if (/^\d{2,5}-\d{1,8}$/.test(carTrim)) {
+        const [co, num] = carTrim.split('-');
+        return `${co}-${String(num).padStart(5, '0')}`;
+      }
+
+      const opObj = (gridServLookups.operaciones || []).find(
+        o => normalizarTextoGrid(o.operacion) === normalizarTextoGrid(opTrim)
+      );
+      if (!opObj || !opObj.codigoSiesa) return '';
+      const limpioNum = carTrim.replace(/^0+/, '') || '0';
+      return `${opObj.codigoSiesa}-${limpioNum.padStart(5, '0')}`;
+    }
+
+    // Calcula Total Hora y Duración para una fila
+    function calcularDuracionFila(fila) {
+      const fechaBase = fila.fecha || hoyBogotaISO();
+      let inicioMs = null;
+      let finalMs = null;
+
+      if (fila.horaInicio) {
+        const d1 = new Date(fila.horaInicio);
+        if (!isNaN(d1.getTime())) inicioMs = d1.getTime();
+      } else {
+        const d1 = new Date(`${fechaBase}T00:00:00`);
+        if (!isNaN(d1.getTime())) inicioMs = d1.getTime();
+      }
+
+      if (inicioMs === null) return { totalHora: '01:00:00', duracion: '1 Hora' };
+
+      if (fila.horaInicio && fila.horaFinal) {
+        const d2 = new Date(fila.horaFinal);
+        if (!isNaN(d2.getTime())) {
+          finalMs = d2.getTime();
+          if (finalMs < inicioMs) finalMs += 24 * 3600 * 1000;
+        }
+      }
+      if (finalMs === null) {
+        finalMs = inicioMs + 3600 * 1000;
+      }
+
+      const diffSec = Math.max(0, Math.round((finalMs - inicioMs) / 1000));
+      const hh = String(Math.floor(diffSec / 3600)).padStart(2, '0');
+      const mm = String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0');
+      const ss = String(diffSec % 60).padStart(2, '0');
+      const totalHora = `${hh}:${mm}:${ss}`;
+
+      let duracion = 'Otro';
+      if (gridServLookups && Array.isArray(gridServLookups.duraciones)) {
+        const match = gridServLookups.duraciones.find(d => {
+          const t = String(d.tiempo || '').trim();
+          return t === totalHora || (t.length === 7 && `0${t}` === totalHora);
+        });
+        if (match) duracion = match.duracion;
+      }
+      return { totalHora, duracion };
+    }
+
+    function crearObjetoFilaVacia(defaults = {}) {
+      const opDefault = defaults.operacion ||
+        (gridServLookups && gridServLookups.operaciones && gridServLookups.operaciones.length === 1
+          ? gridServLookups.operaciones[0].operacion
+          : '');
+      return {
+        cargado: defaults.cargado || '',
+        operacion: opDefault,
+        fecha: defaults.fecha || hoyBogotaISO(),
+        formaDePago: defaults.formaDePago || '1',
+        ruta: defaults.ruta || '',
+        transportadora: defaults.transportadora || '',
+        proveedor: defaults.proveedor || '',
+        clienteAFacturar: defaults.clienteAFacturar || '',
+        vehiculo: defaults.vehiculo || '',
+        placa: defaults.placa || '',
+        actividad: defaults.actividad || '',
+        manifiesto: defaults.manifiesto || '',
+        remolque: defaults.remolque || '',
+        unidad: defaults.unidad || '',
+        cantidad: defaults.cantidad || '',
+        valorUnitario: defaults.valorUnitario || '',
+        retefuente: defaults.retefuente || '',
+        reteiva: defaults.reteiva || '',
+        horaInicio: defaults.horaInicio || '',
+        horaFinal: defaults.horaFinal || '',
+        area: defaults.area || '',
+        observaciones: defaults.observaciones || '',
+        nit: defaults.nit || '',
+        telefono: defaults.telefono || '',
+        email: defaults.email || ''
+      };
+    }
+
+    function agregarFilaVaciaGridServicios(render = true) {
+      gridServList.push(crearObjetoFilaVacia());
+      if (render) renderGridServicios();
+    }
+
+    function duplicarUltimaFilaGridServicios() {
+      if (!gridServList.length) {
+        agregarFilaVaciaGridServicios(true);
+        return;
+      }
+      const last = gridServList[gridServList.length - 1];
+      gridServList.push({ ...last });
+      renderGridServicios();
+      programarValidacionRemotaGridServ();
+    }
+
+    function eliminarFilaGridServicios(idx) {
+      gridServList.splice(idx, 1);
+      renderGridServicios();
+    }
+
+    function limpiarTodoGridServicios() {
+      if (gridServList.length > 0 && !confirm('¿Desea vaciar todas las filas del Editor de Grid?')) return;
+      gridServList = [];
+      renderGridServicios();
+    }
+
+    // ── Funciones del Tab 1: Formulario Rápido ─────────────────────────────────
+    function actualizarPreviewSingleReciboApp() {
+      const op = document.getElementById('gs-single-operacion')?.value || '';
+      const cargado = document.getElementById('gs-single-cargado')?.value || '';
+      const out = document.getElementById('gs-single-reciboapp');
+      if (out) out.value = calcularReciboAppFila(op, cargado) || '-';
+    }
+
+    function onSingleOperacionChange() {
+      const op = document.getElementById('gs-single-operacion')?.value || '';
+      actualizarPreviewSingleReciboApp();
+
+      const selAct = document.getElementById('gs-single-actividad');
+      const selArea = document.getElementById('gs-single-area');
+      if (!gridServLookups) return;
+
+      const acts = (gridServLookups.actividades || []).filter(
+        a => normalizarTextoGrid(a.operacion) === normalizarTextoGrid(op)
+      );
+      if (selAct) {
+        selAct.innerHTML = '<option value="">Seleccione actividad...</option>' +
+          acts.map(a => `<option value="${esc(a.actividad)}">${esc(a.actividad)}</option>`).join('');
+      }
+
+      const areas = (gridServLookups.areas || []).filter(
+        a => normalizarTextoGrid(a.operacion) === normalizarTextoGrid(op)
+      );
+      const defArea = areas.find(a => String(a.operativo || '').toUpperCase() === 'V');
+      if (selArea) {
+        selArea.innerHTML = `<option value="">Automática (${esc(defArea ? defArea.area : 'Operativa')})</option>` +
+          areas.map(a => `<option value="${esc(a.area)}">${esc(a.area)}${a.operativo === 'V' ? ' (Operativa)' : ''}</option>`).join('');
+      }
+    }
+
+    function onSingleFormaPagoChange() {
+      const fp = document.getElementById('gs-single-formapago')?.value || '1';
+      const cliInput = document.getElementById('gs-single-cliente');
+      const nitInput = document.getElementById('gs-single-nit');
+      if (cliInput) {
+        cliInput.disabled = fp !== '3';
+        cliInput.style.background = fp === '3' ? 'var(--card-bg)' : 'var(--bg-elevated)';
+        if (fp !== '3') cliInput.value = '';
+      }
+      if (nitInput) {
+        nitInput.disabled = fp === '3';
+        nitInput.style.background = fp === '3' ? 'var(--bg-elevated)' : 'var(--card-bg)';
+        if (fp === '3') {
+          nitInput.value = '';
+          const nom = document.getElementById('gs-single-nombres');
+          if (nom) nom.value = '';
+        }
+      }
+    }
+
+    let singleNitTimer = null;
+    function onSingleNitInput(val) {
+      clearTimeout(singleNitTimer);
+      const clean = String(val || '').replace(/[^0-9]/g, '');
+      const nomEl = document.getElementById('gs-single-nombres');
+      if (!clean) {
+        if (nomEl) nomEl.value = '';
+        return;
+      }
+      if (gridServCacheClientesNit.has(clean)) {
+        const info = gridServCacheClientesNit.get(clean);
+        if (nomEl) nomEl.value = info ? info.razonSocial : 'No encontrado en Maestro_Clientes';
+        return;
+      }
+      singleNitTimer = setTimeout(async () => {
+        try {
+          const resp = await fetch(`/facturacion/api/buscar-cliente?nit=${encodeURIComponent(clean)}`);
+          const data = await resp.json();
+          if (data && data.encontrado) {
+            gridServCacheClientesNit.set(clean, data);
+            if (nomEl) nomEl.value = data.razonSocial;
+          } else {
+            gridServCacheClientesNit.set(clean, null);
+            if (nomEl) nomEl.value = 'No encontrado en Maestro_Clientes';
+          }
+        } catch (_) {}
+      }, 280);
+    }
+
+    function agregarFilaDesdeSingleForm() {
+      const cargado = limpiarCeldaExcel(document.getElementById('gs-single-cargado')?.value);
+      const operacion = limpiarCeldaExcel(document.getElementById('gs-single-operacion')?.value);
+      const fecha = document.getElementById('gs-single-fecha')?.value || hoyBogotaISO();
+      const formaDePago = document.getElementById('gs-single-formapago')?.value || '1';
+      const actividad = limpiarCeldaExcel(document.getElementById('gs-single-actividad')?.value);
+      const area = limpiarCeldaExcel(document.getElementById('gs-single-area')?.value);
+      const clienteAFacturar = limpiarCeldaExcel(document.getElementById('gs-single-cliente')?.value).toUpperCase();
+      const nit = limpiarCeldaExcel(document.getElementById('gs-single-nit')?.value).replace(/[^0-9]/g, '');
+      const transportadora = limpiarCeldaExcel(document.getElementById('gs-single-transportadora')?.value);
+      const proveedor = limpiarCeldaExcel(document.getElementById('gs-single-proveedor')?.value).toUpperCase();
+      const vehiculo = limpiarCeldaExcel(document.getElementById('gs-single-vehiculo')?.value);
+      const placa = limpiarCeldaExcel(document.getElementById('gs-single-placa')?.value).toUpperCase();
+      const remolque = limpiarCeldaExcel(document.getElementById('gs-single-remolque')?.value);
+      const unidad = limpiarCeldaExcel(document.getElementById('gs-single-unidad')?.value);
+      const cantidad = parseNumeroCeldaExcel(document.getElementById('gs-single-cantidad')?.value);
+      const valorUnitario = parseNumeroCeldaExcel(document.getElementById('gs-single-vunit')?.value);
+      const horaInicio = document.getElementById('gs-single-horainicio')?.value || '';
+      const horaFinal = document.getElementById('gs-single-horafinal')?.value || '';
+      const ruta = limpiarCeldaExcel(document.getElementById('gs-single-ruta')?.value);
+      const manifiesto = limpiarCeldaExcel(document.getElementById('gs-single-manifiesto')?.value);
+      const retefuente = document.getElementById('gs-single-retefuente')?.checked ? 'V' : '';
+      const reteiva = document.getElementById('gs-single-reteiva')?.checked ? 'V' : '';
+      const observaciones = limpiarCeldaExcel(document.getElementById('gs-single-observaciones')?.value);
+
+      if (!cargado || !operacion || !actividad) {
+        alert('Por favor complete al menos Cargado (Consecutivo), Operación y Actividad.');
+        return;
+      }
+      if (formaDePago === '3' && !clienteAFacturar) {
+        alert('Para Forma de Pago 3 (Crédito) debe indicar el Cliente a Facturar.');
+        return;
+      }
+
+      // Si había una única fila completamente vacía inicial, reemplazarla
+      if (gridServList.length === 1 && !gridServList[0].cargado && !gridServList[0].actividad && !gridServList[0].cantidad) {
+        gridServList = [];
+      }
+
+      gridServList.push(crearObjetoFilaVacia({
+        cargado, operacion, fecha, formaDePago, ruta, transportadora, proveedor,
+        clienteAFacturar, vehiculo, placa, actividad, manifiesto, remolque,
+        unidad, cantidad, valorUnitario, retefuente, reteiva, horaInicio, horaFinal,
+        area, observaciones, nit
+      }));
+
+      switchGridServTab('manual');
+      programarValidacionRemotaGridServ();
+    }
+
+    // ── Validación remota en lote (NITs, Placas y Consecutivos de Recibo) ───────
+    function programarValidacionRemotaGridServ() {
+      clearTimeout(gridServValidateTimer);
+      gridServValidateTimer = setTimeout(ejecutarValidacionRemotaGridServ, 250);
+    }
+
+    async function ejecutarValidacionRemotaGridServ() {
+      if (!gridServList.length || !gridServLookups) return;
+
+      const nitsPend = new Set();
+      const placasPend = new Set();
+      const recibosPend = new Set();
+      const transpPend = new Map(); // normKey -> rawValue
+      const provPend = new Map();   // normKey -> rawValue
+
+      gridServList.forEach(f => {
+        const nitClean = String(f.nit || '').replace(/[^0-9]/g, '');
+        if (nitClean && !gridServCacheClientesNit.has(nitClean)) {
+          nitsPend.add(nitClean);
+        }
+        const plClean = String(f.placa || '').trim().toUpperCase();
+        if (plClean && !gridServCachePlacas.has(plClean)) {
+          placasPend.add(plClean);
+        }
+        const recApp = calcularReciboAppFila(f.operacion, f.cargado);
+        if (recApp && !gridServCacheRecibos.has(recApp)) {
+          recibosPend.add(recApp);
+        }
+        const trClean = limpiarCeldaExcel(f.transportadora);
+        const trNorm = normalizarTextoGrid(trClean);
+        if (trNorm && !gridServCacheTransportadoras.has(trNorm)) {
+          transpPend.set(trNorm, trClean);
+        }
+        const prClean = limpiarCeldaExcel(f.proveedor).toUpperCase();
+        const prNorm = normalizarTextoGrid(prClean);
+        if (prNorm && !gridServCacheProveedores.has(prNorm)) {
+          provPend.set(prNorm, prClean);
+        }
+      });
+
+      if (!nitsPend.size && !placasPend.size && !recibosPend.size && !transpPend.size && !provPend.size) {
+        actualizarTodasLasMetasDomGridServ();
+        return;
+      }
+
+      try {
+        const resp = await fetch(`/facturacion/api/servicios/masivo-validar-lote?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nits: [...nitsPend],
+            placas: [...placasPend],
+            consecutivos: [...recibosPend],
+            transportadoras: [...transpPend.values()],
+            proveedores: [...provPend.values()]
+          })
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        nitsPend.forEach(n => {
+          const info = (data.clientesPorNit && data.clientesPorNit[n]) || null;
+          gridServCacheClientesNit.set(n, info);
+        });
+        placasPend.forEach(p => {
+          const info = (data.placasPorNombre && data.placasPorNombre[p]) || null;
+          gridServCachePlacas.set(p, info);
+        });
+        recibosPend.forEach(r => {
+          const info = (data.recibosPorConsecutivo && data.recibosPorConsecutivo[r]) || null;
+          gridServCacheRecibos.set(r, info);
+        });
+        transpPend.forEach((_, trNorm) => {
+          const info = (data.transportadorasPorNombre && data.transportadorasPorNombre[trNorm]) || null;
+          gridServCacheTransportadoras.set(trNorm, info);
+        });
+        provPend.forEach((_, prNorm) => {
+          const info = (data.proveedoresPorNombre && data.proveedoresPorNombre[prNorm]) || null;
+          gridServCacheProveedores.set(prNorm, info);
+        });
+
+        // Autocompletar teléfono/email de NIT cuando están vacíos en la fila
+        gridServList.forEach((f, idx) => {
+          const nitClean = String(f.nit || '').replace(/[^0-9]/g, '');
+          const cli = nitClean ? gridServCacheClientesNit.get(nitClean) : null;
+          if (cli) {
+            if (!f.telefono && cli.telefono) {
+              f.telefono = cli.telefono;
+              const telInput = document.getElementById(`gs-cell-tel-${idx}`);
+              if (telInput) telInput.value = cli.telefono;
+            }
+            if (!f.email && cli.correoFE) {
+              f.email = cli.correoFE;
+              const emailInput = document.getElementById(`gs-cell-email-${idx}`);
+              if (emailInput) emailInput.value = cli.correoFE;
+            }
+          }
+        });
+
+        actualizarTodasLasMetasDomGridServ();
+      } catch (err) {
+        console.error('Error en validación remota del grid:', err);
+      }
+    }
+
+    // Evalúa el estado de una fila y devuelve { ok, errores, reciboApp, reciboExiste, transpNueva, provNuevo, placaNueva, clienteInfo, subtotal, durInfo }
+    function evaluarFilaGridServ(f) {
+      const errores = [];
+      const cargado = limpiarCeldaExcel(f.cargado);
+      const operacion = limpiarCeldaExcel(f.operacion);
+      const fp = limpiarCeldaExcel(f.formaDePago);
+      const actividad = limpiarCeldaExcel(f.actividad);
+      const clienteAFacturar = limpiarCeldaExcel(f.clienteAFacturar);
+
+      if (!cargado) errores.push('Falta Cargado');
+      if (!operacion) errores.push('Falta Operación');
+
+      let opValida = null;
+      if (operacion && gridServLookups) {
+        opValida = (gridServLookups.operaciones || []).find(
+          o => normalizarTextoGrid(o.operacion) === normalizarTextoGrid(operacion)
+        );
+        if (!opValida) errores.push('Operación no válida o sin permiso');
+      }
+
+      const reciboApp = calcularReciboAppFila(operacion, cargado);
+      const reciboExiste = reciboApp ? Boolean(gridServCacheRecibos.get(reciboApp)) : false;
+
+      if (!['1', '2', '3'].includes(fp)) {
+        errores.push('Forma de Pago debe ser 1, 2 o 3');
+      }
+      if (fp === '3' && !clienteAFacturar) {
+        errores.push('Falta Cliente a Facturar (FP=3)');
+      }
+
+      if (!actividad) {
+        errores.push('Falta Actividad');
+      } else if (opValida && gridServLookups) {
+        const actMatch = (gridServLookups.actividades || []).find(
+          a => normalizarTextoGrid(a.operacion) === normalizarTextoGrid(opValida.operacion) &&
+               (normalizarTextoGrid(a.actividad) === normalizarTextoGrid(actividad) || String(a.id) === actividad)
+        );
+        if (!actMatch) errores.push(`Actividad no pertenece a ${opValida.operacion}`);
+      }
+
+      const transp = limpiarCeldaExcel(f.transportadora);
+      let transpNueva = false;
+      if (transp) {
+        const trNorm = normalizarTextoGrid(transp);
+        const enCacheT = gridServCacheTransportadoras.get(trNorm);
+        transpNueva = !enCacheT;
+      }
+
+      const prov = limpiarCeldaExcel(f.proveedor).toUpperCase();
+      let provNuevo = false;
+      if (prov) {
+        const prNorm = normalizarTextoGrid(prov);
+        const enCacheP = gridServCacheProveedores.get(prNorm);
+        provNuevo = !enCacheP;
+      }
+
+      const placa = limpiarCeldaExcel(f.placa).toUpperCase();
+      let placaNueva = false;
+      if (placa && placa.length === 6) {
+        const enCache = gridServCachePlacas.get(placa);
+        placaNueva = !enCache;
+      }
+
+      const nitClean = String(f.nit || '').replace(/[^0-9]/g, '');
+      const clienteInfo = nitClean ? (gridServCacheClientesNit.get(nitClean) || null) : null;
+
+      const cant = parseFloat(f.cantidad) || 0;
+      const vunit = parseFloat(f.valorUnitario) || 0;
+      const subtotal = Math.round(cant * vunit);
+      if (subtotal > 3000000) {
+        errores.push('V. Base supera $3.000.000');
+      }
+
+      const durInfo = calcularDuracionFila(f);
+
+      return {
+        ok: errores.length === 0,
+        errores,
+        reciboApp,
+        reciboExiste,
+        transpNueva,
+        provNuevo,
+        placaNueva,
+        clienteInfo,
+        subtotal,
+        durInfo
+      };
+    }
+
+    function renderGridServicios() {
+      const tbody = document.getElementById('gridserv-tbody');
+      const btnTabManual = document.getElementById('gridserv-tab-btn-manual');
+      if (btnTabManual) {
+        btnTabManual.textContent = `✍️ Editor de Grid (${gridServList.length} fila${gridServList.length === 1 ? '' : 's'})`;
+      }
+      if (!tbody) return;
+
+      if (!gridServList.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="31" style="padding: 28px; text-align: center; color: var(--text-muted);">
+              No hay filas en el Editor de Grid. Use <strong>"➕ Agregar Fila Vacía"</strong> o la pestaña <strong>"📋 Pegar desde Excel"</strong>.
+            </td>
+          </tr>
+        `;
+        actualizarBloqueControlGridServ();
+        return;
+      }
+
+      const opsOptionsHtml = (selectedOp) => {
+        const ops = (gridServLookups && gridServLookups.operaciones) || [];
+        const selNorm = normalizarTextoGrid(selectedOp);
+        let found = false;
+        const opts = ops.map(o => {
+          const isSel = normalizarTextoGrid(o.operacion) === selNorm;
+          if (isSel) found = true;
+          return `<option value="${esc(o.operacion)}" ${isSel ? 'selected' : ''}>${esc(o.operacion)}</option>`;
+        });
+        if (selectedOp && !found) {
+          opts.unshift(`<option value="${esc(selectedOp)}" selected>⚠️ ${esc(selectedOp)}</option>`);
+        }
+        return `<option value="">Seleccione...</option>` + opts.join('');
+      };
+
+      const actividadesOptionsHtml = (operacion, selectedAct) => {
+        const opNorm = normalizarTextoGrid(operacion);
+        const acts = ((gridServLookups && gridServLookups.actividades) || []).filter(
+          a => normalizarTextoGrid(a.operacion) === opNorm
+        );
+        const actNorm = normalizarTextoGrid(selectedAct);
+        let found = false;
+        const opts = acts.map(a => {
+          const isSel = normalizarTextoGrid(a.actividad) === actNorm || String(a.id) === String(selectedAct);
+          if (isSel) found = true;
+          return `<option value="${esc(a.actividad)}" ${isSel ? 'selected' : ''}>${esc(a.actividad)}</option>`;
+        });
+        if (selectedAct && !found) {
+          opts.unshift(`<option value="${esc(selectedAct)}" selected>⚠️ ${esc(selectedAct)}</option>`);
+        }
+        return `<option value="">Seleccione...</option>` + opts.join('');
+      };
+
+      const areasOptionsHtml = (operacion, selectedArea) => {
+        const opNorm = normalizarTextoGrid(operacion);
+        const areas = ((gridServLookups && gridServLookups.areas) || []).filter(
+          a => normalizarTextoGrid(a.operacion) === opNorm
+        );
+        const defArea = areas.find(a => String(a.operativo || '').toUpperCase() === 'V');
+        const areaNorm = normalizarTextoGrid(selectedArea);
+        let found = false;
+        const opts = areas.map(a => {
+          const isSel = areaNorm && (normalizarTextoGrid(a.area) === areaNorm || String(a.id) === String(selectedArea));
+          if (isSel) found = true;
+          return `<option value="${esc(a.area)}" ${isSel ? 'selected' : ''}>${esc(a.area)}</option>`;
+        });
+        if (selectedArea && !found) {
+          opts.unshift(`<option value="${esc(selectedArea)}" selected>⚠️ ${esc(selectedArea)}</option>`);
+        }
+        return `<option value="">Auto (${esc(defArea ? defArea.area : 'Operativa')})</option>` + opts.join('');
+      };
+
+      const cellInputStyle = 'width:100%; padding:5px 6px; border:1px solid var(--border); border-radius:4px; background:var(--card-bg); color:var(--text); font-size:0.75rem;';
+
+      tbody.innerHTML = gridServList.map((f, idx) => {
+        const esCredito = String(f.formaDePago) === '3';
+        return `
+          <tr id="gs-row-${idx}" style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 6px; text-align: center; font-weight: 700;">
+              <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+                <span>${idx + 1}</span>
+                <span id="gs-status-icon-${idx}" title="Validando...">⏳</span>
+              </div>
+            </td>
+            <td style="padding: 6px;">
+              <div id="gs-reciboapp-${idx}" style="font-weight: 800; color: var(--accent); font-family: monospace;">-</div>
+              <div id="gs-recibobadge-${idx}" style="font-size: 0.66rem;"></div>
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" value="${esc(f.cargado)}" placeholder="Ej: 164" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'cargado', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <select id="gs-cell-op-${idx}" style="${cellInputStyle}" onchange="onGridServOperacionChange(${idx}, this.value)">
+                ${opsOptionsHtml(f.operacion)}
+              </select>
+            </td>
+            <td style="padding: 6px;">
+              <input type="date" value="${esc(f.fecha)}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'fecha', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <select style="${cellInputStyle}" onchange="onGridServFormaPagoChange(${idx}, this.value)">
+                <option value="1" ${String(f.formaDePago) === '1' ? 'selected' : ''}>1 - Efectivo</option>
+                <option value="2" ${String(f.formaDePago) === '2' ? 'selected' : ''}>2 - Transferencia</option>
+                <option value="3" ${String(f.formaDePago) === '3' ? 'selected' : ''}>3 - Crédito</option>
+              </select>
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" value="${esc(f.ruta)}" placeholder="Destino/Ruta" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'ruta', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" list="gridserv-dl-transportadoras" value="${esc(f.transportadora)}" placeholder="Transportadora" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'transportadora', this.value)">
+              <div id="gs-transpbadge-${idx}" style="font-size:0.65rem; margin-top:2px;"></div>
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" list="gridserv-dl-proveedores" value="${esc(f.proveedor)}" placeholder="PROVEEDOR" style="${cellInputStyle}; text-transform:uppercase;" oninput="onGridServCellInput(${idx}, 'proveedor', this.value.toUpperCase())">
+              <div id="gs-provbadge-${idx}" style="font-size:0.65rem; margin-top:2px;"></div>
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" id="gs-cell-clifact-${idx}" list="gridserv-dl-clientes-credito" value="${esc(f.clienteAFacturar)}" placeholder="${esCredito ? 'Obligatorio (FP=3)' : 'N/A'}" ${esCredito ? '' : 'disabled'} style="${cellInputStyle}; ${esCredito ? '' : 'background:var(--bg-elevated); opacity:0.6;'}" oninput="onGridServCellInput(${idx}, 'clienteAFacturar', this.value.toUpperCase())">
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" list="gridserv-dl-vehiculos" value="${esc(f.vehiculo)}" placeholder="Vehículo" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'vehiculo', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" maxlength="10" value="${esc(f.placa)}" placeholder="ABC123" style="${cellInputStyle}; text-transform:uppercase; font-family:monospace;" oninput="onGridServCellInput(${idx}, 'placa', this.value.toUpperCase())">
+              <div id="gs-placabadge-${idx}" style="font-size:0.65rem; margin-top:2px;"></div>
+            </td>
+            <td style="padding: 6px;">
+              <select id="gs-cell-act-${idx}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'actividad', this.value)">
+                ${actividadesOptionsHtml(f.operacion, f.actividad)}
+              </select>
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" value="${esc(f.manifiesto)}" placeholder="Manifiesto" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'manifiesto', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" value="${esc(f.remolque)}" placeholder="Remolque" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'remolque', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" list="gridserv-dl-unidades" value="${esc(f.unidad)}" placeholder="Unidad" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'unidad', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="number" step="any" value="${esc(f.cantidad)}" placeholder="0" style="${cellInputStyle}; text-align:right;" oninput="onGridServCellInput(${idx}, 'cantidad', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="number" step="any" value="${esc(f.valorUnitario)}" placeholder="0" style="${cellInputStyle}; text-align:right;" oninput="onGridServCellInput(${idx}, 'valorUnitario', this.value)">
+            </td>
+            <td style="padding: 6px; text-align: right; font-weight: 700; color: var(--accent);">
+              <span id="gs-vbase-${idx}">$ 0</span>
+            </td>
+            <td style="padding: 6px; text-align: center;">
+              <input type="checkbox" ${String(f.retefuente).toUpperCase() === 'V' ? 'checked' : ''} onchange="onGridServCellInput(${idx}, 'retefuente', this.checked ? 'V' : '')" title="Retefuente = V">
+            </td>
+            <td style="padding: 6px; text-align: center;">
+              <input type="checkbox" ${String(f.reteiva).toUpperCase() === 'V' ? 'checked' : ''} onchange="onGridServCellInput(${idx}, 'reteiva', this.checked ? 'V' : '')" title="ReteIVA = V">
+            </td>
+            <td style="padding: 6px;">
+              <input type="datetime-local" value="${esc(f.horaInicio)}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'horaInicio', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="datetime-local" value="${esc(f.horaFinal)}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'horaFinal', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <div id="gs-duracion-${idx}" style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">-</div>
+            </td>
+            <td style="padding: 6px;">
+              <select id="gs-cell-area-${idx}" style="${cellInputStyle}" onchange="onGridServCellInput(${idx}, 'area', this.value)">
+                ${areasOptionsHtml(f.operacion, f.area)}
+              </select>
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" value="${esc(f.observaciones)}" placeholder="Observaciones" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'observaciones', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" id="gs-cell-nit-${idx}" value="${esc(f.nit)}" placeholder="${esCredito ? 'Auto Crédito' : 'NIT Cliente'}" ${esCredito ? 'disabled' : ''} style="${cellInputStyle}; ${esCredito ? 'background:var(--bg-elevated); opacity:0.6;' : ''}" oninput="onGridServCellInput(${idx}, 'nit', this.value.replace(/[^0-9]/g, ''))">
+            </td>
+            <td style="padding: 6px;">
+              <div id="gs-nombres-${idx}" style="font-size:0.72rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:175px;">-</div>
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" id="gs-cell-tel-${idx}" value="${esc(f.telefono)}" placeholder="Teléfono" style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'telefono', this.value)">
+            </td>
+            <td style="padding: 6px;">
+              <input type="text" id="gs-cell-email-${idx}" value="${esc(f.email)}" placeholder="Correo F.E." style="${cellInputStyle}" oninput="onGridServCellInput(${idx}, 'email', this.value)">
+            </td>
+            <td style="padding: 6px; text-align: center;">
+              <button type="button" onclick="eliminarFilaGridServicios(${idx})" style="background:transparent; border:none; color:var(--danger); cursor:pointer; font-size:0.95rem;" title="Eliminar fila">🗑️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      actualizarTodasLasMetasDomGridServ();
+    }
+
+    function onGridServCellInput(idx, field, value) {
+      if (!gridServList[idx]) return;
+      gridServList[idx][field] = value;
+      if (field === 'transportadora') sugerirTransportadorasGrid(value);
+      if (field === 'proveedor') sugerirProveedoresGrid(value);
+      actualizarMetaFilaDomGridServ(idx);
+      actualizarBloqueControlGridServ();
+      if (['cargado', 'operacion', 'placa', 'nit', 'transportadora', 'proveedor'].includes(field)) {
+        programarValidacionRemotaGridServ();
+      }
+    }
+
+    function onGridServOperacionChange(idx, nuevaOp) {
+      if (!gridServList[idx]) return;
+      gridServList[idx].operacion = nuevaOp;
+
+      // Actualizar desplegables dependientes (Actividad y Área) de esta fila sin perder foco
+      const selAct = document.getElementById(`gs-cell-act-${idx}`);
+      const selArea = document.getElementById(`gs-cell-area-${idx}`);
+      const opNorm = normalizarTextoGrid(nuevaOp);
+
+      if (selAct && gridServLookups) {
+        const acts = (gridServLookups.actividades || []).filter(a => normalizarTextoGrid(a.operacion) === opNorm);
+        const curAct = gridServList[idx].actividad;
+        const matchAct = acts.find(a => normalizarTextoGrid(a.actividad) === normalizarTextoGrid(curAct));
+        if (!matchAct) gridServList[idx].actividad = '';
+        selAct.innerHTML = '<option value="">Seleccione...</option>' +
+          acts.map(a => `<option value="${esc(a.actividad)}" ${matchAct && a.id === matchAct.id ? 'selected' : ''}>${esc(a.actividad)}</option>`).join('');
+      }
+
+      if (selArea && gridServLookups) {
+        const areas = (gridServLookups.areas || []).filter(a => normalizarTextoGrid(a.operacion) === opNorm);
+        const defArea = areas.find(a => String(a.operativo || '').toUpperCase() === 'V');
+        gridServList[idx].area = '';
+        selArea.innerHTML = `<option value="">Auto (${esc(defArea ? defArea.area : 'Operativa')})</option>` +
+          areas.map(a => `<option value="${esc(a.area)}">${esc(a.area)}</option>`).join('');
+      }
+
+      actualizarMetaFilaDomGridServ(idx);
+      actualizarBloqueControlGridServ();
+      programarValidacionRemotaGridServ();
+    }
+
+    function onGridServFormaPagoChange(idx, nuevoFp) {
+      if (!gridServList[idx]) return;
+      gridServList[idx].formaDePago = nuevoFp;
+      const esCredito = String(nuevoFp) === '3';
+      const cliInput = document.getElementById(`gs-cell-clifact-${idx}`);
+      const nitInput = document.getElementById(`gs-cell-nit-${idx}`);
+
+      if (cliInput) {
+        cliInput.disabled = !esCredito;
+        cliInput.style.background = esCredito ? 'var(--card-bg)' : 'var(--bg-elevated)';
+        cliInput.style.opacity = esCredito ? '1' : '0.6';
+        cliInput.placeholder = esCredito ? 'Obligatorio (FP=3)' : 'N/A';
+        if (!esCredito) {
+          cliInput.value = '';
+          gridServList[idx].clienteAFacturar = '';
+        }
+      }
+      if (nitInput) {
+        nitInput.disabled = esCredito;
+        nitInput.style.background = esCredito ? 'var(--bg-elevated)' : 'var(--card-bg)';
+        nitInput.style.opacity = esCredito ? '0.6' : '1';
+      }
+
+      actualizarMetaFilaDomGridServ(idx);
+      actualizarBloqueControlGridServ();
+    }
+
+    function actualizarMetaFilaDomGridServ(idx) {
+      const f = gridServList[idx];
+      if (!f) return;
+      const ev = evaluarFilaGridServ(f);
+
+      const statusIcon = document.getElementById(`gs-status-icon-${idx}`);
+      if (statusIcon) {
+        statusIcon.textContent = ev.ok ? '✅' : '⚠️';
+        statusIcon.title = ev.ok ? 'Fila válida' : ev.errores.join(' · ');
+      }
+
+      const recEl = document.getElementById(`gs-reciboapp-${idx}`);
+      if (recEl) recEl.textContent = ev.reciboApp || '-';
+
+      const recBadge = document.getElementById(`gs-recibobadge-${idx}`);
+      if (recBadge) {
+        if (!ev.reciboApp) {
+          recBadge.innerHTML = '';
+        } else if (ev.reciboExiste) {
+          recBadge.innerHTML = '<span style="color:#0284c7; font-weight:700;">✓ Recibo existente</span>';
+        } else {
+          recBadge.innerHTML = '<span style="color:#16a34a; font-weight:700;">✨ Recibo nuevo</span>';
+        }
+      }
+
+      const transpBadge = document.getElementById(`gs-transpbadge-${idx}`);
+      if (transpBadge) {
+        if (!limpiarCeldaExcel(f.transportadora)) {
+          transpBadge.innerHTML = '';
+        } else if (ev.transpNueva) {
+          transpBadge.innerHTML = '<span style="color:#d97706; font-weight:700;">✨ Se creará en maestro</span>';
+        } else {
+          transpBadge.innerHTML = '<span style="color:#16a34a;">✓ En maestro</span>';
+        }
+      }
+
+      const provBadge = document.getElementById(`gs-provbadge-${idx}`);
+      if (provBadge) {
+        if (!limpiarCeldaExcel(f.proveedor)) {
+          provBadge.innerHTML = '';
+        } else if (ev.provNuevo) {
+          provBadge.innerHTML = '<span style="color:#d97706; font-weight:700;">✨ Se creará en maestro</span>';
+        } else {
+          provBadge.innerHTML = '<span style="color:#16a34a;">✓ En maestro</span>';
+        }
+      }
+
+      const placaBadge = document.getElementById(`gs-placabadge-${idx}`);
+      if (placaBadge) {
+        const pl = limpiarCeldaExcel(f.placa).toUpperCase();
+        if (!pl) {
+          placaBadge.innerHTML = '';
+        } else if (pl.length !== 6) {
+          placaBadge.innerHTML = '<span style="color:var(--text-muted);">No es de 6 car.</span>';
+        } else if (ev.placaNueva) {
+          placaBadge.innerHTML = '<span style="color:#d97706; font-weight:700;">✨ Placa nueva (6 car.)</span>';
+        } else {
+          placaBadge.innerHTML = '<span style="color:#16a34a;">✓ Placa registrada</span>';
+        }
+      }
+
+      const vbaseEl = document.getElementById(`gs-vbase-${idx}`);
+      if (vbaseEl) vbaseEl.textContent = `$ ${formatMiles(ev.subtotal)}`;
+
+      const durEl = document.getElementById(`gs-duracion-${idx}`);
+      if (durEl) durEl.textContent = `${ev.durInfo.totalHora} (${ev.durInfo.duracion})`;
+
+      const nomEl = document.getElementById(`gs-nombres-${idx}`);
+      if (nomEl) {
+        if (String(f.formaDePago) === '3') {
+          const cc = (gridServLookups?.clientesCredito || []).find(
+            c => normalizarTextoGrid(c.clienteAFacturar) === normalizarTextoGrid(f.clienteAFacturar)
+          );
+          nomEl.textContent = cc ? `${cc.nombre || cc.clienteAFacturar} (NIT: ${cc.nit || '-'})` : '-';
+        } else if (ev.clienteInfo) {
+          nomEl.textContent = ev.clienteInfo.razonSocial;
+          nomEl.title = ev.clienteInfo.razonSocial;
+        } else if (limpiarCeldaExcel(f.nit)) {
+          nomEl.textContent = 'Sin coincidencia en Clientes';
+        } else {
+          nomEl.textContent = '-';
+        }
+      }
+    }
+
+    function actualizarTodasLasMetasDomGridServ() {
+      for (let i = 0; i < gridServList.length; i++) {
+        actualizarMetaFilaDomGridServ(i);
+      }
+      actualizarBloqueControlGridServ();
+    }
+
+    function actualizarBloqueControlGridServ() {
+      const limites = (gridServLookups && gridServLookups.limites) || {
+        transportadoras: 50,
+        proveedores: 50,
+        placas: 100,
+        recibos: 300,
+        servicios: 300
+      };
+
+      const setTranspNuevas = new Set();
+      const setProvNuevos = new Set();
+      const setPlacasNuevas = new Set();
+      const setRecibosNuevos = new Set();
+      const setRecibosExist = new Set();
+
+      let filasConError = 0;
+      let primerError = '';
+      let subtotalTotal = 0;
+
+      gridServList.forEach((f, idx) => {
+        const ev = evaluarFilaGridServ(f);
+        subtotalTotal += ev.subtotal;
+        if (!ev.ok) {
+          filasConError++;
+          if (!primerError) primerError = `Fila ${idx + 1}: ${ev.errores.join(', ')}`;
+        }
+        if (ev.transpNueva && limpiarCeldaExcel(f.transportadora)) {
+          setTranspNuevas.add(normalizarTextoGrid(f.transportadora));
+        }
+        if (ev.provNuevo && limpiarCeldaExcel(f.proveedor)) {
+          setProvNuevos.add(normalizarTextoGrid(f.proveedor));
+        }
+        if (ev.placaNueva && limpiarCeldaExcel(f.placa).length === 6) {
+          setPlacasNuevas.add(limpiarCeldaExcel(f.placa).toUpperCase());
+        }
+        if (ev.reciboApp) {
+          if (ev.reciboExiste) setRecibosExist.add(ev.reciboApp);
+          else setRecibosNuevos.add(ev.reciboApp);
+        }
+      });
+
+      const elTransp = document.getElementById('gridserv-cnt-transp');
+      const elProv = document.getElementById('gridserv-cnt-prov');
+      const elPlacas = document.getElementById('gridserv-cnt-placas');
+      const elRecibos = document.getElementById('gridserv-cnt-recibos');
+      const elRecExist = document.getElementById('gridserv-cnt-recibos-exist');
+      const elServicios = document.getElementById('gridserv-cnt-servicios');
+      const elSubtotal = document.getElementById('gridserv-subtotal-preview');
+
+      if (elTransp) elTransp.textContent = `${setTranspNuevas.size} / ${limites.transportadoras}`;
+      if (elProv) elProv.textContent = `${setProvNuevos.size} / ${limites.proveedores}`;
+      if (elPlacas) elPlacas.textContent = `${setPlacasNuevas.size} / ${limites.placas}`;
+      if (elRecibos) elRecibos.textContent = `${setRecibosNuevos.size} / ${limites.recibos}`;
+      if (elRecExist) elRecExist.textContent = setRecibosExist.size ? `(+${setRecibosExist.size} existentes)` : '';
+      if (elServicios) elServicios.textContent = `${gridServList.length} / ${limites.servicios}`;
+      if (elSubtotal) elSubtotal.textContent = `Subtotal Lote: $ ${formatMiles(subtotalTotal)}`;
+
+      const banner = document.getElementById('gridserv-status-banner');
+      const text = document.getElementById('gridserv-status-text');
+      const btnGuardar = document.getElementById('btn-gridserv-guardar');
+
+      const superaLimites =
+        setTranspNuevas.size > limites.transportadoras ||
+        setProvNuevos.size > limites.proveedores ||
+        setPlacasNuevas.size > limites.placas ||
+        setRecibosNuevos.size > limites.recibos ||
+        gridServList.length > limites.servicios;
+
+      if (gridServList.length === 0) {
+        if (banner) {
+          banner.style.background = 'var(--bg-elevated)';
+          banner.style.color = 'var(--text-muted)';
+          banner.style.borderColor = 'var(--border)';
+        }
+        if (text) text.textContent = 'Agregue filas o pegue desde Excel para validar la carga.';
+        if (btnGuardar) btnGuardar.disabled = true;
+      } else if (filasConError > 0 || superaLimites) {
+        if (banner) {
+          banner.style.background = 'rgba(239, 68, 68, 0.12)';
+          banner.style.color = 'var(--danger)';
+          banner.style.borderColor = 'var(--danger)';
+        }
+        if (text) {
+          text.textContent = superaLimites
+            ? 'AÚN NO SE PUEDE CARGAR: Se superó uno de los límites máximos por lote.'
+            : `AÚN NO SE PUEDE CARGAR (${filasConError} fila${filasConError === 1 ? '' : 's'} con pendientes — ${primerError})`;
+        }
+        if (btnGuardar) btnGuardar.disabled = true;
+      } else {
+        const nuevosCatalogos = setTranspNuevas.size + setProvNuevos.size + setPlacasNuevas.size;
+        if (banner) {
+          banner.style.background = 'rgba(22, 163, 74, 0.12)';
+          banner.style.color = '#16a34a';
+          banner.style.borderColor = '#16a34a';
+        }
+        if (text) {
+          text.textContent = nuevosCatalogos > 0
+            ? `✅ YA SE PUEDE CARGAR A LA BASE DE DATOS (Se crearán automáticamente ${nuevosCatalogos} registro(s) de catálogo nuevos, ${setRecibosNuevos.size} recibo(s) y ${gridServList.length} servicio(s))`
+            : `✅ YA SE PUEDE CARGAR A LA BASE DE DATOS (${setRecibosNuevos.size} recibo(s) nuevos y ${gridServList.length} servicio(s) listos)`;
+        }
+        if (btnGuardar) btnGuardar.disabled = false;
+      }
+    }
+
+    // ── Procesador de Pegado desde Excel (Tabla "Datos") ────────────────────────
+    function procesarPegadoExcelServicios() {
+      const pasteArea = document.getElementById('gridserv-paste-area');
+      const rawText = pasteArea ? pasteArea.value : '';
+      if (!rawText || !rawText.trim()) {
+        alert('Pegue primero las filas copiadas desde Excel.');
+        return;
+      }
+
+      const lines = rawText
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n')
+        .map(l => l.trimEnd())
+        .filter(l => l.trim() !== '');
+
+      if (!lines.length) {
+        alert('No se encontraron filas válidas en el texto pegado.');
+        return;
+      }
+
+      const nuevasFilas = [];
+      for (let i = 0; i < lines.length; i++) {
+        const cols = lines[i].split('\t');
+        if (!cols.length) continue;
+
+        // Detectar y saltar fila de encabezado si el usuario la incluyó al copiar
+        const c0Upper = normalizarTextoGrid(cols[0]);
+        const c1Upper = normalizarTextoGrid(cols[1] || '');
+        if (
+          c0Upper === 'RECIBO APP' ||
+          c0Upper === 'CARGADO' ||
+          (c0Upper.includes('RECIBO') && c1Upper === 'CARGADO') ||
+          (c0Upper === 'CARGADO' && c1Upper === 'OPERACION')
+        ) {
+          continue;
+        }
+
+        // Detectar si el usuario copió desde la Columna A ("Recibo App", ej. "325-00164")
+        // junto con la Columna B ("Cargado", ej. "164" o "Cargado") y la Columna C ("OPERACIÓN")
+        let offset = 0;
+        const c0Trim = limpiarCeldaExcel(cols[0]);
+        const c1Trim = limpiarCeldaExcel(cols[1]);
+        const c2Trim = limpiarCeldaExcel(cols[2]);
+
+        const esC1Operacion = gridServLookups && (gridServLookups.operaciones || []).some(
+          o => normalizarTextoGrid(o.operacion) === normalizarTextoGrid(c1Trim)
+        );
+        const esC2Operacion = gridServLookups && (gridServLookups.operaciones || []).some(
+          o => normalizarTextoGrid(o.operacion) === normalizarTextoGrid(c2Trim)
+        );
+
+        if (!esC1Operacion && esC2Operacion) {
+          offset = 1;
+        }
+
+        const getCol = (idxBase) => limpiarCeldaExcel(cols[idxBase + offset]);
+
+        let cargadoVal = getCol(0);
+        // Si el usuario copió desde A y en B decía "Cargado" (literal tras correr la macro antes), usar A (Recibo App)
+        if (offset === 1 && normalizarTextoGrid(cargadoVal) === 'CARGADO' && /^\d{2,5}-\d{1,8}$/.test(c0Trim)) {
+          cargadoVal = c0Trim;
+        }
+
+        const operacionVal = getCol(1);
+        const fechaRaw = getCol(2);
+        const fpRaw = getCol(3);
+        const rutaVal = getCol(4);
+        const transpVal = getCol(5);
+        const provVal = getCol(6).toUpperCase();
+        const cliFactVal = getCol(7).toUpperCase();
+        const vehiculoVal = getCol(8);
+        const placaVal = getCol(9).toUpperCase();
+        const actividadVal = getCol(10);
+        const manifiestoVal = getCol(11);
+        const remolqueVal = getCol(12);
+        const unidadVal = getCol(13);
+        const cantVal = parseNumeroCeldaExcel(getCol(14));
+        const vunitVal = parseNumeroCeldaExcel(getCol(15));
+        const retefuenteVal = getCol(16).toUpperCase() === 'V' ? 'V' : '';
+        const reteivaVal = getCol(17).toUpperCase() === 'V' ? 'V' : '';
+        const horaInicioRaw = getCol(18);
+        const horaFinalRaw = getCol(19);
+        const areaVal = getCol(20);
+        const obsVal = getCol(21);
+        const nitVal = getCol(22).replace(/[^0-9]/g, '');
+
+        if (!cargadoVal && !operacionVal && !actividadVal && !placaVal) continue;
+
+        // Resolver nombre canónico de Operación y Actividad si coinciden sin tildes/mayúsculas
+        let opFinal = operacionVal;
+        if (gridServLookups && operacionVal) {
+          const opMatch = (gridServLookups.operaciones || []).find(
+            o => normalizarTextoGrid(o.operacion) === normalizarTextoGrid(operacionVal)
+          );
+          if (opMatch) opFinal = opMatch.operacion;
+        }
+
+        let actFinal = actividadVal;
+        if (gridServLookups && actividadVal && opFinal) {
+          const actMatch = (gridServLookups.actividades || []).find(
+            a => normalizarTextoGrid(a.operacion) === normalizarTextoGrid(opFinal) &&
+                 normalizarTextoGrid(a.actividad) === normalizarTextoGrid(actividadVal)
+          );
+          if (actMatch) actFinal = actMatch.actividad;
+        }
+
+        let areaFinal = areaVal;
+        if (gridServLookups && areaVal && opFinal) {
+          const areaMatch = (gridServLookups.areas || []).find(
+            a => normalizarTextoGrid(a.operacion) === normalizarTextoGrid(opFinal) &&
+                 normalizarTextoGrid(a.area) === normalizarTextoGrid(areaVal)
+          );
+          if (areaMatch) areaFinal = areaMatch.area;
+        }
+
+        const fechaISO = normalizarFechaInput(fechaRaw);
+        const horaInicioISO = normalizarHoraInput(horaInicioRaw, fechaISO);
+        const horaFinalISO = normalizarHoraInput(horaFinalRaw, horaInicioISO ? horaInicioISO.slice(0, 10) : fechaISO);
+
+        let fpFinal = '1';
+        if (fpRaw === '1' || fpRaw === '2' || fpRaw === '3') {
+          fpFinal = fpRaw;
+        } else if (normalizarTextoGrid(fpRaw).includes('CRED')) {
+          fpFinal = '3';
+        } else if (normalizarTextoGrid(fpRaw).includes('TRANS')) {
+          fpFinal = '2';
+        }
+
+        nuevasFilas.push(crearObjetoFilaVacia({
+          cargado: cargadoVal,
+          operacion: opFinal,
+          fecha: fechaISO,
+          formaDePago: fpFinal,
+          ruta: rutaVal,
+          transportadora: transpVal,
+          proveedor: provVal,
+          clienteAFacturar: fpFinal === '3' ? cliFactVal : '',
+          vehiculo: vehiculoVal,
+          placa: placaVal,
+          actividad: actFinal,
+          manifiesto: manifiestoVal,
+          remolque: remolqueVal,
+          unidad: unidadVal,
+          cantidad: cantVal,
+          valorUnitario: vunitVal,
+          retefuente: retefuenteVal,
+          reteiva: reteivaVal,
+          horaInicio: horaInicioISO,
+          horaFinal: horaFinalISO,
+          area: areaFinal,
+          observaciones: obsVal,
+          nit: nitVal
+        }));
+      }
+
+      if (!nuevasFilas.length) {
+        alert('No se pudieron extraer filas con datos válidos del texto pegado.');
+        return;
+      }
+
+      gridServList = nuevasFilas;
+      if (pasteArea) pasteArea.value = '';
+      switchGridServTab('manual');
+      programarValidacionRemotaGridServ();
+    }
+
+    // ── Guardar todo el lote en Base de Datos ──────────────────────────────────
+    async function guardarLoteServiciosGrid() {
+      if (!gridServList.length) return;
+
+      const btn = document.getElementById('btn-gridserv-guardar');
+      const overlay = document.getElementById('gridserv-loading-overlay');
+      const titleEl = document.getElementById('gridserv-loading-title');
+      const subEl = document.getElementById('gridserv-loading-sub');
+
+      if (!confirm(`¿Confirma cargar ${gridServList.length} servicio(s) a la base de datos?\n\nEl sistema registrará automáticamente las Transportadoras, Proveedores, Placas y Recibos nuevos, y luego insertará todos los Servicios.`)) {
+        return;
+      }
+
+      try {
+        if (btn) btn.disabled = true;
+        if (titleEl) titleEl.textContent = 'Guardando lote en Base de Datos...';
+        if (subEl) subEl.textContent = 'Ejecutando transacción: Transportadoras → Proveedores → Placas → Recibos → Servicios';
+        if (overlay) overlay.style.display = 'flex';
+
+        const resp = await fetch(`/facturacion/api/servicios/guardar-masivo?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filas: gridServList })
+        });
+        const data = await resp.json();
+
+        if (!resp.ok || !data.ok) {
+          alert('No se pudo completar la carga:\n\n' + (data.error || 'Error desconocido.'));
+          return;
+        }
+
+        const r = data.resumen || {};
+        // Invalidar caché de lookups para que incluya las nuevas transportadoras/proveedores
+        gridServLookups = null;
+        gridServCachePlacas.clear();
+        gridServCacheRecibos.clear();
+        gridServCacheTransportadoras.clear();
+        gridServCacheProveedores.clear();
+        gridServList = [];
+
+        cerrarModalCargaMasivaServicios();
+
+        alert(
+          `✅ Proceso completado exitosamente.\n\n` +
+          `• Servicios insertados: ${r.serviciosCreados || 0}\n` +
+          `• Recibos nuevos creados: ${r.recibosCreados || 0} (existentes reutilizados: ${r.recibosExistentesUsados || 0})\n` +
+          `• Transportadoras nuevas: ${r.transportadorasCreadas || 0}\n` +
+          `• Proveedores nuevos: ${r.proveedoresCreados || 0}\n` +
+          `• Placas nuevas (6 car.): ${r.placasCreadas || 0}`
+        );
+
+        // Refrescar vistas de Servicios y Recibos
+        if (typeof cargarServicios === 'function') cargarServicios().catch(() => {});
+        if (typeof cargarMetricasServicios === 'function') cargarMetricasServicios().catch(() => {});
+        if (typeof cargarRecibos === 'function') cargarRecibos().catch(() => {});
+        if (typeof cargarMetricasRecibos === 'function') cargarMetricasRecibos().catch(() => {});
+      } catch (err) {
+        alert('Error de conexión al guardar la carga masiva: ' + err.message);
+      } finally {
+        if (overlay) overlay.style.display = 'none';
+        actualizarBloqueControlGridServ();
+      }
     }
 
   </script>

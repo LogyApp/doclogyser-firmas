@@ -1,0 +1,651 @@
+Sub Ingreso_Recibos()
+    Dim conn As Object
+    Dim cmd As Object
+    Dim ws As Worksheet
+    Dim wsDatos As Worksheet
+    Dim lastRow As Long
+    Dim i As Long, j As Long
+    Dim sql As String
+    Dim fieldValue As Variant
+
+    On Error GoTo ErrorHandler
+
+    ' --- VALIDACIÓN ---
+    Set wsDatos = ThisWorkbook.Sheets("Datos")
+    If UCase(Trim(wsDatos.Range("AH6").value)) <> "OK" Then
+        MsgBox "No se puede ejecutar la importación." & vbCrLf & _
+               "Favor validar e ingresar 'OK' en la celda que corresponde", vbExclamation
+        Exit Sub
+    End If
+
+    ' --- COPIAR DATOS DE PARAMETROS A PLANO RECIBOS ---
+    Sheets("Parametros").Select
+    Range("G2:G300").Select
+    Selection.Copy
+    Sheets("Plano Recibos").Select
+    Range("A2").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Range("A2").Select
+    Sheets("Datos").Select
+    Range("AG2").Select
+
+  ' Configuración de la conexión MySQL
+    Set conn = CreateObject("ADODB.Connection")
+    conn.Open "DRIVER={MySQL ODBC 9.2 Unicode Driver};" & _
+              "SERVER=34.162.109.112;" & _
+              "PORT=3307;" & _
+              "DATABASE=Desplegables;" & _
+              "USER=*****;" & _
+              "PASSWORD=*******;"
+
+    ' --- HOJA PLANO RECIBOS ---
+    Set ws = ThisWorkbook.Sheets("Plano Recibos")
+
+    ' Determinar última fila con datos en columna B
+    lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+
+    ' --- PREPARAR SQL ---
+    ' Columnas actuales de Dynamic_Recibos (sin las eliminadas)
+    ' Orden debe coincidir exactamente con la hoja "Plano Recibos"
+    sql = "INSERT INTO Dynamic_Recibos (" & _
+          "`IdRecibo`, `Consecutivo Recibo`, `Operación`, `Usuario`, " & _
+          "`Fecha`, `Cliente a Facturar`, `Categoria`, `Cliente por Placa`, " & _
+          "`Placa`, `Nit`, `Telefono`, `Email`, " & _
+          "`Retefuente`, `ReteIVA`, `ReteICA`, " & _
+          "`Modalidad`, `Observaciones`" & _
+          ") VALUES (" & _
+          "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+
+    Set cmd = CreateObject("ADODB.Command")
+    cmd.ActiveConnection = conn
+    cmd.CommandText = sql
+
+    ' --- 17 PARÁMETROS ---
+    For j = 1 To 17
+        cmd.Parameters.Append cmd.CreateParameter("Param" & j, adVarWChar, adParamInput, 255)
+    Next j
+
+    ' Tipos específicos por posición
+    ' Param5  = Fecha        ? adDate
+    ' Param10 = Nit          ? adBigInt (código numérico del cliente)
+    ' Param11 = Telefono     ? adBigInt
+    cmd.Parameters("Param5").Type = adDate     ' Fecha
+    cmd.Parameters("Param10").Type = adBigInt  ' Nit
+    cmd.Parameters("Param11").Type = adBigInt  ' Telefono
+
+    Application.ScreenUpdating = False
+
+    ' --- PROCESAR CADA FILA ---
+    For i = 2 To lastRow
+        For j = 1 To 17
+            fieldValue = ws.Cells(i, j).value
+
+            If IsEmpty(fieldValue) Or fieldValue = "" Or fieldValue = "NULL" Then
+                cmd.Parameters("Param" & j).value = Null
+            Else
+                Select Case j
+                    Case 5:  cmd.Parameters("Param" & j).value = CDate(fieldValue)  ' Fecha
+                    Case 10: cmd.Parameters("Param" & j).value = CDbl(fieldValue)   ' Nit
+                    Case 11: cmd.Parameters("Param" & j).value = CDbl(fieldValue)   ' Telefono
+                    Case Else: cmd.Parameters("Param" & j).value = CStr(fieldValue)
+                End Select
+            End If
+        Next j
+
+        ' Ejecutar inserción
+        On Error Resume Next
+        cmd.Execute
+        If Err.Number <> 0 Then
+            MsgBox "Error en fila " & i & ": " & Err.Description & vbCrLf & _
+                   "SQL ejecutado: " & cmd.CommandText, vbExclamation
+            Err.Clear
+            Exit For
+        End If
+        On Error GoTo 0
+    Next i
+
+    MsgBox "Proceso completado. Se procesaron " & (lastRow - 1) & " registros.", vbInformation
+
+Cleanup:
+    On Error Resume Next
+    conn.Close
+    Set cmd = Nothing
+    Set conn = Nothing
+
+    ' --- COPIAR DE PLANO RECIBOS A PARAMETROS (igual que versión anterior) ---
+    Sheets("Plano Recibos").Select
+    Range("C2:C300").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Parametros").Select
+    Range("H2").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Plano Recibos").Select
+    Range("I2:I300").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Parametros").Select
+    Range("I2").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Plano Recibos").Select
+    Range("B2:B300").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Parametros").Select
+    Range("J2").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Sheets("Plano Recibos").Select
+    Range("A2:A300").Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Sheets("Parametros").Select
+    Range("K2").Select
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+        :=False, Transpose:=False
+    Range("K6").Select
+    Sheets("Datos").Select
+    Range("AG2").Select
+
+    ' --- SOLO BORRA EL OK, NO LOS DATOS ---
+    ThisWorkbook.Sheets("Datos").Range("AH6").ClearContents
+
+    Application.ScreenUpdating = True
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "Error crítico: " & Err.Description & vbCrLf & _
+           "En la operación SQL: " & sql, vbCritical
+    Resume Cleanup
+End Sub
+-------------------------
+Sub CargarServicios()
+    Dim conn As Object, cmd As Object
+    Dim ws As Worksheet, wsDatos As Worksheet
+    Dim lastRow As Long, lastCol As Long
+    Dim i As Long, j As Long, recordsInserted As Long
+    Dim sql As String
+    Dim fieldValue As Variant
+    Dim paramIndex As Integer
+
+    ' --- VALIDACIÓN ---
+    Set wsDatos = ThisWorkbook.Sheets("Datos")
+    If UCase(Trim(wsDatos.Range("AH7").value)) <> "OK" Then
+        MsgBox "No se puede ejecutar la importación." & vbCrLf & _
+               "Favor validar e ingresar 'OK' en la celda que corresponde", vbExclamation
+        Exit Sub
+    End If
+
+    ' --- CONEXIÓN ---
+    Set conn = CreateObject("ADODB.Connection")
+    conn.ConnectionString = "DRIVER={MySQL ODBC 9.2 Unicode Driver};" & _
+                            "SERVER=34.162.109.112;" & _
+                            "PORT=3307;" & _
+                            "DATABASE=Desplegables;" & _
+                            "USER=*****;" & _
+              		    "PASSWORD=*******;"
+                            "OPTION=3;"
+
+    On Error GoTo ErrorHandler
+    conn.Open
+
+    ' --- TRANSACCIÓN via SQL directa (compatible con MySQL ODBC) ---
+    ' Si hay error en cualquier fila se hace ROLLBACK y no se inserta nada
+    conn.Execute "START TRANSACTION"
+
+    ' --- HOJA DE TRABAJO ---
+    Set ws = ThisWorkbook.Sheets("Plano Servicios")
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
+
+    If lastRow <= 1 Then
+        MsgBox "No hay datos para importar.", vbExclamation
+        Exit Sub
+    End If
+
+    ' --- COLUMNAS PERMITIDAS (nueva estructura sin columnas eliminadas) ---
+    ' Validacion es STORED GENERATED — no se incluye
+    ' Firma_Recibido reemplaza a Hora Muelle
+    Dim colsPermitidas As String
+    colsPermitidas = "|IdServicio|IdRecibo|Estado|Usuario|Area|Fecha|" & _
+                     "Transportadora|Proveedor|Proveedor Texto|Actividad|" & _
+                     "Vehiculo|Remolque|PL1|Unidad|Cantidad|Valor Unitario|" & _
+                     "Origen|Destino|Manifiesto|Foto Documento|Etapa|Muelle|" & _
+                     "Hora Inicio|Hora Final|Duración|Total Hora|Grupo Dtjo|" & _
+                     "Auxiliares|Notas|Foto Evidencia|Forma De Pago|" & _
+                     "Foto Transferencia|Fecha Transferencia|Observaciones|" & _
+                     "Telefono|Firma_Recibido|Edición|"
+
+    ' --- CONSTRUIR SQL DINÁMICO ---
+    sql = "INSERT INTO `Dynamic_Servicios` ("
+    For j = 1 To lastCol
+        Dim colName As String
+        colName = ws.Cells(1, j).value
+        If InStr(colsPermitidas, "|" & colName & "|") > 0 Then
+            sql = sql & "`" & colName & "`, "
+        End If
+    Next j
+    sql = Left(sql, Len(sql) - 2) & ") VALUES ("
+    For j = 1 To lastCol
+        colName = ws.Cells(1, j).value
+        If InStr(colsPermitidas, "|" & colName & "|") > 0 Then
+            sql = sql & "?, "
+        End If
+    Next j
+    sql = Left(sql, Len(sql) - 2) & ")"
+
+    ' --- CONFIGURAR COMANDO ---
+    Set cmd = CreateObject("ADODB.Command")
+    Set cmd.ActiveConnection = conn
+    cmd.CommandText = sql
+
+    ' --- AGREGAR PARÁMETROS SEGÚN TIPO ---
+    For j = 1 To lastCol
+        colName = ws.Cells(1, j).value
+        If InStr(colsPermitidas, "|" & colName & "|") > 0 Then
+            Select Case colName
+                Case "Cantidad", "Valor Unitario"
+                    cmd.Parameters.Append cmd.CreateParameter("param" & j, adNumeric, adParamInput)
+                    cmd.Parameters("param" & j).NumericScale = 2
+                    cmd.Parameters("param" & j).Precision = 15
+
+                Case "Area", "Actividad", "Forma De Pago"
+                    cmd.Parameters.Append cmd.CreateParameter("param" & j, adInteger, adParamInput)
+
+                Case "Fecha", "Hora Inicio", "Hora Final", "Fecha Transferencia"
+                    cmd.Parameters.Append cmd.CreateParameter("param" & j, adDBTimeStamp, adParamInput)
+
+                Case "Total Hora"
+                    cmd.Parameters.Append cmd.CreateParameter("param" & j, adVarWChar, adParamInput, 10)
+
+                Case Else
+                    ' Todos los demás como texto — incluyendo Firma_Recibido, Telefono, Edición
+                    cmd.Parameters.Append cmd.CreateParameter("param" & j, adVarWChar, adParamInput, 512)
+            End Select
+        End If
+    Next j
+
+    Application.ScreenUpdating = False
+    recordsInserted = 0
+
+    ' --- PROCESAR FILAS ---
+    For i = 2 To lastRow
+
+        ' Saltar filas vacías en columna A (IdServicio)
+        If IsEmpty(ws.Cells(i, 1).value) Or Trim(ws.Cells(i, 1).value) = "" Then
+            GoTo NextRow
+        End If
+
+        paramIndex = 1
+
+        For j = 1 To lastCol
+            colName = ws.Cells(1, j).value
+            If InStr(colsPermitidas, "|" & colName & "|") > 0 Then
+
+                fieldValue = ws.Cells(i, j).value
+
+                If IsEmpty(fieldValue) Or fieldValue = "" Then
+                    cmd.Parameters("param" & paramIndex).value = Null
+                Else
+                    On Error Resume Next
+                    Select Case colName
+
+                        Case "Cantidad", "Valor Unitario"
+                            Dim strVal As String
+                            strVal = CStr(fieldValue)
+                            If IsNumeric(strVal) Then
+                                cmd.Parameters("param" & paramIndex).value = CDec(strVal)
+                            Else
+                                strVal = Replace(strVal, ".", "")
+                                strVal = Replace(strVal, ",", ".")
+                                Dim pts() As String
+                                pts = Split(strVal, ".")
+                                If UBound(pts) > 0 Then
+                                    If Len(pts(1)) > 2 Then
+                                        strVal = pts(0) & "." & Left(pts(1), 2)
+                                    ElseIf Len(pts(1)) < 2 Then
+                                        strVal = strVal & String(2 - Len(pts(1)), "0")
+                                    End If
+                                Else
+                                    strVal = strVal & ".00"
+                                End If
+                                If IsNumeric(strVal) Then
+                                    cmd.Parameters("param" & paramIndex).value = CDec(strVal)
+                                Else
+                                    cmd.Parameters("param" & paramIndex).value = Null
+                                End If
+                            End If
+
+                        Case "Area", "Actividad", "Forma De Pago"
+                            cmd.Parameters("param" & paramIndex).value = Val(fieldValue)
+
+                        Case "Fecha", "Hora Inicio", "Hora Final", "Fecha Transferencia"
+                            If IsDate(fieldValue) Then
+                                cmd.Parameters("param" & paramIndex).value = Format(fieldValue, "yyyy-mm-dd hh:mm:ss")
+                            Else
+                                cmd.Parameters("param" & paramIndex).value = Null
+                            End If
+
+                        Case "Total Hora"
+                            If IsDate(fieldValue) Or IsNumeric(fieldValue) Then
+                                cmd.Parameters("param" & paramIndex).value = Format(fieldValue, "hh:mm:ss")
+                            Else
+                                cmd.Parameters("param" & paramIndex).value = Null
+                            End If
+
+                        Case Else
+                            cmd.Parameters("param" & paramIndex).value = CStr(fieldValue)
+
+                    End Select
+
+                    If Err.Number <> 0 Then
+                        cmd.Parameters("param" & paramIndex).value = CStr(fieldValue)
+                        Err.Clear
+                    End If
+                    On Error GoTo 0
+                End If
+
+                paramIndex = paramIndex + 1
+            End If
+        Next j
+
+        ' Ejecutar inserción — si falla hace ROLLBACK de todo
+        On Error Resume Next
+        cmd.Execute
+        If Err.Number <> 0 Then
+            Dim errDesc As String
+            errDesc = Err.Description
+            Err.Clear
+            On Error GoTo 0
+            conn.Execute "ROLLBACK"
+            conn.Close
+            Application.ScreenUpdating = True
+            MsgBox "Error en fila " & i & ": " & errDesc & vbCrLf & _
+                   "Columna: " & colName & vbCrLf & _
+                   "Valor: " & fieldValue & vbCrLf & vbCrLf & _
+                   "No se insertó ningún registro. Corrija el error y vuelva a intentarlo.", vbCritical
+            Exit Sub
+        End If
+        On Error GoTo 0
+        recordsInserted = recordsInserted + 1
+
+NextRow:
+    Next i
+
+    ' --- CONFIRMAR TRANSACCIÓN ---
+    conn.Execute "COMMIT"
+    conn.Close
+    Application.ScreenUpdating = True
+
+    ' --- LIMPIEZA AL FINALIZAR ---
+    If recordsInserted > 0 Then
+
+        ' 1. Borrar solo el OK
+        wsDatos.Range("AH7").ClearContents
+
+        ' 2. Poner "Cargado" en columna B de la tabla Datos
+        '    solo donde la columna C (tercera columna de la tabla) tenga dato
+        Dim tbl As ListObject
+        On Error Resume Next
+        Set tbl = wsDatos.ListObjects("Datos")
+        On Error GoTo 0
+
+        If Not tbl Is Nothing Then
+            Dim tblRow As Long
+            For tblRow = 1 To tbl.DataBodyRange.Rows.Count
+                ' Columna 3 de la tabla = C en la hoja
+                If Trim(CStr(tbl.DataBodyRange.Cells(tblRow, 3).value)) <> "" Then
+                    tbl.DataBodyRange.Cells(tblRow, 2).value = "Cargado"
+                End If
+            Next tblRow
+        End If
+
+        MsgBox "Proceso completado. Insertados: " & recordsInserted & " registros." & vbCrLf & _
+               "Se marcó 'Cargado' en los registros procesados.", vbInformation
+    End If
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "Error crítico: " & Err.Description & vbCrLf & _
+           "Fila: " & i & " | Columna: " & j & vbCrLf & vbCrLf & _
+           "No se insertó ningún registro. Corrija el error y vuelva a intentarlo.", vbCritical
+    On Error Resume Next
+    conn.Execute "ROLLBACK"
+    conn.Close
+    On Error GoTo 0
+    Application.ScreenUpdating = True
+End Sub
+----------------------------
+
+Sub Ingreso_Transportadora()
+    Dim conn As Object
+    Dim cmd As Object
+    Dim i As Integer
+    Dim ws As Worksheet
+    Dim ultimaFila As Integer
+    
+            ' --- NUEVA VALIDACIÓN ---
+    ' Verificar celda N5 en hoja "Datos"
+    Set wsDatos = ThisWorkbook.Sheets("Datos")
+    If UCase(Trim(wsDatos.Range("AH3").value)) <> "OK" Then
+        MsgBox "No se puede ejecutar la importación." & vbCrLf & _
+               "Favor validar e ingresar 'OK' en la celda que corresponde", vbExclamation
+        Exit Sub
+    End If
+    ' --- FIN DE VALIDACIÓN ---
+    
+    ' Configuración de la conexión MySQL
+    Set conn = CreateObject("ADODB.Connection")
+    conn.Open "DRIVER={MySQL ODBC 9.2 Unicode Driver};" & _
+              "SERVER=34.162.109.112;" & _
+              "PORT=3307;" & _
+              "DATABASE=Desplegables;" & _
+              "USER=*****;" & _
+              "PASSWORD=*******;"
+    
+    ' Hoja y rango de datos
+    Set ws = ThisWorkbook.Sheets("Plano Transportadora")
+    ultimaFila = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+    
+    ' Recorrer filas hasta encontrar celda vacía en B
+    i = 2  ' Empieza en la fila 2 (fila 1 = encabezados)
+    Do While Not IsEmpty(ws.Cells(i, 2).value) And ws.Cells(i, 2).value <> ""
+        Set cmd = CreateObject("ADODB.Command")
+        cmd.ActiveConnection = conn
+        cmd.CommandText = "INSERT INTO Maestro_Transportadora (ID, Transportadora, Usuario, `Fecha Ingreso`) " & _
+                          "VALUES (?, ?, ?, ?)"
+        
+        ' Parámetros
+        cmd.Parameters.Append cmd.CreateParameter("ID", 200, 1, 50, ws.Cells(i, 1).value)  ' 200 = VARCHAR
+        cmd.Parameters.Append cmd.CreateParameter("Transportadora", 203, 1, 255, ws.Cells(i, 2).value)  ' 203 = LONGTEXT
+        cmd.Parameters.Append cmd.CreateParameter("Usuario", 200, 1, 50, ws.Cells(i, 3).value)
+        
+        ' Manejo de fechas
+        If IsEmpty(ws.Cells(i, 4).value) Or ws.Cells(i, 4).value = "" Then
+            cmd.Parameters.Append cmd.CreateParameter("Fecha", 135, 1, , Null)
+        Else
+            cmd.Parameters.Append cmd.CreateParameter("Fecha", 135, 1, , Format(ws.Cells(i, 4).value, "yyyy-mm-dd hh:mm:ss"))
+        End If
+        
+        cmd.Execute
+        i = i + 1  ' Avanza a la siguiente fila
+    Loop
+    
+    conn.Close
+        ' --- NUEVO CÓDIGO ---
+    ' Borrar el "OK" después de ejecución exitosa
+    ThisWorkbook.Sheets("Datos").Range("AH3").ClearContents
+    ' --- FIN DE NUEVO CÓDIGO ---
+    MsgBox "¡Datos de Transportadora subidos correctamente a la base de datos", vbInformation
+End Sub
+
+-----------------------
+
+Sub Ingreso_Proveedor()
+    Dim conn As Object
+    Dim i As Integer
+    Dim ws As Worksheet
+    Dim wsDatos As Worksheet
+    Dim ultimaFila As Integer
+    Dim sql As String
+    Dim vID As String, vProveedor As String, vUsuario As String, vFecha As String
+
+    Set wsDatos = ThisWorkbook.Sheets("Datos")
+    If UCase(Trim(wsDatos.Range("AH4").value)) <> "OK" Then
+        MsgBox "No se puede ejecutar la importación." & vbCrLf & _
+               "Favor validar e ingresar 'OK' en la celda que corresponde", vbExclamation
+        Exit Sub
+    End If
+
+    Set conn = CreateObject("ADODB.Connection")
+    conn.Open "DRIVER={MySQL ODBC 9.2 Unicode Driver};" & _
+              "SERVER=34.162.109.112;" & _
+              "PORT=3307;" & _
+              "DATABASE=Desplegables;" & _
+              "USER=*****;" & _
+              "PASSWORD=*******;"
+
+    Set ws = ThisWorkbook.Sheets("Plano Proveedor")
+    ultimaFila = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+
+    i = 2
+    Do While Not IsEmpty(ws.Cells(i, 2).value) And ws.Cells(i, 2).value <> ""
+        vID = Replace(ws.Cells(i, 1).value, "'", "''")
+        vProveedor = Replace(ws.Cells(i, 2).value, "'", "''")
+        vUsuario = Replace(ws.Cells(i, 3).value, "'", "''")
+
+        If IsEmpty(ws.Cells(i, 4).value) Or ws.Cells(i, 4).value = "" Then
+            vFecha = "NULL"
+        Else
+            vFecha = "'" & Format(ws.Cells(i, 4).value, "yyyy-mm-dd hh:mm:ss") & "'"
+        End If
+
+        sql = "INSERT INTO Maestro_Proveedor (ID, Proveedor, Usuario, `Fecha Ingreso`) VALUES ('" & _
+              vID & "', '" & vProveedor & "', '" & vUsuario & "', " & vFecha & ")"
+
+        conn.Execute sql
+
+        i = i + 1
+    Loop
+
+    conn.Close
+    Set conn = Nothing
+
+    ThisWorkbook.Sheets("Datos").Range("AH4").ClearContents
+    MsgBox "¡Datos de Proveedor subidos correctamente a la base de datos", vbInformation
+End Sub
+----------------------
+Sub Ingreso_Placas()
+    Dim conn As Object
+    Dim cmd As Object
+    Dim i As Integer, j As Integer
+    Dim ws As Worksheet
+    Dim wsDatos As Worksheet
+    
+    ' Definición de constantes ADO (para evitar errores si no está la referencia activa)
+    Const adVarWChar As Long = 202
+    Const adParamInput As Long = 1
+    Const adInteger As Long = 3 ' Cambiado a 20 para BigInt si fuera necesario, pero Long suele bastar
+    Const adBigInt As Long = 20
+    Const adDBTimeStamp As Long = 135
+    
+    ' --- VALIDACIÓN ---
+    Set wsDatos = ThisWorkbook.Sheets("Datos")
+    If UCase(Trim(wsDatos.Range("AH5").value)) <> "OK" Then
+        MsgBox "No se puede ejecutar la importación." & vbCrLf & _
+               "Favor validar e ingresar 'OK' en la celda que corresponde", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Configuración de la conexión MySQL
+    Set conn = CreateObject("ADODB.Connection")
+    On Error GoTo ErrorConn
+    conn.Open "DRIVER={MySQL ODBC 9.2 Unicode Driver};" & _
+              "SERVER=34.162.109.112;" & _
+              "PORT=3307;" & _
+              "DATABASE=Desplegables;" & _
+              "USER=*****;" & _
+              "PASSWORD=*******;"
+              "Charset=utf8mb4;"
+    On Error GoTo 0
+    
+    ' Hoja y rango de datos
+    Set ws = ThisWorkbook.Sheets("Plano Placas")
+    
+    ' Recorrer filas
+    i = 2
+    Do While Not IsEmpty(ws.Cells(i, 2).value) And ws.Cells(i, 2).value <> ""
+        Set cmd = CreateObject("ADODB.Command")
+        cmd.ActiveConnection = conn
+        
+        ' SQL ajustado a 7 columnas
+        cmd.CommandText = "INSERT INTO Maestro_Placas (ID, Placa, `Tipo Cliente`, `Cliente Credito`, Nit, Usuario, `Fecha Registro`) " & _
+                          "VALUES (?, ?, ?, ?, ?, ?, ?)"
+        
+        ' --- CARGA DE PARÁMETROS (7 Columnas) ---
+        ' 1. ID
+        cmd.Parameters.Append cmd.CreateParameter("p1", adVarWChar, adParamInput, 50, Nz(ws.Cells(i, 1).value))
+        ' 2. Placa
+        cmd.Parameters.Append cmd.CreateParameter("p2", adVarWChar, adParamInput, 50, Nz(ws.Cells(i, 2).value))
+        ' 3. Tipo Cliente
+        cmd.Parameters.Append cmd.CreateParameter("p3", adVarWChar, adParamInput, 50, Nz(ws.Cells(i, 3).value))
+        ' 4. Cliente Credito
+        cmd.Parameters.Append cmd.CreateParameter("p4", adVarWChar, adParamInput, 50, Nz(ws.Cells(i, 4).value))
+        
+        ' 5. Nit (BigInt)
+        Dim valNit As Variant
+        valNit = ws.Cells(i, 5).value
+        If IsNumeric(valNit) And valNit <> "" Then
+            cmd.Parameters.Append cmd.CreateParameter("p5", adBigInt, adParamInput, , CLngPtr(valNit))
+        Else
+            cmd.Parameters.Append cmd.CreateParameter("p5", adBigInt, adParamInput, , Null)
+        End If
+        
+        ' 6. Usuario
+        cmd.Parameters.Append cmd.CreateParameter("p6", adVarWChar, adParamInput, 50, Nz(ws.Cells(i, 6).value))
+        
+        ' 7. Fecha Registro (DateTime)
+        Dim valFecha As Variant
+        valFecha = ws.Cells(i, 7).value
+        If IsDate(valFecha) Then
+            cmd.Parameters.Append cmd.CreateParameter("p7", adDBTimeStamp, adParamInput, , CDate(valFecha))
+        Else
+            cmd.Parameters.Append cmd.CreateParameter("p7", adDBTimeStamp, adParamInput, , Null)
+        End If
+        
+        ' Ejecutar con manejo de errores por fila
+        On Error Resume Next
+        cmd.Execute
+        If Err.Number <> 0 Then
+            MsgBox "Error en fila " & i & ": " & Err.Description, vbExclamation
+            Err.Clear
+        End If
+        On Error GoTo 0
+        
+        i = i + 1
+    Loop
+    
+    conn.Close
+    wsDatos.Range("AH5").ClearContents
+    MsgBox "¡Datos de placas subidos correctamente!", vbInformation
+    Exit Sub
+
+ErrorConn:
+    MsgBox "Error de conexión: " & Err.Description, vbCritical
+End Sub
+
+' Función para manejar nulos
+Function Nz(value As Variant, Optional defaultValue As String = "") As String
+    If IsNull(value) Or IsEmpty(value) Or Trim(value & "") = "" Then
+        Nz = defaultValue
+    Else
+        Nz = CStr(value)
+    End If
+End Function
+
+
+

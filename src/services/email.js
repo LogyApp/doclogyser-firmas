@@ -45,6 +45,12 @@ transporter.sendMail = function (mailOptions, callback) {
     }
     if (typeof mailOptions.html === 'string') {
       mailOptions.html = mailOptions.html.replace(cleanRegex, '$1');
+      if (mailOptions.html.includes(`cid:${LOGO_HEADER_CID}`)) {
+        const atts = Array.isArray(mailOptions.attachments) ? mailOptions.attachments : [];
+        if (!atts.some(a => a && a.cid === LOGO_HEADER_CID)) {
+          mailOptions.attachments = [...atts, LOGO_HEADER_ATTACHMENT];
+        }
+      }
     }
     if (typeof mailOptions.text === 'string') {
       mailOptions.text = mailOptions.text.replace(cleanRegex, '$1');
@@ -54,26 +60,6 @@ transporter.sendMail = function (mailOptions, callback) {
 };
 
 const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@logyser.com';
-
-const HEADER = `
-  <div style="border-top:4px solid #e67e22;background:#1B2A5E;padding:0px 16px;border-bottom:1px solid #0f172a;line-height:0">
-    <!--[if mso]>
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="105" style="width:105px">
-    <tr>
-    <td width="105" style="width:105px;line-height:0;padding:0">
-    <![endif]-->
-    <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png"
-         width="105"
-         height="70"
-         alt="LOG&amp;SER"
-         border="0"
-         style="display:block;width:105px;max-width:105px;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic">
-    <!--[if mso]>
-    </td>
-    </tr>
-    </table>
-    <![endif]-->
-  </div>`;
 
 // Encabezado compacto de color con logo incrustado (CID). Se usa en tabla con
 // bgcolor y tamaños fijos porque Outlook de escritorio ignora el CSS de imágenes remotas.
@@ -97,6 +83,8 @@ function encabezadoLogo(color) {
         </tr>
       </table>`;
 }
+
+const HEADER = encabezadoLogo(COLOR_ENCABEZADO_AZUL);
 
 const FOOTER = `
   <div style="padding:14px 24px;background:#f8f9fb;font-size:.78rem;color:#aaa;text-align:center">
@@ -282,9 +270,7 @@ async function notificarActaFirma({ email, nombreTrabajador, categoria, urlFirma
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #e67e22;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#e67e22')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -316,6 +302,7 @@ async function notificarActaFirma({ email, nombreTrabajador, categoria, urlFirma
     to:      email,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -330,7 +317,7 @@ async function notificarDotacionLey({ email, nombreTrabajador, tallas = {} }) {
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="background:#fff;padding:32px 28px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 20px;font-size:.95rem;line-height:1.6">
@@ -363,6 +350,7 @@ async function notificarDotacionLey({ email, nombreTrabajador, tallas = {} }) {
     to:      email,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -624,9 +612,7 @@ async function notificarInicioLegalizacionSinRetirar({
   const asunto = `Confirmar Estado Retirado pendiente — ${trabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <div style="border-top:5px solid #d97706;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
-      </div>
+${encabezadoLogo('#d97706')}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
 
         <div style="display:inline-block;background:#fff6e6;border:1px solid #ffe2ad;
@@ -681,6 +667,7 @@ async function notificarInicioLegalizacionSinRetirar({
     cc:      'admin@logyser.com, retiros@logyser.com',
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -688,9 +675,7 @@ async function notificarFirmaRenuncia({ emailTrabajador, nombreTrabajador, urlFi
   const asunto = 'Aceptación de renuncia — Pendiente de su firma — LOG&SER';
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
-      </div>
+${encabezadoLogo('#c0392b')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -722,6 +707,7 @@ async function notificarFirmaRenuncia({ emailTrabajador, nombreTrabajador, urlFi
     to:      emailTrabajador,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -729,7 +715,7 @@ async function notificarRenunciaFirmada({ nombreTrabajador, identificacion, urlD
   const asunto = `Aceptación de renuncia firmada — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo('#27ae60')}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Documento firmado</span>
@@ -760,6 +746,7 @@ async function notificarRenunciaFirmada({ nombreTrabajador, identificacion, urlD
     cc:      'directorrh@logyser.com, gestor.nomina@logyser.com, admin@logyser.com',
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -850,9 +837,7 @@ async function notificarPazYSalvoTrabajador({ emailTrabajador, celularTrabajador
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#c0392b')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Estimado/a ${trabajador.split(' ')[0]},</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -890,6 +875,7 @@ async function notificarPazYSalvoTrabajador({ emailTrabajador, celularTrabajador
     to:      emailTrabajador,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -911,9 +897,7 @@ async function notificarAreaPazYSalvo({ area, destinatarios, trabajador, identif
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#c0392b')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#fdf2f2;border:1px solid #e8b4b4;border-radius:6px;padding:6px 16px;margin-bottom:18px">
           <span style="color:#c0392b;font-weight:bold;font-size:.88rem">● PAZ Y SALVO — ${nombreArea.toUpperCase()}</span>
@@ -954,6 +938,7 @@ async function notificarAreaPazYSalvo({ area, destinatarios, trabajador, identif
     to:      destinatarios.join(', '),
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -963,7 +948,7 @@ async function notificarPazYSalvoCompletado({ trabajador, identificacion, cargo,
   const asunto = `Paz y Salvo completado — ${trabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo('#27ae60')}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Paz y Salvo completado</span>
@@ -996,6 +981,7 @@ async function notificarPazYSalvoCompletado({ trabajador, identificacion, cargo,
     cc:      'directorrh@logyser.com, gestor.nomina@logyser.com, admin@logyser.com',
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1057,9 +1043,7 @@ async function notificarDocumentoRetiroTrabajador({
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #c0392b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#c0392b')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <p style="color:#555;margin:0 0 6px;font-size:.95rem">Cordial saludo, <strong>${nombreTrabajador}</strong></p>
         <p style="color:#555;margin:0 0 18px;font-size:.93rem;line-height:1.6">
@@ -1098,6 +1082,7 @@ async function notificarDocumentoRetiroTrabajador({
     cc:      ccRetiro,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1116,9 +1101,7 @@ async function notificarDocumentosRetiroConcluidos({
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #27ae60;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
-      </div>
+${encabezadoLogo('#27ae60')}
       <div style="background:#fff;padding:32px 28px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso de firma completado</span>
@@ -1150,6 +1133,7 @@ async function notificarDocumentosRetiroConcluidos({
     cc:      'retiros@logyser.com',
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1220,9 +1204,7 @@ async function notificarSolicitudCambioEstado({
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
-      </div>
+${encabezadoLogo('#8e44ad')}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
 
         <div style="display:inline-block;background:${est.bg};border:1px solid ${est.borde};
@@ -1295,6 +1277,7 @@ async function notificarSolicitudCambioEstado({
     to:      destinatarios,
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   };
   if (copia) mailOpts.cc = copia;
 
@@ -1305,7 +1288,7 @@ async function enviarEmailAsistencia({ email, trabajador, tema, fecha, lugar, ur
   const asunto = `Registro de Asistencia a Capacitación: ${tema}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h2 style="color:#1a1a2e;margin-top:0">Registro de Asistencia</h2>
         <p style="color:#555">Hola <strong>${trabajador}</strong>,</p>
@@ -1328,6 +1311,7 @@ async function enviarEmailAsistencia({ email, trabajador, tema, fecha, lugar, ur
     to: email,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1335,9 +1319,7 @@ async function notificarFirmaPruebaConsumo({ email, nombreTrabajador, cliente, u
   const asunto = 'Consentimiento Informado para Toma de Prueba de Toxicología — LOG&SER';
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#8e44ad')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -1372,6 +1354,7 @@ async function notificarFirmaPruebaConsumo({ email, nombreTrabajador, cliente, u
     to: email,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1379,9 +1362,7 @@ async function notificarPruebaConsumoFirmada({ nombreTrabajador, identificacion,
   const asunto = `Consentimiento de Prueba de Toxicología Firmado — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#8e44ad')}
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso completado</span>
@@ -1417,6 +1398,7 @@ async function notificarPruebaConsumoFirmada({ nombreTrabajador, identificacion,
     cc: ccList.join(', '),
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1424,9 +1406,7 @@ async function notificarFirmaDescuentoNomina({ email, nombreTrabajador, tipoDesc
   const asunto = 'Autorización de Descuento por Nómina — LOG&SER';
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #2980b9;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#2980b9')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -1459,6 +1439,7 @@ async function notificarFirmaDescuentoNomina({ email, nombreTrabajador, tipoDesc
     cc: emailUsuario || undefined,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1466,9 +1447,7 @@ async function notificarDescuentoNominaFirmada({ nombreTrabajador, identificacio
   const asunto = `Autorización de Descuento por Nómina Firmado — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <div style="border-top:5px solid #2980b9;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#2980b9')}
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso completado</span>
@@ -1514,6 +1493,7 @@ async function notificarDescuentoNominaFirmada({ nombreTrabajador, identificacio
     cc: ccList.join(', '),
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1521,9 +1501,7 @@ async function enviarCorreoFirmaTrabajadorSST({ email, nombreTrabajador, urlFirm
   const asunto = 'Compromiso de Cumplimiento de las Normas de SST — LOG&SER';
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#8e44ad')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -1555,6 +1533,7 @@ async function enviarCorreoFirmaTrabajadorSST({ email, nombreTrabajador, urlFirm
     to: email,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1562,9 +1541,7 @@ async function enviarNotificacionTrabajadorFirmoSST({ emailUsuario, nombreTrabaj
   const asunto = `Trabajador Firmó Compromiso SST — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#8e44ad')}
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px">Firma del Trabajador Registrada</h2>
         <p style="color:#555;margin:0 0 20px;line-height:1.6;font-size:.95rem">
@@ -1584,6 +1561,7 @@ async function enviarNotificacionTrabajadorFirmoSST({ emailUsuario, nombreTrabaj
     to: emailUsuario,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1591,9 +1569,7 @@ async function enviarCorreoFirmaLiderSST({ emailLider, nombreTrabajador, nombreA
   const asunto = `Compromiso SST Firmado y Generado — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#8e44ad')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Estimado Líder SST,</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -1620,6 +1596,7 @@ async function enviarCorreoFirmaLiderSST({ emailLider, nombreTrabajador, nombreA
     to: emailLider,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1627,9 +1604,7 @@ async function enviarNotificacionCompletadoSST({ emailUsuario, nombreTrabajador,
   const asunto = `Compromiso SST Completado y Guardado — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <div style="border-top:5px solid #8e44ad;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#8e44ad')}
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#eafaf1;border:1px solid #6dcf9e;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#1a7a4a;font-weight:700;font-size:.9rem">✅ Proceso completado</span>
@@ -1662,6 +1637,7 @@ async function enviarNotificacionCompletadoSST({ emailUsuario, nombreTrabajador,
     cc: ccList.join(', '),
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1669,9 +1645,7 @@ async function notificarFirmaEvaluacionSST({ email, nombreTrabajador, tipo, urlF
   const asunto = `Evaluación de Inducción/Capacitación SST (${tipo}) — LOG&SER`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #1abc9c;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#1abc9c')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -1704,6 +1678,7 @@ async function notificarFirmaEvaluacionSST({ email, nombreTrabajador, tipo, urlF
     to: email,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1711,9 +1686,7 @@ async function notificarEvaluacionSSTCompletada({ email, nombreTrabajador, tipo,
   const asunto = `Evaluación de Inducción/Capacitación SST (${tipo}) Completada — LOG&SER`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #2ecc71;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#2ecc71')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -1750,6 +1723,7 @@ async function notificarEvaluacionSSTCompletada({ email, nombreTrabajador, tipo,
     to: email,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1757,9 +1731,7 @@ async function notificarFirmaCapacitacionSST({ email, nombreTrabajador, tema, ur
   const asunto = `Evaluación de Capacitación SST — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #1abc9c;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#1abc9c')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -1792,6 +1764,7 @@ async function notificarFirmaCapacitacionSST({ email, nombreTrabajador, tema, ur
     to: email,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1799,9 +1772,7 @@ async function notificarCapacitacionSSTCompletada({ email, nombreTrabajador, tem
   const asunto = `Capacitación SST Completada — ${nombreTrabajador}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #2ecc71;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#2ecc71')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
         <p style="color:#555;margin:0 0 24px;font-size:.95rem;line-height:1.6">
@@ -1838,6 +1809,7 @@ async function notificarCapacitacionSSTCompletada({ email, nombreTrabajador, tem
     to: email,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1845,9 +1817,7 @@ async function notificarMovilidadRegistrada({ emailUsuario, nombreCompleto, iden
   const asunto = `Registro Movilidad y Riesgo Vial SST — ${nombreCompleto}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
-      <div style="border-top:5px solid #f59e0b;background:#fff;padding:16px 24px;border-bottom:1px solid #eee;border-radius:8px 8px 0 0;text-align:right">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;-ms-interpolation-mode:bicubic" alt="LOG&SER">
-      </div>
+${encabezadoLogo('#f59e0b')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <div style="display:inline-block;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px 16px;margin-bottom:20px">
           <span style="color:#92400e;font-weight:700;font-size:.9rem">✅ Registro completado</span>
@@ -1881,6 +1851,7 @@ async function notificarMovilidadRegistrada({ emailUsuario, nombreCompleto, iden
     cc: ccList.join(', '),
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1911,7 +1882,7 @@ async function notificarCambiosDotacion({ trabajador, identificacion, antes, des
   const asunto = `Actualización de Datos de Dotación — ${nombreLimpio}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h3 style="color:#1a1a2e;margin-top:0">Actualización de Datos de Dotación</h3>
         <p>El trabajador <strong>${nombreLimpio}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus tallas de dotación:</p>
@@ -1940,6 +1911,7 @@ async function notificarCambiosDotacion({ trabajador, identificacion, antes, des
     to: 'auxiliarcompras@logyser.com, logyserinventarios@gmail.com, admin@logyser.com',
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1948,7 +1920,7 @@ async function notificarCambiosPersonales({ trabajador, identificacion, antes, d
   const asunto = `Actualización de Datos Personales — ${nombreLimpio}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h3 style="color:#1a1a2e;margin-top:0">Actualización de Datos Personales</h3>
         <p>El trabajador <strong>${nombreLimpio}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus datos personales:</p>
@@ -1977,6 +1949,7 @@ async function notificarCambiosPersonales({ trabajador, identificacion, antes, d
     to: 'gestor.nomina@logyser.com, admin@logyser.com',
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -1985,7 +1958,7 @@ async function notificarCambiosBancos({ trabajador, identificacion, antes, despu
   const asunto = `Actualización de Datos Bancarios — ${nombreLimpio}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h3 style="color:#1a1a2e;margin-top:0">Actualización de Información Bancaria</h3>
         <p>El trabajador <strong>${nombreLimpio}</strong> (Identificación: <strong>${identificacion}</strong>) ha actualizado sus datos de cuenta bancaria:</p>
@@ -2017,6 +1990,7 @@ async function notificarCambiosBancos({ trabajador, identificacion, antes, despu
     to: 'contratacionnacional@logyser.com, gestor.nomina@logyser.com, admin@logyser.com',
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -2024,7 +1998,7 @@ async function notificarBloqueoAspirante({ emailUsuario, nombreAspirante, regist
   const asunto = `PROCESO BLOQUEADO — Aspirante con error de identificación`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      ${HEADER}
+${encabezadoLogo('#c0392b')}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h3 style="color:#c0392b;margin-top:0">Proceso de Selección Bloqueado</h3>
         <p>El aspirante cometió un error al digitar su número de identificación al registrarse en la plataforma y el proceso ha sido bloqueado automáticamente por seguridad.</p>
@@ -2062,6 +2036,7 @@ async function notificarBloqueoAspirante({ emailUsuario, nombreAspirante, regist
     to: toEmails.join(', '),
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -2165,7 +2140,7 @@ async function notificarReportePendientes(records) {
   if (!records || records.length === 0) {
     cuerpo = `
       <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
-        ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
         <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
           <h2 style="color:#1a1a2e;margin-top:0">Reporte de Forma de Pago Pendiente</h2>
           <p style="color:#555">
@@ -2187,7 +2162,7 @@ async function notificarReportePendientes(records) {
 
     cuerpo = `
       <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
-        ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
         <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
           <h2 style="color:#1a1a2e;margin-top:0">Reporte de Servicios con Forma de Pago Pendiente</h2>
           <p style="color:#555">
@@ -2230,6 +2205,7 @@ async function notificarReportePendientes(records) {
     cc: 'admin@logyser.com',
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -2250,7 +2226,7 @@ async function notificarPendientesCoordinador({ email, nombreCoordinador, rol, s
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
-      ${HEADER}
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin-top:0">Hola, ${nombreCoordinador}</h2>
         <p style="color:#555">
@@ -2288,6 +2264,7 @@ async function notificarPendientesCoordinador({ email, nombreCoordinador, rol, s
     cc: 'admin@logyser.com',
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -2309,7 +2286,7 @@ async function notificarTomoCargoPendiente({ destinatarios, scopeLabel, registro
 
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;background:#f4f4f4;padding:24px">
-      ${HEADER}
+${encabezadoLogo('#e67e22')}
       <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <h2 style="color:#1a1a2e;margin-top:0">Ingresos pendientes de confirmar</h2>
         <p style="color:#555">
@@ -2342,6 +2319,7 @@ async function notificarTomoCargoPendiente({ destinatarios, scopeLabel, registro
     cc:      'admin@logyser.com, contratacionnacional@logyser.com',
     subject: asunto,
     html:    cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -2574,9 +2552,7 @@ async function enviarCorreoPortalAspirante({ correo, nombreAspirante, portalUrl 
   const asunto = `Acceso a tu Portal de Selección y Contratación — LOG&SER S.A.S.`;
   const cuerpo = `
     <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
-      <div style="background:#1B2A5E;padding:24px;text-align:center">
-        <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="160" height="48" style="height:48px;width:160px;max-width:160px;object-fit:contain;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
-      </div>
+${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:32px 24px;color:#0F172A;line-height:1.6">
         <h2 style="color:#1B2A5E;margin-top:0;font-size:20px;font-weight:800">¡Hola, ${nombreAspirante}!</h2>
         <p style="font-size:14px;color:#475569">
@@ -2607,6 +2583,7 @@ async function enviarCorreoPortalAspirante({ correo, nombreAspirante, portalUrl 
     to: correo,
     subject: asunto,
     html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
   });
 }
 
@@ -2765,23 +2742,13 @@ async function notificarCreacionRequisicion({
         <div style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06);border:1px solid #e2e8f0">
           
           <!-- Encabezado corporativo LOG&SER -->
-          <div style="border-top:5px solid #4f46e5;padding:20px 28px;background:#ffffff;border-bottom:1px solid #f1f5f9">
-            <table style="width:100%;border-collapse:collapse">
-              <tr>
-                <td style="vertical-align:middle">
-                  <img src="https://storage.googleapis.com/logyser-recibo-public/logo.png" width="150" height="44" style="height:44px;width:150px;max-width:150px;display:inline-block;-ms-interpolation-mode:bicubic" alt="LOG&amp;SER">
-                </td>
-                <td style="vertical-align:middle;text-align:right">
-                  <span style="display:inline-block;background:#eef2ff;color:#4338ca;padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:700;letter-spacing:0.5px">
-                    TALENTHUB • REQUISICIONES
-                  </span>
-                </td>
-              </tr>
-            </table>
-          </div>
+${encabezadoLogo('#4f46e5')}
 
           <div style="padding:28px 28px 24px 28px">
             <div style="margin-bottom:20px">
+              <span style="display:inline-block;background:#eef2ff;color:#4338ca;padding:4px 10px;border-radius:9999px;font-size:11px;font-weight:700;letter-spacing:0.5px;margin-right:6px">
+                TALENTHUB • REQUISICIONES
+              </span>
               <span style="display:inline-block;background:#10b981;color:#ffffff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;text-transform:uppercase;letter-spacing:0.5px">
                 Estado: EN PROCESO
               </span>
@@ -2877,7 +2844,8 @@ async function notificarCreacionRequisicion({
       to: toList.length > 0 ? toList.join(', ') : undefined,
       cc: ccList.length > 0 ? ccList.join(', ') : undefined,
       subject: asunto,
-      html: cuerpo
+      html: cuerpo,
+      attachments: [LOGO_HEADER_ATTACHMENT],
     };
 
     if (!mailOptions.to && mailOptions.cc) {
@@ -3334,4 +3302,7 @@ module.exports = {
   HEADER,
   FOOTER,
   EMAIL_FROM,
+  encabezadoLogo,
+  LOGO_HEADER_ATTACHMENT,
+  COLOR_ENCABEZADO_AZUL,
 };
