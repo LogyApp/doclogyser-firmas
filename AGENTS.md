@@ -51,15 +51,21 @@ Se trabaja **por ramas**, nunca directo en `main`.
   `.sql` dentro de `migraciones/`, con fecha en el nombre
   (`AAAA-MM-DD_descripcion.sql`) y escrito para poder ejecutarse más de una vez
   (`INSERT ... WHERE NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`).
-- William ejecuta el SQL desde Cloud Shell.
+- William ejecuta el SQL desde Cloud Shell, salvo que pida explícitamente que la IA lo
+  ejecute. En ese caso, revisa antes qué hace el archivo y avísale si borra datos o columnas.
 
 ## 3. Configuración en tablas, no en el código
 - Las reglas de negocio (roles con permiso, destinatarios de correos, cargos,
   operaciones, límites, interruptores) van en **`Config_Parametros`**
-  (`Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro`), no fijas en el código.
+  (`Modulo`, `Seccion`, `Concepto`, `Condicion`, `Parametro`, `Descripcion`), no fijas en el código.
   Ejemplos ya implementados: `nomina/Retiros` (`configRetiro.js`),
   `nomina/Traslados` (`configTraslados.js`), `nomina/Cesantias`,
   `talenthub/Requisiciones`, `talenthub/Sociodemografica` (`notificacionIngreso.js`).
+- **Toda fila nueva de `Config_Parametros` lleva `Descripcion`**: una frase corta (máx. 500
+  caracteres) que explique para qué sirve, qué controla y, si aplica, qué pasa si se deja vacía.
+  Inclúyela en el `INSERT` de la migración, por ejemplo:
+  `INSERT INTO Config_Parametros (Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion)`.
+  La columna se creó en `migraciones/2026-10-23_config_parametros_descripcion.sql`.
 - Listas separadas por coma; comparación sin distinguir mayúsculas ni tildes.
 - Si la fila no existe, el código usa un valor por defecto igual al comportamiento
   anterior, para que nada se rompa antes de ejecutar el SQL.
