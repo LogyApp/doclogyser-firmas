@@ -7,36 +7,23 @@ const { notificarSolicitudCambioEstado } = require('../services/email');
 const { despacharSolicitud, completarSolicitud } = require('../solicitudes/kardex.service');
 const { storage } = require('../services/storage');
 const multer = require('multer');
+const {
+  esAprobadorSolicitud,
+  obtenerConfigSolicitudes,
+  obtenerDestinatariosSolicitud,
+  obtenerCategoriasRestringidas,
+  normalizarTexto,
+} = require('../services/configInventario');
 const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 const HTML_PATH = path.join(__dirname, '../views/solicitudes/index.html');
 
-const ROLES_SIN_FILTRO = [
-  'AdmSst', 'Archivo', 'Calidad', 'Contabilidad', 'Contratación', 'Control',
-  'Cuentas', 'Facturación', 'Generalista', 'Juridica', 'Jurídica', 'Nomina', 'Nómina', 'LiderSst',
-  'Selección', 'Selección Centro', 'Sistema', 'Administración', 'Administrador',
-  'Dirección Hseq', 'Dirección Operaciones', 'Dirección RRHH', 'Gestor Nómina'
-];
-const ROLES_REGIONAL = ['AuxiliarR', 'CoordinadorR'];
-const ROLES_DISPOSITIVO = ['Auxiliar', 'Coordinador', 'AuxSst'];
-const ROLES_MODALIDAD = ['AnaSst'];
+// Reglas de Solicitudes en Config_Parametros (inventario / Solicitudes): aprobadores y
+// correo por categoría, editar cerradas, eliminar, etc. Ver services/configInventario.js.
+const SECCION_SOLICITUDES = 'Solicitudes';
+const ESTADOS_PERMITIDOS_CAMBIO = ['PENDIENTE', 'APROBADA', 'PARCIAL', 'RECHAZADA', 'VALIDAR', 'COMPLETADA', 'CANCELADA'];
 
-function normalizarCategoria(categoria) {
-  return String(categoria || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toUpperCase();
-}
-
-function rolesPermitidosPorCategoria(categoria) {
-  const cat = normalizarCategoria(categoria);
-  if (cat === 'EPP') return ['AdmSst', 'LiderSst', 'Inventario', 'Sistema'];
-  if (cat === 'DOTACION') return ['Inventario', 'Cuentas', 'Sistema'];
-  if (cat === 'TECNOLOGIA') return ['Control', 'Cuentas', 'Sistema'];
-  return ['Sistema', 'Cuentas'];
-}
 
 function agruparOperacionesPorRegional(rows) {
   const opsPorRegional = {};
@@ -65,12 +52,13 @@ async function _enviarEmailEstado(idSolicitud, estadoAnterior, estadoNuevo, quie
       [sol.Usuario]
     );
 
-    const rolesAprobadores = rolesPermitidosPorCategoria(sol.Categoria);
-    const ph = rolesAprobadores.map(() => '?').join(',');
-    const [aprobadoresRows] = await pool.execute(
-      `SELECT Email FROM Maestro_Usuarios WHERE Rol IN (${ph}) AND Email IS NOT NULL AND Email != ''`,
-      rolesAprobadores
-    );
+    // Solicitudes generadas automáticamente desde Maestro_Vinculación (Observaciones inicia con
+    // "AUTOMATICO"): al pasar a PENDIENTE o APROBADA se notifica a "Notificación solicitud
+    // automática - Para:" y a quien hizo el cambio — no a los roles de la categoría ni al solicitante.
+    const esSolicitudAutomatica = String(sol.Observaciones || '').trim().toUpperCase().startsWith('AUTOMATICO');
+    const modoAutomatico = esSolicitudAutomatica && ['PENDIENTE', 'APROBADA'].includes(estadoNuevo);
+    const destinatarios = await obtenerDestinatariosSolicitud(sol.Categoria, { automatica: modoAutomatico });
+    if (!destinatarios.habilitado) return; // "Habilitar notificaciones de correo en Solicitudes" = 0
 
     const [items] = await pool.execute(
       `SELECT i.Cantidad, a.Articulo
@@ -93,22 +81,12 @@ async function _enviarEmailEstado(idSolicitud, estadoAnterior, estadoNuevo, quie
       }
     }
 
-    let emailsAprobadores = aprobadoresRows.map(r => r.Email).filter(Boolean);
-    if (normalizarCategoria(sol.Categoria) === 'TECNOLOGIA') {
-      emailsAprobadores = emailsAprobadores.filter(email => {
-        const em = email.trim().toLowerCase();
-        return em !== 'gerenciaoperaciones@logyser.com' && em !== 'directorrh@logyser.com';
-      });
-    }
-
+    // Roles de "Notificación solicitud <CATEGORÍA> - Para:" (Config_Parametros) + quien solicitó
+    let emailsAprobadores = destinatarios.para;
     let emailSolicitante = solicitanteRow?.Email || null;
 
-    // Solicitudes generadas automáticamente desde Maestro_Vinculación (Observaciones inicia con
-    // "AUTOMATICO"): al pasar a PENDIENTE o APROBADA, notificar únicamente a auxiliarcompras@,
-    // admin@ y al correo de quien hizo el cambio — no a los aprobadores por rol ni al solicitante.
-    const esSolicitudAutomatica = String(sol.Observaciones || '').trim().toUpperCase().startsWith('AUTOMATICO');
-    if (esSolicitudAutomatica && ['PENDIENTE', 'APROBADA'].includes(estadoNuevo)) {
-      const emailsEspeciales = ['auxiliarcompras@logyser.com', 'admin@logyser.com', quienCambioEmail].filter(Boolean);
+    if (modoAutomatico) {
+      const emailsEspeciales = [...new Set([...destinatarios.para, quienCambioEmail].filter(Boolean))];
       if (estadoNuevo === 'PENDIENTE') {
         emailsAprobadores = emailsEspeciales;
         emailSolicitante = null;
@@ -154,10 +132,11 @@ async function computarAccesoSolicitud(usuarioId) {
   const dispositivo = usuario.Dispositivo || '';
   const operacion = usuario['Operación'] || '';
 
-  // Query Maestro_Menu_Inventario for this role
+  // Acceso del rol en la pestaña Solicitudes (Maestro_Menu_Inventario, Sección 'Solicitudes').
+  // Antes se tomaba la primera sección del rol, sin filtrar.
   const [menuRows] = await pool.execute(
-    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? LIMIT 1',
-    [rol]
+    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? AND `Sección` = ? LIMIT 1',
+    [rol, SECCION_SOLICITUDES]
   );
 
   let accesoCode = null;
@@ -212,10 +191,11 @@ async function computarConfigCreacionSolicitud(usuarioId) {
   const dispositivo = usuario.Dispositivo || '';
   const operacion = usuario['Operación'] || '';
 
-  // Query Maestro_Menu_Inventario for this role
+  // Acceso del rol en la pestaña Solicitudes (Maestro_Menu_Inventario, Sección 'Solicitudes').
+  // Antes se tomaba la primera sección del rol, sin filtrar.
   const [menuRows] = await pool.execute(
-    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? LIMIT 1',
-    [rol]
+    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? AND `Sección` = ? LIMIT 1',
+    [rol, SECCION_SOLICITUDES]
   );
 
   let accesoCode = null;
@@ -275,6 +255,70 @@ async function computarConfigCreacionSolicitud(usuarioId) {
     operacion,
     opsPorRegional
   };
+}
+
+// ── Visibilidad de solicitudes según el acceso del rol (Maestro_Menu_Inventario, Solicitudes) ──
+// 1 todo · 2 su regional · 3 sus operaciones/dispositivo · 4/5/6 igual que 1/2/3 pero solo
+// las categorías del acceso restringido (Config_Parametros inventario / General), más lo
+// que el propio usuario haya registrado. Sin acceso configurado: solo lo propio.
+async function condicionesVisibilidadSolicitudes(acceso) {
+  const code = acceso.accesoCode;
+  const conds = [];
+  const params = [];
+  const restringidas = [4, 5, 6].includes(code) ? await obtenerCategoriasRestringidas() : [];
+  const phCat = restringidas.map(() => '?').join(',');
+  const ops = acceso.operacionesFiltro || [];
+  const phOps = ops.map(() => '?').join(',');
+
+  if (code === null || code === undefined) {
+    conds.push('Usuario = ?'); params.push(acceso.usuarioId);
+  } else if (code === 2) {
+    conds.push('Regional = ?'); params.push(acceso.regional);
+  } else if (code === 3) {
+    if (ops.length) { conds.push(`\`Operación\` IN (${phOps})`); params.push(...ops); } else conds.push('1 = 0');
+  } else if (code === 4) {
+    conds.push(`(Categoria IN (${phCat}) OR Usuario = ?)`); params.push(...restringidas, acceso.usuarioId);
+  } else if (code === 5) {
+    conds.push(`( (Regional = ? AND Categoria IN (${phCat})) OR Usuario = ? )`); params.push(acceso.regional, ...restringidas, acceso.usuarioId);
+  } else if (code === 6) {
+    if (ops.length) {
+      conds.push(`( (\`Operación\` IN (${phOps}) AND Categoria IN (${phCat})) OR Usuario = ? )`);
+      params.push(...ops, ...restringidas, acceso.usuarioId);
+    } else {
+      conds.push('Usuario = ?'); params.push(acceso.usuarioId);
+    }
+  }
+  // code === 1: sin condición (ve todo)
+  return { conds, params };
+}
+
+// La misma regla para una sola solicitud (detalle, edición, cancelación).
+async function puedeVerSolicitud(acceso, sol) {
+  if (!acceso || !sol) return false;
+  const propia = String(sol.Usuario || '') === String(acceso.usuarioId || '');
+  const code = acceso.accesoCode;
+  const enOps = (acceso.operacionesFiltro || []).some((o) => normalizarTexto(o) === normalizarTexto(sol['Operación']));
+  const mismaRegional = normalizarTexto(sol.Regional) === normalizarTexto(acceso.regional);
+  let catRestringida = false;
+  if ([4, 5, 6].includes(code)) {
+    const restringidas = await obtenerCategoriasRestringidas();
+    catRestringida = restringidas.some((c) => normalizarTexto(c) === normalizarTexto(sol.Categoria));
+  }
+  if (code === null || code === undefined) return propia;
+  if (code === 1) return true;
+  if (code === 2) return mismaRegional;
+  if (code === 3) return enOps;
+  if (code === 4) return catRestringida || propia;
+  if (code === 5) return (mismaRegional && catRestringida) || propia;
+  if (code === 6) return (enOps && catRestringida) || propia;
+  return propia;
+}
+
+// ¿Puede el usuario crear una solicitud en esta operación? (alcance de creación del rol)
+async function operacionPermitidaParaCrear(usuario, operacion) {
+  const cfg = await computarConfigCreacionSolicitud(usuario);
+  if (!cfg) return false;
+  return Object.values(cfg.opsPorRegional).some((ops) => ops.some((o) => normalizarTexto(o) === normalizarTexto(operacion)));
 }
 
 // ═════ SERVIR INTERFAZ (REDIRECCIÓN AL MÓDULO DE INVENTARIO) ═════
@@ -393,45 +437,9 @@ router.get('/api/solicitudes', async (req, res) => {
     const params = [];
 
     // Enforce visibility filters based on accesoCode (Maestro_Menu_Inventario)
-    const code = acceso.accesoCode;
-    if (code === null || code === undefined) {
-      // Para los roles que no estan en la tabla solo pueden ver lo que hayan hecho con su usuario
-      conds.push('Usuario = ?');
-      params.push(acceso.usuarioId);
-    } else if (code === 1) {
-      // 1: ver todo
-    } else if (code === 2) {
-      // 2: ver por regional
-      conds.push('Regional = ?');
-      params.push(acceso.regional);
-    } else if (code === 3) {
-      // 3: ver por columna Dispositivo (Si esta vacia entonces solo por operacion)
-      if (acceso.operacionesFiltro.length > 0) {
-        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-        conds.push(`\`Operación\` IN (${ph})`);
-        params.push(...acceso.operacionesFiltro);
-      } else {
-        conds.push('1 = 0');
-      }
-    } else if (code === 4) {
-      // 4: ver todo con Dotación y EPP (Adicionando lo que el usuario haya registrado en otras categorias)
-      conds.push('(Categoria IN (\'EPP\', \'DOTACION\', \'DOTACIÓN\') OR Usuario = ?)');
-      params.push(acceso.usuarioId);
-    } else if (code === 5) {
-      // 5: ver por regional solo Dotación y EPP (Adicionando lo que el usuario haya registrado en otras categorias)
-      conds.push('( (Regional = ? AND Categoria IN (\'EPP\', \'DOTACION\', \'DOTACIÓN\')) OR Usuario = ? )');
-      params.push(acceso.regional, acceso.usuarioId);
-    } else if (code === 6) {
-      // 6: ver por Dispositivo (Adicionando lo que el usuario haya registrado en otras categorias)
-      if (acceso.operacionesFiltro.length > 0) {
-        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-        conds.push(`( (\`Operación\` IN (${ph}) AND Categoria IN ('EPP', 'DOTACION', 'DOTACIÓN')) OR Usuario = ? )`);
-        params.push(...acceso.operacionesFiltro, acceso.usuarioId);
-      } else {
-        conds.push('Usuario = ?');
-        params.push(acceso.usuarioId);
-      }
-    }
+    const visibilidad = await condicionesVisibilidadSolicitudes(acceso);
+    conds.push(...visibilidad.conds);
+    params.push(...visibilidad.params);
 
     if (estado) { conds.push('Estado = ?'); params.push(estado); }
     if (regional) { conds.push('Regional = ?'); params.push(regional); }
@@ -474,44 +482,10 @@ router.get('/api/conteos-filtros', async (req, res) => {
     const baseConds = [];
     const baseParams = [];
 
-    const code = acceso.accesoCode;
-    if (code === null || code === undefined) {
-      baseConds.push('Usuario = ?');
-      baseParams.push(acceso.usuarioId);
-    } else if (code === 1) {
-      // 1: ver todo
-    } else if (code === 2) {
-      // 2: ver por regional
-      baseConds.push('Regional = ?');
-      baseParams.push(acceso.regional);
-    } else if (code === 3) {
-      // 3: ver por columna Dispositivo
-      if (acceso.operacionesFiltro.length > 0) {
-        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-        baseConds.push(`\`Operación\` IN (${ph})`);
-        baseParams.push(...acceso.operacionesFiltro);
-      } else {
-        baseConds.push('1 = 0');
-      }
-    } else if (code === 4) {
-      // 4: ver todo con Dotación y EPP
-      baseConds.push('(Categoria IN (\'EPP\', \'DOTACION\', \'DOTACIÓN\') OR Usuario = ?)');
-      baseParams.push(acceso.usuarioId);
-    } else if (code === 5) {
-      // 5: ver por regional solo Dotación y EPP
-      baseConds.push('( (Regional = ? AND Categoria IN (\'EPP\', \'DOTACION\', \'DOTACIÓN\')) OR Usuario = ? )');
-      baseParams.push(acceso.regional, acceso.usuarioId);
-    } else if (code === 6) {
-      // 6: ver por Dispositivo
-      if (acceso.operacionesFiltro.length > 0) {
-        const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-        baseConds.push(`( (\`Operación\` IN (${ph}) AND Categoria IN ('EPP', 'DOTACION', 'DOTACIÓN')) OR Usuario = ? )`);
-        baseParams.push(...acceso.operacionesFiltro, acceso.usuarioId);
-      } else {
-        baseConds.push('Usuario = ?');
-        baseParams.push(acceso.usuarioId);
-      }
-    }
+    // Visibilidad según el acceso del rol en la pestaña Solicitudes (Maestro_Menu_Inventario)
+    const visibilidad = await condicionesVisibilidadSolicitudes(acceso);
+    baseConds.push(...visibilidad.conds);
+    baseParams.push(...visibilidad.params);
 
     // Filtros dinámicos compartidos (estado, categoría, fechas)
     const sharedConds = [];
@@ -572,10 +546,22 @@ router.post('/api/solicitudes', upload.single('cotizacionFile'), async (req, res
   const conn = await pool.getConnection();
   try {
     const { operacion, regional, prioridad, categoria, justificacion, montoEstimado, observaciones, usuario, items } = req.body;
+    // usuario = solicitante; usuarioActor = quien registra (permisos). Sin usuarioActor se usa usuario.
+    const actor = req.body.usuarioActor || usuario;
 
     // Validar campos requeridos
     if (!operacion || !regional || !categoria || !prioridad) {
       return res.status(400).json({ error: 'Campos requeridos: operacion, regional, categoria, prioridad' });
+    }
+
+    // Seguridad: usuario válido y operación dentro de su alcance de creación
+    // (Maestro_Menu_Inventario, Sección 'Solicitudes'). Antes no se validaba.
+    const acceso = await computarAccesoSolicitud(actor);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autorizado para crear solicitudes.' });
+    }
+    if (!(await operacionPermitidaParaCrear(actor, operacion))) {
+      return res.status(403).json({ error: `No tiene permiso para crear solicitudes en la operación ${operacion}.` });
     }
 
     let itemsParsed = [];
@@ -663,10 +649,12 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
   try {
     const { id } = req.params;
     const { operacion, regional, prioridad, categoria, justificacion, montoEstimado, observaciones, usuario, items, estado, imagenCotizacion, aclaraciones } = req.body;
+    // usuario = solicitante (no cambia); usuarioActor = quien edita (permisos y usuario_actualiza)
+    const actor = req.body.usuarioActor || usuario;
 
     // Verificar que existe y que el usuario tiene permiso para editar
     const [[solicitud]] = await pool.execute(
-      'SELECT Estado, Categoria, Usuario, Imagen_Cotización FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
+      'SELECT Estado, Categoria, Usuario, Regional, `Operación`, Imagen_Cotización FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
       [id]
     );
 
@@ -674,25 +662,19 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
       return res.status(404).json({ error: 'Solicitud no encontrada' });
     }
 
-    const estadoActual = solicitud.Estado;
-    const [[usuarioRow]] = await pool.execute(
-      'SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
-      [usuario]
-    );
-    const usuarioRol = usuarioRow?.Rol || '';
+    // Seguridad: el usuario debe poder ver la solicitud (mismo alcance del listado)
+    const acceso = await computarAccesoSolicitud(actor);
+    if (!(await puedeVerSolicitud(acceso, solicitud))) {
+      return res.status(403).json({ error: 'No tiene acceso a esta solicitud.' });
+    }
 
-    // Determine if user has privileged roles for the category
-    let esAprobadorCat = false;
-    const catUpper = (solicitud.Categoria || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const estadoActual = solicitud.Estado;
     const stateUpper = (estadoActual || '').toUpperCase().trim();
 
-    if (usuarioRol === 'Sistema') {
-      esAprobadorCat = true;
-    } else if (catUpper === 'EPP') {
-      esAprobadorCat = ['AdmSst', 'LiderSst', 'Inventario'].includes(usuarioRol);
-    } else if (catUpper !== 'TECNOLOGIA') {
-      esAprobadorCat = ['Inventario', 'Cuentas'].includes(usuarioRol);
-    }
+    // Aprobadores por categoría y "Roles que pueden editar solicitudes cerradas"
+    // (Config_Parametros, inventario / Solicitudes)
+    const esAprobadorCat = await esAprobadorSolicitud(acceso.rol, solicitud.Categoria);
+    const cfgSol = await obtenerConfigSolicitudes(acceso.rol);
 
     let isEditable = false;
     if (stateUpper === 'BORRADOR' || stateUpper === 'VALIDAR') {
@@ -700,16 +682,29 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
     } else if (stateUpper === 'PENDIENTE' || stateUpper === 'PARCIAL') {
       isEditable = esAprobadorCat;
     } else if (['APROBADA', 'COMPLETADA', 'RECHAZADA'].includes(stateUpper)) {
-      isEditable = (usuarioRol === 'Sistema');
+      isEditable = cfgSol.puedeEditarCerradas;
     }
 
     if (!isEditable) {
       return res.status(400).json({ error: 'No tiene permiso para editar esta solicitud en su estado actual' });
     }
 
+    // Seguridad: editar no cambia el estado, salvo enviar un borrador o una solicitud
+    // devuelta (VALIDAR) a PENDIENTE. Aprobar/rechazar va por PATCH /estado con su permiso.
+    const estadoPedido = String(estado || '').trim().toUpperCase();
+    if (estadoPedido && estadoPedido !== stateUpper &&
+        !(estadoPedido === 'PENDIENTE' && ['BORRADOR', 'VALIDAR'].includes(stateUpper))) {
+      return res.status(400).json({ error: `No se puede cambiar el estado de ${estadoActual} a ${estado} desde la edición.` });
+    }
+
     // Validar campos
     if (!operacion || !regional || !categoria || !prioridad) {
       return res.status(400).json({ error: 'Campos requeridos: operacion, regional, categoria, prioridad' });
+    }
+
+    // Si cambia la operación, la nueva debe estar dentro de su alcance de creación
+    if (normalizarTexto(operacion) !== normalizarTexto(solicitud['Operación']) && !(await operacionPermitidaParaCrear(actor, operacion))) {
+      return res.status(403).json({ error: `No tiene permiso para registrar solicitudes en la operación ${operacion}.` });
     }
 
     let itemsParsed = [];
@@ -759,7 +754,7 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
            Imagen_Cotización = ?, Aclaraciones = ?
        WHERE IdSolicitud = ?`,
       [operacion, regional, prioridad, categoria, justificacion || null,
-       montoEstimado ? parseFloat(montoEstimado) : null, observaciones || null, nuevoEstado, usuario, publicUrl, aclaraciones || null, id]
+       montoEstimado ? parseFloat(montoEstimado) : null, observaciones || null, nuevoEstado, actor, publicUrl, aclaraciones || null, id]
     );
 
     // Eliminar items anteriores
@@ -783,7 +778,7 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
         `INSERT INTO Dynamic_Solicitudes_Items
          (IdElemento, IdSolicitud, IdArticulo, Cantidad, Nota, Usuario, usuario_actualiza)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [idElemento, id, artId, qty, note || null, solicitud.Usuario, usuario]
+        [idElemento, id, artId, qty, note || null, solicitud.Usuario, actor]
       );
     }
 
@@ -791,7 +786,7 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
 
     // Email: solo cuando se promueve de BORRADOR a PENDIENTE
     if (estadoActual === 'BORRADOR' && nuevoEstado === 'PENDIENTE') {
-      _enviarEmailEstado(id, 'BORRADOR', 'PENDIENTE', usuario);
+      _enviarEmailEstado(id, 'BORRADOR', 'PENDIENTE', actor);
     }
 
     res.json({ ok: true, idSolicitud: id, estado: nuevoEstado });
@@ -808,6 +803,8 @@ router.put('/api/solicitud/:id', upload.single('cotizacionFile'), async (req, re
 router.get('/api/solicitud/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
     const [[solicitud]] = await pool.execute(
       'SELECT * FROM Dynamic_Solicitudes WHERE IdSolicitud = ?',
@@ -815,6 +812,12 @@ router.get('/api/solicitud/:id', async (req, res) => {
     );
 
     if (!solicitud) return res.status(404).json({ error: 'Solicitud no encontrada' });
+
+    // Seguridad: solo quien puede ver la solicitud en el listado ve su detalle
+    const acceso = await computarAccesoSolicitud(usuario);
+    if (!(await puedeVerSolicitud(acceso, solicitud))) {
+      return res.status(403).json({ error: 'No tiene acceso a esta solicitud.' });
+    }
 
     const [items] = await pool.execute(
       `SELECT i.*, a.Articulo, a.Referencia, a.Elemento, a.Talla, a.Categoria AS CategoriaArticulo
@@ -881,18 +884,33 @@ router.patch('/api/solicitud/:id/estado', async (req, res) => {
     const estadoAnterior = solicitud.Estado;
     let estadoFinal = estado;
 
-    if (estado === 'COMPLETADA') {
+    // Solo los estados que maneja el flujo
+    if (!ESTADOS_PERMITIDOS_CAMBIO.includes(String(estado).trim().toUpperCase())) {
       conn.release();
-      const resultado = await completarSolicitud(id, usuario);
-      return res.json({ ok: true, idSolicitud: id, estado: resultado.estado });
+      return res.status(400).json({ error: `Estado no permitido: ${estado}` });
     }
 
-    const rolesPermitidos = rolesPermitidosPorCategoria(solicitud.Categoria);
-    if (!rolesPermitidos.includes(rolUsuario) && rolUsuario !== 'Sistema') {
+    // Permiso: "Roles aprobadores de solicitudes <CATEGORÍA>" (Config_Parametros, inventario /
+    // Solicitudes). Se valida ANTES de cualquier cambio, incluido COMPLETADA (que registra
+    // entradas en Kardex). Excepción: quien puede ver la solicitud puede anularla (CANCELADA)
+    // mientras está en BORRADOR o VALIDAR, que es cuando la pantalla le muestra "Anular".
+    const esAprobador = await esAprobadorSolicitud(rolUsuario, solicitud.Categoria);
+    let autorizado = esAprobador;
+    if (!autorizado && String(estado).toUpperCase() === 'CANCELADA'
+        && ['BORRADOR', 'VALIDAR'].includes(String(solicitud.Estado || '').toUpperCase())) {
+      autorizado = await puedeVerSolicitud(await computarAccesoSolicitud(usuario), solicitud);
+    }
+    if (!autorizado) {
       conn.release();
       return res.status(403).json({
         error: `El rol ${rolUsuario || 'N/A'} no tiene permiso para gestionar el estado en la categoría ${solicitud.Categoria || 'N/A'}`,
       });
+    }
+
+    if (estado === 'COMPLETADA') {
+      conn.release();
+      const resultado = await completarSolicitud(id, usuario);
+      return res.json({ ok: true, idSolicitud: id, estado: resultado.estado });
     }
 
     await conn.beginTransaction();
@@ -1194,9 +1212,10 @@ router.delete('/api/solicitud/:id', async (req, res) => {
       return res.status(400).json({ error: 'Parámetro usuario requerido' });
     }
 
+    // "Roles que pueden eliminar solicitudes" (Config_Parametros, inventario / Solicitudes)
     const acceso = await computarAccesoSolicitud(usuario);
-    if (!acceso || acceso.rol !== 'Sistema') {
-      return res.status(403).json({ error: 'Solo el rol de Sistema puede eliminar solicitudes.' });
+    if (!acceso || !(await obtenerConfigSolicitudes(acceso.rol)).puedeEliminar) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para eliminar solicitudes.' });
     }
 
     // Verificar existencia
@@ -1223,12 +1242,13 @@ router.delete('/api/solicitud/:id', async (req, res) => {
 const { verificarSolicitudesNuevosIngresos } = require('../services/solicitudesAutoIngresoService');
 router.post('/api/procesar-ingresos-automaticos', async (req, res) => {
   try {
+    // Seguridad: antes se podía ejecutar sin usuario. La tarea programada (app.js) llama al
+    // servicio directamente, no a esta ruta, así que aquí siempre se exige un usuario válido.
     const { usuario } = req.body;
-    if (usuario) {
-      const acceso = await computarAccesoSolicitud(usuario);
-      if (!acceso) {
-        return res.status(403).json({ error: 'No autorizado' });
-      }
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await computarAccesoSolicitud(usuario);
+    if (!acceso || acceso.accesoCode === null || acceso.accesoCode === undefined) {
+      return res.status(403).json({ error: 'No autorizado' });
     }
 
     const resultado = await verificarSolicitudesNuevosIngresos();

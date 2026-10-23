@@ -34,6 +34,28 @@ const P = {
 };
 
 const SECCION_PENDIENTE = 'Pendiente por recibir';
+const SECCION_SOLICITUDES = 'Solicitudes';
+
+// Solicitudes: filas por categoría ("Roles aprobadores de solicitudes <CATEGORÍA>" y
+// "Notificación solicitud <CATEGORÍA> - Para:"); la que no tenga fila usa "- Otras categorías".
+const PS = {
+  EDITAR_CERRADAS:  'Roles que pueden editar solicitudes cerradas',
+  ELIMINAR:         'Roles que pueden eliminar solicitudes',
+  EPP_DEFECTO:      'Roles con categoría EPP por defecto en nueva solicitud',
+  AUTOMATICA_PARA:  'Notificación solicitud automática - Para:',
+  HABILITAR:        'Habilitar notificaciones de correo en Solicitudes',
+};
+const conceptoAprobadoresSolicitud = (categoria) => `Roles aprobadores de solicitudes ${String(categoria || '').trim().toUpperCase()}`;
+const conceptoNotificacionSolicitud = (categoria) => `Notificación solicitud ${String(categoria || '').trim().toUpperCase()} - Para:`;
+const CONCEPTO_APROBADORES_OTRAS = 'Roles aprobadores de solicitudes - Otras categorías';
+const CONCEPTO_NOTIFICACION_OTRAS = 'Notificación solicitud - Otras categorías - Para:';
+// Valores por defecto (claves sin tilde). Tecnología: solo Sistema mientras se ajustan los roles.
+const DEFAULT_APROBADORES_SOLICITUD = {
+  'EPP':       'AdmSst, LiderSst, Inventario, Sistema',
+  'DOTACION':  'Inventario, Cuentas, Sistema',
+  'TECNOLOGIA': 'Sistema',
+};
+const DEFAULT_APROBADORES_OTRAS = 'Sistema, Cuentas, Inventario';
 
 // Destinatarios del correo de confirmación, una fila por categoría:
 // "Notificación confirmación inventario <CATEGORÍA> - Para:" (lista de ROLES).
@@ -69,6 +91,13 @@ const DEFAULTS = {
     [P.GENERAR_ACTAS]: '',
     [P.RECIBIDA_COPIA]: '',
     [P.HABILITAR_RECIBIDA]: '1',
+  },
+  [SECCION_SOLICITUDES]: {
+    [PS.EDITAR_CERRADAS]: 'Sistema',
+    [PS.ELIMINAR]: 'Sistema',
+    [PS.EPP_DEFECTO]: 'AdmSst, AnaSst, AuxSst, LiderSst',
+    [PS.AUTOMATICA_PARA]: 'Inventario, Sistema',
+    [PS.HABILITAR]: '1',
   },
 };
 
@@ -272,6 +301,59 @@ async function obtenerCopiaTransferenciaRecibida() {
   return { habilitado: true, copia: await correosPorRoles(lista(valor(p, SECCION_PENDIENTE, P.RECIBIDA_COPIA)), null) };
 }
 
+// ── Pestaña Solicitudes ─────────────────────────────────────────────────────
+// Busca una fila por concepto sin distinguir mayúsculas ni tildes.
+function buscarConcepto(params, concepto) {
+  const buscado = normalizarTexto(concepto);
+  return Object.keys(params).find((k) => normalizarTexto(k) === buscado);
+}
+
+// Roles (lista) de una fila por categoría. Orden: fila de la categoría → valor por defecto de
+// la categoría → fila "Otras categorías" → valor por defecto de otras.
+function rolesPorCategoria(params, conceptoCategoria, conceptoOtras, categoria) {
+  const propia = buscarConcepto(params, conceptoCategoria);
+  if (propia !== undefined) return lista(params[propia]);
+  const claveCat = normalizarTexto(categoria).toUpperCase();
+  if (DEFAULT_APROBADORES_SOLICITUD[claveCat] !== undefined) return lista(DEFAULT_APROBADORES_SOLICITUD[claveCat]);
+  const otras = buscarConcepto(params, conceptoOtras);
+  return otras !== undefined ? lista(params[otras]) : lista(DEFAULT_APROBADORES_OTRAS);
+}
+
+function aprobadoresSolicitud(params, categoria) {
+  return rolesPorCategoria(params, conceptoAprobadoresSolicitud(categoria), CONCEPTO_APROBADORES_OTRAS, categoria);
+}
+
+// Permisos de Solicitudes para un rol (incluye los aprobadores de cada categoría, para la pantalla).
+async function obtenerConfigSolicitudes(rol, categorias = []) {
+  const p = await obtenerParametros(SECCION_SOLICITUDES);
+  const aprobadorPorCategoria = {};
+  categorias.forEach((c) => { aprobadorPorCategoria[normalizarTexto(c).toUpperCase()] = enLista(aprobadoresSolicitud(p, c).join(','), rol); });
+  return {
+    puedeEditarCerradas: enLista(valor(p, SECCION_SOLICITUDES, PS.EDITAR_CERRADAS), rol),
+    puedeEliminar: enLista(valor(p, SECCION_SOLICITUDES, PS.ELIMINAR), rol),
+    categoriaEppPorDefecto: enLista(valor(p, SECCION_SOLICITUDES, PS.EPP_DEFECTO), rol),
+    aprobadorPorCategoria,
+    aprobadorOtras: enLista(aprobadoresSolicitud(p, '__OTRA__').join(','), rol),
+  };
+}
+
+// ¿El rol aprueba / gestiona el estado de las solicitudes de esta categoría?
+async function esAprobadorSolicitud(rol, categoria) {
+  const p = await obtenerParametros(SECCION_SOLICITUDES);
+  return enLista(aprobadoresSolicitud(p, categoria).join(','), rol);
+}
+
+// Destinatarios (Para, por Rol) del correo de cambio de estado de una solicitud.
+// automatica = solicitud generada por un nuevo ingreso (Observaciones "AUTOMATICO...").
+async function obtenerDestinatariosSolicitud(categoria, { automatica = false } = {}) {
+  const p = await obtenerParametros(SECCION_SOLICITUDES);
+  if (!activo(valor(p, SECCION_SOLICITUDES, PS.HABILITAR))) return { habilitado: false, para: [] };
+  const roles = automatica
+    ? lista(valor(p, SECCION_SOLICITUDES, PS.AUTOMATICA_PARA))
+    : rolesPorCategoria(p, conceptoNotificacionSolicitud(categoria), CONCEPTO_NOTIFICACION_OTRAS, categoria);
+  return { habilitado: true, para: await correosPorRoles(roles, null) };
+}
+
 // ── General (todas las pestañas del módulo) ─────────────────────────────────
 // Categorías del acceso restringido (códigos 4, 5 y 6 de Maestro_Menu_Inventario). Se
 // devuelven con y sin tilde, porque Dynamic_Kardex/Vista_Inventario tienen ambas escrituras.
@@ -299,6 +381,12 @@ module.exports = {
   obtenerDestinatariosTransferencia,
   obtenerConfigPendiente,
   obtenerCopiaTransferenciaRecibida,
+  obtenerConfigSolicitudes,
+  esAprobadorSolicitud,
+  obtenerDestinatariosSolicitud,
+  conceptoAprobadoresSolicitud,
+  conceptoNotificacionSolicitud,
+  PARAMETROS_SOLICITUDES: PS,
   normalizarTexto,
   conceptoCorreoCategoria,
   PARAMETROS_INVENTARIO: P,

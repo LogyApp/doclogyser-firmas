@@ -12086,8 +12086,8 @@
       if (formTitle) formTitle.textContent = 'Nueva Solicitud';
 
       // Reset category and priority buttons selection
-      const sstRoles = ['AdmSst', 'AnaSst', 'AuxSst', 'LiderSst'];
-      if (sstRoles.includes(CONFIG.rol)) {
+      // "Roles con categoría EPP por defecto en nueva solicitud" (Config_Parametros, inventario / Solicitudes)
+      if (CONFIG.solicitudes && CONFIG.solicitudes.categoriaEppPorDefecto) {
         selectCategoryButton('EPP');
         const catInput = document.getElementById('sol-form-categoria');
         if (catInput) catInput.dispatchEvent(new Event('change'));
@@ -12147,7 +12147,7 @@
 
     async function loadSolicitudDetail(id) {
       try {
-        const res = await fetch(`/solicitudes/api/solicitud/${id}`);
+        const res = await fetch(`/solicitudes/api/solicitud/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         if (!res.ok) throw new Error('Error al consultar detalle de solicitud');
 
         const tempSolicitud = await res.json();
@@ -12239,14 +12239,11 @@
         const catUpper = (solicitudActual.Categoria || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
         // 1. Determine if current user is an authorized approver for the category
-        let esAprobador = false;
-        if (rol === 'Sistema') {
-          esAprobador = true;
-        } else if (catUpper === 'EPP') {
-          esAprobador = ['AdmSst', 'LiderSst', 'Inventario'].includes(rol);
-        } else if (catUpper !== 'TECNOLOGIA') {
-          esAprobador = ['Inventario', 'Cuentas'].includes(rol);
-        }
+        // "Roles aprobadores de solicitudes <CATEGORÍA>" (Config_Parametros, inventario / Solicitudes);
+        // el servidor lo vuelve a validar.
+        const cfgSol = CONFIG.solicitudes || {};
+        const aprobPorCat = cfgSol.aprobadorPorCategoria || {};
+        const esAprobador = Object.prototype.hasOwnProperty.call(aprobPorCat, catUpper) ? Boolean(aprobPorCat[catUpper]) : Boolean(cfgSol.aprobadorOtras);
 
         // 2. Determine if the form should be editable
         let isEditable = false;
@@ -12255,7 +12252,7 @@
         } else if (stateUpper === 'PENDIENTE' || stateUpper === 'PARCIAL') {
           isEditable = esAprobador;
         } else if (['APROBADA', 'COMPLETADA', 'RECHAZADA'].includes(stateUpper)) {
-          isEditable = (rol === 'Sistema');
+          isEditable = Boolean(cfgSol.puedeEditarCerradas); // "Roles que pueden editar solicitudes cerradas"
         }
 
         solicitudItemsEditable = isEditable;
@@ -12403,6 +12400,8 @@
       formData.append('observaciones', observaciones || '');
       formData.append('aclaraciones', aclaraciones || '');
       formData.append('usuario', trabajador);
+      // Quien realiza la acción (para permisos); 'usuario' es el solicitante de la solicitud
+      formData.append('usuarioActor', CONFIG.usuarioId);
       formData.append('estado', estadoDestino);
       formData.append('imagenCotizacion', cotizacionUrl || '');
       formData.append('items', JSON.stringify(itemsPayload));

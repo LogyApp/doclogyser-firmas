@@ -22,6 +22,7 @@ const {
   obtenerDestinatariosTransferencia,
   obtenerConfigPendiente,
   obtenerCopiaTransferenciaRecibida,
+  obtenerConfigSolicitudes,
   normalizarTexto,
 } = require('../services/configInventario');
 const multer = require('multer');
@@ -65,12 +66,15 @@ router.get('/', async (req, res) => {
     }
 
     // Reglas de la pestaña Inventario (Config_Parametros, inventario / Inventario)
-    const [cfgInventario, categoriasConfirmacion, condicionesCategoria, cfgKardex] = await Promise.all([
+    const [cfgInventario, categoriasConfirmacion, condicionesCategoria, cfgKardex, todasCategorias] = await Promise.all([
       obtenerConfigPestanaInventario(acceso.rol),
       obtenerCategoriasConfirmacion(acceso.filtroCategorias),
       obtenerCondicionesCategoria(),
       obtenerConfigKardex(acceso.rol), // Reglas de la pestaña Kardex (inventario / Kardex)
+      obtenerCategoriasConfirmacion(null),
     ]);
+    // Reglas de la pestaña Solicitudes (inventario / Solicitudes)
+    const cfgSolicitudes = await obtenerConfigSolicitudes(acceso.rol, todasCategorias);
 
     const html = fs.readFileSync(HTML_PATH, 'utf8');
     const config = JSON.stringify({
@@ -78,6 +82,7 @@ router.get('/', async (req, res) => {
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
       inventario: { ...cfgInventario, categoriasConfirmacion, condicionesCategoria },
       kardex: cfgKardex,
+      solicitudes: cfgSolicitudes,
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));
