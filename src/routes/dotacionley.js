@@ -1,15 +1,69 @@
 const express = require('express');
-const path = require('path');
 const pool = require('../services/db');
 const { computarAccesoInventario } = require('../services/accesoInventario');
+const { obtenerConfigDotacion, normalizarTexto } = require('../services/configInventario');
 const { notificarDotacionLey } = require('../services/email');
 
 const router = express.Router();
-const HTML_PATH = path.join(__dirname, '../views/dotacionley/index.html');
 
-// ═════ Servir la Vista HTML ═════
-router.get('/', (req, res) => {
-  res.sendFile(HTML_PATH);
+// ═════ Trabajadores con dotación de ley este mes ═════
+// Reemplaza la vista vista_dotacion_ley: toma la vinculación activa más reciente de cada
+// trabajador y deja los que cumplen aniversario de ingreso este mes (años anteriores) o
+// llevan un múltiplo de "Meses entre entregas de dotación de ley" desde su mes de ingreso.
+// Se consulta una sola vez por petición; filtros, conteos y paginación se hacen en memoria.
+const SQL_TRABAJADORES = `
+  SELECT ms.\`Identificación\` AS Identificacion, ms.Trabajador, mv.Regional, ms.\`Operación\` AS Operacion,
+         mv.Cargo, mv.\`Fecha de Ingreso\` AS Fecha_Ingreso,
+         ms.Chaqueta, ms.Camiseta, ms.Numero, ms.Pantalon, ms.Botas, ms.Email, ms.Celular
+  FROM (
+    SELECT \`Identificación\`, Regional, Cargo, \`Fecha de Ingreso\`,
+           ROW_NUMBER() OVER (PARTITION BY \`Identificación\` ORDER BY \`Fecha de Ingreso\` DESC) AS rn
+    FROM \`Maestro_Vinculación\`
+    WHERE Estado = 'Activo'
+  ) mv
+  JOIN \`Maestro_Segmentación\` ms ON ms.\`Identificación\` = mv.\`Identificación\`
+  WHERE mv.rn = 1
+    AND MOD(MOD(MONTH(CURDATE()) - MONTH(mv.\`Fecha de Ingreso\`) + 12, 12), ?) = 0
+    AND NOT (MONTH(mv.\`Fecha de Ingreso\`) = MONTH(CURDATE()) AND YEAR(mv.\`Fecha de Ingreso\`) >= YEAR(CURDATE()))`;
+
+// Resultado guardado unos minutos para no repetir la consulta en cada búsqueda o página.
+// Se borra al editar una talla o el celular.
+const CACHE_MS = 2 * 60 * 1000;
+let cache = null; // { meses, expira, filas }
+
+async function obtenerTrabajadoresDotacion(meses) {
+  if (cache && cache.meses === meses && cache.expira > Date.now()) return cache.filas;
+  const [filas] = await pool.query(SQL_TRABAJADORES, [meses]);
+  cache = { meses, expira: Date.now() + CACHE_MS, filas };
+  return filas;
+}
+
+function invalidarCache() {
+  cache = null;
+}
+
+function filtrarPorAcceso(filas, acceso) {
+  if (acceso.sinFiltro) return filas;
+  const ops = new Set(acceso.operacionesFiltro);
+  return filas.filter((r) => ops.has(r.Operacion));
+}
+
+function comparar(a, b) {
+  return String(a || '').localeCompare(String(b || ''), 'es', { sensitivity: 'base' });
+}
+
+// La pestaña vive dentro de Inventario; esta dirección solo redirige allá a quien tenga acceso.
+router.get('/', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).send('<h2>Error: Parámetro ?usuario requerido</h2>');
+    const acceso = await computarAccesoInventario(usuario, 'DotacionLey');
+    if (!acceso) return res.status(403).send('<h2>Error: Usuario no autorizado</h2>');
+    res.redirect(`/inventario?usuario=${encodeURIComponent(usuario)}`);
+  } catch (err) {
+    console.error('[dotacionley] GET /:', err);
+    res.status(500).send('<h2>Error interno</h2>');
+  }
 });
 
 // ═════ API: Obtener Resumen (Regionales y Operaciones con conteo) ═════
@@ -26,22 +80,15 @@ router.get('/api/resumen', async (req, res) => {
       return res.json([]);
     }
 
-    let where = '';
-    const params = [];
-    if (!acceso.sinFiltro) {
-      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      where = `WHERE Operacion IN (${ph})`;
-      params.push(...acceso.operacionesFiltro);
-    }
-
-    const [rows] = await pool.execute(
-      `SELECT Regional, Operacion, COUNT(*) AS total
-       FROM vista_dotacion_ley
-       ${where}
-       GROUP BY Regional, Operacion
-       ORDER BY Regional, Operacion`,
-      params
-    );
+    const cfg = await obtenerConfigDotacion();
+    const filas = filtrarPorAcceso(await obtenerTrabajadoresDotacion(cfg.mesesEntreEntregas), acceso);
+    const grupos = new Map();
+    filas.forEach((r) => {
+      const clave = `${r.Regional}|${r.Operacion}`;
+      if (!grupos.has(clave)) grupos.set(clave, { Regional: r.Regional, Operacion: r.Operacion, total: 0 });
+      grupos.get(clave).total++;
+    });
+    const rows = [...grupos.values()].sort((a, b) => comparar(a.Regional, b.Regional) || comparar(a.Operacion, b.Operacion));
     res.json(rows);
   } catch (err) {
     console.error('[dotacionley] GET /api/resumen:', err);
@@ -63,51 +110,26 @@ router.get('/api/trabajadores', async (req, res) => {
       return res.json({ total: 0, page: parseInt(page), limit: parseInt(limit), pages: 1, rows: [] });
     }
 
-    let where = 'WHERE 1=1';
-    const params = [];
-
-    if (!acceso.sinFiltro) {
-      const ph = acceso.operacionesFiltro.map(() => '?').join(',');
-      where += ` AND Operacion IN (${ph})`;
-      params.push(...acceso.operacionesFiltro);
-    }
-
-    if (regional) {
-      where += ' AND Regional = ?';
-      params.push(regional);
-    }
-    if (operacion) {
-      where += ' AND Operacion = ?';
-      params.push(operacion);
-    }
-    if (q) {
-      where += ' AND (Trabajador LIKE ? OR Identificacion LIKE ?)';
-      params.push(`%${q}%`, `%${q}%`);
-    }
+    const cfg = await obtenerConfigDotacion();
+    const busqueda = normalizarTexto(q);
+    const filtradas = filtrarPorAcceso(await obtenerTrabajadoresDotacion(cfg.mesesEntreEntregas), acceso)
+      .filter((r) => !regional || r.Regional === regional)
+      .filter((r) => !operacion || r.Operacion === operacion)
+      .filter((r) => !busqueda
+        || normalizarTexto(r.Trabajador).includes(busqueda)
+        || normalizarTexto(r.Identificacion).includes(busqueda))
+      .sort((a, b) => comparar(a.Trabajador, b.Trabajador));
 
     const safeLimit = parseInt(limit) || 50;
-    const safeOffset = (parseInt(page) - 1) * safeLimit;
-
-    // Obtener total de registros y registros paginados en paralelo
-    const [
-      [[{ total }]],
-      [rows]
-    ] = await Promise.all([
-      pool.execute(`SELECT COUNT(*) AS total FROM vista_dotacion_ley ${where}`, params),
-      pool.execute(
-        `SELECT * FROM vista_dotacion_ley ${where}
-         ORDER BY Trabajador ASC
-         LIMIT ${safeLimit} OFFSET ${safeOffset}`,
-        params
-      )
-    ]);
+    const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit) || 0;
+    const total = filtradas.length;
 
     res.json({
-      total: parseInt(total),
+      total,
       page: parseInt(page),
       limit: parseInt(limit),
-      pages: Math.ceil(total / limit),
-      rows
+      pages: Math.ceil(total / safeLimit),
+      rows: filtradas.slice(safeOffset, safeOffset + safeLimit)
     });
   } catch (err) {
     console.error('[dotacionley] GET /api/trabajadores:', err);
@@ -115,12 +137,13 @@ router.get('/api/trabajadores', async (req, res) => {
   }
 });
 
-function construirTallas(row) {
+function construirTallas(row, cfg) {
+  const llevaNumero = cfg.cargosNumero.some((c) => normalizarTexto(c) === normalizarTexto(row.Cargo));
   return {
     pantalon: row.Pantalon || '',
     botas: row.Botas || '',
     camiseta: row.Camiseta || '',
-    numero: row.Cargo === 'AUXILIAR LOGISTICO' ? (row.Numero || '') : '',
+    numero: llevaNumero ? (row.Numero || '') : '',
   };
 }
 
@@ -128,6 +151,8 @@ function nombreCorto(trabajador) {
   const partes = String(trabajador || '').split(' ** ');
   return partes.length > 1 ? partes[1].trim() : (trabajador || '');
 }
+
+const MSG_CORREO_DESACTIVADO = 'Las notificaciones de correo de Dotación de Ley están desactivadas (Config_Parametros).';
 
 // ═════ API: Enviar correo individual (columna Acciones) ═════
 router.post('/api/enviar-correo', async (req, res) => {
@@ -139,10 +164,11 @@ router.post('/api/enviar-correo', async (req, res) => {
     const acceso = await computarAccesoInventario(usuario, 'DotacionLey');
     if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
 
-    const [[row]] = await pool.execute(
-      'SELECT * FROM vista_dotacion_ley WHERE Identificacion = ? LIMIT 1',
-      [identificacion]
-    );
+    const cfg = await obtenerConfigDotacion();
+    if (!cfg.correoHabilitado) return res.status(403).json({ error: MSG_CORREO_DESACTIVADO });
+
+    const filas = await obtenerTrabajadoresDotacion(cfg.mesesEntreEntregas);
+    const row = filas.find((r) => String(r.Identificacion) === String(identificacion));
     if (!row) return res.status(404).json({ error: 'Colaborador no encontrado en el ámbito de dotación de ley' });
 
     if (!acceso.sinFiltro && !acceso.operacionesFiltro.includes(row.Operacion)) {
@@ -156,7 +182,7 @@ router.post('/api/enviar-correo', async (req, res) => {
     await notificarDotacionLey({
       email: row.Email,
       nombreTrabajador: nombreCorto(row.Trabajador),
-      tallas: construirTallas(row),
+      tallas: construirTallas(row, cfg),
     });
 
     res.json({ ok: true });
@@ -183,10 +209,11 @@ router.post('/api/enviar-correo-masivo', async (req, res) => {
       }
     }
 
-    const [rows] = await pool.execute(
-      'SELECT * FROM vista_dotacion_ley WHERE Regional = ? AND Operacion = ?',
-      [regional, operacion]
-    );
+    const cfg = await obtenerConfigDotacion();
+    if (!cfg.correoHabilitado) return res.status(403).json({ error: MSG_CORREO_DESACTIVADO });
+
+    const rows = (await obtenerTrabajadoresDotacion(cfg.mesesEntreEntregas))
+      .filter((r) => r.Regional === regional && r.Operacion === operacion);
 
     if (!rows.length) {
       return res.json({ ok: true, enviados: 0, sinCorreo: 0, total: 0 });
@@ -200,7 +227,7 @@ router.post('/api/enviar-correo-masivo', async (req, res) => {
         await notificarDotacionLey({
           email: row.Email,
           nombreTrabajador: nombreCorto(row.Trabajador),
-          tallas: construirTallas(row),
+          tallas: construirTallas(row, cfg),
         });
         enviados++;
       } catch (e) {
@@ -259,6 +286,8 @@ router.post('/api/actualizar-campo', async (req, res) => {
       [valToSave, acceso.usuarioNombre || usuario, identificacion]
     );
 
+    invalidarCache();
+
     res.json({
       success: true,
       message: `${campo} actualizado con éxito`,
@@ -278,24 +307,26 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
     if (!usuario) return res.status(400).json({ error: 'usuario es requerido' });
     if (!regional) return res.status(400).json({ error: 'Debe seleccionar al menos una Regional.' });
 
-    // Validar que el usuario tenga rol Sistema o Inventario
-    const [uRows] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
-    if (!uRows.length || !['Sistema', 'Inventario'].includes(uRows[0].Rol)) {
-      return res.status(403).json({ error: 'Opción reservada exclusivamente para usuarios con Rol Sistema o Inventario.' });
+    // Requiere acceso a la pestaña, un rol de "Roles que pueden enviar la dotación de ley al
+    // Kardex" (Config_Parametros) y que la Regional/Operación esté dentro de su acceso.
+    const acceso = await computarAccesoInventario(usuario, 'DotacionLey');
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado' });
+    const cfg = await obtenerConfigDotacion(acceso.rol);
+    if (!cfg.puedeEnviarKardex) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para enviar la dotación de ley al Kardex.' });
+    }
+    const op = String(operacion || '').trim();
+    if (!acceso.sinFiltro) {
+      const opsPermitidas = acceso.opsPorRegional[regional] || [];
+      if (!opsPermitidas.length || (op && !opsPermitidas.includes(op))) {
+        return res.status(403).json({ error: 'No tienes acceso a esta Regional/Operación' });
+      }
     }
 
-    // 1. Consultar trabajadores de la Regional (y opcionalmente Operación)
-    let where = 'WHERE Regional = ?';
-    const params = [regional];
-    if (operacion && operacion.trim()) {
-      where += ' AND Operacion = ?';
-      params.push(operacion.trim());
-    }
-
-    const [workers] = await pool.execute(
-      `SELECT * FROM vista_dotacion_ley ${where} ORDER BY Operacion, Trabajador`,
-      params
-    );
+    // 1. Trabajadores de la Regional (y opcionalmente Operación) dentro del acceso del usuario
+    const workers = filtrarPorAcceso(await obtenerTrabajadoresDotacion(cfg.mesesEntreEntregas), acceso)
+      .filter((w) => w.Regional === regional && (!op || w.Operacion === op))
+      .sort((a, b) => comparar(a.Operacion, b.Operacion) || comparar(a.Trabajador, b.Trabajador));
 
     if (!workers.length) {
       return res.json({
@@ -380,8 +411,8 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
           generatedRows.push({
             FechaMovimiento: nowStr,
             TipoMovimiento: 'TRANSFERENCIA',
-            Regional: 'ANTIOQUIA',
-            Operacion: 'Administracion',
+            Regional: cfg.regionalOrigen,
+            Operacion: cfg.operacionOrigen,
             OperacionDestino: opDestino,
             Categoria: 'DOTACIÓN',
             IdArticulo: matchedArt.Id,
@@ -422,8 +453,8 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
           generatedRows.push({
             FechaMovimiento: nowStr,
             TipoMovimiento: 'TRANSFERENCIA',
-            Regional: 'ANTIOQUIA',
-            Operacion: 'Administracion',
+            Regional: cfg.regionalOrigen,
+            Operacion: cfg.operacionOrigen,
             OperacionDestino: opDestino,
             Categoria: 'DOTACIÓN',
             IdArticulo: matchedArt.Id,
@@ -446,9 +477,9 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
         }
       }
 
-      // Parte 3: BOTAS (Solo requerida para las Regionales ANTIOQUIA y CARIBE)
+      // Parte 3: BOTAS (solo las Regionales de "Regionales que reciben botas en la dotación de ley")
       const regionalTrabajador = norm(w.Regional || regional);
-      const requiereBotas = ['ANTIOQUIA', 'CARIBE'].includes(regionalTrabajador);
+      const requiereBotas = cfg.regionalesBotas.some((r) => norm(r) === regionalTrabajador);
       if (requiereBotas) {
         const botasRule = rules.find(r =>
           norm(r.Operacion) === norm(w.Operacion) &&
@@ -466,8 +497,8 @@ router.post('/api/generar-filas-kardex', async (req, res) => {
             generatedRows.push({
               FechaMovimiento: nowStr,
               TipoMovimiento: 'TRANSFERENCIA',
-              Regional: 'ANTIOQUIA',
-              Operacion: 'Administracion',
+              Regional: cfg.regionalOrigen,
+              Operacion: cfg.operacionOrigen,
               OperacionDestino: opDestino,
               Categoria: 'DOTACIÓN',
               IdArticulo: matchedArt.Id,

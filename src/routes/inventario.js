@@ -25,6 +25,7 @@ const {
   obtenerConfigSolicitudes,
   obtenerConfigArticulos,
   obtenerConfigActas,
+  obtenerConfigDotacion,
   horasVigenciaEnlaceActas,
   correoActasHabilitado,
   normalizarTexto,
@@ -102,6 +103,7 @@ router.get('/', async (req, res) => {
     // (Config_Categoria_Inventario), que reemplaza la lista de respaldo que tenía la pantalla.
     const cfgArticulos = await obtenerConfigArticulos(acceso.rol);
     const cfgActas = await obtenerConfigActas(acceso.rol); // Reglas de la pestaña Actas (inventario / Actas)
+    const cfgDotacion = await obtenerConfigDotacion(acceso.rol); // Reglas de la pestaña Dotación de Ley
     const [catRowsTodas] = await pool.execute('SELECT DISTINCT Categoria FROM Config_Categoria_Inventario WHERE Categoria IS NOT NULL ORDER BY Categoria');
 
     const html = fs.readFileSync(HTML_PATH, 'utf8');
@@ -113,6 +115,7 @@ router.get('/', async (req, res) => {
       solicitudes: cfgSolicitudes,
       articulos: cfgArticulos,
       actas: cfgActas,
+      dotacion: cfgDotacion,
       categoriasTodas: catRowsTodas.map((r) => r.Categoria),
     }).replace(/<\/script>/gi, '<\\/script>');
 

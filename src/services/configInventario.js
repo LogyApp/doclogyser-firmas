@@ -37,6 +37,18 @@ const SECCION_PENDIENTE = 'Pendiente por recibir';
 const SECCION_SOLICITUDES = 'Solicitudes';
 const SECCION_ARTICULOS = 'Artículos';
 const SECCION_ACTAS = 'Actas';
+const SECCION_DOTACION = 'Dotación de Ley';
+
+// Dotación de Ley
+const PD = {
+  HABILITAR:          'Habilitar notificaciones de correo en Dotación de Ley',
+  MESES:              'Meses entre entregas de dotación de ley',
+  REGIONALES_BOTAS:   'Regionales que reciben botas en la dotación de ley',
+  REGIONAL_ORIGEN:    'Regional de origen de la dotación de ley',
+  OPERACION_ORIGEN:   'Operación de origen de la dotación de ley',
+  ENVIAR_KARDEX:      'Roles que pueden enviar la dotación de ley al Kardex',
+  CARGOS_NUMERO:      'Cargos que llevan número de buzo',
+};
 
 // Actas
 const PAC = {
@@ -116,6 +128,15 @@ const DEFAULTS = {
     [PA.CREAR_EDITAR]: 'Auxiliar, AuxiliarR, AdmSst, Asistencial, Calidad, Control, Cuentas, Inventario, LiderSst, Sistema',
     [PA.ELIMINAR]: 'Inventario, Sistema',
     [PA.IMAGENES]: 'Inventario, Sistema',
+  },
+  [SECCION_DOTACION]: {
+    [PD.HABILITAR]: '1',
+    [PD.MESES]: '4',
+    [PD.REGIONALES_BOTAS]: 'ANTIOQUIA, CARIBE',
+    [PD.REGIONAL_ORIGEN]: 'ANTIOQUIA',
+    [PD.OPERACION_ORIGEN]: 'Administracion',
+    [PD.ENVIAR_KARDEX]: 'Sistema, Inventario',
+    [PD.CARGOS_NUMERO]: 'AUXILIAR LOGISTICO',
   },
   [SECCION_ACTAS]: {
     [PAC.HABILITAR]: '1',
@@ -419,6 +440,22 @@ async function correoActasHabilitado() {
   return activo(valor(p, SECCION_ACTAS, PAC.HABILITAR));
 }
 
+// ── Pestaña Dotación de Ley ─────────────────────────────────────────────────
+// Reglas de la pestaña. Con rol devuelve también los permisos de ese rol (para la pantalla).
+async function obtenerConfigDotacion(rol = null) {
+  const p = await obtenerParametros(SECCION_DOTACION);
+  const meses = parseInt(valor(p, SECCION_DOTACION, PD.MESES), 10);
+  return {
+    correoHabilitado: activo(valor(p, SECCION_DOTACION, PD.HABILITAR)),
+    mesesEntreEntregas: meses >= 1 && meses <= 12 ? meses : 4,
+    regionalesBotas: lista(valor(p, SECCION_DOTACION, PD.REGIONALES_BOTAS)),
+    regionalOrigen: String(valor(p, SECCION_DOTACION, PD.REGIONAL_ORIGEN) || '').trim() || 'ANTIOQUIA',
+    operacionOrigen: String(valor(p, SECCION_DOTACION, PD.OPERACION_ORIGEN) || '').trim() || 'Administracion',
+    cargosNumero: lista(valor(p, SECCION_DOTACION, PD.CARGOS_NUMERO)),
+    puedeEnviarKardex: enLista(valor(p, SECCION_DOTACION, PD.ENVIAR_KARDEX), rol),
+  };
+}
+
 // ── General (todas las pestañas del módulo) ─────────────────────────────────
 // Categorías del acceso restringido (códigos 4, 5 y 6 de Maestro_Menu_Inventario). Se
 // devuelven con y sin tilde, porque Dynamic_Kardex/Vista_Inventario tienen ambas escrituras.
@@ -458,6 +495,8 @@ module.exports = {
   horasVigenciaEnlaceActas,
   correoActasHabilitado,
   PARAMETROS_ACTAS: PAC,
+  obtenerConfigDotacion,
+  PARAMETROS_DOTACION: PD,
   normalizarTexto,
   conceptoCorreoCategoria,
   PARAMETROS_INVENTARIO: P,

@@ -18436,6 +18436,8 @@
       const masivoRegSel = document.getElementById('dotley-masivo-regional');
       const masivoOpSel = document.getElementById('dotley-masivo-operacion');
 
+      // Sin correos habilitados (Config_Parametros) no se muestra el envío masivo.
+      if (btnAbrirMasivo && !(CONFIG.dotacion || {}).correoHabilitado) btnAbrirMasivo.style.display = 'none';
       if (btnAbrirMasivo) {
         btnAbrirMasivo.addEventListener('click', () => {
           populateDotleyMasivoRegional();
@@ -18466,7 +18468,7 @@
         btnEnviarMasivo.addEventListener('click', enviarCorreoMasivoDotacionLey);
       }
 
-      // Botón y Modal: Enviar Dotación de Ley a Kardex (Solo Sistema e Inventario)
+      // Botón y Modal: Enviar Dotación de Ley a Kardex (roles de Config_Parametros, inventario / Dotación de Ley)
       const btnEnviarDotacion = document.getElementById('dotley-btn-enviar-dotacion');
       const genDotacionModal = document.getElementById('dotley-enviar-dotacion-modal');
       const btnCerrarGen = document.getElementById('dotley-enviar-dotacion-modal-close');
@@ -18475,7 +18477,7 @@
       const genRegSel = document.getElementById('dotley-gen-regional');
 
       if (btnEnviarDotacion) {
-        if (['Sistema', 'Inventario'].includes(CONFIG.rol)) {
+        if ((CONFIG.dotacion || {}).puedeEnviarKardex) {
           btnEnviarDotacion.style.display = 'inline-flex';
           btnEnviarDotacion.addEventListener('click', () => {
             populateDotleyGenRegional();
@@ -18820,12 +18822,18 @@
       });
     }
 
+    // Cargos que llevan número de buzo (Config_Parametros, inventario / Dotación de Ley).
+    function dotleyLlevaNumero(cargo) {
+      const n = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+      return ((CONFIG.dotacion || {}).cargosNumero || ['AUXILIAR LOGISTICO']).some((c) => n(c) === n(cargo));
+    }
+
     function getDotleyWhatsappUrl(row, cleanName) {
       const msg = `Hola ${cleanName}, te informamos que en el mes actual te será entregada la dotación de ley, con las siguientes tallas registradas:\n\n` +
                   `- Pantalón: ${row.Pantalon || '—'}\n` +
                   `- Botas: ${row.Botas || '—'}\n` +
                   `- Camisa/Camiseta: ${row.Camiseta || '—'}\n` +
-                  (row.Cargo === 'AUXILIAR LOGISTICO' ? `- Número de Buzo: ${row.Numero || '—'}\n` : '') +
+                  (dotleyLlevaNumero(row.Cargo) ? `- Número de Buzo: ${row.Numero || '—'}\n` : '') +
                   `\nSi alguna talla no corresponde, o si deseas actualizar tus datos bancarios y de contacto (celular y email), por favor ingresa al siguiente enlace para modificarlos:\n\n` +
                   `https://digital.logyser.com/actualizardatos`;
 
@@ -18856,7 +18864,7 @@
 
         const tr = document.createElement('tr');
         const tieneCorreo = !!(r.Email && r.Email.trim());
-        const btnCorreoHtml = tieneCorreo
+        const btnCorreoHtml = !(CONFIG.dotacion || {}).correoHabilitado ? '' : tieneCorreo
           ? `<button type="button" class="dotley-btn-correo" onclick="enviarCorreoDotacionLey('${r.Identificacion}', this)" title="Enviar por correo" style="background: none; border: none; cursor: pointer; width:34px; height:34px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center;">
                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 6-10 7L2 6"></path></svg>
              </button>`
