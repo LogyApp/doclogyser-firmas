@@ -2863,6 +2863,11 @@
       </div>
 
       <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Año *</label>
+        <select id="mNomAnio" required onchange="cargarQuincenasModalNomina()"></select>
+      </div>
+
+      <div class="ficha-field" style="margin-bottom: 14px;">
         <label>Quincena *</label>
         <select id="mNomQuincena" required>
           <option value="">— Seleccione Quincena —</option>
@@ -4271,13 +4276,32 @@
   let _mNomCondicion = 'Bloquear';
   let _bloqQuincenasList = [];
 
+  let _bloqPermisosNomina = { puedeBloquear: false, puedeDesbloquear: false };
+
   function setMNomCond(cond) {
+    if (cond === 'Bloquear' && !_bloqPermisosNomina.puedeBloquear) return;
+    if (cond === 'Desbloquear' && !_bloqPermisosNomina.puedeDesbloquear) return;
     _mNomCondicion = cond;
     document.getElementById('btnMNomBloquear').classList.toggle('sel', cond === 'Bloquear');
     document.getElementById('btnMNomDesbloquear').classList.toggle('sel', cond === 'Desbloquear');
   }
 
+  // Quincenas del año elegido en la ventana (Maestro_Fechas)
+  async function cargarQuincenasModalNomina() {
+    const anio = document.getElementById('mNomAnio').value;
+    const selMQ = document.getElementById('mNomQuincena');
+    selMQ.innerHTML = '<option value="">— Seleccione Quincena —</option>';
+    try {
+      const resp = await fetch(`/bloqueodatos/api/quincenas?usuario=${encodeURIComponent(usuario)}&anio=${encodeURIComponent(anio)}`);
+      const qs = resp.ok ? await resp.json() : [];
+      qs.forEach(q => { const o = document.createElement('option'); o.value = q; o.textContent = q; selMQ.appendChild(o); });
+    } catch (e) { console.error('Error cargando quincenas:', e); }
+  }
+
   function abrirModalBloqueoNomina() {
+    document.getElementById('btnMNomBloquear').disabled = !_bloqPermisosNomina.puedeBloquear;
+    document.getElementById('btnMNomDesbloquear').disabled = !_bloqPermisosNomina.puedeDesbloquear;
+    setMNomCond(_bloqPermisosNomina.puedeBloquear ? 'Bloquear' : 'Desbloquear');
     const overlay = document.getElementById('modalBloqueoNominaOverlay');
     overlay.classList.add('open');
     overlay._backEntry = registrarModalBack(() => cerrarModalBloqueoNomina());
@@ -4455,7 +4479,9 @@
         ? '<span class="badge-legal" style="background:var(--danger-soft); color:var(--danger-dark);">🔒 Bloqueado</span>'
         : '<span class="badge-legal" style="background:var(--success-soft); color:var(--success-dark);">🔓 Desbloqueado</span>';
 
-      const limite = r.hasta ? `Hasta: ${r.hasta.replace('T', ' ').slice(0, 16)}` : (r.quincena || '—');
+      const limite = r.hasta
+        ? (r.desde ? `${r.desde} a ${r.hasta}` : `Hasta: ${r.hasta}`)
+        : (r.quincena || '—');
       const fpStr = r.formaPago === 3 ? '3 - Crédito' : (r.formaPago === 1 ? '1 - Efectivo' : (r.formaPago === 2 ? '2 - Transf.' : (r.formaPago ? r.formaPago : 'Todas')));
 
       tr.innerHTML = `
@@ -4478,11 +4504,12 @@
     const reg = document.getElementById('mNomRegional').value;
     const op = document.getElementById('mNomOperacion').value;
     const q = document.getElementById('mNomQuincena').value;
+    const anio = document.getElementById('mNomAnio').value;
 
     if (!reg) return alert('La regional es obligatoria.');
     if (!q) return alert('La quincena es obligatoria.');
 
-    if (!confirm(`¿Confirma aplicar la acción "${_mNomCondicion}" a los turnos de Asistencia?`)) return;
+    if (!confirm(`¿Confirma aplicar la acción "${_mNomCondicion}" a los turnos de Asistencia de ${q} ${anio}?`)) return;
 
     const btn = document.getElementById('btnSubmitBloqNom');
     btn.disabled = true;
@@ -4497,6 +4524,7 @@
           regional: reg,
           operacion: op || '',
           quincena: q,
+          anio,
           datos: 'Asistencia',
           condicion: _mNomCondicion
         })
@@ -4532,11 +4560,23 @@
     fetch(`/bloqueodatos/api/quincenas?usuario=${encodeURIComponent(usuario)}`).then(r => r.json()).then(qs => {
       _bloqQuincenasList = qs;
       const selQ = document.getElementById('bloqFilterQuincena');
-      const selMQ = document.getElementById('mNomQuincena');
       qs.forEach(q => {
         const o1 = document.createElement('option'); o1.value = q; o1.textContent = q; selQ.appendChild(o1);
-        const o2 = document.createElement('option'); o2.value = q; o2.textContent = q; selMQ.appendChild(o2);
       });
+    }).catch(e => console.error(e));
+    // Años de la ventana (por defecto el actual) y sus quincenas
+    fetch(`/bloqueodatos/api/anios?usuario=${encodeURIComponent(usuario)}`).then(r => r.json()).then(data => {
+      const selA = document.getElementById('mNomAnio');
+      const anios = (data.anios && data.anios.length) ? data.anios : [data.actual || new Date().getFullYear()];
+      selA.innerHTML = anios.map(a => `<option value="${a}">${a}</option>`).join('');
+      selA.value = String(data.actual || anios[0]);
+      cargarQuincenasModalNomina();
+    }).catch(e => console.error(e));
+    // Quién puede bloquear / desbloquear (Config_Parametros nomina / Bloqueo_datos)
+    fetch(`/bloqueodatos/api/permisos?usuario=${encodeURIComponent(usuario)}&modulo=Nomina`).then(r => r.json()).then(p => {
+      _bloqPermisosNomina = { puedeBloquear: !!p.puedeBloquear, puedeDesbloquear: !!p.puedeDesbloquear };
+      const btnNuevo = document.querySelector('.btn-nuevo-bloqueo');
+      if (btnNuevo && !p.puedeBloquear && !p.puedeDesbloquear) btnNuevo.style.display = 'none';
     }).catch(e => console.error(e));
   }
   // ═══════════════════════════════════════════════════════════════════════════
