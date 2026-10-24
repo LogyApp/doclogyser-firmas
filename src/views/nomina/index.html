@@ -4019,24 +4019,31 @@
       const celdaAcciones = tr.firstElementChild;
       celdaAcciones.className = 'celda-acciones';
 
-      const btnRetirar = document.createElement('button');
-      btnRetirar.type = 'button'; btnRetirar.className = 'btn-retirar'; btnRetirar.textContent = 'Retirar';
-      btnRetirar.onclick = (e) => {
-        e.stopPropagation();
-        abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
-      };
-      celdaAcciones.appendChild(btnRetirar);
-
-      const btnTomoCargo = document.createElement('button');
-      btnTomoCargo.type = 'button'; btnTomoCargo.className = 'btn-tomo-cargo';
-      if (row.MotivoRetiro === 'SI') {
-        btnTomoCargo.textContent = '✓ Tomó cargo';
-        btnTomoCargo.disabled = true;
-      } else {
-        btnTomoCargo.textContent = 'Tomó Cargo';
-        btnTomoCargo.onclick = (e) => { e.stopPropagation(); confirmarTomoCargo(row.IdVinculacion, btnTomoCargo); };
+      // Botones según Config_Parametros (nomina / Activos):
+      // "Puede retirar trabajador" y "Puede confirmar toma de cargo".
+      if (tabs.activo && tabs.activo.puedeRetirar) {
+        const btnRetirar = document.createElement('button');
+        btnRetirar.type = 'button'; btnRetirar.className = 'btn-retirar'; btnRetirar.textContent = 'Retirar';
+        btnRetirar.onclick = (e) => {
+          e.stopPropagation();
+          abrirModal('/formretiro/' + encodeURIComponent(row.IdVinculacion) + '?usuario=' + encodeURIComponent(usuario), 'Formulario de Retiro');
+        };
+        celdaAcciones.appendChild(btnRetirar);
       }
-      celdaAcciones.appendChild(btnTomoCargo);
+
+      // "✓ Tomó cargo" (ya confirmado) se muestra a todos como información.
+      if (row.MotivoRetiro === 'SI' || (tabs.activo && tabs.activo.puedeConfirmarTomaCargo)) {
+        const btnTomoCargo = document.createElement('button');
+        btnTomoCargo.type = 'button'; btnTomoCargo.className = 'btn-tomo-cargo';
+        if (row.MotivoRetiro === 'SI') {
+          btnTomoCargo.textContent = '✓ Tomó cargo';
+          btnTomoCargo.disabled = true;
+        } else {
+          btnTomoCargo.textContent = 'Tomó Cargo';
+          btnTomoCargo.onclick = (e) => { e.stopPropagation(); confirmarTomoCargo(row.IdVinculacion, btnTomoCargo); };
+        }
+        celdaAcciones.appendChild(btnTomoCargo);
+      }
 
       // Antioquia: Nómina genera documentos sin marcar Retirado; el Coordinador/Auxiliar
       // responsable confirma aquí el cambio de Estado una vez ya está todo gestionado.

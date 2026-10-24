@@ -9,6 +9,7 @@ const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage'
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
 const { obtenerCondicionesRetiro, puedeGenerarDocumentosRetiro, docTerminacionRequerido } = require('../services/configRetiro');
 const { notificarRetiro, notificarTomoCargoConfirmado } = require('../services/email');
+const { obtenerPermisosActivos } = require('../services/configActivos');
 const { marcarNotificado } = require('../services/retiroNotifier');
 const { calcularPermisosVinculacion } = require('../services/permisosVinculacion');
 const { obtenerPermisosTraslados } = require('../services/configTraslados');
@@ -265,6 +266,7 @@ router.get('/', async (req, res) => {
     // contra Cloud SQL en la carga inicial de la página.
     const accesoRetiro = await computarAccesoNomina(usuario, 'Retiro');
     const accesoActivo = await computarAccesoNomina(usuario, 'Activo');
+    const permisosActivos = accesoActivo ? await obtenerPermisosActivos(accesoActivo.rol) : null;
     const accesoBloqueo = await computarAccesoNomina(usuario, 'Bloqueo_datos');
     let accesoBiometrico = await computarAccesoNomina(usuario, 'Biometrico');
     // Solo con Sección 'Biometrico' en Maestro_Menu_Nomina (no el respaldo por rol) y Operación Administración
@@ -332,7 +334,7 @@ router.get('/', async (req, res) => {
       },
       tabs: {
         retiro: resumenAcceso(accesoRetiro),
-        activo: resumenAcceso(accesoActivo),
+        activo: accesoActivo ? { ...resumenAcceso(accesoActivo), ...permisosActivos } : null,
         bloqueo: resumenAcceso(accesoBloqueo),
         biometrico: accesoBiometrico ? { sinFiltro: accesoBiometrico.sinFiltro, isSstOnly, puedeEditarCoordenadas } : null,
         incapacidades: Boolean(accesoBiometrico),
@@ -980,6 +982,13 @@ router.post('/api/tomo-cargo', async (req, res) => {
     const vin = rows[0];
     if (vin['Motivo del Retiro'] === 'SI') {
       return res.status(409).json({ ok: false, error: 'Ya se había confirmado que tomó el cargo' });
+    }
+
+    // "Puede confirmar toma de cargo" (Config_Parametros nomina / Activos)
+    const [uPerm] = await pool.execute('SELECT Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const permisos = await obtenerPermisosActivos(uPerm.length ? uPerm[0].Rol : '');
+    if (!permisos.puedeConfirmarTomaCargo) {
+      return res.status(403).json({ ok: false, error: 'Su rol no tiene permiso para confirmar la toma de cargo' });
     }
 
     const fechaActualizacion = fechaHoraBogota();

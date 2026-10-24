@@ -14,6 +14,7 @@ const { marcarNotificado } = require('../services/retiroNotifier');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 const { generarTokenPZ, generarTokenCT, generarTokenAR, generarTokenEMOE, generarTokenCRS, generarTokenEVR, reconstruirToken } = require('../services/token');
 const { determinarNivelYAreas } = require('../services/pazYSalvoService');
+const { obtenerPermisosActivos } = require('../services/configActivos');
 const { obtenerCondicionesRetiro, obtenerCondicionRetiro, obtenerPrefijoDoc, obtenerPermisosRetiro, nominaDebeMarcarRetirado, obtenerResponsablesConfirmarRetiro } = require('../services/configRetiro');
 
 const router   = express.Router();
@@ -774,6 +775,11 @@ router.post('/:idVinculacion', async (req, res) => {
     const esRetirado = (vin.Estado === 'Retirado') || (vin['Motivo del Retiro'] && vin['Motivo del Retiro'] !== 'SI' && vin['Motivo del Retiro'].trim() !== '');
     if (esRetirado && !esNominaOSistema) {
       return res.status(409).json({ ok: false, error: 'El trabajador ya figura como retirado' });
+    }
+    // Registrar un retiro nuevo (botón Retirar de Activos): "Puede retirar trabajador"
+    // (Config_Parametros nomina / Activos). Editar un retiro ya registrado sigue sus propias reglas.
+    if (!esRetirado && !(await obtenerPermisosActivos(rolUsuario)).puedeRetirar) {
+      return res.status(403).json({ ok: false, error: 'Su rol no tiene permiso para retirar trabajadores' });
     }
 
     const ahora = fechaHoraBogota();
