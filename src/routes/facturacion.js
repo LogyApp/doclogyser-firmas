@@ -164,10 +164,13 @@ router.get('/api/bloqueos', async (req, res) => {
     const acceso = await computarAccesoFacturacion(usuario, 'Bloqueo_datos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
+    const [colDesde] = await pool.query("SHOW COLUMNS FROM Bloqueo_Nomina LIKE 'Desde'");
     const [rows] = await pool.execute(`
-      SELECT b.ID AS id, b.Operación AS operacion, b.Quincena AS quincena, b.Hasta AS hasta,
+      SELECT b.ID AS id, b.Operación AS operacion, b.Quincena AS quincena,
+             ${colDesde.length ? "DATE_FORMAT(b.Desde, '%Y-%m-%d %H:%i')" : 'NULL'} AS desde,
+             DATE_FORMAT(b.Hasta, '%Y-%m-%d %H:%i') AS hasta,
              b.Año AS anio, b.Datos AS datos, b.Forma_Pago AS formaPago, b.Condición AS condicion,
-             b.Usuario AS usuario, b.Fecha_Registro AS fechaRegistro, b.Modulo AS modulo,
+             b.Usuario AS usuario, DATE_FORMAT(b.Fecha_Registro, '%Y-%m-%d %H:%i:%s') AS fechaRegistro, b.Modulo AS modulo,
              COALESCE(b.Regional, o.REGIONAL) AS regional
       FROM Bloqueo_Nomina b
       LEFT JOIN Maestro_Operaciones o ON b.Operación = o.OPERACIÓN

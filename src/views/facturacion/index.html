@@ -2085,23 +2085,37 @@
             <label>Criterio Temporal *</label>
             <div class="btn-grupo">
               <button type="button" class="btn-grupo-opt sel" id="btn-crit-quincena" onclick="setCriterio('Quincena')">Por Quincena</button>
-              <button type="button" class="btn-grupo-opt" id="btn-crit-fecha" onclick="setCriterio('Fecha')">Por Fecha (Hasta)</button>
+              <button type="button" class="btn-grupo-opt" id="btn-crit-fecha" onclick="setCriterio('Fecha')">Por Fechas</button>
             </div>
           </div>
 
           <!-- Selector Quincena -->
-          <div class="form-group" id="row-quincena">
-            <label>Quincena *</label>
-            <select id="modal-quincena">
-              <option value="">— Seleccione Quincena —</option>
-            </select>
+          <div id="row-quincena" style="display: grid; grid-template-columns: 110px 1fr; gap: 12px;">
+            <div class="form-group">
+              <label>Año *</label>
+              <select id="modal-anio" onchange="cargarQuincenasModalBloqueo()"></select>
+            </div>
+            <div class="form-group">
+              <label>Quincena *</label>
+              <select id="modal-quincena">
+                <option value="">— Seleccione Quincena —</option>
+              </select>
+            </div>
           </div>
 
           <!-- Selector Fecha / Hora Límite -->
           <div class="form-group" id="row-hasta" style="display: none;">
-            <label>Fecha y Hora Límite (Hasta) *</label>
-            <input type="datetime-local" id="modal-hasta">
-            <small style="color: var(--text-muted); font-size: 0.78rem;">Se bloquearán turnos con Hora Inicio menor o igual a esta fecha.</small>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label>Fecha y Hora Inicial (Desde) *</label>
+                <input type="datetime-local" id="modal-desde">
+              </div>
+              <div>
+                <label>Fecha y Hora Final (Hasta) *</label>
+                <input type="datetime-local" id="modal-hasta">
+              </div>
+            </div>
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Aplica a los turnos con Hora Inicio entre estas dos fechas (incluidas).</small>
           </div>
 
           <!-- Regional y Operación Opcionales -->
@@ -2132,7 +2146,6 @@
                 <option value="3" selected>3 - Crédito</option>
                 <option value="1">1 - Efectivo</option>
                 <option value="2">2 - Transferencia</option>
-                <option value="">Todas</option>
               </select>
             </div>
           </div>
@@ -3126,17 +3139,29 @@
 
       // Poblar selectores de quincena
       const selFiltroQ = document.getElementById('filtro-quincena');
-      const selModalQ = document.getElementById('modal-quincena');
       quincenasList.forEach(q => {
         const o1 = document.createElement('option'); o1.value = q; o1.textContent = q; selFiltroQ.appendChild(o1);
-        const o2 = document.createElement('option'); o2.value = q; o2.textContent = q; selModalQ.appendChild(o2);
       });
 
-      // Fecha/hora por defecto en input Hasta (hora colombiana actual)
+      // Fechas por defecto: Desde = primer día del mes actual, Hasta = ahora
       const now = new Date();
       const pad = n => String(n).padStart(2, '0');
       const defaultLocal = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
       document.getElementById('modal-hasta').value = defaultLocal;
+      document.getElementById('modal-desde').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-01T00:00`;
+
+      // Años (por defecto el actual) y permisos del bloqueo de Servicios
+      if (CONFIG.tabs?.bloqueo) {
+        fetch(`/bloqueodatos/api/anios?usuario=${encodeURIComponent(CONFIG.usuario)}`).then(r => r.json()).then(data => {
+          const selA = document.getElementById('modal-anio');
+          const anios = (data.anios && data.anios.length) ? data.anios : [data.actual || now.getFullYear()];
+          selA.innerHTML = anios.map(a => `<option value="${a}">${a}</option>`).join('');
+          selA.value = String(data.actual || anios[0]);
+          cargarQuincenasModalBloqueo();
+        }).catch(e => console.error('Error cargando años:', e));
+        fetch(`/bloqueodatos/api/permisos?usuario=${encodeURIComponent(CONFIG.usuario)}&modulo=Facturacion`).then(r => r.json()).then(aplicarPermisosBloqueo)
+          .catch(e => console.error('Error cargando permisos de bloqueo:', e));
+      }
 
       // Listeners de ordenamiento en tablas
       document.querySelectorAll('#tabla-bloqueos thead th[data-sort]').forEach(th => {
@@ -3531,7 +3556,9 @@
           ? '<span class="badge badge-bloq">🔒 Bloqueado</span>'
           : '<span class="badge badge-desbloq">🔓 Desbloqueado</span>';
 
-        const limite = b.hasta ? `Hasta: ${b.hasta.replace('T', ' ').slice(0, 16)}` : (b.quincena || '—');
+        const limite = b.hasta
+          ? (b.desde ? `${b.desde} a ${b.hasta}` : `Hasta: ${b.hasta}`)
+          : (b.quincena || '—');
         const fpStr = b.formaPago === 3 ? '3 - Crédito' : (b.formaPago === 1 ? '1 - Efectivo' : (b.formaPago === 2 ? '2 - Transf.' : (b.formaPago ? b.formaPago : 'Todas')));
 
         tr.innerHTML = `
@@ -3723,6 +3750,36 @@
     // ──────────────────────────────────────────────────────────
     // FORMULARIO MODAL BLOQUEO
     // ──────────────────────────────────────────────────────────
+    // Permisos (Config_Parametros facturacion / Bloqueo_datos)
+    let permisosBloqueo = { puedeBloquear: false, puedeDesbloquear: false, formasPago: [] };
+    function aplicarPermisosBloqueo(p) {
+      permisosBloqueo = {
+        puedeBloquear: !!p.puedeBloquear,
+        puedeDesbloquear: !!p.puedeDesbloquear,
+        formasPago: Array.isArray(p.formasPago) ? p.formasPago.map(String) : [],
+      };
+      const selFp = document.getElementById('modal-fp');
+      Array.from(selFp.options).forEach(o => { if (!permisosBloqueo.formasPago.includes(o.value)) o.remove(); });
+      if (selFp.options.length && !permisosBloqueo.formasPago.includes(selFp.value)) selFp.value = selFp.options[0].value;
+      onModalFormaPagoChange();
+      document.getElementById('btn-cond-bloquear').disabled = !permisosBloqueo.puedeBloquear;
+      document.getElementById('btn-cond-desbloquear').disabled = !permisosBloqueo.puedeDesbloquear;
+      setCondicion(permisosBloqueo.puedeBloquear ? 'Bloquear' : 'Desbloquear');
+      const btnNuevo = document.querySelector('button[onclick="abrirModalBloqueo()"]');
+      if (btnNuevo && !permisosBloqueo.puedeBloquear && !permisosBloqueo.puedeDesbloquear) btnNuevo.style.display = 'none';
+    }
+
+    async function cargarQuincenasModalBloqueo() {
+      const anio = document.getElementById('modal-anio').value;
+      const selQ = document.getElementById('modal-quincena');
+      selQ.innerHTML = '<option value="">— Seleccione Quincena —</option>';
+      try {
+        const resp = await fetch(`/bloqueodatos/api/quincenas?usuario=${encodeURIComponent(CONFIG.usuario)}&anio=${encodeURIComponent(anio)}`);
+        const qs = resp.ok ? await resp.json() : [];
+        qs.forEach(q => { const o = document.createElement('option'); o.value = q; o.textContent = q; selQ.appendChild(o); });
+      } catch (e) { console.error('Error cargando quincenas:', e); }
+    }
+
     function abrirModalBloqueo() {
       const overlay = document.getElementById('modal-bloqueo-overlay');
       overlay.classList.add('open');
@@ -3773,6 +3830,8 @@
     }
 
     function setCondicion(cond) {
+      if (cond === 'Bloquear' && !permisosBloqueo.puedeBloquear) return;
+      if (cond === 'Desbloquear' && !permisosBloqueo.puedeDesbloquear) return;
       formState.condicion = cond;
       document.getElementById('btn-cond-bloquear').classList.toggle('sel', cond === 'Bloquear');
       document.getElementById('btn-cond-desbloquear').classList.toggle('sel', cond === 'Desbloquear');
@@ -3822,12 +3881,18 @@
         if (!q) return alert('Por favor seleccione una quincena.');
         payload.criterio = 'Quincena';
         payload.quincena = q;
+        payload.anio = document.getElementById('modal-anio').value;
       } else {
+        const desde = document.getElementById('modal-desde').value;
         const hasta = document.getElementById('modal-hasta').value;
-        if (!hasta) return alert('Por favor ingrese la fecha y hora límite (Hasta).');
+        if (!desde) return alert('Por favor ingrese la fecha y hora inicial (Desde).');
+        if (!hasta) return alert('Por favor ingrese la fecha y hora final (Hasta).');
+        if (desde > hasta) return alert('La fecha inicial no puede ser mayor que la fecha final.');
         payload.criterio = 'Fecha';
+        payload.desde = desde;
         payload.hasta = hasta;
       }
+      if (!fp) return alert('Seleccione la forma de pago.');
 
       if (fp === '3') {
         payload.tipoClientes = formState.tipoClientes;
