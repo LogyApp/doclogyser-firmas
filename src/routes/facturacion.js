@@ -13,7 +13,8 @@ const uploadServicio = multer({ storage: multer.memoryStorage(), limits: { fileS
 
 // Solo estos roles pueden crear/editar/bloquear Clientes Crédito (otros roles con acceso a la
 // sección 'Clientes_credito' solo pueden consultar vía GET /api/clientes-credito).
-const ROLES_GESTION_CLIENTES_CREDITO = ['Facturación', 'Sistema'];
+// Quién gestiona Clientes Crédito: Config_Parametros facturacion / Clientes_credito
+const { puedeGestionarClientesCredito } = require('../services/configBloqueo');
 
 const router = express.Router();
 const FACTURACION_HTML = path.join(__dirname, '../views/facturacion/index.html');
@@ -138,6 +139,7 @@ router.get('/', async (req, res) => {
       opsPorRegional: base.opsPorRegional,
       quincenaActual,
       serviciosMasivo: cfgServiciosMasivo,
+      puedeGestionarClientesCredito: await puedeGestionarClientesCredito(base.rol),
       tabs: {
         servicios: resumenAcceso(accesoServicios),
         recibos: resumenAcceso(accesoRecibos || accesoServicios),
@@ -212,8 +214,8 @@ router.post('/api/clientes-credito', async (req, res) => {
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
-    if (!ROLES_GESTION_CLIENTES_CREDITO.includes(acceso.rol)) {
-      return res.status(403).json({ error: 'Solo los roles Facturación y Sistema pueden agregar clientes crédito' });
+    if (!(await puedeGestionarClientesCredito(acceso.rol))) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para agregar clientes crédito' });
     }
 
     if (!clienteAFacturar || !clienteAFacturar.trim()) {
@@ -248,8 +250,8 @@ router.post('/api/clientes-credito/toggle', async (req, res) => {
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
-    if (!ROLES_GESTION_CLIENTES_CREDITO.includes(acceso.rol)) {
-      return res.status(403).json({ error: 'Solo los roles Facturación y Sistema pueden modificar el bloqueo' });
+    if (!(await puedeGestionarClientesCredito(acceso.rol))) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para modificar el bloqueo' });
     }
 
     if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
@@ -357,8 +359,8 @@ async function handleActualizarCliente(req, res) {
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
-    if (!ROLES_GESTION_CLIENTES_CREDITO.includes(acceso.rol)) {
-      return res.status(403).json({ error: 'Solo los roles Facturación y Sistema pueden editar clientes crédito' });
+    if (!(await puedeGestionarClientesCredito(acceso.rol))) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para editar clientes crédito' });
     }
 
     if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
@@ -395,8 +397,8 @@ async function handleEliminarCliente(req, res) {
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
-    if (!ROLES_GESTION_CLIENTES_CREDITO.includes(acceso.rol)) {
-      return res.status(403).json({ error: 'Solo los roles Facturación y Sistema pueden eliminar clientes crédito' });
+    if (!(await puedeGestionarClientesCredito(acceso.rol))) {
+      return res.status(403).json({ error: 'Su rol no tiene permiso para eliminar clientes crédito' });
     }
 
     if (!id) return res.status(400).json({ error: 'ID es obligatorio' });

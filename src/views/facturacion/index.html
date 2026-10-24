@@ -3039,7 +3039,8 @@
 
 <script>
     const CONFIG = __CONFIG__;
-    const ROLES_GESTION_CLIENTES_CREDITO = ['Facturación', 'Sistema'];
+    // Permiso desde Config_Parametros (facturacion / Clientes_credito)
+    const PUEDE_GESTIONAR_CLIENTES_CREDITO = !!CONFIG.puedeGestionarClientesCredito;
     let allBloqueos = [];
     let allClientes = [];
     let quincenasList = [];
@@ -3088,7 +3089,7 @@
       }
 
       // La columna Bloqueo y la edición de Clientes Crédito solo aplican a Facturación/Sistema
-      const puedeGestionarClientesCredito = ROLES_GESTION_CLIENTES_CREDITO.includes(CONFIG.rol);
+      const puedeGestionarClientesCredito = PUEDE_GESTIONAR_CLIENTES_CREDITO;
       if (!puedeGestionarClientesCredito) {
         const btnAgregarCliente = document.getElementById('btn-agregar-cliente');
         if (btnAgregarCliente) btnAgregarCliente.style.display = 'none';
@@ -3669,7 +3670,7 @@
         return;
       }
 
-      const puedeGestionar = ROLES_GESTION_CLIENTES_CREDITO.includes(CONFIG.rol);
+      const puedeGestionar = PUEDE_GESTIONAR_CLIENTES_CREDITO;
 
       filtered.forEach(c => {
         const tr = document.createElement('tr');

@@ -76,4 +76,26 @@ async function obtenerPermisosBloqueo(moduloBloqueo, rol) {
   };
 }
 
-module.exports = { obtenerPermisosBloqueo, CONFIG_BLOQUEO: CONFIG_POR_MODULO };
+// ── Clientes Crédito (facturacion / Clientes_credito) ───────────────────────
+// Quién puede agregar, editar, eliminar y marcar/desmarcar el Bloqueo de los
+// clientes crédito. Quién ve la pestaña lo define Maestro_Menu_Facturacion.
+const CONCEPTO_GESTION_CLIENTES = 'Puede gestionar Clientes Crédito';
+const DEFAULT_GESTION_CLIENTES = 'Facturación, Sistema';
+
+async function puedeGestionarClientesCredito(rol) {
+  const buscado = normalizarTexto(rol);
+  if (!buscado) return false;
+  let valor = DEFAULT_GESTION_CLIENTES;
+  try {
+    const [rows] = await pool.execute(
+      "SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = 'facturacion' AND `Seccion` = 'Clientes_credito' AND `Concepto` = ? LIMIT 1",
+      [CONCEPTO_GESTION_CLIENTES]
+    );
+    if (rows.length) valor = rows[0].Parametro == null ? '' : String(rows[0].Parametro);
+  } catch (err) {
+    console.error('[configBloqueo] No se pudo leer el permiso de Clientes Crédito, se usa el valor por defecto:', err.message);
+  }
+  return valor.split(',').map(r => normalizarTexto(r)).filter(Boolean).includes(buscado);
+}
+
+module.exports = { obtenerPermisosBloqueo, puedeGestionarClientesCredito, CONFIG_BLOQUEO: CONFIG_POR_MODULO };
