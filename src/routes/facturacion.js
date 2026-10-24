@@ -2166,7 +2166,7 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
         consecutivoRecibo: null, // Se asigna automáticamente por el trigger bi_dynamic_recibos_autoconsec
         operacion: primeraFila.operacion,
         usuario: usuarioVal,
-        fecha: primeraFila.fechaDia,
+        fecha: ahoraBogota,
         clienteAFacturar: esCredito ? (primeraFila.clienteAFacturar || null) : null,
         categoria: null,
         clientePorPlaca: null,
@@ -2275,8 +2275,9 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
     const planoServicios = datosProcesados.map(d => {
       const idServicio = generarPackedUUID();
       const idRecibo = d.idReciboExistente || mapaGrupoReciboId.get(d.reciboNuevoGrupo);
-      const consecutivoFinal = d.consecutivoReciboExistente || mapaIdReciboAConsecutivo.get(idRecibo) || null;
-      const estado = d.formaDePago === 2 ? 'Yellow' : 'Green';
+      const esFormaPago1 = Number(d.formaDePago) === 1;
+      const estado = esFormaPago1 ? 'Green' : 'Yellow';
+      const edicion = esFormaPago1 ? 'Completado' : 'Pendiente';
       const transpObj = d.transportadoraTexto ? transpMap.get(normalizarClaveCatalogo(d.transportadoraTexto)) : null;
       const provObj = d.proveedorTexto ? provMap.get(normalizarClaveCatalogo(d.proveedorTexto)) : null;
       const placaObj = d.placaTexto ? placasMap.get(d.placaTexto.toUpperCase()) : null;
@@ -2310,7 +2311,7 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
         totalHora: d.totalHora,
         grupoDtjo: d.horaInicioMysql ? 'GRUPAL' : null,
         auxiliares: null,
-        notas: consecutivoFinal,
+        notas: 'Registro cargado mediante Plano Grid',
         fotoEvidencia: null,
         formaDePago: d.formaDePago,
         fotoTransferencia: null,
@@ -2318,7 +2319,7 @@ router.post('/api/servicios/guardar-masivo', async (req, res) => {
         observaciones: d.observaciones || null,
         telefono: d.telefono || null,
         firmaRecibido: null,
-        edicion: estado === 'Green' ? 'Completado' : 'Pendiente'
+        edicion
       };
     });
 
