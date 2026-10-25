@@ -1,8 +1,9 @@
 const pool = require('./db');
 const { agruparOperacionesPorRegional } = require('./accesoInventario');
+const { seccionesDelRol, normalizar } = require('./maestroMenu');
 
 // Calcula el acceso (Regional/Operación permitidos) de un usuario para una Sección
-// del módulo de Nómina, según Maestro_Menu_Nomina. Mismo modelo de Acceso que
+// del módulo de Nómina, según Maestro_Menu (Modulo 'nomina'). Mismo modelo de Acceso que
 // accesoInventario.js (1=general, 2=por Regional, 3=por Dispositivo/Operación),
 // sin las variantes 4-6 (EPP/Dotación) que no aplican aquí.
 async function computarAccesoNomina(usuarioId, seccionRequested = null) {
@@ -17,25 +18,21 @@ async function computarAccesoNomina(usuarioId, seccionRequested = null) {
   const usuario = uRows[0];
   const rol = usuario.Rol || '';
 
-  const [menuRows] = await pool.execute(
-    'SELECT `Sección` as seccion, Acceso as acceso FROM Maestro_Menu_Nomina WHERE Rol = ?',
-    [rol]
-  );
+  // Permisos del Rol en Maestro_Menu (secciones en el orden del menú)
+  const menuRows = await seccionesDelRol('nomina', rol);
   if (!menuRows.length) return null; // Sin accesos configurados
 
   const allowedSecciones = menuRows.map(r => r.seccion);
 
-  if (seccionRequested && !allowedSecciones.includes(seccionRequested)) {
+  const matched = seccionRequested
+    ? menuRows.find(r => normalizar(r.seccion) === normalizar(seccionRequested))
+    : null;
+  if (seccionRequested && !matched) {
     return null;
   }
 
-  let accesoCode = 1;
-  if (seccionRequested) {
-    const matched = menuRows.find(r => r.seccion === seccionRequested);
-    if (matched) accesoCode = matched.acceso;
-  } else {
-    accesoCode = menuRows[0].acceso;
-  }
+  // Código de acceso activo (el de la sección solicitada o el de la primera del menú)
+  const accesoCode = matched ? matched.acceso : menuRows[0].acceso;
 
   const acceso = {
     usuarioId: usuario.ID,

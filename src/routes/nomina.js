@@ -4,6 +4,7 @@ const path    = require('path');
 const multer  = require('multer');
 const pool    = require('../services/db');
 const { computarAccesoNomina } = require('../services/accesoNomina');
+const { seccionesDelRol } = require('../services/maestroMenu');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
@@ -85,7 +86,7 @@ function resumenAcceso(acceso) {
 }
 
 // Regionales/Operaciones para el botón "+ Ticket": une las de todas las pestañas de
-// Nómina a las que el usuario tiene acceso (Maestro_Menu_Nomina). Los accesos de respaldo
+// Nómina a las que el usuario tiene acceso (Maestro_Menu). Los accesos de respaldo
 // por rol (Biométrico / Cesantías) son sin filtro y no traen operaciones: en ese caso
 // se usan todas las operaciones activas, igual que un acceso nacional.
 async function opsPorRegionalTicket(accesos) {
@@ -124,10 +125,7 @@ async function obtenerPerfilNomina(usuarioId) {
   if (!usuarios.length) return { error: 'Usuario no registrado', status: 403 };
 
   const user = usuarios[0];
-  const [menu] = await pool.execute(
-    'SELECT 1 FROM Maestro_Menu_Nomina WHERE Rol = ? LIMIT 1',
-    [user.Rol || '']
-  );
+  const menu = await seccionesDelRol('nomina', user.Rol); // Maestro_Menu
   if (!menu.length && !ROLES_BIOMETRICO_FALLBACK.includes(user.Rol)) {
     return { error: 'Usuario no autorizado para Nómina', status: 403 };
   }
@@ -253,7 +251,7 @@ router.post('/api/perfil', (req, res, next) => {
 
 // Permisos de acciones de Traslados (Validar/Revisar/Anular/No Firma, plantilla,
 // vista previa): Config_Parametros, Seccion 'Traslados' — ver configTraslados.js.
-// Quién ve la pestaña lo define Maestro_Menu_Nomina vía computarAccesoNomina.
+// Quién ve la pestaña lo define Maestro_Menu vía computarAccesoNomina.
 
 // ── GET / ────────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
@@ -261,7 +259,7 @@ router.get('/', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).send(paginaError('Parámetro ?usuario requerido'));
 
-    // Cada pestaña (Retiro/Activo/Bloqueo_datos) tiene su propio Acceso en Maestro_Menu_Nomina.
+    // Cada pestaña (Retiro/Activo/Bloqueo_datos) tiene su propio Acceso en Maestro_Menu.
     // Secuencial (no Promise.all) para no abrir varias conexiones nuevas a la vez
     // contra Cloud SQL en la carga inicial de la página.
     const accesoRetiro = await computarAccesoNomina(usuario, 'Retiro');
@@ -269,7 +267,7 @@ router.get('/', async (req, res) => {
     const permisosActivos = accesoActivo ? await obtenerPermisosActivos(accesoActivo.rol) : null;
     const accesoBloqueo = await computarAccesoNomina(usuario, 'Bloqueo_datos');
     let accesoBiometrico = await computarAccesoNomina(usuario, 'Biometrico');
-    // Solo con Sección 'Biometrico' en Maestro_Menu_Nomina (no el respaldo por rol) y Operación Administración
+    // Solo con Sección 'Biometrico' en Maestro_Menu (no el respaldo por rol) y Operación Administración
     const puedeEditarCoordenadas = !!accesoBiometrico && esOperacionAdministracion(accesoBiometrico.operacion);
 
     // Respaldo de roles autorizados para biométrico si no está configurado en DB
@@ -528,7 +526,7 @@ router.get('/api/retiros', async (req, res) => {
 });
 
 // ── Activos: filtros compartidos (tabla y descarga) ────────────────────────
-// Seguridad: solo las operaciones que el usuario ve según Maestro_Menu_Nomina
+// Seguridad: solo las operaciones que el usuario ve según Maestro_Menu
 // (Sección 'Activo'). Filtros: los mismos que aplica en pantalla.
 function construirFiltrosActivos(acceso, { regional, operacion, busqueda }) {
   const securityConds  = ["v.Estado = 'Activo'"];
@@ -580,7 +578,7 @@ function obtenerLimitesReporteActivos() {
   return obtenerLimitesReporte('Activos', CONCEPTO_LIMITE_EXCEL_ACTIVOS, CONCEPTO_LIMITE_CSV_ACTIVOS);
 }
 
-// Filtro del reporte: alcance del usuario (Maestro_Menu_Nomina, Sección 'Activo')
+// Filtro del reporte: alcance del usuario (Maestro_Menu, nomina / Activo)
 // + modo 'todo' | 'regional' (regional) | 'operacion' (operacion).
 // Devuelve { where, params, etiqueta } o { error } o null (sin operaciones).
 function construirFiltroReporteActivos(acceso, query) {
@@ -802,7 +800,7 @@ router.get('/api/activos/reporte', async (req, res) => {
 });
 
 // ── Reporte de Retiros (ventana "Descargar reporte") ──────────────────────
-// Mismo alcance de operaciones que la pestaña Retiros (Maestro_Menu_Nomina,
+// Mismo alcance de operaciones que la pestaña Retiros (Maestro_Menu,
 // Sección 'Retiro'), según la Fecha de Retiro: por mes, entre fechas o todo.
 // Límites: Config_Parametros nomina / Retiros, Condición 'Filas'.
 const CONCEPTO_LIMITE_EXCEL_RETIROS = 'Límite de filas reporte Excel - Retiros';
@@ -1157,7 +1155,7 @@ router.get('/api/vinculacion/:id', async (req, res) => {
       [vin['Operación']]
     );
 
-    // Cargo: catálogo completo si el rol tiene Acceso=1 en Maestro_Menu_Nomina
+    // Cargo: catálogo completo si el rol tiene Acceso=1 en Maestro_Menu
     // (sección Activo); si no, limitado a los cargos operativos.
     const [cargoRows] = await pool.execute(
       acceso.sinFiltro
