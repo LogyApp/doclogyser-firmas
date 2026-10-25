@@ -81,7 +81,7 @@ router.get('/', async (req, res) => {
 
     const acceso = await computarAccesoTalenthub(usuario);
     if (!acceso || !acceso.secciones.length) {
-      return res.status(403).send(paginaNoAcceso('Tu rol actual no tiene permisos configurados en Maestro_Menu_Talenthub.'));
+      return res.status(403).send(paginaNoAcceso('Tu rol actual no tiene permisos configurados en TalentHub (Maestro_Menu).'));
     }
 
     let activeTab = tab || 'Requisiciones';
