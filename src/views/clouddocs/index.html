@@ -1890,7 +1890,7 @@
       document.getElementById('btn-cargar-doc').href = `/formcloud-docs?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
       document.getElementById('btn-nueva-firma').href = `/logysign?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
 
-      // Pestañas gateadas vía Maestro_Menu_Documentos (CONFIG.secciones = Secciones
+      // Pestañas gateadas vía Maestro_Menu (clouddocs) (CONFIG.secciones = Secciones
       // configuradas para el Rol del usuario, ver computarAccesoCloudDocs)
       const seccionesPermitidas = CONFIG.secciones || [];
 

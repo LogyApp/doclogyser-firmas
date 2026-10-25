@@ -1,3 +1,5 @@
+const { seccionesDelRol, normalizar } = require('./maestroMenu');
+
 async function obtenerPermisosRol(pool, rol) {
   if (!rol) return { doc_activo: [], doc_retirado: [], doc_general: [] };
 
@@ -43,8 +45,8 @@ function agruparOperacionesPorRegional(opRows) {
   return map;
 }
 
-// Acceso de Cloud Docs: controlado desde Maestro_Menu_Documentos (Sección/Rol/Acceso),
-// mismo modelo que Maestro_Menu_Inventario/Maestro_Menu_Nomina (1=sin filtro/todas las
+// Acceso de Cloud Docs: controlado desde Maestro_Menu (Modulo 'clouddocs'; Sección/Rol/Acceso),
+// mismo modelo que Inventario y Nómina (1=sin filtro/todas las
 // operaciones, 2=por Regional, 3=por Dispositivo u Operación propia). La Sección 'CloudDocs'
 // agrupa el acceso base + alcance de datos de las pestañas Trabajador/Documento/Todo/LogySign;
 // las demás Secciones (DocRetiros, Solicitudes, ValidarCap, Permisos, Duplicados) son gates
@@ -62,17 +64,16 @@ async function computarAccesoCloudDocs(pool, usuarioId) {
   const usuario = uRows[0];
   const rol = usuario.Rol || '';
 
-  const [menuRows] = await pool.execute(
-    'SELECT `Sección` as seccion, Acceso as acceso FROM Maestro_Menu_Documentos WHERE Rol = ?',
-    [rol]
-  );
+  // Permisos del Rol en Maestro_Menu (secciones en el orden del menú)
+  const menuRows = await seccionesDelRol('clouddocs', rol);
   if (!menuRows.length) return null; // Rol sin ninguna Sección configurada
 
   const seccionAcceso = {};
   menuRows.forEach((r) => { seccionAcceso[r.seccion] = r.acceso; });
 
-  if (!('CloudDocs' in seccionAcceso)) return null; // Sin acceso base al módulo
-  const accesoCode = seccionAcceso.CloudDocs;
+  const base = menuRows.find((r) => normalizar(r.seccion) === 'clouddocs');
+  if (!base) return null; // Sin acceso base al módulo
+  const accesoCode = base.acceso;
 
   const acceso = {
     usuarioId: usuario.ID,
