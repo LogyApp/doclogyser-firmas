@@ -3074,7 +3074,7 @@
       if (mobBadge) mobBadge.textContent = (CONFIG.usuarioNombre || '').split(' ')[0] || CONFIG.usuario;
 
       // Las pestañas Tickets, Bloqueo de Datos y Clientes Crédito solo se muestran si el
-      // rol tiene acceso explícito en Maestro_Menu_Facturacion para esa Sección.
+      // rol tiene acceso explícito en Maestro_Menu (facturacion) para esa Sección.
       if (!CONFIG.tabs?.tickets) {
         const navTicketsEl = document.getElementById('navTickets');
         if (navTicketsEl) navTicketsEl.style.display = 'none';

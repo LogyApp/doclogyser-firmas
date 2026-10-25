@@ -78,7 +78,7 @@ async function obtenerPermisosBloqueo(moduloBloqueo, rol) {
 
 // ── Clientes Crédito (facturacion / Clientes_credito) ───────────────────────
 // Quién puede agregar, editar, eliminar y marcar/desmarcar el Bloqueo de los
-// clientes crédito. Quién ve la pestaña lo define Maestro_Menu_Facturacion.
+// clientes crédito. Quién ve la pestaña lo define Maestro_Menu (facturacion).
 const CONCEPTO_GESTION_CLIENTES = 'Puede gestionar Clientes Crédito';
 const DEFAULT_GESTION_CLIENTES = 'Facturación, Sistema';
 

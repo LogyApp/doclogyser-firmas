@@ -11,7 +11,7 @@ const router = express.Router();
 const HTML_INDEX_PATH = path.join(__dirname, '../views/bloqueodatos/index.html');
 
 // ── Acceso ──────────────────────────────────────────────────────────────────
-// Quién ve la pestaña y qué operaciones: Maestro_Menu_Nomina / Maestro_Menu_Facturacion
+// Quién ve la pestaña y qué operaciones: Maestro_Menu (nomina / facturacion)
 // (Sección 'Bloqueo_datos'). Quién puede bloquear o desbloquear: Config_Parametros
 // (configBloqueo.js).
 async function accesoPorModulo(usuarioId, moduloBloqueo) {
