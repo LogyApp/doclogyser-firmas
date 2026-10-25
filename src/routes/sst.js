@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { computarAccesoSst } = require('../services/accesoSst');
+const { permisosSstDelRol } = require('../services/configSst');
 const {
   obtenerConfigInspeccionesSST,
   obtenerLimitesInspeccion,
@@ -306,6 +307,7 @@ router.get(['/', '/:tab'], async (req, res) => {
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
       inspeccionesPlantillas: obtenerResumenPlantillasInspeccion(),
       inspeccionesLimites: limitesInspeccion,
+      permisosSst: await permisosSstDelRol(acceso.rol), // crear/eliminar/plantillas (Config_Parametros, sst)
     }).replace(/<\/script>/gi, '<\\/script>');
 
     res.send(html.replace('__CONFIG__', config));

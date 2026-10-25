@@ -2,13 +2,8 @@ const pool = require('./db');
 const { agruparOperacionesPorRegional } = require('./accesoInventario');
 const { seccionesDelRol } = require('./maestroMenu');
 
-// Roles que, además de poder VER Evaluación/Capacitación/Prueba de Consumo/
-// Compromiso SST (gobernado por Maestro_Menu, Modulo 'sst'), también pueden crear,
-// responder, editar, eliminar, reenviar firma o gestionar plantillas. Los
-// demás roles con fila en Maestro_Menu (Jurídica, Dirección Hseq/
-// Operaciones/RRHH, Administración, Administrador, Generalista, Calidad)
-// quedan en solo-lectura por decisión explícita, no por descuido.
-const ROLES_ESCRITURA_SST = ['AdmSst', 'AnaSst', 'AuxSst', 'LiderSst', 'Sistema'];
+// Ver una pestaña lo decide Maestro_Menu; crear, eliminar y gestionar plantillas lo decide
+// Config_Parametros (sst / pestaña) vía configSst.js.
 
 function normalizarSeccionSst(s) {
   return String(s || '')
@@ -167,4 +162,4 @@ async function consultarOperacionesPorAccesoSafe(accesoCode, usuario) {
   return consultarOperacionesPorCodigoAcceso(accesoCode, usuario);
 }
 
-module.exports = { computarAccesoSst, ROLES_ESCRITURA_SST, normalizarSeccionSst };
+module.exports = { computarAccesoSst, normalizarSeccionSst };

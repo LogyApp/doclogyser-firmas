@@ -768,7 +768,7 @@
         const r = await fetch('/evaluacionsst/api/reenviar-firma', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_evaluacion: selectedEvaluacionId })
+          body: JSON.stringify({ id_evaluacion: selectedEvaluacionId, usuario: CONFIG.usuarioId })
         });
         const resp = await r.json();
         if (r.ok && resp.ok) {
@@ -895,7 +895,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id_evaluacion: selectedEvaluacionId,
-            canal: 'email'
+            canal: 'email',
+            usuario: CONFIG.usuarioId
           })
         });
         const data = await res.json();

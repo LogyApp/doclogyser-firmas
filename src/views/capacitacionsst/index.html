@@ -854,7 +854,7 @@
         const r = await fetch('/capacitacionsst/api/reenviar-firma', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_capacitacion: selectedCapacitacionId, canal: 'email' })
+          body: JSON.stringify({ id_capacitacion: selectedCapacitacionId, canal: 'email', usuario: CONFIG.usuarioId })
         });
         const res = await r.json();
         if (res.ok) {
@@ -876,7 +876,7 @@
         const r = await fetch('/capacitacionsst/api/reenviar-firma', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_capacitacion: selectedCapacitacionId, canal: 'none' })
+          body: JSON.stringify({ id_capacitacion: selectedCapacitacionId, canal: 'none', usuario: CONFIG.usuarioId })
         });
         const res = await r.json();
         if (res.ok) {

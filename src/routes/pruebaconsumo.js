@@ -20,7 +20,8 @@ const {
 } = require('../services/notificacionesService');
 const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
 const { generarPDF } = require('../services/renderer');
-const { computarAccesoSst, ROLES_ESCRITURA_SST } = require('../services/accesoSst');
+const { computarAccesoSst } = require('../services/accesoSst');
+const { rolPuedeSst, permisosSstDelRol } = require('../services/configSst');
 
 const router = express.Router();
 
@@ -84,7 +85,7 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
 // Acceso gobernado por Maestro_Menu (sst, Sección "Prueba de Consumo"), igual
 // que Nómina/Facturación/Cloud Docs vía su propio Maestro_Menu_<Módulo>.
 // La escritura (crear/responder/eliminar/reenviar enlace) queda limitada
-// aparte a ROLES_ESCRITURA_SST donde corresponda — ver accesoSst.js.
+// aparte a los roles de Config_Parametros (sst / pestaña) donde corresponda — ver configSst.js.
 async function computarAccesoCPC(usuarioId) {
   const acceso = await computarAccesoSst(usuarioId, SECCION_MENU_SST);
   if (!acceso) return null;
@@ -142,6 +143,7 @@ router.get('/', async (req, res) => {
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
+      permisosSst: await permisosSstDelRol(acceso.rol), // Config_Parametros (sst)
       initialView: 'formulario',
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -500,6 +502,10 @@ router.put('/api/prueba/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { ciudad, fecha, cliente, observaciones } = req.body;
+    const accesoAccion = await computarAccesoCPC(req.body.usuario || req.query.usuario);
+    if (!accesoAccion || !(await rolPuedeSst(accesoAccion.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'No autorizado para editar la prueba de consumo.' });
+    }
 
     if (!ciudad || !fecha || !cliente) {
       return res.status(400).json({ error: 'Ciudad, fecha y cliente son obligatorios.' });
@@ -550,7 +556,7 @@ router.post('/api/crear', async (req, res) => {
     }
 
     const accesoCrear = await computarAccesoSst(usuario, SECCION_MENU_SST);
-    if (!accesoCrear || !ROLES_ESCRITURA_SST.includes(accesoCrear.rol)) {
+    if (!accesoCrear || !(await rolPuedeSst(accesoCrear.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear pruebas de consumo.' });
     }
 
@@ -632,7 +638,7 @@ router.post('/api/crear-masivo', async (req, res) => {
     }
 
     const accesoCrearMasivo = await computarAccesoSst(usuario, SECCION_MENU_SST);
-    if (!accesoCrearMasivo || !ROLES_ESCRITURA_SST.includes(accesoCrearMasivo.rol)) {
+    if (!accesoCrearMasivo || !(await rolPuedeSst(accesoCrearMasivo.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear pruebas de consumo.' });
     }
 
@@ -872,8 +878,8 @@ router.post('/api/prueba/:id/regenerar-token', async (req, res) => {
     const { usuario } = req.query;
 
     const acceso = await computarAccesoCPC(usuario);
-    if (!acceso) {
-      return res.status(403).json({ error: 'Usuario no autorizado' });
+    if (!acceso || !(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'No autorizado para regenerar el enlace.' });
     }
 
     const [rows] = await pool.execute(
@@ -912,6 +918,10 @@ router.post('/api/prueba/:id/enviar-enlace', async (req, res) => {
   try {
     const { id } = req.params;
     const { canal } = req.body; // 'email' o 'whatsapp'
+    const accesoAccion = await computarAccesoCPC(req.body.usuario || req.query.usuario);
+    if (!accesoAccion || !(await rolPuedeSst(accesoAccion.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'No autorizado para enviar el enlace.' });
+    }
 
     const [rows] = await pool.execute(
       'SELECT * FROM Dynamic_pruebaconsumo WHERE idprueba = ?',
@@ -1000,10 +1010,15 @@ router.delete('/api/prueba/:id', async (req, res) => {
     }
 
     // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
+    // Rol con permiso de eliminar en la pestaña (Config_Parametros, sst / pestaña)
+    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
+    }
+
     const esSistema = acceso.rol === 'Sistema';
     const creador = String(pc.usuario || '').trim().toLowerCase();
     const usuSolicitante = String(usuario).trim().toLowerCase();
-    const nombreSolicitante = String(acceso.nombre || '').trim().toLowerCase();
+    const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
     const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
 
     if (!esSistema && !esPropio) {

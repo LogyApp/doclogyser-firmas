@@ -4472,22 +4472,19 @@
       actualizarPermisosBotonesCrearSst();
     }
 
-    // Evaluación/Capacitación/Prueba de Consumo/Compromiso SST: los roles que
-    // Maestro_Menu (sst) deja ver pero no crear (Jurídica, Dirección Hseq/
-    // Operaciones/RRHH, Administración, Administrador, Generalista, Calidad)
-    // no deben ver un botón "Crear" que el backend igual va a rechazar (403).
-    // Debe reflejar exactamente ROLES_ESCRITURA_SST en src/services/accesoSst.js.
-    const ROLES_ESCRITURA_SST = ['AdmSst', 'AnaSst', 'AuxSst', 'LiderSst', 'Sistema'];
+    // Evaluación/Capacitación/Prueba de Consumo/Compromiso SST: crear y eliminar según los roles
+    // de Config_Parametros (sst / pestaña), que el servidor envía en CONFIG.permisosSst.
+    function permisoSst(modulo, accion) {
+      return !!(((CONFIG.permisosSst || {})[modulo] || {})[accion]);
+    }
     function actualizarPermisosBotonesCrearSst() {
       const btnCrearIns = document.getElementById('btn-crear-ins');
       if (btnCrearIns && CONFIG.inspeccionesConfig && !CONFIG.inspeccionesConfig.puedeRegistrar) {
         btnCrearIns.style.display = 'none';
       }
-      const puedeCrear = ROLES_ESCRITURA_SST.includes(CONFIG.rol);
-      if (puedeCrear) return;
-      ['btn-crear-ev', 'btn-crear-cap', 'btn-crear-pc', 'btn-crear-csst'].forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) btn.style.display = 'none';
+      ['ev', 'cap', 'pc', 'csst'].forEach(modulo => {
+        const btn = document.getElementById('btn-crear-' + modulo);
+        if (btn && !permisoSst(modulo, 'crear')) btn.style.display = 'none';
       });
     }
 
@@ -4966,6 +4963,7 @@
       if (item.url_doc) return false;
       if (modulo !== 'part' && item.firma_trabajador) return false;
       if (modulo === 'csst' && (item.firma_analista || item.firma_lidersst)) return false;
+      if (['ev', 'cap', 'pc', 'csst'].includes(modulo) && !permisoSst(modulo, 'eliminar')) return false;
 
       // Rol de Sistema puede eliminar
       if (CONFIG.rol === 'Sistema') return true;
@@ -5012,15 +5010,15 @@
         let body = {};
         if (modulo === 'ev') {
           url = '/evaluacionsst/api/reenviar-firma';
-          body = { id_evaluacion: id, canal: 'link' };
+          body = { id_evaluacion: id, canal: 'link', usuario: CONFIG.usuarioId };
         } else if (modulo === 'cap') {
           url = '/capacitacionsst/api/reenviar-firma';
-          body = { id_capacitacion: id, canal: 'link' };
+          body = { id_capacitacion: id, canal: 'link', usuario: CONFIG.usuarioId };
         } else if (modulo === 'pc') {
-          url = `/pruebaconsumo/api/prueba/${id}/regenerar-token`;
+          url = `/pruebaconsumo/api/prueba/${id}/regenerar-token?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
           body = {};
         } else if (modulo === 'csst') {
-          url = `/compromisosst/api/compromiso/${id}/regenerar-token`;
+          url = `/compromisosst/api/compromiso/${id}/regenerar-token?usuario=${encodeURIComponent(CONFIG.usuarioId)}`;
           body = {};
         }
 
@@ -5698,7 +5696,7 @@
         const res = await fetch('/evaluacionsst/api/reenviar-firma', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_evaluacion: id, canal: 'email' })
+          body: JSON.stringify({ id_evaluacion: id, canal: 'email', usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (data.ok) showToast('Correo de notificación reenviado exitosamente', 'success');
@@ -5903,7 +5901,7 @@
         const res = await fetch('/capacitacionsst/api/reenviar-firma', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_capacitacion: id })
+          body: JSON.stringify({ id_capacitacion: id, usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (data.ok) showToast('Correo reenviado exitosamente', 'success');
@@ -6132,7 +6130,8 @@
       try {
         const res = await fetch(`/pruebaconsumo/api/prueba/${id}/enviar-enlace`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
         });
         const data = await res.json();
         if (data.ok) showToast('Enlace enviado correctamente', 'success');

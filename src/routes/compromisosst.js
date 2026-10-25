@@ -23,7 +23,8 @@ const {
 } = require('../services/notificacionesService');
 const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
 const { generarPDF } = require('../services/renderer');
-const { computarAccesoSst, ROLES_ESCRITURA_SST } = require('../services/accesoSst');
+const { computarAccesoSst } = require('../services/accesoSst');
+const { rolPuedeSst, permisosSstDelRol } = require('../services/configSst');
 
 const router = express.Router();
 
@@ -118,7 +119,7 @@ async function obtenerIdentificacionPorUsuarioORol(usuarioId, rol) {
 // Acceso gobernado por Maestro_Menu (sst, Sección "Compromiso SST"), igual
 // que Nómina/Facturación/Cloud Docs vía su propio Maestro_Menu_<Módulo>.
 // La escritura (crear/firmar/eliminar) queda limitada aparte a
-// ROLES_ESCRITURA_SST donde corresponda — ver accesoSst.js.
+// los roles de Config_Parametros (sst / pestaña) donde corresponda — ver configSst.js.
 async function computarAccesoCSST(usuarioId) {
   return computarAccesoSst(usuarioId, SECCION_MENU_SST);
 }
@@ -161,6 +162,7 @@ router.get('/', async (req, res) => {
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
+      permisosSst: await permisosSstDelRol(acceso.rol), // Config_Parametros (sst)
       initialView: 'formulario',
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -563,7 +565,7 @@ router.post('/api/crear', async (req, res) => {
     }
 
     const accesoCrear = await computarAccesoSst(usuario, SECCION_MENU_SST);
-    if (!accesoCrear || !ROLES_ESCRITURA_SST.includes(accesoCrear.rol)) {
+    if (!accesoCrear || !(await rolPuedeSst(accesoCrear.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear compromisos SST.' });
     }
 
@@ -703,7 +705,7 @@ router.post('/api/crear-masivo', async (req, res) => {
     }
 
     const accesoCrearMasivo = await computarAccesoSst(usuario, SECCION_MENU_SST);
-    if (!accesoCrearMasivo || !ROLES_ESCRITURA_SST.includes(accesoCrearMasivo.rol)) {
+    if (!accesoCrearMasivo || !(await rolPuedeSst(accesoCrearMasivo.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear compromisos SST.' });
     }
 
@@ -1250,8 +1252,8 @@ router.post('/api/compromiso/:id/regenerar-token', async (req, res) => {
     const { usuario } = req.query;
 
     const acceso = await computarAccesoCSST(usuario);
-    if (!acceso) {
-      return res.status(403).json({ error: 'Usuario no autorizado' });
+    if (!acceso || !(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'No autorizado para regenerar el enlace.' });
     }
 
     const [rows] = await pool.execute(
@@ -1288,6 +1290,10 @@ router.post('/api/compromiso/:id/enviar-enlace', async (req, res) => {
   try {
     const { id } = req.params;
     const { canal } = req.body;
+    const accesoAccion = await computarAccesoCSST(req.body.usuario || req.query.usuario);
+    if (!accesoAccion || !(await rolPuedeSst(accesoAccion.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'No autorizado para enviar el enlace.' });
+    }
 
     const [rows] = await pool.execute(
       'SELECT * FROM Dynamic_compromisosst WHERE idcsst = ?',
@@ -1345,37 +1351,6 @@ router.post('/api/compromiso/:id/enviar-enlace', async (req, res) => {
   }
 });
 
-// ═════ API: POST /api/compromiso/:id/regenerar-token ═════
-router.post('/api/compromiso/:id/regenerar-token', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const [rows] = await pool.execute('SELECT * FROM Dynamic_compromisosst WHERE idcsst = ? LIMIT 1', [id]);
-    if (!rows.length) return res.status(404).json({ error: 'Compromiso no encontrado' });
-    const c = rows[0];
-
-    if (c.url_doc || c.firma_trabajador) {
-      return res.status(400).json({ error: 'El compromiso ya fue firmado por el trabajador o completado.' });
-    }
-
-    const tokenTrab = crypto.randomBytes(32).toString('hex');
-    const tokenTrabExp = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
-
-    await pool.execute(
-      'UPDATE Dynamic_compromisosst SET token_trabajador = ?, token_trabajador_expira = ? WHERE idcsst = ?',
-      [tokenTrab, tokenTrabExp, id]
-    );
-
-    const protocol = req.secure ? 'https' : 'http';
-    const host = req.get('host');
-    const urlFirma = `${protocol}://${host}/compromisosst/firmar-trabajador?item=${id}&token=${tokenTrab}`;
-
-    res.json({ ok: true, urlFirma, token: tokenTrab, token_expira: tokenTrabExp });
-  } catch (err) {
-    console.error('[compromisosst] POST /api/compromiso/:id/regenerar-token:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ═════ API: DELETE /api/compromiso/:id ═════
 router.delete('/api/compromiso/:id', async (req, res) => {
   try {
@@ -1407,10 +1382,15 @@ router.delete('/api/compromiso/:id', async (req, res) => {
     }
 
     // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
+    // Rol con permiso de eliminar en la pestaña (Config_Parametros, sst / pestaña)
+    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
+    }
+
     const esSistema = acceso.rol === 'Sistema';
     const creador = String(c.usuario || '').trim().toLowerCase();
     const usuSolicitante = String(usuario).trim().toLowerCase();
-    const nombreSolicitante = String(acceso.nombre || '').trim().toLowerCase();
+    const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
     const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
 
     if (!esSistema && !esPropio) {

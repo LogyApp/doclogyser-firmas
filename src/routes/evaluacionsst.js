@@ -14,7 +14,8 @@ const {
 } = require('../services/notificacionesService');
 const { renderPDF } = require('../services/evsstPdfGenerator');
 const { subirPDFEvaluacionSST } = require('../services/storage');
-const { computarAccesoSst, ROLES_ESCRITURA_SST } = require('../services/accesoSst');
+const { computarAccesoSst } = require('../services/accesoSst');
+const { rolPuedeSst, permisosSstDelRol } = require('../services/configSst');
 
 const router = express.Router();
 
@@ -77,7 +78,7 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
 // Acceso gobernado por Maestro_Menu (sst, Sección "Evaluación SST"), igual
 // que Nómina/Facturación/Cloud Docs vía su propio Maestro_Menu_<Módulo>.
 // La escritura (crear/responder/eliminar/reenviar firma) queda limitada
-// aparte a ROLES_ESCRITURA_SST donde corresponda — ver accesoSst.js.
+// aparte a los roles de Config_Parametros (sst / pestaña) donde corresponda — ver configSst.js.
 async function computarAccesoEVSST(usuarioId) {
   return computarAccesoSst(usuarioId, SECCION_MENU_SST);
 }
@@ -107,6 +108,7 @@ router.get('/', async (req, res) => {
     const config = JSON.stringify({
       ...acceso,
       regionalesFiltro: Object.keys(acceso.opsPorRegional),
+      permisosSst: await permisosSstDelRol(acceso.rol), // Config_Parametros (sst)
       initialView: 'formulario',
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -445,7 +447,7 @@ router.post('/api/crear', async (req, res) => {
     }
 
     const accesoCrear = await computarAccesoSst(usuario, SECCION_MENU_SST);
-    if (!accesoCrear || !ROLES_ESCRITURA_SST.includes(accesoCrear.rol)) {
+    if (!accesoCrear || !(await rolPuedeSst(accesoCrear.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear evaluaciones.' });
     }
 
@@ -517,7 +519,7 @@ router.post('/api/crear-masivo', async (req, res) => {
     }
 
     const accesoCrearMasivo = await computarAccesoSst(usuario, SECCION_MENU_SST);
-    if (!accesoCrearMasivo || !ROLES_ESCRITURA_SST.includes(accesoCrearMasivo.rol)) {
+    if (!accesoCrearMasivo || !(await rolPuedeSst(accesoCrearMasivo.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear evaluaciones.' });
     }
 
@@ -766,6 +768,10 @@ router.post('/api/reenviar-firma', async (req, res) => {
   try {
     const { id_evaluacion, canal } = req.body;
     if (!id_evaluacion) return res.status(400).json({ error: 'id_evaluacion requerido' });
+    const accesoAccion = await computarAccesoEVSST(req.body.usuario || req.query.usuario);
+    if (!accesoAccion || !(await rolPuedeSst(accesoAccion.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'No autorizado para reenviar la firma.' });
+    }
 
     const [rows] = await pool.execute('SELECT * FROM Maestro_evaluacionsst WHERE id_evaluacion = ? LIMIT 1', [id_evaluacion]);
     if (!rows.length) return res.status(404).json({ error: 'Evaluación no encontrada' });
@@ -839,10 +845,15 @@ router.delete('/api/evaluacion/:id', async (req, res) => {
     }
 
     // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
+    // Rol con permiso de eliminar en la pestaña (Config_Parametros, sst / pestaña)
+    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
+    }
+
     const esSistema = acceso.rol === 'Sistema';
     const creador = String(ev.usuario || '').trim().toLowerCase();
     const usuSolicitante = String(usuario).trim().toLowerCase();
-    const nombreSolicitante = String(acceso.nombre || '').trim().toLowerCase();
+    const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
     const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
 
     if (!esSistema && !esPropio) {

@@ -903,7 +903,7 @@
         const r = await fetch(`/compromisosst/api/compromiso/${selectedCompromisoId}/enviar-enlace`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ canal: 'email' })
+          body: JSON.stringify({ canal: 'email', usuario: CONFIG.usuarioId })
         });
         const resp = await r.json();
         if (r.ok && resp.ok) {
