@@ -81,7 +81,7 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
 }
 
 
-// Acceso gobernado por Maestro_Menu_Sst (Sección "Prueba de Consumo"), igual
+// Acceso gobernado por Maestro_Menu (sst, Sección "Prueba de Consumo"), igual
 // que Nómina/Facturación/Cloud Docs vía su propio Maestro_Menu_<Módulo>.
 // La escritura (crear/responder/eliminar/reenviar enlace) queda limitada
 // aparte a ROLES_ESCRITURA_SST donde corresponda — ver accesoSst.js.

@@ -115,7 +115,7 @@ async function obtenerIdentificacionPorUsuarioORol(usuarioId, rol) {
   }
 }
 
-// Acceso gobernado por Maestro_Menu_Sst (Sección "Compromiso SST"), igual
+// Acceso gobernado por Maestro_Menu (sst, Sección "Compromiso SST"), igual
 // que Nómina/Facturación/Cloud Docs vía su propio Maestro_Menu_<Módulo>.
 // La escritura (crear/firmar/eliminar) queda limitada aparte a
 // ROLES_ESCRITURA_SST donde corresponda — ver accesoSst.js.

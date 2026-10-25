@@ -3977,7 +3977,7 @@
 
     let debounceTimers = {};
 
-    // ═════ CONTROL DE ACCESO POR PESTAÑA SEGÚN Maestro_Menu_Sst ═════
+    // ═════ CONTROL DE ACCESO POR PESTAÑA SEGÚN Maestro_Menu (sst) ═════
     const MAPA_TAB_SECCION_SST = {
       evaluacion: 'Evaluación SST',
       capacitacion: 'Capacitación SST',
@@ -4473,7 +4473,7 @@
     }
 
     // Evaluación/Capacitación/Prueba de Consumo/Compromiso SST: los roles que
-    // Maestro_Menu_Sst deja ver pero no crear (Jurídica, Dirección Hseq/
+    // Maestro_Menu (sst) deja ver pero no crear (Jurídica, Dirección Hseq/
     // Operaciones/RRHH, Administración, Administrador, Generalista, Calidad)
     // no deben ver un botón "Crear" que el backend igual va a rechazar (403).
     // Debe reflejar exactamente ROLES_ESCRITURA_SST en src/services/accesoSst.js.

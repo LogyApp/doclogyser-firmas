@@ -1,10 +1,11 @@
 const pool = require('./db');
 const { agruparOperacionesPorRegional } = require('./accesoInventario');
+const { seccionesDelRol } = require('./maestroMenu');
 
 // Roles que, además de poder VER Evaluación/Capacitación/Prueba de Consumo/
-// Compromiso SST (gobernado por Maestro_Menu_Sst), también pueden crear,
+// Compromiso SST (gobernado por Maestro_Menu, Modulo 'sst'), también pueden crear,
 // responder, editar, eliminar, reenviar firma o gestionar plantillas. Los
-// demás roles con fila en Maestro_Menu_Sst (Jurídica, Dirección Hseq/
+// demás roles con fila en Maestro_Menu (Jurídica, Dirección Hseq/
 // Operaciones/RRHH, Administración, Administrador, Generalista, Calidad)
 // quedan en solo-lectura por decisión explícita, no por descuido.
 const ROLES_ESCRITURA_SST = ['AdmSst', 'AnaSst', 'AuxSst', 'LiderSst', 'Sistema'];
@@ -97,7 +98,7 @@ async function consultarOperacionesPorCodigoAcceso(accesoCode, usuario) {
  * Calcula el acceso (Regional/Operación permitidos) de un usuario para una Sección
  * del módulo SST (Evaluación SST, Capacitación SST, Prueba de Consumo,
  * Participación, Compromiso SST, Casos Medicos, Inspecciones_vehiculos),
- * gobernado exclusivamente por Maestro_Menu_Sst (mismo modelo que Maestro_Menu_Nomina).
+ * gobernado exclusivamente por Maestro_Menu (Modulo 'sst'; mismo modelo que Nómina).
  */
 async function computarAccesoSst(usuarioId, seccionRequested = null) {
   if (!usuarioId) return null;
@@ -111,11 +112,9 @@ async function computarAccesoSst(usuarioId, seccionRequested = null) {
   const usuario = uRows[0];
   const rol = usuario.Rol || '';
 
-  const [menuRows] = await pool.execute(
-    'SELECT `Sección` as seccion, Acceso as acceso FROM Maestro_Menu_Sst WHERE Rol = ?',
-    [rol]
-  );
-  if (!menuRows.length) return null; // Sin accesos configurados en Maestro_Menu_Sst
+  // Permisos del Rol en Maestro_Menu (secciones en el orden del menú)
+  const menuRows = await seccionesDelRol('sst', rol);
+  if (!menuRows.length) return null; // Sin accesos configurados en Maestro_Menu
 
   const allowedSecciones = menuRows.map(r => r.seccion).filter(Boolean);
 

@@ -75,7 +75,7 @@ async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, t
   }
 }
 
-// Acceso gobernado por Maestro_Menu_Sst (Sección "Capacitación SST"), igual
+// Acceso gobernado por Maestro_Menu (sst, Sección "Capacitación SST"), igual
 // que Nómina/Facturación/Cloud Docs vía su propio Maestro_Menu_<Módulo>.
 // La escritura (crear/responder/eliminar/reenviar firma/plantillas) queda
 // limitada aparte a ROLES_ESCRITURA_SST donde corresponda — ver accesoSst.js.

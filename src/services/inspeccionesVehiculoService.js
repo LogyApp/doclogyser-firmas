@@ -1184,7 +1184,7 @@ function rolEnListaParam(rol, lista) {
 }
 
 // Quién ve la pestaña "Inspecciones Vehículos" y qué operaciones ve lo gobierna
-// exclusivamente Maestro_Menu_Sst (Sección = 'Inspecciones_vehiculos') vía computarAccesoSst.
+// exclusivamente Maestro_Menu (sst / Inspecciones_vehiculos) vía computarAccesoSst.
 // Config_Parametros solo guarda permisos de acciones (registrar/eliminar) y límites de reporte.
 async function obtenerConfigInspeccionesSST(rol = '') {
   const mapa = {};

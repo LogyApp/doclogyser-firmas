@@ -30,7 +30,7 @@ const HTML_INDEX_PATH = path.join(__dirname, '../views/sst/index.html');
 const SECCION_INSPECCIONES_SST = 'Inspecciones_vehiculos';
 
 // El acceso de los roles al módulo SST y a cada una de sus pestañas funciona
-// exclusivamente con lo registrado en Maestro_Menu_Sst (igual que Nómina con Maestro_Menu_Nomina).
+// exclusivamente con lo registrado en Maestro_Menu (Modulo 'sst'; igual que Nómina).
 async function computarAccesoSST(usuarioId, seccionRequested = null) {
   const acceso = await computarAccesoSst(usuarioId, seccionRequested);
   if (!acceso) return null;
@@ -49,7 +49,7 @@ router.get('/api/inspecciones/datos', async (req, res) => {
   try {
     const { usuario } = req.query;
     const acceso = await computarAccesoSST(usuario, SECCION_INSPECCIONES_SST);
-    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado en Maestro_Menu_Sst para Inspecciones_vehiculos' });
+    if (!acceso) return res.status(403).json({ error: 'Usuario no autorizado para Inspecciones de vehículos (Maestro_Menu)' });
 
     const data = await listarInspeccionesSST(acceso, req.query);
     res.json(data);
@@ -290,7 +290,7 @@ router.get(['/', '/:tab'], async (req, res) => {
 
     const acceso = await computarAccesoSST(usuario);
     if (!acceso) {
-      return res.status(403).send('<h2>Error: Usuario no autorizado para el módulo SST (sin acceso configurado en Maestro_Menu_Sst)</h2>');
+      return res.status(403).send('<h2>Error: Usuario no autorizado para el módulo SST (sin acceso configurado en Maestro_Menu)</h2>');
     }
 
     if (!fs.existsSync(HTML_INDEX_PATH)) {
