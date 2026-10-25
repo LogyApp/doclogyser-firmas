@@ -8,16 +8,6 @@ const pool = require('./db');
 // Rol = 'Todos': la fila aplica a cualquier usuario registrado, sin importar su rol.
 const ROL_TODOS = 'todos';
 
-// Tabla anterior de cada módulo: solo se usa si Maestro_Menu no se puede leer.
-const TABLA_ANTERIOR = {
-  clouddocs: 'Maestro_Menu_Documentos',
-  facturacion: 'Maestro_Menu_Facturacion',
-  inventario: 'Maestro_Menu_Inventario',
-  nomina: 'Maestro_Menu_Nomina',
-  sst: 'Maestro_Menu_Sst',
-  talenthub: 'Maestro_Menu_Talenthub',
-};
-
 function normalizar(valor) {
   return String(valor || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 }
@@ -37,19 +27,11 @@ function rolEnFila(fila, buscado) {
 }
 
 async function leerFilas(modulo) {
-  try {
-    const [rows] = await pool.execute(
-      'SELECT Seccion, Rol, Acceso, Etiqueta, Url, Orden, Icono FROM Maestro_Menu WHERE Modulo = ?',
-      [modulo]
-    );
-    return rows;
-  } catch (err) {
-    const tabla = TABLA_ANTERIOR[modulo];
-    if (!tabla) throw err;
-    console.error(`[maestroMenu] No se pudo leer Maestro_Menu (${modulo}), se usa ${tabla}:`, err.message);
-    const [rows] = await pool.execute(`SELECT \`Sección\` AS Seccion, Rol, Acceso FROM ${tabla}`);
-    return rows;
-  }
+  const [rows] = await pool.execute(
+    'SELECT Seccion, Rol, Acceso, Etiqueta, Url, Orden, Icono FROM Maestro_Menu WHERE Modulo = ?',
+    [modulo]
+  );
+  return rows;
 }
 
 // Secciones del módulo a las que entra el rol, en el orden del menú:

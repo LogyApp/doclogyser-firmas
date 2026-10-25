@@ -94,7 +94,7 @@ function paginaNoAcceso() {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sin acceso</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0f0f0}.card{background:#fff;padding:2.5rem 2rem;border-radius:10px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.12);max-width:400px;width:90%}h2{color:#1a1a2e;margin-bottom:10px;font-size:1.2rem}p{color:#888;font-size:.9rem;margin:0}.icon{font-size:2.5rem;margin-bottom:12px}</style></head><body><div class="card"><div class="icon">🔒</div><h2>Sin acceso</h2><p>No tienes permiso para ver este módulo.</p></div></body></html>`;
 }
 
-// Acceso a Traslados: mismo origen que la pestaña en Nómina (Maestro_Menu_Nomina,
+// Acceso a Traslados: mismo origen que la pestaña en Nómina (Maestro_Menu, nomina /
 // Sección 'Traslados'). Permisos de acciones desde Config_Parametros.
 async function computarAcceso(usuarioId) {
   if (!usuarioId) return null;

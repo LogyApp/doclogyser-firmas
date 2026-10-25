@@ -11,7 +11,7 @@ const router = express.Router();
 const FORM_HTML = path.join(__dirname, '../views/formtraslado/form.html');
 
 // Solo pueden registrar traslados los roles con la Sección 'Traslados' en
-// Maestro_Menu_Nomina, y solo de trabajadores activos de las operaciones que ven.
+// Maestro_Menu (nomina), y solo de trabajadores activos de las operaciones que ven.
 async function accesoTraslados(usuario) {
   return computarAccesoNomina(usuario, 'Traslados');
 }

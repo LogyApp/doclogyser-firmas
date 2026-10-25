@@ -1,7 +1,7 @@
 const pool = require('./db');
 
 // ── Permisos de la pestaña Activos (Config_Parametros nomina / Activos) ─────
-// Quién ve la pestaña y qué operaciones lo define Maestro_Menu_Nomina
+// Quién ve la pestaña y qué operaciones lo define Maestro_Menu (nomina)
 // (computarAccesoNomina). Aquí solo: quién ve y usa los botones de cada fila.
 // Si una fila no existe se usa el valor por defecto de abajo.
 const P = {
