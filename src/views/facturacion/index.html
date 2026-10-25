@@ -1226,6 +1226,81 @@
       .modal-footer {
         flex-wrap: wrap !important;
       }
+      .clientes-subtabs {
+        overflow-x: auto;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .clientes-subtab-btn {
+        padding: 7px 11px !important;
+        font-size: 0.74rem !important;
+        flex-shrink: 0;
+      }
+    }
+
+    /* Subpestañas dentro de la pestaña Clientes */
+    .clientes-subtabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+      padding: 6px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .clientes-subtab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      font-family: inherit;
+    }
+    .clientes-subtab-btn:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .clientes-subtab-btn.active {
+      background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%);
+      color: var(--accent-contrast);
+      box-shadow: 0 3px 10px var(--accent-soft);
+    }
+    .clientes-subtab-count {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.08);
+      color: inherit;
+    }
+    .clientes-subtab-btn.active .clientes-subtab-count {
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
+    }
+    .table-footer-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
     }
 
   </style>
@@ -1272,9 +1347,9 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         <span>Servicios</span>
       </li>
-      <li class="nav-item" id="navClientes" onclick="switchMainTab('clientescredito')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-        <span>Clientes Crédito</span>
+      <li class="nav-item" id="navClientes" onclick="switchMainTab('clientes')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Clientes</span>
       </li>
       <li class="nav-item" id="navTickets" onclick="switchMainTab('tickets')">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
@@ -1918,64 +1993,489 @@
     </div>
 
     <!-- ──────────────────────────────────────────────────────────
-         PESTAÑA 2: CLIENTES CRÉDITO
+         PESTAÑA 2: CLIENTES Y CATÁLOGOS (Clientes, Clientes Crédito, Transportadoras, Proveedores, Placas)
     ────────────────────────────────────────────────────────── -->
     <div id="tab-content-clientes" style="display: none;">
-      <div class="page-hd">
-        <div>
-          <div class="page-title">Facturación · Clientes Crédito</div>
-          <div class="page-sub">Administración de clientes y selección predeterminada para bloqueo de datos</div>
-        </div>
-        <button class="btn-primary" id="btn-agregar-cliente" onclick="abrirModalCliente()">
-          ➕ Agregar Cliente Crédito
+
+      <!-- Barra de Subpestañas -->
+      <div class="clientes-subtabs" id="clientes-subtabs-bar">
+        <button type="button" class="clientes-subtab-btn active" id="subtab-btn-clientes" onclick="switchSubTabClientes('clientes')">
+          <span>🏢 Clientes</span>
+          <span class="clientes-subtab-count" id="subtab-count-clientes">...</span>
+        </button>
+        <button type="button" class="clientes-subtab-btn" id="subtab-btn-credito" onclick="switchSubTabClientes('credito')">
+          <span>💳 Clientes Crédito</span>
+          <span class="clientes-subtab-count" id="subtab-count-credito">...</span>
+        </button>
+        <button type="button" class="clientes-subtab-btn" id="subtab-btn-transportadoras" onclick="switchSubTabClientes('transportadoras')">
+          <span>🚚 Transportadoras</span>
+          <span class="clientes-subtab-count" id="subtab-count-transportadoras">...</span>
+        </button>
+        <button type="button" class="clientes-subtab-btn" id="subtab-btn-proveedores" onclick="switchSubTabClientes('proveedores')">
+          <span>🏭 Proveedores</span>
+          <span class="clientes-subtab-count" id="subtab-count-proveedores">...</span>
+        </button>
+        <button type="button" class="clientes-subtab-btn" id="subtab-btn-placas" onclick="switchSubTabClientes('placas')">
+          <span>🪪 Placas</span>
+          <span class="clientes-subtab-count" id="subtab-count-placas">...</span>
         </button>
       </div>
 
-      <!-- Métrica Clientes (informativa, no requiere protagonismo visual) -->
-      <div class="metric-grid metric-grid-compact" style="grid-template-columns: none;">
-        <div class="metric-card" style="max-width: 190px; padding: 8px 12px;">
+      <!-- ══════════════════════════════════════════════════════════
+           SUBPESTAÑA 1 (PRINCIPAL): CLIENTES (Maestro_Clientes)
+      ══════════════════════════════════════════════════════════ -->
+      <div id="subtab-content-clientes">
+        <div class="page-hd">
           <div>
-            <div class="metric-label" style="font-size: 0.62rem;">Total Clientes Crédito</div>
-            <div class="metric-val" style="font-size: 0.95rem;" id="count-clientes-total">0</div>
+            <div class="page-title">Facturación · Clientes</div>
+            <div class="page-sub">Directorio general de clientes (Maestro_Clientes), datos de facturación electrónica, ubicación y retenciones</div>
           </div>
-          <div class="metric-icon" style="font-size: 0.95rem !important; opacity: 0.6;">🏢</div>
+        </div>
+
+        <!-- Filtros Plegables (con Resumen y Clasificación como filtros principales adentro, estilo Inventario) -->
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="mcliFiltrosToggle" onclick="toggleFiltrosCat('mcli')">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="mcliFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="mcliFiltrosChevron">▸</span>
+          </div>
+          <div class="filtros-body" id="mcliFiltrosBody" style="display: none;">
+            <!-- Filtros principales: Resumen y Clasificación de Clientes (Chips estilo Categorías de Inventario) -->
+            <div class="category-filter-section" style="border-bottom: 1px dashed var(--border); padding-bottom: 16px; margin-bottom: 16px; margin-top: 12px;">
+              <label style="display: block; font-weight: 700; font-size: 0.82rem; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Resumen y Clasificación de Clientes</label>
+              <div id="mcli-chips-container" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="category-chip active" id="mcli-chip-todos" onclick="seleccionarChipMaestroClientes('')">
+                  <span class="chip-title">📌 TODOS</span>
+                  <span class="chip-sub" id="mcli-chip-todos-sub">0 registros</span>
+                </button>
+                <button type="button" class="category-chip" id="mcli-chip-contado" onclick="seleccionarChipMaestroClientes('CONTADO')">
+                  <span class="chip-title">💵 CONTADO</span>
+                  <span class="chip-sub" id="mcli-chip-contado-sub">0 registros</span>
+                </button>
+                <button type="button" class="category-chip" id="mcli-chip-credito" onclick="seleccionarChipMaestroClientes('CREDITO')">
+                  <span class="chip-title">💳 CRÉDITO</span>
+                  <span class="chip-sub" id="mcli-chip-credito-sub">0 registros</span>
+                </button>
+                <button type="button" class="category-chip" id="mcli-chip-nuevo" onclick="seleccionarChipMaestroClientes('NUEVO')">
+                  <span class="chip-title">🆕 NUEVOS (POR ACTUALIZAR)</span>
+                  <span class="chip-sub" id="mcli-chip-nuevo-sub">0 registros</span>
+                </button>
+                <button type="button" class="category-chip" id="mcli-chip-retenciones" onclick="seleccionarChipMaestroClientes('RETENCIONES')">
+                  <span class="chip-title">🧾 CON RETENCIONES</span>
+                  <span class="chip-sub" id="mcli-chip-retenciones-sub">0 registros</span>
+                </button>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Código / NIT, Razón Social, Ciudad, Dirección / Operación, Teléfono, Correo F.E. o Usuario</label>
+              <div style="position: relative;">
+                <input type="text" id="mcli-filtro-q" placeholder="Ej: 900123456, PEPSICO, Bogotá, 3101234567..." oninput="onMaestroClientesFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+              </div>
+            </div>
+            <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));">
+              <div class="filtro-field">
+                <label>Solicitar Actualización</label>
+                <select id="mcli-filtro-actualizacion" onchange="onMaestroClientesFilterChange()">
+                  <option value="">Todos</option>
+                  <option value="NUEVO">NUEVO</option>
+                  <option value="SIN_SOLICITUD">Sin solicitud</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Condición de Pago</label>
+                <select id="mcli-filtro-condicion" onchange="onMaestroClientesFilterChange()">
+                  <option value="">Todas las condiciones</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Depto / Estado</label>
+                <select id="mcli-filtro-depto" onchange="onMaestroClientesFilterChange()">
+                  <option value="">Todos los departamentos</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Ciudad</label>
+                <select id="mcli-filtro-ciudad" onchange="onMaestroClientesFilterChange()">
+                  <option value="">Todas las ciudades</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Retenciones</label>
+                <select id="mcli-filtro-retencion" onchange="onMaestroClientesFilterChange()">
+                  <option value="">Todas</option>
+                  <option value="CON_ALGUNA">Con alguna retención (V)</option>
+                  <option value="RTICA">Con RTICA (V)</option>
+                  <option value="RTIVA">Con RTIVA (V)</option>
+                  <option value="RTSERVIC">Con RTSERVIC (V)</option>
+                  <option value="NINGUNA">Sin retenciones</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Usuario</label>
+                <select id="mcli-filtro-usuario" onchange="onMaestroClientesFilterChange()">
+                  <option value="">Todos los usuarios</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
+              <button type="button" class="btn-reset" onclick="resetFiltrosMaestroClientes()">↺ Limpiar filtros</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla Maestro_Clientes -->
+        <div class="table-container">
+          <table class="data-table" id="tabla-maestro-clientes">
+            <thead>
+              <tr>
+                <th style="width: 110px;" data-sort="solicitarActualizacion">Actualización<span id="mcliSort-solicitarActualizacion" class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="codigo">Código / NIT<span id="mcliSort-codigo" class="sort-indicator"></span></th>
+                <th style="width: 260px;" data-sort="razonSocial">Razón Social<span id="mcliSort-razonSocial" class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="telefono">Teléfono<span id="mcliSort-telefono" class="sort-indicator"></span></th>
+                <th style="width: 210px;" data-sort="correoFE">Correo F.E.<span id="mcliSort-correoFE" class="sort-indicator"></span></th>
+                <th style="width: 140px;" data-sort="condicionPago">Condición Pago<span id="mcliSort-condicionPago" class="sort-indicator"></span></th>
+                <th style="width: 140px;" data-sort="deptoEstado">Depto / Estado<span id="mcliSort-deptoEstado" class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="ciudad">Ciudad<span id="mcliSort-ciudad" class="sort-indicator"></span></th>
+                <th style="width: 160px;" data-sort="direccion1">Dirección 1<span id="mcliSort-direccion1" class="sort-indicator"></span></th>
+                <th style="width: 80px; text-align: center;" data-sort="rtica">RTICA<span id="mcliSort-rtica" class="sort-indicator"></span></th>
+                <th style="width: 80px; text-align: center;" data-sort="rtiva">RTIVA<span id="mcliSort-rtiva" class="sort-indicator"></span></th>
+                <th style="width: 90px; text-align: center;" data-sort="rtservic">RTSERVIC<span id="mcliSort-rtservic" class="sort-indicator"></span></th>
+                <th style="width: 120px;" data-sort="fechaUltimaVenta">Últ. Venta<span id="mcliSort-fechaUltimaVenta" class="sort-indicator"></span></th>
+                <th style="width: 150px;" data-sort="usuario">Usuario<span id="mcliSort-usuario" class="sort-indicator"></span></th>
+                <th style="width: 150px;" data-sort="fechaRegistro">Fecha Registro<span id="mcliSort-fechaRegistro" class="sort-indicator"> ▼</span></th>
+                <th style="width: 180px;" data-sort="observaciones">Observaciones<span id="mcliSort-observaciones" class="sort-indicator"></span></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-maestro-clientes-body">
+              <tr><td colspan="16" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer-bar" id="mcli-footer-bar">
+          <span id="mcli-footer-info">Mostrando 0 de 0 clientes</span>
+          <button type="button" class="btn-secondary" id="mcli-btn-mas" onclick="cargarMasMaestroClientes()" style="display: none;">➕ Mostrar 200 más</button>
         </div>
       </div>
 
-      <!-- Barra de Búsqueda -->
-      <div class="card" style="padding: 14px 20px;">
-        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
-          <div class="filtro-field" style="flex:1; min-width:240px;">
-            <input type="text" id="buscar-cliente" placeholder="Buscar por Cliente a Facturar, NIT, Razón Social o Usuario..." oninput="renderClientesTable()">
+      <!-- ══════════════════════════════════════════════════════════
+           SUBPESTAÑA 2: CLIENTES CRÉDITO (Maestro_Clientes_Credito)
+      ══════════════════════════════════════════════════════════ -->
+      <div id="subtab-content-credito" style="display: none;">
+        <div class="page-hd">
+          <div>
+            <div class="page-title">Facturación · Clientes Crédito</div>
+            <div class="page-sub">Administración de clientes crédito y selección predeterminada para bloqueo de datos</div>
           </div>
-          <div class="filtro-field" style="width:200px;">
-            <select id="filtro-estado-cliente" onchange="renderClientesTable()">
-              <option value="">Todos los Estados</option>
-              <option value="1">Habilitados para Bloqueo (1)</option>
-              <option value="0">Deshabilitados (0)</option>
-            </select>
+          <button class="btn-primary" id="btn-agregar-cliente" onclick="abrirModalCliente()">
+            ➕ Agregar Cliente Crédito
+          </button>
+        </div>
+        <span id="count-clientes-total" style="display: none;">0</span>
+
+        <!-- Filtros Plegables Clientes Crédito -->
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="ccredFiltrosToggle" onclick="toggleFiltrosCat('ccred')">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="ccredFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="ccredFiltrosChevron">▸</span>
           </div>
+          <div class="filtros-body" id="ccredFiltrosBody" style="display: none;">
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Cliente a Facturar, NIT, Razón Social o Usuario</label>
+              <div style="position: relative;">
+                <input type="text" id="buscar-cliente" placeholder="Buscar por Cliente a Facturar, NIT, Razón Social o Usuario..." oninput="renderClientesTable()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+              </div>
+            </div>
+            <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+              <div class="filtro-field">
+                <label>Estado de Bloqueo</label>
+                <select id="filtro-estado-cliente" onchange="renderClientesTable()">
+                  <option value="">Todos los Estados</option>
+                  <option value="1">Habilitados para Bloqueo (1)</option>
+                  <option value="0">Deshabilitados (0)</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Usuario</label>
+                <select id="filtro-usuario-cliente-credito" onchange="renderClientesTable()">
+                  <option value="">Todos los usuarios</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
+              <button type="button" class="btn-reset" onclick="resetFiltrosClientesCredito()">↺ Limpiar filtros</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Clientes Crédito (Redimensionable y Ordenable) -->
+        <div class="table-container">
+          <table class="data-table" id="tabla-clientes">
+            <thead>
+              <tr>
+                <th style="width: 80px; text-align: center;" data-sort="bloqueo">Bloqueo<span id="cliSort-bloqueo" class="sort-indicator"></span></th>
+                <th style="width: 260px;" data-sort="clienteAFacturar">Cliente a Facturar<span id="cliSort-clienteAFacturar" class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="nit">NIT<span id="cliSort-nit" class="sort-indicator"></span></th>
+                <th style="width: 280px;" data-sort="nombre">Nombre / Razón Social<span id="cliSort-nombre" class="sort-indicator"></span></th>
+                <th style="width: 140px;" data-sort="usuario">Usuario<span id="cliSort-usuario" class="sort-indicator"></span></th>
+                <th style="width: 160px;" data-sort="fechaRegistro">Fecha Registro<span id="cliSort-fechaRegistro" class="sort-indicator"></span></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-clientes-body">
+              <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Tabla de Clientes (Redimensionable y Ordenable) -->
-      <div class="table-container">
-        <table class="data-table" id="tabla-clientes">
-          <thead>
-            <tr>
-              <th style="width: 80px; text-align: center;" data-sort="bloqueo">Bloqueo<span id="cliSort-bloqueo" class="sort-indicator"></span></th>
-              <th style="width: 260px;" data-sort="clienteAFacturar">Cliente a Facturar<span id="cliSort-clienteAFacturar" class="sort-indicator"></span></th>
-              <th style="width: 130px;" data-sort="nit">NIT<span id="cliSort-nit" class="sort-indicator"></span></th>
-              <th style="width: 280px;" data-sort="nombre">Nombre / Razón Social<span id="cliSort-nombre" class="sort-indicator"></span></th>
-              <th style="width: 140px;" data-sort="usuario">Usuario<span id="cliSort-usuario" class="sort-indicator"></span></th>
-              <th style="width: 160px;" data-sort="fechaRegistro">Fecha Registro<span id="cliSort-fechaRegistro" class="sort-indicator"></span></th>
-            </tr>
-          </thead>
-          <tbody id="tabla-clientes-body">
-            <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
-          </tbody>
-        </table>
+      <!-- ══════════════════════════════════════════════════════════
+           SUBPESTAÑA 3: TRANSPORTADORAS (Maestro_Transportadora)
+      ══════════════════════════════════════════════════════════ -->
+      <div id="subtab-content-transportadoras" style="display: none;">
+        <div class="page-hd">
+          <div>
+            <div class="page-title">Facturación · Transportadoras</div>
+            <div class="page-sub">Catálogo maestro de transportadoras registradas en la operación (Maestro_Transportadora)</div>
+          </div>
+        </div>
+
+        <!-- Filtros Plegables Transportadoras -->
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="mtranspFiltrosToggle" onclick="toggleFiltrosCat('mtransp')">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="mtranspFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="mtranspFiltrosChevron">▸</span>
+          </div>
+          <div class="filtros-body" id="mtranspFiltrosBody" style="display: none;">
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por ID, Transportadora o Usuario</label>
+              <div style="position: relative;">
+                <input type="text" id="mtransp-filtro-q" placeholder="Ej: FRIOTRANS, fffa2888, Carlos..." oninput="onTransportadorasFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+              </div>
+            </div>
+            <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));">
+              <div class="filtro-field">
+                <label>Desde (Fecha Ingreso)</label>
+                <input type="date" id="mtransp-filtro-desde" onchange="onTransportadorasFilterChange()">
+              </div>
+              <div class="filtro-field">
+                <label>Hasta (Fecha Ingreso)</label>
+                <input type="date" id="mtransp-filtro-hasta" onchange="onTransportadorasFilterChange()">
+              </div>
+              <div class="filtro-field">
+                <label>Usuario</label>
+                <select id="mtransp-filtro-usuario" onchange="onTransportadorasFilterChange()">
+                  <option value="">Todos los usuarios</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
+              <button type="button" class="btn-reset" onclick="resetFiltrosTransportadoras()">↺ Limpiar filtros</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla Maestro_Transportadora -->
+        <div class="table-container">
+          <table class="data-table" id="tabla-transportadoras">
+            <thead>
+              <tr>
+                <th style="width: 130px;" data-sort="id">ID<span id="mtranspSort-id" class="sort-indicator"></span></th>
+                <th style="width: 340px;" data-sort="transportadora">Transportadora<span id="mtranspSort-transportadora" class="sort-indicator"></span></th>
+                <th style="width: 220px;" data-sort="usuario">Usuario<span id="mtranspSort-usuario" class="sort-indicator"></span></th>
+                <th style="width: 180px;" data-sort="fechaIngreso">Fecha Ingreso<span id="mtranspSort-fechaIngreso" class="sort-indicator"> ▼</span></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-transportadoras-body">
+              <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando transportadoras...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer-bar" id="mtransp-footer-bar">
+          <span id="mtransp-footer-info">Mostrando 0 de 0 transportadoras</span>
+          <button type="button" class="btn-secondary" id="mtransp-btn-mas" onclick="cargarMasTransportadoras()" style="display: none;">➕ Mostrar 200 más</button>
+        </div>
       </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           SUBPESTAÑA 4: PROVEEDORES (Maestro_Proveedor)
+      ══════════════════════════════════════════════════════════ -->
+      <div id="subtab-content-proveedores" style="display: none;">
+        <div class="page-hd">
+          <div>
+            <div class="page-title">Facturación · Proveedores</div>
+            <div class="page-sub">Catálogo maestro de proveedores registrados en la operación (Maestro_Proveedor)</div>
+          </div>
+        </div>
+
+        <!-- Filtros Plegables Proveedores -->
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="mprovFiltrosToggle" onclick="toggleFiltrosCat('mprov')">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="mprovFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="mprovFiltrosChevron">▸</span>
+          </div>
+          <div class="filtros-body" id="mprovFiltrosBody" style="display: none;">
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por ID, Proveedor o Usuario</label>
+              <div style="position: relative;">
+                <input type="text" id="mprov-filtro-q" placeholder="Ej: PEDRO MORENO, ffe7ed06, Diego..." oninput="onProveedoresFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+              </div>
+            </div>
+            <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));">
+              <div class="filtro-field">
+                <label>Desde (Fecha Ingreso)</label>
+                <input type="date" id="mprov-filtro-desde" onchange="onProveedoresFilterChange()">
+              </div>
+              <div class="filtro-field">
+                <label>Hasta (Fecha Ingreso)</label>
+                <input type="date" id="mprov-filtro-hasta" onchange="onProveedoresFilterChange()">
+              </div>
+              <div class="filtro-field">
+                <label>Usuario</label>
+                <select id="mprov-filtro-usuario" onchange="onProveedoresFilterChange()">
+                  <option value="">Todos los usuarios</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
+              <button type="button" class="btn-reset" onclick="resetFiltrosProveedores()">↺ Limpiar filtros</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla Maestro_Proveedor -->
+        <div class="table-container">
+          <table class="data-table" id="tabla-proveedores">
+            <thead>
+              <tr>
+                <th style="width: 130px;" data-sort="id">ID<span id="mprovSort-id" class="sort-indicator"></span></th>
+                <th style="width: 340px;" data-sort="proveedor">Proveedor<span id="mprovSort-proveedor" class="sort-indicator"></span></th>
+                <th style="width: 220px;" data-sort="usuario">Usuario<span id="mprovSort-usuario" class="sort-indicator"></span></th>
+                <th style="width: 180px;" data-sort="fechaIngreso">Fecha Ingreso<span id="mprovSort-fechaIngreso" class="sort-indicator"> ▼</span></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-proveedores-body">
+              <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando proveedores...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer-bar" id="mprov-footer-bar">
+          <span id="mprov-footer-info">Mostrando 0 de 0 proveedores</span>
+          <button type="button" class="btn-secondary" id="mprov-btn-mas" onclick="cargarMasProveedores()" style="display: none;">➕ Mostrar 200 más</button>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           SUBPESTAÑA 5: PLACAS (Maestro_Placas)
+      ══════════════════════════════════════════════════════════ -->
+      <div id="subtab-content-placas" style="display: none;">
+        <div class="page-hd">
+          <div>
+            <div class="page-title">Facturación · Placas</div>
+            <div class="page-sub">Catálogo maestro de placas de vehículos, tipo de cliente, NIT y terceros asociados (Maestro_Placas)</div>
+          </div>
+        </div>
+
+        <!-- Filtros Plegables Placas -->
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="filtros-toggle" id="mplacaFiltrosToggle" onclick="toggleFiltrosCat('mplaca')">
+            <span class="filtros-toggle-left">
+              🔍 Filtros de Búsqueda
+              <span class="filtros-badge" id="mplacaFiltrosBadge">0</span>
+            </span>
+            <span class="filtros-chevron" id="mplacaFiltrosChevron">▸</span>
+          </div>
+          <div class="filtros-body" id="mplacaFiltrosBody" style="display: none;">
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Placa, ID, NIT, Cliente Crédito, Empleado o Usuario</label>
+              <div style="position: relative;">
+                <input type="text" id="mplaca-filtro-q" placeholder="Ej: QPO622, PEPSICO, 890920304..." oninput="onPlacasFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
+              </div>
+            </div>
+            <div class="filtros-grid" style="grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));">
+              <div class="filtro-field">
+                <label>Tipo Cliente</label>
+                <select id="mplaca-filtro-tipo" onchange="onPlacasFilterChange()">
+                  <option value="">Todos</option>
+                  <option value="CONTADO">CONTADO</option>
+                  <option value="CREDITO">CREDITO</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Cliente Crédito</label>
+                <select id="mplaca-filtro-cliente" onchange="onPlacasFilterChange()">
+                  <option value="">Todos los clientes crédito</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Tipo Vehículo</label>
+                <select id="mplaca-filtro-vehiculo" onchange="onPlacasFilterChange()">
+                  <option value="">Todos los tipos</option>
+                </select>
+              </div>
+              <div class="filtro-field">
+                <label>Desde (Fecha Registro)</label>
+                <input type="date" id="mplaca-filtro-desde" onchange="onPlacasFilterChange()">
+              </div>
+              <div class="filtro-field">
+                <label>Hasta (Fecha Registro)</label>
+                <input type="date" id="mplaca-filtro-hasta" onchange="onPlacasFilterChange()">
+              </div>
+              <div class="filtro-field">
+                <label>Usuario</label>
+                <select id="mplaca-filtro-usuario" onchange="onPlacasFilterChange()">
+                  <option value="">Todos los usuarios</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
+              <button type="button" class="btn-reset" onclick="resetFiltrosPlacas()">↺ Limpiar filtros</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla Maestro_Placas -->
+        <div class="table-container">
+          <table class="data-table" id="tabla-placas">
+            <thead>
+              <tr>
+                <th style="width: 110px;" data-sort="id">ID<span id="mplacaSort-id" class="sort-indicator"></span></th>
+                <th style="width: 120px;" data-sort="placa">Placa<span id="mplacaSort-placa" class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="tipoCliente">Tipo Cliente<span id="mplacaSort-tipoCliente" class="sort-indicator"></span></th>
+                <th style="width: 220px;" data-sort="clienteCredito">Cliente Crédito<span id="mplacaSort-clienteCredito" class="sort-indicator"></span></th>
+                <th style="width: 130px;" data-sort="nit">NIT<span id="mplacaSort-nit" class="sort-indicator"></span></th>
+                <th style="width: 150px;" data-sort="tipoVehiculo">Tipo Vehículo<span id="mplacaSort-tipoVehiculo" class="sort-indicator"></span></th>
+                <th style="width: 200px;" data-sort="empleado">Empleado<span id="mplacaSort-empleado" class="sort-indicator"></span></th>
+                <th style="width: 180px;" data-sort="usuario">Usuario<span id="mplacaSort-usuario" class="sort-indicator"></span></th>
+                <th style="width: 160px;" data-sort="fechaRegistro">Fecha Registro<span id="mplacaSort-fechaRegistro" class="sort-indicator"> ▼</span></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-placas-body">
+              <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando placas...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer-bar" id="mplaca-footer-bar">
+          <span id="mplaca-footer-info">Mostrando 0 de 0 placas</span>
+          <button type="button" class="btn-secondary" id="mplaca-btn-mas" onclick="cargarMasPlacas()" style="display: none;">➕ Mostrar 200 más</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- ──────────────────────────────────────────────────────────
@@ -3049,6 +3549,34 @@
     let sortBloqueosState = { col: 'fechaRegistro', order: 'desc' };
     let sortClientesState = { col: 'clienteAFacturar', order: 'asc' };
 
+    // Estado de Subpestañas dentro de la pestaña Clientes
+    let activeSubTabClientes = 'clientes';
+    let allMaestroClientes = [];
+    let maestroClientesCargados = false;
+    let sortMaestroClientesState = { col: 'fechaRegistro', order: 'desc' };
+    let activeChipMaestroClientes = '';
+    let limitMaestroClientes = 200;
+
+    let activeChipClientesCredito = '';
+
+    let allTransportadoras = [];
+    let transportadorasCargadas = false;
+    let sortTransportadorasState = { col: 'fechaIngreso', order: 'desc' };
+    let activeChipTransportadoras = '';
+    let limitTransportadoras = 200;
+
+    let allProveedores = [];
+    let proveedoresCargados = false;
+    let sortProveedoresState = { col: 'fechaIngreso', order: 'desc' };
+    let activeChipProveedores = '';
+    let limitProveedores = 200;
+
+    let allPlacas = [];
+    let placasCargadas = false;
+    let sortPlacasState = { col: 'fechaRegistro', order: 'desc' };
+    let activeChipPlacas = '';
+    let limitPlacas = 200;
+
     let allTickets = [];
     let metricasTickets = null;
     let activeEstadoTicket = 'En Proceso';
@@ -3086,6 +3614,21 @@
       if (!CONFIG.tabs?.clientes_credito) {
         const navClientesEl = document.getElementById('navClientes');
         if (navClientesEl) navClientesEl.style.display = 'none';
+      }
+
+      // Mostrar de inmediato la pestaña de la dirección (?tab=...), o Recibos por defecto; los
+      // datos siguen cargando y al final se aplica la navegación completa (detalle, subpestaña).
+      {
+        const p = new URLSearchParams(window.location.search);
+        const TAB_INICIAL = {
+          servicios: 'servicios', servicio: 'servicios', recibos: 'recibos', recibo: 'recibos',
+          clientes: 'clientes', cliente: 'clientes', clientescredito: 'clientescredito',
+          clientes_credito: 'clientescredito', credito: 'clientescredito',
+          bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets',
+        };
+        if (!p.get('idservicio') && !p.get('idrecibo')) {
+          switchMainTab(TAB_INICIAL[(p.get('tab') || '').toLowerCase().trim()] || 'recibos', { soloVista: true });
+        }
       }
 
       // La columna Bloqueo y la edición de Clientes Crédito solo aplican a Facturación/Sistema
@@ -3193,6 +3736,62 @@
         });
       });
 
+      document.querySelectorAll('#tabla-maestro-clientes thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortMaestroClientesState.col === col) {
+            sortMaestroClientesState.order = sortMaestroClientesState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortMaestroClientesState.col = col;
+            sortMaestroClientesState.order = 'asc';
+          }
+          sortAndRenderMaestroClientes();
+        });
+      });
+
+      document.querySelectorAll('#tabla-transportadoras thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortTransportadorasState.col === col) {
+            sortTransportadorasState.order = sortTransportadorasState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortTransportadorasState.col = col;
+            sortTransportadorasState.order = 'asc';
+          }
+          sortAndRenderTransportadoras();
+        });
+      });
+
+      document.querySelectorAll('#tabla-proveedores thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortProveedoresState.col === col) {
+            sortProveedoresState.order = sortProveedoresState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortProveedoresState.col = col;
+            sortProveedoresState.order = 'asc';
+          }
+          sortAndRenderProveedores();
+        });
+      });
+
+      document.querySelectorAll('#tabla-placas thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', (e) => {
+          if (e.target.classList.contains('th-resize')) return;
+          const col = th.getAttribute('data-sort');
+          if (sortPlacasState.col === col) {
+            sortPlacasState.order = sortPlacasState.order === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortPlacasState.col = col;
+            sortPlacasState.order = 'asc';
+          }
+          sortAndRenderPlacas();
+        });
+      });
+
       // Quincena actual por defecto para Servicios y Recibos
       if (CONFIG.quincenaActual) {
         const servQ = document.getElementById('serv-filtro-quincena');
@@ -3255,9 +3854,10 @@
         });
       });
 
-      // Navegación directa por parámetro ?tab=servicios | ?tab=recibos | ?tab=clientescredito | ?tab=bloqueo | ?tab=tickets
+      // Navegación directa por parámetro ?tab=servicios | ?tab=recibos | ?tab=clientes | ?tab=clientescredito | ?tab=bloqueo | ?tab=tickets
       const paramsUrl = new URLSearchParams(window.location.search);
       const tabParam = (paramsUrl.get('tab') || '').toLowerCase().trim();
+      const subtabParam = (paramsUrl.get('subtab') || '').toLowerCase().trim();
       const idServicioParam = paramsUrl.get('idservicio');
       const idReciboParam = paramsUrl.get('idrecibo');
 
@@ -3271,8 +3871,18 @@
         switchMainTab('servicios');
       } else if (tabParam === 'recibos' || tabParam === 'recibo') {
         switchMainTab('recibos');
+      } else if (tabParam === 'clientes' || tabParam === 'cliente') {
+        if (['clientes', 'credito', 'transportadoras', 'proveedores', 'placas'].includes(subtabParam)) {
+          activeSubTabClientes = subtabParam;
+        } else {
+          activeSubTabClientes = 'clientes';
+        }
+        switchMainTab('clientes');
       } else if (tabParam === 'clientescredito' || tabParam === 'clientes_credito' || tabParam === 'credito') {
-        switchMainTab('clientescredito');
+        activeSubTabClientes = subtabParam && ['clientes', 'credito', 'transportadoras', 'proveedores', 'placas'].includes(subtabParam)
+          ? subtabParam
+          : 'credito';
+        switchMainTab('clientes');
       } else if (tabParam === 'bloqueo' || tabParam === 'bloqueos') {
         switchMainTab('bloqueo');
       } else if (tabParam === 'tickets' || tabParam === 'ticket') {
@@ -3317,6 +3927,10 @@
       makeTableResizable(document.getElementById('tabla-recibos'));
       makeTableResizable(document.getElementById('tabla-bloqueos'));
       makeTableResizable(document.getElementById('tabla-clientes'));
+      makeTableResizable(document.getElementById('tabla-maestro-clientes'));
+      makeTableResizable(document.getElementById('tabla-transportadoras'));
+      makeTableResizable(document.getElementById('tabla-proveedores'));
+      makeTableResizable(document.getElementById('tabla-placas'));
       makeTableResizable(document.getElementById('tabla-tickets'));
     });
 
@@ -3391,28 +4005,32 @@
       bd.classList.toggle('open', isOpen);
     }
 
-    function switchMainTab(tab) {
+    function switchMainTab(tab, { soloVista = false } = {}) {
       if (tab === 'tickets' && !CONFIG.tabs?.tickets) tab = 'servicios';
       if (tab === 'bloqueo' && !CONFIG.tabs?.bloqueo) tab = 'servicios';
       if ((tab === 'clientescredito' || tab === 'clientes') && !CONFIG.tabs?.clientes_credito) tab = 'servicios';
 
+      if (tab === 'clientescredito') {
+        activeSubTabClientes = 'credito';
+        tab = 'clientes';
+      }
+
       document.getElementById('navServicios')?.classList.toggle('active', tab === 'servicios');
       document.getElementById('navRecibos')?.classList.toggle('active', tab === 'recibos');
-      document.getElementById('navClientes')?.classList.toggle('active', tab === 'clientescredito' || tab === 'clientes');
+      document.getElementById('navClientes')?.classList.toggle('active', tab === 'clientes');
       document.getElementById('navBloqueo')?.classList.toggle('active', tab === 'bloqueo');
       document.getElementById('navTickets')?.classList.toggle('active', tab === 'tickets');
 
       document.getElementById('tab-content-servicios').style.display = tab === 'servicios' ? 'block' : 'none';
       document.getElementById('tab-content-recibos').style.display = tab === 'recibos' ? 'block' : 'none';
-      document.getElementById('tab-content-clientes').style.display = (tab === 'clientescredito' || tab === 'clientes') ? 'block' : 'none';
+      document.getElementById('tab-content-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
       document.getElementById('tab-content-bloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
       document.getElementById('tab-content-tickets').style.display = tab === 'tickets' ? 'block' : 'none';
 
       const tabTitles = {
         servicios: 'Servicios',
         recibos: 'Recibos',
-        clientescredito: 'Clientes Crédito',
-        clientes: 'Clientes Crédito',
+        clientes: 'Clientes',
         bloqueo: 'Bloqueo de Datos',
         tickets: 'Tickets'
       };
@@ -3425,7 +4043,12 @@
 
       // Sincronizar URL
       const url = new URL(window.location);
-      url.searchParams.set('tab', tab === 'clientes' ? 'clientescredito' : tab);
+      url.searchParams.set('tab', tab);
+      if (tab === 'clientes') {
+        url.searchParams.set('subtab', activeSubTabClientes || 'clientes');
+      } else {
+        url.searchParams.delete('subtab');
+      }
       if (tab !== 'servicios') {
         url.searchParams.delete('idservicio');
       }
@@ -3433,6 +4056,8 @@
         url.searchParams.delete('idrecibo');
       }
       history.replaceState(null, '', url);
+
+      if (soloVista) return; // los datos los carga el inicio de la página
 
       if (tab === 'servicios') {
         makeTableResizable(document.getElementById('tabla-servicios'));
@@ -3458,11 +4083,813 @@
           cargarMetricasTickets();
         }
       } else {
+        switchSubTabClientes(activeSubTabClientes || 'clientes');
+      }
+    }
+
+    function switchSubTabClientes(subtab) {
+      const validas = ['clientes', 'credito', 'transportadoras', 'proveedores', 'placas'];
+      if (!validas.includes(subtab)) subtab = 'clientes';
+      activeSubTabClientes = subtab;
+
+      validas.forEach(s => {
+        document.getElementById('subtab-btn-' + s)?.classList.toggle('active', s === subtab);
+        const panel = document.getElementById('subtab-content-' + s);
+        if (panel) panel.style.display = s === subtab ? 'block' : 'none';
+      });
+
+      const url = new URL(window.location);
+      if (url.searchParams.get('tab') === 'clientes' || url.searchParams.get('tab') === 'clientescredito') {
+        url.searchParams.set('tab', 'clientes');
+        url.searchParams.set('subtab', subtab);
+        history.replaceState(null, '', url);
+      }
+
+      if (subtab === 'clientes') {
+        makeTableResizable(document.getElementById('tabla-maestro-clientes'));
+      } else if (subtab === 'credito') {
         makeTableResizable(document.getElementById('tabla-clientes'));
-        if (!allClientes || !allClientes.length) {
-          cargarClientes();
-          cargarPreseleccionadosInfo();
+      } else if (subtab === 'transportadoras') {
+        makeTableResizable(document.getElementById('tabla-transportadoras'));
+      } else if (subtab === 'proveedores') {
+        makeTableResizable(document.getElementById('tabla-proveedores'));
+      } else if (subtab === 'placas') {
+        makeTableResizable(document.getElementById('tabla-placas'));
+      }
+
+      if (!maestroClientesCargados) cargarMaestroClientes();
+      if (!allClientes || !allClientes.length) {
+        cargarClientes();
+        cargarPreseleccionadosInfo();
+      }
+      if (!transportadorasCargadas) cargarTransportadoras();
+      if (!proveedoresCargados) cargarProveedores();
+      if (!placasCargadas) cargarPlacas();
+    }
+
+    function toggleFiltrosCat(prefix) {
+      const body = document.getElementById(prefix + 'FiltrosBody');
+      const chevron = document.getElementById(prefix + 'FiltrosChevron');
+      if (!body) return;
+      const isVisible = body.style.display === 'block';
+      body.style.display = isVisible ? 'none' : 'block';
+      if (chevron) chevron.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+    }
+
+    function poblarSelectUnico(selectId, valores, placeholder) {
+      const sel = document.getElementById(selectId);
+      if (!sel) return;
+      const actual = sel.value;
+      const unicos = Array.from(new Set(valores.map(v => String(v || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'es'));
+      sel.innerHTML = `<option value="">${placeholder}</option>` + unicos.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+      if (actual && unicos.includes(actual)) sel.value = actual;
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // SUBPESTAÑA 1: CLIENTES (Maestro_Clientes)
+    // ──────────────────────────────────────────────────────────
+    async function cargarMaestroClientes() {
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-clientes?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (resp.ok) {
+          allMaestroClientes = await resp.json();
+          maestroClientesCargados = true;
+          const badgeSub = document.getElementById('subtab-count-clientes');
+          if (badgeSub) badgeSub.textContent = allMaestroClientes.length.toLocaleString('es-CO');
+          poblarSelectUnico('mcli-filtro-condicion', allMaestroClientes.map(c => (c.condicionPago || '').toUpperCase()), 'Todas las condiciones');
+          poblarSelectUnico('mcli-filtro-depto', allMaestroClientes.map(c => c.deptoEstado), 'Todos los departamentos');
+          poblarSelectUnico('mcli-filtro-ciudad', allMaestroClientes.map(c => c.ciudad), 'Todas las ciudades');
+          poblarSelectUnico('mcli-filtro-usuario', allMaestroClientes.map(c => c.usuario), 'Todos los usuarios');
+          sortAndRenderMaestroClientes();
+          makeTableResizable(document.getElementById('tabla-maestro-clientes'));
+        } else {
+          const tbody = document.getElementById('tabla-maestro-clientes-body');
+          const msg = resp.status === 404
+            ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
+            : 'Error al cargar clientes. Por favor recarga la página.';
+          if (tbody) tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
         }
+      } catch (e) {
+        console.error('Error cargando Maestro_Clientes:', e);
+        const tbody = document.getElementById('tabla-maestro-clientes-body');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar clientes.</td></tr>';
+      }
+    }
+
+    function seleccionarChipMaestroClientes(chip) {
+      activeChipMaestroClientes = chip;
+      limitMaestroClientes = 200;
+      document.getElementById('mcli-chip-todos')?.classList.toggle('active', chip === '');
+      document.getElementById('mcli-chip-contado')?.classList.toggle('active', chip === 'CONTADO');
+      document.getElementById('mcli-chip-credito')?.classList.toggle('active', chip === 'CREDITO');
+      document.getElementById('mcli-chip-nuevo')?.classList.toggle('active', chip === 'NUEVO');
+      document.getElementById('mcli-chip-retenciones')?.classList.toggle('active', chip === 'RETENCIONES');
+      renderMaestroClientesTable();
+    }
+
+    function onMaestroClientesFilterChange() {
+      limitMaestroClientes = 200;
+      renderMaestroClientesTable();
+    }
+
+    function resetFiltrosMaestroClientes() {
+      document.getElementById('mcli-filtro-q').value = '';
+      document.getElementById('mcli-filtro-actualizacion').value = '';
+      document.getElementById('mcli-filtro-condicion').value = '';
+      document.getElementById('mcli-filtro-depto').value = '';
+      document.getElementById('mcli-filtro-ciudad').value = '';
+      document.getElementById('mcli-filtro-retencion').value = '';
+      document.getElementById('mcli-filtro-usuario').value = '';
+      seleccionarChipMaestroClientes('');
+    }
+
+    function cargarMasMaestroClientes() {
+      limitMaestroClientes += 200;
+      renderMaestroClientesTable();
+    }
+
+    function sortAndRenderMaestroClientes() {
+      const col = sortMaestroClientesState.col;
+      const order = sortMaestroClientesState.order;
+      if (col) {
+        allMaestroClientes.sort((a, b) => {
+          let va = a[col] ?? '';
+          let vb = b[col] ?? '';
+          if (col === 'codigo') {
+            va = Number(va) || 0;
+            vb = Number(vb) || 0;
+            return order === 'asc' ? va - vb : vb - va;
+          }
+          va = String(va).toLowerCase();
+          vb = String(vb).toLowerCase();
+          if (va < vb) return order === 'asc' ? -1 : 1;
+          if (va > vb) return order === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      ['solicitarActualizacion','codigo','razonSocial','telefono','correoFE','condicionPago','deptoEstado','ciudad','direccion1','rtica','rtiva','rtservic','fechaUltimaVenta','usuario','fechaRegistro','observaciones'].forEach(k => {
+        const span = document.getElementById('mcliSort-' + k);
+        if (!span) return;
+        span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
+        if (col === k) span.style.color = 'var(--accent)';
+      });
+      renderMaestroClientesTable();
+    }
+
+    function renderMaestroClientesTable() {
+      const q = (document.getElementById('mcli-filtro-q')?.value || '').toLowerCase().trim();
+      const fAct = document.getElementById('mcli-filtro-actualizacion')?.value || '';
+      const fCond = (document.getElementById('mcli-filtro-condicion')?.value || '').toUpperCase();
+      const fDepto = document.getElementById('mcli-filtro-depto')?.value || '';
+      const fCiudad = document.getElementById('mcli-filtro-ciudad')?.value || '';
+      const fRet = document.getElementById('mcli-filtro-retencion')?.value || '';
+      const fUsr = document.getElementById('mcli-filtro-usuario')?.value || '';
+
+      let countActive = 0;
+      if (activeChipMaestroClientes) countActive++;
+      if (q) countActive++;
+      if (fAct) countActive++;
+      if (fCond) countActive++;
+      if (fDepto) countActive++;
+      if (fCiudad) countActive++;
+      if (fRet) countActive++;
+      if (fUsr) countActive++;
+      const badge = document.getElementById('mcliFiltrosBadge');
+      if (badge) {
+        badge.textContent = countActive;
+        badge.style.display = countActive > 0 ? 'inline-flex' : 'none';
+      }
+
+      const baseFiltered = allMaestroClientes.filter(c => {
+        const actVal = (c.solicitarActualizacion || '').trim().toUpperCase();
+        const condUpper = (c.condicionPago || '').trim().toUpperCase();
+        const tieneRtica = (c.rtica || '').trim().toUpperCase() === 'V';
+        const tieneRtiva = (c.rtiva || '').trim().toUpperCase() === 'V';
+        const tieneRtserv = (c.rtservic || '').trim().toUpperCase() === 'V';
+
+        if (fAct === 'NUEVO' && actVal !== 'NUEVO') return false;
+        if (fAct === 'SIN_SOLICITUD' && actVal !== '') return false;
+        if (fCond && condUpper !== fCond) return false;
+        if (fDepto && (c.deptoEstado || '').trim() !== fDepto) return false;
+        if (fCiudad && (c.ciudad || '').trim() !== fCiudad) return false;
+        if (fUsr && (c.usuario || '').trim() !== fUsr) return false;
+
+        if (fRet === 'CON_ALGUNA' && !(tieneRtica || tieneRtiva || tieneRtserv)) return false;
+        if (fRet === 'RTICA' && !tieneRtica) return false;
+        if (fRet === 'RTIVA' && !tieneRtiva) return false;
+        if (fRet === 'RTSERVIC' && !tieneRtserv) return false;
+        if (fRet === 'NINGUNA' && (tieneRtica || tieneRtiva || tieneRtserv)) return false;
+
+        if (q) {
+          const cod = String(c.codigo || '').toLowerCase();
+          const rs = (c.razonSocial || '').toLowerCase();
+          const tel = (c.telefono || '').toLowerCase();
+          const cor = (c.correoFE || '').toLowerCase();
+          const ciu = (c.ciudad || '').toLowerCase();
+          const dep = (c.deptoEstado || '').toLowerCase();
+          const dir = (c.direccion1 || '').toLowerCase();
+          const usr = (c.usuario || '').toLowerCase();
+          const obs = (c.observaciones || '').toLowerCase();
+          if (!cod.includes(q) && !rs.includes(q) && !tel.includes(q) && !cor.includes(q) && !ciu.includes(q) && !dep.includes(q) && !dir.includes(q) && !usr.includes(q) && !obs.includes(q)) return false;
+        }
+        return true;
+      });
+
+      let cntContado = 0, cntCredito = 0, cntNuevo = 0, cntRet = 0;
+      baseFiltered.forEach(c => {
+        const condUpper = (c.condicionPago || '').trim().toUpperCase();
+        if (condUpper === 'CONTADO') cntContado++;
+        else if (condUpper.includes('CREDITO') || condUpper.includes('CRÉDITO')) cntCredito++;
+        if ((c.solicitarActualizacion || '').trim().toUpperCase() === 'NUEVO') cntNuevo++;
+        if ((c.rtica || '').toUpperCase() === 'V' || (c.rtiva || '').toUpperCase() === 'V' || (c.rtservic || '').toUpperCase() === 'V') cntRet++;
+      });
+
+      const elTodos = document.getElementById('mcli-chip-todos-sub');
+      const elCont = document.getElementById('mcli-chip-contado-sub');
+      const elCred = document.getElementById('mcli-chip-credito-sub');
+      const elNuev = document.getElementById('mcli-chip-nuevo-sub');
+      const elRet = document.getElementById('mcli-chip-retenciones-sub');
+      if (elTodos) elTodos.textContent = `${baseFiltered.length.toLocaleString('es-CO')} registros`;
+      if (elCont) elCont.textContent = `${cntContado.toLocaleString('es-CO')} registros`;
+      if (elCred) elCred.textContent = `${cntCredito.toLocaleString('es-CO')} registros`;
+      if (elNuev) elNuev.textContent = `${cntNuevo.toLocaleString('es-CO')} registros`;
+      if (elRet) elRet.textContent = `${cntRet.toLocaleString('es-CO')} registros`;
+
+      const filtered = baseFiltered.filter(c => {
+        if (!activeChipMaestroClientes) return true;
+        const condUpper = (c.condicionPago || '').trim().toUpperCase();
+        if (activeChipMaestroClientes === 'CONTADO') return condUpper === 'CONTADO';
+        if (activeChipMaestroClientes === 'CREDITO') return condUpper.includes('CREDITO') || condUpper.includes('CRÉDITO');
+        if (activeChipMaestroClientes === 'NUEVO') return (c.solicitarActualizacion || '').trim().toUpperCase() === 'NUEVO';
+        if (activeChipMaestroClientes === 'RETENCIONES') {
+          return (c.rtica || '').toUpperCase() === 'V' || (c.rtiva || '').toUpperCase() === 'V' || (c.rtservic || '').toUpperCase() === 'V';
+        }
+        return true;
+      });
+
+      const tbody = document.getElementById('tabla-maestro-clientes-body');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron clientes con los filtros seleccionados.</td></tr>';
+      } else {
+        const visibles = filtered.slice(0, limitMaestroClientes);
+        const frag = document.createDocumentFragment();
+        visibles.forEach(c => {
+          const tr = document.createElement('tr');
+          const actBadge = (c.solicitarActualizacion || '').trim().toUpperCase() === 'NUEVO'
+            ? '<span class="badge" style="background: rgba(245,158,11,0.16); color: #b45309; font-weight: 700;">NUEVO</span>'
+            : (c.solicitarActualizacion ? `<span class="badge">${esc(c.solicitarActualizacion)}</span>` : '<span style="color:var(--text-muted)">—</span>');
+          const rtBadge = (v) => String(v || '').trim().toUpperCase() === 'V'
+            ? '<span class="badge badge-desbloq" style="font-weight:700;">V</span>'
+            : '<span style="color:var(--text-muted)">—</span>';
+          tr.innerHTML = `
+            <td>${actBadge}</td>
+            <td style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(c.codigo) || '—'}</td>
+            <td style="font-weight: 600;">${esc(c.razonSocial) || '—'}</td>
+            <td>${esc(c.telefono) || '—'}</td>
+            <td style="font-size: 0.8rem;">${esc(c.correoFE) || '—'}</td>
+            <td><span class="badge badge-servicios">${esc(c.condicionPago) || '—'}</span></td>
+            <td>${esc(c.deptoEstado) || '—'}</td>
+            <td>${esc(c.ciudad) || '—'}</td>
+            <td>${esc(c.direccion1) || '—'}</td>
+            <td style="text-align: center;">${rtBadge(c.rtica)}</td>
+            <td style="text-align: center;">${rtBadge(c.rtiva)}</td>
+            <td style="text-align: center;">${rtBadge(c.rtservic)}</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(c.fechaUltimaVenta) || '—'}</td>
+            <td style="font-size: 0.82rem; color: var(--text-muted);">${esc(c.usuario) || '—'}</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(c.fechaRegistro) || '—'}</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(c.observaciones) || '—'}</td>
+          `;
+          frag.appendChild(tr);
+        });
+        tbody.appendChild(frag);
+      }
+
+      const infoEl = document.getElementById('mcli-footer-info');
+      const btnMas = document.getElementById('mcli-btn-mas');
+      const mostrados = Math.min(filtered.length, limitMaestroClientes);
+      if (infoEl) {
+        infoEl.textContent = `Mostrando ${mostrados.toLocaleString('es-CO')} de ${filtered.length.toLocaleString('es-CO')} clientes filtrados (Total en tabla: ${allMaestroClientes.length.toLocaleString('es-CO')})`;
+      }
+      if (btnMas) {
+        btnMas.style.display = filtered.length > limitMaestroClientes ? 'inline-flex' : 'none';
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // SUBPESTAÑA 3: TRANSPORTADORAS (Maestro_Transportadora)
+    // ──────────────────────────────────────────────────────────
+    async function cargarTransportadoras() {
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-transportadoras?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (resp.ok) {
+          allTransportadoras = await resp.json();
+          transportadorasCargadas = true;
+          const badgeSub = document.getElementById('subtab-count-transportadoras');
+          if (badgeSub) badgeSub.textContent = allTransportadoras.length.toLocaleString('es-CO');
+          poblarSelectUnico('mtransp-filtro-usuario', allTransportadoras.map(t => t.usuario), 'Todos los usuarios');
+          sortAndRenderTransportadoras();
+          makeTableResizable(document.getElementById('tabla-transportadoras'));
+        } else {
+          const tbody = document.getElementById('tabla-transportadoras-body');
+          const msg = resp.status === 404
+            ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
+            : 'Error al cargar transportadoras. Por favor recarga la página.';
+          if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+        }
+      } catch (e) {
+        console.error('Error cargando Maestro_Transportadora:', e);
+        const tbody = document.getElementById('tabla-transportadoras-body');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar transportadoras.</td></tr>';
+      }
+    }
+
+    function seleccionarChipTransportadoras(chip) {
+      activeChipTransportadoras = chip;
+      limitTransportadoras = 200;
+      document.getElementById('mtransp-chip-todos')?.classList.toggle('active', chip === '');
+      document.getElementById('mtransp-chip-2026')?.classList.toggle('active', chip === '2026');
+      document.getElementById('mtransp-chip-ant')?.classList.toggle('active', chip === 'ANTERIOR');
+      renderTransportadorasTable();
+    }
+
+    function onTransportadorasFilterChange() {
+      limitTransportadoras = 200;
+      renderTransportadorasTable();
+    }
+
+    function resetFiltrosTransportadoras() {
+      document.getElementById('mtransp-filtro-q').value = '';
+      document.getElementById('mtransp-filtro-desde').value = '';
+      document.getElementById('mtransp-filtro-hasta').value = '';
+      document.getElementById('mtransp-filtro-usuario').value = '';
+      seleccionarChipTransportadoras('');
+    }
+
+    function cargarMasTransportadoras() {
+      limitTransportadoras += 200;
+      renderTransportadorasTable();
+    }
+
+    function sortAndRenderTransportadoras() {
+      const col = sortTransportadorasState.col;
+      const order = sortTransportadorasState.order;
+      if (col) {
+        allTransportadoras.sort((a, b) => {
+          const va = String(a[col] ?? '').toLowerCase();
+          const vb = String(b[col] ?? '').toLowerCase();
+          if (va < vb) return order === 'asc' ? -1 : 1;
+          if (va > vb) return order === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      ['id','transportadora','usuario','fechaIngreso'].forEach(k => {
+        const span = document.getElementById('mtranspSort-' + k);
+        if (!span) return;
+        span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
+        if (col === k) span.style.color = 'var(--accent)';
+      });
+      renderTransportadorasTable();
+    }
+
+    function renderTransportadorasTable() {
+      const q = (document.getElementById('mtransp-filtro-q')?.value || '').toLowerCase().trim();
+      const fDesde = document.getElementById('mtransp-filtro-desde')?.value || '';
+      const fHasta = document.getElementById('mtransp-filtro-hasta')?.value || '';
+      const fUsr = document.getElementById('mtransp-filtro-usuario')?.value || '';
+
+      let countActive = 0;
+      if (q) countActive++;
+      if (fDesde) countActive++;
+      if (fHasta) countActive++;
+      if (fUsr) countActive++;
+      const badge = document.getElementById('mtranspFiltrosBadge');
+      if (badge) {
+        badge.textContent = countActive;
+        badge.style.display = countActive > 0 ? 'inline-flex' : 'none';
+      }
+
+      const baseFiltered = allTransportadoras.filter(t => {
+        const fDia = (t.fechaIngreso || '').slice(0, 10);
+        if (fDesde && (!fDia || fDia < fDesde)) return false;
+        if (fHasta && (!fDia || fDia > fHasta)) return false;
+        if (fUsr && (t.usuario || '').trim() !== fUsr) return false;
+        if (q) {
+          const id = (t.id || '').toLowerCase();
+          const nom = (t.transportadora || '').toLowerCase();
+          const usr = (t.usuario || '').toLowerCase();
+          if (!id.includes(q) && !nom.includes(q) && !usr.includes(q)) return false;
+        }
+        return true;
+      });
+
+      let cnt2026 = 0, cntAnt = 0;
+      baseFiltered.forEach(t => {
+        if ((t.fechaIngreso || '').startsWith('2026')) cnt2026++;
+        else cntAnt++;
+      });
+      const elTodos = document.getElementById('mtransp-chip-todos-sub');
+      const el2026 = document.getElementById('mtransp-chip-2026-sub');
+      const elAnt = document.getElementById('mtransp-chip-ant-sub');
+      if (elTodos) elTodos.textContent = `${baseFiltered.length.toLocaleString('es-CO')} registros`;
+      if (el2026) el2026.textContent = `${cnt2026.toLocaleString('es-CO')} registros`;
+      if (elAnt) elAnt.textContent = `${cntAnt.toLocaleString('es-CO')} registros`;
+
+      const filtered = baseFiltered.filter(t => {
+        if (!activeChipTransportadoras) return true;
+        if (activeChipTransportadoras === '2026') return (t.fechaIngreso || '').startsWith('2026');
+        if (activeChipTransportadoras === 'ANTERIOR') return !(t.fechaIngreso || '').startsWith('2026');
+        return true;
+      });
+
+      const tbody = document.getElementById('tabla-transportadoras-body');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron transportadoras con los filtros seleccionados.</td></tr>';
+      } else {
+        const visibles = filtered.slice(0, limitTransportadoras);
+        const frag = document.createDocumentFragment();
+        visibles.forEach(t => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(t.id) || '—'}</td>
+            <td style="font-weight: 600; color: var(--accent);">${esc(t.transportadora) || '—'}</td>
+            <td>${esc(t.usuario) || '—'}</td>
+            <td style="font-size: 0.82rem; color: var(--text-muted);">${esc(t.fechaIngreso) || '—'}</td>
+          `;
+          frag.appendChild(tr);
+        });
+        tbody.appendChild(frag);
+      }
+
+      const infoEl = document.getElementById('mtransp-footer-info');
+      const btnMas = document.getElementById('mtransp-btn-mas');
+      const mostrados = Math.min(filtered.length, limitTransportadoras);
+      if (infoEl) {
+        infoEl.textContent = `Mostrando ${mostrados.toLocaleString('es-CO')} de ${filtered.length.toLocaleString('es-CO')} transportadoras filtradas (Total: ${allTransportadoras.length.toLocaleString('es-CO')})`;
+      }
+      if (btnMas) {
+        btnMas.style.display = filtered.length > limitTransportadoras ? 'inline-flex' : 'none';
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // SUBPESTAÑA 4: PROVEEDORES (Maestro_Proveedor)
+    // ──────────────────────────────────────────────────────────
+    async function cargarProveedores() {
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-proveedores?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (resp.ok) {
+          allProveedores = await resp.json();
+          proveedoresCargados = true;
+          const badgeSub = document.getElementById('subtab-count-proveedores');
+          if (badgeSub) badgeSub.textContent = allProveedores.length.toLocaleString('es-CO');
+          poblarSelectUnico('mprov-filtro-usuario', allProveedores.map(p => p.usuario), 'Todos los usuarios');
+          sortAndRenderProveedores();
+          makeTableResizable(document.getElementById('tabla-proveedores'));
+        } else {
+          const tbody = document.getElementById('tabla-proveedores-body');
+          const msg = resp.status === 404
+            ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
+            : 'Error al cargar proveedores. Por favor recarga la página.';
+          if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+        }
+      } catch (e) {
+        console.error('Error cargando Maestro_Proveedor:', e);
+        const tbody = document.getElementById('tabla-proveedores-body');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar proveedores.</td></tr>';
+      }
+    }
+
+    function seleccionarChipProveedores(chip) {
+      activeChipProveedores = chip;
+      limitProveedores = 200;
+      document.getElementById('mprov-chip-todos')?.classList.toggle('active', chip === '');
+      document.getElementById('mprov-chip-2026')?.classList.toggle('active', chip === '2026');
+      document.getElementById('mprov-chip-ant')?.classList.toggle('active', chip === 'ANTERIOR');
+      renderProveedoresTable();
+    }
+
+    function onProveedoresFilterChange() {
+      limitProveedores = 200;
+      renderProveedoresTable();
+    }
+
+    function resetFiltrosProveedores() {
+      document.getElementById('mprov-filtro-q').value = '';
+      document.getElementById('mprov-filtro-desde').value = '';
+      document.getElementById('mprov-filtro-hasta').value = '';
+      document.getElementById('mprov-filtro-usuario').value = '';
+      seleccionarChipProveedores('');
+    }
+
+    function cargarMasProveedores() {
+      limitProveedores += 200;
+      renderProveedoresTable();
+    }
+
+    function sortAndRenderProveedores() {
+      const col = sortProveedoresState.col;
+      const order = sortProveedoresState.order;
+      if (col) {
+        allProveedores.sort((a, b) => {
+          const va = String(a[col] ?? '').toLowerCase();
+          const vb = String(b[col] ?? '').toLowerCase();
+          if (va < vb) return order === 'asc' ? -1 : 1;
+          if (va > vb) return order === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      ['id','proveedor','usuario','fechaIngreso'].forEach(k => {
+        const span = document.getElementById('mprovSort-' + k);
+        if (!span) return;
+        span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
+        if (col === k) span.style.color = 'var(--accent)';
+      });
+      renderProveedoresTable();
+    }
+
+    function renderProveedoresTable() {
+      const q = (document.getElementById('mprov-filtro-q')?.value || '').toLowerCase().trim();
+      const fDesde = document.getElementById('mprov-filtro-desde')?.value || '';
+      const fHasta = document.getElementById('mprov-filtro-hasta')?.value || '';
+      const fUsr = document.getElementById('mprov-filtro-usuario')?.value || '';
+
+      let countActive = 0;
+      if (q) countActive++;
+      if (fDesde) countActive++;
+      if (fHasta) countActive++;
+      if (fUsr) countActive++;
+      const badge = document.getElementById('mprovFiltrosBadge');
+      if (badge) {
+        badge.textContent = countActive;
+        badge.style.display = countActive > 0 ? 'inline-flex' : 'none';
+      }
+
+      const baseFiltered = allProveedores.filter(p => {
+        const fDia = (p.fechaIngreso || '').slice(0, 10);
+        if (fDesde && (!fDia || fDia < fDesde)) return false;
+        if (fHasta && (!fDia || fDia > fHasta)) return false;
+        if (fUsr && (p.usuario || '').trim() !== fUsr) return false;
+        if (q) {
+          const id = (p.id || '').toLowerCase();
+          const nom = (p.proveedor || '').toLowerCase();
+          const usr = (p.usuario || '').toLowerCase();
+          if (!id.includes(q) && !nom.includes(q) && !usr.includes(q)) return false;
+        }
+        return true;
+      });
+
+      let cnt2026 = 0, cntAnt = 0;
+      baseFiltered.forEach(p => {
+        if ((p.fechaIngreso || '').startsWith('2026')) cnt2026++;
+        else cntAnt++;
+      });
+      const elTodos = document.getElementById('mprov-chip-todos-sub');
+      const el2026 = document.getElementById('mprov-chip-2026-sub');
+      const elAnt = document.getElementById('mprov-chip-ant-sub');
+      if (elTodos) elTodos.textContent = `${baseFiltered.length.toLocaleString('es-CO')} registros`;
+      if (el2026) el2026.textContent = `${cnt2026.toLocaleString('es-CO')} registros`;
+      if (elAnt) elAnt.textContent = `${cntAnt.toLocaleString('es-CO')} registros`;
+
+      const filtered = baseFiltered.filter(p => {
+        if (!activeChipProveedores) return true;
+        if (activeChipProveedores === '2026') return (p.fechaIngreso || '').startsWith('2026');
+        if (activeChipProveedores === 'ANTERIOR') return !(p.fechaIngreso || '').startsWith('2026');
+        return true;
+      });
+
+      const tbody = document.getElementById('tabla-proveedores-body');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron proveedores con los filtros seleccionados.</td></tr>';
+      } else {
+        const visibles = filtered.slice(0, limitProveedores);
+        const frag = document.createDocumentFragment();
+        visibles.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(p.id) || '—'}</td>
+            <td style="font-weight: 600; color: var(--accent);">${esc(p.proveedor) || '—'}</td>
+            <td>${esc(p.usuario) || '—'}</td>
+            <td style="font-size: 0.82rem; color: var(--text-muted);">${esc(p.fechaIngreso) || '—'}</td>
+          `;
+          frag.appendChild(tr);
+        });
+        tbody.appendChild(frag);
+      }
+
+      const infoEl = document.getElementById('mprov-footer-info');
+      const btnMas = document.getElementById('mprov-btn-mas');
+      const mostrados = Math.min(filtered.length, limitProveedores);
+      if (infoEl) {
+        infoEl.textContent = `Mostrando ${mostrados.toLocaleString('es-CO')} de ${filtered.length.toLocaleString('es-CO')} proveedores filtrados (Total: ${allProveedores.length.toLocaleString('es-CO')})`;
+      }
+      if (btnMas) {
+        btnMas.style.display = filtered.length > limitProveedores ? 'inline-flex' : 'none';
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // SUBPESTAÑA 5: PLACAS (Maestro_Placas)
+    // ──────────────────────────────────────────────────────────
+    async function cargarPlacas() {
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-placas?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (resp.ok) {
+          allPlacas = await resp.json();
+          placasCargadas = true;
+          const badgeSub = document.getElementById('subtab-count-placas');
+          if (badgeSub) badgeSub.textContent = allPlacas.length.toLocaleString('es-CO');
+          poblarSelectUnico('mplaca-filtro-cliente', allPlacas.map(p => p.clienteCredito), 'Todos los clientes crédito');
+          poblarSelectUnico('mplaca-filtro-vehiculo', allPlacas.map(p => p.tipoVehiculo), 'Todos los tipos');
+          poblarSelectUnico('mplaca-filtro-usuario', allPlacas.map(p => p.usuario), 'Todos los usuarios');
+          sortAndRenderPlacas();
+          makeTableResizable(document.getElementById('tabla-placas'));
+        } else {
+          const tbody = document.getElementById('tabla-placas-body');
+          const msg = resp.status === 404
+            ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
+            : 'Error al cargar placas. Por favor recarga la página.';
+          if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+        }
+      } catch (e) {
+        console.error('Error cargando Maestro_Placas:', e);
+        const tbody = document.getElementById('tabla-placas-body');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar placas.</td></tr>';
+      }
+    }
+
+    function seleccionarChipPlacas(chip) {
+      activeChipPlacas = chip;
+      limitPlacas = 200;
+      document.getElementById('mplaca-chip-todos')?.classList.toggle('active', chip === '');
+      document.getElementById('mplaca-chip-contado')?.classList.toggle('active', chip === 'CONTADO');
+      document.getElementById('mplaca-chip-credito')?.classList.toggle('active', chip === 'CREDITO');
+      document.getElementById('mplaca-chip-vehiculo')?.classList.toggle('active', chip === 'CON_VEHICULO');
+      renderPlacasTable();
+    }
+
+    function onPlacasFilterChange() {
+      limitPlacas = 200;
+      renderPlacasTable();
+    }
+
+    function resetFiltrosPlacas() {
+      document.getElementById('mplaca-filtro-q').value = '';
+      document.getElementById('mplaca-filtro-tipo').value = '';
+      document.getElementById('mplaca-filtro-cliente').value = '';
+      document.getElementById('mplaca-filtro-vehiculo').value = '';
+      document.getElementById('mplaca-filtro-desde').value = '';
+      document.getElementById('mplaca-filtro-hasta').value = '';
+      document.getElementById('mplaca-filtro-usuario').value = '';
+      seleccionarChipPlacas('');
+    }
+
+    function cargarMasPlacas() {
+      limitPlacas += 200;
+      renderPlacasTable();
+    }
+
+    function sortAndRenderPlacas() {
+      const col = sortPlacasState.col;
+      const order = sortPlacasState.order;
+      if (col) {
+        allPlacas.sort((a, b) => {
+          let va = a[col] ?? '';
+          let vb = b[col] ?? '';
+          if (col === 'nit') {
+            va = Number(va) || 0;
+            vb = Number(vb) || 0;
+            return order === 'asc' ? va - vb : vb - va;
+          }
+          va = String(va).toLowerCase();
+          vb = String(vb).toLowerCase();
+          if (va < vb) return order === 'asc' ? -1 : 1;
+          if (va > vb) return order === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      ['id','placa','tipoCliente','clienteCredito','nit','tipoVehiculo','empleado','usuario','fechaRegistro'].forEach(k => {
+        const span = document.getElementById('mplacaSort-' + k);
+        if (!span) return;
+        span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
+        if (col === k) span.style.color = 'var(--accent)';
+      });
+      renderPlacasTable();
+    }
+
+    function renderPlacasTable() {
+      const q = (document.getElementById('mplaca-filtro-q')?.value || '').toLowerCase().trim();
+      const fTipo = (document.getElementById('mplaca-filtro-tipo')?.value || '').toUpperCase();
+      const fCli = document.getElementById('mplaca-filtro-cliente')?.value || '';
+      const fVeh = document.getElementById('mplaca-filtro-vehiculo')?.value || '';
+      const fDesde = document.getElementById('mplaca-filtro-desde')?.value || '';
+      const fHasta = document.getElementById('mplaca-filtro-hasta')?.value || '';
+      const fUsr = document.getElementById('mplaca-filtro-usuario')?.value || '';
+
+      let countActive = 0;
+      if (q) countActive++;
+      if (fTipo) countActive++;
+      if (fCli) countActive++;
+      if (fVeh) countActive++;
+      if (fDesde) countActive++;
+      if (fHasta) countActive++;
+      if (fUsr) countActive++;
+      const badge = document.getElementById('mplacaFiltrosBadge');
+      if (badge) {
+        badge.textContent = countActive;
+        badge.style.display = countActive > 0 ? 'inline-flex' : 'none';
+      }
+
+      const baseFiltered = allPlacas.filter(p => {
+        const tipoUp = (p.tipoCliente || '').trim().toUpperCase();
+        const fDia = (p.fechaRegistro || '').slice(0, 10);
+        if (fTipo && tipoUp !== fTipo) return false;
+        if (fCli && (p.clienteCredito || '').trim() !== fCli) return false;
+        if (fVeh && (p.tipoVehiculo || '').trim() !== fVeh) return false;
+        if (fDesde && (!fDia || fDia < fDesde)) return false;
+        if (fHasta && (!fDia || fDia > fHasta)) return false;
+        if (fUsr && (p.usuario || '').trim() !== fUsr) return false;
+        if (q) {
+          const id = (p.id || '').toLowerCase();
+          const pl = (p.placa || '').toLowerCase();
+          const cc = (p.clienteCredito || '').toLowerCase();
+          const nit = String(p.nit || '').toLowerCase();
+          const emp = (p.empleado || '').toLowerCase();
+          const usr = (p.usuario || '').toLowerCase();
+          if (!id.includes(q) && !pl.includes(q) && !cc.includes(q) && !nit.includes(q) && !emp.includes(q) && !usr.includes(q)) return false;
+        }
+        return true;
+      });
+
+      let cntContado = 0, cntCredito = 0, cntVeh = 0;
+      baseFiltered.forEach(p => {
+        const t = (p.tipoCliente || '').trim().toUpperCase();
+        if (t === 'CONTADO') cntContado++;
+        else if (t === 'CREDITO') cntCredito++;
+        if ((p.tipoVehiculo || '').trim() !== '') cntVeh++;
+      });
+
+      const elTodos = document.getElementById('mplaca-chip-todos-sub');
+      const elCont = document.getElementById('mplaca-chip-contado-sub');
+      const elCred = document.getElementById('mplaca-chip-credito-sub');
+      const elVeh = document.getElementById('mplaca-chip-vehiculo-sub');
+      if (elTodos) elTodos.textContent = `${baseFiltered.length.toLocaleString('es-CO')} registros`;
+      if (elCont) elCont.textContent = `${cntContado.toLocaleString('es-CO')} registros`;
+      if (elCred) elCred.textContent = `${cntCredito.toLocaleString('es-CO')} registros`;
+      if (elVeh) elVeh.textContent = `${cntVeh.toLocaleString('es-CO')} registros`;
+
+      const filtered = baseFiltered.filter(p => {
+        if (!activeChipPlacas) return true;
+        const t = (p.tipoCliente || '').trim().toUpperCase();
+        if (activeChipPlacas === 'CONTADO') return t === 'CONTADO';
+        if (activeChipPlacas === 'CREDITO') return t === 'CREDITO';
+        if (activeChipPlacas === 'CON_VEHICULO') return (p.tipoVehiculo || '').trim() !== '';
+        return true;
+      });
+
+      const tbody = document.getElementById('tabla-placas-body');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron placas con los filtros seleccionados.</td></tr>';
+      } else {
+        const visibles = filtered.slice(0, limitPlacas);
+        const frag = document.createDocumentFragment();
+        visibles.forEach(p => {
+          const tr = document.createElement('tr');
+          const tUp = (p.tipoCliente || '').trim().toUpperCase();
+          const tipoBadge = tUp === 'CREDITO'
+            ? '<span class="badge badge-servicios">CREDITO</span>'
+            : (tUp === 'CONTADO' ? '<span class="badge badge-desbloq">CONTADO</span>' : (esc(p.tipoCliente) || '—'));
+          tr.innerHTML = `
+            <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(p.id) || '—'}</td>
+            <td style="font-family: monospace; font-weight: 800; color: var(--accent); font-size: 0.9rem;">${esc(p.placa) || '—'}</td>
+            <td>${tipoBadge}</td>
+            <td style="font-weight: 600;">${esc(p.clienteCredito) || '—'}</td>
+            <td style="font-family: monospace;">${esc(p.nit) || '—'}</td>
+            <td>${esc(p.tipoVehiculo) || '—'}</td>
+            <td>${esc(p.empleado) || '—'}</td>
+            <td style="font-size: 0.82rem; color: var(--text-muted);">${esc(p.usuario) || '—'}</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(p.fechaRegistro) || '—'}</td>
+          `;
+          frag.appendChild(tr);
+        });
+        tbody.appendChild(frag);
+      }
+
+      const infoEl = document.getElementById('mplaca-footer-info');
+      const btnMas = document.getElementById('mplaca-btn-mas');
+      const mostrados = Math.min(filtered.length, limitPlacas);
+      if (infoEl) {
+        infoEl.textContent = `Mostrando ${mostrados.toLocaleString('es-CO')} de ${filtered.length.toLocaleString('es-CO')} placas filtradas (Total: ${allPlacas.length.toLocaleString('es-CO')})`;
+      }
+      if (btnMas) {
+        btnMas.style.display = filtered.length > limitPlacas ? 'inline-flex' : 'none';
       }
     }
 
@@ -3598,13 +5025,16 @@
     }
 
     // ──────────────────────────────────────────────────────────
-    // CLIENTES CRÉDITO
+    // SUBPESTAÑA 2: CLIENTES CRÉDITO (Maestro_Clientes_Credito)
     // ──────────────────────────────────────────────────────────
     async function cargarClientes() {
       try {
         const resp = await fetch(`/facturacion/api/clientes-credito?usuario=${encodeURIComponent(CONFIG.usuario)}`);
         if (resp.ok) {
           allClientes = await resp.json();
+          const badgeSub = document.getElementById('subtab-count-credito');
+          if (badgeSub) badgeSub.textContent = allClientes.length.toLocaleString('es-CO');
+          poblarSelectUnico('filtro-usuario-cliente-credito', allClientes.map(c => c.usuario), 'Todos los usuarios');
           sortAndRenderClientes();
           renderChecklistManual();
           makeTableResizable(document.getElementById('tabla-clientes'));
@@ -3612,6 +5042,24 @@
       } catch (e) {
         console.error('Error cargando clientes:', e);
       }
+    }
+
+    function seleccionarChipClientesCredito(chip) {
+      activeChipClientesCredito = chip;
+      const selEstado = document.getElementById('filtro-estado-cliente');
+      if (selEstado) selEstado.value = chip;
+      document.getElementById('ccred-chip-todos')?.classList.toggle('active', chip === '');
+      document.getElementById('ccred-chip-hab')?.classList.toggle('active', chip === '1');
+      document.getElementById('ccred-chip-deshab')?.classList.toggle('active', chip === '0');
+      renderClientesTable();
+    }
+
+    function resetFiltrosClientesCredito() {
+      document.getElementById('buscar-cliente').value = '';
+      document.getElementById('filtro-estado-cliente').value = '';
+      const selUsr = document.getElementById('filtro-usuario-cliente-credito');
+      if (selUsr) selUsr.value = '';
+      seleccionarChipClientesCredito('');
     }
 
     function sortAndRenderClientes() {
@@ -3647,9 +5095,25 @@
     function renderClientesTable() {
       const q = (document.getElementById('buscar-cliente').value || '').toLowerCase().trim();
       const estadoFiltro = document.getElementById('filtro-estado-cliente').value;
+      const usrFiltro = document.getElementById('filtro-usuario-cliente-credito')?.value || '';
 
-      const filtered = allClientes.filter(c => {
-        if (estadoFiltro !== '' && String(c.bloqueo) !== estadoFiltro) return false;
+      activeChipClientesCredito = estadoFiltro;
+      document.getElementById('ccred-chip-todos')?.classList.toggle('active', estadoFiltro === '');
+      document.getElementById('ccred-chip-hab')?.classList.toggle('active', estadoFiltro === '1');
+      document.getElementById('ccred-chip-deshab')?.classList.toggle('active', estadoFiltro === '0');
+
+      let countActive = 0;
+      if (q) countActive++;
+      if (estadoFiltro !== '') countActive++;
+      if (usrFiltro) countActive++;
+      const badge = document.getElementById('ccredFiltrosBadge');
+      if (badge) {
+        badge.textContent = countActive;
+        badge.style.display = countActive > 0 ? 'inline-flex' : 'none';
+      }
+
+      const baseFiltered = allClientes.filter(c => {
+        if (usrFiltro && (c.usuario || '').trim() !== usrFiltro) return false;
         if (q) {
           const cF = (c.clienteAFacturar || c.clienteFacturar || c['Cliente a Facturar'] || '').toLowerCase();
           const nit = String(c.nit || '').toLowerCase();
@@ -3657,6 +5121,20 @@
           const usr = (c.usuario || '').toLowerCase();
           if (!cF.includes(q) && !nit.includes(q) && !nom.includes(q) && !usr.includes(q)) return false;
         }
+        return true;
+      });
+
+      const cntHab = baseFiltered.filter(c => Number(c.bloqueo) === 1).length;
+      const cntDes = baseFiltered.filter(c => Number(c.bloqueo) === 0).length;
+      const elTodos = document.getElementById('ccred-chip-todos-sub');
+      const elHab = document.getElementById('ccred-chip-hab-sub');
+      const elDes = document.getElementById('ccred-chip-deshab-sub');
+      if (elTodos) elTodos.textContent = `${baseFiltered.length.toLocaleString('es-CO')} registros`;
+      if (elHab) elHab.textContent = `${cntHab.toLocaleString('es-CO')} registros`;
+      if (elDes) elDes.textContent = `${cntDes.toLocaleString('es-CO')} registros`;
+
+      const filtered = baseFiltered.filter(c => {
+        if (estadoFiltro !== '' && String(c.bloqueo) !== estadoFiltro) return false;
         return true;
       });
 
@@ -8641,6 +10119,10 @@
         gridServCacheRecibos.clear();
         gridServCacheTransportadoras.clear();
         gridServCacheProveedores.clear();
+        maestroClientesCargados = false;
+        transportadorasCargadas = false;
+        proveedoresCargados = false;
+        placasCargadas = false;
         gridServList = [];
         cerrarDetalleNuevosGridServ();
 

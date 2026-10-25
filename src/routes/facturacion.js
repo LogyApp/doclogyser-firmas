@@ -417,6 +417,133 @@ async function handleEliminarCliente(req, res) {
 router.delete('/api/clientes-credito/:id', handleEliminarCliente);
 router.post('/api/clientes-credito/eliminar', handleEliminarCliente);
 
+// ── GET /api/maestro-clientes (Listado completo de Maestro_Clientes) ───────
+router.get('/api/maestro-clientes', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(`
+      SELECT
+        \`Solicitar Actualización\` AS solicitarActualizacion,
+        \`Código\` AS codigo,
+        \`Razón social\` AS razonSocial,
+        \`RTICA\` AS rtica,
+        \`RTIVA\` AS rtiva,
+        \`RTSERVIC\` AS rtservic,
+        DATE_FORMAT(\`Fecha última venta\`, '%Y-%m-%d') AS fechaUltimaVenta,
+        \`Depto/Estado\` AS deptoEstado,
+        \`Ciudad\` AS ciudad,
+        \`Dirección 1\` AS direccion1,
+        \`Telefono\` AS telefono,
+        \`Desc. condicion de pago\` AS condicionPago,
+        \`Correo F.E.\` AS correoFE,
+        \`Buscar Cliente\` AS buscarCliente,
+        \`Usuario\` AS usuario,
+        DATE_FORMAT(\`Fecha Registro\`, '%Y-%m-%d %H:%i:%s') AS fechaRegistro,
+        \`Documento\` AS documento,
+        \`Observaciones\` AS observaciones
+      FROM Maestro_Clientes
+      ORDER BY \`Fecha Registro\` DESC, \`Razón social\` ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-clientes:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── GET /api/maestro-transportadoras (Listado de Maestro_Transportadora) ───
+router.get('/api/maestro-transportadoras', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(`
+      SELECT
+        ID AS id,
+        Transportadora AS transportadora,
+        Usuario AS usuario,
+        DATE_FORMAT(\`Fecha Ingreso\`, '%Y-%m-%d %H:%i:%s') AS fechaIngreso
+      FROM Maestro_Transportadora
+      ORDER BY \`Fecha Ingreso\` DESC, Transportadora ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-transportadoras:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── GET /api/maestro-proveedores (Listado de Maestro_Proveedor) ────────────
+router.get('/api/maestro-proveedores', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(`
+      SELECT
+        ID AS id,
+        Proveedor AS proveedor,
+        Usuario AS usuario,
+        DATE_FORMAT(\`Fecha Ingreso\`, '%Y-%m-%d %H:%i:%s') AS fechaIngreso
+      FROM Maestro_Proveedor
+      ORDER BY \`Fecha Ingreso\` DESC, Proveedor ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-proveedores:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── GET /api/maestro-placas (Listado de Maestro_Placas) ────────────────────
+router.get('/api/maestro-placas', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(`
+      SELECT
+        ID AS id,
+        Placa AS placa,
+        \`Tipo Cliente\` AS tipoCliente,
+        \`Cliente Credito\` AS clienteCredito,
+        Nit AS nit,
+        Usuario AS usuario,
+        DATE_FORMAT(\`Fecha Registro\`, '%Y-%m-%d %H:%i:%s') AS fechaRegistro,
+        tipo_vehiculo AS tipoVehiculo,
+        empleado AS empleado
+      FROM Maestro_Placas
+      ORDER BY \`Fecha Registro\` DESC, Placa ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-placas:', err);
+    res.status(500).json([]);
+  }
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ── SECCIÓN SERVICIOS (Dynamic_Servicios) ────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════════
