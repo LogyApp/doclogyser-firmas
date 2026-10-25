@@ -5,6 +5,8 @@ const pool = require('./db');
 // comparación de roles y secciones no distingue mayúsculas ni tildes.
 // Acceso: 1 = todo, 2 = su regional, 3 = sus operaciones; 4, 5 y 6 = igual pero solo con las
 // categorías del acceso restringido.
+// Rol = 'Todos': la fila aplica a cualquier usuario registrado, sin importar su rol.
+const ROL_TODOS = 'todos';
 
 // Tabla anterior de cada módulo: solo se usa si Maestro_Menu no se puede leer.
 const TABLA_ANTERIOR = {
@@ -25,6 +27,13 @@ function normalizar(valor) {
 function rangoAcceso(codigo) {
   const base = codigo > 3 ? codigo - 3 : codigo;
   return base * 2 + (codigo > 3 ? 1 : 0);
+}
+
+function rolEnFila(fila, buscado) {
+  return String(fila.Rol || '').split(',').some((r) => {
+    const n = normalizar(r);
+    return n === buscado || n === ROL_TODOS;
+  });
 }
 
 async function leerFilas(modulo) {
@@ -51,7 +60,7 @@ async function seccionesDelRol(modulo, rol) {
   const filas = await leerFilas(modulo);
   const porSeccion = new Map();
   filas.forEach((f) => {
-    if (!String(f.Rol || '').split(',').some((r) => normalizar(r) === buscado)) return;
+    if (!rolEnFila(f, buscado)) return;
     const clave = normalizar(f.Seccion);
     const actual = porSeccion.get(clave);
     if (actual) {
@@ -77,4 +86,46 @@ async function accesoSeccion(modulo, rol, seccion) {
   return fila ? fila.acceso : null;
 }
 
-module.exports = { seccionesDelRol, accesoSeccion, normalizar };
+// ── Menú OTROS ──────────────────────────────────────────────────────────────
+// Nombre y orden de los módulos en el menú (solo presentación). Qué enlaces ve cada rol y en
+// qué orden lo decide Maestro_Menu; un módulo que no esté aquí aparece al final con su nombre.
+const MODULOS_MENU = [
+  ['nomina', 'Nómina'],
+  ['facturacion', 'Facturación'],
+  ['sst', 'SST'],
+  ['talenthub', 'TalentHub'],
+  ['clouddocs', 'Cloud Docs'],
+  ['inventario', 'Inventario'],
+  ['directorio', 'Directorio Corporativo'],
+];
+
+// Módulos y enlaces del menú OTROS para un rol: [{ modulo, nombre, icono, items: [{ etiqueta, url }] }]
+async function menuDelRol(rol) {
+  if (!String(rol || '').trim()) return [];
+  const buscado = normalizar(rol);
+  const [filas] = await pool.execute(
+    'SELECT Modulo, Seccion, Rol, Etiqueta, Url, Orden, Icono FROM Maestro_Menu WHERE Url IS NOT NULL AND Url <> \'\''
+  );
+  const porModulo = new Map();
+  filas.filter((f) => rolEnFila(f, buscado)).forEach((f) => {
+    const clave = normalizar(f.Modulo);
+    if (!porModulo.has(clave)) porModulo.set(clave, { modulo: f.Modulo, icono: '', secciones: new Map() });
+    const grupo = porModulo.get(clave);
+    const sec = normalizar(f.Seccion);
+    if (grupo.secciones.has(sec)) return; // el rol puede estar en varias filas (niveles) de la misma sección
+    grupo.secciones.set(sec, { etiqueta: f.Etiqueta || f.Seccion, url: f.Url, orden: f.Orden == null ? 999 : Number(f.Orden), icono: f.Icono || '' });
+  });
+  const posicion = (modulo) => {
+    const i = MODULOS_MENU.findIndex(([m]) => m === normalizar(modulo));
+    return i < 0 ? MODULOS_MENU.length : i;
+  };
+  return [...porModulo.values()]
+    .sort((a, b) => posicion(a.modulo) - posicion(b.modulo))
+    .map((g) => {
+      const items = [...g.secciones.values()].sort((a, b) => a.orden - b.orden);
+      const nombre = (MODULOS_MENU.find(([m]) => m === normalizar(g.modulo)) || [])[1] || g.modulo;
+      return { modulo: g.modulo, nombre, icono: (items.find((i) => i.icono) || {}).icono || '', items: items.map(({ etiqueta, url }) => ({ etiqueta, url })) };
+    });
+}
+
+module.exports = { seccionesDelRol, accesoSeccion, menuDelRol, normalizar };

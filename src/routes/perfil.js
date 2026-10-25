@@ -3,6 +3,7 @@ const multer = require('multer');
 const pool = require('../services/db');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
+const { menuDelRol } = require('../services/maestroMenu');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -89,6 +90,28 @@ router.post('/api/preferencias', async (req, res) => {
   } catch (err) {
     console.error('[perfil] POST /api/preferencias', err);
     res.status(500).json({ error: 'No se pudieron guardar las preferencias.' });
+  }
+});
+
+// ─── Menú OTROS ─────────────────────────────────────────────────────────────
+// Módulos y pestañas que el rol del usuario puede ver (Maestro_Menu). Las direcciones ya
+// llevan el usuario.
+router.get('/api/menu', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ ok: false, error: 'Parámetro usuario requerido' });
+    const [usuarios] = await pool.execute('SELECT ID, Rol FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    if (!usuarios.length) return res.status(403).json({ ok: false, error: 'Usuario no registrado' });
+
+    const conUsuario = (url) => `${url}${url.includes('?') ? '&' : '?'}usuario=${encodeURIComponent(usuarios[0].ID)}`;
+    const modulos = (await menuDelRol(usuarios[0].Rol)).map((m) => ({
+      ...m,
+      items: m.items.map((i) => ({ etiqueta: i.etiqueta, url: conUsuario(i.url) })),
+    }));
+    res.json({ ok: true, modulos });
+  } catch (err) {
+    console.error('[perfil] GET /api/menu:', err);
+    res.status(500).json({ ok: false, error: 'No se pudo cargar el menú' });
   }
 });
 

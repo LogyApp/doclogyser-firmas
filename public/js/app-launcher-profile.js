@@ -4,40 +4,8 @@
 
   const currentModule = window.location.pathname.split('/').filter(Boolean)[0] || '';
   const homeModules = new Set(['nomina', 'facturacion', 'sst', 'talenthub', 'cloud-docs', 'inventario', 'directorio-corporativo', 'cajaoperativa']);
+  const NOMBRE_MODULO = { nomina: 'Nómina', facturacion: 'Facturación', sst: 'SST', talenthub: 'TalentHub', 'cloud-docs': 'Cloud Docs', inventario: 'Inventario', 'directorio-corporativo': 'Directorio Corporativo', cajaoperativa: 'Caja Operativa' };
   const defaultPhoto = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
-  const modules = [
-    { id: 'nomina', name: 'Nómina', symbol: '▣', tabs: [
-      ['Activos', 'activos'], ['Retiros', 'retiros'], ['Bloqueo de Datos', 'bloqueo'],
-      ['Biométrico · Asistencia', 'biometrico', 'asistencia'], ['Biométrico · Recorridos GPS', 'biometrico', 'rutas'],
-      ['Biométrico · Reportes', 'biometrico', 'reportes'], ['Traslados', 'traslados'],
-      ['Incapacidades', 'incapacidades'], ['Cesantías', 'cesantias']
-    ] },
-    { id: 'facturacion', name: 'Facturación', symbol: '◷', tabs: [
-      ['Servicios', 'servicios'], ['Recibos', 'recibos'], ['Clientes Crédito', 'clientescredito'],
-      ['Bloqueos', 'bloqueo'], ['Tickets', 'tickets']
-    ] },
-    { id: 'sst', name: 'SST', symbol: '＋', tabs: [
-      ['Evaluación SST', 'evaluacion'], ['Capacitación', 'capacitacion'],
-      ['Temas de capacitación', 'capacitacion', 'temas'], ['Prueba de Consumo', 'pruebaconsumo'],
-      ['Participación', 'participacion'], ['Compromisos SST', 'compromiso'],
-      ['Casos Médicos', 'gestionmedica', 'casosmedicos'], ['Incapacidades', 'gestionmedica', 'incapacidades']
-    ] },
-    { id: 'talenthub', name: 'TalentHub', symbol: '❖', tabs: [
-      ['Requisiciones', 'Requisiciones'], ['Aspirantes & Hojas de Vida', 'Aspirantes'],
-      ['Sociodemográfica y Vinculación', 'Sociodemografica'], ['Integridad de Identificación', 'Integridad']
-    ] },
-    { id: 'cloud-docs', name: 'Cloud Docs', symbol: '▤', tabs: [
-      ['Doc Trabajadores', 'trabajador'], ['Tipos de Documento', 'documento'], ['Consolidado', 'todo'],
-      ['Doc Retiros', 'docretiros'], ['LogySign', 'logysign'], ['Solicitudes', 'solicitudes'],
-      ['Validar Capacitación', 'validarcap'], ['Permisos', 'permisos'], ['Duplicados', 'duplicados'],
-      ['Autorizaciones de Descuento', 'descuentonomina']
-    ] },
-    { id: 'inventario', name: 'Inventario', symbol: '▦', tabs: [
-      ['Inventario', 'inventario'], ['Reportes', 'reportes'], ['Pendiente por recibir', 'pendienterecibir'],
-      ['Kardex', 'kardex'], ['Catálogo de artículos', 'articulos'], ['Solicitudes', 'solicitudes'],
-      ['Actas de Entrega', 'actas'], ['Dotación de Ley', 'dotacionley'], ['Historial de Confirmaciones', 'historial']
-    ] }
-  ];
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   let profile = null;
   let preferenciasUI = { tema: 'sistema', colorAcento: '#F55400' };
@@ -99,7 +67,7 @@
 
   function activarLogoComoInicio(image) {
     image.style.cursor = 'pointer';
-    image.title = `Volver al inicio de ${modules.find(module => module.id === currentModule)?.name || 'este módulo'}`;
+    image.title = `Volver al inicio de ${NOMBRE_MODULO[currentModule] || 'este módulo'}`;
     image.setAttribute('role', 'link');
     image.tabIndex = 0;
     image.setAttribute('aria-label', image.title);
@@ -112,11 +80,39 @@
     });
   }
 
-  function moduleUrl(module, tab, subtab) {
-    const query = new URLSearchParams({ usuario });
-    if (tab) query.set('tab', tab);
-    if (subtab) query.set('subtab', subtab);
-    return `/${module}?${query.toString()}`;
+  // Módulos y pestañas del menú OTROS según el rol del usuario (Maestro_Menu, /perfil/api/menu).
+  // Las direcciones ya traen el usuario. No se muestra el módulo en el que está la persona.
+  async function cargarMenuOtros() {
+    try {
+      const response = await fetch(`/perfil/api/menu?usuario=${encodeURIComponent(usuario)}`);
+      const data = await response.json();
+      if (!response.ok || !data.ok) return null;
+      const modulo = url => String(url || '').split('?')[0].split('/').filter(Boolean)[0] || '';
+      return data.modulos.filter(m => m.items.length && modulo(m.items[0].url) !== currentModule);
+    } catch (error) {
+      console.warn('[módulos] No se pudo cargar el menú:', error);
+      return null;
+    }
+  }
+
+  function pintarMenuOtros(panel, modulos) {
+    const titulo = '<div class="alp-panel-title">Otros módulos</div>';
+    if (!modulos) { panel.innerHTML = `${titulo}<div class="alp-link">No se pudo cargar el menú.</div>`; return; }
+    if (!modulos.length) { panel.innerHTML = `${titulo}<div class="alp-link">No tienes otros módulos asignados.</div>`; return; }
+    panel.innerHTML = titulo + modulos.map(m => {
+      // Un módulo de un solo enlace con su mismo nombre (p. ej. Directorio) va como enlace directo.
+      if (m.items.length === 1 && m.items[0].etiqueta === m.nombre) {
+        return `<a class="alp-link alp-directorio-link" href="${esc(m.items[0].url)}"><span class="alp-symbol">${esc(m.icono)}</span>${esc(m.nombre)}</a>`;
+      }
+      return `
+          <details class="alp-group">
+            <summary><span class="alp-symbol">${esc(m.icono)}</span>${esc(m.nombre)}</summary>
+            <div class="alp-links">${m.items.map(i => `<a class="alp-link" href="${esc(i.url)}">${esc(i.etiqueta)}</a>`).join('')}</div>
+          </details>`;
+    }).join('');
+    panel.querySelectorAll('.alp-group').forEach(group => group.addEventListener('toggle', () => {
+      if (group.open) panel.querySelectorAll('.alp-group').forEach(other => { if (other !== group) other.open = false; });
+    }));
   }
 
   function createLauncher(sidebar, brand) {
@@ -129,14 +125,6 @@
       </button>
       <div class="alp-panel" id="alp-module-panel" aria-label="Otros módulos">
         <div class="alp-panel-title">Otros módulos</div>
-        ${modules.filter(module => module.id !== currentModule).map(module => `
-          <details class="alp-group">
-            <summary><span class="alp-symbol">${module.symbol}</span>${module.name}</summary>
-            <div class="alp-links">${module.tabs.map(([label, tab, subtab]) =>
-              `<a class="alp-link" href="${esc(moduleUrl(module.id, tab, subtab))}">${esc(label)}</a>`
-            ).join('')}</div>
-          </details>`).join('')}
-        ${currentModule === 'directorio-corporativo' ? '' : `<a class="alp-link alp-directorio-link" href="/directorio-corporativo?usuario=${encodeURIComponent(usuario)}"><span class="alp-symbol">📇</span>Directorio Corporativo</a>`}
       </div>`;
     const button = launcher.querySelector('.alp-trigger');
     const panel = launcher.querySelector('.alp-panel');
@@ -146,9 +134,7 @@
       panel.classList.toggle('alp-open', open);
       button.setAttribute('aria-expanded', String(open));
     });
-    launcher.querySelectorAll('.alp-group').forEach(group => group.addEventListener('toggle', () => {
-      if (group.open) launcher.querySelectorAll('.alp-group').forEach(other => { if (other !== group) other.open = false; });
-    }));
+    cargarMenuOtros().then(modulos => pintarMenuOtros(panel, modulos));
     panel.addEventListener('click', event => { if (event.target.closest('a')) closeLauncher(); });
     document.addEventListener('click', event => { if (!launcher.contains(event.target)) closeLauncher(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeLauncher(); });

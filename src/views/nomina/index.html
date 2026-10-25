@@ -1105,70 +1105,7 @@
         </button>
         <div class="module-launcher-panel" id="moduleLauncherPanel" aria-label="Otros módulos">
           <div class="module-launcher-heading">Otros módulos</div>
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">◷</span>Facturación</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=servicios">Servicios</a>
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=recibos">Recibos</a>
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=clientescredito">Clientes Crédito</a>
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=bloqueo">Bloqueos</a>
-              <a class="module-launcher-link" href="/facturacion?usuario=__USER__&amp;tab=tickets">Tickets</a>
-            </div>
-          </details>
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">＋</span>SST</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=evaluacion">Evaluación SST</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=capacitacion">Capacitación</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=capacitacion&amp;subtab=temas">Temas de capacitación</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=pruebaconsumo">Prueba de Consumo</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=participacion">Participación</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=compromiso">Compromisos SST</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=gestionmedica&amp;subtab=casosmedicos">Casos Médicos</a>
-              <a class="module-launcher-link" href="/sst?usuario=__USER__&amp;tab=gestionmedica&amp;subtab=incapacidades">Incapacidades</a>
-            </div>
-          </details>
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">❖</span>TalentHub</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Requisiciones">Requisiciones</a>
-              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Aspirantes">Aspirantes &amp; Hojas de Vida</a>
-              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Sociodemografica">Sociodemográfica y Vinculación</a>
-              <a class="module-launcher-link" href="/talenthub?usuario=__USER__&amp;tab=Integridad">Integridad de Identificación</a>
-            </div>
-          </details>
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">▤</span>Cloud Docs</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=trabajador">Doc Trabajadores</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=documento">Tipos de Documento</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=todo">Consolidado</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=docretiros">Doc Retiros</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=logysign">LogySign</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=validarcap">Validar Capacitación</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=permisos">Permisos</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=duplicados">Duplicados</a>
-              <a class="module-launcher-link" href="/cloud-docs?usuario=__USER__&amp;tab=descuentonomina">Autorizaciones de Descuento</a>
-            </div>
-          </details>
-          <details class="module-launcher-group">
-            <summary><span class="module-launcher-symbol">▦</span>Inventario</summary>
-            <div class="module-launcher-links">
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=inventario">Inventario</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=reportes">Reportes</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=pendienterecibir">Pendiente por recibir</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=kardex">Kardex</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=articulos">Catálogo de artículos</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=solicitudes">Solicitudes</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=actas">Actas de Entrega</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=dotacionley">Dotación de Ley</a>
-              <a class="module-launcher-link" href="/inventario?usuario=__USER__&amp;tab=historial">Historial de Confirmaciones</a>
-            </div>
-          </details>
-          <a class="module-launcher-link module-launcher-directorio-link" data-module-link href="/directorio-corporativo?usuario=__USER__">
-            <span class="module-launcher-symbol">📇</span>Directorio Corporativo
-          </a>
+          <div id="moduleLauncherContenido"></div>
         </div>
       </div>
     </div>
@@ -2906,17 +2843,7 @@
   if (_mobileThumb) {
     _mobileThumb.src = NOMINA_FOTO_DEFAULT;
   }
-  document.querySelectorAll('.module-launcher-link').forEach(link => {
-    link.href = link.href.replace('__USER__', encodeURIComponent(usuario));
-  });
-  document.querySelectorAll('.module-launcher-group').forEach(group => {
-    group.addEventListener('toggle', () => {
-      if (!group.open) return;
-      document.querySelectorAll('.module-launcher-group').forEach(other => {
-        if (other !== group) other.open = false;
-      });
-    });
-  });
+  cargarMenuOtrosNomina();
   document.addEventListener('click', event => {
     const launcher = document.querySelector('.module-launcher');
     if (launcher && !launcher.contains(event.target)) cerrarModuleLauncher();
@@ -3282,6 +3209,40 @@
     const abierto = !panel.classList.contains('open');
     panel.classList.toggle('open', abierto);
     trigger.setAttribute('aria-expanded', String(abierto));
+  }
+
+  // Menú OTROS: módulos y pestañas que el rol puede ver (Maestro_Menu, /perfil/api/menu), sin Nómina.
+  async function cargarMenuOtrosNomina() {
+    const cont = document.getElementById('moduleLauncherContenido');
+    if (!cont) return;
+    let modulos = null;
+    try {
+      const r = await fetch(`/perfil/api/menu?usuario=${encodeURIComponent(usuario)}`);
+      const data = await r.json();
+      if (r.ok && data.ok) modulos = data.modulos.filter(m => m.items.length && !m.items[0].url.startsWith('/nomina'));
+    } catch (e) {
+      console.warn('[nomina] No se pudo cargar el menú OTROS:', e);
+    }
+    if (!modulos) { cont.innerHTML = '<div class="module-launcher-link">No se pudo cargar el menú.</div>'; return; }
+    if (!modulos.length) { cont.innerHTML = '<div class="module-launcher-link">No tienes otros módulos asignados.</div>'; return; }
+    cont.innerHTML = modulos.map(m => {
+      // Un módulo de un solo enlace con su mismo nombre (p. ej. Directorio) va como enlace directo.
+      if (m.items.length === 1 && m.items[0].etiqueta === m.nombre) {
+        return `<a class="module-launcher-link module-launcher-directorio-link" data-module-link href="${esc(m.items[0].url)}"><span class="module-launcher-symbol">${esc(m.icono)}</span>${esc(m.nombre)}</a>`;
+      }
+      return `<details class="module-launcher-group">
+            <summary><span class="module-launcher-symbol">${esc(m.icono)}</span>${esc(m.nombre)}</summary>
+            <div class="module-launcher-links">${m.items.map(i => `<a class="module-launcher-link" href="${esc(i.url)}">${esc(i.etiqueta)}</a>`).join('')}</div>
+          </details>`;
+    }).join('');
+    cont.querySelectorAll('.module-launcher-group').forEach(group => {
+      group.addEventListener('toggle', () => {
+        if (!group.open) return;
+        cont.querySelectorAll('.module-launcher-group').forEach(other => {
+          if (other !== group) other.open = false;
+        });
+      });
+    });
   }
 
   function cerrarModuleLauncher() {
@@ -8330,7 +8291,7 @@
   });
 </script>
 <script src="/js/theme.js" defer></script>
-<script src="/js/app-launcher-profile.js?v=20261011b" defer></script>
+<script src="/js/app-launcher-profile.js?v=20261025a" defer></script>
 <script src="/js/ticket-boton.js" defer></script>
 <script src="/js/modal-back.js" defer></script>
 </body>
