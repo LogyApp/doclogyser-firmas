@@ -2408,7 +2408,7 @@ async function generarYGuardarActaRecepcionTransferencia({
 }
 
 // Valida en el servidor cada fila de "Agregar Kardex" (antes solo lo hacía la pantalla):
-// tipo permitido, operación de origen dentro del alcance del rol (Maestro_Menu_Inventario),
+// tipo permitido, operación de origen dentro del alcance del rol (Maestro_Menu),
 // categoría permitida si el rol es restringido, trabajador asignado solo con permiso y,
 // en transferencias, que el destino esté permitido. Devuelve el texto del error o null.
 async function validarMovimientosKardex(acceso, cfg, movimientos) {
@@ -3029,7 +3029,7 @@ router.patch('/api/kardex-pendiente/:id/novedad', async (req, res) => {
     }
 
     // Seguridad: el pedido debe existir, su operación destino debe estar en el alcance del rol
-    // (Maestro_Menu_Inventario) y, si es una novedad de artículo, el artículo debe ser del pedido.
+    // (Maestro_Menu) y, si es una novedad de artículo, el artículo debe ser del pedido.
     const [[pedido]] = await pool.execute(
       'SELECT Id, IdKardexOriginal, OperacionDestino, Procesado FROM Kardex_Pendiente WHERE Id = ? OR IdKardexOriginal = ? LIMIT 1',
       [id, id]
@@ -3958,7 +3958,7 @@ router.post('/api/inventario/ajustar', async (req, res) => {
     }
 
     // Rol con permiso ("Roles que pueden ajustar stock", Config_Parametros inventario / Inventario).
-    // Las operaciones que puede ajustar las define Maestro_Menu_Inventario (alcance del rol).
+    // Las operaciones que puede ajustar las define Maestro_Menu (alcance del rol).
     const cfgAjuste = await obtenerConfigPestanaInventario(acceso.rol);
     if (!cfgAjuste.puedeAjustarStock) {
       return res.status(403).json({ error: 'Su rol no tiene permiso para ajustar stock.' });

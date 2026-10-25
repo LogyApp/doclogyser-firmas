@@ -457,7 +457,7 @@ async function obtenerConfigDotacion(rol = null) {
 }
 
 // ── General (todas las pestañas del módulo) ─────────────────────────────────
-// Categorías del acceso restringido (códigos 4, 5 y 6 de Maestro_Menu_Inventario). Se
+// Categorías del acceso restringido (códigos 4, 5 y 6 de Maestro_Menu). Se
 // devuelven con y sin tilde, porque Dynamic_Kardex/Vista_Inventario tienen ambas escrituras.
 async function obtenerCategoriasRestringidas() {
   const p = await obtenerParametros('General');

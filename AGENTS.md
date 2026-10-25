@@ -46,13 +46,17 @@ Se trabaja **por ramas**, nunca directo en `main`.
   que respeta ese interruptor.
 
 ## 2. Cambios en la base de datos
-- **No ejecutes cambios contra la base de datos de producción.**
-- Todo cambio (crear tablas, columnas, filas de `Config_Parametros`) va en un archivo
-  `.sql` dentro de `migraciones/`, con fecha en el nombre
+- Todo cambio (crear tablas, columnas, filas de `Config_Parametros` o `Maestro_Menu`) va
+  en un archivo `.sql` dentro de `migraciones/`, con fecha en el nombre
   (`AAAA-MM-DD_descripcion.sql`) y escrito para poder ejecutarse más de una vez
-  (`INSERT ... WHERE NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`).
-- William ejecuta el SQL desde Cloud Shell, salvo que pida explícitamente que la IA lo
-  ejecute. En ese caso, revisa antes qué hace el archivo y avísale si borra datos o columnas.
+  (`INSERT ... WHERE NOT EXISTS`, `INSERT IGNORE`, `CREATE TABLE IF NOT EXISTS`).
+- La IA ejecuta la migración en la base de datos (ya no se corre desde Cloud Shell), pero
+  **solo cuando William lo confirme**, y siempre revisando antes qué hace el archivo.
+  La base es la de **producción**: lo que se ejecute es real.
+- Si la migración **borra o cambia datos, columnas o tablas** (`DROP`, `DELETE`, `UPDATE`,
+  `TRUNCATE`, `ALTER ... DROP`), avísale a William qué se pierde y espera su confirmación
+  expresa antes de ejecutarla. Antes de borrar una tabla, guarda una copia de respaldo.
+- Después de ejecutarla, verifica el resultado (filas insertadas, comparativo) y cuéntaselo.
 
 ## 3. Configuración en tablas, no en el código
 - Las reglas de negocio (roles con permiso, destinatarios de correos, cargos,

@@ -1,5 +1,6 @@
 const pool = require('./db');
 const { obtenerCategoriasRestringidas } = require('./configInventario');
+const { seccionesDelRol, normalizar } = require('./maestroMenu');
 
 function agruparOperacionesPorRegional(rows) {
   const opsPorRegional = {};
@@ -14,7 +15,7 @@ function agruparOperacionesPorRegional(rows) {
 }
 
 // Calcula el acceso (Regional/Operación/Categoría permitidos) de un usuario para una Sección
-// del módulo de Inventario, según Maestro_Menu_Inventario. Compartido por inventario.js,
+// del módulo de Inventario, según Maestro_Menu (Modulo 'inventario'). Compartido por inventario.js,
 // dotacionley.js y cualquier otra pestaña del módulo que necesite el mismo modelo de acceso.
 async function computarAccesoInventario(usuarioId, seccionRequested = null) {
   if (!usuarioId) return null;
@@ -28,28 +29,22 @@ async function computarAccesoInventario(usuarioId, seccionRequested = null) {
   const usuario = uRows[0];
   const rol = usuario.Rol || '';
 
-  // Obtener permisos de Maestro_Menu_Inventario para el Rol del usuario
-  const [menuRows] = await pool.execute(
-    'SELECT `Sección` as seccion, Acceso as acceso FROM Maestro_Menu_Inventario WHERE Rol = ?',
-    [rol]
-  );
+  // Permisos del Rol en Maestro_Menu (secciones en el orden del menú)
+  const menuRows = await seccionesDelRol('inventario', rol);
   if (!menuRows.length) return null; // Sin accesos configurados
 
   const allowedSecciones = menuRows.map(r => r.seccion);
 
   // Si se pide una sección específica y el usuario no la tiene asignada, denegar acceso
-  if (seccionRequested && !allowedSecciones.includes(seccionRequested)) {
+  const matched = seccionRequested
+    ? menuRows.find(r => normalizar(r.seccion) === normalizar(seccionRequested))
+    : null;
+  if (seccionRequested && !matched) {
     return null;
   }
 
-  // Determinar el código de acceso activo (según la sección solicitada o la primera disponible)
-  let activeAccesoCode = 1;
-  if (seccionRequested) {
-    const matched = menuRows.find(r => r.seccion === seccionRequested);
-    if (matched) activeAccesoCode = matched.acceso;
-  } else {
-    activeAccesoCode = menuRows[0].acceso;
-  }
+  // Código de acceso activo (el de la sección solicitada o el de la primera del menú)
+  const activeAccesoCode = matched ? matched.acceso : menuRows[0].acceso;
 
   const acceso = {
     usuarioId: usuario.ID,

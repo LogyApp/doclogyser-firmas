@@ -16,6 +16,8 @@ const {
 } = require('../services/configInventario');
 const upload = multer({ storage: multer.memoryStorage() });
 
+const { accesoSeccion } = require('../services/maestroMenu');
+
 const router = express.Router();
 const HTML_PATH = path.join(__dirname, '../views/solicitudes/index.html');
 
@@ -132,17 +134,8 @@ async function computarAccesoSolicitud(usuarioId) {
   const dispositivo = usuario.Dispositivo || '';
   const operacion = usuario['Operación'] || '';
 
-  // Acceso del rol en la pestaña Solicitudes (Maestro_Menu_Inventario, Sección 'Solicitudes').
-  // Antes se tomaba la primera sección del rol, sin filtrar.
-  const [menuRows] = await pool.execute(
-    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? AND `Sección` = ? LIMIT 1',
-    [rol, SECCION_SOLICITUDES]
-  );
-
-  let accesoCode = null;
-  if (menuRows.length > 0) {
-    accesoCode = menuRows[0].Acceso;
-  }
+  // Acceso del rol en la pestaña Solicitudes (Maestro_Menu, inventario / Solicitudes).
+  const accesoCode = await accesoSeccion('inventario', rol, SECCION_SOLICITUDES);
 
   const acceso = {
     usuarioId: usuario.ID,
@@ -191,17 +184,8 @@ async function computarConfigCreacionSolicitud(usuarioId) {
   const dispositivo = usuario.Dispositivo || '';
   const operacion = usuario['Operación'] || '';
 
-  // Acceso del rol en la pestaña Solicitudes (Maestro_Menu_Inventario, Sección 'Solicitudes').
-  // Antes se tomaba la primera sección del rol, sin filtrar.
-  const [menuRows] = await pool.execute(
-    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? AND `Sección` = ? LIMIT 1',
-    [rol, SECCION_SOLICITUDES]
-  );
-
-  let accesoCode = null;
-  if (menuRows.length > 0) {
-    accesoCode = menuRows[0].Acceso;
-  }
+  // Acceso del rol en la pestaña Solicitudes (Maestro_Menu, inventario / Solicitudes).
+  const accesoCode = await accesoSeccion('inventario', rol, SECCION_SOLICITUDES);
 
   let opRows = [];
   if (accesoCode === 1 || accesoCode === 4) {
@@ -257,7 +241,7 @@ async function computarConfigCreacionSolicitud(usuarioId) {
   };
 }
 
-// ── Visibilidad de solicitudes según el acceso del rol (Maestro_Menu_Inventario, Solicitudes) ──
+// ── Visibilidad de solicitudes según el acceso del rol (Maestro_Menu, inventario / Solicitudes) ──
 // 1 todo · 2 su regional · 3 sus operaciones/dispositivo · 4/5/6 igual que 1/2/3 pero solo
 // las categorías del acceso restringido (Config_Parametros inventario / General), más lo
 // que el propio usuario haya registrado. Sin acceso configurado: solo lo propio.
@@ -436,7 +420,7 @@ router.get('/api/solicitudes', async (req, res) => {
     const conds = [];
     const params = [];
 
-    // Enforce visibility filters based on accesoCode (Maestro_Menu_Inventario)
+    // Enforce visibility filters based on accesoCode (Maestro_Menu)
     const visibilidad = await condicionesVisibilidadSolicitudes(acceso);
     conds.push(...visibilidad.conds);
     params.push(...visibilidad.params);
@@ -482,7 +466,7 @@ router.get('/api/conteos-filtros', async (req, res) => {
     const baseConds = [];
     const baseParams = [];
 
-    // Visibilidad según el acceso del rol en la pestaña Solicitudes (Maestro_Menu_Inventario)
+    // Visibilidad según el acceso del rol en la pestaña Solicitudes (Maestro_Menu)
     const visibilidad = await condicionesVisibilidadSolicitudes(acceso);
     baseConds.push(...visibilidad.conds);
     baseParams.push(...visibilidad.params);
@@ -555,7 +539,7 @@ router.post('/api/solicitudes', upload.single('cotizacionFile'), async (req, res
     }
 
     // Seguridad: usuario válido y operación dentro de su alcance de creación
-    // (Maestro_Menu_Inventario, Sección 'Solicitudes'). Antes no se validaba.
+    // (Maestro_Menu, inventario / Solicitudes). Antes no se validaba.
     const acceso = await computarAccesoSolicitud(actor);
     if (!acceso) {
       return res.status(403).json({ error: 'Usuario no autorizado para crear solicitudes.' });

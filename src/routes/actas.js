@@ -24,6 +24,8 @@ const {
   normalizarTexto,
 } = require('../services/configInventario');
 
+const { accesoSeccion } = require('../services/maestroMenu');
+
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -86,13 +88,8 @@ async function computarAccesoActas(usuarioId) {
   const dispositivo = usuario.Dispositivo || '';
   const operacion = usuario['Operación'] || '';
 
-  const [menuRows] = await pool.execute(
-    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? AND `Sección` = ? LIMIT 1',
-    [rol, SECCION]
-  );
-  if (!menuRows.length) return null; // Sin acceso a la pestaña de Actas
-
-  const accesoCode = menuRows[0].Acceso;
+  const accesoCode = await accesoSeccion('inventario', rol, SECCION); // Maestro_Menu
+  if (accesoCode === null) return null; // Sin acceso a la pestaña de Actas
 
   const acceso = {
     usuarioId: usuario.ID,
@@ -140,11 +137,7 @@ async function computarConfigCreacionActa(usuarioId) {
   const dispositivo = usuario.Dispositivo || '';
   const operacion = usuario['Operación'] || '';
 
-  const [menuRows] = await pool.execute(
-    'SELECT Acceso FROM Maestro_Menu_Inventario WHERE Rol = ? AND `Sección` = ? LIMIT 1',
-    [rol, SECCION]
-  );
-  const accesoCode = menuRows.length ? menuRows[0].Acceso : null;
+  const accesoCode = await accesoSeccion('inventario', rol, SECCION); // Maestro_Menu
 
   let opRows = [];
   if (accesoCode === 1 || accesoCode === 4) {
@@ -192,7 +185,7 @@ async function computarConfigCreacionActa(usuarioId) {
 }
 
 // ═════ Redirección a la interfaz (pestaña Actas dentro del módulo de Inventario) ═════
-// ── Visibilidad de actas según el acceso del rol (Maestro_Menu_Inventario, Sección 'Actas') ──
+// ── Visibilidad de actas según el acceso del rol (Maestro_Menu, inventario / Actas) ──
 // 1 todo · 2 su regional · 3 sus operaciones/dispositivo · 4/5/6 igual que 1/2/3 pero solo las
 // categorías del acceso restringido (Config_Parametros inventario / General), más lo que el
 // propio usuario registró. Sin acceso configurado: solo lo propio.
