@@ -14,6 +14,543 @@
         document.documentElement.setAttribute('data-theme', tema);
       } catch (e) {}
     })();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PESTAÑA 8: ATS (ANÁLISIS DE TRABAJO SEGURO)
+    // ═══════════════════════════════════════════════════════════════════════
+    let atsState = {
+      items: [],
+      stats: {},
+      selectedId: null,
+      searchTimer: null
+    };
+
+    function inicializarFiltrosAts() {
+      const selReg = document.getElementById('filtro-ats-regional');
+      if (!selReg || selReg.options.length > 1) return;
+      selReg.innerHTML = '<option value="">Todas</option>';
+      const alcance = CONFIG.opsPorRegional || {};
+      Object.keys(alcance).forEach(reg => {
+        selReg.appendChild(new Option(reg, reg));
+      });
+    }
+
+    function onRegionalChangeAts() {
+      const reg = document.getElementById('filtro-ats-regional').value;
+      const selOp = document.getElementById('filtro-ats-operacion');
+      selOp.innerHTML = '<option value="">Todas</option>';
+      const ops = (CONFIG.opsPorRegional || {})[reg] || [];
+      ops.forEach(op => selOp.appendChild(new Option(op, op)));
+      cargarAts();
+    }
+
+    function filtrarDebounceAts() {
+      clearTimeout(atsState.searchTimer);
+      atsState.searchTimer = setTimeout(() => {
+        cargarAts();
+      }, 350);
+    }
+
+    function limpiarFiltrosAts() {
+      document.getElementById('filtro-ats-search').value = '';
+      document.getElementById('filtro-ats-regional').value = '';
+      document.getElementById('filtro-ats-operacion').innerHTML = '<option value="">Todas</option>';
+      document.getElementById('filtro-ats-estado').value = '';
+      document.getElementById('filtro-ats-desde').value = '';
+      document.getElementById('filtro-ats-hasta').value = '';
+      cargarAts();
+    }
+
+    async function cargarAts() {
+      inicializarFiltrosAts();
+      const q = document.getElementById('filtro-ats-search')?.value || '';
+      const reg = document.getElementById('filtro-ats-regional')?.value || '';
+      const op = document.getElementById('filtro-ats-operacion')?.value || '';
+      const est = document.getElementById('filtro-ats-estado')?.value || '';
+      const fDesde = document.getElementById('filtro-ats-desde')?.value || '';
+      const fHasta = document.getElementById('filtro-ats-hasta')?.value || '';
+
+      const tbody = document.getElementById('tbody-ats');
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando registros ATS...</td></tr>';
+
+      try {
+        const queryParams = new URLSearchParams({
+          usuario: CONFIG.usuarioId,
+          busqueda: q,
+          regional: reg,
+          operacion: op,
+          estado: est,
+          fechaDesde: fDesde,
+          fechaHasta: fHasta
+        });
+
+        const res = await fetch('/ats/api/registros?' + queryParams.toString());
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error consultando ATS');
+
+        atsState.items = data.items || [];
+        atsState.stats = data.stats || {};
+
+        // Actualizar badges
+        document.getElementById('badge-total-ats').textContent = `${atsState.stats.total || 0} Registros`;
+        document.getElementById('badge-completados-ats').textContent = `${atsState.stats.completados || 0} Completados`;
+        const pendTotal = (atsState.stats.pend_trabajadores || 0) + (atsState.stats.pend_coord || 0) + (atsState.stats.pend_sst || 0);
+        document.getElementById('badge-pendientes-ats').textContent = `${pendTotal} Pendientes`;
+
+        // Badge filtros activos
+        let filtrosCount = 0;
+        if (q) filtrosCount++;
+        if (reg) filtrosCount++;
+        if (op) filtrosCount++;
+        if (est) filtrosCount++;
+        if (fDesde) filtrosCount++;
+        if (fHasta) filtrosCount++;
+        const badgeFiltro = document.getElementById('filtros-badge-ats');
+        if (badgeFiltro) badgeFiltro.textContent = filtrosCount;
+
+        renderTablaAts(atsState.items);
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--danger);">Error cargando registros: ${e.message}</td></tr>`;
+      }
+    }
+
+    function renderTablaAts(items) {
+      const tbody = document.getElementById('tbody-ats');
+      if (!items || !items.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron registros de ATS con los filtros seleccionados.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map(it => {
+        const isSelected = atsState.selectedId === it.id_ats;
+
+        // Documento PDF button
+        let docBtn = '';
+        if (it.url_pdf) {
+          docBtn = `<a href="${it.url_pdf}" target="_blank" onclick="event.stopPropagation();" class="btn btn-secondary btn-sm" style="font-weight:700;">📄 Ver PDF</a>`;
+        } else {
+          docBtn = `<button type="button" class="btn btn-primary btn-sm" onclick="event.stopPropagation(); generarPDFAts(${it.id_ats})" style="font-size:0.75rem;">⚙️ Generar</button>`;
+        }
+
+        // Estado Badge
+        let badgeEstado = '';
+        if (it.estado === 'completado') {
+          badgeEstado = '<span class="status-badge badge-firma-aceptada">✓ Completado</span>';
+        } else if (it.estado === 'pendiente_coordinador') {
+          badgeEstado = '<span class="status-badge badge-firma-prefilled">Pend. Coordinador</span>';
+        } else if (it.estado === 'pendiente_sst') {
+          badgeEstado = '<span class="status-badge badge-firma-prefilled">Pend. SST</span>';
+        } else {
+          badgeEstado = '<span class="status-badge badge-firma-sin">Pend. Trabajadores</span>';
+        }
+
+        const badgeCoord = it.coord_firmado ? '<span style="color:var(--success); font-weight:bold;">✓ Firmó</span>' : '<span style="color:var(--text-muted); font-style:italic;">Pendiente</span>';
+        const badgeSst = it.sst_firmado ? '<span style="color:var(--success); font-weight:bold;">✓ Firmó</span>' : '<span style="color:var(--text-muted); font-style:italic;">Pendiente</span>';
+
+        const fDesde = it.vigencia_desde ? it.vigencia_desde.slice(0, 10).split('-').reverse().join('/') : '—';
+        const fHasta = it.vigencia_hasta ? it.vigencia_hasta.slice(0, 10).split('-').reverse().join('/') : '—';
+
+        return `
+          <tr onclick="abrirDetalleAts(${it.id_ats})" id="row-ats-${it.id_ats}" class="${isSelected ? 'selected' : ''}" style="cursor: pointer;">
+            <td style="text-align:center;">${docBtn}</td>
+            <td><strong>#${it.id_ats}</strong></td>
+            <td>${it.regional}</td>
+            <td><strong>${it.operacion}</strong></td>
+            <td><small>${fDesde} al ${fHasta}</small></td>
+            <td><span class="badge badge-info" style="font-size:0.72rem;">${it.trabajadores_firmados} / ${it.total_trabajadores}</span></td>
+            <td>${badgeCoord}</td>
+            <td>${badgeSst}</td>
+            <td>${badgeEstado}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function abrirDetalleAts(id) {
+      atsState.selectedId = id;
+      document.querySelectorAll('#tbody-ats tr').forEach(r => r.classList.remove('selected'));
+      const row = document.getElementById(`row-ats-${id}`);
+      if (row) row.classList.add('selected');
+
+      const lay = document.getElementById('layout-ats');
+      const card = document.getElementById('detail-ats');
+      const body = document.getElementById('detail-ats-body');
+      const title = document.getElementById('detail-ats-title');
+
+      if (lay) lay.classList.add('detail-active');
+      if (card) card.style.display = 'block';
+      if (title) title.innerText = `Detalle de ATS #${id}`;
+      if (body) body.innerHTML = '<div style="padding: 20px; text-align:center; color: var(--text-muted);">Cargando detalle del ATS...</div>';
+
+      try {
+        const res = await fetch(`/ats/api/registro/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo cargar el detalle');
+
+        const fDesde = data.vigencia_desde ? data.vigencia_desde.slice(0, 10).split('-').reverse().join('/') : '—';
+        const fHasta = data.vigencia_hasta ? data.vigencia_hasta.slice(0, 10).split('-').reverse().join('/') : '—';
+
+        // Botón generar/regenerar PDF
+        const btnPdfText = data.url_pdf ? '🔄 Regenerar PDF (Con Firmas Listas)' : '⚙️ Generar PDF (Solo Firmas Listas)';
+
+        // Botón eliminar (si tiene permiso en CONFIG.permisosSst.ats?.eliminar o es Sistema/AdmSst)
+        const puedeEliminar = CONFIG.permisosSst?.ats?.eliminar || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+        const btnEliminarHtml = puedeEliminar ? `
+          <button class="btn btn-sm" onclick="eliminarAts(${data.id_ats})" style="background: var(--danger); color: #fff; font-weight:700;">
+            🗑️ Eliminar ATS
+          </button>
+        ` : '';
+
+        // Trabajadores list (formato con detalle idéntico a Participación)
+        const trabajadores = data.trabajadores || [];
+        const trabHtml = trabajadores.length ? trabajadores.map((t, idx) => {
+          const badgeFirma = t.estado_firma === 'ACEPTADA'
+            ? '<span class="status-badge badge-firma-aceptada">✓ Firmado</span>'
+            : '<span class="status-badge badge-firma-sin">Sin Firma</span>';
+
+          let cleanNombre = t.nombre_trabajador || '';
+          if (cleanNombre.includes(' ** ')) {
+            cleanNombre = cleanNombre.split(' ** ')[1];
+          }
+
+          const rawCel = t.celular ? String(t.celular).trim().replace(/\D/g, '') : '';
+          let celParam = rawCel;
+          if (celParam.length === 10 && celParam.startsWith('3')) {
+            celParam = '57' + celParam;
+          }
+
+          const urlFirmaLink = `${window.location.origin}/ats/firmar?token=${t.token_firma}`;
+          const msgWaText = encodeURIComponent(`Hola ${cleanNombre}, por favor ingresa al siguiente enlace para verificar y firmar digitalmente el Análisis de Trabajo Seguro (ATS) semanal (${data.operacion}): ${urlFirmaLink}`);
+          const waUrl = celParam ? `https://wa.me/${celParam}?text=${msgWaText}` : '#';
+          const waDisabled = celParam ? '' : 'disabled style="opacity:0.45; pointer-events:none;" title="Sin celular registrado"';
+
+          const safeNombre = cleanNombre.replace(/'/g, "\\'");
+          const safeEmail = (t.email || '').replace(/'/g, "\\'");
+          const safeCel = (t.celular || '').replace(/'/g, "\\'");
+
+          return `
+            <div class="ast-card" style="margin-bottom:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                <div>
+                  <div class="ast-card-title">${idx + 1}. ${cleanNombre}</div>
+                  <div class="ast-card-sub">C.C. ${t.identificacion} · ${t.cargo || 'Operador'} · ${t.operacion || data.operacion}</div>
+                  <div class="ast-card-contact">
+                    <span>📱 ${t.celular || '<em>Sin celular</em>'}</span>
+                    <span>✉️ ${t.email || '<em>Sin correo</em>'}</span>
+                  </div>
+                </div>
+                <div>${badgeFirma}</div>
+              </div>
+              <div class="ast-actions-grid" style="margin-top:8px;">
+                <button class="btn-ast-action btn-ast-datos" onclick="abrirModalContactoParticipacion('${t.identificacion}', '${safeNombre}', '${safeCel}', '${safeEmail}')">
+                  ✏️ Datos
+                </button>
+                <a href="${waUrl}" target="_blank" class="btn-ast-action btn-ast-whatsapp" ${waDisabled}>
+                  📲 WhatsApp
+                </a>
+                <button class="btn-ast-action btn-ast-email" onclick="notificarTrabajadorAts(${t.id_item})">
+                  ✉️ Correo
+                </button>
+                <button class="btn-ast-action btn-ast-copy" onclick="copiarPortapapeles('${urlFirmaLink}')">
+                  📋 Copiar
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('') : '<div style="font-size:0.82rem; color:var(--text-muted); font-style:italic;">Sin trabajadores asignados.</div>';
+
+        // Coordinador Box
+        const coordFirmado = !!data.fecha_firma_coordinador;
+        const badgeCoord = coordFirmado ? '<span class="status-badge badge-firma-aceptada">✓ Firmado</span>' : '<span class="status-badge badge-firma-sin">Sin Firma</span>';
+        const urlFirmaCoord = `${window.location.origin}/ats/firmar?tipo=coordinador&token=${data.token_coordinador}`;
+        const rawCoordCel = data.coordinador_operacion_celular ? String(data.coordinador_operacion_celular).trim().replace(/\D/g, '') : '';
+        let celCoordParam = rawCoordCel;
+        if (celCoordParam.length === 10 && celCoordParam.startsWith('3')) celCoordParam = '57' + celCoordParam;
+        const msgWaCoord = encodeURIComponent(`Hola ${data.coordinador_operacion_nombre || 'Coordinador'}, se requiere su firma digital en el Análisis de Trabajo Seguro (ATS) semanal (${data.operacion}): ${urlFirmaCoord}`);
+        const waUrlCoord = celCoordParam ? `https://wa.me/${celCoordParam}?text=${msgWaCoord}` : '#';
+
+        // SST Box
+        const sstFirmado = !!data.fecha_firma_sst;
+        const badgeSst = sstFirmado ? '<span class="status-badge badge-firma-aceptada">✓ Firmado</span>' : '<span class="status-badge badge-firma-sin">Sin Firma</span>';
+        const urlFirmaSst = `${window.location.origin}/ats/firmar?tipo=sst&token=${data.token_sst}`;
+
+        // Evidencias
+        const evidencias = data.evidencias || [];
+        const evidHtml = evidencias.length ? `
+          <div class="evidencias-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:8px; margin-top:8px;">
+            ${evidencias.map(ev => `
+              <img src="${ev.url_evidencia}" class="evidencia-thumb" onclick="abrirLightboxParticipacion('${ev.url_evidencia}')" style="width:100%; height:75px; object-fit:cover; border-radius:4px; cursor:pointer;" title="Click para ampliar">
+            `).join('')}
+          </div>
+        ` : '<div style="font-size:0.8rem; color:var(--text-muted); font-style:italic;">Sin fotos registradas.</div>';
+
+        body.innerHTML = `
+          <!-- Acciones Globales -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+            <button class="btn btn-sm" onclick="generarPDFAts(${data.id_ats})" style="background: var(--accent); color: var(--accent-contrast); font-weight:700;">
+              ${btnPdfText}
+            </button>
+            ${data.url_pdf ? `<a href="${data.url_pdf}" target="_blank" class="btn btn-secondary btn-sm" style="font-weight:700;">📄 Abrir PDF Oficial</a>` : ''}
+            ${btnEliminarHtml}
+          </div>
+
+          <!-- Datos de Cabecera -->
+          <div class="detail-section">
+            <div class="detail-section-title">Datos del Análisis de Trabajo Seguro</div>
+            <div class="detail-row"><span class="label">ID:</span><span class="value font-bold">#${data.id_ats}</span></div>
+            <div class="detail-row"><span class="label">Operación:</span><span class="value">${data.operacion} (${data.regional})</span></div>
+            <div class="detail-row"><span class="label">Vigencia:</span><span class="value">${fDesde} al ${fHasta}</span></div>
+            <div class="detail-row"><span class="label">Turno(s) / Horario(s):</span><span class="value">${data.turnos || '—'} · ${data.horarios || '—'}</span></div>
+            <div class="detail-row"><span class="label">Herramienta Adic.:</span><span class="value">${data.herramienta_adicional_texto || 'Ninguna'}</span></div>
+          </div>
+
+          <!-- Coordinador de Operación -->
+          <div class="detail-section">
+            <div class="detail-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Responsable Operación (Coordinador)</span>
+              ${badgeCoord}
+            </div>
+            <div style="font-size:0.85rem; font-weight:700; color:var(--text); margin-bottom:4px;">${data.coordinador_operacion_nombre || '—'}</div>
+            ${!coordFirmado ? `
+              <div class="ast-actions-grid" style="margin-top:6px;">
+                <a href="${waUrlCoord}" target="_blank" class="btn-ast-action btn-ast-whatsapp" ${data.coordinador_operacion_celular ? '' : 'disabled style="opacity:0.45; pointer-events:none;"'}>
+                  📲 WhatsApp
+                </a>
+                <button class="btn-ast-action btn-ast-email" onclick="notificarCoordinadorAts(${data.id_ats})">
+                  ✉️ Correo
+                </button>
+                <button class="btn-ast-action btn-ast-copy" onclick="copiarPortapapeles('${urlFirmaCoord}')">
+                  📋 Copiar
+                </button>
+                <button class="btn-ast-action" onclick="firmarDirectoCoordinador(${data.id_ats})" style="background:var(--accent); color:#fff;" title="Usa la firma digital registrada en el bucket">
+                  ✍️ Firmar (Firma Digital)
+                </button>
+              </div>
+            ` : `<div style="font-size:0.75rem; color:var(--success);">Firmado el ${data.fecha_firma_coordinador ? data.fecha_firma_coordinador.slice(0, 16).replace('T', ' ') : '—'}</div>`}
+          </div>
+
+          <!-- Responsable SST -->
+          <div class="detail-section">
+            <div class="detail-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Responsable SST</span>
+              ${badgeSst}
+            </div>
+            <div style="font-size:0.85rem; font-weight:700; color:var(--text); margin-bottom:4px;">${data.responsable_sst_nombre || '—'}</div>
+            ${!sstFirmado ? `
+              <div class="ast-actions-grid" style="margin-top:6px;">
+                <button class="btn-ast-action btn-ast-email" onclick="notificarSstAts(${data.id_ats})">
+                  ✉️ Correo
+                </button>
+                <button class="btn-ast-action btn-ast-copy" onclick="copiarPortapapeles('${urlFirmaSst}')">
+                  📋 Copiar
+                </button>
+                <button class="btn-ast-action" onclick="firmarDirectoSst(${data.id_ats})" style="background:var(--accent); color:#fff;">
+                  ✍️ Firmar como SST
+                </button>
+              </div>
+            ` : `<div style="font-size:0.75rem; color:var(--success);">Firmado el ${data.fecha_firma_sst ? data.fecha_firma_sst.slice(0, 16).replace('T', ' ') : '—'}</div>`}
+          </div>
+
+          <!-- Trabajadores -->
+          <div class="detail-section">
+            <div class="detail-section-title">Personal Cubierto (${trabajadores.length})</div>
+            ${trabHtml}
+          </div>
+
+          <!-- Evidencias Fotográficas -->
+          <div class="detail-section">
+            <div class="detail-section-title">Fotos de Evidencia</div>
+            ${evidHtml}
+          </div>
+        `;
+      } catch (err) {
+        body.innerHTML = `<div style="padding:20px; color:var(--danger); text-align:center;">Error: ${err.message}</div>`;
+      }
+    }
+
+    function cerrarDetalleAts() {
+      atsState.selectedId = null;
+      const lay = document.getElementById('layout-ats');
+      if (lay) lay.classList.remove('detail-active');
+      const card = document.getElementById('detail-ats');
+      if (card) card.style.display = 'none';
+      document.querySelectorAll('#tbody-ats tr').forEach(r => r.classList.remove('selected'));
+    }
+
+    async function generarPDFAts(id) {
+      // 1. Obtener datos actuales del ATS para verificar firmas disponibles
+      let it = atsState.items ? atsState.items.find(x => x.id_ats == id) : null;
+      let totalTrab = it ? Number(it.total_trabajadores || 0) : 0;
+      let trabFirmados = it ? Number(it.trabajadores_firmados || 0) : 0;
+      let coordFirmado = it ? !!it.coord_firmado : false;
+      let sstFirmado = it ? !!it.sst_firmado : false;
+
+      if (!it) {
+        try {
+          const resInfo = await fetch(`/ats/api/registro/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+          if (resInfo.ok) {
+            const d = await resInfo.json();
+            totalTrab = (d.trabajadores || []).length;
+            trabFirmados = (d.trabajadores || []).filter(t => t.estado_firma === 'ACEPTADA').length;
+            coordFirmado = !!d.fecha_firma_coordinador;
+            sstFirmado = !!d.fecha_firma_sst;
+          }
+        } catch (_) {}
+      }
+
+      const totalFirmas = trabFirmados + (coordFirmado ? 1 : 0) + (sstFirmado ? 1 : 0);
+
+      // Si no hay ninguna firma lista en el sistema, no se puede generar el PDF
+      if (totalFirmas === 0) {
+        alert('No hay ninguna firma lista en el sistema. Debe haber al menos una firma registrada para poder generar el PDF.');
+        showToast('No hay ninguna firma lista en el sistema. Debe haber al menos una firma registrada.', 'error');
+        return;
+      }
+
+      // Solicitar confirmación para generar con las firmas listas
+      const msgConfirm = `¿Desea generar el PDF con las firmas actualmente listas en el sistema?\n\n` +
+        `• Trabajadores firmados: ${trabFirmados} de ${totalTrab}\n` +
+        `• Firma Coordinador: ${coordFirmado ? 'Lista (✓)' : 'Pendiente'}\n` +
+        `• Firma Responsable SST: ${sstFirmado ? 'Lista (✓)' : 'Pendiente'}\n\n` +
+        `Presione Aceptar para proceder con la generación.`;
+
+      if (!confirm(msgConfirm)) {
+        return;
+      }
+
+      showLoading('Generando documento PDF con las firmas disponibles...');
+      try {
+        const res = await fetch(`/ats/api/registro/${id}/generar-pdf?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al generar PDF');
+
+        showToast('PDF generado exitosamente y registrado en Maestro_docEmpresa (Doc 98)', 'success');
+        await cargarAts();
+        if (atsState.selectedId === id) {
+          await abrirDetalleAts(id);
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function eliminarAts(id) {
+      if (!confirm(`¿Está seguro de eliminar el registro ATS #${id}? Esta acción no se puede deshacer.`)) {
+        return;
+      }
+
+      showLoading('Eliminando ATS...');
+      try {
+        const res = await fetch(`/ats/api/registro/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No fue posible eliminar el registro');
+
+        showToast('Registro ATS eliminado', 'success');
+        cerrarDetalleAts();
+        await cargarAts();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function notificarTrabajadorAts(idItem) {
+      showLoading('Enviando enlace de firma por correo...');
+      try {
+        const res = await fetch(`/ats/api/notificar-trabajador/${idItem}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo enviar el correo');
+        showToast(data.mensaje || 'Correo enviado exitosamente', 'success');
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function notificarCoordinadorAts(id) {
+      showLoading('Enviando enlace de firma al Coordinador...');
+      try {
+        const res = await fetch(`/ats/api/notificar-coordinador/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo enviar el correo');
+        showToast(data.mensaje || 'Correo enviado al Coordinador', 'success');
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function notificarSstAts(id) {
+      showLoading('Enviando enlace de firma al Responsable SST...');
+      try {
+        const res = await fetch(`/ats/api/notificar-sst/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo enviar el correo');
+        showToast(data.mensaje || 'Correo enviado al Responsable SST', 'success');
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function firmarDirectoCoordinador(id) {
+      if (!confirm('¿Desea registrar la firma del Coordinador de Operación para este ATS (usando su firma digital registrada)?')) return;
+      showLoading('Registrando firma del Coordinador...');
+      try {
+        const res = await fetch('/ats/api/firmar-coordinador', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_ats: id, firmaBase64: 'ACEPTADA' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo registrar la firma');
+        showToast('Firma de Coordinador registrada', 'success');
+        await abrirDetalleAts(id);
+        await cargarAts();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function firmarDirectoSst(id) {
+      if (!confirm('¿Desea registrar la firma del Responsable SST para este ATS (usando su firma digital registrada)?')) return;
+      showLoading('Registrando firma del Responsable SST...');
+      try {
+        const res = await fetch('/ats/api/firmar-sst', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_ats: id, firmaBase64: 'ACEPTADA' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo registrar la firma');
+        showToast('Firma de Responsable SST registrada', 'success');
+        await abrirDetalleAts(id);
+        await cargarAts();
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
   </script>
   <link rel="stylesheet" href="/css/theme-tokens.css?v=1">
   <title>SST — Seguridad y Salud en el Trabajo | LOG&SER</title>
@@ -2104,6 +2641,16 @@
         </div>
         <span>Inspecciones Vehículos</span>
       </li>
+
+      <!-- 8. ATS (Análisis de Trabajo Seguro) -->
+      <li class="nav-item" data-tab="ats" onclick="switchTab('ats')">
+        <div class="nav-icon" title="Análisis de Trabajo Seguro (ATS)">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+          </svg>
+        </div>
+        <span>ATS</span>
+      </li>
     </ul>
 
     <!-- Botón Actualizar Global idéntico a Inventario -->
@@ -3227,6 +3774,114 @@
       </div>
     </section>
 
+    <!-- ──────────────────────────────────────────────────────────
+         PESTAÑA 8: ATS (ANÁLISIS DE TRABAJO SEGURO)
+    ────────────────────────────────────────────────────────── -->
+    <section class="tab-pane" id="pane-ats" style="display: none;">
+      <div class="tab-header">
+        <div class="tab-header-left">
+          <h1 class="tab-title">
+            <span>🛡️ Análisis de Trabajo Seguro (ATS)</span>
+            <span class="badge badge-info" id="badge-total-ats">0 Registros</span>
+            <span class="badge badge-success" id="badge-completados-ats" style="font-size:0.75rem;">0 Completados</span>
+            <span class="badge badge-warning" id="badge-pendientes-ats" style="font-size:0.75rem;">0 Pendientes</span>
+          </h1>
+          <p class="tab-subtitle">Control semanal de ATS en muelles de cargue y descargue — Estibador manual y eléctrico (SST-F-036 v02)</p>
+        </div>
+        <div class="tab-actions">
+          <button type="button" class="btn btn-accent" id="btn-crear-ats" onclick="abrirModalCrear('ats')">
+            <span>➕</span> Nuevo ATS
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Plegables con Conteo -->
+      <div class="card-filters">
+        <div class="filtros-toggle" onclick="toggleFiltros('ats')">
+          <span class="filtros-toggle-left">
+            Filtros de Búsqueda
+            <span class="filtros-badge" id="filtros-badge-ats">0</span>
+          </span>
+          <span class="filtros-chevron" id="filtros-chevron-ats">▸</span>
+        </div>
+        <div class="filtros-body" id="filtros-body-ats" style="display: none;">
+          <div class="filters-grid">
+            <div class="form-group">
+              <label class="form-label">Búsqueda Rápida</label>
+              <input type="text" class="form-control" id="filtro-ats-search" placeholder="Operación, coordinador o ID..." oninput="filtrarDebounceAts()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Regional</label>
+              <select class="form-control" id="filtro-ats-regional" onchange="onRegionalChangeAts()">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Operación</label>
+              <select class="form-control" id="filtro-ats-operacion" onchange="cargarAts()">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-control" id="filtro-ats-estado" onchange="cargarAts()">
+                <option value="">Todos</option>
+                <option value="pendiente_trabajadores">Pendiente Trabajadores</option>
+                <option value="pendiente_coordinador">Pendiente Coordinador</option>
+                <option value="pendiente_sst">Pendiente SST</option>
+                <option value="completado">Completado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vigencia Desde</label>
+              <input type="date" class="form-control" id="filtro-ats-desde" onchange="cargarAts()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vigencia Hasta</label>
+              <input type="date" class="form-control" id="filtro-ats-hasta" onchange="cargarAts()">
+            </div>
+            <div class="form-group">
+              <button class="btn btn-secondary btn-sm" onclick="limpiarFiltrosAts()" style="height: 38px;">Limpiar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla y Detalle -->
+      <div class="view-layout" id="layout-ats">
+        <div class="table-card">
+          <div class="table-container">
+            <table class="data-table" id="table-ats">
+              <thead>
+                <tr>
+                  <th style="width: 140px; min-width: 120px;">Documento</th>
+                  <th style="width: 70px; min-width: 60px;">ID</th>
+                  <th style="width: 130px; min-width: 110px;">Regional</th>
+                  <th style="width: 160px; min-width: 130px;">Operación</th>
+                  <th style="width: 150px; min-width: 130px;">Vigencia</th>
+                  <th style="width: 110px; min-width: 90px;">Trabajadores</th>
+                  <th style="width: 90px; min-width: 75px;">Coord.</th>
+                  <th style="width: 90px; min-width: 75px;">SST</th>
+                  <th style="width: 130px; min-width: 110px;">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-ats">
+                <tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando registros ATS...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detalle Lateral -->
+        <div class="detail-card" id="detail-ats">
+          <div class="detail-header">
+            <div class="detail-title" id="detail-ats-title">Detalle de ATS</div>
+            <button class="detail-close" onclick="cerrarDetalleAts()">&times;</button>
+          </div>
+          <div class="detail-body" id="detail-ats-body"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -4000,7 +4655,8 @@
       participacion: 'Participación',
       compromiso: 'Compromiso SST',
       gestionmedica: 'Casos Medicos',
-      inspecciones: 'Inspecciones_vehiculos'
+      inspecciones: 'Inspecciones_vehiculos',
+      ats: 'ATS'
     };
 
     const MAPA_MODKEY_SECCION_SST = {
@@ -4011,7 +4667,8 @@
       csst: 'Compromiso SST',
       cm: 'Casos Medicos',
       inc: 'Casos Medicos',
-      ins: 'Inspecciones_vehiculos'
+      ins: 'Inspecciones_vehiculos',
+      ats: 'ATS'
     };
 
     function normalizarTextoSeccionSst(s) {
@@ -4035,7 +4692,7 @@
     }
 
     function obtenerPrimeraPestanaPermitidaSst() {
-      const orden = ['evaluacion', 'capacitacion', 'pruebaconsumo', 'participacion', 'compromiso', 'gestionmedica', 'inspecciones'];
+      const orden = ['evaluacion', 'capacitacion', 'pruebaconsumo', 'participacion', 'compromiso', 'gestionmedica', 'inspecciones', 'ats'];
       return orden.find(t => tieneAccesoTabSst(t)) || null;
     }
 
@@ -4497,7 +5154,7 @@
       if (btnCrearIns && CONFIG.inspeccionesConfig && !CONFIG.inspeccionesConfig.puedeRegistrar) {
         btnCrearIns.style.display = 'none';
       }
-      ['ev', 'cap', 'pc', 'csst'].forEach(modulo => {
+      ['ev', 'cap', 'pc', 'csst', 'ats'].forEach(modulo => {
         const btn = document.getElementById('btn-crear-' + modulo);
         if (btn && !permisoSst(modulo, 'crear')) btn.style.display = 'none';
       });
@@ -5148,7 +5805,8 @@
       participacion: 'Participación',
       compromiso: 'Compromisos SST',
       gestionmedica: 'Gestión Médica',
-      inspecciones: 'Inspecciones Vehículos'
+      inspecciones: 'Inspecciones Vehículos',
+      ats: 'ATS (Análisis de Trabajo Seguro)'
     };
 
     function actualizarTituloMovilSst(titulo) {
@@ -5204,6 +5862,9 @@
       inicializarRedimensionColumnasSst();
       if (!dataStore[key].length) {
         cargarDatos(key);
+      }
+      if (tabId === 'ats') {
+        cargarAts();
       }
       if (tabId === 'evaluacion') {
         cargarNotificacionesSST('ev');
@@ -5308,6 +5969,10 @@
       const icon = document.getElementById('btn-actualizar-global-icon');
       if (icon) icon.style.animation = 'spin 0.8s linear infinite';
 
+      if (currentTab === 'ats') {
+        cargarAts().finally(() => { if (icon) icon.style.animation = 'none'; });
+        return;
+      }
       const key = currentTab === 'evaluacion' ? 'ev' : currentTab === 'capacitacion' ? 'cap' : currentTab === 'pruebaconsumo' ? 'pc' : currentTab === 'participacion' ? 'part' : currentTab === 'inspecciones' ? 'ins' : currentTab === 'gestionmedica' ? (subtabGestionMedica === 'casosmedicos' ? 'cm' : 'inc') : 'csst';
       cargarDatos(key).finally(() => {
         if (icon) icon.style.animation = 'none';
@@ -8684,7 +9349,7 @@
       if (det) det.style.display = 'none';
       selectedItems[modKey] = null;
       document.querySelectorAll(`#tbody-${modKey} tr`).forEach(tr => tr.classList.remove('selected'));
-      const tabMap = { ev: 'evaluacion', cap: 'capacitacion', pc: 'pruebaconsumo', part: 'participacion', csst: 'compromiso', ins: 'inspecciones' };
+      const tabMap = { ev: 'evaluacion', cap: 'capacitacion', pc: 'pruebaconsumo', part: 'participacion', csst: 'compromiso', ins: 'inspecciones', ats: 'ats' };
       const currentTabName = tabMap[modKey] || currentTab;
       sincronizarUrlPestana(currentTabName, null, { id: null, push: true });
     }
@@ -9688,7 +10353,8 @@
         capacitacion: 'Programar Nueva Evaluación de Capacitación SST',
         pruebaconsumo: 'Nuevo Consentimiento Informado de Prueba de Consumo',
         participacion: 'Nuevo Registro de Participación / Formato de Asistencia',
-        compromiso: 'Nuevo Compromiso de Seguridad y Salud en el Trabajo'
+        compromiso: 'Nuevo Compromiso de Seguridad y Salud en el Trabajo',
+        ats: 'Nuevo Análisis de Trabajo Seguro (ATS) Semanal'
       };
 
       const urls = {
@@ -9696,7 +10362,8 @@
         capacitacion: `/formcapacitacionsst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`,
         pruebaconsumo: `/formpruebaconsumo?usuario=${encodeURIComponent(CONFIG.usuarioId)}`,
         participacion: `/formparticipacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}`,
-        compromiso: `/formcompromisosst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`
+        compromiso: `/formcompromisosst?usuario=${encodeURIComponent(CONFIG.usuarioId)}`,
+        ats: `/ats/form?usuario=${encodeURIComponent(CONFIG.usuarioId)}`
       };
 
       document.getElementById('modal-crear-label').innerText = titles[tipo] || 'Nuevo Registro';

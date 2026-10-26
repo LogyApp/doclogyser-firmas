@@ -419,7 +419,7 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
       if (!tokenFinal) {
         tokenFinal = await generarTokenPZ(idPz, campoToken, campoExpira);
       }
-      const urlFirma   = `${baseUrl}/pazysalvo-area/${encodeURIComponent(idPz)}?area=${area}&token=${encodeURIComponent(tokenFinal)}`;
+      const urlFirma   = `${baseUrl}/pazysalvo-area/${area}/${encodeURIComponent(idPz)}?token=${encodeURIComponent(tokenFinal)}`;
       try {
         await notificarAreaPazYSalvo({
           area, destinatarios,

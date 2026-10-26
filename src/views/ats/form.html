@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análisis de Trabajo Seguro (ATS) — LOG&SER</title>
+  <link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recibos-public/logo.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f4f6f9; min-height: 100vh; color: #1e293b; line-height: 1.4; }
+    .wrapper { max-width: 960px; margin: 0 auto; padding: 20px 16px 80px; }
+
+    /* ── Header ── */
+    .card-titulo {
+      background: #fff; border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.06);
+      padding: 20px 24px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      border-top: 4px solid #0A315D;
+    }
+    .card-titulo img { height: 50px; flex-shrink: 0; }
+    .page-title { font-size: 1.25rem; font-weight: 700; color: #0A315D; }
+    .page-sub   { font-size: .82rem; color: #64748b; margin-top: 2px; }
+    .badge-code {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #eef2ff; color: #1e40af; border: 1px solid #c7d2fe;
+      padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; margin-top: 6px;
+    }
+    .badge-user {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;
+      padding: 4px 12px; border-radius: 999px; font-size: 0.74rem; font-weight: 600;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff; border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.05);
+      border-left: 4px solid #0A315D;
+      padding: 20px 22px; margin-bottom: 18px;
+    }
+    .card-navy   { border-left-color: #0A315D; }
+    .card-blue   { border-left-color: #2563eb; }
+    .card-amber  { border-left-color: #d97706; }
+    .card-purple { border-left-color: #7c3aed; }
+    .card-danger { border-left-color: #dc2626; }
+
+    .section-title {
+      font-size: .82rem; font-weight: 800; color: #0A315D;
+      letter-spacing: 1px; text-transform: uppercase;
+      padding-bottom: 8px; margin-bottom: 16px;
+      border-bottom: 2px solid #f1f5f9;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ── Fields ── */
+    .field { margin-bottom: 14px; position: relative; }
+    label.lbl { display: block; font-size: .8rem; font-weight: 600; color: #475569; margin-bottom: 5px; }
+    label.lbl .req { color: #dc2626; margin-left: 2px; }
+    input[type="text"], input[type="date"], select, textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid #cbd5e1; border-radius: 6px;
+      font-size: .88rem; color: #1e293b; background: #fff;
+      font-family: inherit; transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #0A315D; box-shadow: 0 0 0 3px rgba(10,49,93,.12);
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+    @media(max-width: 768px) {
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Tablas de Pasos y Checklists ── */
+    .table-ats { width: 100%; border-collapse: collapse; font-size: .8rem; margin-top: 8px; }
+    .table-ats th, .table-ats td { border: 1px solid #e2e8f0; padding: 7px 9px; vertical-align: top; }
+    .table-ats th { background: #f8fafc; color: #0A315D; font-weight: 700; text-align: left; }
+    .table-ats tr:hover { background: #f8fafc; }
+    .table-ats select { padding: 4px 6px; font-size: .8rem; }
+    .table-ats input[type="text"] { padding: 4px 6px; font-size: .8rem; }
+
+    .step-card {
+      border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px;
+      background: #fafbfc;
+    }
+    .step-title { font-weight: 700; color: #0A315D; font-size: .85rem; margin-bottom: 4px; }
+    .step-desc { font-size: .78rem; color: #64748b; margin-bottom: 6px; }
+
+    /* ── Radio Cumple / No Cumple / No Aplica ── */
+    .radio-pill-group { display: inline-flex; gap: 3px; background: #e2e8f0; padding: 2.5px; border-radius: 6px; }
+    .radio-pill-group label {
+      padding: 3px 8px; font-size: .73rem; font-weight: 700; border-radius: 4px; cursor: pointer;
+      color: #64748b; user-select: none; transition: all .15s; white-space: nowrap;
+    }
+    .radio-pill-group input[type="radio"] { display: none; }
+    .radio-pill-group input[type="radio"]:checked + label {
+      background: #fff; color: #0A315D; box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    }
+    .radio-pill-group input[type="radio"][value="Cumple"]:checked + label { background: #16a34a; color: #fff; }
+    .radio-pill-group input[type="radio"][value="No Cumple"]:checked + label { background: #dc2626; color: #fff; }
+    .radio-pill-group input[type="radio"][value="No Aplica"]:checked + label { background: #64748b; color: #fff; }
+
+    /* ── Checklist Trabajadores ── */
+    .checklist-wrap { border: 1.5px solid #cbd5e1; border-radius: 8px; background: #fff; overflow: hidden; margin-top: 10px; }
+    .checklist-header {
+      padding: 10px 14px; background: #f8fafc; border-bottom: 1.5px solid #cbd5e1;
+      display: flex; gap: 10px; align-items: center;
+    }
+    .checklist-search { flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: .85rem; }
+    .checklist-body { max-height: 280px; overflow-y: auto; }
+    .checklist-item {
+      display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+      border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background .12s;
+    }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-item:hover { background: #f8fafc; }
+    .checklist-item input[type="checkbox"] { width: 17px; height: 17px; accent-color: #0A315D; cursor: pointer; }
+    .checklist-item-info { flex: 1; }
+    .checklist-item-name { font-size: .85rem; font-weight: 700; color: #1e293b; }
+    .checklist-item-sub { font-size: .75rem; color: #64748b; }
+
+    /* ── Chips Trabajadores Seleccionados ── */
+    .chips-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .worker-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;
+      padding: 4px 10px; border-radius: 999px; font-size: .76rem; font-weight: 600;
+    }
+    .worker-chip-remove {
+      cursor: pointer; font-size: .9rem; line-height: 1; color: #0284c7;
+    }
+    .worker-chip-remove:hover { color: #dc2626; }
+
+    /* ── Evidencias ── */
+    .evidencias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 10px; }
+    .evidencia-thumb-box {
+      position: relative; width: 100%; padding-top: 100%; border-radius: 6px; overflow: hidden;
+      border: 1px solid #cbd5e1; background: #f1f5f9;
+    }
+    .evidencia-thumb-box img {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+    }
+    .evidencia-remove {
+      position: absolute; top: 3px; right: 3px; background: rgba(220,38,38,.85); color: #fff;
+      border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer;
+      font-size: .75rem; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Botones ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 18px; border: none; border-radius: 6px;
+      font-size: .86rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: all .15s;
+    }
+    .btn-primary { background: #0A315D; color: #fff; }
+    .btn-primary:hover { background: #072242; box-shadow: 0 4px 12px rgba(10,49,93,.25); }
+    .btn-secondary { background: #f1f5f9; border: 1.5px solid #cbd5e1; color: #475569; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger { background: #dc2626; color: #fff; }
+
+    /* ── Banner Parada ── */
+    .banner-parada {
+      border: 1.5px solid #dc2626; background: #fef2f2; color: #991b1b; border-radius: 8px;
+      padding: 10px 14px; font-size: .8rem; font-weight: 600; line-height: 1.4; margin-top: 10px;
+    }
+
+    /* ── Loading Overlay ── */
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,.85); display: flex; align-items: center; justify-content: center;
+      z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .2s;
+      flex-direction: column; gap: 10px;
+    }
+    .loading-overlay.active { opacity: 1; pointer-events: auto; }
+    .spinner {
+      width: 40px; height: 40px; border: 4px solid #cbd5e1; border-top-color: #0A315D;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 12px 18px; border-radius: 6px; color: #fff; font-size: .88rem; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+    .toast.success { background: #16a34a; }
+    .toast.error { background: #dc2626; }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- Header Card -->
+  <div class="card-titulo">
+    <div>
+      <div class="page-title" id="page-heading">Nuevo Análisis de Trabajo Seguro (ATS)</div>
+      <div class="page-sub">Cargue y Descargue de Mercancías en Muelles — Estibador Manual y/o Eléctrico</div>
+      <div style="margin-top: 8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="marcarTodoCumpleFormulario()" style="font-weight: 700; background: #e0f2fe; color: #0369a1; border-color: #bae6fd;">
+          ✓ Marcar todo "Cumple"
+        </button>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <span class="badge-code">📄 SST-F-036 · Versión 02 · 23/09/2026</span>
+        <span class="badge-user" id="badge-usuario">Cargando usuario...</span>
+      </div>
+    </div>
+    <img src="https://storage.googleapis.com/logyser-recibos-public/logo.png" alt="LOG&amp;SER">
+  </div>
+
+  <form id="form-ats" onsubmit="guardarATS(event)">
+
+    <!-- 1. DATOS GENERALES -->
+    <div class="card card-navy">
+      <div class="section-title">1. Datos Generales y Vigencia Semanal</div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="lbl">Regional <span class="req">*</span></label>
+          <select id="ats-regional" required onchange="onRegionalChange()">
+            <option value="">Seleccione Regional...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">Operación <span class="req">*</span></label>
+          <select id="ats-operacion" required onchange="onOperacionChange()">
+            <option value="">Seleccione Operación...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="lbl">Vigencia Desde <span class="req">*</span></label>
+          <input type="date" id="ats-desde" required>
+        </div>
+        <div class="field">
+          <label class="lbl">Vigencia Hasta <span class="req">*</span></label>
+          <input type="date" id="ats-hasta" required>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="lbl">Turno(s)</label>
+          <input type="text" id="ats-turnos" placeholder="Ej: Turno 1 / Turno 2 / Rotativo" value="Turno 1 / Turno 2">
+        </div>
+        <div class="field">
+          <label class="lbl">Horario(s)</label>
+          <input type="text" id="ats-horarios" placeholder="Ej: 06:00 - 14:00, 14:00 - 22:00" value="06:00 - 14:00 / 14:00 - 22:00">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="lbl">Responsable Operación (Coordinador)</label>
+          <input type="text" id="ats-coord-nombre" placeholder="Nombre del Coordinador">
+        </div>
+        <div class="field">
+          <label class="lbl">Responsable SST (Creador)</label>
+          <input type="text" id="ats-sst-nombre" readonly style="background:#f8fafc; font-weight:600;">
+        </div>
+      </div>
+
+      <div style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 8px 12px; border-radius: 6px; font-size: .78rem; font-style: italic;">
+        ⚠️ <strong>Vigencia semanal:</strong> Aplica mientras la actividad, personal autorizado, equipos y condiciones se mantengan. Si cambia una condición relevante o aparece un peligro no controlado, detener, revisar y actualizar el ATS.
+      </div>
+    </div>
+
+    <!-- 2. ANÁLISIS DE LA TAREA (12 PASOS) -->
+    <div class="card card-blue">
+      <div class="section-title">
+        <span>2. Análisis de la Tarea — Paso a Paso</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="marcarSeccionCumple('paso')" style="font-size: .75rem; padding: 3px 8px;">
+          ✓ Marcar todo "Cumple"
+        </button>
+      </div>
+
+      <div id="container-pasos">
+        <!-- Renderizado dinámicamente con los 12 pasos -->
+      </div>
+    </div>
+
+    <!-- 3. PREOPERACIONAL ESTIBADORES -->
+    <div class="card card-amber">
+      <div class="section-title">3. Lista de Verificación Preoperacional (Estibadores)</div>
+
+      <div class="grid-2">
+        <!-- Estibador Manual -->
+        <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; background: #fff;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #0A315D; font-size: .85rem;">Estibador Manual</div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="marcarSeccionCumple('man')" style="font-size: .72rem; padding: 2px 7px;">✓ Marcar todo "Cumple"</button>
+          </div>
+          <div id="container-estibador-manual"></div>
+          <div class="field" style="margin-top: 10px;">
+            <label class="lbl">Observaciones (Manual):</label>
+            <textarea id="ats-obs-manual" placeholder="Observaciones del estibador manual..."></textarea>
+          </div>
+        </div>
+
+        <!-- Estibador Eléctrico -->
+        <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; background: #fff;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #0A315D; font-size: .85rem;">Estibador Eléctrico</div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="marcarSeccionCumple('elec')" style="font-size: .72rem; padding: 2px 7px;">✓ Marcar todo "Cumple"</button>
+          </div>
+          <div id="container-estibador-electrico"></div>
+          <div class="field" style="margin-top: 10px;">
+            <label class="lbl">Observaciones (Eléctrico):</label>
+            <textarea id="ats-obs-electrico" placeholder="Observaciones del estibador eléctrico..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. VERIFICACIÓN EPP -->
+    <div class="card card-purple">
+      <div class="section-title">
+        <span>4. Verificación de EPP para la Actividad</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="marcarSeccionCumple('epp')" style="font-size: .75rem; padding: 3px 8px;">
+          ✓ Marcar todo "Cumple"
+        </button>
+      </div>
+      <div id="container-epp"></div>
+    </div>
+
+    <!-- 5. OTRAS HERRAMIENTAS -->
+    <div class="card card-navy">
+      <div class="section-title">
+        <span>5. Otras Herramientas a Utilizar</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="marcarSeccionCumple('herr')" style="font-size: .75rem; padding: 3px 8px;">
+          ✓ Marcar todo "Cumple"
+        </button>
+      </div>
+      <div id="container-herramientas"></div>
+
+      <div class="field" style="margin-top: 12px;">
+        <label class="lbl">Herramienta Adicional (Mencionar cuál si aplica):</label>
+        <input type="text" id="ats-herr-adic" placeholder="Especifique herramienta adicional...">
+      </div>
+
+      <div class="banner-parada">
+        🛑 <strong>CRITERIO DE PARADA:</strong> Falla del equipo, carga inestable, persona en zona de maniobra, vehículo no inmovilizado, acceso inseguro, EPP requerido no disponible o cualquier peligro no controlado obliga a detener la actividad hasta implementar y verificar controles.
+      </div>
+    </div>
+
+    <!-- 6. ASISTENTES / TRABAJADORES -->
+    <div class="card card-blue">
+      <div class="section-title">
+        <span>6. Personal Cubierto por la Semana</span>
+        <span style="font-size: .76rem; font-weight: 700; color: #0A315D;">Seleccionados: <span id="count-trabajadores">0</span></span>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="lbl">Regional de Trabajadores</label>
+          <select id="sel-trab-regional" onchange="cargarTrabajadoresChecklist()">
+            <option value="">Seleccione Regional...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">Operación de Trabajadores</label>
+          <select id="sel-trab-operacion" onchange="cargarTrabajadoresChecklist()">
+            <option value="">Seleccione Operación...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="checklist-wrap" id="wrap-checklist" style="display: none;">
+        <div class="checklist-header">
+          <input type="text" class="checklist-search" id="input-buscar-trabajador" placeholder="Buscar por nombre o cédula..." oninput="filtrarTrabajadoresLista()">
+          <label style="display:flex; align-items:center; gap:6px; font-size:.8rem; font-weight:700; cursor:pointer;">
+            <input type="checkbox" id="chk-todos-trab" onchange="toggleSeleccionarTodosTrab(this.checked)">
+            Todos
+          </label>
+        </div>
+        <div class="checklist-body" id="body-checklist-trab"></div>
+      </div>
+
+      <div class="chips-container" id="chips-trabajadores"></div>
+    </div>
+
+    <!-- 7. EVIDENCIAS FOTOGRÁFICAS -->
+    <div class="card card-amber">
+      <div class="section-title">
+        <span>7. Registro Fotográfico de Evidencia</span>
+        <span style="font-size:.74rem; color:#64748b;">Máximo 5 fotos</span>
+      </div>
+      <div>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('input-fotos').click()">
+          📷 + Cargar Fotos de Evidencia
+        </button>
+        <input type="file" id="input-fotos" accept="image/*" multiple style="display: none;" onchange="manejarCargaFotos(event)">
+      </div>
+      <div class="evidencias-grid" id="grid-evidencias"></div>
+    </div>
+
+    <!-- 8. OBSERVACIONES GENERALES -->
+    <div class="card card-navy">
+      <div class="section-title">8. Observaciones Generales</div>
+      <div class="field">
+        <textarea id="ats-obs-generales" placeholder="Observaciones adicionales relevantes para la operación de la semana..."></textarea>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+      <button type="button" class="btn btn-secondary" onclick="cerrarFormulario()">Cancelar</button>
+      <button type="submit" class="btn btn-primary" id="btn-guardar">💾 Guardar ATS</button>
+    </div>
+
+  </form>
+
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div id="loading-text" style="font-weight: 600; color: #0A315D;">Cargando...</div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  // ── CONSTANTES ESTÁNDAR FORMATO SST-F-036 v02 ──
+  const PASOS_ESTANDAR = [
+    { num: 1, paso: 'Llegada y aproximación del vehículo/carga al muelle.', peligros: 'Vehículo-peatón, reversa, puntos ciegos. Atropellamiento/choque.', controles: 'Controlar acceso y maniobra; mantener peatones fuera de trayectoria; coordinar señales.' },
+    { num: 2, paso: 'Posicionamiento e inmovilización del vehículo.', peligros: 'Mal alineamiento o movimiento inesperado. Atrapamiento/caída de carga.', controles: 'Confirmar muelle, área despejada e inmovilización antes de iniciar.' },
+    { num: 3, paso: 'Verificación de muelle, rampa/puente y área.', peligros: 'Bordes, desniveles, piso húmedo, obstáculos, iluminación. Caídas/pérdida de control.', controles: 'Verificar condición y capacidad del acceso; ruta despejada e iluminación suficiente.' },
+    { num: 4, paso: 'Apertura de puertas y verificación inicial de carga.', peligros: 'Carga desplazada/inestable. Golpes o caída de objetos.', controles: 'Abrir controladamente fuera de la trayectoria; detener si la carga está inestable.' },
+    { num: 5, paso: 'Preoperacional del estibador.', peligros: 'Fallas en horquillas, ruedas, timón, hidráulico, freno, controles, batería/alarma.', controles: 'Inspeccionar antes del uso; no utilizar equipo con defectos que afecten seguridad.' },
+    { num: 6, paso: 'Verificación de pallet, peso, dimensiones y estabilidad.', peligros: 'Pallet deteriorado/capacidad insuficiente. Caída o volcamiento.', controles: 'Confirmar integridad, estabilidad, capacidad nominal y visibilidad antes de mover.' },
+    { num: 7, paso: 'Toma y desplazamiento de la carga.', peligros: 'Atrapamiento, peatones, colisión, visibilidad limitada.', controles: 'Centrar horquillas; manos/pies alejados; ruta segura, velocidad controlada y distancia.' },
+    { num: 8, paso: 'Operación estibador manual.', peligros: 'Sobreesfuerzo y atrapamiento con timón/ruedas.', controles: 'Controlar timón, conservar espacio y extremidades alejadas; no transportar personas.' },
+    { num: 9, paso: 'Operación estibador eléctrico.', peligros: 'Movimiento inesperado, colisión, uso no autorizado.', controles: 'Solo personal autorizado/capacitado; comprobar controles, freno y dispositivos de seguridad.' },
+    { num: 10, paso: 'Ingreso a vehículo y cargue/descargue.', peligros: 'Movimiento vehículo, borde muelle, acceso inseguro.', controles: 'Ingresar con vehículo inmovilizado y rampa/puente verificados; controlar bordes y personas.' },
+    { num: 11, paso: 'Ubicación/descenso de mercancía.', peligros: 'Descenso sobre extremidades o carga inestable.', controles: 'Superficie estable; bajar lento; zona libre; comprobar estabilidad antes de retirar horquillas.' },
+    { num: 12, paso: 'Cierre y liberación del muelle.', peligros: 'Equipo/riesgos residuales, salida prematura.', controles: 'Estacionar, bajar horquillas, retirar residuos, reportar novedades y liberar según procedimiento.' }
+  ];
+
+  const PREP_MANUAL_ITEMS = [
+    '1. Capacidad/identificación legible y compatible.',
+    '2. Horquillas sin daños/deformaciones.',
+    '3. Ruedas/rodillos en buen estado.',
+    '4. Timón/manija firme y controlable.',
+    '5. Sistema hidráulico sin fugas; eleva/desciende controladamente.',
+    '6. Estructura/uniones sin daños visibles.',
+    '7. Equipo inspeccionado antes del uso.'
+  ];
+
+  const PREP_ELECTRICO_ITEMS = [
+    '1. Capacidad/identificación legible y compatible.',
+    '2. Horquillas y ruedas/rodillos en buen estado.',
+    '3. Timón y mandos responden correctamente.',
+    '4. Freno/control de parada operativo.',
+    '5. Alarma/bocina y dispositivos de seguridad operativos.',
+    '6. Batería/conexiones sin daños visibles y carga suficiente.',
+    '7. Operador autorizado/capacitado y equipo inspeccionado.'
+  ];
+
+  const EPP_ITEMS = [
+    '1. Calzado de seguridad en buen estado y correctamente usado.',
+    '2. Guantes de protección adecuados al tipo de mercancía y riesgo de manipulación.',
+    '3. Uniforme/ropa de trabajo requerida para la operación.',
+    '4. Prenda de alta visibilidad cuando la evaluación del sitio/operación lo requiera.',
+    '5. Protección visual cuando exista riesgo de proyección o condición definida por la evaluación.',
+    '6. Protección auditiva/respiratoria u otro EPP cuando la evaluación específica lo determine.'
+  ];
+
+  const HERR_ITEMS = [
+    '1. Gancho(s): estructura, punta, mango y unión en buen estado; sin fisuras, deformaciones ni elementos sueltos.',
+    '2. Escalera(s): peldaños, largueros y zapatas en buen estado; limpia, estable y sin daños visibles.',
+    '3. Martillo(s): cabeza firme, mango sin fisuras/roturas y superficie de golpe en buen estado.',
+    '4. Sierra(s): hoja/disco, mango o guarda en buen estado; sin daños visibles y adecuada para la tarea.',
+    '5. La herramienta seleccionada es adecuada para la tarea y se encuentra limpia y en condiciones seguras de uso.',
+    '6. El trabajador conoce el uso seguro de la herramienta y la emplea únicamente para su función prevista.',
+    '7. El área de uso está despejada y se controlan personas cercanas, puntos de golpe, corte, caída o atrapamiento.',
+    '8. Los EPP requeridos según la herramienta y el riesgo están disponibles y se usan correctamente.'
+  ];
+
+  // ── ESTADO DE LA VISTA ──
+  let usuarioActual = '';
+  let idAtsEditando = null;
+  let opsPorRegional = {};
+  let trabajadoresSeleccionados = []; // { id_vinculacion, identificacion, nombre_trabajador, cargo, operacion, celular, email }
+  let listaTrabajadoresActiva = [];
+  let evidenciasCargadas = []; // { url_evidencia, base64, nombre_archivo, contentType }
+
+  // ── INICIALIZACIÓN ──
+  document.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+    usuarioActual = params.get('usuario') || '';
+    idAtsEditando = params.get('id') || null;
+
+    document.getElementById('badge-usuario').textContent = usuarioActual ? `👤 ${usuarioActual}` : 'Usuario anónimo';
+    document.getElementById('ats-sst-nombre').value = usuarioActual;
+
+    // Fechas por defecto: Lunes a Sábado de la semana en curso
+    const hoy = new Date();
+    const diaSemana = hoy.getDay(); // 0: Dom, 1: Lun
+    const distanciaLunes = (diaSemana === 0 ? -6 : 1) - diaSemana;
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() + distanciaLunes);
+    const sabado = new Date(lunes);
+    sabado.setDate(lunes.getDate() + 5);
+
+    document.getElementById('ats-desde').value = lunes.toISOString().slice(0, 10);
+    document.getElementById('ats-hasta').value = sabado.toISOString().slice(0, 10);
+
+    renderizarSeccionesEstandar();
+
+    await cargarAlcanceYRegionales();
+
+    if (idAtsEditando) {
+      await cargarATSExistente(idAtsEditando);
+    }
+  });
+
+  function showLoading(msg = 'Cargando...') {
+    document.getElementById('loading-text').textContent = msg;
+    document.getElementById('loading-overlay').classList.add('active');
+  }
+  function hideLoading() {
+    document.getElementById('loading-overlay').classList.remove('active');
+  }
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  // ── RENDERIZAR TABLAS Y CHECKLISTS DINÁMICOS ──
+  function renderizarSeccionesEstandar() {
+    // 1. Pasos
+    const cPasos = document.getElementById('container-pasos');
+    cPasos.innerHTML = PASOS_ESTANDAR.map((p, idx) => `
+      <div class="step-card" data-step="${p.num}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:240px;">
+            <div class="step-title">${p.num}. ${p.paso}</div>
+            <div class="step-desc"><strong>Peligros:</strong> ${p.peligros}</div>
+            <div class="step-desc" style="color:#1e3a8a;"><strong>Controles:</strong> ${p.controles}</div>
+          </div>
+          <div class="radio-pill-group">
+            <input type="radio" name="paso_${p.num}" id="paso_${p.num}_c" value="Cumple">
+            <label for="paso_${p.num}_c">Cumple</label>
+            <input type="radio" name="paso_${p.num}" id="paso_${p.num}_nc" value="No Cumple">
+            <label for="paso_${p.num}_nc">No Cumple</label>
+            <input type="radio" name="paso_${p.num}" id="paso_${p.num}_na" value="No Aplica">
+            <label for="paso_${p.num}_na">No Aplica</label>
+          </div>
+        </div>
+        <div style="margin-top:6px;">
+          <input type="text" id="obs_paso_${p.num}" placeholder="Observaciones / medidas adicionales del paso (opcional)..." style="font-size:.78rem; padding:5px 8px;">
+        </div>
+      </div>
+    `).join('');
+
+    // 2. Estibadores
+    const cManual = document.getElementById('container-estibador-manual');
+    cManual.innerHTML = PREP_MANUAL_ITEMS.map((it, i) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f1f5f9; font-size:.78rem; flex-wrap:wrap;">
+        <span style="flex:1; min-width:180px;">${it}</span>
+        <div class="radio-pill-group">
+          <input type="radio" name="man_${i}" id="man_${i}_c" value="Cumple"><label for="man_${i}_c">Cumple</label>
+          <input type="radio" name="man_${i}" id="man_${i}_nc" value="No Cumple"><label for="man_${i}_nc">No Cumple</label>
+          <input type="radio" name="man_${i}" id="man_${i}_na" value="No Aplica"><label for="man_${i}_na">No Aplica</label>
+        </div>
+      </div>
+    `).join('');
+
+    const cElec = document.getElementById('container-estibador-electrico');
+    cElec.innerHTML = PREP_ELECTRICO_ITEMS.map((it, i) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f1f5f9; font-size:.78rem; flex-wrap:wrap;">
+        <span style="flex:1; min-width:180px;">${it}</span>
+        <div class="radio-pill-group">
+          <input type="radio" name="elec_${i}" id="elec_${i}_c" value="Cumple"><label for="elec_${i}_c">Cumple</label>
+          <input type="radio" name="elec_${i}" id="elec_${i}_nc" value="No Cumple"><label for="elec_${i}_nc">No Cumple</label>
+          <input type="radio" name="elec_${i}" id="elec_${i}_na" value="No Aplica"><label for="elec_${i}_na">No Aplica</label>
+        </div>
+      </div>
+    `).join('');
+
+    // 3. EPP
+    const cEpp = document.getElementById('container-epp');
+    cEpp.innerHTML = EPP_ITEMS.map((it, i) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:.8rem; flex-wrap:wrap;">
+        <span style="flex:1; min-width:200px;">${it}</span>
+        <div class="radio-pill-group">
+          <input type="radio" name="epp_${i}" id="epp_${i}_c" value="Cumple"><label for="epp_${i}_c">Cumple</label>
+          <input type="radio" name="epp_${i}" id="epp_${i}_nc" value="No Cumple"><label for="epp_${i}_nc">No Cumple</label>
+          <input type="radio" name="epp_${i}" id="epp_${i}_na" value="No Aplica"><label for="epp_${i}_na">No Aplica</label>
+        </div>
+      </div>
+    `).join('');
+
+    // 4. Herramientas
+    const cHerr = document.getElementById('container-herramientas');
+    cHerr.innerHTML = HERR_ITEMS.map((it, i) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:.8rem; flex-wrap:wrap;">
+        <span style="flex:1; min-width:200px;">${it}</span>
+        <div class="radio-pill-group">
+          <input type="radio" name="herr_${i}" id="herr_${i}_c" value="Cumple"><label for="herr_${i}_c">Cumple</label>
+          <input type="radio" name="herr_${i}" id="herr_${i}_nc" value="No Cumple"><label for="herr_${i}_nc">No Cumple</label>
+          <input type="radio" name="herr_${i}" id="herr_${i}_na" value="No Aplica"><label for="herr_${i}_na">No Aplica</label>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── FUNCIONES PARA MARCAR "CUMPLE" MASIVAMENTE ──
+  function marcarSeccionCumple(prefix) {
+    const inputs = document.querySelectorAll(`input[type="radio"][value="Cumple"]`);
+    inputs.forEach(inp => {
+      if (inp.name && inp.name.startsWith(prefix)) {
+        inp.checked = true;
+      }
+    });
+  }
+
+  function marcarTodoCumpleFormulario() {
+    marcarSeccionCumple('paso');
+    marcarSeccionCumple('man');
+    marcarSeccionCumple('elec');
+    marcarSeccionCumple('epp');
+    marcarSeccionCumple('herr');
+    showToast('Todos los ítems marcados como "Cumple"', 'success');
+  }
+
+  // ── CARGAR ALCANCE Y REGIONALES DEL USUARIO ──
+  async function cargarAlcanceYRegionales() {
+    try {
+      const res = await fetch(`/ats/api/usuario-alcance?id=${encodeURIComponent(usuarioActual)}`);
+      const data = await res.json();
+      opsPorRegional = data.opsPorRegional || {};
+      if (data.nombre) {
+        document.getElementById('ats-sst-nombre').value = data.nombre;
+        document.getElementById('badge-usuario').textContent = `👤 ${data.nombre}`;
+      }
+
+      const selReg = document.getElementById('ats-regional');
+      const selTrabReg = document.getElementById('sel-trab-regional');
+      selReg.innerHTML = '<option value="">Seleccione Regional...</option>';
+      selTrabReg.innerHTML = '<option value="">Seleccione Regional...</option>';
+
+      Object.keys(opsPorRegional).forEach(reg => {
+        selReg.appendChild(new Option(reg, reg));
+        selTrabReg.appendChild(new Option(reg, reg));
+      });
+    } catch (e) {
+      console.warn('[ats] No se pudo cargar alcance del usuario:', e);
+    }
+  }
+
+  function onRegionalChange() {
+    const reg = document.getElementById('ats-regional').value;
+    const selOp = document.getElementById('ats-operacion');
+    selOp.innerHTML = '<option value="">Seleccione Operación...</option>';
+    const ops = opsPorRegional[reg] || [];
+    ops.forEach(op => selOp.appendChild(new Option(op, op)));
+
+    // Sincronizar automáticamente con el selector de trabajadores si no se ha elegido
+    if (!document.getElementById('sel-trab-regional').value) {
+      document.getElementById('sel-trab-regional').value = reg;
+      const selTrabOp = document.getElementById('sel-trab-operacion');
+      selTrabOp.innerHTML = '<option value="">Seleccione Operación...</option>';
+      ops.forEach(op => selTrabOp.appendChild(new Option(op, op)));
+    }
+  }
+
+  async function onOperacionChange() {
+    const reg = document.getElementById('ats-regional').value;
+    const op = document.getElementById('ats-operacion').value;
+    if (!op) return;
+
+    // Sincronizar con trabajadores
+    document.getElementById('sel-trab-operacion').value = op;
+    await cargarTrabajadoresChecklist();
+
+    // Consultar coordinador sugerido
+    try {
+      const res = await fetch(`/ats/api/coordinador-sugerido?operacion=${encodeURIComponent(op)}&regional=${encodeURIComponent(reg)}`);
+      const coord = await res.json();
+      if (coord && coord.nombre) {
+        document.getElementById('ats-coord-nombre').value = coord.nombre;
+      }
+    } catch (_) {}
+  }
+
+  // ── CHECKLIST DE TRABAJADORES ACTIVOS ──
+  async function cargarTrabajadoresChecklist() {
+    const reg = document.getElementById('sel-trab-regional').value;
+    const op = document.getElementById('sel-trab-operacion').value;
+    const wrap = document.getElementById('wrap-checklist');
+    const body = document.getElementById('body-checklist-trab');
+
+    if (!reg || !op) {
+      wrap.style.display = 'none';
+      return;
+    }
+
+    showLoading('Consultando trabajadores en Maestro_Vinculación...');
+    try {
+      const res = await fetch(`/ats/api/trabajadores-por-operacion?regional=${encodeURIComponent(reg)}&operacion=${encodeURIComponent(op)}`);
+      listaTrabajadoresActiva = await res.json();
+      wrap.style.display = 'block';
+      renderizarChecklistTrabajadores(listaTrabajadoresActiva);
+    } catch (e) {
+      showToast('Error consultando trabajadores', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  function renderizarChecklistTrabajadores(items) {
+    const body = document.getElementById('body-checklist-trab');
+    if (!items.length) {
+      body.innerHTML = '<div style="padding:16px; font-size:.82rem; color:#64748b; text-align:center;">No se encontraron trabajadores activos en esta operación.</div>';
+      return;
+    }
+
+    body.innerHTML = items.map(t => {
+      const isSel = trabajadoresSeleccionados.some(x => String(x.identificacion).trim() === String(t.identificacion).trim());
+      return `
+        <div class="checklist-item" onclick="toggleTrabajador('${t.identificacion}')">
+          <input type="checkbox" id="chk_trab_${t.identificacion}" ${isSel ? 'checked' : ''} onclick="event.stopPropagation(); toggleTrabajador('${t.identificacion}')">
+          <div class="checklist-item-info">
+            <div class="checklist-item-name">${t.nombre_trabajador}</div>
+            <div class="checklist-item-sub">C.C. ${t.identificacion} · Cargo: ${t.cargo || '—'} · Op: ${t.operacion}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function filtrarTrabajadoresLista() {
+    const q = document.getElementById('input-buscar-trabajador').value.toLowerCase().trim();
+    const filtrados = listaTrabajadoresActiva.filter(t =>
+      (t.nombre_trabajador && t.nombre_trabajador.toLowerCase().includes(q)) ||
+      (t.identificacion && String(t.identificacion).includes(q))
+    );
+    renderizarChecklistTrabajadores(filtrados);
+  }
+
+  function toggleTrabajador(ident) {
+    const t = listaTrabajadoresActiva.find(x => String(x.identificacion).trim() === String(ident).trim()) ||
+              trabajadoresSeleccionados.find(x => String(x.identificacion).trim() === String(ident).trim());
+    if (!t) return;
+
+    const idx = trabajadoresSeleccionados.findIndex(x => String(x.identificacion).trim() === String(ident).trim());
+    if (idx >= 0) {
+      trabajadoresSeleccionados.splice(idx, 1);
+    } else {
+      trabajadoresSeleccionados.push({
+        id_vinculacion: t.id_vinculacion || null,
+        identificacion: t.identificacion,
+        nombre_trabajador: t.nombre_trabajador,
+        cargo: t.cargo,
+        operacion: t.operacion,
+        celular: t.celular || '',
+        email: t.email || ''
+      });
+    }
+
+    actualizarChipsTrabajadores();
+
+    const chk = document.getElementById(`chk_trab_${ident}`);
+    if (chk) chk.checked = (idx < 0);
+  }
+
+  function toggleSeleccionarTodosTrab(checked) {
+    listaTrabajadoresActiva.forEach(t => {
+      const idx = trabajadoresSeleccionados.findIndex(x => String(x.identificacion).trim() === String(t.identificacion).trim());
+      if (checked && idx < 0) {
+        trabajadoresSeleccionados.push({
+          id_vinculacion: t.id_vinculacion || null,
+          identificacion: t.identificacion,
+          nombre_trabajador: t.nombre_trabajador,
+          cargo: t.cargo,
+          operacion: t.operacion,
+          celular: t.celular || '',
+          email: t.email || ''
+        });
+      } else if (!checked && idx >= 0) {
+        trabajadoresSeleccionados = trabajadoresSeleccionados.filter(x => String(x.identificacion).trim() !== String(t.identificacion).trim());
+      }
+    });
+
+    actualizarChipsTrabajadores();
+    renderizarChecklistTrabajadores(listaTrabajadoresActiva);
+  }
+
+  function actualizarChipsTrabajadores() {
+    document.getElementById('count-trabajadores').textContent = trabajadoresSeleccionados.length;
+    const c = document.getElementById('chips-trabajadores');
+    c.innerHTML = trabajadoresSeleccionados.map(t => `
+      <span class="worker-chip">
+        ${t.nombre_trabajador.split(' ')[0]} (C.C. ${t.identificacion})
+        <span class="worker-chip-remove" onclick="toggleTrabajador('${t.identificacion}')">&times;</span>
+      </span>
+    `).join('');
+  }
+
+  // ── CARGA Y COMPRESIÓN DE FOTOS DE EVIDENCIA ──
+  async function manejarCargaFotos(e) {
+    const files = Array.from(e.target.files);
+    if (evidenciasCargadas.length + files.length > 5) {
+      showToast('Máximo 5 fotos de evidencia permitidas', 'error');
+      return;
+    }
+
+    showLoading('Comprimiendo imágenes...');
+    try {
+      for (const file of files) {
+        const base64 = await comprimirImagen(file, 1200, 0.75);
+        evidenciasCargadas.push({
+          base64,
+          nombre_archivo: file.name,
+          contentType: 'image/jpeg'
+        });
+      }
+      renderizarEvidencias();
+    } catch (err) {
+      showToast('Error procesando fotos: ' + err.message, 'error');
+    } finally {
+      hideLoading();
+      e.target.value = '';
+    }
+  }
+
+  function comprimirImagen(file, maxWidth = 1200, quality = 0.75) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = ev => {
+        const img = new Image();
+        img.src = ev.target.result;
+        img.onload = () => {
+          let w = img.width;
+          let h = img.height;
+          if (w > maxWidth) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  }
+
+  function renderizarEvidencias() {
+    const g = document.getElementById('grid-evidencias');
+    g.innerHTML = evidenciasCargadas.map((ev, i) => `
+      <div class="evidencia-thumb-box">
+        <img src="${ev.url_evidencia || ev.base64}" alt="Evidencia">
+        <button type="button" class="evidencia-remove" onclick="removerFoto(${i})">&times;</button>
+      </div>
+    `).join('');
+  }
+
+  function removerFoto(idx) {
+    evidenciasCargadas.splice(idx, 1);
+    renderizarEvidencias();
+  }
+
+  // ── GUARDAR ATS ──
+  async function guardarATS(e) {
+    e.preventDefault();
+
+    if (!trabajadoresSeleccionados.length) {
+      showToast('Debe incluir al menos un trabajador en el ATS', 'error');
+      return;
+    }
+
+    // Recolectar 12 pasos
+    const pasosAnalisis = PASOS_ESTANDAR.map(p => {
+      const val = document.querySelector(`input[name="paso_${p.num}"]:checked`)?.value || '';
+      const obs = document.getElementById(`obs_paso_${p.num}`)?.value || '';
+      return {
+        num: p.num,
+        paso: p.paso,
+        peligros: p.peligros,
+        controles: p.controles,
+        cumple: val || 'Cumple',
+        obs
+      };
+    });
+
+    // Recolectar preoperacionales
+    const prepManual = PREP_MANUAL_ITEMS.map((it, i) => ({
+      item: it,
+      cumple: document.querySelector(`input[name="man_${i}"]:checked`)?.value || 'Cumple'
+    }));
+    const prepElec = PREP_ELECTRICO_ITEMS.map((it, i) => ({
+      item: it,
+      cumple: document.querySelector(`input[name="elec_${i}"]:checked`)?.value || 'Cumple'
+    }));
+
+    // Recolectar EPP
+    const eppList = EPP_ITEMS.map((it, i) => ({
+      item: it,
+      cumple: document.querySelector(`input[name="epp_${i}"]:checked`)?.value || 'Cumple'
+    }));
+
+    // Recolectar Herramientas
+    const herrList = HERR_ITEMS.map((it, i) => ({
+      item: it,
+      cumple: document.querySelector(`input[name="herr_${i}"]:checked`)?.value || 'Cumple'
+    }));
+
+    const payload = {
+      regional: document.getElementById('ats-regional').value,
+      operacion: document.getElementById('ats-operacion').value,
+      muelle_ubicacion: null,
+      vigencia_desde: document.getElementById('ats-desde').value,
+      vigencia_hasta: document.getElementById('ats-hasta').value,
+      turnos: document.getElementById('ats-turnos').value,
+      horarios: document.getElementById('ats-horarios').value,
+      coordinador_operacion_nombre: document.getElementById('ats-coord-nombre').value,
+      pasos_analisis: pasosAnalisis,
+      preoperacional_estibadores: {
+        manual: prepManual,
+        electrico: prepElec,
+        obs_manual: document.getElementById('ats-obs-manual').value,
+        obs_electrico: document.getElementById('ats-obs-electrico').value
+      },
+      verificacion_epp: eppList,
+      otras_herramientas: herrList,
+      herramienta_adicional_texto: document.getElementById('ats-herr-adic').value,
+      observaciones_generales: document.getElementById('ats-obs-generales').value,
+      trabajadores: trabajadoresSeleccionados,
+      evidencias: evidenciasCargadas
+    };
+
+    const btn = document.getElementById('btn-guardar');
+    btn.disabled = true;
+    showLoading('Guardando registro ATS en el sistema...');
+
+    try {
+      const url = idAtsEditando ? `/ats/api/registro/${idAtsEditando}?usuario=${encodeURIComponent(usuarioActual)}` : `/ats/api/registro?usuario=${encodeURIComponent(usuarioActual)}`;
+      const method = idAtsEditando ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No fue posible guardar el ATS');
+
+      showToast(`ATS #${data.id_ats || idAtsEditando} guardado exitosamente`, 'success');
+
+      setTimeout(() => {
+        if (window.parent && window.parent !== window && window.parent.cerrarModalCrear) {
+          window.parent.cerrarModalCrear();
+          if (window.parent.actualizarVistaActual) window.parent.actualizarVistaActual();
+        } else {
+          window.location.href = `/sst?tab=ats&usuario=${encodeURIComponent(usuarioActual)}`;
+        }
+      }, 1000);
+    } catch (err) {
+      showToast(err.message, 'error');
+      btn.disabled = false;
+      hideLoading();
+    }
+  }
+
+  function cerrarFormulario() {
+    if (window.parent && window.parent !== window && window.parent.cerrarModalCrear) {
+      window.parent.cerrarModalCrear();
+    } else {
+      window.history.back();
+    }
+  }
+
+  // ── CARGAR ATS EXISTENTE SI ES EDICIÓN ──
+  async function cargarATSExistente(id) {
+    document.getElementById('page-heading').textContent = `Editar Análisis de Trabajo Seguro (ATS #${id})`;
+    showLoading('Cargando datos del ATS...');
+    try {
+      const res = await fetch(`/ats/api/registro/${id}?usuario=${encodeURIComponent(usuarioActual)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      document.getElementById('ats-regional').value = data.regional;
+      onRegionalChange();
+      document.getElementById('ats-operacion').value = data.operacion;
+      if (data.vigencia_desde) document.getElementById('ats-desde').value = data.vigencia_desde.slice(0, 10);
+      if (data.vigencia_hasta) document.getElementById('ats-hasta').value = data.vigencia_hasta.slice(0, 10);
+      document.getElementById('ats-turnos').value = data.turnos || '';
+      document.getElementById('ats-horarios').value = data.horarios || '';
+      document.getElementById('ats-coord-nombre').value = data.coordinador_operacion_nombre || '';
+      document.getElementById('ats-sst-nombre').value = data.responsable_sst_nombre || '';
+      document.getElementById('ats-herr-adic').value = data.herramienta_adicional_texto || '';
+      document.getElementById('ats-obs-generales').value = data.observaciones_generales || '';
+
+      // Trabajadores
+      trabajadoresSeleccionados = (data.trabajadores || []).map(t => ({
+        id_vinculacion: t.id_vinculacion,
+        identificacion: t.identificacion,
+        nombre_trabajador: t.nombre_trabajador,
+        cargo: t.cargo,
+        operacion: t.operacion,
+        celular: t.celular,
+        email: t.email
+      }));
+      actualizarChipsTrabajadores();
+
+      // Evidencias
+      evidenciasCargadas = (data.evidencias || []).map(e => ({
+        url_evidencia: e.url_evidencia,
+        nombre_archivo: e.nombre_archivo
+      }));
+      renderizarEvidencias();
+
+      // Cargar selecciones de radio buttons
+      function setRadioVal(name, val) {
+        if (!val) return;
+        let v = String(val).trim();
+        if (v === 'S') v = 'Cumple';
+        else if (v === 'N') v = 'No Cumple';
+        else if (v === 'NA') v = 'No Aplica';
+        const el = document.querySelector(`input[name="${name}"][value="${v}"]`);
+        if (el) el.checked = true;
+      }
+
+      if (Array.isArray(data.pasos_analisis)) {
+        data.pasos_analisis.forEach(p => {
+          setRadioVal(`paso_${p.num}`, p.cumple);
+          const elObs = document.getElementById(`obs_paso_${p.num}`);
+          if (elObs && p.obs) elObs.value = p.obs;
+        });
+      }
+      if (data.preoperacional_estibadores) {
+        (data.preoperacional_estibadores.manual || []).forEach((it, i) => setRadioVal(`man_${i}`, it.cumple));
+        (data.preoperacional_estibadores.electrico || []).forEach((it, i) => setRadioVal(`elec_${i}`, it.cumple));
+        if (data.preoperacional_estibadores.obs_manual) document.getElementById('ats-obs-manual').value = data.preoperacional_estibadores.obs_manual;
+        if (data.preoperacional_estibadores.obs_electrico) document.getElementById('ats-obs-electrico').value = data.preoperacional_estibadores.obs_electrico;
+      }
+      if (Array.isArray(data.verificacion_epp)) {
+        data.verificacion_epp.forEach((it, i) => setRadioVal(`epp_${i}`, it.cumple));
+      }
+      if (Array.isArray(data.otras_herramientas)) {
+        data.otras_herramientas.forEach((it, i) => setRadioVal(`herr_${i}`, it.cumple));
+      }
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+</script>
+
+</body>
+</html>

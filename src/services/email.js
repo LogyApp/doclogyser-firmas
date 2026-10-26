@@ -2100,7 +2100,161 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
   });
 }
 
+
+async function enviarEmailFirmaAtsTrabajador({ email, nombreTrabajador, operacion, muelle, vigencia, urlFirma }) {
+  if (!email) return;
+  const asunto = `Firma de Análisis de Trabajo Seguro (ATS) — Muelle ${muelle || ''}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreTrabajador}</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.95rem;line-height:1.6">
+          Has sido incluido en el <strong>Análisis de Trabajo Seguro (ATS) Semanal</strong> para la operación <strong>${operacion}</strong>.
+          Por favor ingresa al siguiente enlace para revisar las condiciones de seguridad, controles y registrar tu firma digital.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:24px">
+          <tr style="background:#f8f9fb">
+            <td style="padding:8px 12px;color:#888;width:35%">Operación</td>
+            <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${operacion}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;color:#888">Muelle / Ubicación</td>
+            <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${muelle}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:8px 12px;color:#888">Vigencia</td>
+            <td style="padding:8px 12px;color:#1a1a2e">${vigencia}</td>
+          </tr>
+        </table>
+        <div style="text-align:center;margin-bottom:24px">
+          <a href="${urlFirma}"
+             style="display:inline-block;background:#0A315D;color:#fff;text-decoration:none;
+                    padding:13px 32px;border-radius:6px;font-size:0.98rem;font-weight:700;letter-spacing:.3px">
+            ✍️ Revisar y Firmar ATS
+          </a>
+        </div>
+        <p style="color:#888;font-size:.78rem;margin:0;line-height:1.5">
+          Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
+        </p>
+      </div>
+      <p style="text-align:center;color:#999;font-size:.75rem;margin-top:14px">
+        Sistema de Gestión Documental y SST — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER SST" <${EMAIL_FROM}>`,
+    to: email,
+    subject: asunto,
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+}
+
+async function enviarEmailFirmaAtsCoordinador({ email, nombreCoordinador, operacion, muelle, vigencia, urlFirma }) {
+  if (!email) return;
+  const asunto = `Firma Requerida: ATS Operación ${operacion} — Muelle ${muelle || ''}`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreCoordinador}</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.95rem;line-height:1.6">
+          Se requiere su firma como <strong>Responsable / Coordinador de Operación</strong> en el siguiente Análisis de Trabajo Seguro (ATS) semanal:
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:24px">
+          <tr style="background:#f8f9fb">
+            <td style="padding:8px 12px;color:#888;width:35%">Operación</td>
+            <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${operacion}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;color:#888">Muelle / Ubicación</td>
+            <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${muelle}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:8px 12px;color:#888">Vigencia</td>
+            <td style="padding:8px 12px;color:#1a1a2e">${vigencia}</td>
+          </tr>
+        </table>
+        <div style="text-align:center;margin-bottom:24px">
+          <a href="${urlFirma}"
+             style="display:inline-block;background:#0A315D;color:#fff;text-decoration:none;
+                    padding:13px 32px;border-radius:6px;font-size:0.98rem;font-weight:700;letter-spacing:.3px">
+            ✍️ Firmar como Coordinador
+          </a>
+        </div>
+        <p style="color:#888;font-size:.78rem;margin:0;line-height:1.5">
+          Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+          <span style="color:#1a5fa8;word-break:break-all">${urlFirma}</span>
+        </p>
+      </div>
+      <p style="text-align:center;color:#999;font-size:.75rem;margin-top:14px">
+        Sistema de Gestión Documental y SST — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER SST" <${EMAIL_FROM}>`,
+    to: email,
+    subject: asunto,
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+}
+
+async function enviarEmailFirmaAtsSst({ email, nombreSst, operacion, muelle, vigencia, urlFirma }) {
+  if (!email) return;
+  const asunto = `Firma Requerida: ATS Operación ${operacion} — Responsable SST`;
+  const cuerpo = `
+    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
+      ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
+      <div style="background:#fff;padding:32px 28px;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+        <h2 style="color:#1a1a2e;margin:0 0 8px;font-size:1.2rem">Hola, ${nombreSst}</h2>
+        <p style="color:#555;margin:0 0 20px;font-size:.95rem;line-height:1.6">
+          Se encuentra disponible para su firma como <strong>Responsable SST</strong> el Análisis de Trabajo Seguro (ATS):
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:24px">
+          <tr style="background:#f8f9fb">
+            <td style="padding:8px 12px;color:#888;width:35%">Operación</td>
+            <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${operacion}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;color:#888">Muelle / Ubicación</td>
+            <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${muelle}</td>
+          </tr>
+          <tr style="background:#f8f9fb">
+            <td style="padding:8px 12px;color:#888">Vigencia</td>
+            <td style="padding:8px 12px;color:#1a1a2e">${vigencia}</td>
+          </tr>
+        </table>
+        <div style="text-align:center;margin-bottom:24px">
+          <a href="${urlFirma}"
+             style="display:inline-block;background:#0A315D;color:#fff;text-decoration:none;
+                    padding:13px 32px;border-radius:6px;font-size:0.98rem;font-weight:700;letter-spacing:.3px">
+            ✍️ Firmar como Responsable SST
+          </a>
+        </div>
+      </div>
+      <p style="text-align:center;color:#999;font-size:.75rem;margin-top:14px">
+        Sistema de Gestión Documental y SST — LOG&amp;SER S.A.S.
+      </p>
+    </div>`;
+
+  await transporter.sendMail({
+    from: `"LOG&SER SST" <${EMAIL_FROM}>`,
+    to: email,
+    subject: asunto,
+    html: cuerpo,
+    attachments: [LOGO_HEADER_ATTACHMENT],
+  });
+}
+
 module.exports = {
+  enviarEmailFirmaAtsTrabajador,
+  enviarEmailFirmaAtsCoordinador,
+  enviarEmailFirmaAtsSst,
   notificarConfirmacionInventario,
   notificarBloqueoAspirante,
   notificarNuevoTraslado,

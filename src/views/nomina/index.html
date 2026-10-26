@@ -1148,10 +1148,151 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
         <span>Cesantías</span>
       </li>
+      <li class="nav-item" id="navProduccion" onclick="switchTab('produccion')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M3 3v18h18"></path><path d="m7 15 4-4 3 3 5-6"></path></svg>
+        <span>Producción</span>
+      </li>
     </ul>
   </div>
 
   <div class="wrapper">
+
+    <!-- ══════════════ Pestaña: Producción (destajo colectivo) ══════════════ -->
+    <div id="panelProduccion" style="display:none">
+      <div class="page-hd">
+        <div class="page-title">Nómina · Producción</div>
+        <div class="page-sub">Destajo colectivo: servicios del día, bolsa a repartir y valor de cada trabajador que asistió</div>
+      </div>
+
+      <div class="bio-subnav">
+        <button type="button" class="bio-subnav-btn active" id="btnProdTabRegistros" style="display:none" onclick="switchProduccionSubTab('registros')">
+          <span>📊</span> Registros
+        </button>
+        <button type="button" class="bio-subnav-btn" id="btnProdTabAreas" style="display:none" onclick="switchProduccionSubTab('areas')">
+          <span>🏷️</span> Áreas
+        </button>
+        <button type="button" class="bio-subnav-btn" id="btnProdTabTarifas" style="display:none" onclick="switchProduccionSubTab('tarifas')">
+          <span>💲</span> Valor fijo Nómina
+        </button>
+      </div>
+
+      <!-- ── Subpestaña: Registros ── -->
+      <div id="prodSubpanelRegistros">
+        <div class="card">
+          <div class="filtros-grid">
+            <div class="filtro-field"><label>Desde (Día)</label><input type="date" id="prodFilterDesde"></div>
+            <div class="filtro-field"><label>Hasta (Día)</label><input type="date" id="prodFilterHasta"></div>
+            <div class="filtro-field"><label>Regional</label><select id="prodFilterRegional" onchange="onProdRegionalChange()"><option value="">Todas las regionales</option></select></div>
+            <div class="filtro-field"><label>Operación</label><select id="prodFilterOperacion" onchange="renderProduccionTable()"><option value="">Todas las operaciones</option></select></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px;">
+            <small style="color: var(--text-muted);">Servicios con Forma De Pago 1, 2 o 3 según el día de Hora Inicio. Bolsa = valor de los servicios × ASIGNADO del área. Máximo 62 días.</small>
+            <button type="button" class="btn-guardar-ficha" onclick="cargarProduccion()" style="display:inline-flex; align-items:center; gap:8px;">🔄 Consultar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="contador-resultados" id="prodContador">Escoge el rango de días y presiona Consultar.</div>
+          <div class="table-container">
+            <table class="retiros-table" id="produccionTable">
+              <thead>
+                <tr>
+                  <th style="width:130px" data-sort="regional">Regional<span id="prodSort-regional" class="sort-indicator"></span></th>
+                  <th style="width:180px" data-sort="operacion">Operación<span id="prodSort-operacion" class="sort-indicator"></span></th>
+                  <th style="width:110px" data-sort="dia">Día<span id="prodSort-dia" class="sort-indicator"> ▼</span></th>
+                  <th style="width:140px; text-align:right" data-sort="valorServicios">Valor servicios<span id="prodSort-valorServicios" class="sort-indicator"></span></th>
+                  <th style="width:140px; text-align:right" data-sort="valorDia">Valor día<span id="prodSort-valorDia" class="sort-indicator"></span></th>
+                  <th style="width:120px; text-align:center" data-sort="trabajadores">Trabajadores<span id="prodSort-trabajadores" class="sort-indicator"></span></th>
+                  <th style="width:140px; text-align:right" data-sort="promedio">Promedio por trabajador<span id="prodSort-promedio" class="sort-indicator"></span></th>
+                  <th style="width:140px; text-align:right" data-sort="valorSinRepartir">Sin repartir<span id="prodSort-valorSinRepartir" class="sort-indicator"></span></th>
+                </tr>
+              </thead>
+              <tbody id="produccionTableBody">
+                <tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 22px;">Sin consultar.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Subpestaña: Áreas (Config_Area) ── -->
+      <div id="prodSubpanelAreas" style="display:none">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+            <div class="filtros-grid" style="flex:1;">
+              <div class="filtro-field"><label>Operación</label><select id="areaFilterOperacion" onchange="renderAreasProduccion()"><option value="">Todas las operaciones</option></select></div>
+              <div class="filtro-field"><label>Destajo</label><select id="areaFilterDtjo" onchange="renderAreasProduccion()"><option value="">Todas</option><option value="1">Aplica (DTJO)</option><option value="0">No aplica</option></select></div>
+              <div class="filtro-field"><label>Buscar área</label><input type="text" id="areaFilterBuscar" placeholder="Ej: SECOS" oninput="renderAreasProduccion()"></div>
+            </div>
+            <button type="button" class="btn-guardar-ficha" onclick="abrirModalAreaProduccion()" style="display:inline-flex; align-items:center; gap:8px;">➕ Agregar Área</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="contador-resultados" id="areaContador"></div>
+          <div class="table-container">
+            <table class="retiros-table" id="areasProduccionTable">
+              <thead>
+                <tr>
+                  <th style="width:90px; text-align:center">Acciones</th>
+                  <th style="width:130px">Regional</th>
+                  <th style="width:180px">Operación</th>
+                  <th style="width:200px">Área</th>
+                  <th style="width:100px; text-align:center">Operativo</th>
+                  <th style="width:120px; text-align:center">Administrativo</th>
+                  <th style="width:90px; text-align:center">DTJO</th>
+                  <th style="width:90px; text-align:center">Grupal</th>
+                  <th style="width:100px; text-align:right">Asignado</th>
+                </tr>
+              </thead>
+              <tbody id="areasProduccionBody">
+                <tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 22px;">Cargando áreas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Subpestaña: Valor fijo Nómina (Maestro_Tarifas GENERAL) ── -->
+      <div id="prodSubpanelTarifas" style="display:none">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+            <div class="filtros-grid" style="flex:1;">
+              <div class="filtro-field"><label>Operación</label><select id="tarFilterOperacion" onchange="renderTarifasProduccion()"><option value="">Todas las operaciones</option></select></div>
+              <div class="filtro-field"><label>valor_nomina</label><select id="tarFilterNomina" onchange="renderTarifasProduccion()"><option value="">Todos</option><option value="con">Mayor a 0 (se usa en destajo)</option><option value="sin">En 0</option></select></div>
+              <div class="filtro-field"><label>Buscar</label><input type="text" id="tarFilterBuscar" placeholder="Actividad, unidad, vehículo..." oninput="renderTarifasProduccion()"></div>
+            </div>
+            <button type="button" class="btn-guardar-ficha" id="btnAgregarTarifaProd" onclick="abrirModalTarifaProduccion()" style="display:none; align-items:center; gap:8px;">➕ Agregar Valor</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="contador-resultados" id="tarContador"></div>
+          <div class="table-container">
+            <table class="retiros-table" id="tarifasProduccionTable">
+              <thead>
+                <tr>
+                  <th style="width:90px; text-align:center">Acciones</th>
+                  <th style="width:120px">Regional</th>
+                  <th style="width:170px">Operación</th>
+                  <th style="width:170px">Actividad</th>
+                  <th style="width:100px">Unidad</th>
+                  <th style="width:110px">Vehículo</th>
+                  <th style="width:110px">Tipo de Cobro</th>
+                  <th style="width:110px; text-align:right">Valor</th>
+                  <th style="width:120px; text-align:right">valor_nomina</th>
+                  <th style="width:180px">Observaciones</th>
+                  <th style="width:140px">Fecha de Registro</th>
+                  <th style="width:170px">Usuario</th>
+                </tr>
+              </thead>
+              <tbody id="tarifasProduccionBody">
+                <tr><td colspan="12" style="text-align:center; color: var(--text-muted); padding: 22px;">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- ══════════════ Pestaña: Activos ══════════════ -->
     <div id="panelActivos" style="display:none">
@@ -2777,6 +2918,111 @@
 
 
 <!-- Modal Nuevo Registro de Bloqueo en Nómina -->
+<!-- ══════════════ Producción: detalle de un día ══════════════ -->
+<div class="modal-full-overlay" id="modalProdDetalleOverlay">
+  <div class="modal-full" style="max-width: 860px; height: auto; max-height: 92vh;">
+    <div class="modal-full-header">
+      <span id="prodDetTitulo">Detalle del día</span>
+      <button type="button" onclick="cerrarModalProdDetalle()">&#10005; Cerrar</button>
+    </div>
+    <div style="padding: 20px; background: var(--card-bg); overflow-y: auto;">
+      <div id="prodDetResumen" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:16px;"></div>
+      <div style="font-weight:700; font-size:.85rem; margin-bottom:6px;">Bolsas del día</div>
+      <div class="table-container" style="margin-bottom:16px;">
+        <table class="retiros-table">
+          <thead><tr><th>Bolsa</th><th style="text-align:center">Servicios</th><th style="text-align:right">Valor servicios</th><th style="text-align:right">Asignado</th><th style="text-align:right">Bolsa</th><th style="text-align:center">Trabajadores</th></tr></thead>
+          <tbody id="prodDetBolsas"></tbody>
+        </table>
+      </div>
+      <div style="font-weight:700; font-size:.85rem; margin-bottom:6px;">Trabajadores que asistieron</div>
+      <div class="table-container">
+        <table class="retiros-table">
+          <thead><tr><th style="width:120px">Cédula</th><th>Nombre</th><th style="width:150px">Área</th><th style="width:130px">Bolsa</th><th style="width:130px; text-align:right">Valor</th></tr></thead>
+          <tbody id="prodDetTrabajadores"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ Producción: agregar / editar Área ══════════════ -->
+<div class="modal-full-overlay" id="modalProdAreaOverlay">
+  <div class="modal-full" style="max-width: 540px; height: auto; max-height: 92vh;">
+    <div class="modal-full-header">
+      <span id="prodAreaTitulo">➕ Agregar Área</span>
+      <button type="button" onclick="cerrarModalAreaProduccion()">&#10005; Cerrar</button>
+    </div>
+    <form onsubmit="event.preventDefault(); guardarAreaProduccion();" style="padding: 22px; background: var(--card-bg); overflow-y: auto;">
+      <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Área *</label>
+        <input type="text" id="prodAreaNombre" required placeholder="Ej: SECOS" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+      </div>
+      <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Operación *</label>
+        <select id="prodAreaOperacion" required><option value="">— Seleccione Operación —</option></select>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div class="ficha-field"><label>Operativo</label><div class="btn-grupo"><button type="button" class="btn-grupo-opt" id="prodAreaOperativo" onclick="this.classList.toggle('sel')">APLICA</button></div></div>
+        <div class="ficha-field"><label>Administrativo</label><div class="btn-grupo"><button type="button" class="btn-grupo-opt" id="prodAreaAdministrativo" onclick="this.classList.toggle('sel')">APLICA</button></div></div>
+        <div class="ficha-field"><label>DTJO (destajo)</label><div class="btn-grupo"><button type="button" class="btn-grupo-opt" id="prodAreaDtjo" onclick="this.classList.toggle('sel')">APLICA</button></div></div>
+        <div class="ficha-field"><label>Grupal</label><div class="btn-grupo"><button type="button" class="btn-grupo-opt" id="prodAreaGrupal" onclick="this.classList.toggle('sel')">APLICA</button></div></div>
+      </div>
+      <div class="ficha-field" style="margin-bottom: 8px;">
+        <label>Asignado (%)</label>
+        <input type="number" id="prodAreaAsignado" min="0" max="100" step="1" placeholder="Ej: 77">
+        <small style="color: var(--text-muted);">Porcentaje del valor de los servicios que se reparte entre los trabajadores (se guarda como fracción: 77 % = 0.77).</small>
+      </div>
+      <div id="prodAreaError" style="display:none; color: var(--danger, #dc2626); font-weight:600; font-size:.85rem; margin: 8px 0;"></div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top: 14px;">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalAreaProduccion()">Cancelar</button>
+        <button type="submit" class="btn-guardar-ficha" id="btnGuardarAreaProd">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════ Producción: agregar / editar Valor fijo Nómina ══════════════ -->
+<div class="modal-full-overlay" id="modalProdTarifaOverlay">
+  <div class="modal-full" style="max-width: 560px; height: auto; max-height: 92vh;">
+    <div class="modal-full-header">
+      <span id="prodTarTitulo">➕ Agregar Valor fijo Nómina</span>
+      <button type="button" onclick="cerrarModalTarifaProduccion()">&#10005; Cerrar</button>
+    </div>
+    <form onsubmit="event.preventDefault(); guardarTarifaProduccion();" style="padding: 22px; background: var(--card-bg); overflow-y: auto;">
+      <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Operación *</label>
+        <select id="prodTarOperacion" required onchange="poblarActividadesTarifa()"><option value="">— Seleccione Operación —</option></select>
+      </div>
+      <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Actividad *</label>
+        <select id="prodTarActividad" required><option value="">— Seleccione Actividad —</option></select>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div class="ficha-field"><label>Unidad *</label><select id="prodTarUnidad" required onchange="onUnidadTarifaChange()"><option value="">— Unidad —</option></select></div>
+        <div class="ficha-field"><label>Vehículo <span id="prodTarVehObl" style="display:none">*</span></label><select id="prodTarVehiculo" disabled><option value="">Solo con unidad CUPO</option></select></div>
+      </div>
+      <div class="ficha-field" style="margin-bottom: 14px;">
+        <label>Tipo de Cobro</label>
+        <input type="text" value="GENERAL" disabled>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div class="ficha-field"><label>Valor *</label><input type="number" id="prodTarValor" min="0" step="any" required></div>
+        <div class="ficha-field"><label>valor_nomina *</label><input type="number" id="prodTarValorNomina" min="0" step="any" required></div>
+      </div>
+      <small style="color: var(--text-muted); display:block; margin-bottom: 12px;">Si valor_nomina es mayor a 0, se usa como Valor Unitario de los servicios que coincidan al calcular el destajo.</small>
+      <div class="ficha-field" style="margin-bottom: 8px;">
+        <label>Observaciones</label>
+        <input type="text" id="prodTarObservaciones" maxlength="50">
+      </div>
+      <div id="prodTarError" style="display:none; color: var(--danger, #dc2626); font-weight:600; font-size:.85rem; margin: 8px 0;"></div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top: 14px;">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalTarifaProduccion()">Cancelar</button>
+        <button type="submit" class="btn-guardar-ficha" id="btnGuardarTarifaProd">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="modal-full-overlay" id="modalBloqueoNominaOverlay">
   <div class="modal-full" style="max-width: 520px; height: auto; max-height: 90vh;">
     <div class="modal-full-header">
@@ -3364,14 +3610,14 @@
   function sincronizarUrlPestana(tab, subTab) {
     const url = new URL(window.location);
     url.searchParams.set('tab', tab);
-    if ((tab === 'biometrico' || tab === 'traslados') && subTab) url.searchParams.set('subtab', subTab);
+    if ((tab === 'biometrico' || tab === 'traslados' || tab === 'produccion') && subTab) url.searchParams.set('subtab', subTab);
     else url.searchParams.delete('subtab');
     history.replaceState(null, '', url);
   }
 
   function switchTab(tab) {
     _tabActual = tab;
-    sincronizarUrlPestana(tab, tab === 'traslados' ? _trasState.activeSubTab : _bioState.activeSubTab);
+    sincronizarUrlPestana(tab, tab === 'traslados' ? _trasState.activeSubTab : (tab === 'produccion' ? _prodState.activeSubTab : _bioState.activeSubTab));
     const tabNombres = {
       activos: 'Nómina · Activos',
       retiros: 'Nómina · Retiros',
@@ -3379,7 +3625,8 @@
       biometrico: 'Nómina · Biométrico',
       incapacidades: 'Nómina · Incapacidades',
       traslados: 'Nómina · Traslados',
-      cesantias: 'Nómina · Cesantías'
+      cesantias: 'Nómina · Cesantías',
+      produccion: 'Nómina · Producción'
     };
     const titleEl = document.getElementById('mobileHeaderTitle');
     if (titleEl && tabNombres[tab]) titleEl.textContent = tabNombres[tab];
@@ -3390,6 +3637,7 @@
     if (document.getElementById('navIncapacidades')) document.getElementById('navIncapacidades').classList.toggle('active', tab === 'incapacidades');
     if (document.getElementById('navTraslados')) document.getElementById('navTraslados').classList.toggle('active', tab === 'traslados');
     if (document.getElementById('navCesantias')) document.getElementById('navCesantias').classList.toggle('active', tab === 'cesantias');
+    if (document.getElementById('navProduccion')) document.getElementById('navProduccion').classList.toggle('active', tab === 'produccion');
     document.getElementById('panelRetiros').style.display = tab === 'retiros' ? 'block' : 'none';
     document.getElementById('panelActivos').style.display = tab === 'activos' ? 'block' : 'none';
     if (document.getElementById('panelBloqueo')) document.getElementById('panelBloqueo').style.display = tab === 'bloqueo' ? 'block' : 'none';
@@ -3397,6 +3645,7 @@
     if (document.getElementById('panelIncapacidades')) document.getElementById('panelIncapacidades').style.display = tab === 'incapacidades' ? 'block' : 'none';
     if (document.getElementById('panelTraslados')) document.getElementById('panelTraslados').style.display = tab === 'traslados' ? 'block' : 'none';
     if (document.getElementById('panelCesantias')) document.getElementById('panelCesantias').style.display = tab === 'cesantias' ? 'block' : 'none';
+    if (document.getElementById('panelProduccion')) document.getElementById('panelProduccion').style.display = tab === 'produccion' ? 'block' : 'none';
     if (tab === 'retiros' && !_retirosState.cargado) fetchDataRetiros();
     if (tab === 'activos' && !_activosState.cargado) fetchDataActivos();
     if (tab === 'bloqueo' && !_bloqueoNominaState.cargado) fetchDataBloqueoNomina();
@@ -3404,8 +3653,446 @@
     if (tab === 'incapacidades' && !_incState.cargado) cargarIncapacidadesNomina();
     if (tab === 'traslados' && !_trasState.cargado) fetchTrasladosData();
     if (tab === 'cesantias' && !_cesantiasState.cargado) fetchCesantiasData();
+    if (tab === 'produccion') switchProduccionSubTab(_prodState.activeSubTab);
     toggleMobileSidebar(false);
   }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Pestaña PRODUCCIÓN (destajo colectivo; cálculo en src/services/produccionDestajo.js)
+  // Subpestañas: Registros, Áreas (Config_Area) y Valor fijo Nómina (Maestro_Tarifas GENERAL)
+  // ═══════════════════════════════════════════════════════════════════════
+  const _prodState = {
+    activeSubTab: 'registros', cargado: false, registros: [], sortCol: 'dia', sortOrder: 'desc',
+    areas: [], areasCargadas: false, areaEditando: null,
+    tarifas: [], tarifasCargadas: false, tarifaEditando: null, opciones: null,
+  };
+  const fmtPesos = v => '$ ' + Math.round(Number(v) || 0).toLocaleString('es-CO');
+
+  function opsProduccion() {
+    const porReg = (tabs.produccion && tabs.produccion.opsPorRegional) || {};
+    return Object.values(porReg).flat().sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  function llenarSelectOps(sel, ops, primera) {
+    if (!sel) return;
+    const actual = sel.value;
+    sel.innerHTML = `<option value="">${primera}</option>` + ops.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+    if (ops.includes(actual)) sel.value = actual;
+  }
+
+  function initProduccion() {
+    const p = tabs.produccion;
+    const subs = [['registros', 'btnProdTabRegistros'], ['areas', 'btnProdTabAreas'], ['tarifas', 'btnProdTabTarifas']];
+    subs.forEach(([s, id]) => { if (p[s]) document.getElementById(id).style.display = 'flex'; });
+    _prodState.activeSubTab = subs.find(([s]) => p[s])[0];
+    if (p.puedeEditarTarifas) document.getElementById('btnAgregarTarifaProd').style.display = 'inline-flex';
+
+    // Rango por defecto: los últimos 15 días
+    const hoy = new Date();
+    const hace = new Date(hoy.getTime() - 14 * 86400000);
+    const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    document.getElementById('prodFilterDesde').value = iso(hace);
+    document.getElementById('prodFilterHasta').value = iso(hoy);
+
+    const regionales = Object.keys(p.opsPorRegional || {}).sort();
+    document.getElementById('prodFilterRegional').innerHTML = '<option value="">Todas las regionales</option>' +
+      regionales.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+    onProdRegionalChange();
+    llenarSelectOps(document.getElementById('prodAreaOperacion'), opsProduccion(), '— Seleccione Operación —');
+    llenarSelectOps(document.getElementById('prodTarOperacion'), opsProduccion(), '— Seleccione Operación —');
+
+    document.querySelectorAll('#produccionTable thead th[data-sort]').forEach(th => {
+      th.addEventListener('click', e => {
+        if (e.target.classList.contains('th-resize')) return;
+        const col = th.getAttribute('data-sort');
+        _prodState.sortOrder = _prodState.sortCol === col && _prodState.sortOrder === 'desc' ? 'asc' : 'desc';
+        _prodState.sortCol = col;
+        renderProduccionTable();
+      });
+    });
+    makeTableResizable(document.getElementById('produccionTable'));
+    makeTableResizable(document.getElementById('areasProduccionTable'));
+    makeTableResizable(document.getElementById('tarifasProduccionTable'));
+  }
+
+  function switchProduccionSubTab(subTab) {
+    if (!tabs.produccion || !tabs.produccion[subTab]) return;
+    _prodState.activeSubTab = subTab;
+    sincronizarUrlPestana('produccion', subTab);
+    [['registros', 'Registros'], ['areas', 'Areas'], ['tarifas', 'Tarifas']].forEach(([s, n]) => {
+      document.getElementById('btnProdTab' + n).classList.toggle('active', s === subTab);
+      document.getElementById('prodSubpanel' + n).style.display = s === subTab ? 'block' : 'none';
+    });
+    if (subTab === 'registros' && !_prodState.cargado) cargarProduccion();
+    if (subTab === 'areas' && !_prodState.areasCargadas) cargarAreasProduccion();
+    if (subTab === 'tarifas' && !_prodState.tarifasCargadas) cargarTarifasProduccion();
+  }
+
+  function onProdRegionalChange() {
+    const reg = document.getElementById('prodFilterRegional').value;
+    const porReg = (tabs.produccion && tabs.produccion.opsPorRegional) || {};
+    const ops = reg ? (porReg[reg] || []).slice().sort((a, b) => a.localeCompare(b, 'es')) : opsProduccion();
+    llenarSelectOps(document.getElementById('prodFilterOperacion'), ops, 'Todas las operaciones');
+    renderProduccionTable();
+  }
+
+  // ── Registros ───────────────────────────────────────────────
+  async function cargarProduccion() {
+    const desde = document.getElementById('prodFilterDesde').value;
+    const hasta = document.getElementById('prodFilterHasta').value;
+    const body = document.getElementById('produccionTableBody');
+    if (!desde || !hasta) return alert('Escoge el rango de días.');
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 22px;">Calculando producción...</td></tr>';
+    try {
+      const r = await fetch(`/produccion/api/registros?usuario=${encodeURIComponent(usuario)}&desde=${desde}&hasta=${hasta}`);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error al consultar');
+      _prodState.registros = data.registros || [];
+      _prodState.cargado = true;
+      renderProduccionTable();
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--danger, #dc2626); padding: 22px;">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function renderProduccionTable() {
+    if (!_prodState.cargado) return;
+    const reg = document.getElementById('prodFilterRegional').value;
+    const op = document.getElementById('prodFilterOperacion').value;
+    const filas = _prodState.registros.filter(x => (!reg || x.regional === reg) && (!op || x.operacion === op));
+    const { sortCol, sortOrder } = _prodState;
+    filas.sort((a, b) => {
+      const va = a[sortCol], vb = b[sortCol];
+      const c = typeof va === 'number' ? va - vb : String(va || '').localeCompare(String(vb || ''), 'es');
+      return sortOrder === 'asc' ? c : -c;
+    });
+    ['regional', 'operacion', 'dia', 'valorServicios', 'valorDia', 'trabajadores', 'promedio', 'valorSinRepartir'].forEach(k => {
+      const s = document.getElementById('prodSort-' + k);
+      if (s) s.textContent = sortCol === k ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+    });
+
+    const totalDia = filas.reduce((a, x) => a + x.valorDia, 0);
+    const totalSin = filas.reduce((a, x) => a + x.valorSinRepartir, 0);
+    document.getElementById('prodContador').textContent =
+      `${filas.length.toLocaleString('es-CO')} registros · Total repartido ${fmtPesos(totalDia)}` +
+      (totalSin ? ` · Sin repartir ${fmtPesos(totalSin)} (servicios sin trabajadores con destajo; revisa las áreas)` : '');
+
+    const body = document.getElementById('produccionTableBody');
+    if (!filas.length) {
+      body.innerHTML = '<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 22px;">No hay registros de destajo en el rango y filtros escogidos.</td></tr>';
+      return;
+    }
+    body.innerHTML = filas.map(x => {
+      const idx = _prodState.registros.indexOf(x);
+      return `<tr style="cursor:pointer" title="Ver los trabajadores del día" onclick="abrirModalProdDetalle(${idx})">
+        <td>${esc(x.regional) || '—'}</td>
+        <td style="font-weight:600">${esc(x.operacion)}</td>
+        <td>${esc(x.dia)}</td>
+        <td style="text-align:right">${fmtPesos(x.valorServicios)}</td>
+        <td style="text-align:right; font-weight:700">${fmtPesos(x.valorDia)}</td>
+        <td style="text-align:center">${x.trabajadores}</td>
+        <td style="text-align:right">${fmtPesos(x.promedio)}</td>
+        <td style="text-align:right; ${x.valorSinRepartir ? 'color:#b45309; font-weight:600' : 'color: var(--text-muted)'}">${x.valorSinRepartir ? fmtPesos(x.valorSinRepartir) : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function abrirModalProdDetalle(idx) {
+    const x = _prodState.registros[idx];
+    if (!x) return;
+    document.getElementById('prodDetTitulo').textContent = `📊 ${x.operacion} · ${x.dia}`;
+    const tarjeta = (t, v) => `<div style="background: var(--bg-elevated); border:1px solid var(--border); border-radius:8px; padding:10px;"><div style="font-size:.72rem; color: var(--text-muted); font-weight:600;">${t}</div><div style="font-weight:700; margin-top:2px;">${v}</div></div>`;
+    document.getElementById('prodDetResumen').innerHTML =
+      tarjeta('Regional', esc(x.regional) || '—') +
+      tarjeta('Servicios', `${x.servicios}${x.serviciosValorNomina ? ` (${x.serviciosValorNomina} con valor_nomina)` : ''}`) +
+      tarjeta('Valor servicios', fmtPesos(x.valorServicios)) +
+      tarjeta('Valor día (repartido)', fmtPesos(x.valorDia)) +
+      tarjeta('Trabajadores', x.trabajadores) +
+      tarjeta('Promedio', fmtPesos(x.promedio)) +
+      (x.valorSinRepartir ? tarjeta('Sin repartir', `<span style="color:#b45309">${fmtPesos(x.valorSinRepartir)}</span>`) : '');
+    document.getElementById('prodDetBolsas').innerHTML = x.bolsas.length
+      ? x.bolsas.map(b => `<tr>
+          <td>${esc(b.nombre)}</td><td style="text-align:center">${b.servicios}</td>
+          <td style="text-align:right">${fmtPesos(b.valorServicios)}</td>
+          <td style="text-align:right">${Math.round((Number(b.asignado) || 0) * 100)} %</td>
+          <td style="text-align:right; font-weight:700">${fmtPesos(b.bolsa)}</td>
+          <td style="text-align:center">${b.trabajadores || '<span style="color:#b45309">0</span>'}</td></tr>`).join('')
+      : '<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Esta operación no tiene áreas con destajo (DTJO).</td></tr>';
+    document.getElementById('prodDetTrabajadores').innerHTML = x.detalle.length
+      ? x.detalle.map(t => `<tr><td>${esc(t.cedula)}</td><td>${esc(t.nombre)}</td><td>${esc(t.area)}</td><td>${esc(t.bolsa)}</td><td style="text-align:right; font-weight:700">${fmtPesos(t.valor)}</td></tr>`).join('')
+      : '<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Ningún trabajador con destajo registró asistencia este día.</td></tr>';
+    const overlay = document.getElementById('modalProdDetalleOverlay');
+    overlay.classList.add('open');
+    overlay._backEntry = registrarModalBack(() => cerrarModalProdDetalle());
+  }
+
+  function cerrarModalProdDetalle() {
+    const overlay = document.getElementById('modalProdDetalleOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
+  }
+
+  // ── Áreas (Config_Area) ─────────────────────────────────────
+  async function cargarAreasProduccion() {
+    const body = document.getElementById('areasProduccionBody');
+    try {
+      const r = await fetch(`/produccion/api/areas?usuario=${encodeURIComponent(usuario)}`);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error al consultar');
+      _prodState.areas = data;
+      _prodState.areasCargadas = true;
+      llenarSelectOps(document.getElementById('areaFilterOperacion'), [...new Set(data.map(a => a.operacion))].sort((a, b) => String(a).localeCompare(String(b), 'es')), 'Todas las operaciones');
+      renderAreasProduccion();
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="9" style="text-align:center; color: var(--danger, #dc2626); padding: 22px;">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function renderAreasProduccion() {
+    const op = document.getElementById('areaFilterOperacion').value;
+    const dtjo = document.getElementById('areaFilterDtjo').value;
+    const q = (document.getElementById('areaFilterBuscar').value || '').trim().toUpperCase();
+    const filas = _prodState.areas.filter(a => (!op || a.operacion === op) && (dtjo === '' || String(Number(a.dtjo)) === dtjo) && (!q || String(a.area).toUpperCase().includes(q)));
+    document.getElementById('areaContador').textContent = `${filas.length} de ${_prodState.areas.length} áreas`;
+    const aplica = v => v ? '<span class="badge" style="background: var(--success-soft); color: var(--success-dark); font-weight:700;">APLICA</span>' : '<span style="color: var(--text-muted)">—</span>';
+    const puedeEliminar = tabs.produccion.puedeEliminarAreas;
+    document.getElementById('areasProduccionBody').innerHTML = filas.length ? filas.map(a => `<tr>
+        <td style="text-align:center; white-space:nowrap">
+          <button type="button" class="btn-reset" style="margin:0; padding:3px 8px;" title="Editar" onclick="abrirModalAreaProduccion(${a.id})">✏️</button>
+          ${puedeEliminar ? `<button type="button" class="btn-reset" style="margin:0; padding:3px 8px; color: var(--danger, #dc2626);" title="Eliminar" onclick="eliminarAreaProduccion(${a.id})">🗑️</button>` : ''}
+        </td>
+        <td>${esc(a.regional) || '—'}</td>
+        <td>${esc(a.operacion)}</td>
+        <td style="font-weight:600">${esc(a.area)}</td>
+        <td style="text-align:center">${aplica(a.operativo === 'V')}</td>
+        <td style="text-align:center">${aplica(a.administrativo === 'V')}</td>
+        <td style="text-align:center">${aplica(Number(a.dtjo) === 1)}</td>
+        <td style="text-align:center">${aplica(Number(a.grupal) === 1)}</td>
+        <td style="text-align:right">${Math.round((Number(a.asignado) || 0) * 100)} %</td>
+      </tr>`).join('')
+      : '<tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 22px;">No hay áreas con esos filtros.</td></tr>';
+  }
+
+  function abrirModalAreaProduccion(id) {
+    const a = id ? _prodState.areas.find(x => x.id === id) : null;
+    _prodState.areaEditando = a ? a.id : null;
+    document.getElementById('prodAreaTitulo').textContent = a ? '✏️ Editar Área' : '➕ Agregar Área';
+    document.getElementById('prodAreaNombre').value = a ? a.area : '';
+    document.getElementById('prodAreaOperacion').value = a ? a.operacion : '';
+    document.getElementById('prodAreaOperativo').classList.toggle('sel', !!a && a.operativo === 'V');
+    document.getElementById('prodAreaAdministrativo').classList.toggle('sel', !!a && a.administrativo === 'V');
+    document.getElementById('prodAreaDtjo').classList.toggle('sel', !!a && Number(a.dtjo) === 1);
+    document.getElementById('prodAreaGrupal').classList.toggle('sel', !!a && Number(a.grupal) === 1);
+    document.getElementById('prodAreaAsignado').value = a ? Math.round((Number(a.asignado) || 0) * 100) : '';
+    document.getElementById('prodAreaError').style.display = 'none';
+    const overlay = document.getElementById('modalProdAreaOverlay');
+    overlay.classList.add('open');
+    overlay._backEntry = registrarModalBack(() => cerrarModalAreaProduccion());
+    setTimeout(() => document.getElementById('prodAreaNombre').focus(), 100);
+  }
+
+  function cerrarModalAreaProduccion() {
+    const overlay = document.getElementById('modalProdAreaOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
+  }
+
+  async function guardarAreaProduccion() {
+    const errEl = document.getElementById('prodAreaError');
+    const btn = document.getElementById('btnGuardarAreaProd');
+    const sel = id => document.getElementById(id).classList.contains('sel');
+    const payload = {
+      area: document.getElementById('prodAreaNombre').value,
+      operacion: document.getElementById('prodAreaOperacion').value,
+      operativo: sel('prodAreaOperativo'),
+      administrativo: sel('prodAreaAdministrativo'),
+      dtjo: sel('prodAreaDtjo'),
+      grupal: sel('prodAreaGrupal'),
+      asignado: document.getElementById('prodAreaAsignado').value,
+    };
+    btn.disabled = true;
+    try {
+      const id = _prodState.areaEditando;
+      const r = await fetch(`/produccion/api/areas${id ? '/' + id : ''}?usuario=${encodeURIComponent(usuario)}`, {
+        method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'No se pudo guardar');
+      cerrarModalAreaProduccion();
+      _prodState.cargado = false; // el destajo depende de las áreas
+      await cargarAreasProduccion();
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function eliminarAreaProduccion(id) {
+    const a = _prodState.areas.find(x => x.id === id);
+    if (!a || !confirm(`¿Eliminar el área ${a.area} de ${a.operacion}?`)) return;
+    try {
+      const r = await fetch(`/produccion/api/areas/${id}?usuario=${encodeURIComponent(usuario)}`, { method: 'DELETE' });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'No se pudo eliminar');
+      _prodState.cargado = false;
+      await cargarAreasProduccion();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  // ── Valor fijo Nómina (Maestro_Tarifas GENERAL) ─────────────
+  async function cargarTarifasProduccion() {
+    const body = document.getElementById('tarifasProduccionBody');
+    try {
+      const r = await fetch(`/produccion/api/tarifas?usuario=${encodeURIComponent(usuario)}`);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Error al consultar');
+      _prodState.tarifas = data;
+      _prodState.tarifasCargadas = true;
+      llenarSelectOps(document.getElementById('tarFilterOperacion'), [...new Set(data.map(t => t.operacion))].sort((a, b) => String(a).localeCompare(String(b), 'es')), 'Todas las operaciones');
+      renderTarifasProduccion();
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="12" style="text-align:center; color: var(--danger, #dc2626); padding: 22px;">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function renderTarifasProduccion() {
+    const op = document.getElementById('tarFilterOperacion').value;
+    const nom = document.getElementById('tarFilterNomina').value;
+    const q = (document.getElementById('tarFilterBuscar').value || '').trim().toUpperCase();
+    const filas = _prodState.tarifas.filter(t => {
+      if (op && t.operacion !== op) return false;
+      if (nom === 'con' && !(Number(t.valorNomina) > 0)) return false;
+      if (nom === 'sin' && Number(t.valorNomina) > 0) return false;
+      if (q && ![t.actividad, t.unidad, t.vehiculo, t.observaciones, t.usuario].some(v => String(v || '').toUpperCase().includes(q))) return false;
+      return true;
+    });
+    document.getElementById('tarContador').textContent = `${filas.length} de ${_prodState.tarifas.length} tarifas GENERAL`;
+    const { puedeEditarTarifas, puedeEliminarTarifas } = tabs.produccion;
+    document.getElementById('tarifasProduccionBody').innerHTML = filas.length ? filas.map(t => `<tr>
+        <td style="text-align:center; white-space:nowrap">
+          ${puedeEditarTarifas ? `<button type="button" class="btn-reset" style="margin:0; padding:3px 8px;" title="Editar" onclick="abrirModalTarifaProduccion('${esc(t.id)}')">✏️</button>` : ''}
+          ${puedeEliminarTarifas ? `<button type="button" class="btn-reset" style="margin:0; padding:3px 8px; color: var(--danger, #dc2626);" title="Eliminar" onclick="eliminarTarifaProduccion('${esc(t.id)}')">🗑️</button>` : ''}
+          ${!puedeEditarTarifas && !puedeEliminarTarifas ? '—' : ''}
+        </td>
+        <td>${esc(t.regional) || '—'}</td>
+        <td>${esc(t.operacion)}</td>
+        <td style="font-weight:600">${esc(t.actividad) || `<span style="color:#b45309">${t.actividadId ? `ID ${esc(t.actividadId)} (no existe)` : "Sin actividad"}</span>`}</td>
+        <td>${esc(t.unidad) || '—'}</td>
+        <td>${esc(t.vehiculo) || '—'}</td>
+        <td>${esc(t.tipoCobro)}</td>
+        <td style="text-align:right">${fmtPesos(t.valor)}</td>
+        <td style="text-align:right; ${Number(t.valorNomina) > 0 ? 'font-weight:700; color: var(--success-dark)' : 'color: var(--text-muted)'}">${fmtPesos(t.valorNomina)}</td>
+        <td>${esc(t.observaciones) || '—'}</td>
+        <td style="font-size:.8rem">${esc(t.fechaRegistro) || '—'}</td>
+        <td style="font-size:.8rem">${esc(t.usuario) || '—'}</td>
+      </tr>`).join('')
+      : '<tr><td colspan="12" style="text-align:center; color: var(--text-muted); padding: 22px;">No hay tarifas con esos filtros.</td></tr>';
+  }
+
+  async function asegurarOpcionesTarifa() {
+    if (_prodState.opciones) return _prodState.opciones;
+    const r = await fetch(`/produccion/api/tarifas/opciones?usuario=${encodeURIComponent(usuario)}`);
+    if (!r.ok) throw new Error('No se pudieron cargar las listas');
+    _prodState.opciones = await r.json();
+    const { unidades, vehiculos } = _prodState.opciones;
+    document.getElementById('prodTarUnidad').innerHTML = '<option value="">— Unidad —</option>' + unidades.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+    document.getElementById('prodTarVehiculo').innerHTML = '<option value="">— Vehículo —</option>' + vehiculos.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    return _prodState.opciones;
+  }
+
+  function poblarActividadesTarifa(seleccion) {
+    const op = document.getElementById('prodTarOperacion').value;
+    const acts = ((_prodState.opciones && _prodState.opciones.actividades) || []).filter(a => a.operacion === op);
+    document.getElementById('prodTarActividad').innerHTML = '<option value="">— Seleccione Actividad —</option>' +
+      acts.map(a => `<option value="${a.id}">${esc(a.actividad)}</option>`).join('');
+    if (seleccion) document.getElementById('prodTarActividad').value = seleccion;
+  }
+
+  function onUnidadTarifaChange() {
+    const esCupo = document.getElementById('prodTarUnidad').value.toUpperCase() === 'CUPO';
+    const veh = document.getElementById('prodTarVehiculo');
+    veh.disabled = !esCupo;
+    if (!esCupo) veh.value = '';
+    document.getElementById('prodTarVehObl').style.display = esCupo ? 'inline' : 'none';
+  }
+
+  async function abrirModalTarifaProduccion(id) {
+    try { await asegurarOpcionesTarifa(); } catch (e) { return alert(e.message); }
+    const t = id ? _prodState.tarifas.find(x => x.id === id) : null;
+    _prodState.tarifaEditando = t ? t.id : null;
+    document.getElementById('prodTarTitulo').textContent = t ? '✏️ Editar Valor fijo Nómina' : '➕ Agregar Valor fijo Nómina';
+    document.getElementById('prodTarOperacion').value = t ? t.operacion : '';
+    poblarActividadesTarifa(t ? String(t.actividadId) : '');
+    document.getElementById('prodTarUnidad').value = t ? String(t.unidad || '').toUpperCase() : '';
+    onUnidadTarifaChange();
+    document.getElementById('prodTarVehiculo').value = t ? String(t.vehiculo || '').toUpperCase() : '';
+    document.getElementById('prodTarValor').value = t ? Number(t.valor) : '';
+    document.getElementById('prodTarValorNomina').value = t ? Number(t.valorNomina) : 0;
+    document.getElementById('prodTarObservaciones').value = t ? (t.observaciones || '') : '';
+    document.getElementById('prodTarError').style.display = 'none';
+    const overlay = document.getElementById('modalProdTarifaOverlay');
+    overlay.classList.add('open');
+    overlay._backEntry = registrarModalBack(() => cerrarModalTarifaProduccion());
+  }
+
+  function cerrarModalTarifaProduccion() {
+    const overlay = document.getElementById('modalProdTarifaOverlay');
+    overlay.classList.remove('open');
+    cerrarModalBack(overlay._backEntry);
+    overlay._backEntry = null;
+  }
+
+  async function guardarTarifaProduccion() {
+    const errEl = document.getElementById('prodTarError');
+    const btn = document.getElementById('btnGuardarTarifaProd');
+    const payload = {
+      operacion: document.getElementById('prodTarOperacion').value,
+      actividadId: document.getElementById('prodTarActividad').value,
+      unidad: document.getElementById('prodTarUnidad').value,
+      vehiculo: document.getElementById('prodTarVehiculo').value,
+      valor: document.getElementById('prodTarValor').value,
+      valorNomina: document.getElementById('prodTarValorNomina').value,
+      observaciones: document.getElementById('prodTarObservaciones').value,
+    };
+    btn.disabled = true;
+    try {
+      const id = _prodState.tarifaEditando;
+      const r = await fetch(`/produccion/api/tarifas${id ? '/' + encodeURIComponent(id) : ''}?usuario=${encodeURIComponent(usuario)}`, {
+        method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'No se pudo guardar');
+      cerrarModalTarifaProduccion();
+      _prodState.cargado = false; // el destajo depende de valor_nomina
+      await cargarTarifasProduccion();
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function eliminarTarifaProduccion(id) {
+    const t = _prodState.tarifas.find(x => x.id === id);
+    if (!t || !confirm(`¿Eliminar la tarifa ${t.operacion} · ${t.actividad || t.actividadId} · ${t.unidad}?`)) return;
+    try {
+      const r = await fetch(`/produccion/api/tarifas/${encodeURIComponent(id)}?usuario=${encodeURIComponent(usuario)}`, { method: 'DELETE' });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'No se pudo eliminar');
+      _prodState.cargado = false;
+      await cargarTarifasProduccion();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
 
   // ═══════════════════════════════════════════════════════════════════════
   // Pestaña RETIROS
@@ -8157,6 +8844,10 @@
     if (tabs.traslados.puedeEditarPlantilla) document.getElementById('btnTrasTabPlantilla').style.display = 'flex';
     makeTableResizable(document.getElementById('trasladosTable'));
   }
+  if (tabs.produccion) {
+    document.getElementById('navProduccion').style.display = 'flex';
+    initProduccion();
+  }
   if (tabs.cesantias) {
     const navCes = document.getElementById('navCesantias');
     if (navCes) navCes.style.display = 'flex';
@@ -8202,6 +8893,8 @@
     tabDestino = 'traslados';
   } else if (tabParam === 'cesantias' || tabParam === 'cesantia') {
     tabDestino = 'cesantias';
+  } else if (tabParam === 'produccion' || tabParam === 'producción') {
+    tabDestino = 'produccion';
   } else if (busquedaParam) {
     tabDestino = tabs.activo ? 'activos' : 'retiros';
   } else if (idVinculacionParam) {
@@ -8218,6 +8911,8 @@
     tabDestino = 'traslados';
   } else if (tabs.cesantias) {
     tabDestino = 'cesantias';
+  } else if (tabs.produccion) {
+    tabDestino = 'produccion';
   }
 
   // Aplicar filtros en la pestaña correspondiente
@@ -8264,8 +8959,12 @@
       if (cesSearch) cesSearch.value = busquedaParam;
     }
     switchTab('cesantias');
+  } else if (tabDestino === 'produccion' && tabs.produccion) {
+    const subParamProd = (paramsUrl.get('subtab') || '').toLowerCase().trim();
+    if (tabs.produccion[subParamProd]) _prodState.activeSubTab = subParamProd;
+    switchTab('produccion');
   } else {
-    switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : (tabs.incapacidades ? 'incapacidades' : (tabs.traslados ? 'traslados' : 'cesantias'))))));
+    switchTab(tabs.activo ? 'activos' : (tabs.retiro ? 'retiros' : (tabs.bloqueo ? 'bloqueo' : (tabs.biometrico ? 'biometrico' : (tabs.incapacidades ? 'incapacidades' : (tabs.traslados ? 'traslados' : (tabs.cesantias ? 'cesantias' : 'produccion')))))));
   }
 
   // Botón flotante "+ Ticket" (widget compartido entre módulos, ver public/js/ticket-boton.js).

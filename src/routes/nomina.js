@@ -5,6 +5,7 @@ const multer  = require('multer');
 const pool    = require('../services/db');
 const { computarAccesoNomina } = require('../services/accesoNomina');
 const { seccionesDelRol } = require('../services/maestroMenu');
+const { obtenerPermisosProduccion } = require('../services/configProduccion');
 const { guardarEmpleadoFirma } = require('../services/firmaSyncService');
 const { obtenerFirmaBase64Reciente, subirFirma } = require('../services/storage');
 const { agruparOperacionesPorRegional } = require('../services/accesoInventario');
@@ -288,11 +289,17 @@ router.get('/', async (req, res) => {
       }
     }
 
-    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias) {
+    // Producción (destajo): pestaña y subpestañas por Maestro_Menu; acciones por Config_Parametros
+    const accesoProduccion = await computarAccesoNomina(usuario, 'Produccion');
+    const accesoProdAreas = await computarAccesoNomina(usuario, 'Produccion_Areas');
+    const accesoProdTarifas = await computarAccesoNomina(usuario, 'Produccion_Tarifas');
+    const accesoProd = accesoProduccion || accesoProdAreas || accesoProdTarifas;
+
+    if (!accesoRetiro && !accesoActivo && !accesoBloqueo && !accesoBiometrico && !accesoTraslados && !accesoCesantias && !accesoProd) {
       return res.status(403).send(paginaError('Usuario no autorizado'));
     }
 
-    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias;
+    const base = accesoRetiro || accesoActivo || accesoBloqueo || accesoBiometrico || accesoTraslados || accesoCesantias || accesoProd;
     const puedeGenerarDocs = await puedeGenerarDocumentosRetiro(base.rol, base.regional);
     const isSstOnly = ['AdmSst', 'LiderSst'].includes(base.rol);
 
@@ -358,6 +365,13 @@ router.get('/', async (req, res) => {
           operacionesSinValidacion: permisosCesantias.operacionesSinValidacion || [],
           operacionesFiltro:        accesoCesantias.operacionesFiltro || [],
           opsPorRegional:           accesoCesantias.opsPorRegional || {},
+        } : null,
+        produccion: accesoProd ? {
+          registros: Boolean(accesoProduccion),
+          areas: Boolean(accesoProdAreas),
+          tarifas: Boolean(accesoProdTarifas),
+          opsPorRegional: accesoProd.opsPorRegional || {},
+          ...(await obtenerPermisosProduccion(base.rol)),
         } : null,
       },
     }).replace(/<\/script>/gi, '<\\/script>');

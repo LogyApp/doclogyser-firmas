@@ -155,6 +155,16 @@ async function regenerarPazYSalvoFinal(idVinculacion) {
   return urlPdf;
 }
 
+// Compatibilidad con enlaces generados como /pazysalvo-area/:idPz?area=:area&token=:token
+router.get('/:idPz', (req, res, next) => {
+  const { idPz } = req.params;
+  const { area, token } = req.query;
+  if (area) {
+    return res.redirect(`/pazysalvo-area/${encodeURIComponent(area)}/${encodeURIComponent(idPz)}${token ? `?token=${encodeURIComponent(token)}` : ''}`);
+  }
+  next();
+});
+
 // ── GET /:area/:idPz?token=... ──────────────────────────────────────────────
 router.get('/:area/:idPz', async (req, res) => {
   try {

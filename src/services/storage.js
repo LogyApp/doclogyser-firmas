@@ -443,5 +443,18 @@ module.exports = {
     const file = storage.bucket(BUCKET_PDFS).file(nombre);
     await file.save(buffer, { contentType: contentType || 'image/jpeg' });
     return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+  },
+  subirPDFAts: async function (nombreArchivo, bufferPdf) {
+    const nombre = `general/${nombreArchivo}`;
+    const file = storage.bucket(BUCKET_PDFS).file(nombre);
+    await file.save(bufferPdf, { contentType: 'application/pdf' });
+    return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+  },
+  subirEvidenciaAts: async function (idAts, index, bufferImg, contentType) {
+    const ext = contentType === 'image/png' ? '.png' : '.jpg';
+    const nombre = `general/ATS_EVIDENCIA_${idAts}_${index}_${Date.now()}${ext}`;
+    const file = storage.bucket(BUCKET_PDFS).file(nombre);
+    await file.save(bufferImg, { contentType: contentType || 'image/jpeg' });
+    return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
   }
 };

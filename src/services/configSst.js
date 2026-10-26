@@ -31,6 +31,11 @@ const PERMISOS_SST = {
     crear: 'Roles que pueden crear compromisos SST',
     eliminar: 'Roles que pueden eliminar compromisos SST',
   },
+  ATS: {
+    clave: 'ats',
+    crear: 'Roles que pueden registrar ATS en SST',
+    eliminar: 'Roles que pueden eliminar ATS en SST',
+  },
 };
 
 const DEFECTO_POR_ACCION = {
