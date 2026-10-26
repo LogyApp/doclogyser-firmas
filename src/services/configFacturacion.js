@@ -81,8 +81,69 @@ async function obtenerConfigServiciosMasivo(rol) {
   };
 }
 
+// ── Pestaña Clientes: maestros de Transportadoras, Proveedores y Placas ─────
+// Seccion = 'Clientes'. Depurar = eliminar, eliminar y reemplazar, unificar duplicados de
+// Placas y las acciones provisionales (mayúsculas, normalizar textos). Antes era fijo: Sistema.
+const SECCION_CLIENTES = 'Clientes';
+const PC = {
+  ROLES_DEPURAR:     'Roles que pueden depurar maestros de Clientes',
+  ROLES_GESTIONAR:   'Roles que pueden editar y agregar en maestros de Clientes',
+  ROLES_RETENCIONES: 'Roles que pueden editar retenciones de Clientes',
+};
+const DEFAULTS_CLIENTES = {
+  [PC.ROLES_DEPURAR]:     'Sistema',
+  [PC.ROLES_GESTIONAR]:   'Auxiliar, AuxiliarR, Coordinador, CoordinadorR, Facturación, Sistema',
+  [PC.ROLES_RETENCIONES]: 'Facturación, Sistema',
+};
+
+async function puedeDepurarMaestros(rol) {
+  let texto = DEFAULTS_CLIENTES[PC.ROLES_DEPURAR];
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
+      [MODULO, SECCION_CLIENTES, PC.ROLES_DEPURAR]
+    );
+    if (rows.length) texto = rows[0].Parametro == null ? '' : String(rows[0].Parametro);
+  } catch (err) {
+    console.error('[configFacturacion] No se pudo leer el permiso de depurar maestros, usando default:', err.message);
+  }
+  return enLista(texto, rol);
+}
+
+async function puedeGestionarMaestros(rol) {
+  let texto = DEFAULTS_CLIENTES[PC.ROLES_GESTIONAR];
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
+      [MODULO, SECCION_CLIENTES, PC.ROLES_GESTIONAR]
+    );
+    if (rows.length) texto = rows[0].Parametro == null ? '' : String(rows[0].Parametro);
+  } catch (err) {
+    console.error('[configFacturacion] No se pudo leer el permiso de gestionar maestros, usando default:', err.message);
+  }
+  return enLista(texto, rol);
+}
+
+async function puedeEditarRetenciones(rol) {
+  let texto = DEFAULTS_CLIENTES[PC.ROLES_RETENCIONES];
+  try {
+    const [rows] = await pool.execute(
+      'SELECT `Parametro` FROM `Config_Parametros` WHERE `Modulo` = ? AND `Seccion` = ? AND `Concepto` = ? LIMIT 1',
+      [MODULO, SECCION_CLIENTES, PC.ROLES_RETENCIONES]
+    );
+    if (rows.length) texto = rows[0].Parametro == null ? '' : String(rows[0].Parametro);
+  } catch (err) {
+    console.error('[configFacturacion] No se pudo leer el permiso de editar retenciones, usando default:', err.message);
+  }
+  return enLista(texto, rol);
+}
+
 module.exports = {
   obtenerConfigServiciosMasivo,
+  puedeDepurarMaestros,
+  puedeGestionarMaestros,
+  puedeEditarRetenciones,
+  PARAMETROS_FACTURACION_CLIENTES: PC,
   normalizarTexto,
   PARAMETROS_FACTURACION_SERVICIOS: P,
 };

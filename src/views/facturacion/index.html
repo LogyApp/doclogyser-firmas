@@ -2025,10 +2025,15 @@
            SUBPESTAÑA 1 (PRINCIPAL): CLIENTES (Maestro_Clientes)
       ══════════════════════════════════════════════════════════ -->
       <div id="subtab-content-clientes">
-        <div class="page-hd">
+        <div class="page-hd" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div>
             <div class="page-title">Facturación · Clientes</div>
             <div class="page-sub">Directorio general de clientes (Maestro_Clientes), datos de facturación electrónica, ubicación y retenciones</div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button type="button" class="btn-primary" id="btn-agregar-cliente" onclick="abrirModalCrearCliente()" style="display: none; font-weight: 600;">
+              ➕ Nuevo Cliente
+            </button>
           </div>
         </div>
 
@@ -2132,6 +2137,7 @@
           <table class="data-table" id="tabla-maestro-clientes">
             <thead>
               <tr>
+                <th style="width: 80px; text-align: center;">Acciones</th>
                 <th style="width: 110px;" data-sort="solicitarActualizacion">Actualización<span id="mcliSort-solicitarActualizacion" class="sort-indicator"></span></th>
                 <th style="width: 130px;" data-sort="codigo">Código / NIT<span id="mcliSort-codigo" class="sort-indicator"></span></th>
                 <th style="width: 260px;" data-sort="razonSocial">Razón Social<span id="mcliSort-razonSocial" class="sort-indicator"></span></th>
@@ -2151,7 +2157,7 @@
               </tr>
             </thead>
             <tbody id="tabla-maestro-clientes-body">
-              <tr><td colspan="16" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
+              <tr><td colspan="17" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando clientes...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2239,10 +2245,43 @@
            SUBPESTAÑA 3: TRANSPORTADORAS (Maestro_Transportadora)
       ══════════════════════════════════════════════════════════ -->
       <div id="subtab-content-transportadoras" style="display: none;">
-        <div class="page-hd">
+        <div class="page-hd" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
           <div>
             <div class="page-title">Facturación · Transportadoras</div>
             <div class="page-sub">Catálogo maestro de transportadoras registradas en la operación (Maestro_Transportadora)</div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button type="button" class="btn-primary" id="btn-agregar-transportadora" onclick="abrirModalAgregarCat('transportadora')" style="font-weight: 600;">
+              <span>➕</span> Agregar Transportadora
+            </button>
+            <button type="button" class="btn-secondary" id="btn-duplicados-transportadora" onclick="abrirModalDuplicados('transportadora')" style="font-weight: 600;">
+              <span>🔍</span> Ver Duplicados <span class="badge" id="badge-duplicados-transportadora" style="background: rgba(239,68,68,0.15); color: #dc2626; margin-left: 4px; display: none;">0</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btn-normalizar-transportadora" onclick="abrirModalNormalizar('transportadora')" style="display: none; border-color: rgba(16,185,129,0.4); color: #059669; font-weight: 600;" title="Normaliza nombres en Dynamic_Servicios a su ID oficial">
+              <span>🧹</span> Normalizar Textos en Servicios
+            </button>
+            <button type="button" class="btn-secondary" id="btn-mayus-transportadora" onclick="convertirMayusculas('transportadora')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+              <span>🔠</span> A Mayúsculas
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra flotante de acciones masivas Transportadoras (Solo Sistema) -->
+        <div id="mtransp-bulk-bar" style="display: none; background: rgba(99,102,241,0.08); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge" id="mtransp-bulk-cnt" style="background: var(--accent); color: #fff; font-weight: 700;">0 seleccionados</span>
+            <span style="font-size: 0.85rem; color: var(--text);">Acciones de depuración:</span>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" style="color: #dc2626; border-color: rgba(239,68,68,0.3); font-size: 0.82rem; font-weight: 600;" onclick="abrirConfirmarEliminarMasivo('transportadora')">
+              🗑️ Eliminar masivo (Dejar servicios en blanco)
+            </button>
+            <button type="button" class="btn-primary" style="font-size: 0.82rem; background: #6366f1; border-color: #6366f1;" onclick="abrirModalEliminarReemplazar('transportadora')">
+              🔄 Eliminar y Reemplazar por otro...
+            </button>
+            <button type="button" class="btn-reset" style="margin: 0; padding: 4px 10px; font-size: 0.82rem;" onclick="desmarcarTodosCat('transportadora')">
+              Deseleccionar
+            </button>
           </div>
         </div>
 
@@ -2290,14 +2329,19 @@
           <table class="data-table" id="tabla-transportadoras">
             <thead>
               <tr>
-                <th style="width: 130px;" data-sort="id">ID<span id="mtranspSort-id" class="sort-indicator"></span></th>
-                <th style="width: 340px;" data-sort="transportadora">Transportadora<span id="mtranspSort-transportadora" class="sort-indicator"></span></th>
-                <th style="width: 220px;" data-sort="usuario">Usuario<span id="mtranspSort-usuario" class="sort-indicator"></span></th>
-                <th style="width: 180px;" data-sort="fechaIngreso">Fecha Ingreso<span id="mtranspSort-fechaIngreso" class="sort-indicator"> ▼</span></th>
+                <th style="width: 40px; text-align: center;">
+                  <input type="checkbox" id="mtransp-chk-all" onchange="toggleSelectAllCat('transportadora', this.checked)">
+                </th>
+                <th style="width: 100px; text-align: center;">Acciones</th>
+                <th style="width: 110px;" data-sort="id">ID<span id="mtranspSort-id" class="sort-indicator"></span></th>
+                <th style="width: 320px;" data-sort="transportadora">Transportadora<span id="mtranspSort-transportadora" class="sort-indicator"></span></th>
+                <th style="width: 140px; text-align: center;" data-sort="totalServicios">Servicios<span id="mtranspSort-totalServicios" class="sort-indicator"></span></th>
+                <th style="width: 200px;" data-sort="usuario">Usuario<span id="mtranspSort-usuario" class="sort-indicator"></span></th>
+                <th style="width: 160px;" data-sort="fechaIngreso">Fecha Ingreso<span id="mtranspSort-fechaIngreso" class="sort-indicator"> ▼</span></th>
               </tr>
             </thead>
             <tbody id="tabla-transportadoras-body">
-              <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando transportadoras...</td></tr>
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando transportadoras...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2311,10 +2355,43 @@
            SUBPESTAÑA 4: PROVEEDORES (Maestro_Proveedor)
       ══════════════════════════════════════════════════════════ -->
       <div id="subtab-content-proveedores" style="display: none;">
-        <div class="page-hd">
+        <div class="page-hd" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
           <div>
             <div class="page-title">Facturación · Proveedores</div>
             <div class="page-sub">Catálogo maestro de proveedores registrados en la operación (Maestro_Proveedor)</div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button type="button" class="btn-primary" id="btn-agregar-proveedor" onclick="abrirModalAgregarCat('proveedor')" style="font-weight: 600;">
+              <span>➕</span> Agregar Proveedor
+            </button>
+            <button type="button" class="btn-secondary" id="btn-duplicados-proveedor" onclick="abrirModalDuplicados('proveedor')" style="font-weight: 600;">
+              <span>🔍</span> Ver Duplicados <span class="badge" id="badge-duplicados-proveedor" style="background: rgba(239,68,68,0.15); color: #dc2626; margin-left: 4px; display: none;">0</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btn-normalizar-proveedor" onclick="abrirModalNormalizar('proveedor')" style="display: none; border-color: rgba(16,185,129,0.4); color: #059669; font-weight: 600;" title="Normaliza nombres en Dynamic_Servicios a su ID oficial">
+              <span>🧹</span> Normalizar Textos en Servicios
+            </button>
+            <button type="button" class="btn-secondary" id="btn-mayus-proveedor" onclick="convertirMayusculas('proveedor')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+              <span>🔠</span> A Mayúsculas
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra flotante de acciones masivas Proveedores (Solo Sistema) -->
+        <div id="mprov-bulk-bar" style="display: none; background: rgba(99,102,241,0.08); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge" id="mprov-bulk-cnt" style="background: var(--accent); color: #fff; font-weight: 700;">0 seleccionados</span>
+            <span style="font-size: 0.85rem; color: var(--text);">Acciones de depuración:</span>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" style="color: #dc2626; border-color: rgba(239,68,68,0.3); font-size: 0.82rem; font-weight: 600;" onclick="abrirConfirmarEliminarMasivo('proveedor')">
+              🗑️ Eliminar masivo (Dejar servicios en blanco)
+            </button>
+            <button type="button" class="btn-primary" style="font-size: 0.82rem; background: #6366f1; border-color: #6366f1;" onclick="abrirModalEliminarReemplazar('proveedor')">
+              🔄 Eliminar y Reemplazar por otro...
+            </button>
+            <button type="button" class="btn-reset" style="margin: 0; padding: 4px 10px; font-size: 0.82rem;" onclick="desmarcarTodosCat('proveedor')">
+              Deseleccionar
+            </button>
           </div>
         </div>
 
@@ -2362,14 +2439,19 @@
           <table class="data-table" id="tabla-proveedores">
             <thead>
               <tr>
-                <th style="width: 130px;" data-sort="id">ID<span id="mprovSort-id" class="sort-indicator"></span></th>
-                <th style="width: 340px;" data-sort="proveedor">Proveedor<span id="mprovSort-proveedor" class="sort-indicator"></span></th>
-                <th style="width: 220px;" data-sort="usuario">Usuario<span id="mprovSort-usuario" class="sort-indicator"></span></th>
-                <th style="width: 180px;" data-sort="fechaIngreso">Fecha Ingreso<span id="mprovSort-fechaIngreso" class="sort-indicator"> ▼</span></th>
+                <th style="width: 40px; text-align: center;">
+                  <input type="checkbox" id="mprov-chk-all" onchange="toggleSelectAllCat('proveedor', this.checked)">
+                </th>
+                <th style="width: 100px; text-align: center;">Acciones</th>
+                <th style="width: 110px;" data-sort="id">ID<span id="mprovSort-id" class="sort-indicator"></span></th>
+                <th style="width: 320px;" data-sort="proveedor">Proveedor<span id="mprovSort-proveedor" class="sort-indicator"></span></th>
+                <th style="width: 140px; text-align: center;" data-sort="totalServicios">Servicios<span id="mprovSort-totalServicios" class="sort-indicator"></span></th>
+                <th style="width: 200px;" data-sort="usuario">Usuario<span id="mprovSort-usuario" class="sort-indicator"></span></th>
+                <th style="width: 160px;" data-sort="fechaIngreso">Fecha Ingreso<span id="mprovSort-fechaIngreso" class="sort-indicator"> ▼</span></th>
               </tr>
             </thead>
             <tbody id="tabla-proveedores-body">
-              <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando proveedores...</td></tr>
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando proveedores...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2388,6 +2470,39 @@
             <div class="page-title">Facturación · Placas</div>
             <div class="page-sub">Catálogo maestro de placas de vehículos, tipo de cliente, NIT y terceros asociados (Maestro_Placas)</div>
           </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button type="button" class="btn-primary" id="btn-agregar-placa" onclick="abrirModalAgregarPlaca()" style="font-weight: 600;">
+              <span>➕</span> Agregar Placa
+            </button>
+            <button type="button" class="btn-secondary" id="btn-duplicados-placa" onclick="abrirModalDuplicados('placa')" style="font-weight: 600;" title="Misma Placa y Nit">
+              <span>🔍</span> Ver Duplicados <span class="badge" id="badge-duplicados-placa" style="background: rgba(239,68,68,0.15); color: #dc2626; margin-left: 4px; display: none;">0</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btn-longitud-placa" onclick="verPlacasLongitudDistinta()" style="font-weight: 600; border-color: rgba(245,158,11,0.45); color: #b45309;" title="Provisional: placas con menos o más de 6 caracteres">
+              <span>📏</span> Placas ≠ 6 <span class="badge" id="badge-longitud-placa" style="background: rgba(245,158,11,0.16); color: #b45309; margin-left: 4px;">0</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btn-mayus-placa" onclick="convertirMayusculas('placa')" style="display: none; border-color: rgba(99,102,241,0.4); color: var(--accent); font-weight: 600;" title="Provisional mientras se migran los procesos de AppSheet">
+              <span>🔠</span> A Mayúsculas
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de acciones masivas Placas (roles de depurar maestros) -->
+        <div id="mplaca-bulk-bar" style="display: none; background: rgba(99,102,241,0.08); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge" id="mplaca-bulk-cnt" style="background: var(--accent); color: #fff; font-weight: 700;">0 seleccionados</span>
+            <span style="font-size: 0.85rem; color: var(--text);">Acciones de depuración:</span>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" style="color: #dc2626; border-color: rgba(239,68,68,0.3); font-size: 0.82rem; font-weight: 600;" onclick="abrirConfirmarEliminarMasivo('placa')">
+              🗑️ Eliminar
+            </button>
+            <button type="button" class="btn-primary" style="font-size: 0.82rem; background: #6366f1; border-color: #6366f1;" onclick="abrirModalEliminarReemplazar('placa')">
+              🔄 Eliminar y Reemplazar
+            </button>
+            <button type="button" class="btn-reset" style="margin: 0; padding: 4px 10px; font-size: 0.82rem;" onclick="desmarcarTodosCat('placa')">
+              Deseleccionar
+            </button>
+          </div>
         </div>
 
         <!-- Filtros Plegables Placas -->
@@ -2401,7 +2516,7 @@
           </div>
           <div class="filtros-body" id="mplacaFiltrosBody" style="display: none;">
             <div style="margin-bottom: 14px;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Placa, ID, NIT, Cliente Crédito, Empleado o Usuario</label>
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Buscar por Placa, ID, Cliente (Nit o Razón social), Cliente Crédito, Empleado o Usuario</label>
               <div style="position: relative;">
                 <input type="text" id="mplaca-filtro-q" placeholder="Ej: QPO622, PEPSICO, 890920304..." oninput="onPlacasFilterChange()" style="width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem; outline: none;">
                 <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted); pointer-events: none;">🔍</span>
@@ -2442,6 +2557,15 @@
                   <option value="">Todos los usuarios</option>
                 </select>
               </div>
+              <div class="filtro-field">
+                <label>Longitud de Placa (provisional)</label>
+                <select id="mplaca-filtro-longitud" onchange="onPlacasFilterChange()">
+                  <option value="">Todas</option>
+                  <option value="distinto6">Distinta a 6 caracteres</option>
+                  <option value="menos6">Menos de 6 caracteres</option>
+                  <option value="mas6">Más de 6 caracteres</option>
+                </select>
+              </div>
             </div>
             <div style="display: flex; justify-content: flex-end; margin-top: 14px; gap: 8px;">
               <button type="button" class="btn-reset" onclick="resetFiltrosPlacas()">↺ Limpiar filtros</button>
@@ -2454,11 +2578,16 @@
           <table class="data-table" id="tabla-placas">
             <thead>
               <tr>
+                <th style="width: 40px; text-align: center;">
+                  <input type="checkbox" id="mplaca-chk-all" onchange="toggleSelectAllCat('placa', this.checked)">
+                </th>
+                <th style="width: 100px; text-align: center;">Acciones</th>
                 <th style="width: 110px;" data-sort="id">ID<span id="mplacaSort-id" class="sort-indicator"></span></th>
                 <th style="width: 120px;" data-sort="placa">Placa<span id="mplacaSort-placa" class="sort-indicator"></span></th>
                 <th style="width: 130px;" data-sort="tipoCliente">Tipo Cliente<span id="mplacaSort-tipoCliente" class="sort-indicator"></span></th>
-                <th style="width: 220px;" data-sort="clienteCredito">Cliente Crédito<span id="mplacaSort-clienteCredito" class="sort-indicator"></span></th>
-                <th style="width: 130px;" data-sort="nit">NIT<span id="mplacaSort-nit" class="sort-indicator"></span></th>
+                <th style="width: 200px;" data-sort="clienteCredito">Cliente Crédito<span id="mplacaSort-clienteCredito" class="sort-indicator"></span></th>
+                <th style="width: 280px;" data-sort="cliente">Cliente<span id="mplacaSort-cliente" class="sort-indicator"></span></th>
+                <th style="width: 130px; text-align: center;" data-sort="totalServicios">Servicios<span id="mplacaSort-totalServicios" class="sort-indicator"></span></th>
                 <th style="width: 150px;" data-sort="tipoVehiculo">Tipo Vehículo<span id="mplacaSort-tipoVehiculo" class="sort-indicator"></span></th>
                 <th style="width: 200px;" data-sort="empleado">Empleado<span id="mplacaSort-empleado" class="sort-indicator"></span></th>
                 <th style="width: 180px;" data-sort="usuario">Usuario<span id="mplacaSort-usuario" class="sort-indicator"></span></th>
@@ -2466,7 +2595,7 @@
               </tr>
             </thead>
             <tbody id="tabla-placas-body">
-              <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando placas...</td></tr>
+              <tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando placas...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2818,6 +2947,577 @@
           <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalEditarCliente()">Cancelar</button>
           <button type="button" class="btn-primary" id="btn-guardar-edicion-cliente" onclick="guardarEdicionCliente()">Guardar Cambios</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3B: EDITAR TRANSPORTADORA / PROVEEDOR
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-editar-cat-overlay">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <span id="mecat-modal-titulo">✏️ Editar Transportadora</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalEditarCat()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-editar-cat" onsubmit="event.preventDefault(); guardarEdicionCat();">
+          <input type="hidden" id="mecat-tipo">
+          <input type="hidden" id="mecat-id">
+
+          <div class="form-group">
+            <label>ID Registro</label>
+            <input type="text" id="mecat-id-disp" disabled style="background:var(--bg-elevated); font-family: monospace; font-weight:600; color:var(--text-muted);">
+          </div>
+
+          <div class="form-group">
+            <label id="mecat-label-nombre">Nombre *</label>
+            <input type="text" id="mecat-nombre" required placeholder="Escriba el nombre..." style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Se guardará en mayúsculas para mantener consistencia.</small>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; padding: 12px; background: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border);">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block; font-weight: 600;">SERVICIOS ASOCIADOS</span>
+              <strong id="mecat-servicios-cnt" style="font-size: 0.95rem; color: var(--accent);">0</strong>
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block; font-weight: 600;">FECHA INGRESO</span>
+              <span id="mecat-fecha-ingreso" style="font-size: 0.82rem; color: var(--text-muted);">—</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalEditarCat()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-edicion-cat" onclick="guardarEdicionCat()">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3B-2: AGREGAR TRANSPORTADORA / PROVEEDOR
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-agregar-cat-overlay">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header">
+        <span id="magcat-modal-titulo">➕ Agregar Transportadora</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalAgregarCat()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="event.preventDefault(); guardarAgregarCat();">
+          <div class="form-group">
+            <label id="magcat-label-nombre">Nombre *</label>
+            <input type="text" id="magcat-nombre" required placeholder="Escriba el nombre..." style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Se guarda en mayúsculas. No se permite repetir un nombre que ya exista. El ID, el usuario y la fecha se llenan solos.</small>
+          </div>
+          <div id="magcat-error" style="display: none; color: #dc2626; font-size: 0.85rem; font-weight: 600; margin-top: 8px;"></div>
+        </form>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalAgregarCat()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-agregar-cat" onclick="guardarAgregarCat()">Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3B-3: AGREGAR PLACA
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-agregar-placa-overlay">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span>➕ Agregar Placa</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalAgregarPlaca()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="event.preventDefault(); guardarAgregarPlaca();">
+          <div class="form-group">
+            <label>Placa *</label>
+            <input type="text" id="magpl-placa" required placeholder="Ej: ABC123" maxlength="20" style="text-transform: uppercase; font-family: monospace; font-weight: 700;" oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')">
+          </div>
+
+          <div class="form-group">
+            <label>Tipo Cliente *</label>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="category-chip" id="magpl-btn-contado" onclick="seleccionarTipoClientePlaca('CONTADO')" style="min-width: 0; flex: 1; align-items: center;">
+                <span class="chip-title">💵 CONTADO</span>
+              </button>
+              <button type="button" class="category-chip" id="magpl-btn-credito" onclick="seleccionarTipoClientePlaca('CREDITO')" style="min-width: 0; flex: 1; align-items: center;">
+                <span class="chip-title">🧾 CREDITO</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group" id="magpl-grupo-cc" style="display: none; position: relative;">
+            <label>Cliente Crédito *</label>
+            <input type="text" id="magpl-cc-input" placeholder="Escribe para buscar en Maestro_Clientes_Credito..." autocomplete="off"
+                   oninput="filtrarClientesCreditoPlaca(this.value)" onfocus="filtrarClientesCreditoPlaca(this.value)"
+                   onblur="setTimeout(() => { document.getElementById('magpl-cc-lista').style.display = 'none'; }, 150)">
+            <div id="magpl-cc-lista" style="display: none; position: absolute; left: 0; right: 0; z-index: 30; max-height: 220px; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12);"></div>
+          </div>
+
+          <div class="form-group" style="position: relative;">
+            <label>Nit (opcional)</label>
+            <input type="text" id="magpl-nit-input" placeholder="Escribe el Nit o la razón social (Maestro_Clientes)..." autocomplete="off"
+                   oninput="buscarClientesNitPlaca(this.value)"
+                   onblur="setTimeout(() => { document.getElementById('magpl-nit-lista').style.display = 'none'; }, 150)">
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Con CREDITO el Nit se toma del Cliente Crédito escogido.</small>
+            <div id="magpl-nit-lista" style="display: none; position: absolute; left: 0; right: 0; z-index: 30; max-height: 220px; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12);"></div>
+          </div>
+
+          <div id="magpl-error" style="display: none; color: #dc2626; font-size: 0.85rem; font-weight: 600; margin-top: 8px;"></div>
+        </form>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalAgregarPlaca()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-agregar-placa" onclick="guardarAgregarPlaca()">Agregar Placa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3B-4: EDITAR PLACA
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-editar-placa-overlay">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span>✏️ Editar Placa</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalEditarPlaca()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="event.preventDefault(); guardarEditarPlaca();">
+          <input type="hidden" id="medpl-id">
+          <div class="form-group">
+            <label>Placa *</label>
+            <input type="text" id="medpl-placa" required placeholder="Ej: ABC123" maxlength="20" style="text-transform: uppercase; font-family: monospace; font-weight: 700;" oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')">
+          </div>
+
+          <div class="form-group">
+            <label>Tipo Cliente *</label>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="category-chip" id="medpl-btn-contado" onclick="seleccionarTipoClientePlacaEdit('CONTADO')" style="min-width: 0; flex: 1; align-items: center;">
+                <span class="chip-title">💵 CONTADO</span>
+              </button>
+              <button type="button" class="category-chip" id="medpl-btn-credito" onclick="seleccionarTipoClientePlacaEdit('CREDITO')" style="min-width: 0; flex: 1; align-items: center;">
+                <span class="chip-title">🧾 CREDITO</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group" id="medpl-grupo-cc" style="display: none; position: relative;">
+            <label>Cliente Crédito *</label>
+            <input type="text" id="medpl-cc-input" placeholder="Escribe para buscar en Maestro_Clientes_Credito..." autocomplete="off"
+                   oninput="filtrarClientesCreditoPlacaEdit(this.value)" onfocus="filtrarClientesCreditoPlacaEdit(this.value)"
+                   onblur="setTimeout(() => { document.getElementById('medpl-cc-lista').style.display = 'none'; }, 150)">
+            <div id="medpl-cc-lista" style="display: none; position: absolute; left: 0; right: 0; z-index: 30; max-height: 220px; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12);"></div>
+          </div>
+
+          <div class="form-group" style="position: relative;">
+            <label>Nit (opcional)</label>
+            <input type="text" id="medpl-nit-input" placeholder="Escribe el Nit o la razón social (Maestro_Clientes)..." autocomplete="off"
+                   oninput="buscarClientesNitPlacaEdit(this.value)"
+                   onblur="setTimeout(() => { document.getElementById('medpl-nit-lista').style.display = 'none'; }, 150)">
+            <small style="color: var(--text-muted); font-size: 0.78rem;">Con CREDITO el Nit se toma del Cliente Crédito escogido.</small>
+            <div id="medpl-nit-lista" style="display: none; position: absolute; left: 0; right: 0; z-index: 30; max-height: 220px; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12);"></div>
+          </div>
+
+          <div id="medpl-error" style="display: none; color: #dc2626; font-size: 0.85rem; font-weight: 600; margin-top: 8px;"></div>
+        </form>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalEditarPlaca()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-guardar-editar-placa" onclick="guardarEditarPlaca()">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL: NUEVO CLIENTE (Maestro_Clientes)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-crear-cliente-overlay">
+    <div class="modal-card" style="max-width: 680px; max-height: 90vh;">
+      <div class="modal-header">
+        <span>➕ Nuevo Cliente (Maestro_Clientes)</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalCrearCliente()">&times;</button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; padding: 20px;">
+        <form id="form-crear-cliente" onsubmit="submitCrearCliente(event)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Código / NIT *</label>
+              <input type="number" id="mcli-nuevo-codigo" required style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px;" placeholder="Ej: 900123456" oninput="actualizarPreviewBuscarCliente()">
+            </div>
+            <div>
+              <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Condición de Pago</label>
+              <input type="text" value="CONTADO" readonly style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--bg-elevated); font-weight: 700; color: #059669;">
+            </div>
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Razón Social * (Solo Mayúsculas)</label>
+            <input type="text" id="mcli-nuevo-razonsocial" required style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px; text-transform: uppercase; font-weight: 600;" placeholder="Ej: COMERCIALIZADORA LOGYSER SAS" oninput="this.value = this.value.toUpperCase(); actualizarPreviewBuscarCliente()">
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label style="display:block; font-size: 0.74rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Buscar Cliente (Calculado automáticamente)</label>
+            <input type="text" id="mcli-nuevo-buscarcliente" readonly style="width: 100%; padding: 8px; border: 1px dashed var(--border); border-radius: 8px; background: var(--bg-elevated); font-size: 0.85rem; color: var(--text-muted);" placeholder="[Código] ** [Razón social]">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Teléfono *</label>
+              <input type="tel" id="mcli-nuevo-telefono" required style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px;" placeholder="Ej: 3001234567">
+            </div>
+            <div>
+              <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Correo F.E. *</label>
+              <input type="email" id="mcli-nuevo-correofe" required style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px;" placeholder="facturacion@empresa.com">
+            </div>
+          </div>
+          <!-- Ubicación por Operación del Usuario (Informativo / Editable) -->
+          <div style="background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 8px;">📍 Ubicación asignada por Operación del Usuario (<span id="mcli-nuevo-operacion-nombre">-</span>)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <div>
+                <label style="display:block; font-size: 0.72rem; color: var(--text-muted);">Depto / Estado</label>
+                <input type="text" id="mcli-nuevo-depto" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display:block; font-size: 0.72rem; color: var(--text-muted);">Ciudad</label>
+                <input type="text" id="mcli-nuevo-ciudad" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+              </div>
+              <div>
+                <label style="display:block; font-size: 0.72rem; color: var(--text-muted);">Dirección 1</label>
+                <input type="text" id="mcli-nuevo-direccion" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+              </div>
+            </div>
+          </div>
+          <!-- Rut Cliente (Documento opcional) -->
+          <div style="margin-bottom: 14px;">
+            <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Rut Cliente (Documento opcional: jpg, png o pdf)</label>
+            <input type="file" id="mcli-nuevo-documento" accept=".jpg,.jpeg,.png,.pdf" style="width: 100%; padding: 8px; border: 1.5px dashed var(--border); border-radius: 8px; font-size: 0.82rem; background: var(--bg-surface);">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">Se guardará en la carpeta central de talenthub etiquetado para el cliente.</div>
+          </div>
+          <!-- Retenciones (solo Facturación y Sistema) -->
+          <div id="mcli-wrap-retenciones" style="display: none; background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 8px;">⚖️ Retenciones (Solo Facturación y Sistema)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <div>
+                <label style="display:block; font-size: 0.72rem;">RTICA</label>
+                <select id="mcli-nuevo-rtica" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+                  <option value="">— Ninguno —</option>
+                  <option value="V">V (Aplica)</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size: 0.72rem;">RTIVA</label>
+                <select id="mcli-nuevo-rtiva" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+                  <option value="">— Ninguno —</option>
+                  <option value="V">V (Aplica)</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size: 0.72rem;">RTSERVIC</label>
+                <select id="mcli-nuevo-rtservic" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+                  <option value="">— Ninguno —</option>
+                  <option value="V">V (Aplica)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <!-- Observaciones -->
+          <div style="margin-bottom: 14px;">
+            <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Observaciones (Opcional)</label>
+            <textarea id="mcli-nuevo-observaciones" rows="2" style="width: 100%; padding: 8px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.85rem;" placeholder="Notas adicionales sobre el cliente..."></textarea>
+          </div>
+          <div id="mcli-nuevo-error" style="display: none; color: #dc2626; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;"></div>
+          <div class="modal-footer" style="display:flex; justify-content:flex-end; gap: 8px; padding-top: 10px;">
+            <button type="button" class="btn-reset" onclick="cerrarModalCrearCliente()">Cancelar</button>
+            <button type="submit" class="btn-primary" id="btn-submit-crear-cliente">💾 Guardar Cliente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL: EDITAR CLIENTE (Maestro_Clientes)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-editar-cliente-overlay">
+    <div class="modal-card" style="max-width: 620px;">
+      <div class="modal-header">
+        <span>✏️ Editar Cliente</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalEditarCliente()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <form id="form-editar-cliente" onsubmit="submitEditarCliente(event)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Código / NIT</label>
+              <input type="text" id="mcli-edit-codigo" readonly style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--bg-elevated); font-weight: 700;">
+            </div>
+            <div>
+              <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Razón Social *</label>
+              <input type="text" id="mcli-edit-razonsocial" required style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px; text-transform: uppercase; font-weight: 600;" oninput="this.value = this.value.toUpperCase()">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Teléfono *</label>
+              <input type="tel" id="mcli-edit-telefono" required style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px;">
+            </div>
+            <div>
+              <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Correo F.E. *</label>
+              <input type="email" id="mcli-edit-correofe" required style="width: 100%; padding: 9px; border: 1.5px solid var(--border); border-radius: 8px;">
+            </div>
+          </div>
+          <div id="mcli-edit-wrap-retenciones" style="display: none; background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 8px;">⚖️ Retenciones (Solo Facturación y Sistema)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <div>
+                <label style="display:block; font-size: 0.72rem;">RTICA</label>
+                <select id="mcli-edit-rtica" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+                  <option value="">— Ninguno —</option>
+                  <option value="V">V (Aplica)</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size: 0.72rem;">RTIVA</label>
+                <select id="mcli-edit-rtiva" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+                  <option value="">— Ninguno —</option>
+                  <option value="V">V (Aplica)</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; font-size: 0.72rem;">RTSERVIC</label>
+                <select id="mcli-edit-rtservic" style="width: 100%; padding: 7px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px;">
+                  <option value="">— Ninguno —</option>
+                  <option value="V">V (Aplica)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label style="display:block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Observaciones</label>
+            <textarea id="mcli-edit-observaciones" rows="2" style="width: 100%; padding: 8px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.85rem;"></textarea>
+          </div>
+          <div id="mcli-edit-doc-link-wrap" style="display: none; margin-bottom: 14px; font-size: 0.82rem;">
+            <span style="font-weight: 600;">Rut Cliente:</span> <a id="mcli-edit-doc-link" href="#" target="_blank" style="color: var(--accent); text-decoration: underline;">📄 Ver archivo cargado</a>
+          </div>
+          <div id="mcli-edit-error" style="display: none; color: #dc2626; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;"></div>
+          <div class="modal-footer" style="display:flex; justify-content:flex-end; gap: 8px; padding-top: 10px;">
+            <button type="button" class="btn-reset" onclick="cerrarModalEditarCliente()">Cancelar</button>
+            <button type="submit" class="btn-primary" id="btn-submit-edit-cliente">💾 Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3C: GESTIÓN Y UNIFICACIÓN DE DUPLICADOS
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-duplicados-cat-overlay">
+    <div class="modal-card" style="max-width: 920px; max-height: 90vh;">
+      <div class="modal-header">
+        <span id="mdup-modal-titulo">🔍 Duplicados de Transportadoras</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalDuplicados()">&times;</button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; padding: 20px;">
+        <div style="background: rgba(99,102,241,0.08); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 0.85rem; color: var(--text);">
+          <strong>⚡ Automatización de Unificación:</strong>
+          Para cada grupo de duplicados, selecciona con el botón circular el registro que deseas <strong>CONSERVAR</strong>. Al unificar, los servicios registrados en <code>Dynamic_Servicios</code> con los otros IDs se reasignarán automáticamente al ID conservado, y los duplicados sobrantes serán eliminados de la base de datos.
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; flex-wrap: wrap;">
+          <div style="position: relative; flex: 1; min-width: 240px;">
+            <input type="text" id="mdup-filtro-input" placeholder="Filtrar por nombre o ID duplicado..." oninput="filtrarGruposDuplicados(this.value)" style="width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">
+            <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
+          </div>
+          <span id="mdup-info-total" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">0 grupos duplicados</span>
+        </div>
+
+        <div id="mdup-contenedor-grupos" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Grupos inyectados dinámicamente -->
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
+        <button type="button" class="btn-primary" id="btn-unificar-todos-duplicados" onclick="unificarTodosDuplicados()" style="background: #059669; border-color: #059669;">
+          ⚡ Unificar Todos los Grupos con la Selección Actual
+        </button>
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalDuplicados()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3D: SERVICIOS ASOCIADOS EN DYNAMIC_SERVICIOS
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-servicios-cat-overlay">
+    <div class="modal-card" style="max-width: 1100px; max-height: 90vh;">
+      <div class="modal-header">
+        <span id="mserv-modal-titulo">📋 Servicios Asociados</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalServiciosAsociados()">&times;</button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; padding: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; padding: 12px 16px; background: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border);">
+          <div>
+            <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Entidad</span>
+            <div id="mserv-subtitulo-entidad" style="font-size: 1rem; font-weight: 700; color: var(--accent);">—</div>
+          </div>
+          <div style="display: flex; gap: 20px; align-items: center;">
+            <div style="text-align: right;">
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Servicios</span>
+              <div id="mserv-total-cnt" style="font-size: 1.1rem; font-weight: 700; color: #059669;">0</div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Subtotal Facturado</span>
+              <div id="mserv-total-monto" style="font-size: 1.1rem; font-weight: 700; color: var(--text);">$ 0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-container" style="max-height: 55vh; overflow-y: auto;">
+          <table class="data-table" id="tabla-modal-servicios-asociados">
+            <thead>
+              <tr>
+                <th style="width: 120px;">IdServicio</th>
+                <th style="width: 110px;">Recibo</th>
+                <th style="width: 140px;">Fecha Servicio</th>
+                <th style="width: 140px;">Operación</th>
+                <th style="width: 130px;">Área</th>
+                <th style="width: 150px;">Actividad</th>
+                <th style="width: 110px;">Placa / Veh.</th>
+                <th style="width: 90px; text-align: right;">Cant.</th>
+<th style="width: 90px; ">Unidad</th>
+                <th style="width: 100px; text-align: right;">Vlr. Unit.</th>
+                <th style="width: 110px; text-align: right;">Subtotal</th>
+                <th style="width: 180px;">Cliente</th>
+                <th style="width: 100px; text-align: center;">Forma Pago</th>
+                <th style="width: 90px; text-align: center;">Estado</th>
+                <th style="width: 130px;">Usuario</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-modal-servicios-body">
+              <tr><td colspan="14" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando servicios asociados...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end;">
+        <button type="button" class="btn-reset" style="margin-top:0" onclick="cerrarModalServiciosAsociados()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3E: ELIMINAR Y REEMPLAZAR (Solo Sistema)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-eliminar-reemplazar-cat-overlay">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header" style="background: #dc2626;">
+        <span id="melim-modal-titulo">🔄 Eliminar y Reemplazar</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalEliminarReemplazar()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <div style="background: rgba(239,68,68,0.08); border-left: 4px solid #dc2626; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 0.85rem; color: var(--text);">
+          <strong>⚠️ Acción Definitiva (Rol Sistema):</strong>
+          Todos los servicios en <code>Dynamic_Servicios</code> vinculados a los registros que vas a eliminar serán reasignados al registro de reemplazo seleccionado. Posteriormente, los registros a eliminar se borrarán definitivamente de la tabla maestra.
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Registros que se van a eliminar</label>
+          <div id="melim-lista-a-eliminar" style="max-height: 140px; overflow-y: auto; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 0.85rem;">
+            <!-- Lista inyectada dinámicamente -->
+          </div>
+          <small id="melim-info-servicios-afectados" style="display: block; margin-top: 4px; font-size: 0.78rem; font-weight: 600; color: #dc2626;">0 servicios asociados serán reasignados.</small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label id="melim-label-destino" style="font-weight: 700;">Selecciona el registro de REEMPLAZO (Destino) *</label>
+          <div style="position: relative;">
+            <input type="text" id="melim-filtro-destino" placeholder="Buscar por nombre o ID del registro que conservará los servicios..." oninput="filtrarOpcionesReemplazo(this.value)" autocomplete="off" style="width: 100%; padding: 10px 14px 10px 36px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem;">
+            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
+          </div>
+          <div id="melim-lista-opciones-destino" style="max-height: 160px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; margin-top: 6px; background: var(--card-bg); display: none;">
+            <!-- Opciones sugeridas -->
+          </div>
+          <input type="hidden" id="melim-id-destino-seleccionado">
+          <div id="melim-seleccionado-banner" style="display: none; margin-top: 8px; padding: 8px 12px; background: rgba(16,185,129,0.12); border: 1px solid #10b981; border-radius: 6px; font-size: 0.85rem; color: #047857;">
+            Destino seleccionado: <strong id="melim-seleccionado-nombre">—</strong> (<span id="melim-seleccionado-id">—</span>)
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <button type="button" class="btn-reset" style="margin-top:0;" onclick="cerrarModalEliminarReemplazar()">Cancelar</button>
+        <button type="button" class="btn-primary" id="btn-submit-eliminar-reemplazar" onclick="submitEliminarReemplazar()" style="background: #dc2626; border-color: #dc2626;" disabled>
+          🔄 Reemplazar Servicios y Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL 3F: NORMALIZACIÓN DE TEXTOS EN DYNAMIC_SERVICIOS
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-normalizar-cat-overlay">
+    <div class="modal-card" style="max-width: 900px; max-height: 90vh;">
+      <div class="modal-header" style="background: #059669;">
+        <span id="mnorm-modal-titulo">🧹 Normalización de Textos en Dynamic_Servicios</span>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalNormalizar()">&times;</button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; padding: 20px;">
+        <div style="background: rgba(16,185,129,0.08); border-left: 4px solid #059669; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 0.85rem; color: var(--text);">
+          <strong>ℹ️ Saneamiento de Datos Históricos:</strong>
+          Busca en la columna <code>Transportadora</code> o <code>Proveedor</code> de <code>Dynamic_Servicios</code> los registros donde quedó guardado el nombre en texto o con saltos de línea en lugar del ID oficial. El sistema los empareja automáticamente con su ID de la tabla maestra para dejar la base de datos limpia y consistente.
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+          <div style="padding: 12px; background: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border);">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Valores Huérfanos</span>
+            <div id="mnorm-stat-total" style="font-size: 1.25rem; font-weight: 800; color: var(--text);">0</div>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">distintos en servicios</small>
+          </div>
+          <div style="padding: 12px; background: rgba(16,185,129,0.1); border-radius: 8px; border: 1px solid rgba(16,185,129,0.3);">
+            <span style="font-size: 0.75rem; color: #047857; font-weight: 700; text-transform: uppercase;">Listos para Normalizar</span>
+            <div id="mnorm-stat-matches" style="font-size: 1.25rem; font-weight: 800; color: #059669;">0</div>
+            <small style="color: #047857; font-size: 0.75rem;">coinciden con la tabla maestra</small>
+          </div>
+          <div style="padding: 12px; background: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border);">
+            <span style="font-size: 0.75rem; color: var(--accent); font-weight: 700; text-transform: uppercase;">Filas de Servicios a Actualizar</span>
+            <div id="mnorm-stat-filas" style="font-size: 1.25rem; font-weight: 800; color: var(--accent);">0</div>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">turnos que recibirán su ID</small>
+          </div>
+          <div style="padding: 12px; background: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border);">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Sin Coincidencia</span>
+            <div id="mnorm-stat-sin-match" style="font-size: 1.25rem; font-weight: 800; color: var(--text-muted);">0</div>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">no se modificarán</small>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
+            Muestra de Reemplazos a Realizar (Primeros 50)
+          </label>
+          <div class="table-container" style="max-height: 40vh; overflow-y: auto;">
+            <table class="data-table" style="font-size: 0.85rem; margin: 0;">
+              <thead>
+                <tr>
+                  <th style="width: 320px;">Texto Actual en Dynamic_Servicios</th>
+                  <th style="width: 110px;">ID Destino</th>
+                  <th>Nombre Oficial en Maestro</th>
+                  <th style="width: 100px; text-align: right;">Servicios</th>
+                </tr>
+              </thead>
+              <tbody id="mnorm-tabla-muestras-body">
+                <tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">Analizando registros...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <button type="button" class="btn-primary" id="btn-ejecutar-normalizacion" onclick="ejecutarNormalizacionTextos()" style="background: #059669; border-color: #059669;" disabled>
+          ⚡ Ejecutar Normalización: Reemplazar Nombres por IDs
+        </button>
+        <button type="button" class="btn-reset" style="margin-top:0;" onclick="cerrarModalNormalizar()">Cerrar</button>
       </div>
     </div>
   </div>
@@ -3564,14 +4264,30 @@
     let sortTransportadorasState = { col: 'fechaIngreso', order: 'desc' };
     let activeChipTransportadoras = '';
     let limitTransportadoras = 200;
+    let gruposDuplicadosTransportadoras = [];
 
     let allProveedores = [];
     let proveedoresCargados = false;
     let sortProveedoresState = { col: 'fechaIngreso', order: 'desc' };
     let activeChipProveedores = '';
     let limitProveedores = 200;
+    let gruposDuplicadosProveedores = [];
+
+    let catEditandoActual = null; // { tipo: 'transportadora' | 'proveedor', id, item }
+    let catDuplicadosTipoActual = null; // 'transportadora' | 'proveedor'
+
+    let selectedTransportadorasIds = new Set();
+    let selectedProveedoresIds = new Set();
+    let catEliminarReemplazarState = { tipo: '', idsEliminar: [], idReemplazo: '', nombreReemplazo: '' };
+    let catNormalizarState = { tipo: '', datos: null };
 
     let allPlacas = [];
+    let selectedPlacasIds = new Set();
+    let gruposDuplicadosPlacas = [];
+    // Depurar maestros (eliminar, reemplazar, unificar placas, provisionales): Config_Parametros facturacion / Clientes
+    const PUEDE_DEPURAR_MAESTROS = !!(CONFIG.clientesMaestros && CONFIG.clientesMaestros.puedeDepurar);
+    const PUEDE_GESTIONAR_MAESTROS = !!(CONFIG.clientesMaestros && CONFIG.clientesMaestros.puedeGestionar);
+    const PUEDE_EDITAR_RETENCIONES = !!(CONFIG.clientesMaestros && CONFIG.clientesMaestros.puedeEditarRetenciones);
     let placasCargadas = false;
     let sortPlacasState = { col: 'fechaRegistro', order: 'desc' };
     let activeChipPlacas = '';
@@ -4156,6 +4872,8 @@
           maestroClientesCargados = true;
           const badgeSub = document.getElementById('subtab-count-clientes');
           if (badgeSub) badgeSub.textContent = allMaestroClientes.length.toLocaleString('es-CO');
+          const btnAdd = document.getElementById('btn-agregar-cliente');
+          if (btnAdd) btnAdd.style.display = PUEDE_GESTIONAR_MAESTROS ? 'inline-flex' : 'none';
           poblarSelectUnico('mcli-filtro-condicion', allMaestroClientes.map(c => (c.condicionPago || '').toUpperCase()), 'Todas las condiciones');
           poblarSelectUnico('mcli-filtro-depto', allMaestroClientes.map(c => c.deptoEstado), 'Todos los departamentos');
           poblarSelectUnico('mcli-filtro-ciudad', allMaestroClientes.map(c => c.ciudad), 'Todas las ciudades');
@@ -4167,12 +4885,12 @@
           const msg = resp.status === 404
             ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
             : 'Error al cargar clientes. Por favor recarga la página.';
-          if (tbody) tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+          if (tbody) tbody.innerHTML = `<tr><td colspan="17" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
         }
       } catch (e) {
         console.error('Error cargando Maestro_Clientes:', e);
         const tbody = document.getElementById('tabla-maestro-clientes-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar clientes.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar clientes.</td></tr>';
       }
     }
 
@@ -4343,7 +5061,11 @@
           const rtBadge = (v) => String(v || '').trim().toUpperCase() === 'V'
             ? '<span class="badge badge-desbloq" style="font-weight:700;">V</span>'
             : '<span style="color:var(--text-muted)">—</span>';
+          const btnEditarCli = PUEDE_GESTIONAR_MAESTROS
+            ? `<button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" title="Editar cliente" onclick="abrirModalEditarCliente(${Number(c.codigo)})">✏️</button>`
+            : '—';
           tr.innerHTML = `
+            <td style="text-align: center; white-space: nowrap;">${btnEditarCli}</td>
             <td>${actBadge}</td>
             <td style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(c.codigo) || '—'}</td>
             <td style="font-weight: 600;">${esc(c.razonSocial) || '—'}</td>
@@ -4377,6 +5099,242 @@
       }
     }
 
+    // ══════════════════════════════════════════════════════════
+    // MODAL Y GESTIÓN: NUEVO / EDITAR CLIENTE (Maestro_Clientes)
+    // ══════════════════════════════════════════════════════════
+    async function abrirModalCrearCliente() {
+      const form = document.getElementById('form-crear-cliente');
+      if (form) form.reset();
+      document.getElementById('mcli-nuevo-buscarcliente').value = '';
+      const errEl = document.getElementById('mcli-nuevo-error');
+      if (errEl) errEl.style.display = 'none';
+
+      const wrapRet = document.getElementById('mcli-wrap-retenciones');
+      if (wrapRet) wrapRet.style.display = PUEDE_EDITAR_RETENCIONES ? 'block' : 'none';
+
+      document.getElementById('mcli-nuevo-operacion-nombre').textContent = 'cargando...';
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-clientes/contexto-operacion?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          document.getElementById('mcli-nuevo-operacion-nombre').textContent = data.operacion || '(sin asignación)';
+          document.getElementById('mcli-nuevo-depto').value = data.deptoEstado || '';
+          document.getElementById('mcli-nuevo-ciudad').value = data.ciudad || '';
+          document.getElementById('mcli-nuevo-direccion').value = data.direccion1 || '';
+        }
+      } catch (e) {
+        console.warn('Error obteniendo contexto de operación:', e);
+        document.getElementById('mcli-nuevo-operacion-nombre').textContent = '(no disponible)';
+      }
+
+      const overlay = document.getElementById('modal-crear-cliente-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalCrearCliente());
+      }
+      setTimeout(() => document.getElementById('mcli-nuevo-codigo')?.focus(), 100);
+    }
+
+    function cerrarModalCrearCliente() {
+      const overlay = document.getElementById('modal-crear-cliente-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+    }
+
+    function actualizarPreviewBuscarCliente() {
+      const cod = (document.getElementById('mcli-nuevo-codigo')?.value || '').trim();
+      const rs = (document.getElementById('mcli-nuevo-razonsocial')?.value || '').trim().toUpperCase();
+      const preview = document.getElementById('mcli-nuevo-buscarcliente');
+      if (preview) {
+        preview.value = (cod || rs) ? `${cod} ** ${rs}` : '';
+      }
+    }
+
+    async function submitCrearCliente(e) {
+      if (e) e.preventDefault();
+      const errEl = document.getElementById('mcli-nuevo-error');
+      const mostrarError = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+      errEl.style.display = 'none';
+
+      const codigo = Number(document.getElementById('mcli-nuevo-codigo').value);
+      if (!codigo || codigo <= 0) return mostrarError('El Código / NIT debe ser numérico mayor a 0.');
+      const razonSocial = (document.getElementById('mcli-nuevo-razonsocial').value || '').trim().toUpperCase();
+      if (!razonSocial) return mostrarError('La Razón Social es obligatoria.');
+      const telefono = (document.getElementById('mcli-nuevo-telefono').value || '').trim();
+      if (!telefono) return mostrarError('El Teléfono es obligatorio.');
+      const correoFE = (document.getElementById('mcli-nuevo-correofe').value || '').trim();
+      if (!correoFE) return mostrarError('El Correo F.E. es obligatorio.');
+
+      const fd = new FormData();
+      fd.append('codigo', codigo);
+      fd.append('razonSocial', razonSocial);
+      fd.append('telefono', telefono);
+      fd.append('correoFE', correoFE);
+      fd.append('deptoEstado', document.getElementById('mcli-nuevo-depto').value || '');
+      fd.append('ciudad', document.getElementById('mcli-nuevo-ciudad').value || '');
+      fd.append('direccion1', document.getElementById('mcli-nuevo-direccion').value || '');
+      fd.append('observaciones', document.getElementById('mcli-nuevo-observaciones').value || '');
+
+      if (PUEDE_EDITAR_RETENCIONES) {
+        fd.append('rtica', document.getElementById('mcli-nuevo-rtica').value || '');
+        fd.append('rtiva', document.getElementById('mcli-nuevo-rtiva').value || '');
+        fd.append('rtservic', document.getElementById('mcli-nuevo-rtservic').value || '');
+      }
+
+      const fileInput = document.getElementById('mcli-nuevo-documento');
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        fd.append('documento', fileInput.files[0]);
+      }
+
+      const btn = document.getElementById('btn-submit-crear-cliente');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-clientes?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          body: fd
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          cerrarModalCrearCliente();
+          await cargarMaestroClientes();
+          alert(`✅ Cliente ${codigo} - ${razonSocial} creado exitosamente.`);
+        } else {
+          mostrarError(data.error || 'No se pudo guardar el cliente.');
+        }
+      } catch (err) {
+        console.error('Error guardando cliente:', err);
+        mostrarError('Error de conexión al guardar el cliente.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar Cliente';
+      }
+    }
+
+    function abrirModalEditarCliente(codigo) {
+      const c = allMaestroClientes.find(x => Number(x.codigo) === Number(codigo));
+      if (!c) return;
+
+      document.getElementById('mcli-edit-codigo').value = c.codigo;
+      document.getElementById('mcli-edit-razonsocial').value = c.razonSocial || '';
+      document.getElementById('mcli-edit-telefono').value = c.telefono || '';
+      document.getElementById('mcli-edit-correofe').value = c.correoFE || '';
+      document.getElementById('mcli-edit-observaciones').value = c.observaciones || '';
+
+      const wrapRet = document.getElementById('mcli-edit-wrap-retenciones');
+      if (wrapRet) {
+        wrapRet.style.display = PUEDE_EDITAR_RETENCIONES ? 'block' : 'none';
+        if (PUEDE_EDITAR_RETENCIONES) {
+          document.getElementById('mcli-edit-rtica').value = (c.rtica || '').trim().toUpperCase() === 'V' ? 'V' : '';
+          document.getElementById('mcli-edit-rtiva').value = (c.rtiva || '').trim().toUpperCase() === 'V' ? 'V' : '';
+          document.getElementById('mcli-edit-rtservic').value = (c.rtservic || '').trim().toUpperCase() === 'V' ? 'V' : '';
+        }
+      }
+
+      const docLinkWrap = document.getElementById('mcli-edit-doc-link-wrap');
+      const docLink = document.getElementById('mcli-edit-doc-link');
+      if (c.documento && docLinkWrap && docLink) {
+        const docUrl = c.documento.startsWith('http')
+          ? c.documento
+          : `https://storage.googleapis.com/talenthub_central/${c.documento.replace(/^\/+/, '')}`;
+        docLink.href = docUrl;
+        docLinkWrap.style.display = 'block';
+      } else if (docLinkWrap) {
+        docLinkWrap.style.display = 'none';
+      }
+
+      const errEl = document.getElementById('mcli-edit-error');
+      if (errEl) errEl.style.display = 'none';
+
+      const overlay = document.getElementById('modal-editar-cliente-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalEditarCliente());
+      }
+      setTimeout(() => document.getElementById('mcli-edit-razonsocial')?.focus(), 100);
+    }
+
+    function cerrarModalEditarCliente() {
+      const overlay = document.getElementById('modal-editar-cliente-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+    }
+
+    async function submitEditarCliente(e) {
+      if (e) e.preventDefault();
+      const errEl = document.getElementById('mcli-edit-error');
+      const mostrarError = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+      errEl.style.display = 'none';
+
+      const codigo = Number(document.getElementById('mcli-edit-codigo').value);
+      const razonSocial = (document.getElementById('mcli-edit-razonsocial').value || '').trim().toUpperCase();
+      if (!razonSocial) return mostrarError('La Razón Social es obligatoria.');
+      const telefono = (document.getElementById('mcli-edit-telefono').value || '').trim();
+      if (!telefono) return mostrarError('El Teléfono es obligatorio.');
+      const correoFE = (document.getElementById('mcli-edit-correofe').value || '').trim();
+      if (!correoFE) return mostrarError('El Correo F.E. es obligatorio.');
+      const observaciones = (document.getElementById('mcli-edit-observaciones').value || '').trim();
+
+      const payload = {
+        codigo,
+        razonSocial,
+        telefono,
+        correoFE,
+        observaciones: observaciones || null
+      };
+
+      if (PUEDE_EDITAR_RETENCIONES) {
+        payload.rtica = document.getElementById('mcli-edit-rtica').value || null;
+        payload.rtiva = document.getElementById('mcli-edit-rtiva').value || null;
+        payload.rtservic = document.getElementById('mcli-edit-rtservic').value || null;
+      }
+
+      const btn = document.getElementById('btn-submit-edit-cliente');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-clientes/actualizar?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          const c = allMaestroClientes.find(x => Number(x.codigo) === codigo);
+          if (c) {
+            c.razonSocial = razonSocial;
+            c.telefono = telefono;
+            c.correoFE = correoFE;
+            c.observaciones = payload.observaciones;
+            if (PUEDE_EDITAR_RETENCIONES) {
+              c.rtica = payload.rtica;
+              c.rtiva = payload.rtiva;
+              c.rtservic = payload.rtservic;
+            }
+          }
+          cerrarModalEditarCliente();
+          sortAndRenderMaestroClientes();
+          alert(`✅ Cliente ${codigo} actualizado.`);
+        } else {
+          mostrarError(data.error || 'No se pudo actualizar el cliente.');
+        }
+      } catch (err) {
+        console.error('Error actualizando cliente:', err);
+        mostrarError('Error de conexión al actualizar el cliente.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar Cambios';
+      }
+    }
+
     // ──────────────────────────────────────────────────────────
     // SUBPESTAÑA 3: TRANSPORTADORAS (Maestro_Transportadora)
     // ──────────────────────────────────────────────────────────
@@ -4396,12 +5354,12 @@
           const msg = resp.status === 404
             ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
             : 'Error al cargar transportadoras. Por favor recarga la página.';
-          if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+          if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
         }
       } catch (e) {
         console.error('Error cargando Maestro_Transportadora:', e);
         const tbody = document.getElementById('tabla-transportadoras-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar transportadoras.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar transportadoras.</td></tr>';
       }
     }
 
@@ -4433,18 +5391,42 @@
     }
 
     function sortAndRenderTransportadoras() {
+      // Duplicados
+      gruposDuplicadosTransportadoras = calcularGruposDuplicados(allTransportadoras, 'transportadora');
+      const badgeDup = document.getElementById('badge-duplicados-transportadora');
+      if (badgeDup) {
+        badgeDup.textContent = gruposDuplicadosTransportadoras.length;
+        badgeDup.style.display = gruposDuplicadosTransportadoras.length > 0 ? 'inline-block' : 'none';
+      }
+
+      // Botones provisionales solo Sistema
+      const esSistema = PUEDE_DEPURAR_MAESTROS;
+      const btnMayus = document.getElementById('btn-mayus-transportadora');
+      if (btnMayus) btnMayus.style.display = esSistema ? 'inline-flex' : 'none';
+      const btnNorm = document.getElementById('btn-normalizar-transportadora');
+      if (btnNorm) btnNorm.style.display = esSistema ? 'inline-flex' : 'none';
+
+      actualizarBarraMasiva('transportadora');
+
       const col = sortTransportadorasState.col;
       const order = sortTransportadorasState.order;
       if (col) {
         allTransportadoras.sort((a, b) => {
-          const va = String(a[col] ?? '').toLowerCase();
-          const vb = String(b[col] ?? '').toLowerCase();
+          let va = a[col] ?? '';
+          let vb = b[col] ?? '';
+          if (col === 'totalServicios') {
+            va = Number(va) || 0;
+            vb = Number(vb) || 0;
+            return order === 'asc' ? va - vb : vb - va;
+          }
+          va = String(va).toLowerCase();
+          vb = String(vb).toLowerCase();
           if (va < vb) return order === 'asc' ? -1 : 1;
           if (va > vb) return order === 'asc' ? 1 : -1;
           return 0;
         });
       }
-      ['id','transportadora','usuario','fechaIngreso'].forEach(k => {
+      ['id','transportadora','totalServicios','usuario','fechaIngreso'].forEach(k => {
         const span = document.getElementById('mtranspSort-' + k);
         if (!span) return;
         span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
@@ -4458,6 +5440,7 @@
       const fDesde = document.getElementById('mtransp-filtro-desde')?.value || '';
       const fHasta = document.getElementById('mtransp-filtro-hasta')?.value || '';
       const fUsr = document.getElementById('mtransp-filtro-usuario')?.value || '';
+      const esSistema = PUEDE_DEPURAR_MAESTROS;
 
       let countActive = 0;
       if (q) countActive++;
@@ -4507,15 +5490,35 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron transportadoras con los filtros seleccionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron transportadoras con los filtros seleccionados.</td></tr>';
       } else {
         const visibles = filtered.slice(0, limitTransportadoras);
         const frag = document.createDocumentFragment();
         visibles.forEach(t => {
           const tr = document.createElement('tr');
+          const isChecked = selectedTransportadorasIds.has(String(t.id));
+          const cnt = Number(t.totalServicios) || 0;
+          const badgeServicios = cnt > 0
+            ? `<button type="button" class="badge" style="background: rgba(16,185,129,0.14); color: #059669; font-weight: 700; border: none; cursor: pointer; padding: 4px 10px; border-radius: 12px; transition: transform 0.15s;" title="Ver los ${cnt} servicios relacionados" onclick="verServiciosAsociados('transportadora', '${esc(t.id)}', '${esc(t.transportadora)}')">📊 ${cnt.toLocaleString('es-CO')} serv.</button>`
+            : `<span class="badge" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); padding: 3px 8px; border-radius: 12px; font-size: 0.78rem;">0 serv.</span>`;
+
+          const btnEliminar = esSistema
+            ? `<button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; color: #dc2626; border-color: rgba(239,68,68,0.25);" title="Eliminar registro (Solo Sistema)" onclick="abrirMenuEliminarFila('transportadora', '${esc(t.id)}')">🗑️</button>`
+            : '';
+
           tr.innerHTML = `
+            <td style="text-align: center;">
+              <input type="checkbox" class="chk-cat-transportadora" value="${esc(t.id)}" ${isChecked ? 'checked' : ''} onchange="onCatRowCheckboxChange('transportadora', '${esc(t.id)}', this.checked)">
+            </td>
+            <td style="text-align: center; white-space: nowrap;">
+              <button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 4px;" title="Editar nombre" onclick="abrirModalEditarCat('transportadora', '${esc(t.id)}')">✏️</button>
+              ${btnEliminar}
+            </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(t.id) || '—'}</td>
-            <td style="font-weight: 600; color: var(--accent);">${esc(t.transportadora) || '—'}</td>
+            <td>
+              <span style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('transportadora', '${esc(t.id)}')">${esc(t.transportadora) || '—'}</span>
+            </td>
+            <td style="text-align: center;">${badgeServicios}</td>
             <td>${esc(t.usuario) || '—'}</td>
             <td style="font-size: 0.82rem; color: var(--text-muted);">${esc(t.fechaIngreso) || '—'}</td>
           `;
@@ -4533,6 +5536,7 @@
       if (btnMas) {
         btnMas.style.display = filtered.length > limitTransportadoras ? 'inline-flex' : 'none';
       }
+      actualizarBarraMasiva('transportadora');
     }
 
     // ──────────────────────────────────────────────────────────
@@ -4554,12 +5558,12 @@
           const msg = resp.status === 404
             ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
             : 'Error al cargar proveedores. Por favor recarga la página.';
-          if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+          if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
         }
       } catch (e) {
         console.error('Error cargando Maestro_Proveedor:', e);
         const tbody = document.getElementById('tabla-proveedores-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar proveedores.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar proveedores.</td></tr>';
       }
     }
 
@@ -4591,18 +5595,42 @@
     }
 
     function sortAndRenderProveedores() {
+      // Duplicados
+      gruposDuplicadosProveedores = calcularGruposDuplicados(allProveedores, 'proveedor');
+      const badgeDup = document.getElementById('badge-duplicados-proveedor');
+      if (badgeDup) {
+        badgeDup.textContent = gruposDuplicadosProveedores.length;
+        badgeDup.style.display = gruposDuplicadosProveedores.length > 0 ? 'inline-block' : 'none';
+      }
+
+      // Botones provisionales solo Sistema
+      const esSistema = PUEDE_DEPURAR_MAESTROS;
+      const btnMayus = document.getElementById('btn-mayus-proveedor');
+      if (btnMayus) btnMayus.style.display = esSistema ? 'inline-flex' : 'none';
+      const btnNorm = document.getElementById('btn-normalizar-proveedor');
+      if (btnNorm) btnNorm.style.display = esSistema ? 'inline-flex' : 'none';
+
+      actualizarBarraMasiva('proveedor');
+
       const col = sortProveedoresState.col;
       const order = sortProveedoresState.order;
       if (col) {
         allProveedores.sort((a, b) => {
-          const va = String(a[col] ?? '').toLowerCase();
-          const vb = String(b[col] ?? '').toLowerCase();
+          let va = a[col] ?? '';
+          let vb = b[col] ?? '';
+          if (col === 'totalServicios') {
+            va = Number(va) || 0;
+            vb = Number(vb) || 0;
+            return order === 'asc' ? va - vb : vb - va;
+          }
+          va = String(va).toLowerCase();
+          vb = String(vb).toLowerCase();
           if (va < vb) return order === 'asc' ? -1 : 1;
           if (va > vb) return order === 'asc' ? 1 : -1;
           return 0;
         });
       }
-      ['id','proveedor','usuario','fechaIngreso'].forEach(k => {
+      ['id','proveedor','totalServicios','usuario','fechaIngreso'].forEach(k => {
         const span = document.getElementById('mprovSort-' + k);
         if (!span) return;
         span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
@@ -4616,6 +5644,7 @@
       const fDesde = document.getElementById('mprov-filtro-desde')?.value || '';
       const fHasta = document.getElementById('mprov-filtro-hasta')?.value || '';
       const fUsr = document.getElementById('mprov-filtro-usuario')?.value || '';
+      const esSistema = PUEDE_DEPURAR_MAESTROS;
 
       let countActive = 0;
       if (q) countActive++;
@@ -4665,15 +5694,35 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron proveedores con los filtros seleccionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron proveedores con los filtros seleccionados.</td></tr>';
       } else {
         const visibles = filtered.slice(0, limitProveedores);
         const frag = document.createDocumentFragment();
         visibles.forEach(p => {
           const tr = document.createElement('tr');
+          const isChecked = selectedProveedoresIds.has(String(p.id));
+          const cnt = Number(p.totalServicios) || 0;
+          const badgeServicios = cnt > 0
+            ? `<button type="button" class="badge" style="background: rgba(16,185,129,0.14); color: #059669; font-weight: 700; border: none; cursor: pointer; padding: 4px 10px; border-radius: 12px; transition: transform 0.15s;" title="Ver los ${cnt} servicios relacionados" onclick="verServiciosAsociados('proveedor', '${esc(p.id)}', '${esc(p.proveedor)}')">📊 ${cnt.toLocaleString('es-CO')} serv.</button>`
+            : `<span class="badge" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); padding: 3px 8px; border-radius: 12px; font-size: 0.78rem;">0 serv.</span>`;
+
+          const btnEliminar = esSistema
+            ? `<button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; color: #dc2626; border-color: rgba(239,68,68,0.25);" title="Eliminar registro (Solo Sistema)" onclick="abrirMenuEliminarFila('proveedor', '${esc(p.id)}')">🗑️</button>`
+            : '';
+
           tr.innerHTML = `
+            <td style="text-align: center;">
+              <input type="checkbox" class="chk-cat-proveedor" value="${esc(p.id)}" ${isChecked ? 'checked' : ''} onchange="onCatRowCheckboxChange('proveedor', '${esc(p.id)}', this.checked)">
+            </td>
+            <td style="text-align: center; white-space: nowrap;">
+              <button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 4px;" title="Editar nombre" onclick="abrirModalEditarCat('proveedor', '${esc(p.id)}')">✏️</button>
+              ${btnEliminar}
+            </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(p.id) || '—'}</td>
-            <td style="font-weight: 600; color: var(--accent);">${esc(p.proveedor) || '—'}</td>
+            <td>
+              <span style="font-weight: 600; color: var(--accent); cursor: pointer;" title="Haz clic para editar" onclick="abrirModalEditarCat('proveedor', '${esc(p.id)}')">${esc(p.proveedor) || '—'}</span>
+            </td>
+            <td style="text-align: center;">${badgeServicios}</td>
             <td>${esc(p.usuario) || '—'}</td>
             <td style="font-size: 0.82rem; color: var(--text-muted);">${esc(p.fechaIngreso) || '—'}</td>
           `;
@@ -4690,6 +5739,852 @@
       }
       if (btnMas) {
         btnMas.style.display = filtered.length > limitProveedores ? 'inline-flex' : 'none';
+      }
+      actualizarBarraMasiva('proveedor');
+    }
+
+    // ── GESTIÓN DE SELECCIÓN MÚLTIPLE Y ACCIONES MASIVAS ──────
+    // ── Definición de cada maestro (Transportadora, Proveedor, Placa) para las funciones comunes ──
+    function nombrePlacaCat(p) {
+      const cliente = p.cliente || p.clienteCredito || 'Sin cliente';
+      return `${String(p.placa || '').trim().toUpperCase()} · ${cliente}`;
+    }
+    const CAT_DEF = {
+      transportadora: {
+        lista: () => allTransportadoras, set: () => selectedTransportadorasIds, grupos: () => gruposDuplicadosTransportadoras,
+        nombre: it => it.transportadora, prefijo: 'mtransp', base: '/facturacion/api/maestro-transportadoras',
+        recargar: () => cargarTransportadoras(), render: () => renderTransportadorasTable(),
+        etiqueta: 'Transportadora', plural: 'Transportadoras', entidad: 'transportadora(s)', columnaServicios: 'Transportadora', icono: '🚚',
+      },
+      proveedor: {
+        lista: () => allProveedores, set: () => selectedProveedoresIds, grupos: () => gruposDuplicadosProveedores,
+        nombre: it => it.proveedor, prefijo: 'mprov', base: '/facturacion/api/maestro-proveedores',
+        recargar: () => cargarProveedores(), render: () => renderProveedoresTable(),
+        etiqueta: 'Proveedor', plural: 'Proveedores', entidad: 'proveedor(es)', columnaServicios: 'Proveedor', icono: '🏭',
+      },
+      placa: {
+        lista: () => allPlacas, set: () => selectedPlacasIds, grupos: () => gruposDuplicadosPlacas,
+        nombre: nombrePlacaCat, prefijo: 'mplaca', base: '/facturacion/api/maestro-placas',
+        recargar: () => cargarPlacas(), render: () => renderPlacasTable(),
+        etiqueta: 'Placa', plural: 'Placas', entidad: 'placa(s)', columnaServicios: 'PL1', icono: '🚛',
+      },
+    };
+    const catDef = tipo => CAT_DEF[tipo];
+
+    function toggleSelectAllCat(tipo, checked) {
+      const d = catDef(tipo);
+      const set = d.set();
+      if (checked) {
+        d.lista().forEach(item => set.add(String(item.id)));
+      } else {
+        set.clear();
+      }
+      d.render();
+    }
+
+    function onCatRowCheckboxChange(tipo, id, checked) {
+      const set = catDef(tipo).set();
+      if (checked) set.add(String(id));
+      else set.delete(String(id));
+      actualizarBarraMasiva(tipo);
+    }
+
+    function actualizarBarraMasiva(tipo) {
+      const d = catDef(tipo);
+      const set = d.set();
+      const bar = document.getElementById(`${d.prefijo}-bulk-bar`);
+      const badge = document.getElementById(`${d.prefijo}-bulk-cnt`);
+      const chkAll = document.getElementById(`${d.prefijo}-chk-all`);
+
+      if (!bar) return;
+      if (PUEDE_DEPURAR_MAESTROS && set.size > 0) {
+        bar.style.display = 'flex';
+        if (badge) badge.textContent = `${set.size} seleccionado(s)`;
+      } else {
+        bar.style.display = 'none';
+      }
+      if (chkAll) {
+        const total = d.lista().length;
+        chkAll.checked = total > 0 && set.size === total;
+      }
+    }
+
+    function desmarcarTodosCat(tipo) {
+      const d = catDef(tipo);
+      d.set().clear();
+      d.render();
+    }
+
+    // ── MÉTODOS DE ELIMINACIÓN (roles de "depurar maestros", Config_Parametros) ──
+    // Sin servicios asociados solo se confirma; con servicios se elige dejarlos en blanco o
+    // reasignarlos a otro registro antes de eliminar.
+    function abrirMenuEliminarFila(tipo, id) {
+      if (!PUEDE_DEPURAR_MAESTROS) {
+        return alert('Tu rol no tiene permiso para eliminar registros.');
+      }
+      const d = catDef(tipo);
+      const item = d.lista().find(x => String(x.id) === String(id));
+      if (!item) return;
+
+      const nom = d.nombre(item);
+      const cnt = Number(item.totalServicios || 0);
+      if (cnt === 0) {
+        abrirConfirmarEliminarMasivo(tipo, id);
+        return;
+      }
+
+      const opcion = prompt(
+        `Eliminar ${d.etiqueta.toUpperCase()}: ${nom} (ID: ${id})\nServicios vinculados actualmente: ${cnt}\n\nEscribe el número de la acción que deseas realizar:\n1 = Eliminar y dejar sus servicios con ${d.columnaServicios} en blanco\n2 = Reemplazar por otra ${d.etiqueta} antes de eliminar\n(O pulsa Cancelar para abortar)`
+      );
+
+      if (opcion === '1') {
+        abrirConfirmarEliminarMasivo(tipo, id);
+      } else if (opcion === '2') {
+        abrirModalEliminarReemplazar(tipo, id);
+      }
+    }
+
+    async function abrirConfirmarEliminarMasivo(tipo, idUnico) {
+      if (!PUEDE_DEPURAR_MAESTROS) {
+        return alert('Tu rol no tiene permiso para eliminar registros.');
+      }
+      const d = catDef(tipo);
+      const ids = idUnico ? [String(idUnico)] : Array.from(d.set());
+      if (!ids.length) return alert('No hay registros seleccionados para eliminar.');
+
+      const items = d.lista().filter(x => ids.includes(String(x.id)));
+      const totalServ = items.reduce((acc, it) => acc + (Number(it.totalServicios) || 0), 0);
+
+      const msg = totalServ > 0
+        ? `⚠️ CONFIRMACIÓN DE ELIMINACIÓN:\n\n` +
+          `• Se eliminarán ${ids.length} ${d.entidad} de la tabla maestra.\n` +
+          `• Hay ${totalServ} servicio(s) en Dynamic_Servicios vinculados a estos IDs.\n` +
+          `• Esos servicios quedarán con la columna ${d.columnaServicios} en blanco.\n\n` +
+          `¿Estás completamente seguro de proceder?`
+        : `¿Confirmas eliminar ${ids.length} ${d.entidad}?\n\n${items.slice(0, 5).map(it => '• ' + d.nombre(it)).join('\n')}${items.length > 5 ? '\n…' : ''}\n\nNo tienen servicios asociados.`;
+
+      if (!confirm(msg)) return;
+
+      try {
+        const resp = await fetch(`${d.base}/eliminar-masivo?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert(`✅ Eliminación completada exitosamente:\n• ${data.eliminados} ${d.entidad} eliminadas.\n• ${data.serviciosDesvinculados} servicios desvinculados en Dynamic_Servicios.`);
+          desmarcarTodosCat(tipo);
+          await d.recargar();
+        } else {
+          alert('Error al eliminar: ' + (data.error || 'Desconocido'));
+        }
+      } catch (e) {
+        console.error('Error eliminando masivo:', e);
+        alert('Error de conexión al eliminar.');
+      }
+    }
+
+    function abrirModalEliminarReemplazar(tipo, idUnico) {
+      if (!PUEDE_DEPURAR_MAESTROS) {
+        return alert('Tu rol no tiene permiso para eliminar registros.');
+      }
+      const d = catDef(tipo);
+      const ids = idUnico ? [String(idUnico)] : Array.from(d.set());
+      if (!ids.length) return alert('No hay registros seleccionados para eliminar.');
+
+      const items = d.lista().filter(x => ids.includes(String(x.id)));
+      const totalServ = items.reduce((acc, it) => acc + (Number(it.totalServicios) || 0), 0);
+
+      catEliminarReemplazarState = {
+        tipo,
+        idsEliminar: ids,
+        idReemplazo: '',
+        nombreReemplazo: ''
+      };
+
+      document.getElementById('melim-modal-titulo').textContent = `🔄 Eliminar y Reemplazar ${d.plural}`;
+      document.getElementById('melim-label-destino').textContent = tipo === 'placa'
+        ? 'Selecciona la Placa y Nit de REEMPLAZO *'
+        : `Selecciona la ${d.etiqueta} de REEMPLAZO *`;
+
+      const listDiv = document.getElementById('melim-lista-a-eliminar');
+      listDiv.innerHTML = items.map(it => {
+        const cnt = Number(it.totalServicios || 0);
+        return `<div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed var(--border);">
+          <span><strong>${esc(d.nombre(it))}</strong> <small style="color:var(--text-muted); font-family:monospace;">(${esc(it.id)})</small></span>
+          <span style="font-size:0.78rem; color:${cnt > 0 ? '#059669' : 'var(--text-muted)'}; font-weight:600;">${cnt} servicios</span>
+        </div>`;
+      }).join('');
+
+      document.getElementById('melim-info-servicios-afectados').textContent = `${totalServ} servicio(s) en Dynamic_Servicios serán reasignados al registro de destino.`;
+      document.getElementById('melim-filtro-destino').value = '';
+      document.getElementById('melim-id-destino-seleccionado').value = '';
+      document.getElementById('melim-seleccionado-banner').style.display = 'none';
+      document.getElementById('btn-submit-eliminar-reemplazar').disabled = true;
+
+      const overlay = document.getElementById('modal-eliminar-reemplazar-cat-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalEliminarReemplazar());
+      }
+      setTimeout(() => document.getElementById('melim-filtro-destino')?.focus(), 100);
+    }
+
+    function cerrarModalEliminarReemplazar() {
+      const overlay = document.getElementById('modal-eliminar-reemplazar-cat-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+      catEliminarReemplazarState = { tipo: '', idsEliminar: [], idReemplazo: '', nombreReemplazo: '' };
+    }
+
+    function filtrarOpcionesReemplazo(filtro) {
+      const q = (filtro || '').toLowerCase().trim();
+      const divOpciones = document.getElementById('melim-lista-opciones-destino');
+      if (!q || q.length < 2) {
+        divOpciones.style.display = 'none';
+        return;
+      }
+
+      const { tipo, idsEliminar } = catEliminarReemplazarState;
+      const d = catDef(tipo);
+
+      const candidatas = d.lista().filter(it => {
+        if (idsEliminar.includes(String(it.id))) return false;
+        const nom = String(d.nombre(it)).toLowerCase();
+        const idStr = String(it.id).toLowerCase();
+        return nom.includes(q) || idStr.includes(q);
+      }).slice(0, 25);
+
+      if (!candidatas.length) {
+        divOpciones.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">No se encontraron coincidencias.</div>';
+        divOpciones.style.display = 'block';
+        return;
+      }
+
+      divOpciones.innerHTML = candidatas.map(it => {
+        const nom = d.nombre(it);
+        return `
+          <div style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;"
+               onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'"
+               onclick="seleccionarDestinoReemplazo('${esc(it.id)}', '${esc(nom)}')">
+            <span><strong>${esc(nom)}</strong> <small style="font-family:monospace; color:var(--text-muted);">(${esc(it.id)})</small></span>
+            <span class="badge" style="background: rgba(16,185,129,0.12); color:#059669; font-size:0.75rem;">${Number(it.totalServicios||0)} serv.</span>
+          </div>
+        `;
+      }).join('');
+      divOpciones.style.display = 'block';
+    }
+
+    function seleccionarDestinoReemplazo(id, nombre) {
+      catEliminarReemplazarState.idReemplazo = id;
+      catEliminarReemplazarState.nombreReemplazo = nombre;
+
+      document.getElementById('melim-id-destino-seleccionado').value = id;
+      document.getElementById('melim-filtro-destino').value = nombre;
+      document.getElementById('melim-seleccionado-nombre').textContent = nombre;
+      document.getElementById('melim-seleccionado-id').textContent = id;
+      document.getElementById('melim-seleccionado-banner').style.display = 'block';
+      document.getElementById('melim-lista-opciones-destino').style.display = 'none';
+      document.getElementById('btn-submit-eliminar-reemplazar').disabled = false;
+    }
+
+    async function submitEliminarReemplazar() {
+      const { tipo, idsEliminar, idReemplazo, nombreReemplazo } = catEliminarReemplazarState;
+      if (!idReemplazo) return alert('Debes seleccionar el registro de reemplazo.');
+      if (!idsEliminar.length) return alert('No hay registros para eliminar.');
+      const d = catDef(tipo);
+
+      const msg = `⚠️ CONFIRMACIÓN FINAL:\n\n` +
+        `• Se reasignarán todos los servicios de Dynamic_Servicios a:\n  "${nombreReemplazo}" (ID: ${idReemplazo})\n` +
+        `• Se eliminarán definitivamente ${idsEliminar.length} ${d.entidad} de la tabla maestra.\n\n` +
+        `¿Deseas ejecutar esta acción ahora?`;
+
+      if (!confirm(msg)) return;
+
+      const btn = document.getElementById('btn-submit-eliminar-reemplazar');
+      btn.disabled = true;
+      btn.textContent = 'Procesando reemplazo...';
+
+      try {
+        const resp = await fetch(`${d.base}/eliminar-reemplazar?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idsEliminar, idReemplazo })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert(`✅ Operación completada exitosamente:\n• ${data.serviciosReasignados} servicios reasignados a ${data.nombreReemplazo}.\n• ${data.eliminados} ${d.entidad} eliminadas de Maestro.`);
+          cerrarModalEliminarReemplazar();
+          desmarcarTodosCat(tipo);
+          await d.recargar();
+        } else {
+          alert('Error al reemplazar y eliminar: ' + (data.error || 'Desconocido'));
+        }
+      } catch (e) {
+        console.error('Error en eliminar y reemplazar:', e);
+        alert('Error de conexión.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Reemplazar Servicios y Eliminar';
+      }
+    }
+
+    // ── 3. NORMALIZACIÓN DE TEXTOS EN DYNAMIC_SERVICIOS (SOLO SISTEMA) ──
+    async function abrirModalNormalizar(tipo) {
+      if (!PUEDE_DEPURAR_MAESTROS) {
+        return alert('Tu rol no tiene permiso para ejecutar la normalización de datos.');
+      }
+
+      catNormalizarState = { tipo, datos: null };
+      const esTransp = tipo === 'transportadora';
+
+      document.getElementById('mnorm-modal-titulo').textContent = esTransp
+        ? '🧹 Normalización de Transportadoras en Dynamic_Servicios'
+        : '🧹 Normalización de Proveedores en Dynamic_Servicios';
+
+      document.getElementById('mnorm-stat-total').textContent = 'Analizando...';
+      document.getElementById('mnorm-stat-matches').textContent = '—';
+      document.getElementById('mnorm-stat-filas').textContent = '—';
+      document.getElementById('mnorm-stat-sin-match').textContent = '—';
+      document.getElementById('btn-ejecutar-normalizacion').disabled = true;
+
+      const tbody = document.getElementById('mnorm-tabla-muestras-body');
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 24px; color: var(--text-muted);">Consultando valores en Dynamic_Servicios...</td></tr>';
+
+      const overlay = document.getElementById('modal-normalizar-cat-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalNormalizar());
+      }
+
+      try {
+        const endpoint = esTransp
+          ? `/facturacion/api/maestro-transportadoras/analisis-textos-servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`
+          : `/facturacion/api/maestro-proveedores/analisis-textos-servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`;
+
+        const resp = await fetch(endpoint);
+        const data = await resp.json();
+        catNormalizarState.datos = data;
+
+        document.getElementById('mnorm-stat-total').textContent = Number(data.totalHuerfanos || 0).toLocaleString('es-CO');
+        document.getElementById('mnorm-stat-matches').textContent = Number(data.coincidenciasCount || 0).toLocaleString('es-CO');
+        document.getElementById('mnorm-stat-filas').textContent = Number(data.filasAfectadas || 0).toLocaleString('es-CO');
+        document.getElementById('mnorm-stat-sin-match').textContent = Number(data.sinCoincidenciasCount || 0).toLocaleString('es-CO');
+
+        const muestras = data.muestrasCoincidencia || [];
+        if (!muestras.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 24px; color: var(--text-muted);">No se encontraron valores huérfanos con coincidencia para normalizar.</td></tr>';
+          document.getElementById('btn-ejecutar-normalizacion').disabled = true;
+        } else {
+          tbody.innerHTML = muestras.map(m => `
+            <tr>
+              <td style="font-weight: 600; color: #dc2626;">${esc(m.textoOriginal)}</td>
+              <td style="font-family: monospace; font-weight: 700; color: var(--accent);">${esc(m.idDestino)}</td>
+              <td style="font-weight: 600; color: #059669;">${esc(m.nombreDestino)}</td>
+              <td style="text-align: right; font-weight: 700;">${Number(m.filas).toLocaleString('es-CO')}</td>
+            </tr>
+          `).join('');
+          document.getElementById('btn-ejecutar-normalizacion').disabled = false;
+        }
+      } catch (e) {
+        console.error('Error en análisis de textos:', e);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 24px; color: #ef4444;">Error al consultar el análisis de textos.</td></tr>';
+      }
+    }
+
+    function cerrarModalNormalizar() {
+      const overlay = document.getElementById('modal-normalizar-cat-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+      catNormalizarState = { tipo: '', datos: null };
+    }
+
+    async function ejecutarNormalizacionTextos() {
+      const { tipo, datos } = catNormalizarState;
+      if (!datos || !datos.coincidenciasCount) return alert('No hay registros listos para normalizar.');
+
+      const entidad = tipo === 'transportadora' ? 'transportadoras' : 'proveedores';
+      const msg = `⚡ CONFIRMACIÓN DE NORMALIZACIÓN (ROL SISTEMA):\n\n` +
+        `• Se reemplazarán ${datos.coincidenciasCount} nombres/valores distintos por su ID oficial en Dynamic_Servicios.\n` +
+        `• Se actualizarán ${Number(datos.filasAfectadas).toLocaleString('es-CO')} filas de servicios.\n\n` +
+        `¿Deseas iniciar el proceso de normalización ahora?`;
+
+      if (!confirm(msg)) return;
+
+      const btn = document.getElementById('btn-ejecutar-normalizacion');
+      btn.disabled = true;
+      btn.textContent = 'Normalizando registros en Dynamic_Servicios...';
+
+      const endpoint = tipo === 'transportadora'
+        ? `/facturacion/api/maestro-transportadoras/ejecutar-normalizacion-textos?usuario=${encodeURIComponent(CONFIG.usuario)}`
+        : `/facturacion/api/maestro-proveedores/ejecutar-normalizacion-textos?usuario=${encodeURIComponent(CONFIG.usuario)}`;
+
+      try {
+        const resp = await fetch(endpoint, { method: 'POST' });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert(`✅ Normalización completada con éxito:\n\n• ${data.valoresNormalizados} nombres reemplazados por ID.\n• ${Number(data.filasActualizadas).toLocaleString('es-CO')} filas actualizadas en Dynamic_Servicios.\n\nLos conteos de servicios ahora reflejarán la información limpia.`);
+          cerrarModalNormalizar();
+          if (tipo === 'transportadora') await cargarTransportadoras();
+          else await cargarProveedores();
+        } else {
+          alert('Error al normalizar: ' + (data.error || 'Desconocido'));
+        }
+      } catch (e) {
+        console.error('Error ejecutando normalización:', e);
+        alert('Error de conexión al normalizar.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Ejecutar Normalización: Reemplazar Nombres por IDs';
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // MÉTODOS COMPARTIDOS: EDICIÓN, DUPLICADOS Y SERVICIOS ASOCIADOS
+    // ──────────────────────────────────────────────────────────
+    function calcularGruposDuplicados(lista, propNombre, opciones = {}) {
+      const mapa = new Map();
+      lista.forEach(item => {
+        const raw = String(item[propNombre] || '').trim();
+        if (!raw) return;
+        const norm = opciones.clave ? opciones.clave(item) : raw.toUpperCase().replace(/\s+/g, ' ');
+        if (!mapa.has(norm)) mapa.set(norm, []);
+        mapa.get(norm).push(item);
+      });
+      const grupos = [];
+      for (const [norm, items] of mapa.entries()) {
+        if (items.length > 1) {
+          // Ordenar: primero el que tenga más servicios vinculados; luego el más antiguo
+          items.sort((a, b) => {
+            const sA = Number(a.totalServicios) || 0;
+            const sB = Number(b.totalServicios) || 0;
+            if (sB !== sA) return sB - sA;
+            return String(a.fechaIngreso || a.fechaRegistro || '').localeCompare(String(b.fechaIngreso || b.fechaRegistro || ''));
+          });
+          grupos.push({
+            nombreNorm: opciones.etiqueta ? opciones.etiqueta(items[0]) : norm,
+            items: items,
+            idConservar: items[0].id
+          });
+        }
+      }
+      // Ordenar grupos: los que tienen más duplicados primero
+      grupos.sort((a, b) => b.items.length - a.items.length || a.nombreNorm.localeCompare(b.nombreNorm, 'es'));
+      return grupos;
+    }
+
+    // ── 1. Edición de Transportadora o Proveedor ───────────────
+    function abrirModalEditarCat(tipo, id) {
+      const lista = tipo === 'transportadora' ? allTransportadoras : allProveedores;
+      const item = lista.find(x => String(x.id) === String(id));
+      if (!item) return alert('Registro no encontrado.');
+
+      catEditandoActual = { tipo, id, item };
+      const titulo = tipo === 'transportadora' ? '✏️ Editar Transportadora' : '✏️ Editar Proveedor';
+      const label = tipo === 'transportadora' ? 'Nombre Transportadora *' : 'Nombre Proveedor *';
+      const nombreActual = tipo === 'transportadora' ? item.transportadora : item.proveedor;
+
+      document.getElementById('mecat-modal-titulo').textContent = titulo;
+      document.getElementById('mecat-label-nombre').textContent = label;
+      document.getElementById('mecat-tipo').value = tipo;
+      document.getElementById('mecat-id').value = id;
+      document.getElementById('mecat-id-disp').value = id;
+      document.getElementById('mecat-nombre').value = nombreActual || '';
+      document.getElementById('mecat-servicios-cnt').textContent = `${Number(item.totalServicios || 0).toLocaleString('es-CO')} servicios vinculados`;
+      document.getElementById('mecat-fecha-ingreso').textContent = item.fechaIngreso || '—';
+
+      const overlay = document.getElementById('modal-editar-cat-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalEditarCat());
+      }
+      setTimeout(() => document.getElementById('mecat-nombre')?.focus(), 100);
+    }
+
+    function cerrarModalEditarCat() {
+      const overlay = document.getElementById('modal-editar-cat-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+      catEditandoActual = null;
+    }
+
+    async function guardarEdicionCat() {
+      if (!catEditandoActual) return;
+      const { tipo, id, item } = catEditandoActual;
+      const nuevoNombre = (document.getElementById('mecat-nombre').value || '').trim();
+      if (!nuevoNombre) return alert('El nombre no puede estar vacío.');
+
+      const btn = document.getElementById('btn-guardar-edicion-cat');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const endpoint = tipo === 'transportadora'
+          ? `/facturacion/api/maestro-transportadoras/${encodeURIComponent(id)}?usuario=${encodeURIComponent(CONFIG.usuario)}`
+          : `/facturacion/api/maestro-proveedores/${encodeURIComponent(id)}?usuario=${encodeURIComponent(CONFIG.usuario)}`;
+
+        const bodyData = tipo === 'transportadora'
+          ? { transportadora: nuevoNombre }
+          : { proveedor: nuevoNombre };
+
+        const resp = await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData)
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          if (tipo === 'transportadora') {
+            item.transportadora = nuevoNombre;
+            sortAndRenderTransportadoras();
+          } else {
+            item.proveedor = nuevoNombre;
+            sortAndRenderProveedores();
+          }
+          cerrarModalEditarCat();
+        } else {
+          alert('Error al actualizar: ' + (data.error || 'Desconocido'));
+        }
+      } catch (e) {
+        console.error('Error guardando edición:', e);
+        alert('Error de conexión al guardar cambios.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar Cambios';
+      }
+    }
+
+    // ── 2. Modal de Duplicados ────────────────────────────────
+    function abrirModalDuplicados(tipo) {
+      catDuplicadosTipoActual = tipo;
+      const d = catDef(tipo);
+
+      document.getElementById('mdup-modal-titulo').textContent = tipo === 'placa'
+        ? '🔍 Gestión de Duplicados · Placas (misma Placa y Nit)'
+        : `🔍 Gestión de Duplicados · ${d.plural}`;
+
+      document.getElementById('mdup-filtro-input').value = '';
+      renderListaDuplicados('');
+
+      const overlay = document.getElementById('modal-duplicados-cat-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalDuplicados());
+      }
+    }
+
+    function cerrarModalDuplicados() {
+      const overlay = document.getElementById('modal-duplicados-cat-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+      catDuplicadosTipoActual = null;
+    }
+
+    function filtrarGruposDuplicados(q) {
+      renderListaDuplicados((q || '').toLowerCase().trim());
+    }
+
+    function renderListaDuplicados(filtro) {
+      const tipo = catDuplicadosTipoActual;
+      const d = catDef(tipo);
+      const grupos = d.grupos();
+      const cont = document.getElementById('mdup-contenedor-grupos');
+      cont.innerHTML = '';
+
+      const filtrados = grupos.filter(g => {
+        if (!filtro) return true;
+        if (g.nombreNorm.toLowerCase().includes(filtro)) return true;
+        return g.items.some(it => String(it.id).toLowerCase().includes(filtro) || String(it.usuario || '').toLowerCase().includes(filtro));
+      });
+
+      document.getElementById('mdup-info-total').textContent = `${filtrados.length} de ${grupos.length} grupos duplicados`;
+      // Unificar Placas reasigna servicios: solo para roles de "depurar maestros"
+      const puedeUnificar = tipo !== 'placa' || PUEDE_DEPURAR_MAESTROS;
+      const btnTodos = document.getElementById('btn-unificar-todos-duplicados');
+      if (btnTodos) btnTodos.style.display = grupos.length > 0 && puedeUnificar ? 'inline-flex' : 'none';
+
+      if (filtrados.length === 0) {
+        cont.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: var(--bg-elevated); border-radius: 8px;">
+            <span style="font-size: 2.2rem; display: block; margin-bottom: 8px;">🎉</span>
+            <strong>${grupos.length === 0 ? '¡Excelente! No se detectaron duplicados en este catálogo.' : 'No se encontraron duplicados con el filtro ingresado.'}</strong>
+          </div>
+        `;
+        return;
+      }
+
+      filtrados.forEach((g) => {
+        // Encontrar índice real en el array principal
+        const realIdx = grupos.indexOf(g);
+        const card = document.createElement('div');
+        card.style.cssText = 'background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;';
+
+        let filasHtml = '';
+        g.items.forEach(it => {
+          const isSelected = it.id === g.idConservar;
+          const sCnt = Number(it.totalServicios || 0);
+          const sBadge = sCnt > 0
+            ? `<span class="badge" style="background: rgba(16,185,129,0.14); color: #059669; font-weight: 700;">📊 ${sCnt} serv.</span>`
+            : `<span class="badge" style="background: var(--border); color: var(--text-muted);">0 serv.</span>`;
+
+          const nombreVal = tipo === 'placa' ? `${it.placa} · ${it.cliente || it.clienteCredito || 'Sin cliente'}` : d.nombre(it);
+          filasHtml += `
+            <tr style="${isSelected ? 'background: rgba(99,102,241,0.07); font-weight: 600;' : ''}">
+              <td style="text-align: center; width: 45px;">
+                <input type="radio" name="dup-radio-${realIdx}" value="${esc(it.id)}" ${isSelected ? 'checked' : ''} onchange="seleccionarConservarDuplicado(${realIdx}, '${esc(it.id)}')">
+              </td>
+              <td style="font-family: monospace; font-weight: 700; color: ${isSelected ? 'var(--accent)' : 'var(--text-muted)'}; width: 110px;">${esc(it.id)}</td>
+              <td>${esc(nombreVal)} ${isSelected ? '<span class="badge" style="background: var(--accent); color: #fff; margin-left: 6px; font-size: 0.72rem;">CONSERVAR</span>' : '<span style="color: #ef4444; font-size: 0.75rem; margin-left: 6px;">(eliminar)</span>'}</td>
+              <td style="text-align: center; width: 110px;">${sBadge}</td>
+              <td style="font-size: 0.8rem; color: var(--text-muted); width: 160px;">${esc(it.usuario) || '—'}</td>
+              <td style="font-size: 0.8rem; color: var(--text-muted); width: 150px;">${esc(it.fechaIngreso || it.fechaRegistro) || '—'}</td>
+            </tr>
+          `;
+        });
+
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.1rem;">${d.icono}</span>
+              <strong style="font-size: 0.95rem; color: var(--text);">${esc(g.nombreNorm)}</strong>
+              <span class="badge" style="background: rgba(239,68,68,0.12); color: #dc2626; font-weight: 700;">${g.items.length} duplicados</span>
+            </div>
+            ${puedeUnificar ? `<button type="button" class="btn-primary" style="padding: 5px 12px; font-size: 0.82rem; background: #059669; border-color: #059669;" onclick="unificarGrupoDuplicado(${realIdx})">
+              ⚡ Unificar este grupo
+            </button>` : ''}
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="data-table" style="font-size: 0.85rem; margin: 0;">
+              <thead>
+                <tr>
+                  <th style="width: 45px; text-align: center;">Elegir</th>
+                  <th style="width: 110px;">ID</th>
+                  <th>${tipo === 'placa' ? 'Placa · Cliente' : 'Nombre Exacto'}</th>
+                  <th style="width: 110px; text-align: center;">Servicios</th>
+                  <th style="width: 160px;">Usuario Creador</th>
+                  <th style="width: 150px;">${tipo === 'placa' ? 'Fecha Registro' : 'Fecha Ingreso'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasHtml}
+              </tbody>
+            </table>
+          </div>
+        `;
+        cont.appendChild(card);
+      });
+    }
+
+    function seleccionarConservarDuplicado(grupoIdx, idConservar) {
+      const grupos = catDef(catDuplicadosTipoActual).grupos();
+      if (grupos[grupoIdx]) {
+        grupos[grupoIdx].idConservar = idConservar;
+        renderListaDuplicados(document.getElementById('mdup-filtro-input')?.value || '');
+      }
+    }
+
+    async function unificarGrupoDuplicado(grupoIdx) {
+      const tipo = catDuplicadosTipoActual;
+      const d = catDef(tipo);
+      const g = d.grupos()[grupoIdx];
+      if (!g) return;
+
+      const idConservar = g.idConservar;
+      const idsEliminar = g.items.map(it => it.id).filter(id => id !== idConservar);
+      if (!idsEliminar.length) return alert('No hay registros sobrantes para eliminar.');
+
+      if (!confirm(`¿Confirmas unificar este grupo?\n\n• Conservar ID: ${idConservar} (${g.nombreNorm})\n• Eliminar ${idsEliminar.length} registro(s) duplicado(s).\n\nLos servicios en Dynamic_Servicios vinculados a los IDs eliminados se reasignarán automáticamente al ID ${idConservar}.`)) {
+        return;
+      }
+
+      try {
+        const resp = await fetch(`${d.base}/unificar-duplicados?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ grupos: [{ idConservar, idsEliminar }] })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert(`✅ Unificación exitosa:\n• ${data.serviciosReasignados} servicios reasignados en Dynamic_Servicios.\n• ${data.registrosEliminados} duplicados eliminados.`);
+          await d.recargar();
+          renderListaDuplicados(document.getElementById('mdup-filtro-input')?.value || '');
+        } else {
+          alert('Error al unificar: ' + (data.error || 'Desconocido'));
+        }
+      } catch (e) {
+        console.error('Error en unificación:', e);
+        alert('Error de conexión al unificar duplicados.');
+      }
+    }
+
+    async function unificarTodosDuplicados() {
+      const tipo = catDuplicadosTipoActual;
+      const d = catDef(tipo);
+      const grupos = d.grupos();
+      if (!grupos.length) return alert('No hay grupos duplicados pendientes.');
+
+      const listaPayload = grupos.map(g => ({
+        idConservar: g.idConservar,
+        idsEliminar: g.items.map(it => it.id).filter(id => id !== g.idConservar)
+      })).filter(g => g.idsEliminar.length > 0);
+
+      const totalEliminar = listaPayload.reduce((acc, g) => acc + g.idsEliminar.length, 0);
+
+      if (!confirm(`¿Confirmas unificar TODOS los ${listaPayload.length} grupos duplicados?\n\nSe conservarán los IDs seleccionados, se reasignarán sus servicios en Dynamic_Servicios y se eliminarán ${totalEliminar} registros duplicados.`)) {
+        return;
+      }
+
+      const btn = document.getElementById('btn-unificar-todos-duplicados');
+      btn.disabled = true;
+      btn.textContent = 'Procesando unificación masiva...';
+
+      try {
+        const resp = await fetch(`${d.base}/unificar-duplicados?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ grupos: listaPayload })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          alert(`✅ Unificación masiva completada exitosamente:\n• ${data.gruposProcesados} grupos procesados.\n• ${data.serviciosReasignados} servicios reasignados en Dynamic_Servicios.\n• ${data.registrosEliminados} registros duplicados eliminados.`);
+          await d.recargar();
+          renderListaDuplicados('');
+        } else {
+          alert('Error al unificar: ' + (data.error || 'Desconocido'));
+        }
+      } catch (e) {
+        console.error('Error en unificación masiva:', e);
+        alert('Error de conexión al unificar duplicados.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Unificar Todos los Grupos con la Selección Actual';
+      }
+    }
+
+    // ── 3. Conversión a Mayúsculas (provisional, roles de "depurar maestros") ──
+    async function convertirMayusculas(tipo) {
+      if (!PUEDE_DEPURAR_MAESTROS) {
+        return alert('Tu rol no tiene permiso para esta acción provisional.');
+      }
+      const d = catDef(tipo);
+      const aviso = tipo === 'placa'
+        ? '\n\nLas placas que al pasar a mayúscula quedarían iguales a otra con el mismo Nit no se cambian: primero hay que unificarlas en "Ver Duplicados".'
+        : '';
+      if (!confirm(`¿Confirmas convertir todas las ${d.plural.toLowerCase()} a MAYÚSCULAS en la base de datos?\n\nEsta operación actualizará la columna en la tabla maestra.${aviso}`)) {
+        return;
+      }
+
+      try {
+        const resp = await fetch(`${d.base}/convertir-mayusculas?usuario=${encodeURIComponent(CONFIG.usuario)}`, { method: 'POST' });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          const omitidas = data.omitidasPorDuplicado ? `\n• ${data.omitidasPorDuplicado} no se cambiaron porque son duplicados: unifícalos primero en "Ver Duplicados".` : '';
+          alert(`✅ Conversión completada:\nSe actualizaron ${data.actualizados} registros a mayúsculas.${omitidas}`);
+          await d.recargar();
+        } else {
+          alert('Error al convertir: ' + (data.error || 'Desconocido'));
+        }
+      } catch (e) {
+        console.error('Error convirtiendo a mayúsculas:', e);
+        alert('Error de conexión.');
+      }
+    }
+
+    // ── 4. Visualizar Servicios Asociados ─────────────────────
+    async function verServiciosAsociados(tipo, id, nombre) {
+      const d = catDef(tipo);
+      document.getElementById('mserv-modal-titulo').textContent = {
+        transportadora: '📋 Servicios Asociados a la Transportadora',
+        proveedor: '📋 Servicios Asociados al Proveedor',
+        placa: '📋 Servicios Asociados a la Placa',
+      }[tipo];
+
+      document.getElementById('mserv-subtitulo-entidad').textContent = `${nombre} (ID: ${id})`;
+      document.getElementById('mserv-total-cnt').textContent = 'Cargando...';
+      document.getElementById('mserv-total-monto').textContent = '$ 0';
+
+      const tbody = document.getElementById('tabla-modal-servicios-body');
+      tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding: 24px; color: var(--text-muted);">Cargando servicios asociados desde Dynamic_Servicios...</td></tr>';
+
+      const overlay = document.getElementById('modal-servicios-cat-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalServiciosAsociados());
+      }
+
+      try {
+        const resp = await fetch(`${d.base}/${encodeURIComponent(id)}/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+        const data = resp.ok ? await resp.json() : [];
+
+        document.getElementById('mserv-total-cnt').textContent = `${data.length.toLocaleString('es-CO')} servicios`;
+        const totalPesos = data.reduce((acc, s) => acc + (Number(s.subtotal) || 0), 0);
+        document.getElementById('mserv-total-monto').textContent = `$ ${totalPesos.toLocaleString('es-CO')}`;
+
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron servicios registrados en Dynamic_Servicios para este registro.</td></tr>';
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        data.forEach(s => {
+          const tr = document.createElement('tr');
+          const estadoBadge = s.estado === 'Green'
+            ? '<span class="badge" style="background: rgba(16,185,129,0.14); color: #059669; font-weight: 700;">Completado</span>'
+            : (s.estado === 'Yellow' ? '<span class="badge" style="background: rgba(245,158,11,0.16); color: #b45309; font-weight: 700;">Pendiente</span>' : `<span class="badge">${esc(s.estado || '—')}</span>`);
+
+          const fpStr = s.formaDePago === 3 ? '3 - Crédito' : (s.formaDePago === 1 ? '1 - Efectivo' : (s.formaDePago === 2 ? '2 - Transf.' : (s.formaDePago || '—')));
+          // ID Servicio abre el detalle del servicio (como en la pestaña Servicios) en otra pestaña del navegador
+          const urlDetalle = `/facturacion?usuario=${encodeURIComponent(CONFIG.usuario)}&tab=servicios&idservicio=${encodeURIComponent(s.idServicio || '')}`;
+          const idServicioHtml = s.idServicio
+            ? `<a href="${urlDetalle}" target="_blank" rel="noopener" title="Ver el detalle del servicio" style="color: var(--accent); text-decoration: underline;">${esc(s.idServicio)}</a>`
+            : '—';
+
+          tr.innerHTML = `
+            <td style="font-family: monospace; font-weight: 600;">${idServicioHtml}</td>
+            <td style="font-weight: 600;">${esc(s.consecutivoRecibo) || esc(s.idRecibo) || '—'}</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(s.fechaServicio) || '—'}</td>
+            <td style="font-size: 0.82rem;">${esc(s.operacion) || '—'}</td>
+            <td>${esc(s.area) || '—'}</td>
+            <td>${esc(s.actividad) || '—'}</td>
+            <td style="font-family: monospace; font-weight: 600;">${esc(s.placa) || esc(s.vehiculo) || '—'}</td>
+            <td style="text-align: right; font-weight: 600;">${Number(s.cantidad || 0).toLocaleString('es-CO')}</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(s.unidad) || '—'}</td>
+            <td style="text-align: right; font-size: 0.82rem;">$ ${(Number(s.valorUnitario) || 0).toLocaleString('es-CO')}</td>
+            <td style="text-align: right; font-weight: 700; color: var(--accent);">$ ${(Number(s.subtotal) || 0).toLocaleString('es-CO')}</td>
+            <td style="font-size: 0.82rem; font-weight: 500;">${esc(s.cliente) || '—'}</td>
+            <td style="text-align: center; font-size: 0.8rem;"><span class="badge badge-servicios">${esc(fpStr)}</span></td>
+            <td style="text-align: center;">${estadoBadge}</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${esc(s.usuario) || '—'}</td>
+          `;
+          frag.appendChild(tr);
+        });
+        tbody.innerHTML = '';
+        tbody.appendChild(frag);
+      } catch (e) {
+        console.error('Error cargando servicios asociados:', e);
+        tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding: 24px; color: #ef4444;">Error al cargar servicios asociados.</td></tr>';
+      }
+    }
+
+    function cerrarModalServiciosAsociados() {
+      const overlay = document.getElementById('modal-servicios-cat-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
       }
     }
 
@@ -4714,12 +6609,12 @@
           const msg = resp.status === 404
             ? 'Para cargar esta pestaña, reinicia el servidor local (Ctrl + C y vuelve a ejecutar node app.js).'
             : 'Error al cargar placas. Por favor recarga la página.';
-          if (tbody) tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
+          if (tbody) tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: #ef4444; padding: 24px; font-weight: 600;">${msg}</td></tr>`;
         }
       } catch (e) {
         console.error('Error cargando Maestro_Placas:', e);
         const tbody = document.getElementById('tabla-placas-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar placas.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #ef4444; padding: 24px;">Error de conexión al cargar placas.</td></tr>';
       }
     }
 
@@ -4746,6 +6641,7 @@
       document.getElementById('mplaca-filtro-desde').value = '';
       document.getElementById('mplaca-filtro-hasta').value = '';
       document.getElementById('mplaca-filtro-usuario').value = '';
+      document.getElementById('mplaca-filtro-longitud').value = '';
       seleccionarChipPlacas('');
     }
 
@@ -4754,14 +6650,44 @@
       renderPlacasTable();
     }
 
+    // Provisional (migración desde AppSheet): placas con menos o más de 6 caracteres.
+    function longitudPlaca(p) {
+      return String(p.placa || '').trim().length;
+    }
+    function verPlacasLongitudDistinta() {
+      const body = document.getElementById('mplacaFiltrosBody');
+      if (body && body.style.display === 'none') toggleFiltrosCat('mplaca');
+      document.getElementById('mplaca-filtro-longitud').value = 'distinto6';
+      onPlacasFilterChange();
+    }
+
     function sortAndRenderPlacas() {
+      // Duplicados: misma placa (sin mayúsculas ni espacios) y mismo Nit (o Cliente Crédito si no hay Nit)
+      gruposDuplicadosPlacas = calcularGruposDuplicados(allPlacas, 'placa', {
+        clave: p => {
+          const nit = p.nit == null || p.nit === '' ? `CC:${String(p.clienteCredito || '').trim().toUpperCase()}` : String(p.nit);
+          return `${String(p.placa || '').trim().toUpperCase()}|${nit}`;
+        },
+        etiqueta: nombrePlacaCat,
+      });
+      const badgeDup = document.getElementById('badge-duplicados-placa');
+      if (badgeDup) {
+        badgeDup.textContent = gruposDuplicadosPlacas.length;
+        badgeDup.style.display = gruposDuplicadosPlacas.length > 0 ? 'inline-block' : 'none';
+      }
+      const cntLong = allPlacas.filter(p => longitudPlaca(p) !== 6).length;
+      const badgeLong = document.getElementById('badge-longitud-placa');
+      if (badgeLong) badgeLong.textContent = cntLong.toLocaleString('es-CO');
+      const btnMayus = document.getElementById('btn-mayus-placa');
+      if (btnMayus) btnMayus.style.display = PUEDE_DEPURAR_MAESTROS ? 'inline-flex' : 'none';
+
       const col = sortPlacasState.col;
       const order = sortPlacasState.order;
       if (col) {
         allPlacas.sort((a, b) => {
           let va = a[col] ?? '';
           let vb = b[col] ?? '';
-          if (col === 'nit') {
+          if (col === 'nit' || col === 'totalServicios') {
             va = Number(va) || 0;
             vb = Number(vb) || 0;
             return order === 'asc' ? va - vb : vb - va;
@@ -4773,7 +6699,7 @@
           return 0;
         });
       }
-      ['id','placa','tipoCliente','clienteCredito','nit','tipoVehiculo','empleado','usuario','fechaRegistro'].forEach(k => {
+      ['id','placa','tipoCliente','clienteCredito','cliente','totalServicios','tipoVehiculo','empleado','usuario','fechaRegistro'].forEach(k => {
         const span = document.getElementById('mplacaSort-' + k);
         if (!span) return;
         span.textContent = col === k ? (order === 'asc' ? ' ▲' : ' ▼') : '';
@@ -4790,6 +6716,7 @@
       const fDesde = document.getElementById('mplaca-filtro-desde')?.value || '';
       const fHasta = document.getElementById('mplaca-filtro-hasta')?.value || '';
       const fUsr = document.getElementById('mplaca-filtro-usuario')?.value || '';
+      const fLong = document.getElementById('mplaca-filtro-longitud')?.value || '';
 
       let countActive = 0;
       if (q) countActive++;
@@ -4799,6 +6726,7 @@
       if (fDesde) countActive++;
       if (fHasta) countActive++;
       if (fUsr) countActive++;
+      if (fLong) countActive++;
       const badge = document.getElementById('mplacaFiltrosBadge');
       if (badge) {
         badge.textContent = countActive;
@@ -4808,20 +6736,24 @@
       const baseFiltered = allPlacas.filter(p => {
         const tipoUp = (p.tipoCliente || '').trim().toUpperCase();
         const fDia = (p.fechaRegistro || '').slice(0, 10);
+        const largo = longitudPlaca(p);
         if (fTipo && tipoUp !== fTipo) return false;
         if (fCli && (p.clienteCredito || '').trim() !== fCli) return false;
         if (fVeh && (p.tipoVehiculo || '').trim() !== fVeh) return false;
         if (fDesde && (!fDia || fDia < fDesde)) return false;
         if (fHasta && (!fDia || fDia > fHasta)) return false;
         if (fUsr && (p.usuario || '').trim() !== fUsr) return false;
+        if (fLong === 'menos6' && !(largo < 6)) return false;
+        if (fLong === 'mas6' && !(largo > 6)) return false;
+        if (fLong === 'distinto6' && largo === 6) return false;
         if (q) {
           const id = (p.id || '').toLowerCase();
           const pl = (p.placa || '').toLowerCase();
           const cc = (p.clienteCredito || '').toLowerCase();
-          const nit = String(p.nit || '').toLowerCase();
+          const cli = (p.cliente || '').toLowerCase();
           const emp = (p.empleado || '').toLowerCase();
           const usr = (p.usuario || '').toLowerCase();
-          if (!id.includes(q) && !pl.includes(q) && !cc.includes(q) && !nit.includes(q) && !emp.includes(q) && !usr.includes(q)) return false;
+          if (!id.includes(q) && !pl.includes(q) && !cc.includes(q) && !cli.includes(q) && !emp.includes(q) && !usr.includes(q)) return false;
         }
         return true;
       });
@@ -4856,7 +6788,7 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron placas con los filtros seleccionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 24px;">No se encontraron placas con los filtros seleccionados.</td></tr>';
       } else {
         const visibles = filtered.slice(0, limitPlacas);
         const frag = document.createDocumentFragment();
@@ -4866,12 +6798,32 @@
           const tipoBadge = tUp === 'CREDITO'
             ? '<span class="badge badge-servicios">CREDITO</span>'
             : (tUp === 'CONTADO' ? '<span class="badge badge-desbloq">CONTADO</span>' : (esc(p.tipoCliente) || '—'));
+          const isChecked = selectedPlacasIds.has(String(p.id));
+          const cnt = Number(p.totalServicios) || 0;
+          const badgeServicios = cnt > 0
+            ? `<button type="button" class="badge" style="background: rgba(16,185,129,0.14); color: #059669; font-weight: 700; border: none; cursor: pointer; padding: 4px 10px; border-radius: 12px;" title="Ver los ${cnt} servicios relacionados" onclick="verServiciosAsociados('placa', '${esc(p.id)}', '${esc(nombrePlacaCat(p))}')">📊 ${cnt.toLocaleString('es-CO')} serv.</button>`
+            : `<span class="badge" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); padding: 3px 8px; border-radius: 12px; font-size: 0.78rem;">0 serv.</span>`;
+          const largo = longitudPlaca(p);
+          const avisoLargo = largo !== 6 ? ` <span title="La placa tiene ${largo} caracteres" style="font-size: 0.72rem; color: #b45309; font-weight: 700;">(${largo})</span>` : '';
+          const btnEditar = PUEDE_GESTIONAR_MAESTROS
+            ? `<button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; margin-right: 4px;" title="Editar placa" onclick="abrirModalEditarPlaca('${esc(p.id)}')">✏️</button>`
+            : '';
+          const btnEliminar = PUEDE_DEPURAR_MAESTROS
+            ? `<button type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; color: #dc2626; border-color: rgba(239,68,68,0.25);" title="Eliminar placa" onclick="abrirMenuEliminarFila('placa', '${esc(p.id)}')">🗑️</button>`
+            : '';
           tr.innerHTML = `
+            <td style="text-align: center;">
+              <input type="checkbox" class="chk-cat-placa" value="${esc(p.id)}" ${isChecked ? 'checked' : ''} onchange="onCatRowCheckboxChange('placa', '${esc(p.id)}', this.checked)">
+            </td>
+            <td style="text-align: center; white-space: nowrap;">
+              ${btnEditar}${btnEliminar}
+            </td>
             <td style="font-family: monospace; font-weight: 600; color: var(--text-muted);">${esc(p.id) || '—'}</td>
-            <td style="font-family: monospace; font-weight: 800; color: var(--accent); font-size: 0.9rem;">${esc(p.placa) || '—'}</td>
+            <td style="font-family: monospace; font-weight: 800; color: var(--accent); font-size: 0.9rem;">${esc(p.placa) || '—'}${avisoLargo}</td>
             <td>${tipoBadge}</td>
             <td style="font-weight: 600;">${esc(p.clienteCredito) || '—'}</td>
-            <td style="font-family: monospace;">${esc(p.nit) || '—'}</td>
+            <td>${esc(p.cliente) || '—'}</td>
+            <td style="text-align: center;">${badgeServicios}</td>
             <td>${esc(p.tipoVehiculo) || '—'}</td>
             <td>${esc(p.empleado) || '—'}</td>
             <td style="font-size: 0.82rem; color: var(--text-muted);">${esc(p.usuario) || '—'}</td>
@@ -4890,6 +6842,442 @@
       }
       if (btnMas) {
         btnMas.style.display = filtered.length > limitPlacas ? 'inline-flex' : 'none';
+      }
+      actualizarBarraMasiva('placa');
+    }
+
+    // ── Agregar Transportadora / Proveedor (solo el nombre) ─────
+    let catAgregarTipo = null;
+    function abrirModalAgregarCat(tipo) {
+      catAgregarTipo = tipo;
+      const d = catDef(tipo);
+      document.getElementById('magcat-modal-titulo').textContent = `➕ Agregar ${d.etiqueta}`;
+      document.getElementById('magcat-label-nombre').textContent = `Nombre ${d.etiqueta} *`;
+      document.getElementById('magcat-nombre').value = '';
+      document.getElementById('magcat-error').style.display = 'none';
+      const overlay = document.getElementById('modal-agregar-cat-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalAgregarCat());
+      }
+      setTimeout(() => document.getElementById('magcat-nombre')?.focus(), 100);
+    }
+
+    function cerrarModalAgregarCat() {
+      const overlay = document.getElementById('modal-agregar-cat-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+      catAgregarTipo = null;
+    }
+
+    async function guardarAgregarCat() {
+      if (!catAgregarTipo) return;
+      const d = catDef(catAgregarTipo);
+      const nombre = (document.getElementById('magcat-nombre').value || '').trim();
+      const errEl = document.getElementById('magcat-error');
+      if (!nombre) { errEl.textContent = 'Escribe el nombre.'; errEl.style.display = 'block'; return; }
+
+      const btn = document.getElementById('btn-guardar-agregar-cat');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      try {
+        const resp = await fetch(`${d.base}?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          cerrarModalAgregarCat();
+          await d.recargar();
+          alert(`✅ ${d.etiqueta} "${data.nombre}" agregada`);
+        } else {
+          errEl.textContent = data.error || 'No se pudo guardar.';
+          errEl.style.display = 'block';
+        }
+      } catch (e) {
+        console.error('Error agregando registro maestro:', e);
+        errEl.textContent = 'Error de conexión al guardar.';
+        errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Agregar';
+      }
+    }
+
+    // ── Agregar Placa ───────────────────────────────────────────
+    let placaNuevaState = { tipoCliente: '', clienteCredito: '', nit: '', clientesCredito: [] };
+    let placaBuscarClienteTimer = null;
+
+    async function abrirModalAgregarPlaca() {
+      placaNuevaState = { tipoCliente: '', clienteCredito: '', nit: '', clientesCredito: placaNuevaState.clientesCredito || [] };
+      document.getElementById('magpl-placa').value = '';
+      document.getElementById('magpl-cc-input').value = '';
+      document.getElementById('magpl-nit-input').value = '';
+      document.getElementById('magpl-error').style.display = 'none';
+      seleccionarTipoClientePlaca('');
+      const overlay = document.getElementById('modal-agregar-placa-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalAgregarPlaca());
+      }
+      setTimeout(() => document.getElementById('magpl-placa')?.focus(), 100);
+      if (!placaNuevaState.clientesCredito.length) {
+        try {
+          const r = await fetch(`/facturacion/api/maestro-placas/clientes-credito?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+          if (r.ok) placaNuevaState.clientesCredito = await r.json();
+        } catch (e) {
+          console.error('Error cargando clientes crédito:', e);
+        }
+      }
+    }
+
+    function cerrarModalAgregarPlaca() {
+      const overlay = document.getElementById('modal-agregar-placa-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+      document.getElementById('magpl-cc-lista').style.display = 'none';
+      document.getElementById('magpl-nit-lista').style.display = 'none';
+    }
+
+    function seleccionarTipoClientePlaca(tipo) {
+      placaNuevaState.tipoCliente = tipo;
+      document.getElementById('magpl-btn-contado').classList.toggle('active', tipo === 'CONTADO');
+      document.getElementById('magpl-btn-credito').classList.toggle('active', tipo === 'CREDITO');
+      document.getElementById('magpl-grupo-cc').style.display = tipo === 'CREDITO' ? 'block' : 'none';
+      const nitInput = document.getElementById('magpl-nit-input');
+      if (tipo === 'CREDITO') {
+        // El Nit sale del Cliente Crédito escogido (Maestro_Clientes_Credito)
+        nitInput.disabled = true;
+        nitInput.value = placaNuevaState.clienteCredito ? describirNitCredito(placaNuevaState.clienteCredito) : '';
+        placaNuevaState.nit = '';
+      } else {
+        nitInput.disabled = false;
+        if (placaNuevaState.clienteCredito) nitInput.value = '';
+        placaNuevaState.clienteCredito = '';
+        document.getElementById('magpl-cc-input').value = '';
+      }
+    }
+
+    function describirNitCredito(clienteAFacturar) {
+      const cc = placaNuevaState.clientesCredito.find(c => c.clienteAFacturar === clienteAFacturar);
+      if (!cc) return '';
+      return cc.nit ? `${cc.nit} - ${cc.nombre || cc.clienteAFacturar}` : '(este cliente crédito no tiene Nit)';
+    }
+
+    function filtrarClientesCreditoPlaca(texto) {
+      const q = String(texto || '').toLowerCase().trim();
+      placaNuevaState.clienteCredito = '';
+      document.getElementById('magpl-nit-input').value = '';
+      const lista = document.getElementById('magpl-cc-lista');
+      const opciones = placaNuevaState.clientesCredito
+        .filter(c => !q || String(c.clienteAFacturar).toLowerCase().includes(q) || String(c.nombre || '').toLowerCase().includes(q) || String(c.nit || '').includes(q))
+        .slice(0, 30);
+      if (!opciones.length) {
+        lista.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.85rem;">Sin coincidencias en Maestro_Clientes_Credito.</div>';
+      } else {
+        lista.innerHTML = opciones.map(c => `
+          <div style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem;"
+               onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'"
+               onmousedown="event.preventDefault(); escogerClienteCreditoPlaca('${esc(c.clienteAFacturar)}')">
+            <strong>${esc(c.clienteAFacturar)}</strong> <small style="color: var(--text-muted);">${esc(c.nombre || '')}${c.nit ? ' · ' + esc(c.nit) : ''}${c.bloqueo ? ' · 🔒 bloqueado' : ''}</small>
+          </div>`).join('');
+      }
+      lista.style.display = 'block';
+    }
+
+    function escogerClienteCreditoPlaca(clienteAFacturar) {
+      placaNuevaState.clienteCredito = clienteAFacturar;
+      document.getElementById('magpl-cc-input').value = clienteAFacturar;
+      document.getElementById('magpl-cc-lista').style.display = 'none';
+      document.getElementById('magpl-nit-input').value = describirNitCredito(clienteAFacturar);
+    }
+
+    function buscarClientesNitPlaca(texto) {
+      placaNuevaState.nit = '';
+      clearTimeout(placaBuscarClienteTimer);
+      const lista = document.getElementById('magpl-nit-lista');
+      const q = String(texto || '').trim();
+      if (q.length < 2) { lista.style.display = 'none'; return; }
+      placaBuscarClienteTimer = setTimeout(async () => {
+        try {
+          const r = await fetch(`/facturacion/api/maestro-placas/buscar-clientes?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
+          const rows = r.ok ? await r.json() : [];
+          if (!rows.length) {
+            lista.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.85rem;">Sin coincidencias en Maestro_Clientes.</div>';
+          } else {
+            lista.innerHTML = rows.map(c => `
+              <div style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem;"
+                   onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'"
+                   onmousedown="event.preventDefault(); escogerClienteNitPlaca('${esc(c.codigo)}', '${esc(c.razonSocial || '')}')">
+                <strong style="font-family: monospace;">${esc(c.codigo)}</strong> - ${esc(c.razonSocial || '')}
+              </div>`).join('');
+          }
+          lista.style.display = 'block';
+        } catch (e) {
+          console.error('Error buscando clientes:', e);
+        }
+      }, 250);
+    }
+
+    function escogerClienteNitPlaca(codigo, razonSocial) {
+      placaNuevaState.nit = codigo;
+      document.getElementById('magpl-nit-input').value = `${codigo} - ${razonSocial}`;
+      document.getElementById('magpl-nit-lista').style.display = 'none';
+    }
+
+    async function guardarAgregarPlaca() {
+      const errEl = document.getElementById('magpl-error');
+      const mostrarError = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+      errEl.style.display = 'none';
+
+      const placa = (document.getElementById('magpl-placa').value || '').replace(/\s+/g, '').toUpperCase();
+      if (!placa) return mostrarError('Escribe la placa.');
+      if (!placaNuevaState.tipoCliente) return mostrarError('Escoge el Tipo Cliente: CONTADO o CREDITO.');
+      if (placaNuevaState.tipoCliente === 'CREDITO' && !placaNuevaState.clienteCredito) return mostrarError('Para CREDITO escoge el Cliente Crédito de la lista.');
+      if (placaNuevaState.tipoCliente === 'CONTADO' && document.getElementById('magpl-nit-input').value.trim() && !placaNuevaState.nit) {
+        return mostrarError('Escoge el cliente de la lista o deja el campo Nit vacío.');
+      }
+
+      const btn = document.getElementById('btn-guardar-agregar-placa');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-placas?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            placa,
+            tipoCliente: placaNuevaState.tipoCliente,
+            clienteCredito: placaNuevaState.clienteCredito || null,
+            nit: placaNuevaState.tipoCliente === 'CONTADO' ? (placaNuevaState.nit || null) : null
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          cerrarModalAgregarPlaca();
+          await cargarPlacas();
+          alert(`✅ Placa ${data.placa} agregada`);
+        } else {
+          mostrarError(data.error || 'No se pudo guardar la placa.');
+        }
+      } catch (e) {
+        console.error('Error agregando placa:', e);
+        mostrarError('Error de conexión al guardar.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Agregar Placa';
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // MODAL Y GESTIÓN: EDITAR PLACA (Maestro_Placas)
+    // ══════════════════════════════════════════════════════════
+    let placaEditState = { id: '', tipoCliente: '', clienteCredito: '', nit: '', clientesCredito: [] };
+    let placaEditBuscarClienteTimer = null;
+
+    async function abrirModalEditarPlaca(id) {
+      const p = allPlacas.find(x => String(x.id) === String(id));
+      if (!p) return;
+
+      placaEditState = {
+        id: p.id,
+        tipoCliente: (p.tipoCliente || '').toUpperCase(),
+        clienteCredito: p.clienteCredito || '',
+        nit: p.nit != null ? String(p.nit) : '',
+        clientesCredito: (placaNuevaState && placaNuevaState.clientesCredito && placaNuevaState.clientesCredito.length)
+          ? placaNuevaState.clientesCredito
+          : []
+      };
+
+      document.getElementById('medpl-id').value = p.id;
+      document.getElementById('medpl-placa').value = p.placa || '';
+      document.getElementById('medpl-cc-input').value = p.clienteCredito || '';
+
+      const nitInput = document.getElementById('medpl-nit-input');
+      if (p.clienteRazonSocial) {
+        nitInput.value = `${p.nit || ''} - ${p.clienteRazonSocial}`;
+      } else {
+        nitInput.value = p.nit ? String(p.nit) : '';
+      }
+
+      document.getElementById('medpl-error').style.display = 'none';
+      seleccionarTipoClientePlacaEdit(placaEditState.tipoCliente);
+
+      const overlay = document.getElementById('modal-editar-placa-overlay');
+      overlay.classList.add('open');
+      if (typeof registrarModalBack === 'function') {
+        overlay._backEntry = registrarModalBack(() => cerrarModalEditarPlaca());
+      }
+      setTimeout(() => document.getElementById('medpl-placa')?.focus(), 100);
+
+      if (!placaEditState.clientesCredito.length) {
+        try {
+          const r = await fetch(`/facturacion/api/maestro-placas/clientes-credito?usuario=${encodeURIComponent(CONFIG.usuario)}`);
+          if (r.ok) {
+            placaEditState.clientesCredito = await r.json();
+            if (placaNuevaState) placaNuevaState.clientesCredito = placaEditState.clientesCredito;
+          }
+        } catch (e) {
+          console.error('Error cargando clientes crédito para editar placa:', e);
+        }
+      }
+    }
+
+    function cerrarModalEditarPlaca() {
+      const overlay = document.getElementById('modal-editar-placa-overlay');
+      overlay.classList.remove('open');
+      if (typeof cerrarModalBack === 'function' && overlay._backEntry) {
+        cerrarModalBack(overlay._backEntry);
+        overlay._backEntry = null;
+      }
+      document.getElementById('medpl-cc-lista').style.display = 'none';
+      document.getElementById('medpl-nit-lista').style.display = 'none';
+    }
+
+    function seleccionarTipoClientePlacaEdit(tipo) {
+      placaEditState.tipoCliente = tipo;
+      document.getElementById('medpl-btn-contado').classList.toggle('active', tipo === 'CONTADO');
+      document.getElementById('medpl-btn-credito').classList.toggle('active', tipo === 'CREDITO');
+      document.getElementById('medpl-grupo-cc').style.display = tipo === 'CREDITO' ? 'block' : 'none';
+      const nitInput = document.getElementById('medpl-nit-input');
+      if (tipo === 'CREDITO') {
+        nitInput.disabled = true;
+        if (placaEditState.clienteCredito) {
+          nitInput.value = describirNitCreditoEdit(placaEditState.clienteCredito);
+        }
+      } else {
+        nitInput.disabled = false;
+        if (placaEditState.clienteCredito) {
+          nitInput.value = '';
+          placaEditState.clienteCredito = '';
+          document.getElementById('medpl-cc-input').value = '';
+        }
+      }
+    }
+
+    function describirNitCreditoEdit(clienteAFacturar) {
+      const list = (placaEditState && placaEditState.clientesCredito && placaEditState.clientesCredito.length)
+        ? placaEditState.clientesCredito
+        : (placaNuevaState ? placaNuevaState.clientesCredito : []);
+      const cc = list.find(c => c.clienteAFacturar === clienteAFacturar);
+      if (!cc) return '';
+      return cc.nit ? `${cc.nit} - ${cc.nombre || cc.clienteAFacturar}` : '(este cliente crédito no tiene Nit)';
+    }
+
+    function filtrarClientesCreditoPlacaEdit(texto) {
+      const q = String(texto || '').toLowerCase().trim();
+      placaEditState.clienteCredito = '';
+      document.getElementById('medpl-nit-input').value = '';
+      const lista = document.getElementById('medpl-cc-lista');
+      const list = (placaEditState && placaEditState.clientesCredito && placaEditState.clientesCredito.length)
+        ? placaEditState.clientesCredito
+        : (placaNuevaState ? placaNuevaState.clientesCredito : []);
+      const opciones = list
+        .filter(c => !q || String(c.clienteAFacturar).toLowerCase().includes(q) || String(c.nombre || '').toLowerCase().includes(q) || String(c.nit || '').includes(q))
+        .slice(0, 30);
+      if (!opciones.length) {
+        lista.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.85rem;">Sin coincidencias en Maestro_Clientes_Credito.</div>';
+      } else {
+        lista.innerHTML = opciones.map(c => `
+          <div style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem;"
+               onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'"
+               onmousedown="event.preventDefault(); escogerClienteCreditoPlacaEdit('${esc(c.clienteAFacturar)}')">
+            <strong>${esc(c.clienteAFacturar)}</strong> <small style="color: var(--text-muted);">${esc(c.nombre || '')}${c.nit ? ' · ' + esc(c.nit) : ''}${c.bloqueo ? ' · 🔒 bloqueado' : ''}</small>
+          </div>`).join('');
+      }
+      lista.style.display = 'block';
+    }
+
+    function escogerClienteCreditoPlacaEdit(clienteAFacturar) {
+      placaEditState.clienteCredito = clienteAFacturar;
+      document.getElementById('medpl-cc-input').value = clienteAFacturar;
+      document.getElementById('medpl-cc-lista').style.display = 'none';
+      document.getElementById('medpl-nit-input').value = describirNitCreditoEdit(clienteAFacturar);
+    }
+
+    function buscarClientesNitPlacaEdit(texto) {
+      placaEditState.nit = '';
+      clearTimeout(placaEditBuscarClienteTimer);
+      const lista = document.getElementById('medpl-nit-lista');
+      const q = String(texto || '').trim();
+      if (q.length < 2) { lista.style.display = 'none'; return; }
+      placaEditBuscarClienteTimer = setTimeout(async () => {
+        try {
+          const r = await fetch(`/facturacion/api/maestro-placas/buscar-clientes?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
+          const rows = r.ok ? await r.json() : [];
+          if (!rows.length) {
+            lista.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.85rem;">Sin coincidencias en Maestro_Clientes.</div>';
+          } else {
+            lista.innerHTML = rows.map(c => `
+              <div style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem;"
+                   onmouseover="this.style.background='var(--bg-elevated)'" onmouseout="this.style.background='transparent'"
+                   onmousedown="event.preventDefault(); escogerClienteNitPlacaEdit('${esc(c.codigo)}', '${esc(c.razonSocial || '')}')">
+                <strong style="font-family: monospace;">${esc(c.codigo)}</strong> - ${esc(c.razonSocial || '')}
+              </div>`).join('');
+          }
+          lista.style.display = 'block';
+        } catch (e) {
+          console.error('Error buscando clientes:', e);
+        }
+      }, 250);
+    }
+
+    function escogerClienteNitPlacaEdit(codigo, razonSocial) {
+      placaEditState.nit = codigo;
+      document.getElementById('medpl-nit-input').value = `${codigo} - ${razonSocial}`;
+      document.getElementById('medpl-nit-lista').style.display = 'none';
+    }
+
+    async function guardarEditarPlaca() {
+      const errEl = document.getElementById('medpl-error');
+      const mostrarError = (m) => { errEl.textContent = m; errEl.style.display = 'block'; };
+      errEl.style.display = 'none';
+
+      const id = document.getElementById('medpl-id').value;
+      const placa = (document.getElementById('medpl-placa').value || '').replace(/\s+/g, '').toUpperCase();
+      if (!placa) return mostrarError('Escribe la placa.');
+      if (!placaEditState.tipoCliente) return mostrarError('Escoge el Tipo Cliente: CONTADO o CREDITO.');
+      if (placaEditState.tipoCliente === 'CREDITO' && !placaEditState.clienteCredito) return mostrarError('Para CREDITO escoge el Cliente Crédito de la lista.');
+      if (placaEditState.tipoCliente === 'CONTADO' && document.getElementById('medpl-nit-input').value.trim() && !placaEditState.nit) {
+        return mostrarError('Escoge el cliente de la lista o deja el campo Nit vacío.');
+      }
+
+      const btn = document.getElementById('btn-guardar-editar-placa');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      try {
+        const resp = await fetch(`/facturacion/api/maestro-placas/actualizar?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id,
+            placa,
+            tipoCliente: placaEditState.tipoCliente,
+            clienteCredito: placaEditState.tipoCliente === 'CREDITO' ? (placaEditState.clienteCredito || null) : null,
+            nit: placaEditState.tipoCliente === 'CONTADO' ? (placaEditState.nit || null) : null
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok && data.ok) {
+          cerrarModalEditarPlaca();
+          await cargarPlacas();
+          alert(`✅ Placa ${data.placa} actualizada.`);
+        } else {
+          mostrarError(data.error || 'No se pudo actualizar la placa.');
+        }
+      } catch (e) {
+        console.error('Error actualizando placa:', e);
+        mostrarError('Error de conexión al guardar.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar Cambios';
       }
     }
 

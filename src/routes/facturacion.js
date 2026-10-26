@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const pool = require('../services/db');
 const { computarAccesoFacturacion } = require('../services/accesoFacturacion');
-const { obtenerConfigServiciosMasivo } = require('../services/configFacturacion');
+const { obtenerConfigServiciosMasivo, puedeDepurarMaestros, puedeGestionarMaestros, puedeEditarRetenciones } = require('../services/configFacturacion');
 const { subirFotoServicio } = require('../services/storage');
 const { obtenerTipoDocumentoConfig, registrarDocGeneral } = require('../services/documentRegistry');
 
@@ -140,6 +140,11 @@ router.get('/', async (req, res) => {
       quincenaActual,
       serviciosMasivo: cfgServiciosMasivo,
       puedeGestionarClientesCredito: await puedeGestionarClientesCredito(base.rol),
+      clientesMaestros: {
+        puedeDepurar: await puedeDepurarMaestros(base.rol),
+        puedeGestionar: await puedeGestionarMaestros(base.rol),
+        puedeEditarRetenciones: await puedeEditarRetenciones(base.rol)
+      }, // Config_Parametros (facturacion / Clientes)
       tabs: {
         servicios: resumenAcceso(accesoServicios),
         recibos: resumenAcceso(accesoRecibos || accesoServicios),
@@ -458,6 +463,217 @@ router.get('/api/maestro-clientes', async (req, res) => {
   }
 });
 
+// ── GET /api/maestro-clientes/contexto-operacion (Ubicación por Operación del usuario) ──
+router.get('/api/maestro-clientes/contexto-operacion', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const userOp = String(acceso.operacion || '').split(',')[0].trim();
+    let opZona = null, opCC = null, opDir = userOp;
+
+    if (userOp) {
+      const [rows] = await pool.execute(
+        'SELECT `OPERACIÓN` as operacion, REGIONAL as regional, ZONA as zona, `C.C.` as cc, DIRECCION as direccion FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+        [userOp]
+      );
+      if (rows.length) {
+        opZona = rows[0].zona || rows[0].regional || null;
+        opCC = rows[0].cc || null;
+        opDir = rows[0].operacion || rows[0].direccion || userOp;
+      }
+    }
+
+    res.json({
+      operacion: userOp,
+      deptoEstado: opZona,
+      ciudad: opCC,
+      direccion1: opDir,
+      puedeEditarRetenciones: await puedeEditarRetenciones(acceso.rol)
+    });
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-clientes/contexto-operacion:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/maestro-clientes (Agregar Cliente) ───────────────────────────
+router.post('/api/maestro-clientes', uploadServicio.single('documento'), async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeGestionarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'No autorizado para crear clientes.' });
+    }
+
+    const codigoRaw = String(req.body.codigo || '').replace(/[^0-9]/g, '');
+    const codigo = Number(codigoRaw);
+    if (!codigo || codigo <= 0) {
+      return res.status(400).json({ error: 'El Código (NIT) es obligatorio y debe ser numérico mayor a 0.' });
+    }
+
+    const [existe] = await pool.execute('SELECT `Código` FROM Maestro_Clientes WHERE `Código` = ? LIMIT 1', [codigo]);
+    if (existe.length) {
+      return res.status(400).json({ error: `Ya existe un cliente con el código ${codigo}.` });
+    }
+
+    const razonSocial = String(req.body.razonSocial || '').trim().toUpperCase();
+    if (!razonSocial) return res.status(400).json({ error: 'La Razón Social es obligatoria.' });
+
+    const telefono = String(req.body.telefono || '').trim();
+    if (!telefono) return res.status(400).json({ error: 'El Teléfono es obligatorio.' });
+
+    const correoFE = String(req.body.correoFE || '').trim();
+    if (!correoFE) return res.status(400).json({ error: 'El Correo F.E. es obligatorio.' });
+
+    const observaciones = req.body.observaciones ? String(req.body.observaciones).trim() : null;
+
+    // Retenciones: solo si tiene permiso Facturación o Sistema
+    const puedeRet = await puedeEditarRetenciones(acceso.rol);
+    const rtica = (puedeRet && req.body.rtica) ? String(req.body.rtica).trim() : null;
+    const rtiva = (puedeRet && req.body.rtiva) ? String(req.body.rtiva).trim() : null;
+    const rtservic = (puedeRet && req.body.rtservic) ? String(req.body.rtservic).trim() : null;
+
+    // Ubicación por Operación del usuario
+    const userOp = String(acceso.operacion || '').split(',')[0].trim();
+    let deptoEstado = null, ciudad = null, direccion1 = userOp || '';
+    if (userOp) {
+      const [opRows] = await pool.execute(
+        'SELECT ZONA, `C.C.`, `OPERACIÓN`, DIRECCION FROM Maestro_Operaciones WHERE `OPERACIÓN` = ? LIMIT 1',
+        [userOp]
+      );
+      if (opRows.length) {
+        deptoEstado = opRows[0].ZONA || null;
+        ciudad = opRows[0]['C.C.'] || null;
+        direccion1 = opRows[0]['OPERACIÓN'] || opRows[0].DIRECCION || userOp;
+      }
+    }
+    if (req.body.deptoEstado) deptoEstado = String(req.body.deptoEstado).trim();
+    if (req.body.ciudad) ciudad = String(req.body.ciudad).trim();
+    if (req.body.direccion1) direccion1 = String(req.body.direccion1).trim();
+
+    const buscarCliente = `${codigo} ** ${razonSocial}`;
+    const usuarioVal = acceso.usuarioNombre || usuario;
+    const ahoraBogota = formatearAhoraBogota();
+
+    // Documento opcional (Rut Cliente) subido a talenthub_central
+    let documentoPath = null;
+    if (req.file && req.file.buffer) {
+      const ext = path.extname(req.file.originalname) || '.pdf';
+      const timestamp = ahoraBogota.replace(/[^0-9]/g, '').slice(8, 14) || Date.now().toString().slice(-6);
+      const nombreArchivo = `Clientes_Images/${codigo}.Documento.${timestamp}${ext}`;
+      try {
+        const { storage } = require('../services/storage');
+        const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'talenthub_central';
+        const file = storage.bucket(BUCKET_NAME).file(nombreArchivo);
+        await file.save(req.file.buffer, {
+          contentType: req.file.mimetype || 'application/octet-stream'
+        });
+        documentoPath = nombreArchivo;
+      } catch (storageErr) {
+        console.warn('[facturacion] Error guardando archivo de Rut Cliente en storage:', storageErr.message);
+        documentoPath = nombreArchivo;
+      }
+    }
+
+    await pool.execute(
+      `INSERT INTO Maestro_Clientes (
+        \`Solicitar Actualización\`, \`Código\`, \`Raz\u00f3n social\`,
+        \`RTICA\`, \`RTIVA\`, \`RTSERVIC\`,
+        \`Fecha última venta\`, \`Depto/Estado\`, \`Ciudad\`, \`Dirección 1\`,
+        \`Telefono\`, \`Desc. condicion de pago\`, \`Correo F.E.\`,
+        \`Buscar Cliente\`, \`Usuario\`, \`Fecha Registro\`, \`Documento\`, \`Observaciones\`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'NUEVO', codigo, razonSocial,
+        rtica, rtiva, rtservic,
+        null, deptoEstado, ciudad, direccion1,
+        telefono, 'CONTADO', correoFE,
+        buscarCliente, usuarioVal, ahoraBogota, documentoPath, observaciones
+      ]
+    );
+
+    res.json({
+      ok: true,
+      codigo,
+      razonSocial,
+      telefono,
+      correoFE,
+      deptoEstado,
+      ciudad,
+      direccion1,
+      buscarCliente,
+      documento: documentoPath,
+      usuario: usuarioVal,
+      fechaRegistro: ahoraBogota
+    });
+  } catch (err) {
+    console.error('[facturacion] POST /api/maestro-clientes:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT/POST /api/maestro-clientes/:codigo (Editar Cliente) ─────────────────
+async function handleActualizarCliente(req, res) {
+  try {
+    const { usuario } = req.query;
+    const codigo = Number(req.params.codigo || req.body.codigo);
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!codigo) return res.status(400).json({ error: 'Código de cliente obligatorio' });
+
+    if (!(await puedeGestionarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'No autorizado para editar clientes.' });
+    }
+
+    const razonSocial = String(req.body.razonSocial || '').trim().toUpperCase();
+    if (!razonSocial) return res.status(400).json({ error: 'La Razón Social es obligatoria.' });
+    const telefono = String(req.body.telefono || '').trim();
+    if (!telefono) return res.status(400).json({ error: 'El Teléfono es obligatorio.' });
+    const correoFE = String(req.body.correoFE || '').trim();
+    if (!correoFE) return res.status(400).json({ error: 'El Correo F.E. es obligatorio.' });
+
+    const puedeRet = await puedeEditarRetenciones(acceso.rol);
+    const buscarCliente = `${codigo} ** ${razonSocial}`;
+    const observaciones = req.body.observaciones !== undefined ? (req.body.observaciones ? String(req.body.observaciones).trim() : null) : null;
+
+    if (puedeRet) {
+      const rtica = req.body.rtica !== undefined ? (req.body.rtica ? String(req.body.rtica).trim() : null) : null;
+      const rtiva = req.body.rtiva !== undefined ? (req.body.rtiva ? String(req.body.rtiva).trim() : null) : null;
+      const rtservic = req.body.rtservic !== undefined ? (req.body.rtservic ? String(req.body.rtservic).trim() : null) : null;
+
+      await pool.execute(
+        `UPDATE Maestro_Clientes
+         SET \`Raz\u00f3n social\` = ?, \`Telefono\` = ?, \`Correo F.E.\` = ?,
+             \`Buscar Cliente\` = ?, \`RTICA\` = ?, \`RTIVA\` = ?, \`RTSERVIC\` = ?, \`Observaciones\` = ?
+         WHERE \`Código\` = ?`,
+        [razonSocial, telefono, correoFE, buscarCliente, rtica, rtiva, rtservic, observaciones, codigo]
+      );
+    } else {
+      await pool.execute(
+        `UPDATE Maestro_Clientes
+         SET \`Raz\u00f3n social\` = ?, \`Telefono\` = ?, \`Correo F.E.\` = ?,
+             \`Buscar Cliente\` = ?, \`Observaciones\` = ?
+         WHERE \`Código\` = ?`,
+        [razonSocial, telefono, correoFE, buscarCliente, observaciones, codigo]
+      );
+    }
+
+    res.json({ ok: true, codigo, razonSocial, telefono, correoFE, buscarCliente });
+  } catch (err) {
+    console.error('[facturacion] UPDATE maestro-clientes:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.put('/api/maestro-clientes/:codigo', handleActualizarCliente);
+router.post('/api/maestro-clientes/actualizar', handleActualizarCliente);
+
 // ── GET /api/maestro-transportadoras (Listado de Maestro_Transportadora) ───
 router.get('/api/maestro-transportadoras', async (req, res) => {
   try {
@@ -469,18 +685,450 @@ router.get('/api/maestro-transportadoras', async (req, res) => {
       || (await computarAccesoFacturacion(usuario, 'Recibos'));
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const [rows] = await pool.query(`
-      SELECT
-        ID AS id,
-        Transportadora AS transportadora,
-        Usuario AS usuario,
-        DATE_FORMAT(\`Fecha Ingreso\`, '%Y-%m-%d %H:%i:%s') AS fechaIngreso
-      FROM Maestro_Transportadora
-      ORDER BY \`Fecha Ingreso\` DESC, Transportadora ASC
-    `);
-    res.json(rows);
+    const [[rows], [counts]] = await Promise.all([
+      pool.query(`
+        SELECT
+          ID AS id,
+          Transportadora AS transportadora,
+          Usuario AS usuario,
+          DATE_FORMAT(\`Fecha Ingreso\`, '%Y-%m-%d %H:%i:%s') AS fechaIngreso
+        FROM Maestro_Transportadora
+        ORDER BY \`Fecha Ingreso\` DESC, Transportadora ASC
+      `),
+      pool.query(`
+        SELECT Transportadora AS id, COUNT(*) AS cnt
+        FROM Dynamic_Servicios
+        WHERE Transportadora IS NOT NULL AND Transportadora != ''
+        GROUP BY Transportadora
+      `)
+    ]);
+
+    const countMap = new Map(counts.map(c => [String(c.id), Number(c.cnt) || 0]));
+    res.json(rows.map(r => ({
+      ...r,
+      totalServicios: countMap.get(String(r.id)) || 0
+    })));
   } catch (err) {
     console.error('[facturacion] GET /api/maestro-transportadoras:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── PUT/POST /api/maestro-transportadoras/:id (Editar Transportadora) ──────
+async function handleActualizarTransportadora(req, res) {
+  try {
+    const { usuario } = req.query;
+    const id = req.params.id || req.body.id;
+    const { transportadora } = req.body;
+
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!(await puedeGestionarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'No autorizado para editar transportadoras.' });
+    }
+
+    if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
+    const nuevoNombre = String(transportadora || '').trim();
+    if (!nuevoNombre) return res.status(400).json({ error: 'El nombre de la transportadora es obligatorio' });
+
+    const [result] = await pool.execute(
+      'UPDATE Maestro_Transportadora SET Transportadora = ? WHERE ID = ?',
+      [nuevoNombre, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Transportadora no encontrada' });
+    }
+
+    res.json({ ok: true, id, transportadora: nuevoNombre });
+  } catch (err) {
+    console.error('[facturacion] UPDATE maestro-transportadoras:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.put('/api/maestro-transportadoras/:id', handleActualizarTransportadora);
+router.post('/api/maestro-transportadoras/actualizar', handleActualizarTransportadora);
+
+// ── POST /api/maestro-transportadoras/unificar-duplicados ──────────────────
+router.post('/api/maestro-transportadoras/unificar-duplicados', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    let grupos = Array.isArray(req.body.grupos) ? req.body.grupos : [];
+    if (!grupos.length && req.body.idConservar && Array.isArray(req.body.idsEliminar)) {
+      grupos = [{ idConservar: req.body.idConservar, idsEliminar: req.body.idsEliminar }];
+    }
+    if (!grupos.length) {
+      return res.status(400).json({ error: 'No se recibieron grupos de duplicados para unificar' });
+    }
+
+    await conn.beginTransaction();
+    let serviciosReasignados = 0;
+    let registrosEliminados = 0;
+    let gruposProcesados = 0;
+
+    for (const g of grupos) {
+      const idConservar = String(g.idConservar || '').trim();
+      const idsEliminar = (Array.isArray(g.idsEliminar) ? g.idsEliminar : [])
+        .map(x => String(x || '').trim())
+        .filter(x => x && x !== idConservar);
+
+      if (!idConservar || !idsEliminar.length) continue;
+
+      const [existe] = await conn.query('SELECT ID FROM Maestro_Transportadora WHERE ID = ? LIMIT 1', [idConservar]);
+      if (!existe.length) continue;
+
+      const [updResult] = await conn.query(
+        'UPDATE Dynamic_Servicios SET Transportadora = ? WHERE Transportadora IN (?)',
+        [idConservar, idsEliminar]
+      );
+      serviciosReasignados += (updResult.affectedRows || 0);
+
+      const [delResult] = await conn.query(
+        'DELETE FROM Maestro_Transportadora WHERE ID IN (?) AND ID != ?',
+        [idsEliminar, idConservar]
+      );
+      registrosEliminados += (delResult.affectedRows || 0);
+      gruposProcesados++;
+    }
+
+    await conn.commit();
+    res.json({ ok: true, gruposProcesados, serviciosReasignados, registrosEliminados });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-transportadoras/unificar-duplicados:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── POST /api/maestro-transportadoras/convertir-mayusculas (depurar maestros, Config_Parametros) ──
+router.post('/api/maestro-transportadoras/convertir-mayusculas', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para esta acción provisional' });
+    }
+
+    const [result] = await pool.query(
+      'UPDATE Maestro_Transportadora SET Transportadora = UPPER(TRIM(Transportadora)) WHERE Transportadora IS NOT NULL'
+    );
+    res.json({ ok: true, actualizados: result.changedRows ?? result.affectedRows ?? 0 });
+  } catch (err) {
+    console.error('[facturacion] POST /api/maestro-transportadoras/convertir-mayusculas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/maestro-transportadoras/eliminar-masivo (depurar maestros, Config_Parametros) ────────
+router.post('/api/maestro-transportadoras/eliminar-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar transportadoras' });
+    }
+
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : [req.body.id])
+      .map(x => String(x || '').trim())
+      .filter(Boolean);
+
+    if (!ids.length) return res.status(400).json({ error: 'No se recibieron IDs para eliminar' });
+
+    await conn.beginTransaction();
+
+    // 1. Dejar en blanco la columna Transportadora en Dynamic_Servicios (evita error del trigger logueo_servicios_update por Dato NOT NULL)
+    const [upd] = await conn.query(
+      'UPDATE Dynamic_Servicios SET Transportadora = "" WHERE Transportadora IN (?)',
+      [ids]
+    );
+
+    // 2. Eliminar de Maestro_Transportadora
+    const [del] = await conn.query(
+      'DELETE FROM Maestro_Transportadora WHERE ID IN (?)',
+      [ids]
+    );
+
+    await conn.commit();
+    res.json({
+      ok: true,
+      eliminados: del.affectedRows || 0,
+      serviciosDesvinculados: upd.affectedRows || 0
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-transportadoras/eliminar-masivo:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── POST /api/maestro-transportadoras/eliminar-reemplazar (depurar maestros, Config_Parametros) ────
+router.post('/api/maestro-transportadoras/eliminar-reemplazar', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar transportadoras' });
+    }
+
+    const idReemplazo = String(req.body.idReemplazo || '').trim();
+    if (!idReemplazo) return res.status(400).json({ error: 'Se requiere el ID de reemplazo' });
+
+    const idsEliminar = (Array.isArray(req.body.idsEliminar) ? req.body.idsEliminar : [req.body.idEliminar])
+      .map(x => String(x || '').trim())
+      .filter(x => x && x !== idReemplazo);
+
+    if (!idsEliminar.length) return res.status(400).json({ error: 'No se recibieron IDs para eliminar' });
+
+    const [destinoExiste] = await pool.query('SELECT ID, Transportadora FROM Maestro_Transportadora WHERE ID = ? LIMIT 1', [idReemplazo]);
+    if (!destinoExiste.length) return res.status(400).json({ error: 'El registro de reemplazo no existe' });
+
+    await conn.beginTransaction();
+
+    // 1. Reasignar en Dynamic_Servicios al nuevo ID
+    const [upd] = await conn.query(
+      'UPDATE Dynamic_Servicios SET Transportadora = ? WHERE Transportadora IN (?)',
+      [idReemplazo, idsEliminar]
+    );
+
+    // 2. Eliminar los registros sobrantes de Maestro_Transportadora
+    const [del] = await conn.query(
+      'DELETE FROM Maestro_Transportadora WHERE ID IN (?) AND ID != ?',
+      [idsEliminar, idReemplazo]
+    );
+
+    await conn.commit();
+    res.json({
+      ok: true,
+      eliminados: del.affectedRows || 0,
+      idReemplazo,
+      nombreReemplazo: destinoExiste[0].Transportadora,
+      serviciosReasignados: upd.affectedRows || 0
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-transportadoras/eliminar-reemplazar:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── GET /api/maestro-transportadoras/analisis-textos-servicios (depurar maestros, Config_Parametros)
+router.get('/api/maestro-transportadoras/analisis-textos-servicios', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para consultar este análisis' });
+    }
+
+    const [orphans] = await pool.query(`
+      SELECT ds.Transportadora AS texto, COUNT(*) AS cnt
+      FROM Dynamic_Servicios ds
+      LEFT JOIN Maestro_Transportadora mtId ON ds.Transportadora = mtId.ID
+      WHERE mtId.ID IS NULL AND ds.Transportadora IS NOT NULL AND ds.Transportadora != ''
+      GROUP BY ds.Transportadora
+      ORDER BY cnt DESC
+    `);
+
+    const [allMt] = await pool.query('SELECT ID, Transportadora FROM Maestro_Transportadora');
+    const nameMap = new Map();
+    const idMap = new Map();
+    allMt.forEach(m => {
+      nameMap.set(String(m.Transportadora || '').trim().toUpperCase(), m);
+      idMap.set(String(m.ID || '').trim().toLowerCase(), m);
+    });
+
+    const conCoincidencia = [];
+    const sinCoincidencia = [];
+    let filasAfectadas = 0;
+
+    orphans.forEach(o => {
+      const raw = String(o.texto || '');
+      const clean = raw.replace(/[\r\n\t]/g, '').trim();
+      const match = nameMap.get(clean.toUpperCase()) || idMap.get(clean.toLowerCase());
+
+      if (match) {
+        conCoincidencia.push({
+          textoOriginal: raw,
+          idDestino: match.ID,
+          nombreDestino: match.Transportadora,
+          filas: o.cnt
+        });
+        filasAfectadas += o.cnt;
+      } else {
+        sinCoincidencia.push({
+          textoOriginal: raw,
+          filas: o.cnt
+        });
+      }
+    });
+
+    res.json({
+      totalHuerfanos: orphans.length,
+      coincidenciasCount: conCoincidencia.length,
+      sinCoincidenciasCount: sinCoincidencia.length,
+      filasAfectadas,
+      muestrasCoincidencia: conCoincidencia.slice(0, 50),
+      muestrasSinCoincidencia: sinCoincidencia.slice(0, 50)
+    });
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-transportadoras/analisis-textos-servicios:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/maestro-transportadoras/ejecutar-normalizacion-textos (depurar maestros, Config_Parametros)
+router.post('/api/maestro-transportadoras/ejecutar-normalizacion-textos', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para normalizar textos' });
+    }
+
+    const [orphans] = await pool.query(`
+      SELECT ds.Transportadora AS texto
+      FROM Dynamic_Servicios ds
+      LEFT JOIN Maestro_Transportadora mtId ON ds.Transportadora = mtId.ID
+      WHERE mtId.ID IS NULL AND ds.Transportadora IS NOT NULL AND ds.Transportadora != ''
+      GROUP BY ds.Transportadora
+    `);
+
+    const [allMt] = await pool.query('SELECT ID, Transportadora FROM Maestro_Transportadora');
+    const nameMap = new Map();
+    const idMap = new Map();
+    allMt.forEach(m => {
+      nameMap.set(String(m.Transportadora || '').trim().toUpperCase(), m.ID);
+      idMap.set(String(m.ID || '').trim().toLowerCase(), m.ID);
+    });
+
+    const pares = [];
+    orphans.forEach(o => {
+      const raw = String(o.texto || '');
+      const clean = raw.replace(/[\r\n\t]/g, '').trim();
+      const destId = nameMap.get(clean.toUpperCase()) || idMap.get(clean.toLowerCase());
+      if (destId && destId !== raw) {
+        pares.push({ textoOriginal: raw, idDestino: destId });
+      }
+    });
+
+    let filasActualizadas = 0;
+    for (let i = 0; i < pares.length; i += 50) {
+      const chunk = pares.slice(i, i + 50);
+      const results = await Promise.all(
+        chunk.map(p => pool.query(
+          'UPDATE Dynamic_Servicios SET Transportadora = ? WHERE Transportadora = ?',
+          [p.idDestino, p.textoOriginal]
+        ))
+      );
+      results.forEach(([r]) => {
+        filasActualizadas += (r.affectedRows || 0);
+      });
+    }
+
+    res.json({
+      ok: true,
+      valoresNormalizados: pares.length,
+      filasActualizadas
+    });
+  } catch (err) {
+    console.error('[facturacion] POST /api/maestro-transportadoras/ejecutar-normalizacion-textos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/maestro-transportadoras/:id/servicios ─────────────────────────
+router.get('/api/maestro-transportadoras/:id/servicios', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const { id } = req.params;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(`
+      SELECT
+        s.IdServicio AS idServicio,
+        s.IdRecibo AS idRecibo,
+        r.\`Consecutivo Recibo\` AS consecutivoRecibo,
+        DATE_FORMAT(s.\`Hora Inicio\`, '%Y-%m-%d %H:%i') AS fechaServicio,
+        r.\`Operación\` AS operacion,
+        ar.AREA AS area,
+        ca.Actividad AS actividad,
+        mp.Placa AS placa,
+        s.Vehiculo AS vehiculo,
+        s.Cantidad AS cantidad,
+        s.Unidad AS unidad,
+        s.\`Valor Unitario\` AS valorUnitario,
+        ROUND(COALESCE(s.Cantidad, 0) * COALESCE(s.\`Valor Unitario\`, 0)) AS subtotal,
+        COALESCE(r.\`Cliente a Facturar\`, mc.\`Razón social\`) AS cliente,
+        r.Nit AS nit,
+        s.\`Forma De Pago\` AS formaDePago,
+        s.Estado AS estado,
+        s.Usuario AS usuario,
+        DATE_FORMAT(s.Fecha, '%Y-%m-%d %H:%i:%s') AS fechaRegistro
+      FROM Dynamic_Servicios s
+      LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
+      LEFT JOIN Config_Area ar ON s.Area = ar.ID
+      LEFT JOIN Config_Actividad ca ON s.Actividad = ca.ID
+      LEFT JOIN Maestro_Placas mp ON s.PL1 = mp.ID
+      LEFT JOIN Maestro_Clientes mc ON r.Nit = mc.\`Código\`
+      WHERE s.Transportadora = ?
+      ORDER BY s.\`Hora Inicio\` DESC, s.IdServicio DESC
+      LIMIT 500
+    `, [id]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-transportadoras/:id/servicios:', err);
     res.status(500).json([]);
   }
 });
@@ -496,24 +1144,73 @@ router.get('/api/maestro-proveedores', async (req, res) => {
       || (await computarAccesoFacturacion(usuario, 'Recibos'));
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const [rows] = await pool.query(`
-      SELECT
-        ID AS id,
-        Proveedor AS proveedor,
-        Usuario AS usuario,
-        DATE_FORMAT(\`Fecha Ingreso\`, '%Y-%m-%d %H:%i:%s') AS fechaIngreso
-      FROM Maestro_Proveedor
-      ORDER BY \`Fecha Ingreso\` DESC, Proveedor ASC
-    `);
-    res.json(rows);
+    const [[rows], [counts]] = await Promise.all([
+      pool.query(`
+        SELECT
+          ID AS id,
+          Proveedor AS proveedor,
+          Usuario AS usuario,
+          DATE_FORMAT(\`Fecha Ingreso\`, '%Y-%m-%d %H:%i:%s') AS fechaIngreso
+        FROM Maestro_Proveedor
+        ORDER BY \`Fecha Ingreso\` DESC, Proveedor ASC
+      `),
+      pool.query(`
+        SELECT Proveedor AS id, COUNT(*) AS cnt
+        FROM Dynamic_Servicios
+        WHERE Proveedor IS NOT NULL AND Proveedor != ''
+        GROUP BY Proveedor
+      `)
+    ]);
+
+    const countMap = new Map(counts.map(c => [String(c.id), Number(c.cnt) || 0]));
+    res.json(rows.map(r => ({
+      ...r,
+      totalServicios: countMap.get(String(r.id)) || 0
+    })));
   } catch (err) {
     console.error('[facturacion] GET /api/maestro-proveedores:', err);
     res.status(500).json([]);
   }
 });
 
-// ── GET /api/maestro-placas (Listado de Maestro_Placas) ────────────────────
-router.get('/api/maestro-placas', async (req, res) => {
+// ── PUT/POST /api/maestro-proveedores/:id (Editar Proveedor) ───────────────
+async function handleActualizarProveedor(req, res) {
+  try {
+    const { usuario } = req.query;
+    const id = req.params.id || req.body.id;
+    const { proveedor } = req.body;
+
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!(await puedeGestionarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'No autorizado para editar proveedores.' });
+    }
+
+    if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
+    const nuevoNombre = String(proveedor || '').trim();
+    if (!nuevoNombre) return res.status(400).json({ error: 'El nombre del proveedor es obligatorio' });
+
+    const [result] = await pool.execute(
+      'UPDATE Maestro_Proveedor SET Proveedor = ? WHERE ID = ?',
+      [nuevoNombre, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Proveedor no encontrado' });
+    }
+
+    res.json({ ok: true, id, proveedor: nuevoNombre });
+  } catch (err) {
+    console.error('[facturacion] UPDATE maestro-proveedores:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.put('/api/maestro-proveedores/:id', handleActualizarProveedor);
+router.post('/api/maestro-proveedores/actualizar', handleActualizarProveedor);
+
+// ── POST /api/maestro-proveedores/unificar-duplicados ──────────────────────
+router.post('/api/maestro-proveedores/unificar-duplicados', async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
@@ -523,23 +1220,852 @@ router.get('/api/maestro-placas', async (req, res) => {
       || (await computarAccesoFacturacion(usuario, 'Recibos'));
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
+    let grupos = Array.isArray(req.body.grupos) ? req.body.grupos : [];
+    if (!grupos.length && req.body.idConservar && Array.isArray(req.body.idsEliminar)) {
+      grupos = [{ idConservar: req.body.idConservar, idsEliminar: req.body.idsEliminar }];
+    }
+    if (!grupos.length) {
+      return res.status(400).json({ error: 'No se recibieron grupos de duplicados para unificar' });
+    }
+
+    await conn.beginTransaction();
+    let serviciosReasignados = 0;
+    let registrosEliminados = 0;
+    let gruposProcesados = 0;
+
+    for (const g of grupos) {
+      const idConservar = String(g.idConservar || '').trim();
+      const idsEliminar = (Array.isArray(g.idsEliminar) ? g.idsEliminar : [])
+        .map(x => String(x || '').trim())
+        .filter(x => x && x !== idConservar);
+
+      if (!idConservar || !idsEliminar.length) continue;
+
+      const [existe] = await conn.query('SELECT ID FROM Maestro_Proveedor WHERE ID = ? LIMIT 1', [idConservar]);
+      if (!existe.length) continue;
+
+      const [updResult] = await conn.query(
+        'UPDATE Dynamic_Servicios SET Proveedor = ? WHERE Proveedor IN (?)',
+        [idConservar, idsEliminar]
+      );
+      serviciosReasignados += (updResult.affectedRows || 0);
+
+      const [delResult] = await conn.query(
+        'DELETE FROM Maestro_Proveedor WHERE ID IN (?) AND ID != ?',
+        [idsEliminar, idConservar]
+      );
+      registrosEliminados += (delResult.affectedRows || 0);
+      gruposProcesados++;
+    }
+
+    await conn.commit();
+    res.json({ ok: true, gruposProcesados, serviciosReasignados, registrosEliminados });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-proveedores/unificar-duplicados:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── POST /api/maestro-proveedores/convertir-mayusculas (depurar maestros, Config_Parametros) ──────
+router.post('/api/maestro-proveedores/convertir-mayusculas', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para esta acción provisional' });
+    }
+
+    const [result] = await pool.query(
+      'UPDATE Maestro_Proveedor SET Proveedor = UPPER(TRIM(Proveedor)) WHERE Proveedor IS NOT NULL'
+    );
+    res.json({ ok: true, actualizados: result.changedRows ?? result.affectedRows ?? 0 });
+  } catch (err) {
+    console.error('[facturacion] POST /api/maestro-proveedores/convertir-mayusculas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/maestro-proveedores/eliminar-masivo (depurar maestros, Config_Parametros) ───────────
+router.post('/api/maestro-proveedores/eliminar-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar proveedores' });
+    }
+
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : [req.body.id])
+      .map(x => String(x || '').trim())
+      .filter(Boolean);
+
+    if (!ids.length) return res.status(400).json({ error: 'No se recibieron IDs para eliminar' });
+
+    await conn.beginTransaction();
+
+    // 1. Dejar en blanco la columna Proveedor en Dynamic_Servicios
+    const [upd] = await conn.query(
+      'UPDATE Dynamic_Servicios SET Proveedor = "" WHERE Proveedor IN (?)',
+      [ids]
+    );
+
+    // 2. Eliminar de Maestro_Proveedor
+    const [del] = await conn.query(
+      'DELETE FROM Maestro_Proveedor WHERE ID IN (?)',
+      [ids]
+    );
+
+    await conn.commit();
+    res.json({
+      ok: true,
+      eliminados: del.affectedRows || 0,
+      serviciosDesvinculados: upd.affectedRows || 0
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-proveedores/eliminar-masivo:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── POST /api/maestro-proveedores/eliminar-reemplazar (depurar maestros, Config_Parametros) ───────
+router.post('/api/maestro-proveedores/eliminar-reemplazar', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar proveedores' });
+    }
+
+    const idReemplazo = String(req.body.idReemplazo || '').trim();
+    if (!idReemplazo) return res.status(400).json({ error: 'Se requiere el ID de reemplazo' });
+
+    const idsEliminar = (Array.isArray(req.body.idsEliminar) ? req.body.idsEliminar : [req.body.idEliminar])
+      .map(x => String(x || '').trim())
+      .filter(x => x && x !== idReemplazo);
+
+    if (!idsEliminar.length) return res.status(400).json({ error: 'No se recibieron IDs para eliminar' });
+
+    const [destinoExiste] = await pool.query('SELECT ID, Proveedor FROM Maestro_Proveedor WHERE ID = ? LIMIT 1', [idReemplazo]);
+    if (!destinoExiste.length) return res.status(400).json({ error: 'El registro de reemplazo no existe' });
+
+    await conn.beginTransaction();
+
+    // 1. Reasignar en Dynamic_Servicios al nuevo ID
+    const [upd] = await conn.query(
+      'UPDATE Dynamic_Servicios SET Proveedor = ? WHERE Proveedor IN (?)',
+      [idReemplazo, idsEliminar]
+    );
+
+    // 2. Eliminar los registros sobrantes de Maestro_Proveedor
+    const [del] = await conn.query(
+      'DELETE FROM Maestro_Proveedor WHERE ID IN (?) AND ID != ?',
+      [idsEliminar, idReemplazo]
+    );
+
+    await conn.commit();
+    res.json({
+      ok: true,
+      eliminados: del.affectedRows || 0,
+      idReemplazo,
+      nombreReemplazo: destinoExiste[0].Proveedor,
+      serviciosReasignados: upd.affectedRows || 0
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-proveedores/eliminar-reemplazar:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── GET /api/maestro-proveedores/analisis-textos-servicios (depurar maestros, Config_Parametros) ──
+router.get('/api/maestro-proveedores/analisis-textos-servicios', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para consultar este análisis' });
+    }
+
+    const [orphans] = await pool.query(`
+      SELECT ds.Proveedor AS texto, COUNT(*) AS cnt
+      FROM Dynamic_Servicios ds
+      LEFT JOIN Maestro_Proveedor mpId ON ds.Proveedor = mpId.ID
+      WHERE mpId.ID IS NULL AND ds.Proveedor IS NOT NULL AND ds.Proveedor != ''
+      GROUP BY ds.Proveedor
+      ORDER BY cnt DESC
+    `);
+
+    const [allMp] = await pool.query('SELECT ID, Proveedor FROM Maestro_Proveedor');
+    const nameMap = new Map();
+    const idMap = new Map();
+    allMp.forEach(m => {
+      nameMap.set(String(m.Proveedor || '').trim().toUpperCase(), m);
+      idMap.set(String(m.ID || '').trim().toLowerCase(), m);
+    });
+
+    const conCoincidencia = [];
+    const sinCoincidencia = [];
+    let filasAfectadas = 0;
+
+    orphans.forEach(o => {
+      const raw = String(o.texto || '');
+      const clean = raw.replace(/[\r\n\t]/g, '').trim();
+      const match = nameMap.get(clean.toUpperCase()) || idMap.get(clean.toLowerCase());
+
+      if (match) {
+        conCoincidencia.push({
+          textoOriginal: raw,
+          idDestino: match.ID,
+          nombreDestino: match.Proveedor,
+          filas: o.cnt
+        });
+        filasAfectadas += o.cnt;
+      } else {
+        sinCoincidencia.push({
+          textoOriginal: raw,
+          filas: o.cnt
+        });
+      }
+    });
+
+    res.json({
+      totalHuerfanos: orphans.length,
+      coincidenciasCount: conCoincidencia.length,
+      sinCoincidenciasCount: sinCoincidencia.length,
+      filasAfectadas,
+      muestrasCoincidencia: conCoincidencia.slice(0, 50),
+      muestrasSinCoincidencia: sinCoincidencia.slice(0, 50)
+    });
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-proveedores/analisis-textos-servicios:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/maestro-proveedores/ejecutar-normalizacion-textos (depurar maestros, Config_Parametros)
+router.post('/api/maestro-proveedores/ejecutar-normalizacion-textos', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeDepurarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para normalizar textos' });
+    }
+
+    const [orphans] = await pool.query(`
+      SELECT ds.Proveedor AS texto
+      FROM Dynamic_Servicios ds
+      LEFT JOIN Maestro_Proveedor mpId ON ds.Proveedor = mpId.ID
+      WHERE mpId.ID IS NULL AND ds.Proveedor IS NOT NULL AND ds.Proveedor != ''
+      GROUP BY ds.Proveedor
+    `);
+
+    const [allMp] = await pool.query('SELECT ID, Proveedor FROM Maestro_Proveedor');
+    const nameMap = new Map();
+    const idMap = new Map();
+    allMp.forEach(m => {
+      nameMap.set(String(m.Proveedor || '').trim().toUpperCase(), m.ID);
+      idMap.set(String(m.ID || '').trim().toLowerCase(), m.ID);
+    });
+
+    const pares = [];
+    orphans.forEach(o => {
+      const raw = String(o.texto || '');
+      const clean = raw.replace(/[\r\n\t]/g, '').trim();
+      const destId = nameMap.get(clean.toUpperCase()) || idMap.get(clean.toLowerCase());
+      if (destId && destId !== raw) {
+        pares.push({ textoOriginal: raw, idDestino: destId });
+      }
+    });
+
+    let filasActualizadas = 0;
+    for (let i = 0; i < pares.length; i += 50) {
+      const chunk = pares.slice(i, i + 50);
+      const results = await Promise.all(
+        chunk.map(p => pool.query(
+          'UPDATE Dynamic_Servicios SET Proveedor = ? WHERE Proveedor = ?',
+          [p.idDestino, p.textoOriginal]
+        ))
+      );
+      results.forEach(([r]) => {
+        filasActualizadas += (r.affectedRows || 0);
+      });
+    }
+
+    res.json({
+      ok: true,
+      valoresNormalizados: pares.length,
+      filasActualizadas
+    });
+  } catch (err) {
+    console.error('[facturacion] POST /api/maestro-proveedores/ejecutar-normalizacion-textos:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/maestro-proveedores/:id/servicios ─────────────────────────────
+router.get('/api/maestro-proveedores/:id/servicios', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    const { id } = req.params;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+
+    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+      || (await computarAccesoFacturacion(usuario, 'Servicios'))
+      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
     const [rows] = await pool.query(`
       SELECT
-        ID AS id,
-        Placa AS placa,
-        \`Tipo Cliente\` AS tipoCliente,
-        \`Cliente Credito\` AS clienteCredito,
-        Nit AS nit,
-        Usuario AS usuario,
-        DATE_FORMAT(\`Fecha Registro\`, '%Y-%m-%d %H:%i:%s') AS fechaRegistro,
-        tipo_vehiculo AS tipoVehiculo,
-        empleado AS empleado
-      FROM Maestro_Placas
-      ORDER BY \`Fecha Registro\` DESC, Placa ASC
-    `);
+        s.IdServicio AS idServicio,
+        s.IdRecibo AS idRecibo,
+        r.\`Consecutivo Recibo\` AS consecutivoRecibo,
+        DATE_FORMAT(s.\`Hora Inicio\`, '%Y-%m-%d %H:%i') AS fechaServicio,
+        r.\`Operación\` AS operacion,
+        ar.AREA AS area,
+        ca.Actividad AS actividad,
+        mp.Placa AS placa,
+        s.Vehiculo AS vehiculo,
+        s.Cantidad AS cantidad,
+        s.Unidad AS unidad,
+        s.\`Valor Unitario\` AS valorUnitario,
+        ROUND(COALESCE(s.Cantidad, 0) * COALESCE(s.\`Valor Unitario\`, 0)) AS subtotal,
+        COALESCE(r.\`Cliente a Facturar\`, mc.\`Razón social\`) AS cliente,
+        r.Nit AS nit,
+        s.\`Forma De Pago\` AS formaDePago,
+        s.Estado AS estado,
+        s.Usuario AS usuario,
+        DATE_FORMAT(s.Fecha, '%Y-%m-%d %H:%i:%s') AS fechaRegistro
+      FROM Dynamic_Servicios s
+      LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
+      LEFT JOIN Config_Area ar ON s.Area = ar.ID
+      LEFT JOIN Config_Actividad ca ON s.Actividad = ca.ID
+      LEFT JOIN Maestro_Placas mp ON s.PL1 = mp.ID
+      LEFT JOIN Maestro_Clientes mc ON r.Nit = mc.\`Código\`
+      WHERE s.Proveedor = ?
+      ORDER BY s.\`Hora Inicio\` DESC, s.IdServicio DESC
+      LIMIT 500
+    `, [id]);
+
     res.json(rows);
   } catch (err) {
+    console.error('[facturacion] GET /api/maestro-proveedores/:id/servicios:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── GET /api/maestro-placas (Listado de Maestro_Placas) ────────────────────
+// ── Acceso a la pestaña Clientes (mismo criterio de los listados de maestros) ──
+async function accesoMaestrosClientes(usuario) {
+  return (await computarAccesoFacturacion(usuario, 'Clientes'))
+    || (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
+    || (await computarAccesoFacturacion(usuario, 'Transportadora'))
+    || (await computarAccesoFacturacion(usuario, 'Proveedor'))
+    || (await computarAccesoFacturacion(usuario, 'Placas'))
+    || (await computarAccesoFacturacion(usuario, 'Servicios'))
+    || (await computarAccesoFacturacion(usuario, 'Recibos'));
+}
+
+// Texto de un maestro sin espacios repetidos y en mayúsculas (como lo guarda el botón Agregar).
+function normalizarNombreMaestro(valor) {
+  return String(valor || '').trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+// ── POST /api/maestro-transportadoras y /api/maestro-proveedores (Agregar) ──
+// Solo se escribe el nombre: no se permite duplicado (sin distinguir mayúsculas ni espacios),
+// el ID es un UUID y Usuario/Fecha Ingreso se llenan con el usuario actual y la hora de Bogotá.
+async function crearRegistroMaestro(req, res, { tabla, columna, etiqueta }) {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    if (!(await puedeGestionarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: `No autorizado para agregar ${etiqueta}.` });
+    }
+
+    const nombre = normalizarNombreMaestro(req.body.nombre);
+    if (!nombre) return res.status(400).json({ error: `El nombre de ${etiqueta} es obligatorio.` });
+
+    const [dup] = await pool.query(
+      `SELECT ID AS id, \`${columna}\` AS nombre FROM ${tabla}
+       WHERE REGEXP_REPLACE(UPPER(TRIM(\`${columna}\`)), '[[:space:]]+', ' ') = ? LIMIT 1`,
+      [nombre]
+    );
+    if (dup.length) {
+      return res.status(409).json({ error: `Ya existe ${etiqueta} "${dup[0].nombre}" (ID: ${dup[0].id}).`, existente: dup[0] });
+    }
+
+    const id = crypto.randomUUID();
+    await pool.execute(
+      `INSERT INTO ${tabla} (ID, \`${columna}\`, Usuario, \`Fecha Ingreso\`) VALUES (?, ?, ?, ?)`,
+      [id, nombre, acceso.usuarioId || usuario, formatearAhoraBogota()]
+    );
+    res.json({ ok: true, id, nombre });
+  } catch (err) {
+    console.error(`[facturacion] POST crear ${tabla}:`, err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.post('/api/maestro-transportadoras', (req, res) =>
+  crearRegistroMaestro(req, res, { tabla: 'Maestro_Transportadora', columna: 'Transportadora', etiqueta: 'la transportadora' }));
+router.post('/api/maestro-proveedores', (req, res) =>
+  crearRegistroMaestro(req, res, { tabla: 'Maestro_Proveedor', columna: 'Proveedor', etiqueta: 'el proveedor' }));
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── SUBPESTAÑA PLACAS (Maestro_Placas; Dynamic_Servicios.PL1 guarda el ID) ────
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Clave de duplicado: misma Placa (sin mayúsculas ni espacios) y mismo Nit; si no hay Nit,
+// el mismo Cliente Crédito (placas de crédito antiguas sin Nit).
+function claveDuplicadoPlaca(p) {
+  const placa = String(p.placa || '').trim().toUpperCase();
+  const nit = p.nit == null || p.nit === '' ? `CC:${String(p.clienteCredito || '').trim().toUpperCase()}` : String(p.nit);
+  return `${placa}|${nit}`;
+}
+
+// ── GET /api/maestro-placas (Listado con cliente y conteo de servicios) ─────
+router.get('/api/maestro-placas', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const [[rows], [counts]] = await Promise.all([
+      pool.query(`
+        SELECT
+          mp.ID AS id,
+          mp.Placa AS placa,
+          mp.\`Tipo Cliente\` AS tipoCliente,
+          mp.\`Cliente Credito\` AS clienteCredito,
+          mp.Nit AS nit,
+          mc.\`Razón social\` AS razonSocial,
+          mp.Usuario AS usuario,
+          DATE_FORMAT(mp.\`Fecha Registro\`, '%Y-%m-%d %H:%i:%s') AS fechaRegistro,
+          mp.tipo_vehiculo AS tipoVehiculo,
+          mp.empleado AS empleado
+        FROM Maestro_Placas mp
+        LEFT JOIN Maestro_Clientes mc ON mc.\`Código\` = mp.Nit
+        ORDER BY mp.\`Fecha Registro\` DESC, mp.Placa ASC
+      `),
+      pool.query(`
+        SELECT PL1 AS id, COUNT(*) AS cnt
+        FROM Dynamic_Servicios
+        WHERE PL1 IS NOT NULL AND PL1 != ''
+        GROUP BY PL1
+      `)
+    ]);
+
+    const countMap = new Map(counts.map(c => [String(c.id), Number(c.cnt) || 0]));
+    res.json(rows.map(r => ({
+      ...r,
+      // Columna CLIENTE: "Código - Razón social" de Maestro_Clientes según el Nit de la placa
+      cliente: r.nit == null ? '' : `${r.nit} - ${r.razonSocial ? String(r.razonSocial).trim() : '(no está en Maestro_Clientes)'}`,
+      totalServicios: countMap.get(String(r.id)) || 0
+    })));
+  } catch (err) {
     console.error('[facturacion] GET /api/maestro-placas:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── GET /api/maestro-placas/clientes-credito (opciones del formulario Agregar) ─
+router.get('/api/maestro-placas/clientes-credito', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!(await accesoMaestrosClientes(usuario))) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(
+      'SELECT `Cliente a Facturar` AS clienteAFacturar, Nit AS nit, Nombre AS nombre, Bloqueo AS bloqueo FROM Maestro_Clientes_Credito ORDER BY `Cliente a Facturar`'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-placas/clientes-credito:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── GET /api/maestro-placas/buscar-clientes?q= (Código o Razón social de Maestro_Clientes;
+// la columna distingue mayúsculas, por eso se compara en mayúscula) ─
+router.get('/api/maestro-placas/buscar-clientes', async (req, res) => {
+  try {
+    const { usuario, q } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!(await accesoMaestrosClientes(usuario))) return res.status(403).json({ error: 'No autorizado' });
+
+    const texto = String(q || '').trim();
+    if (texto.length < 2) return res.json([]);
+    const qLike = `%${texto}%`;
+    const [rows] = await pool.execute(
+      `SELECT \`Código\` AS codigo, \`Razón social\` AS razonSocial
+       FROM Maestro_Clientes
+       WHERE UPPER(\`Razón social\`) LIKE UPPER(?) OR CAST(\`Código\` AS CHAR) LIKE ?
+       ORDER BY \`Razón social\` ASC
+       LIMIT 20`,
+      [qLike, qLike]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-placas/buscar-clientes:', err);
+    res.status(500).json([]);
+  }
+});
+
+// ── POST /api/maestro-placas (Agregar) ───────────────────────────────────────
+// body: { placa, tipoCliente: 'CONTADO'|'CREDITO', clienteCredito, nit }
+// CREDITO exige Cliente Crédito y el Nit se toma de Maestro_Clientes_Credito; CONTADO usa el Nit
+// opcional escogido de Maestro_Clientes. tipo_vehiculo y empleado quedan en NULL.
+router.post('/api/maestro-placas', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+
+    const placa = String(req.body.placa || '').replace(/\s+/g, '').toUpperCase();
+    const tipoCliente = String(req.body.tipoCliente || '').trim().toUpperCase();
+    if (!placa) return res.status(400).json({ error: 'La Placa es obligatoria.' });
+    if (!['CONTADO', 'CREDITO'].includes(tipoCliente)) return res.status(400).json({ error: 'Escoge el Tipo Cliente: CONTADO o CREDITO.' });
+
+    let clienteCredito = null;
+    let nit = null;
+    if (tipoCliente === 'CREDITO') {
+      const cc = String(req.body.clienteCredito || '').trim();
+      if (!cc) return res.status(400).json({ error: 'Para CREDITO el Cliente Crédito es obligatorio.' });
+      const [ccRows] = await pool.execute(
+        'SELECT `Cliente a Facturar` AS clienteAFacturar, Nit AS nit FROM Maestro_Clientes_Credito WHERE `Cliente a Facturar` = ? LIMIT 1',
+        [cc]
+      );
+      if (!ccRows.length) return res.status(400).json({ error: `El Cliente Crédito "${cc}" no existe en Maestro_Clientes_Credito.` });
+      clienteCredito = ccRows[0].clienteAFacturar;
+      nit = ccRows[0].nit == null ? null : Number(ccRows[0].nit);
+    } else if (req.body.nit !== undefined && req.body.nit !== null && String(req.body.nit).trim() !== '') {
+      const nitNum = Number(String(req.body.nit).replace(/[^0-9]/g, ''));
+      if (!nitNum) return res.status(400).json({ error: 'El Nit no es válido.' });
+      const [mc] = await pool.execute('SELECT `Código` FROM Maestro_Clientes WHERE `Código` = ? LIMIT 1', [nitNum]);
+      if (!mc.length) return res.status(400).json({ error: `El Nit ${nitNum} no existe en Maestro_Clientes.` });
+      nit = nitNum;
+    }
+
+    const [dup] = await pool.query(
+      'SELECT ID AS id, Placa AS placa FROM Maestro_Placas WHERE UPPER(TRIM(Placa)) = ? AND Nit <=> ? AND (? IS NOT NULL OR `Cliente Credito` <=> ?) LIMIT 1',
+      [placa, nit, nit, clienteCredito]
+    );
+    if (dup.length) {
+      return res.status(409).json({ error: `Ya existe la placa ${dup[0].placa} con ese cliente (ID: ${dup[0].id}).`, existente: dup[0] });
+    }
+
+    const id = crypto.randomUUID();
+    await pool.execute(
+      'INSERT INTO Maestro_Placas (ID, Placa, `Tipo Cliente`, `Cliente Credito`, Nit, Usuario, `Fecha Registro`, tipo_vehiculo, empleado) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)',
+      [id, placa, tipoCliente, clienteCredito, nit, acceso.usuarioId || usuario, formatearAhoraBogota()]
+    );
+    res.json({ ok: true, id, placa, tipoCliente, clienteCredito, nit });
+  } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ya existe esa placa con ese Nit.' });
+    console.error('[facturacion] POST /api/maestro-placas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT/POST /api/maestro-placas/:id (Editar Placa) ─────────────────────────
+async function handleActualizarPlaca(req, res) {
+  try {
+    const { usuario } = req.query;
+    const id = req.params.id || req.body.id;
+    const { placa, tipoCliente } = req.body;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    const acceso = await accesoMaestrosClientes(usuario);
+    if (!acceso) return res.status(403).json({ error: 'No autorizado' });
+    if (!id) return res.status(400).json({ error: 'ID es obligatorio' });
+
+    if (!(await puedeGestionarMaestros(acceso.rol))) {
+      return res.status(403).json({ error: 'No autorizado para editar placas.' });
+    }
+
+    const placaVal = String(placa || '').replace(/\s+/g, '').toUpperCase();
+    if (!placaVal) return res.status(400).json({ error: 'La placa es obligatoria.' });
+
+    const tipoClienteVal = String(tipoCliente || '').trim().toUpperCase();
+    if (!['CONTADO', 'CREDITO'].includes(tipoClienteVal)) {
+      return res.status(400).json({ error: 'Tipo Cliente debe ser CONTADO o CREDITO.' });
+    }
+
+    let clienteCredito = null;
+    let nit = null;
+
+    if (tipoClienteVal === 'CREDITO') {
+      const cc = String(req.body.clienteCredito || '').trim();
+      if (!cc) return res.status(400).json({ error: 'Para CREDITO el Cliente Crédito es obligatorio.' });
+      const [ccRows] = await pool.execute(
+        'SELECT `Cliente a Facturar` AS clienteAFacturar, Nit AS nit FROM Maestro_Clientes_Credito WHERE `Cliente a Facturar` = ? LIMIT 1',
+        [cc]
+      );
+      if (!ccRows.length) return res.status(400).json({ error: `El Cliente Crédito "${cc}" no existe en Maestro_Clientes_Credito.` });
+      clienteCredito = ccRows[0].clienteAFacturar;
+      nit = ccRows[0].nit == null ? null : Number(ccRows[0].nit);
+    } else if (req.body.nit !== undefined && req.body.nit !== null && String(req.body.nit).trim() !== '') {
+      const nitNum = Number(String(req.body.nit).replace(/[^0-9]/g, ''));
+      if (nitNum) {
+        const [mc] = await pool.execute('SELECT `Código` FROM Maestro_Clientes WHERE `Código` = ? LIMIT 1', [nitNum]);
+        if (mc.length) nit = nitNum;
+      }
+    }
+
+    const [result] = await pool.execute(
+      'UPDATE Maestro_Placas SET Placa = ?, `Tipo Cliente` = ?, `Cliente Credito` = ?, Nit = ? WHERE ID = ?',
+      [placaVal, tipoClienteVal, clienteCredito, nit, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Placa no encontrada' });
+    }
+
+    res.json({ ok: true, id, placa: placaVal, tipoCliente: tipoClienteVal, clienteCredito, nit });
+  } catch (err) {
+    console.error('[facturacion] UPDATE maestro-placas:', err);
+    res.status(500).json({ error: err.message });
+  }
+}
+router.put('/api/maestro-placas/:id', handleActualizarPlaca);
+router.post('/api/maestro-placas/actualizar', handleActualizarPlaca);
+
+// Acceso + permiso de depurar maestros (Config_Parametros, facturacion / Clientes); si no, responde.
+async function exigirDepuradorMaestros(req, res) {
+  const { usuario } = req.query;
+  if (!usuario) { res.status(400).json({ error: 'usuario requerido' }); return null; }
+  const acceso = await accesoMaestrosClientes(usuario);
+  if (!acceso) { res.status(403).json({ error: 'No autorizado' }); return null; }
+  if (!(await puedeDepurarMaestros(acceso.rol))) {
+    res.status(403).json({ error: 'Tu rol no tiene permiso para depurar los maestros de Clientes.' });
+    return null;
+  }
+  return acceso;
+}
+
+// ── POST /api/maestro-placas/convertir-mayusculas (provisional) ──────────────
+// La columna Placa distingue mayúsculas y (Placa, Nit) es único: solo se convierten las placas
+// cuya versión en mayúscula no choca con otra; las que chocan son duplicados por unificar.
+router.post('/api/maestro-placas/convertir-mayusculas', async (req, res) => {
+  try {
+    if (!(await exigirDepuradorMaestros(req, res))) return;
+
+    const [rows] = await pool.query('SELECT ID AS id, Placa AS placa, Nit AS nit, `Cliente Credito` AS clienteCredito FROM Maestro_Placas WHERE Placa IS NOT NULL');
+    const porClave = new Map();
+    rows.forEach(r => {
+      const k = claveDuplicadoPlaca(r);
+      if (!porClave.has(k)) porClave.set(k, []);
+      porClave.get(k).push(r);
+    });
+
+    const ids = [];
+    let omitidas = 0;
+    for (const grupo of porClave.values()) {
+      const pendientes = grupo.filter(r => r.placa !== String(r.placa).trim().toUpperCase());
+      if (!pendientes.length) continue;
+      if (grupo.length > 1) { omitidas += pendientes.length; continue; } // duplicado: unificar primero
+      ids.push(pendientes[0].id);
+    }
+
+    let actualizados = 0;
+    for (let i = 0; i < ids.length; i += 1000) {
+      const [r] = await pool.query('UPDATE Maestro_Placas SET Placa = UPPER(TRIM(Placa)) WHERE ID IN (?)', [ids.slice(i, i + 1000)]);
+      actualizados += r.changedRows ?? r.affectedRows ?? 0;
+    }
+    res.json({ ok: true, actualizados, omitidasPorDuplicado: omitidas });
+  } catch (err) {
+    console.error('[facturacion] POST /api/maestro-placas/convertir-mayusculas:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/maestro-placas/unificar-duplicados ────────────────────────────
+// body: { grupos: [{ idConservar, idsEliminar }] }. Los servicios (PL1) de los eliminados pasan
+// al conservado, que queda con la placa en mayúscula. Solo une placas con la misma clave.
+router.post('/api/maestro-placas/unificar-duplicados', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    if (!(await exigirDepuradorMaestros(req, res))) return;
+    const grupos = Array.isArray(req.body.grupos) ? req.body.grupos : [];
+    if (!grupos.length) return res.status(400).json({ error: 'No se recibieron grupos de duplicados para unificar' });
+
+    await conn.beginTransaction();
+    let serviciosReasignados = 0, registrosEliminados = 0, gruposProcesados = 0, gruposOmitidos = 0;
+
+    for (const g of grupos) {
+      const idConservar = String(g.idConservar || '').trim();
+      const idsEliminar = (Array.isArray(g.idsEliminar) ? g.idsEliminar : [])
+        .map(x => String(x || '').trim()).filter(x => x && x !== idConservar);
+      if (!idConservar || !idsEliminar.length) continue;
+
+      const [filas] = await conn.query(
+        'SELECT ID AS id, Placa AS placa, Nit AS nit, `Cliente Credito` AS clienteCredito FROM Maestro_Placas WHERE ID IN (?)',
+        [[idConservar, ...idsEliminar]]
+      );
+      const conservar = filas.find(f => f.id === idConservar);
+      const clave = conservar && claveDuplicadoPlaca(conservar);
+      const validos = filas.filter(f => f.id !== idConservar && claveDuplicadoPlaca(f) === clave).map(f => f.id);
+      if (!conservar || !validos.length) { gruposOmitidos++; continue; }
+
+      const [upd] = await conn.query('UPDATE Dynamic_Servicios SET PL1 = ? WHERE PL1 IN (?)', [idConservar, validos]);
+      const [del] = await conn.query('DELETE FROM Maestro_Placas WHERE ID IN (?)', [validos]);
+      await conn.query('UPDATE Maestro_Placas SET Placa = UPPER(TRIM(Placa)) WHERE ID = ?', [idConservar]);
+      serviciosReasignados += upd.affectedRows || 0;
+      registrosEliminados += del.affectedRows || 0;
+      gruposProcesados++;
+    }
+
+    await conn.commit();
+    res.json({ ok: true, gruposProcesados, gruposOmitidos, serviciosReasignados, registrosEliminados });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-placas/unificar-duplicados:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── POST /api/maestro-placas/eliminar-masivo ────────────────────────────────
+// Los servicios asociados quedan con PL1 vacío ('' y no NULL: el trigger de auditoría de
+// Dynamic_Servicios no acepta NULL) y luego se borra la placa.
+router.post('/api/maestro-placas/eliminar-masivo', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    if (!(await exigirDepuradorMaestros(req, res))) return;
+    const ids = (Array.isArray(req.body.ids) ? req.body.ids : [req.body.id]).map(x => String(x || '').trim()).filter(Boolean);
+    if (!ids.length) return res.status(400).json({ error: 'No se recibieron IDs para eliminar' });
+
+    await conn.beginTransaction();
+    const [upd] = await conn.query("UPDATE Dynamic_Servicios SET PL1 = '' WHERE PL1 IN (?)", [ids]);
+    const [del] = await conn.query('DELETE FROM Maestro_Placas WHERE ID IN (?)', [ids]);
+    await conn.commit();
+    res.json({ ok: true, eliminados: del.affectedRows || 0, serviciosDesvinculados: upd.affectedRows || 0 });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-placas/eliminar-masivo:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── POST /api/maestro-placas/eliminar-reemplazar ────────────────────────────
+// body: { idReemplazo, idsEliminar }: los servicios pasan a otra placa (Placa + Nit) y se borran.
+router.post('/api/maestro-placas/eliminar-reemplazar', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    if (!(await exigirDepuradorMaestros(req, res))) return;
+    const idReemplazo = String(req.body.idReemplazo || '').trim();
+    if (!idReemplazo) return res.status(400).json({ error: 'Se requiere la placa de reemplazo' });
+    const idsEliminar = (Array.isArray(req.body.idsEliminar) ? req.body.idsEliminar : [req.body.idEliminar])
+      .map(x => String(x || '').trim()).filter(x => x && x !== idReemplazo);
+    if (!idsEliminar.length) return res.status(400).json({ error: 'No se recibieron IDs para eliminar' });
+
+    const [destino] = await pool.query('SELECT ID, Placa, Nit FROM Maestro_Placas WHERE ID = ? LIMIT 1', [idReemplazo]);
+    if (!destino.length) return res.status(400).json({ error: 'La placa de reemplazo no existe' });
+
+    await conn.beginTransaction();
+    const [upd] = await conn.query('UPDATE Dynamic_Servicios SET PL1 = ? WHERE PL1 IN (?)', [idReemplazo, idsEliminar]);
+    const [del] = await conn.query('DELETE FROM Maestro_Placas WHERE ID IN (?) AND ID != ?', [idsEliminar, idReemplazo]);
+    await conn.commit();
+    res.json({
+      ok: true,
+      eliminados: del.affectedRows || 0,
+      idReemplazo,
+      nombreReemplazo: `${destino[0].Placa}${destino[0].Nit ? ' · ' + destino[0].Nit : ''}`,
+      serviciosReasignados: upd.affectedRows || 0
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[facturacion] POST /api/maestro-placas/eliminar-reemplazar:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ── GET /api/maestro-placas/:id/servicios (servicios con PL1 = esa placa) ────
+router.get('/api/maestro-placas/:id/servicios', async (req, res) => {
+  try {
+    const { usuario } = req.query;
+    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
+    if (!(await accesoMaestrosClientes(usuario))) return res.status(403).json({ error: 'No autorizado' });
+
+    const [rows] = await pool.query(`
+      SELECT
+        s.IdServicio AS idServicio,
+        s.IdRecibo AS idRecibo,
+        r.\`Consecutivo Recibo\` AS consecutivoRecibo,
+        DATE_FORMAT(s.\`Hora Inicio\`, '%Y-%m-%d %H:%i') AS fechaServicio,
+        r.\`Operación\` AS operacion,
+        ar.AREA AS area,
+        ca.Actividad AS actividad,
+        mp.Placa AS placa,
+        s.Vehiculo AS vehiculo,
+        s.Cantidad AS cantidad,
+        s.Unidad AS unidad,
+        s.\`Valor Unitario\` AS valorUnitario,
+        ROUND(COALESCE(s.Cantidad, 0) * COALESCE(s.\`Valor Unitario\`, 0)) AS subtotal,
+        COALESCE(r.\`Cliente a Facturar\`, mc.\`Razón social\`) AS cliente,
+        r.Nit AS nit,
+        s.\`Forma De Pago\` AS formaDePago,
+        s.Estado AS estado,
+        s.Usuario AS usuario,
+        DATE_FORMAT(s.Fecha, '%Y-%m-%d %H:%i:%s') AS fechaRegistro
+      FROM Dynamic_Servicios s
+      LEFT JOIN Dynamic_Recibos r ON s.IdRecibo = r.IdRecibo
+      LEFT JOIN Config_Area ar ON s.Area = ar.ID
+      LEFT JOIN Config_Actividad ca ON s.Actividad = ca.ID
+      LEFT JOIN Maestro_Placas mp ON s.PL1 = mp.ID
+      LEFT JOIN Maestro_Clientes mc ON r.Nit = mc.\`Código\`
+      WHERE s.PL1 = ?
+      ORDER BY s.\`Hora Inicio\` DESC, s.IdServicio DESC
+      LIMIT 500
+    `, [req.params.id]);
+    res.json(rows);
+  } catch (err) {
+    console.error('[facturacion] GET /api/maestro-placas/:id/servicios:', err);
     res.status(500).json([]);
   }
 });
