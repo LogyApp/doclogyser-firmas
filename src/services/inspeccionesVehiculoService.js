@@ -186,6 +186,25 @@ const INSPECTION_TEMPLATES = {
       ]
     }
   },
+  bicicleta: {
+    bicicleta: {
+      type: 'bicicleta',
+      subtype: 'bicicleta',
+      label: 'Bicicleta',
+      shortLabel: 'BICICLETA',
+      title: 'Inspección Preoperacional — Bicicleta',
+      items: [
+        { id: 'b1', section: '1. ELEMENTOS A INSPECCIONAR', text: 'Frenos delanteros y traseros funcionan', critical: true },
+        { id: 'b2', section: '1. ELEMENTOS A INSPECCIONAR', text: 'Llantas en buen estado y con aire', critical: true },
+        { id: 'b3', section: '1. ELEMENTOS A INSPECCIONAR', text: 'Manubrio firme y sin daños', critical: true },
+        { id: 'b4', section: '1. ELEMENTOS A INSPECCIONAR', text: 'Cadena y pedales en buen estado', critical: true },
+        { id: 'b5', section: '1. ELEMENTOS A INSPECCIONAR', text: 'Marco y sillín en buen estado', critical: true },
+        { id: 'b6', section: '1. ELEMENTOS A INSPECCIONAR', text: 'Luces y reflectivos funcionan', critical: true },
+        { id: 'b7', section: '1. ELEMENTOS A INSPECCIONAR', text: 'Timbre funciona correctamente', critical: false },
+        { id: 'b8', section: '1. ELEMENTOS A INSPECCIONAR', text: 'Casco de seguridad en buen estado', critical: true }
+      ]
+    }
+  },
   transporte_publico: {
     publico: {
       type: 'transporte_publico',
@@ -298,6 +317,12 @@ function obtenerPlantillaInspeccion(type, subtype) {
   const t = String(type || '').toLowerCase().trim();
   const s = String(subtype || t || '').toLowerCase().trim();
   if (!INSPECTION_TEMPLATES[t] || !INSPECTION_TEMPLATES[t][s]) {
+    if (INSPECTION_TEMPLATES[s] && INSPECTION_TEMPLATES[s][s]) {
+      return INSPECTION_TEMPLATES[s][s];
+    }
+    if (INSPECTION_TEMPLATES[t] && INSPECTION_TEMPLATES[t][t]) {
+      return INSPECTION_TEMPLATES[t][t];
+    }
     throw new Error('No se encontró la plantilla de inspección solicitada.');
   }
   return INSPECTION_TEMPLATES[t][s];
@@ -681,7 +706,7 @@ function construirHTMLPDFInspeccion({
     </tr>
     <tr>
       <td style="padding:4px 7px;border:1px solid #cbd5e1;">
-        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">Placa / N° Interno Equipo</div>
+        <div style="font-size:6.8pt;color:#64748b;text-transform:uppercase;font-weight:700;">${(template.type === 'bicicleta' || template.subtype === 'bicicleta') ? 'Identificación de la bicicleta' : 'Placa / N° Interno Equipo'}</div>
         <div style="font-size:8.2pt;font-weight:700;margin-top:1px;">${escHtml([placa, equipoInterno].filter(Boolean).join(' / ') || '—')}</div>
       </td>
       <td style="padding:4px 7px;border:1px solid #cbd5e1;">
@@ -830,14 +855,18 @@ async function crearInspeccionVehiculo(payload, colaborador) {
   const template = obtenerPlantillaInspeccion(type, subtype);
   const esTransportePublico = type === 'transporte_publico';
   const esTranspaleta = subtype === 'transpaleta' || subtype === 'transpaleta_electrica';
+  const esBicicleta = type === 'bicicleta' || subtype === 'bicicleta';
 
-  if ((type === 'vehiculo' || type === 'camion') && !String(plate || '').trim()) {
+  if ((type === 'vehiculo' || type === 'camion') && !esBicicleta && !String(plate || '').trim()) {
     throw new Error('La placa del vehículo es obligatoria.');
+  }
+  if (esBicicleta && !String(plate || equipmentId || '').trim()) {
+    throw new Error('La identificación de la bicicleta es obligatoria.');
   }
   if (type === 'montacarga' && !String(equipmentId || '').trim()) {
     throw new Error('El número interno o código del equipo es obligatorio para montacargas y transpaletas.');
   }
-  if (!esTransportePublico && !esTranspaleta && !String(meter || '').trim()) {
+  if (!esTransportePublico && !esTranspaleta && !esBicicleta && !String(meter || '').trim()) {
     throw new Error('El kilometraje u horómetro actual es obligatorio.');
   }
 
@@ -969,9 +998,9 @@ async function crearInspeccionVehiculo(payload, colaborador) {
 
   const placaClean = esTransportePublico
     ? 'TRANSPORTE PÚBLICO'
-    : String(plate || '').replace(/[^0-9A-Za-z-]/g, '').trim().toUpperCase();
+    : String(plate || (esBicicleta ? equipmentId : '') || '').replace(/[^0-9A-Za-z-]/g, '').trim().toUpperCase();
   const equipoClean = String(equipmentId || '').trim().toUpperCase();
-  const odometroClean = esTransportePublico ? 'N/A' : String(meter || '').trim();
+  const odometroClean = (esTransportePublico || esBicicleta) ? 'N/A' : String(meter || '').trim();
 
   // Sincronizar placa en Maestro_Placas (columnas tipo_vehiculo y empleado) si aplica
   if (placaClean && !esTransportePublico) {

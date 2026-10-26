@@ -3133,6 +3133,7 @@
                 <option value="Montacarga Eléctrica">Montacarga Eléctrica</option>
                 <option value="Transpaleta Manual">Transpaleta Manual</option>
                 <option value="Transpaleta Eléctrica">Transpaleta Eléctrica</option>
+                <option value="Bicicleta">Bicicleta</option>
                 <option value="Transporte Público">Transporte Público</option>
               </select>
             </div>
@@ -3391,7 +3392,21 @@
               </div>
             </div>
 
-            <!-- 6. Transporte Público -->
+            <!-- 6. Bicicleta -->
+            <div onclick="seleccionarTipoInspeccionSST('bicicleta', 'bicicleta')" style="background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; display: flex; flex-direction: column;">
+              <div style="height: 115px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--border);">
+                <img src="/img/inspecciones/bicicleta.png" alt="Bicicleta" style="max-height: 95px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="padding: 12px 14px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;">
+                <div>
+                  <div style="font-weight: 800; font-size: 0.94rem; color: var(--text);">🚲 Bicicleta</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Chequeo preoperacional para colaboradores que se desplazan en bicicleta (8 puntos).</div>
+                </div>
+                <span class="btn btn-accent btn-sm" style="width: 100%; justify-content: center;">Elegir Bicicleta →</span>
+              </div>
+            </div>
+
+            <!-- 7. Transporte Público -->
             <div onclick="seleccionarTipoInspeccionSST('transporte_publico', 'publico')" style="background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; display: flex; flex-direction: column;">
               <div style="height: 115px; background: #fff; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--border);">
                 <img src="/img/inspecciones/transporte_publico.svg" alt="Transporte Público" style="max-height: 95px; max-width: 100%; object-fit: contain;">
@@ -8712,6 +8727,7 @@
           'Montacarga Eléctrica',
           'Transpaleta Manual',
           'Transpaleta Eléctrica',
+          'Bicicleta',
           'Transporte Público'
         ];
         selTipo.innerHTML = '<option value="">Todos</option>';
@@ -9384,10 +9400,16 @@
 
       const isPublico = sstInsState.type === 'transporte_publico';
       const isMontacarga = sstInsState.type === 'montacarga';
+      const isBicicleta = sstInsState.type === 'bicicleta' || sstInsState.subtype === 'bicicleta';
 
       document.getElementById('sst-ins-group-placa').style.display = (isPublico || isMontacarga) ? 'none' : 'block';
-      document.getElementById('sst-ins-group-equipo').style.display = isPublico ? 'none' : 'block';
-      document.getElementById('sst-ins-group-odometro').style.display = (isPublico || isTranspaleta) ? 'none' : 'block';
+      const lblPlaca = document.querySelector('#sst-ins-group-placa label');
+      if (lblPlaca) lblPlaca.innerText = isBicicleta ? 'Identificación de la bicicleta *' : 'Placa del Vehículo *';
+      const inpPlaca = document.getElementById('sst-ins-placa');
+      if (inpPlaca) inpPlaca.placeholder = isBicicleta ? 'Ej: BICI-01 o N° de marco' : 'Ej: ABC123';
+
+      document.getElementById('sst-ins-group-equipo').style.display = (isPublico || isBicicleta) ? 'none' : 'block';
+      document.getElementById('sst-ins-group-odometro').style.display = (isPublico || isTranspaleta || isBicicleta) ? 'none' : 'block';
       document.getElementById('sst-ins-label-equipo').innerText = isMontacarga ? 'Código / Serie del Equipo *' : 'N° Interno / Equipo (Opcional)';
 
       document.getElementById('sst-ins-placa').value = '';
@@ -9547,6 +9569,7 @@
       const isPublico = sstInsState.type === 'transporte_publico';
       const isMontacarga = sstInsState.type === 'montacarga';
       const isTranspaleta = isMontacarga && (sstInsState.subtype === 'transpaleta' || sstInsState.subtype === 'transpaleta_electrica');
+      const isBicicleta = sstInsState.type === 'bicicleta' || sstInsState.subtype === 'bicicleta';
 
       const placa = document.getElementById('sst-ins-placa').value.trim().toUpperCase();
       const equipo = document.getElementById('sst-ins-equipo').value.trim().toUpperCase();
@@ -9555,7 +9578,11 @@
       const obsGen = document.getElementById('sst-ins-obs').value.trim();
       const planAcc = document.getElementById('sst-ins-plan').value.trim();
 
-      if (!isPublico && !isMontacarga && !placa) {
+      if (isBicicleta && !placa && !equipo) {
+        showToast('La identificación de la bicicleta es obligatoria', 'error');
+        return;
+      }
+      if (!isPublico && !isMontacarga && !isBicicleta && !placa) {
         showToast('La placa del vehículo es obligatoria', 'error');
         return;
       }
@@ -9563,7 +9590,7 @@
         showToast('El código o identificación del equipo es obligatorio', 'error');
         return;
       }
-      if (!isPublico && !isTranspaleta && !odometro) {
+      if (!isPublico && !isTranspaleta && !isBicicleta && !odometro) {
         showToast('El kilometraje u horómetro es obligatorio', 'error');
         return;
       }

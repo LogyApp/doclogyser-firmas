@@ -2821,7 +2821,24 @@
               </div>
             </div>
 
-            <!-- 6. Transporte Público (Solo confirmación) -->
+            <!-- 6. Bicicleta -->
+            <div class="ins-equip-card" onclick="abrirModalInspeccion('bicicleta', 'bicicleta')" style="cursor:pointer;">
+              <div class="ins-equip-img-wrap">
+                <span class="ins-equip-badge">Desplazamiento</span>
+                <img src="/img/inspecciones/bicicleta.png" alt="Bicicleta">
+              </div>
+              <div class="ins-equip-body">
+                <div>
+                  <div class="ins-equip-title">🚲 Bicicleta</div>
+                  <div class="ins-equip-desc">Chequeo preoperacional para colaboradores que se desplazan en bicicleta (8 puntos).</div>
+                </div>
+                <button type="button" class="btn btn-primary" style="width:100%;" onclick="event.stopPropagation(); abrirModalInspeccion('bicicleta', 'bicicleta')">
+                  Iniciar chequeo →
+                </button>
+              </div>
+            </div>
+
+            <!-- 7. Transporte Público (Solo confirmación) -->
             <div class="ins-equip-card" onclick="abrirModalInspeccion('transporte_publico', 'publico')" style="cursor:pointer;">
               <div class="ins-equip-img-wrap">
                 <span class="ins-equip-badge">Desplazamiento</span>
@@ -2996,7 +3013,7 @@
 
               <div class="form-grid form-grid-2">
                 <div class="form-group" id="ins-group-placa">
-                  <label class="form-label" for="ins_input_placa">Placa del Vehículo <span class="req" id="ins_req_placa">*</span></label>
+                  <label class="form-label" for="ins_input_placa"><span id="ins_lbl_placa">Placa del Vehículo</span> <span class="req" id="ins_req_placa">*</span></label>
                   <input
                     type="text"
                     class="form-control"
@@ -4697,10 +4714,11 @@
         const esTransportePublico = tpl.type === 'transporte_publico';
         const esMontacarga = tpl.type === 'montacarga';
         const esTranspaleta = tpl.subtype === 'transpaleta' || tpl.subtype === 'transpaleta_electrica';
+        const esBicicleta = tpl.type === 'bicicleta' || tpl.subtype === 'bicicleta';
 
         document.getElementById('ins-modal-title').textContent = esTransportePublico
           ? `🚌 ${tpl.title || 'Transporte Público'}`
-          : `🚗 ${tpl.title || ('Inspección: ' + tpl.label)}`;
+          : (esBicicleta ? `🚲 ${tpl.title || 'Inspección: Bicicleta'}` : `🚗 ${tpl.title || ('Inspección: ' + tpl.label)}`);
         document.getElementById('ins-form-trabajador').textContent = col.nombre || '—';
         document.getElementById('ins-form-identificacion').textContent = col.identificacion || '—';
         document.getElementById('ins-form-cargo').textContent = col.cargo || '—';
@@ -4748,13 +4766,16 @@
         document.getElementById('ins-group-placa').style.display = (esMontacarga || esTransportePublico) ? 'none' : 'flex';
         document.getElementById('ins_req_placa').style.display = (esMontacarga || esTransportePublico) ? 'none' : 'inline';
         inpPlaca.required = !(esMontacarga || esTransportePublico);
+        const lblPlaca = document.getElementById('ins_lbl_placa');
+        if (lblPlaca) lblPlaca.textContent = esBicicleta ? 'Identificación de la bicicleta' : 'Placa del Vehículo';
+        inpPlaca.placeholder = esBicicleta ? 'Ej: BICI-01 o N° de marco' : 'Ej: ABC123';
 
         document.getElementById('ins-group-equipo').style.display = esMontacarga ? 'flex' : 'none';
         document.getElementById('ins_req_equipo').style.display = esMontacarga ? 'inline' : 'none';
         inpEquipo.required = esMontacarga;
 
-        document.getElementById('ins-group-odometro').style.display = (esTranspaleta || esTransportePublico) ? 'none' : 'flex';
-        inpOdometro.required = !(esTranspaleta || esTransportePublico);
+        document.getElementById('ins-group-odometro').style.display = (esTranspaleta || esTransportePublico || esBicicleta) ? 'none' : 'flex';
+        inpOdometro.required = !(esTranspaleta || esTransportePublico || esBicicleta);
         document.getElementById('ins_lbl_odometro').textContent = esMontacarga ? 'Horómetro Actual' : 'Kilometraje Actual';
 
         // Renderizar chips de placas o equipos frecuentes y prellenar el más reciente
@@ -4908,11 +4929,17 @@
       if (stateInspeccion.type === 'transporte_publico') return true;
       const esMontacarga = stateInspeccion.type === 'montacarga';
       const esTranspaleta = stateInspeccion.subtype === 'transpaleta' || stateInspeccion.subtype === 'transpaleta_electrica';
+      const esBicicleta = stateInspeccion.type === 'bicicleta' || stateInspeccion.subtype === 'bicicleta';
       const placa = document.getElementById('ins_input_placa').value.trim();
       const equipo = document.getElementById('ins_input_equipo').value.trim();
       const odometro = document.getElementById('ins_input_odometro').value.trim();
 
-      if (!esMontacarga && !placa) {
+      if (esBicicleta && !placa) {
+        showToast('Por favor ingresa la Identificación de la bicicleta.', 'error');
+        document.getElementById('ins_input_placa').focus();
+        return false;
+      }
+      if (!esMontacarga && !esBicicleta && !placa) {
         showToast('Por favor ingresa o selecciona la Placa del vehículo.', 'error');
         document.getElementById('ins_input_placa').focus();
         return false;
@@ -4922,7 +4949,7 @@
         document.getElementById('ins_input_equipo').focus();
         return false;
       }
-      if (!esTranspaleta && !odometro) {
+      if (!esTranspaleta && !esBicicleta && !odometro) {
         showToast('Por favor ingresa el kilometraje u horómetro actual.', 'error');
         document.getElementById('ins_input_odometro').focus();
         return false;
