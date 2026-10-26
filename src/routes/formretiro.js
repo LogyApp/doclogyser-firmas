@@ -227,24 +227,22 @@ router.get('/api/pz-status/:idPz', async (req, res) => {
     const { usuario } = req.query;
 
     const [rows] = await pool.execute(
-      `SELECT estado, nivel_compromiso, areas_requeridas, url_pdf_final,
-              firma_trabajador_url,
-              firma_nomina_url, firma_tecnologia_url, firma_sst_url,
-              firma_facturacion_url, firma_contabilidad_url, firma_cuentas_url,
-              firma_gerencia_url
-       FROM Maestro_pazysalvo WHERE id = ? LIMIT 1`,
+      `SELECT * FROM Maestro_pazysalvo WHERE id = ? LIMIT 1`,
       [idPz]
     );
     if (!rows.length) return res.status(404).json({ ok: false, error: 'No encontrado' });
     const pz = rows[0];
 
-    const areasRequeridas = typeof pz.areas_requeridas === 'string'
-      ? JSON.parse(pz.areas_requeridas)
-      : (pz.areas_requeridas || []);
+    const { normalizarAreasRequeridas } = require('../services/pazYSalvoService');
+    const areasRequeridas = normalizarAreasRequeridas(pz.areas_requeridas);
 
     const firmas = { trabajador: !!pz.firma_trabajador_url };
+    const novedades = {};
+    const observaciones = {};
     for (const area of areasRequeridas) {
       firmas[area] = !!pz[`firma_${area}_url`];
+      if (pz[`novedad_${area}`]) novedades[area] = pz[`novedad_${area}`];
+      if (pz[`observacion_${area}`]) observaciones[area] = pz[`observacion_${area}`];
     }
 
     res.json({
@@ -253,6 +251,8 @@ router.get('/api/pz-status/:idPz', async (req, res) => {
       nivel: pz.nivel_compromiso,
       areasRequeridas,
       firmas,
+      novedades,
+      observaciones,
       urlPdfFinal: pz.url_pdf_final || null,
     });
   } catch (err) {

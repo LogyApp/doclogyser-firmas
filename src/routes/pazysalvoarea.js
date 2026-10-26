@@ -9,7 +9,7 @@ const { subirFirma, subirPDFPazYSalvo, obtenerUrlFirmaReciente } = require('../s
 const { validarTokenPZ } = require('../services/token');
 const { notificarPazYSalvoCompletado } = require('../services/email');
 const { resolverRutaFirmaArea } = require('../services/firmaPathResolver');
-const { generarFilasArticulosHTML, generarFirmasAreasHtml, estaCompleto, NOMBRES_AREA, EMAILS_AREA, fechaFirmaTexto } = require('../services/pazYSalvoService');
+const { generarFilasArticulosHTML, generarFirmasAreasHtml, estaCompleto, NOMBRES_AREA, EMAILS_AREA, fechaFirmaTexto, escapeHtml, normalizarAreasRequeridas } = require('../services/pazYSalvoService');
 
 const router = express.Router();
 const FIRMA_HTML = path.join(__dirname, '../views/pazysalvoarea/firma.html');
@@ -46,11 +46,14 @@ function formatFechaCO(fecha) {
   return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function buildFirmaHtml(url, fecha) {
-  return url
-    ? `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">
-       <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(fecha)}</div>`
-    : `<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>`;
+function buildFirmaHtml(url, fecha, etiquetaArea) {
+  if (url) {
+    return `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">
+       <div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(fecha)}</div>`;
+  }
+  return `<div style="border:1px dashed #999;border-radius:3px;padding:6px;color:#555;font-size:8px;text-align:center;line-height:1.3;background:#f9f9f9;min-height:48px;display:flex;align-items:center;justify-content:center">
+     Se informó al área por correo electrónico
+   </div>`;
 }
 
 async function registrarDocTrabajador({ regional, operacion, identificacion, fechaIngreso, tipoDocumento, prefijo, doc, usuario }) {
@@ -92,11 +95,22 @@ async function generarPazYSalvoFinalPDF(pz, areasRequeridas) {
     firma_responsable_html:  buildFirmaHtml(pz.firma_responsable_url, pz.fecha_firma_responsable),
     nombre_firmante:         pz.firma_responsable_nombre || '',
     cargo_firmante:          pz.firma_responsable_cargo || '',
-    observaciones:           pz.observaciones || '',
+    observaciones:           (() => {
+      let obs = (pz.observaciones || '').trim();
+      const areasReqArr = normalizarAreasRequeridas(areasRequeridas);
+      const obsAreas = areasReqArr
+        .filter(a => pz[`observacion_${a}`])
+        .map(a => `• ${NOMBRES_AREA[a] || a}: ${pz['observacion_' + a].trim()}`);
+      if (obsAreas.length) {
+        const bloque = 'Comentarios de las áreas:\n' + obsAreas.join('\n');
+        obs = obs ? `${obs}\n\n${bloque}` : bloque;
+      }
+      return obs;
+    })(),
     // Nómina siempre presente
-    firma_nomina_html:       buildFirmaHtml(pz.firma_nomina_url, pz.fecha_firma_nomina),
-    firma_nomina_nombre:     pz.firma_nomina_nombre || '',
-    firma_nomina_cargo:      pz.firma_nomina_cargo || '',
+    firma_nomina_html:       buildFirmaHtml(pz.firma_nomina_url, pz.fecha_firma_nomina, 'Nómina'),
+    firma_nomina_nombre:     pz.firma_nomina_nombre || '—',
+    firma_nomina_cargo:      pz.firma_nomina_cargo ? pz.firma_nomina_cargo + (pz.observacion_nomina ? `<div style="margin-top:3px;padding:2px 4px;background:#f4faf8;border-left:2px solid #16a085;font-size:7.5px;color:#222"><strong>Comentario:</strong> ${escapeHtml(pz.observacion_nomina)}</div>` : '') : '—',
   };
 
   // Firmas de áreas adicionales (nivel alto)
@@ -127,8 +141,7 @@ async function regenerarPazYSalvoFinal(idVinculacion) {
   if (!rows.length || rows[0].estado !== 'completado') return null;
   const pz = rows[0];
 
-  const areasRequeridas = typeof pz.areas_requeridas === 'string'
-    ? JSON.parse(pz.areas_requeridas) : (pz.areas_requeridas || []);
+  const areasRequeridas = normalizarAreasRequeridas(pz.areas_requeridas);
 
   const urlPdf = await generarPazYSalvoFinalPDF(pz, areasRequeridas);
 
@@ -172,8 +185,7 @@ router.get('/:area/:idPz', async (req, res) => {
     const pz = rows[0];
 
     // Verificar que el área es requerida
-    const areasRequeridas = typeof pz.areas_requeridas === 'string'
-      ? JSON.parse(pz.areas_requeridas) : (pz.areas_requeridas || []);
+    const areasRequeridas = normalizarAreasRequeridas(pz.areas_requeridas);
     if (!areasRequeridas.includes(area)) return res.status(404).send(paginaError('Área no requerida para este documento.'));
 
     // Si el área ya firmó, no permitir re-firma
@@ -243,7 +255,7 @@ router.get('/:area/:idPz', async (req, res) => {
 router.post('/:area/:idPz', async (req, res) => {
   try {
     const { area, idPz } = req.params;
-    const { token, firma_base64, firma_url_existente, nombre_firmante, cargo_firmante, cedula_firmante } = req.body;
+    const { token, firma_base64, firma_url_existente, nombre_firmante, cargo_firmante, cedula_firmante, observacion } = req.body;
 
     if (!token) return res.status(401).json({ ok: false, error: 'Token no proporcionado' });
     if (!firma_base64 && !firma_url_existente) return res.status(400).json({ ok: false, error: 'Firma requerida' });
@@ -290,15 +302,33 @@ router.post('/:area/:idPz', async (req, res) => {
     }
 
     const ahora = new Date();
-    await pool.execute(
-      `UPDATE Maestro_pazysalvo
-       SET \`firma_${area}_url\` = ?, \`firma_${area}_nombre\` = ?, \`firma_${area}_cargo\` = ?,
-           \`fecha_firma_${area}\` = ?,
-           \`novedad_${area}\` = NULL,
-           \`${colToken}\` = NULL, \`${colExpira}\` = NULL
-       WHERE id = ?`,
-      [urlFirmaArea, nombre_firmante.trim().toUpperCase(), cargo_firmante.trim().toUpperCase(), ahora, idPz]
-    );
+    const obsTexto = observacion ? String(observacion).trim() : null;
+    try {
+      await pool.execute(
+        `UPDATE Maestro_pazysalvo
+         SET \`firma_${area}_url\` = ?, \`firma_${area}_nombre\` = ?, \`firma_${area}_cargo\` = ?,
+             \`fecha_firma_${area}\` = ?,
+             \`observacion_${area}\` = ?,
+             \`novedad_${area}\` = NULL,
+             \`${colToken}\` = NULL, \`${colExpira}\` = NULL
+         WHERE id = ?`,
+        [urlFirmaArea, nombre_firmante.trim().toUpperCase(), cargo_firmante.trim().toUpperCase(), ahora, obsTexto, idPz]
+      );
+    } catch (colErr) {
+      if (colErr.message.includes('Unknown column')) {
+        await pool.execute(
+          `UPDATE Maestro_pazysalvo
+           SET \`firma_${area}_url\` = ?, \`firma_${area}_nombre\` = ?, \`firma_${area}_cargo\` = ?,
+               \`fecha_firma_${area}\` = ?,
+               \`novedad_${area}\` = NULL,
+               \`${colToken}\` = NULL, \`${colExpira}\` = NULL
+           WHERE id = ?`,
+          [urlFirmaArea, nombre_firmante.trim().toUpperCase(), cargo_firmante.trim().toUpperCase(), ahora, idPz]
+        );
+      } else {
+        throw colErr;
+      }
+    }
 
     // Recargar el registro actualizado
     const [rowsActual] = await pool.execute(
@@ -311,11 +341,11 @@ router.post('/:area/:idPz', async (req, res) => {
     );
     const pzActual = rowsActual[0];
 
-    const areasRequeridas = typeof pzActual.areas_requeridas === 'string'
-      ? JSON.parse(pzActual.areas_requeridas) : (pzActual.areas_requeridas || []);
+    const areasRequeridas = normalizarAreasRequeridas(pzActual.areas_requeridas);
 
-    // Verificar si todas las áreas han firmado
-    if (estaCompleto(pzActual, areasRequeridas)) {
+    // Verificar si todas las áreas han firmado O si ya estaba completado (para regenerar con la nueva firma)
+    const completadoTotal = estaCompleto(pzActual, areasRequeridas);
+    if (completadoTotal || pzActual.estado === 'completado') {
       const urlPdf = await generarPazYSalvoFinalPDF(pzActual, areasRequeridas);
 
       const ahoraFin = new Date();
@@ -324,26 +354,30 @@ router.post('/:area/:idPz', async (req, res) => {
         [urlPdf, ahoraFin, idPz]
       );
 
-      // Registrar en Maestro_docTrabajador
-      registrarDocTrabajador({
-        regional:      pzActual.Regional || null,
-        operacion:     pzActual['Operación'] || null,
-        identificacion: String(pzActual.identificacion),
-        fechaIngreso:  pzActual['Fecha de Ingreso'],
-        tipoDocumento: '59',
-        prefijo:       'PZ',
-        doc:           urlPdf,
-        usuario:       pzActual.Usuario || null,
-      }).catch(e => console.error('[PZ docTrabajador]', e.message));
-
-      // Notificar completado (deshabilitado temporalmente)
-      // notificarPazYSalvoCompletado({
-      //   trabajador:     nombreTrabajador,
-      //   identificacion: pzActual.identificacion,
-      //   cargo:          pzActual.Cargo || '',
-      //   operacion:      pzActual['Operación'] || '',
-      //   urlDoc:         urlPdf,
-      // }).catch(e => console.error('[PZ notif completado]', e.message));
+      // Actualizar o registrar en Maestro_docTrabajador
+      const [docExist] = await pool.execute(
+        `SELECT id FROM Maestro_docTrabajador
+         WHERE Identificación = ? AND TipoDocumento = '59' AND DATE(Fecha_Ingreso) = DATE(?)
+         ORDER BY FechaRegistro DESC LIMIT 1`,
+        [String(pzActual.identificacion), toDateStr(pzActual['Fecha de Ingreso'])]
+      );
+      if (docExist.length) {
+        await pool.execute(
+          `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+          [urlPdf, fechaHoraBogota(), docExist[0].id]
+        );
+      } else {
+        registrarDocTrabajador({
+          regional:      pzActual.Regional || null,
+          operacion:     pzActual['Operación'] || null,
+          identificacion: String(pzActual.identificacion),
+          fechaIngreso:  pzActual['Fecha de Ingreso'],
+          tipoDocumento: '59',
+          prefijo:       'PZ',
+          doc:           urlPdf,
+          usuario:       pzActual.Usuario || null,
+        }).catch(e => console.error('[PZ docTrabajador]', e.message));
+      }
 
       return res.json({ ok: true, completado: true, urlPdf });
     }

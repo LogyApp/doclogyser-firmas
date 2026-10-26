@@ -325,6 +325,8 @@ router.get('/:idVinculacion', async (req, res) => {
       puedeEditarFechaRetiro:    permisosRetiro.puedeEditarFechaRetiro,
       puedeModificarArticulosPz: permisosRetiro.puedeModificarArticulosPz,
       puedeReenviarPzAreas:      permisosRetiro.puedeReenviarPzAreas,
+      puedeGenerarPzAnticipado:  permisosRetiro.puedeGenerarPzAnticipado,
+      puedeReenviarPzCompletado: permisosRetiro.puedeReenviarPzCompletado,
       // Trabajador
       trabajador:       limpiarNombre(vin.Trabajador),
       cargo:            vin.Cargo || '',
@@ -373,8 +375,9 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
       'SELECT Rol, Regional FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]
     );
     const permisos = uRows.length ? await obtenerPermisosRetiro(uRows[0].Rol, uRows[0].Regional) : null;
-    if (!permisos || !permisos.puedeReenviarPzAreas) {
-      return res.status(403).json({ ok: false, error: 'Sin permiso' });
+    const tienePermiso = permisos && (permisos.puedeReenviarPzAreas || permisos.puedeReenviarPzCompletado);
+    if (!tienePermiso) {
+      return res.status(403).json({ ok: false, error: 'Sin permiso para reenviar enlace de Paz y Salvo a áreas' });
     }
 
     const [pzRows] = await pool.execute(
@@ -387,11 +390,14 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
     );
     if (!pzRows.length) return res.status(404).json({ ok: false, error: 'PZ no encontrado' });
     const pz = pzRows[0];
-    if (pz.estado === 'completado') return res.status(400).json({ ok: false, error: 'El PZ ya está completado' });
 
-    const { EMAILS_AREA } = require('../services/pazYSalvoService');
+    if (pz.estado === 'completado' && !permisos.puedeReenviarPzCompletado) {
+      return res.status(403).json({ ok: false, error: 'No tiene permiso para reenviar Paz y Salvo ya completado' });
+    }
+
+    const { EMAILS_AREA, normalizarAreasRequeridas } = require('../services/pazYSalvoService');
     const { notificarAreaPazYSalvo } = require('../services/email');
-    const areasReq = JSON.parse(pz.areas_requeridas || '[]');
+    const areasReq = normalizarAreasRequeridas(pz.areas_requeridas);
     const baseUrl  = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
 
     const areasPendientes = areasReq.filter(a => !pz[`firma_${a}_url`]);
@@ -401,15 +407,18 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
     for (const area of areasPendientes) {
       const destinatarios = EMAILS_AREA[area] || [];
       if (!destinatarios.length) continue;
-      // Reconstruir token del área
+      // Reconstruir o generar token del área
       const campoToken  = `token_${area}`;
       const campoExpira = `token_${area}_expira`;
-      if (!pz[campoToken]) continue;
-      const { generarTokenPZ } = require('../services/token');
-      const { validarTokenPZ } = require('../services/token');
-      const tok = await validarTokenPZ(pz[campoToken], idPz, campoToken, campoExpira)
-        .then(r => r.valido ? pz[campoToken] : null).catch(() => null);
-      const tokenFinal = tok || await generarTokenPZ(idPz, campoToken, campoExpira);
+      const { generarTokenPZ, validarTokenPZ } = require('../services/token');
+      let tokenFinal = null;
+      if (pz[campoToken]) {
+        tokenFinal = await validarTokenPZ(pz[campoToken], idPz, campoToken, campoExpira)
+          .then(r => r.valido ? pz[campoToken] : null).catch(() => null);
+      }
+      if (!tokenFinal) {
+        tokenFinal = await generarTokenPZ(idPz, campoToken, campoExpira);
+      }
       const urlFirma   = `${baseUrl}/pazysalvo-area/${encodeURIComponent(idPz)}?area=${area}&token=${encodeURIComponent(tokenFinal)}`;
       try {
         await notificarAreaPazYSalvo({
@@ -427,6 +436,128 @@ router.post('/api/reenviar-pz-areas', async (req, res) => {
     res.json({ ok: true, reenviados, areasPendientes });
   } catch (err) {
     console.error('[reenviar-pz-areas]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /api/generar-pz-anticipado ───────────────────────────────────────
+// Cierra el PZ anticipadamente (antes de las 120 h), marcando las áreas no firmadas
+router.post('/api/generar-pz-anticipado', async (req, res) => {
+  try {
+    const { idPz, usuario } = req.body;
+    if (!idPz) return res.status(400).json({ ok: false, error: 'idPz requerido' });
+
+    const [uRows] = await pool.execute('SELECT Rol, Regional FROM Maestro_Usuarios WHERE ID = ? LIMIT 1', [usuario]);
+    const permisos = uRows.length ? await obtenerPermisosRetiro(uRows[0].Rol, uRows[0].Regional) : null;
+    if (!permisos || !permisos.puedeGenerarPzAnticipado) {
+      return res.status(403).json({ ok: false, error: 'Sin permiso para generar el Paz y Salvo anticipadamente' });
+    }
+
+    const [pzRows] = await pool.execute(
+      `SELECT pz.*, v.Trabajador, v.Cargo, v.\`Operación\`, v.\`Fecha de Retiro\`,
+              v.\`Fecha de Ingreso\`, v.Regional, v.Usuario
+       FROM Maestro_pazysalvo pz
+       JOIN \`Maestro_Vinculación\` v ON v.\`Id Vinculación\` = pz.id_vinculacion
+       WHERE pz.id = ? LIMIT 1`,
+      [idPz]
+    );
+    if (!pzRows.length) return res.status(404).json({ ok: false, error: 'PZ no encontrado' });
+    const pz = pzRows[0];
+
+    if (pz.estado === 'completado') {
+      return res.status(400).json({ ok: false, error: 'El Paz y Salvo ya se encuentra completado' });
+    }
+
+    const { regenerarPazYSalvoFinal } = require('./pazysalvoarea');
+    // Para generar el PDF final usamos la función generarPazYSalvoFinalPDF
+    // Si aún no está en estado completado, lo completamos
+    const { obtenerPlantilla, reemplazarVariables } = require('../services/plantilla');
+    const { generarPDF } = require('../services/renderer');
+    const { subirPDFPazYSalvo } = require('../services/storage');
+    const { generarFilasArticulosHTML, generarFirmasAreasHtml, fechaFirmaTexto, escapeHtml, NOMBRES_AREA, normalizarAreasRequeridas } = require('../services/pazYSalvoService');
+
+    const areasRequeridas = normalizarAreasRequeridas(pz.areas_requeridas);
+
+    const nombrePlantilla = pz.nivel_compromiso === 'alto' ? 'paz_y_salvo_alto' : 'paz_y_salvo_bajo';
+    const plantilla = await obtenerPlantilla(nombrePlantilla);
+    const articulos = typeof pz.articulos === 'string' ? JSON.parse(pz.articulos) : (pz.articulos || []);
+    const hoy = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
+
+    let obsFinal = (pz.observaciones || '').trim();
+    const obsAreas = areasRequeridas
+      .filter(a => pz[`observacion_${a}`])
+      .map(a => `• ${NOMBRES_AREA[a] || a}: ${pz['observacion_' + a].trim()}`);
+    if (obsAreas.length) {
+      const bloque = 'Comentarios de las áreas:\n' + obsAreas.join('\n');
+      obsFinal = obsFinal ? `${obsFinal}\n\n${bloque}` : bloque;
+    }
+
+    const datosPlantilla = {
+      fecha_expedicion:        hoy,
+      nombre_trabajador:       limpiarNombre(pz.Trabajador).toUpperCase(),
+      identificacion:          String(pz.identificacion),
+      cargo:                   pz.Cargo || '',
+      operacion:               pz['Operación'] || '',
+      fecha_retiro:            formatFechaCO(pz['Fecha de Retiro']),
+      filas_articulos:         generarFilasArticulosHTML(articulos),
+      firma_trabajador_html:   pz.firma_trabajador_url
+        ? `<img src="${pz.firma_trabajador_url}" style="height:80px;display:block;margin-bottom:4px"><div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(pz.fecha_firma_trabajador)}</div>`
+        : `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:.78rem;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">Documento soportado por correo electrónico – No firmó dentro del plazo</div>`,
+      firma_responsable_html:  pz.firma_responsable_url
+        ? `<img src="${pz.firma_responsable_url}" style="height:80px;display:block;margin-bottom:4px"><div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(pz.fecha_firma_responsable)}</div>`
+        : `<div style="height:72px;border-bottom:1px solid #000;width:220px;margin-bottom:4px"></div>`,
+      nombre_firmante:         pz.firma_responsable_nombre || '',
+      cargo_firmante:          pz.firma_responsable_cargo || '',
+      observaciones:           obsFinal || 'Sin observaciones registradas.',
+      firma_nomina_html:       pz.firma_nomina_url
+        ? `<img src="${pz.firma_nomina_url}" style="height:80px;display:block;margin-bottom:4px"><div style="font-size:7px;color:#888;text-align:center">${fechaFirmaTexto(pz.fecha_firma_nomina)}</div>`
+        : `<div style="border:1px dashed #999;border-radius:3px;padding:6px;color:#555;font-size:8px;text-align:center;line-height:1.3;background:#f9f9f9">Se informó al área por correo electrónico</div>`,
+      firma_nomina_nombre:     pz.firma_nomina_nombre || '—',
+      firma_nomina_cargo:      pz.firma_nomina_cargo ? pz.firma_nomina_cargo + (pz.observacion_nomina ? `<div style="margin-top:3px;padding:2px 4px;background:#f4faf8;border-left:2px solid #16a085;font-size:7.5px;color:#222"><strong>Comentario:</strong> ${escapeHtml(pz.observacion_nomina)}</div>` : '') : '—',
+    };
+
+    if (pz.nivel_compromiso === 'alto') {
+      datosPlantilla.firmas_areas_html = `<table style="width:100%;border-collapse:collapse">${generarFirmasAreasHtml(pz, areasRequeridas)}</table>`;
+    }
+
+    const htmlFinal = reemplazarVariables(plantilla.contenido_html, datosPlantilla);
+    const pdfBuffer = await generarPDF(htmlFinal);
+    const urlPdf    = await subirPDFPazYSalvo(pz.identificacion, pz.id_vinculacion, pdfBuffer);
+    const ahoraFin  = new Date();
+
+    await pool.execute(
+      `UPDATE Maestro_pazysalvo SET estado = 'completado', url_pdf_final = ?, fecha_completado = ? WHERE id = ?`,
+      [urlPdf, ahoraFin, idPz]
+    );
+
+    // Actualizar o insertar en Maestro_docTrabajador
+    const [docExist] = await pool.execute(
+      `SELECT id FROM Maestro_docTrabajador
+       WHERE Identificación = ? AND TipoDocumento = '59' AND DATE(Fecha_Ingreso) = DATE(?)
+       ORDER BY FechaRegistro DESC LIMIT 1`,
+      [String(pz.identificacion), toDateStr(pz['Fecha de Ingreso'])]
+    );
+    if (docExist.length) {
+      await pool.execute(
+        `UPDATE Maestro_docTrabajador SET Doc = ?, FechaRegistro = ? WHERE id = ?`,
+        [urlPdf, fechaHoraBogota(), docExist[0].id]
+      );
+    } else {
+      const { v4: uuidv4 } = require('uuid');
+      await pool.execute(
+        `INSERT INTO Maestro_docTrabajador
+         (id, Validación, Regional, Operación, Identificación, Estado, Fecha_Ingreso,
+          TipoDocumento, Prefijo, Doc, Observaciones, Visualizar, Solicitud,
+          Justificacion_Solicitud, FechaRegistro, Usuario)
+         VALUES (?, 'PEND', ?, ?, ?, 'Retirado', ?, '59', 'PZ', ?, NULL, NULL, NULL, NULL, ?, ?)`,
+        [uuidv4(), pz.Regional || null, pz['Operación'] || null, String(pz.identificacion),
+         toDateStr(pz['Fecha de Ingreso']), urlPdf, fechaHoraBogota(), pz.Usuario || null]
+      );
+    }
+
+    res.json({ ok: true, urlPdf });
+  } catch (err) {
+    console.error('[generar-pz-anticipado]', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

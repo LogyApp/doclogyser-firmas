@@ -226,6 +226,9 @@
     <div class="canvas-hint">Dibuje su firma con el dedo o el mouse.</div>
     <button type="button" class="btn-limpiar-canvas" onclick="limpiarCanvas()">✕ Limpiar</button>
 
+    <label class="campo-label" for="inputObservacion" style="margin-top:14px">Observaciones o comentarios del área (opcional)</label>
+    <textarea id="inputObservacion" class="campo-texto" style="height:70px;font-family:inherit;resize:vertical;margin-bottom:12px" placeholder="Escriba aquí aclaraciones sobre la entrega, novedades resueltas o comentarios adicionales..."></textarea>
+
     <button type="button" class="btn-guardar" id="btnGuardar" onclick="guardarFirma()">
       ✅ Validar y firmar Paz y Salvo
     </button>
@@ -438,11 +441,13 @@ async function guardarFirma() {
   msg.textContent = '';
 
   try {
+    const obs = document.getElementById('inputObservacion')?.value.trim() || null;
     const body = {
       token:            CFG.token,
       nombre_firmante:  nombre,
       cargo_firmante:   cargo,
       cedula_firmante:  cedulaFirmanteSeleccionada || null,
+      observacion:      obs,
     };
     if (firmaUrlSeleccionada) {
       body.firma_url_existente = firmaUrlSeleccionada;

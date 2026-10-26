@@ -7,7 +7,7 @@ const pool = require('./db');
 const { obtenerPlantilla, reemplazarVariables } = require('./plantilla');
 const { generarPDF } = require('./renderer');
 const { subirPDFPazYSalvo } = require('./storage');
-const { generarFilasArticulosHTML, generarFirmasAreasHtml, NOMBRES_AREA } = require('./pazYSalvoService');
+const { generarFilasArticulosHTML, generarFirmasAreasHtml, NOMBRES_AREA, normalizarAreasRequeridas } = require('./pazYSalvoService');
 
 // ── Constantes ─────────────────────────────────────────────────────────────
 const FIRMA_NO_FIRMO = `<div style="border:1.5px solid #ccc;border-radius:4px;padding:8px 10px;color:#888;font-size:.78rem;display:inline-block;width:220px;text-align:center;line-height:1.4;margin-bottom:4px">Documento soportado por correo electrónico – No firmó dentro del plazo</div>`;
@@ -45,10 +45,14 @@ function toDateStr(val) {
 }
 
 /** Devuelve el HTML de firma: imagen si existe, o el texto "no firmó" */
-function buildFirmaHtmlExpiry(url) {
-  return url
-    ? `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">`
-    : FIRMA_NO_FIRMO;
+function buildFirmaHtmlExpiry(url, esArea = false) {
+  if (url) {
+    return `<img src="${url}" style="height:80px;display:block;margin-bottom:4px">`;
+  }
+  if (esArea) {
+    return `<div style="border:1px dashed #999;border-radius:3px;padding:6px;color:#555;font-size:8px;text-align:center;line-height:1.3;background:#f9f9f9">Se informó al área por correo electrónico</div>`;
+  }
+  return FIRMA_NO_FIRMO;
 }
 
 async function registrarDocTrabajador({ regional, operacion, identificacion, fechaIngreso,
@@ -86,10 +90,21 @@ async function generarPZPDF(pz, areasRequeridas) {
     firma_responsable_html: buildFirmaHtmlExpiry(pz.firma_responsable_url),
     nombre_firmante:        pz.firma_responsable_nombre || '',
     cargo_firmante:         pz.firma_responsable_cargo || '',
-    observaciones:          pz.observaciones || '',
-    firma_nomina_html:      buildFirmaHtmlExpiry(pz.firma_nomina_url),
-    firma_nomina_nombre:    pz.firma_nomina_nombre || '',
-    firma_nomina_cargo:     pz.firma_nomina_cargo || '',
+    observaciones:          (() => {
+      let obs = (pz.observaciones || '').trim();
+      const areasReqArr = normalizarAreasRequeridas(areasRequeridas);
+      const obsAreas = areasReqArr
+        .filter(a => pz[`observacion_${a}`])
+        .map(a => `• ${NOMBRES_AREA[a] || a}: ${pz['observacion_' + a].trim()}`);
+      if (obsAreas.length) {
+        const bloque = 'Comentarios de las áreas:\n' + obsAreas.join('\n');
+        obs = obs ? `${obs}\n\n${bloque}` : bloque;
+      }
+      return obs;
+    })(),
+    firma_nomina_html:      buildFirmaHtmlExpiry(pz.firma_nomina_url, true),
+    firma_nomina_nombre:    pz.firma_nomina_nombre || '—',
+    firma_nomina_cargo:     pz.firma_nomina_cargo || '—',
   };
 
   if (pz.nivel_compromiso === 'alto') {
@@ -155,8 +170,7 @@ async function procesarEsperandoTrabajador() {
 
   for (const pz of rows) {
     try {
-      const areasRequeridas = typeof pz.areas_requeridas === 'string'
-        ? JSON.parse(pz.areas_requeridas) : (pz.areas_requeridas || []);
+      const areasRequeridas = normalizarAreasRequeridas(pz.areas_requeridas);
       await procesarPZVencido(pz, areasRequeridas);
     } catch (err) {
       console.error(`[pzExpiryNotifier] Error escenario1 id=${pz.id}:`, err.message);

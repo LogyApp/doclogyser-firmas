@@ -126,6 +126,16 @@ function generarFilasArticulosHTML(articulos) {
  */
 // Sello "Firmado: dd/mm/yyyy hh:mm" bajo una firma, igual al que usa el módulo Logysign.
 // `fecha` es el valor ya guardado en BD (columna fecha_firma_<area>), no se calcula aquí.
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function fechaFirmaTexto(fecha) {
   if (!fecha) return '';
   const b = new Date(new Date(fecha).toLocaleString('en-US', { timeZone: 'America/Bogota' }));
@@ -147,18 +157,28 @@ function generarFirmasAreasHtml(pz, areasRequeridas) {
       const url      = pz[`firma_${area}_url`];
       const nombre   = pz[`firma_${area}_nombre`] || '';
       const cargo    = pz[`firma_${area}_cargo`] || '';
+      const obs      = pz[`observacion_${area}`] || '';
       const etiqueta = NOMBRES_AREA[area] || area;
 
       const firmaHtml = url
         ? `<img src="${url}" style="max-height:50px;max-width:140px;display:block;margin:0 auto">
            <div style="font-size:6px;color:#888;text-align:center">${fechaFirmaTexto(pz[`fecha_firma_${area}`])}</div>`
-        : `<div style="height:50px;border-bottom:1px solid #555;margin-bottom:2px"></div>`;
+        : `<div style="border:1px dashed #999;border-radius:3px;padding:4px 6px;color:#555;font-size:7.5px;text-align:center;line-height:1.2;background:#f9f9f9;min-height:36px;display:flex;align-items:center;justify-content:center">
+             Se informó al área por correo electrónico
+           </div>`;
 
-      return `<td style="width:${width}%;padding:6px 10px;vertical-align:bottom">
+      const obsHtml = obs
+        ? `<div style="margin-top:3px;padding:2px 4px;background:#f4faf8;border-left:2.5px solid #16a085;border-radius:2px;font-size:7.5px;color:#222;line-height:1.25;text-align:left;word-break:break-word">
+             <strong style="color:#16a085">Comentario:</strong> ${escapeHtml(obs)}
+           </div>`
+        : '';
+
+      return `<td style="width:${width}%;padding:6px 8px;vertical-align:top">
         <div style="font-size:9px;font-weight:bold;margin-bottom:2px">Firma ${etiqueta}:</div>
         ${firmaHtml}
-        <div style="border-top:1px solid #555;padding-top:4px;font-size:9px;line-height:1.5">
-          Nombre: <strong>${nombre}</strong><br>Cargo: ${cargo}
+        <div style="border-top:1px solid #555;padding-top:4px;font-size:8.5px;line-height:1.4">
+          Nombre: <strong>${nombre || '—'}</strong><br>Cargo: ${cargo || '—'}
+          ${obsHtml}
         </div>
       </td>`;
     });
@@ -175,7 +195,20 @@ function generarFirmasAreasHtml(pz, areasRequeridas) {
  * @returns {boolean}
  */
 function estaCompleto(pz, areasRequeridas) {
-  return areasRequeridas.every(area => !!pz[`firma_${area}_url`]);
+  const arr = normalizarAreasRequeridas(areasRequeridas);
+  return arr.length > 0 && arr.every(area => !!pz[`firma_${area}_url`]);
+}
+
+function normalizarAreasRequeridas(val) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return val.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [];
 }
 
 module.exports = {
@@ -187,4 +220,6 @@ module.exports = {
   generarFirmasAreasHtml,
   estaCompleto,
   fechaFirmaTexto,
+  escapeHtml,
+  normalizarAreasRequeridas,
 };

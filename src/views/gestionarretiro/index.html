@@ -510,14 +510,26 @@
               onclick="refrescarEstadoPZ()">&#8635; Actualizar</button>
           </div>
           <div id="listadoFirmasPZ"></div>
-          <p id="pzCompletadoMsg" style="display:none;margin-top:10px;font-size:.82rem;color:#27ae60;font-weight:600">
-            &#10003; Paz y Salvo completado — todos los involucrados han firmado.
-          </p>
+          <div id="pzCompletadoMsg" style="display:none;margin-top:12px;padding:12px;background:#e8f8f5;border:1px solid #a3e4d7;border-radius:6px">
+            <div style="font-size:.85rem;color:#16a085;font-weight:700;display:flex;align-items:center;gap:6px">
+              <span>&#10003;</span> Paz y Salvo completado
+            </div>
+            <p style="margin:4px 0 10px 0;font-size:.78rem;color:#555">
+              Todos los involucrados han firmado el documento.
+            </p>
+            <a id="btnVerPzPdf" href="#" target="_blank" class="btn-ver-doc"
+              style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#16a085;color:#fff !important;text-decoration:none !important;border-radius:6px;font-weight:600;font-size:.82rem">
+              &#128196; Ver Paz y Salvo Firmado (PDF)
+            </a>
+          </div>
+          <button type="button" id="btnGenerarAnticipadoPZ"
+            style="display:none;margin-top:10px;width:100%;padding:9px;background:#d35400;color:#fff;border:none;border-radius:6px;font-size:.83rem;font-weight:600;cursor:pointer"
+            onclick="generarPzAnticipado()">&#9889; Generar Paz y Salvo ahora (Cierre anticipado)</button>
           <button type="button" id="btnReenviarPZ"
             style="margin-top:10px;width:100%;padding:9px;background:#8e44ad;color:#fff;border:none;border-radius:6px;font-size:.83rem;font-weight:600;cursor:pointer"
             onclick="reenviarCorreosPZ()">&#128231; Reenviar recordatorio a áreas pendientes</button>
           <div id="reenvioMsg" style="display:none;margin-top:6px;font-size:.78rem;color:#27ae60;font-weight:600"></div>
-          <p class="refresh-hint">Se actualiza cada 30 s.</p>
+          <p class="refresh-hint" id="pzRefreshHint">Se actualiza cada 30 s.</p>
         </div>
 
       </div>
@@ -578,6 +590,7 @@
   const {
     estadoPagina, idVinculacion, usuario, usuarioNombre, rolUsuario,
     puedeEditarFechaRetiro, puedeModificarArticulosPz, puedeReenviarPzAreas,
+    puedeGenerarPzAnticipado, puedeReenviarPzCompletado,
     trabajador, cargo, identificacion, motivoRetiro, tipoRenuncia, fechaRetiro, fechaRetiroISO, ciudadRegional,
     firmaResponsableUrl, ciudadSugerida, docs, docsOpcionales, terminacionContrato,
     legalizacionPendientes,
@@ -814,17 +827,44 @@
     const docsMap = {};
     (docs || []).forEach(d => { docsMap[d.prefijo] = d; });
 
-    // Definición de los 4 docs automáticos con su URL de firma vigente
+    // Si el Paz y Salvo ya tiene PDF final generado pero aún no está en docsMap, vincularlo
+    if (!docsMap['PZ'] && pazYSalvo?.urlPdfFinal) {
+      docsMap['PZ'] = {
+        prefijo:    'PZ',
+        label:      'Paz y Salvo',
+        url:        pazYSalvo.urlPdfFinal,
+        validacion: 'PEND',
+      };
+    }
+
+    // Definición de los documentos con su URL de firma vigente
     const AUTODOCS = [
       { prefijo: 'CT',   label: 'Certificado de Retiro',        urlFirma: urlFirmaCT   },
       { prefijo: 'AR',   label: 'Aceptación de Renuncia',       urlFirma: urlFirmaAR   },
       { prefijo: 'EMOE', label: 'Examen Médico de Egreso',      urlFirma: urlFirmaEMOE },
       { prefijo: 'CRS',  label: 'Retiro de Cesantías',          urlFirma: urlFirmaCRS  },
+      { prefijo: 'PZ',   label: 'Paz y Salvo',                  urlFirma: _urlFirmaPZActual },
     ];
 
     AUTODOCS.forEach(({ prefijo, label, urlFirma }) => {
       const firmado = docsMap[prefijo];
-      if (!firmado && !urlFirma) return; // doc no aplica (ej. AR cuando no es Renuncia)
+
+      if (!firmado && !urlFirma) {
+        // En PZ: si el trabajador ya firmó pero faltan áreas administrativas por firmar
+        if (prefijo === 'PZ' && pazYSalvo && pazYSalvo.estado === 'esperando_areas') {
+          const row = document.createElement('div');
+          row.className = 'doc-row';
+          row.innerHTML = `
+            <span class="doc-icon-big">&#9203;</span>
+            <div class="doc-info">
+              <div class="doc-nombre">${label}</div>
+              <div class="doc-estado pending">&#9203; En validación por áreas administrativas</div>
+            </div>
+            <a href="#cardEstadoPZ" class="btn-ver-doc" onclick="document.getElementById('cardEstadoPZ')?.scrollIntoView({behavior:'smooth'}); return false;">&#128065; Ver estado</a>`;
+          lista.appendChild(row);
+        }
+        return; // doc no aplica (ej. AR cuando no es Renuncia)
+      }
 
       const row = document.createElement('div');
       row.className = 'doc-row';
@@ -1295,6 +1335,7 @@
         }
         if (d.urlFirma) {
           _urlFirmaPZActual = d.urlFirma;
+          renderDocs();
           renderEnvioTrabajador();
         }
       } else {
@@ -1315,17 +1356,73 @@
     lista.innerHTML = secuencia.map(a => {
       const firmado = d.firmas?.[a];
       const nombre  = NOMBRES_AREA_PZ[a] || a;
-      return `<div class="firma-area-row">
-        <span style="font-size:1rem">${firmado ? '✅' : '⏳'}</span>
-        <span class="firma-area-nombre" style="font-weight:${firmado ? '600' : '400'};color:${firmado ? '#1a1a2e' : '#888'}">${nombre}</span>
-        <span class="firma-estado-badge ${firmado ? 'firmado' : 'pendiente'}">${firmado ? 'Firmado' : 'Pendiente'}</span>
+      const obs     = d.observaciones?.[a];
+      const nov     = d.novedades?.[a];
+
+      let notasHtml = '';
+      if (obs) {
+        notasHtml += `<div style="margin-top:4px;padding:4px 8px;background:#f0faf8;border-left:3px solid #16a085;border-radius:3px;font-size:.76rem;color:#333;"><strong>Comentario al firmar:</strong> ${escapeHtml(obs)}</div>`;
+      }
+      if (nov) {
+        notasHtml += `<div style="margin-top:4px;padding:4px 8px;background:#fff8f8;border-left:3px solid #e74c3c;border-radius:3px;font-size:.76rem;color:#c0392b;"><strong>⚠️ Novedad reportada:</strong> ${escapeHtml(nov)}</div>`;
+      }
+
+      return `<div class="firma-area-row" style="flex-direction:column;align-items:stretch;gap:4px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1rem">${firmado ? '✅' : '⏳'}</span>
+            <span class="firma-area-nombre" style="font-weight:${firmado ? '600' : '400'};color:${firmado ? '#1a1a2e' : '#888'}">${nombre}</span>
+          </div>
+          <span class="firma-estado-badge ${firmado ? 'firmado' : 'pendiente'}">${firmado ? 'Firmado' : 'Pendiente'}</span>
+        </div>
+        ${notasHtml}
       </div>`;
     }).join('');
 
     const completado = d.estado === 'completado';
-    document.getElementById('pzCompletadoMsg').style.display = completado ? 'block' : 'none';
-    document.getElementById('btnRefreshPZ').style.display    = completado ? 'none' : 'inline-block';
-    if (completado && _pzStatusTimer) { clearInterval(_pzStatusTimer); _pzStatusTimer = null; }
+    const msgCompletado = document.getElementById('pzCompletadoMsg');
+    if (msgCompletado) msgCompletado.style.display = completado ? 'block' : 'none';
+    const btnRefresh = document.getElementById('btnRefreshPZ');
+    if (btnRefresh) btnRefresh.style.display = completado ? 'none' : 'inline-block';
+
+    const btnAnticipado = document.getElementById('btnGenerarAnticipadoPZ');
+    if (btnAnticipado) {
+      btnAnticipado.style.display = (!completado && puedeGenerarPzAnticipado) ? 'block' : 'none';
+    }
+
+    const btnReenviar = document.getElementById('btnReenviarPZ');
+    if (btnReenviar) {
+      const hayAreasSinFirmar = (d.areasRequeridas || []).some(a => !d.firmas?.[a]);
+      if (completado) {
+        if (hayAreasSinFirmar && puedeReenviarPzCompletado) {
+          btnReenviar.style.display = 'block';
+          btnReenviar.textContent = '📧 Reenviar a áreas no firmantes (para regenerar PDF)';
+          btnReenviar.style.background = '#8e44ad';
+        } else {
+          btnReenviar.style.display = 'none';
+        }
+      } else {
+        btnReenviar.style.display = puedeReenviarPzAreas ? 'block' : 'none';
+        btnReenviar.textContent = '📧 Reenviar recordatorio a áreas pendientes';
+        btnReenviar.style.background = '#8e44ad';
+      }
+    }
+    const refreshHint = document.getElementById('pzRefreshHint');
+    if (refreshHint) refreshHint.style.display = completado ? 'none' : 'block';
+
+    if (completado) {
+      if (_pzStatusTimer) { clearInterval(_pzStatusTimer); _pzStatusTimer = null; }
+      const urlPdf = d.urlPdfFinal || pazYSalvo?.urlPdfFinal || (docs || []).find(x => x.prefijo === 'PZ')?.url;
+      const btnPdf = document.getElementById('btnVerPzPdf');
+      if (btnPdf) {
+        if (urlPdf) {
+          btnPdf.href = urlPdf;
+          btnPdf.style.display = 'inline-flex';
+        } else {
+          btnPdf.style.display = 'none';
+        }
+      }
+    }
   }
 
   async function refrescarEstadoPZ() {
@@ -1340,6 +1437,16 @@
   function iniciarEstadoPZ(idPz) {
     _idPzActual = idPz;
     document.getElementById('cardEstadoPZ').style.display = 'block';
+    if (pazYSalvo?.estado === 'completado' && pazYSalvo?.urlPdfFinal) {
+      const btnPdf = document.getElementById('btnVerPzPdf');
+      if (btnPdf) {
+        btnPdf.href = pazYSalvo.urlPdfFinal;
+        document.getElementById('pzCompletadoMsg').style.display = 'block';
+        document.getElementById('btnRefreshPZ').style.display    = 'none';
+        const btnRe = document.getElementById('btnReenviarPZ');
+        if (btnRe) btnRe.style.display = 'none';
+      }
+    }
     refrescarEstadoPZ();
     if (_pzStatusTimer) clearInterval(_pzStatusTimer);
     _pzStatusTimer = setInterval(refrescarEstadoPZ, 30000);
@@ -1498,6 +1605,42 @@
         </div>`;
     } else {
       cont.innerHTML = `<p style="font-size:.82rem;color:#aaa">Enlace de evaluación aún no generado.</p>`;
+    }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  async function generarPzAnticipado() {
+    if (!_idPzActual) return;
+    const ok = confirm('¿Desea cerrar el Paz y Salvo y generar el PDF final ahora?\n\nLas áreas que aún no hayan firmado quedarán marcadas indicando que se les informó por correo electrónico. Podrá reenviarles el enlace más adelante si es necesario.');
+    if (!ok) return;
+
+    const btn = document.getElementById('btnGenerarAnticipadoPZ');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando PDF…'; }
+    try {
+      const r = await fetch('/gestionar-retiro/api/generar-pz-anticipado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idPz: _idPzActual, usuario }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        location.reload();
+      } else {
+        alert('Error: ' + (d.error || 'No se pudo generar el Paz y Salvo'));
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ Generar Paz y Salvo ahora (Cierre anticipado)'; }
+      }
+    } catch {
+      alert('Error de conexión.');
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ Generar Paz y Salvo ahora (Cierre anticipado)'; }
     }
   }
 

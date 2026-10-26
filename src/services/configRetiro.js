@@ -80,6 +80,8 @@ const P = {
   EDITAR_FECHA_RETIRO:       'Puede editar Fecha de Retiro',
   MODIFICAR_ARTICULOS_PZ:    'Puede modificar artículos de Paz y Salvo guardados',
   REENVIAR_PZ_AREAS:         'Puede reenviar Paz y Salvo a áreas',
+  GENERAR_PZ_ANTICIPADO:     'Puede generar Paz y Salvo anticipadamente',
+  REENVIAR_PZ_COMPLETADO:    'Puede reenviar Paz y Salvo completado a áreas pendientes',
   NOTIF_PARA:                'Notificación de retiro - Para:',
   NOTIF_COPIA:               'Notificación de retiro - Copia:',
   CARGOS_COPIA_ADMIN:        'Cargos con copia administrativa',
@@ -98,6 +100,8 @@ const DEFAULTS_RETIROS = {
   [P.EDITAR_FECHA_RETIRO]:       'Nomina, Sistema',
   [P.MODIFICAR_ARTICULOS_PZ]:    'Nomina, Sistema',
   [P.REENVIAR_PZ_AREAS]:         'Nomina, Sistema',
+  [P.GENERAR_PZ_ANTICIPADO]:     'Nomina, Sistema',
+  [P.REENVIAR_PZ_COMPLETADO]:    'Nomina, Sistema',
   [P.NOTIF_PARA]:                'retiros@logyser.com',
   [P.NOTIF_COPIA]:               'Sistema, Auxiliar, AuxiliarR, Coordinador, CoordinadorR',
   [P.CARGOS_COPIA_ADMIN]:        'AUXILIAR ADMINISTRATIVO DE OPERACIÓN, AUXILIAR ADMINISTRATIVO REGIONAL, COORDINADOR LOGISTICO, COORDINADOR REGIONAL, SUBGERENTE DE OPERACIONES',
@@ -177,6 +181,8 @@ async function obtenerPermisosRetiro(rol, regional) {
     puedeEditarFechaRetiro:      estaEnParametro(params, P.EDITAR_FECHA_RETIRO, rol),
     puedeModificarArticulosPz:   estaEnParametro(params, P.MODIFICAR_ARTICULOS_PZ, rol),
     puedeReenviarPzAreas:        estaEnParametro(params, P.REENVIAR_PZ_AREAS, rol),
+    puedeGenerarPzAnticipado:    estaEnParametro(params, P.GENERAR_PZ_ANTICIPADO, rol),
+    puedeReenviarPzCompletado:   estaEnParametro(params, P.REENVIAR_PZ_COMPLETADO, rol) || estaEnParametro(params, P.REENVIAR_PZ_AREAS, rol),
   };
 }
 
