@@ -191,7 +191,16 @@
         const fHasta = data.vigencia_hasta ? data.vigencia_hasta.slice(0, 10).split('-').reverse().join('/') : '—';
 
         // Botón generar/regenerar PDF
-        const btnPdfText = data.url_pdf ? '🔄 Regenerar PDF (Con Firmas Listas)' : '⚙️ Generar PDF (Solo Firmas Listas)';
+        const btnPdfText = data.url_pdf ? '🔄 Regenerar PDF' : '⚙️ Generar PDF';
+        const fmtEnvio = v => v ? String(v).replace('T', ' ').slice(0, 16) : '';
+        const badgeEstadoAts = (firmado, fechaEnvio) => firmado
+          ? '<span class="status-badge badge-firma-aceptada">✓ Firmado</span>'
+          : (fechaEnvio
+            ? `<span class="status-badge badge-firma-prefilled" title="Correo enviado ${fmtEnvio(fechaEnvio)}">✉️ Correo enviado</span>`
+            : '<span class="status-badge badge-firma-sin">Sin Firma</span>');
+        const pendientesAts = (data.trabajadores || []).filter(t => t.estado_firma !== 'ACEPTADA').length
+          + (data.fecha_firma_coordinador ? 0 : 1) + (data.fecha_firma_sst ? 0 : 1);
+        const firmaDirecta = data.firmaDirecta || {};
 
         // Botón eliminar (si tiene permiso en CONFIG.permisosSst.ats?.eliminar o es Sistema/AdmSst)
         const puedeEliminar = CONFIG.permisosSst?.ats?.eliminar || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
@@ -204,9 +213,9 @@
         // Trabajadores list (formato con detalle idéntico a Participación)
         const trabajadores = data.trabajadores || [];
         const trabHtml = trabajadores.length ? trabajadores.map((t, idx) => {
-          const badgeFirma = t.estado_firma === 'ACEPTADA'
-            ? '<span class="status-badge badge-firma-aceptada">✓ Firmado</span>'
-            : '<span class="status-badge badge-firma-sin">Sin Firma</span>';
+          const badgeFirma = badgeEstadoAts(t.estado_firma === 'ACEPTADA', t.fecha_envio_correo);
+          const yaFirmo = t.estado_firma === 'ACEPTADA';
+          const sinAccion = 'disabled style="opacity:0.45; pointer-events:none;" title="Ya firmó"';
 
           let cleanNombre = t.nombre_trabajador || '';
           if (cleanNombre.includes(' ** ')) {
@@ -245,13 +254,13 @@
                 <button class="btn-ast-action btn-ast-datos" onclick="abrirModalContactoParticipacion('${t.identificacion}', '${safeNombre}', '${safeCel}', '${safeEmail}')">
                   ✏️ Datos
                 </button>
-                <a href="${waUrl}" target="_blank" class="btn-ast-action btn-ast-whatsapp" ${waDisabled}>
+                <a href="${yaFirmo ? '#' : waUrl}" target="_blank" class="btn-ast-action btn-ast-whatsapp" ${yaFirmo ? sinAccion : waDisabled}>
                   📲 WhatsApp
                 </a>
-                <button class="btn-ast-action btn-ast-email" onclick="notificarTrabajadorAts(${t.id_item})">
+                <button class="btn-ast-action btn-ast-email" ${yaFirmo ? sinAccion : `onclick="notificarTrabajadorAts(${t.id_item})"`}>
                   ✉️ Correo
                 </button>
-                <button class="btn-ast-action btn-ast-copy" onclick="copiarPortapapeles('${urlFirmaLink}')">
+                <button class="btn-ast-action btn-ast-copy" ${yaFirmo ? sinAccion : `onclick="copiarPortapapeles('${urlFirmaLink}')"`}>
                   📋 Copiar
                 </button>
               </div>
@@ -261,7 +270,7 @@
 
         // Coordinador Box
         const coordFirmado = !!data.fecha_firma_coordinador;
-        const badgeCoord = coordFirmado ? '<span class="status-badge badge-firma-aceptada">✓ Firmado</span>' : '<span class="status-badge badge-firma-sin">Sin Firma</span>';
+        const badgeCoord = badgeEstadoAts(coordFirmado, data.fecha_envio_correo_coordinador);
         const urlFirmaCoord = `${window.location.origin}/ats/firmar?tipo=coordinador&token=${data.token_coordinador}`;
         const rawCoordCel = data.coordinador_operacion_celular ? String(data.coordinador_operacion_celular).trim().replace(/\D/g, '') : '';
         let celCoordParam = rawCoordCel;
@@ -271,7 +280,7 @@
 
         // SST Box
         const sstFirmado = !!data.fecha_firma_sst;
-        const badgeSst = sstFirmado ? '<span class="status-badge badge-firma-aceptada">✓ Firmado</span>' : '<span class="status-badge badge-firma-sin">Sin Firma</span>';
+        const badgeSst = badgeEstadoAts(sstFirmado, data.fecha_envio_correo_sst);
         const urlFirmaSst = `${window.location.origin}/ats/firmar?tipo=sst&token=${data.token_sst}`;
 
         // Evidencias
@@ -291,6 +300,7 @@
               ${btnPdfText}
             </button>
             ${data.url_pdf ? `<a href="${data.url_pdf}" target="_blank" class="btn btn-secondary btn-sm" style="font-weight:700;">📄 Abrir PDF Oficial</a>` : ''}
+            ${pendientesAts > 0 ? `<button class="btn btn-primary btn-sm" onclick="notificarPendientesAts(${data.id_ats})">✉️ Reenviar correo a los ${pendientesAts} sin firma</button>` : ''}
             ${btnEliminarHtml}
           </div>
 
@@ -322,9 +332,9 @@
                 <button class="btn-ast-action btn-ast-copy" onclick="copiarPortapapeles('${urlFirmaCoord}')">
                   📋 Copiar
                 </button>
-                <button class="btn-ast-action" onclick="firmarDirectoCoordinador(${data.id_ats})" style="background:var(--accent); color:#fff;" title="Usa la firma digital registrada en el bucket">
+                ${firmaDirecta.coordinador ? `<button class="btn-ast-action" onclick="firmarDirectoCoordinador(${data.id_ats})" style="background:var(--accent); color:#fff;" title="Usa su firma digital registrada">
                   ✍️ Firmar (Firma Digital)
-                </button>
+                </button>` : ''}
               </div>
             ` : `<div style="font-size:0.75rem; color:var(--success);">Firmado el ${data.fecha_firma_coordinador ? data.fecha_firma_coordinador.slice(0, 16).replace('T', ' ') : '—'}</div>`}
           </div>
@@ -344,9 +354,9 @@
                 <button class="btn-ast-action btn-ast-copy" onclick="copiarPortapapeles('${urlFirmaSst}')">
                   📋 Copiar
                 </button>
-                <button class="btn-ast-action" onclick="firmarDirectoSst(${data.id_ats})" style="background:var(--accent); color:#fff;">
+                ${firmaDirecta.sst ? `<button class="btn-ast-action" onclick="firmarDirectoSst(${data.id_ats})" style="background:var(--accent); color:#fff;" title="Usa su firma digital registrada">
                   ✍️ Firmar como SST
-                </button>
+                </button>` : ''}
               </div>
             ` : `<div style="font-size:0.75rem; color:var(--success);">Firmado el ${data.fecha_firma_sst ? data.fecha_firma_sst.slice(0, 16).replace('T', ' ') : '—'}</div>`}
           </div>
@@ -398,27 +408,19 @@
         } catch (_) {}
       }
 
-      const totalFirmas = trabFirmados + (coordFirmado ? 1 : 0) + (sstFirmado ? 1 : 0);
-
-      // Si no hay ninguna firma lista en el sistema, no se puede generar el PDF
-      if (totalFirmas === 0) {
-        alert('No hay ninguna firma lista en el sistema. Debe haber al menos una firma registrada para poder generar el PDF.');
-        showToast('No hay ninguna firma lista en el sistema. Debe haber al menos una firma registrada.', 'error');
-        return;
-      }
-
-      // Solicitar confirmación para generar con las firmas listas
-      const msgConfirm = `¿Desea generar el PDF con las firmas actualmente listas en el sistema?\n\n` +
+      const pendientes = (totalTrab - trabFirmados) + (coordFirmado ? 0 : 1) + (sstFirmado ? 0 : 1);
+      const msgConfirm = `¿Desea generar el PDF del ATS?\n\n` +
         `• Trabajadores firmados: ${trabFirmados} de ${totalTrab}\n` +
         `• Firma Coordinador: ${coordFirmado ? 'Lista (✓)' : 'Pendiente'}\n` +
         `• Firma Responsable SST: ${sstFirmado ? 'Lista (✓)' : 'Pendiente'}\n\n` +
-        `Presione Aceptar para proceder con la generación.`;
+        (pendientes > 0 ? `Las ${pendientes} firma(s) pendiente(s) aparecerán con la anotación de soporte por correo electrónico. Si luego firman, el PDF se reemplaza solo.\n\n` : '') +
+        `Presione Aceptar para generarlo.`;
 
       if (!confirm(msgConfirm)) {
         return;
       }
 
-      showLoading('Generando documento PDF con las firmas disponibles...');
+      showLoading('Generando documento PDF del ATS...');
       try {
         const res = await fetch(`/ats/api/registro/${id}/generar-pdf?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'POST'
@@ -470,6 +472,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo enviar el correo');
         showToast(data.mensaje || 'Correo enviado exitosamente', 'success');
+        if (atsState.selectedId) abrirDetalleAts(atsState.selectedId);
       } catch (e) {
         showToast('Error: ' + e.message, 'error');
       } finally {
@@ -486,6 +489,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo enviar el correo');
         showToast(data.mensaje || 'Correo enviado al Coordinador', 'success');
+        abrirDetalleAts(id);
       } catch (e) {
         showToast('Error: ' + e.message, 'error');
       } finally {
@@ -502,6 +506,22 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo enviar el correo');
         showToast(data.mensaje || 'Correo enviado al Responsable SST', 'success');
+        abrirDetalleAts(id);
+      } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function notificarPendientesAts(id) {
+      showLoading('Enviando correo de firma a los pendientes...');
+      try {
+        const res = await fetch(`/ats/api/registro/${id}/notificar-pendientes?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo enviar el correo');
+        showToast(data.mensaje || 'Correos enviados', 'success');
+        await abrirDetalleAts(id);
       } catch (e) {
         showToast('Error: ' + e.message, 'error');
       } finally {
@@ -513,10 +533,8 @@
       if (!confirm('¿Desea registrar la firma del Coordinador de Operación para este ATS (usando su firma digital registrada)?')) return;
       showLoading('Registrando firma del Coordinador...');
       try {
-        const res = await fetch('/ats/api/firmar-coordinador', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_ats: id, firmaBase64: 'ACEPTADA' })
+        const res = await fetch(`/ats/api/registro/${id}/firmar-directo?tipo=coordinador&usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST'
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo registrar la firma');
@@ -534,10 +552,8 @@
       if (!confirm('¿Desea registrar la firma del Responsable SST para este ATS (usando su firma digital registrada)?')) return;
       showLoading('Registrando firma del Responsable SST...');
       try {
-        const res = await fetch('/ats/api/firmar-sst', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_ats: id, firmaBase64: 'ACEPTADA' })
+        const res = await fetch(`/ats/api/registro/${id}/firmar-directo?tipo=sst&usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
+          method: 'POST'
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo registrar la firma');
@@ -9231,6 +9247,7 @@
         const data = await res.json();
         if (res.ok && data.ok) {
           showToast(data.mensaje || 'Correo enviado exitosamente', 'success');
+        if (atsState.selectedId) abrirDetalleAts(atsState.selectedId);
         } else {
           showToast(data.error || 'No se pudo enviar el correo', 'error');
         }

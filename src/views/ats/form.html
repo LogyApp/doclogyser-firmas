@@ -876,6 +876,9 @@
   }
 
   // ── GUARDAR ATS ──
+  // Trabajadores que ya tenía el ATS al editar (a ellos no se les vuelve a enviar el correo)
+  let identificacionesOriginales = new Set();
+
   async function guardarATS(e) {
     e.preventDefault();
 
@@ -883,6 +886,13 @@
       showToast('Debe incluir al menos un trabajador en el ATS', 'error');
       return;
     }
+
+    // Aviso: al guardar se envía el correo para solicitar las firmas
+    const nuevos = trabajadoresSeleccionados.filter(t => !identificacionesOriginales.has(String(t.identificacion).trim())).length;
+    const msgCorreo = idAtsEditando
+      ? (nuevos ? `Se enviará un correo electrónico a ${nuevos} trabajador(es) nuevo(s) para solicitar su firma. ¿Desea continuar?` : '')
+      : `Al guardar se enviará un correo electrónico a los ${nuevos} trabajador(es) relacionados, al coordinador de la operación y al responsable SST para solicitar su firma. ¿Desea continuar?`;
+    if (msgCorreo && !confirm(msgCorreo)) return;
 
     // Recolectar 12 pasos
     const pasosAnalisis = PASOS_ESTANDAR.map(p => {
@@ -960,7 +970,11 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'No fue posible guardar el ATS');
 
-      showToast(`ATS #${data.id_ats || idAtsEditando} guardado exitosamente`, 'success');
+      const c = data.correos;
+      const resumenCorreo = c && !c.deshabilitado
+        ? ` · Correos de firma: ${c.trabajadores.enviados} trabajador(es)${c.coordinador ? ', coordinador' : ''}${c.sst ? ', responsable SST' : ''}${c.trabajadores.sinCorreo ? ` · ${c.trabajadores.sinCorreo} sin correo` : ''}`
+        : '';
+      showToast(`ATS #${data.id_ats || idAtsEditando} guardado exitosamente${resumenCorreo}`, 'success');
 
       setTimeout(() => {
         if (window.parent && window.parent !== window && window.parent.cerrarModalCrear) {
@@ -1007,6 +1021,7 @@
       document.getElementById('ats-obs-generales').value = data.observaciones_generales || '';
 
       // Trabajadores
+      identificacionesOriginales = new Set((data.trabajadores || []).map(t => String(t.identificacion).trim()));
       trabajadoresSeleccionados = (data.trabajadores || []).map(t => ({
         id_vinculacion: t.id_vinculacion,
         identificacion: t.identificacion,

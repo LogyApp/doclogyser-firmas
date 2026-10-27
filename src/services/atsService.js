@@ -2,7 +2,7 @@ const pool = require('./db');
 const { randomUUID } = require('crypto');
 const { LOGO_BASE64 } = require('./assets');
 const { generarPDFDesdeHTML } = require('./renderer');
-const { subirPDFAts, subirEvidenciaAts, obtenerFirmaBase64Reciente } = require('./storage');
+const { subirPDFAts, subirEvidenciaAts, obtenerFirmaBase64Reciente, subirFirma } = require('./storage');
 // resolverCoordinadorOperacionATS se define localmente con jerarquia de 3 pasos
 const { rolPuedeSst, autorizarAccionSst } = require('./configSst');
 const {
@@ -689,7 +689,7 @@ async function crearRegistroAts(payload, usuario) {
     }
 
     await conn.commit();
-    return { ok: true, id_ats: idAts };
+    return { ok: true, id_ats: idAts, nuevo: true };
   } catch (err) {
     await conn.rollback();
     throw err;
@@ -722,6 +722,7 @@ async function actualizarRegistroAts(idAts, payload, usuario) {
   const [rows] = await pool.execute('SELECT * FROM Dynamic_ats WHERE id_ats = ?', [idAts]);
   if (!rows.length) throw new Error('ATS no encontrado');
   const atsActual = rows[0];
+  const nuevosItems = [];
 
   const conn = await pool.getConnection();
   try {
@@ -769,8 +770,9 @@ async function actualizarRegistroAts(idAts, payload, usuario) {
       for (const t of trabajadores) {
         const iden = String(t.identificacion || t.Identificación || '').trim();
         if (!identsExistentes.has(iden)) {
+          identsExistentes.add(iden);
           const tokenTrab = randomUUID();
-          await conn.execute(`
+          const [insTrab] = await conn.execute(`
             INSERT INTO Dynamic_ats_trabajadores (
               id_ats, id_vinculacion, identificacion, nombre_trabajador, cargo, operacion, celular, email, token_firma, estado_firma
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SIN_FIRMA')
@@ -785,6 +787,7 @@ async function actualizarRegistroAts(idAts, payload, usuario) {
             t.email || null,
             tokenTrab
           ]);
+          nuevosItems.push(insTrab.insertId);
         }
       }
     }
@@ -805,7 +808,7 @@ async function actualizarRegistroAts(idAts, payload, usuario) {
     }
 
     await conn.commit();
-    return { ok: true };
+    return { ok: true, nuevosItems };
   } catch (err) {
     await conn.rollback();
     throw err;
@@ -862,19 +865,22 @@ async function firmarTrabajadorAts(token, { firmaBase64, aceptarExistente } = {}
     return { ok: true, yaFirmado: true, mensaje: 'Ya registraste tu firma para este ATS.' };
   }
 
+  // Firma nueva: se guarda también en el bucket de firmas (queda como su firma más reciente).
+  // Aceptar la registrada: se usa la más reciente del bucket; si no tiene, debe dibujarla.
   let finalFirmaUrl = null;
-  if (firmaBase64) {
+  if (firmaBase64 && String(firmaBase64).startsWith('data:image')) {
     finalFirmaUrl = firmaBase64;
-  } else if (aceptarExistente) {
     try {
-      finalFirmaUrl = await obtenerFirmaBase64Reciente(trabajador.identificacion);
-    } catch (_) {
-      finalFirmaUrl = 'ACEPTADA';
+      const buffer = Buffer.from(String(firmaBase64).replace(/^data:image\/\w+;base64,/, ''), 'base64');
+      await subirFirma(trabajador.identificacion, buffer);
+    } catch (errSubir) {
+      console.warn(`[atsService] No se pudo guardar la firma de ${trabajador.identificacion} en el bucket:`, errSubir.message);
     }
+  } else if (aceptarExistente) {
+    finalFirmaUrl = await obtenerFirmaBase64Reciente(trabajador.identificacion).catch(() => null);
   }
-
   if (!finalFirmaUrl) {
-    finalFirmaUrl = 'ACEPTADA';
+    throw new Error('No tiene una firma registrada en el sistema; por favor dibuje su firma.');
   }
 
   await pool.execute(`
@@ -885,6 +891,7 @@ async function firmarTrabajadorAts(token, { firmaBase64, aceptarExistente } = {}
       ip_firma = ?
     WHERE id_item = ?
   `, [finalFirmaUrl, reqIp, trabajador.id_item]);
+  await alFirmarAts(trabajador.id_ats);
 
   // Verificar si ya firmaron todos los trabajadores del ATS
   const [pendientes] = await pool.execute(
@@ -905,22 +912,21 @@ async function firmarTrabajadorAts(token, { firmaBase64, aceptarExistente } = {}
  * Firma del Coordinador de Operación
  */
 async function firmarCoordinadorAts(tokenOrId, { firmaBase64 } = {}, usuario = null) {
+  // Solo con la clave del enlace, o con el id del ATS cuando la ruta ya validó al firmante (firma desde el panel).
+  const porId = usuario && usuario.validadoComoFirmante;
   let [rows] = await pool.execute(
-    'SELECT * FROM Dynamic_ats WHERE token_coordinador = ? OR id_ats = ?',
-    [tokenOrId, tokenOrId]
+    porId ? 'SELECT * FROM Dynamic_ats WHERE id_ats = ?' : 'SELECT * FROM Dynamic_ats WHERE token_coordinador = ?',
+    [tokenOrId]
   );
   if (!rows.length) throw new Error('Registro ATS no encontrado');
 
   const ats = rows[0];
   let finalFirma = firmaBase64 || null;
 
-  if (!finalFirma || finalFirma === 'ACEPTADA') {
-    const firmaBucket = await obtenerFirmaUsuarioPorColaborador(ats.coordinador_operacion_nombre || ats.coordinador_operacion_id);
-    if (firmaBucket) {
-      finalFirma = firmaBucket;
-    } else {
-      finalFirma = 'ACEPTADA';
-    }
+  if (!finalFirma || finalFirma === 'ACEPTADA' || !String(finalFirma).startsWith('data:image')) {
+    finalFirma = await obtenerFirmaUsuarioPorColaborador(ats.coordinador_operacion_id || ats.coordinador_operacion_nombre)
+      || await obtenerFirmaUsuarioPorColaborador(ats.coordinador_operacion_nombre);
+    if (!finalFirma) throw new Error('No hay una firma registrada en el sistema; por favor dibuje la firma.');
   }
 
   await pool.execute(`
@@ -930,6 +936,7 @@ async function firmarCoordinadorAts(tokenOrId, { firmaBase64 } = {}, usuario = n
       estado = CASE WHEN fecha_firma_sst IS NOT NULL THEN 'completado' ELSE 'pendiente_sst' END
     WHERE id_ats = ?
   `, [finalFirma, ats.id_ats]);
+  await alFirmarAts(ats.id_ats);
 
   return { ok: true, firma_url: finalFirma };
 }
@@ -938,22 +945,21 @@ async function firmarCoordinadorAts(tokenOrId, { firmaBase64 } = {}, usuario = n
  * Firma del Responsable SST
  */
 async function firmarSstAts(tokenOrId, { firmaBase64 } = {}, usuario = null) {
+  // Solo con la clave del enlace, o con el id del ATS cuando la ruta ya validó al firmante (firma desde el panel).
+  const porId = usuario && usuario.validadoComoFirmante;
   let [rows] = await pool.execute(
-    'SELECT * FROM Dynamic_ats WHERE token_sst = ? OR id_ats = ?',
-    [tokenOrId, tokenOrId]
+    porId ? 'SELECT * FROM Dynamic_ats WHERE id_ats = ?' : 'SELECT * FROM Dynamic_ats WHERE token_sst = ?',
+    [tokenOrId]
   );
   if (!rows.length) throw new Error('Registro ATS no encontrado');
 
   const ats = rows[0];
   let finalFirma = firmaBase64 || null;
 
-  if (!finalFirma || finalFirma === 'ACEPTADA') {
-    const firmaBucket = await obtenerFirmaUsuarioPorColaborador(ats.responsable_sst_nombre || ats.responsable_sst_id);
-    if (firmaBucket) {
-      finalFirma = firmaBucket;
-    } else {
-      finalFirma = 'ACEPTADA';
-    }
+  if (!finalFirma || finalFirma === 'ACEPTADA' || !String(finalFirma).startsWith('data:image')) {
+    finalFirma = await obtenerFirmaUsuarioPorColaborador(ats.responsable_sst_id || ats.responsable_sst_nombre)
+      || await obtenerFirmaUsuarioPorColaborador(ats.responsable_sst_nombre);
+    if (!finalFirma) throw new Error('No hay una firma registrada en el sistema; por favor dibuje la firma.');
   }
 
   await pool.execute(`
@@ -963,6 +969,7 @@ async function firmarSstAts(tokenOrId, { firmaBase64 } = {}, usuario = null) {
       estado = 'completado'
     WHERE id_ats = ?
   `, [finalFirma, ats.id_ats]);
+  await alFirmarAts(ats.id_ats);
 
   return { ok: true, firma_url: finalFirma };
 }
@@ -970,7 +977,7 @@ async function firmarSstAts(tokenOrId, { firmaBase64 } = {}, usuario = null) {
 /**
  * Construir el HTML final y generar el PDF con las firmas listas que estén en el sistema
  */
-async function generarPdfAts(idAts, usuario = null, force = false) {
+async function _generarPdfAts(idAts, usuario = null) {
   const detalle = await obtenerDetalleAts(idAts);
   if (!detalle) throw new Error(`ATS con ID ${idAts} no encontrado.`);
 
@@ -981,9 +988,15 @@ async function generarPdfAts(idAts, usuario = null, force = false) {
   const sstFirmadoCheck = !!detalle.fecha_firma_sst;
   const totalFirmas = trabFirmados + (coordFirmadoCheck ? 1 : 0) + (sstFirmadoCheck ? 1 : 0);
 
-  if (totalFirmas === 0) {
-    throw new Error('No hay ninguna firma lista en el sistema. Debe haber al menos una firma registrada para poder generar el PDF.');
-  }
+  // Quien no ha firmado aparece con la anotación de soporte por correo electrónico
+  // (Config_Parametros sst / ATS), con la fecha del último envío si quedó registrada.
+  const nota = await notaSoporteAts();
+  const anotacion = (fechaEnvio, email) => {
+    if (fechaEnvio) return `${nota} (${formatFechaEsp(fechaEnvio)})`;
+    if (String(email || '').includes('@')) return nota;
+    return 'Sin firma — no tiene correo registrado';
+  };
+  const cajaNota = (texto) => `<div style="margin-top:8px; font-size:6.6pt; color:#475569; font-style:italic;">${escHtml(texto)}</div>`;
 
   // Si Coordinador o SST firmaron pero no tienen imagen en base64, buscar en el bucket
   if (coordFirmadoCheck && (!detalle.firma_coordinador_url || !detalle.firma_coordinador_url.startsWith('data:image'))) {
@@ -1125,7 +1138,7 @@ async function generarPdfAts(idAts, usuario = null, force = false) {
         firmaContent = `<div style="font-size:6.5pt; color:#15803d; font-weight:700; text-align:center;">✓ FIRMADO DIGITALMENTE<br><span style="font-size:5.8pt; font-weight:normal; color:#475569;">${fechaFmt}</span></div>`;
       }
     } else {
-      firmaContent = '<div style="font-size:6.3pt; color:#94a3b8; font-style:italic; text-align:center;">[Pendiente de firma]</div>';
+      firmaContent = `<div style="font-size:6.1pt; color:#475569; font-style:italic; text-align:center;">${escHtml(anotacion(t.fecha_envio_correo, t.email))}</div>`;
     }
 
     return `
@@ -1163,7 +1176,7 @@ async function generarPdfAts(idAts, usuario = null, force = false) {
       `;
     }
   } else {
-    coordFirmaBox = '<div style="margin-top:12px; font-size:6.6pt; color:#94a3b8; font-style:italic;">[Firma pendiente]</div>';
+    coordFirmaBox = cajaNota(anotacion(detalle.fecha_envio_correo_coordinador, detalle.coordinador_operacion_email));
   }
 
   let sstFirmaBox = '';
@@ -1185,7 +1198,7 @@ async function generarPdfAts(idAts, usuario = null, force = false) {
       `;
     }
   } else {
-    sstFirmaBox = '<div style="margin-top:12px; font-size:6.6pt; color:#94a3b8; font-style:italic;">[Firma pendiente]</div>';
+    sstFirmaBox = cajaNota(anotacion(detalle.fecha_envio_correo_sst, detalle.responsable_sst_email));
   }
 
   // 8. Evidencias fotográficas
@@ -1398,6 +1411,47 @@ async function generarPdfAts(idAts, usuario = null, force = false) {
     url_pdf: pdfUrl,
     id_doc_empresa: idDocEmpresa
   };
+}
+
+// ── Generación del PDF en cola (evita dos generaciones simultáneas del mismo ATS,
+//    que podrían crear dos registros en Maestro_docEmpresa) ─────────────────────
+const _colaPdfAts = new Map();
+function generarPdfAts(idAts, usuario = null) {
+  const clave = String(idAts);
+  const anterior = _colaPdfAts.get(clave) || Promise.resolve();
+  const actual = anterior.catch(() => {}).then(() => _generarPdfAts(idAts, usuario));
+  _colaPdfAts.set(clave, actual);
+  actual.catch(() => {}).finally(() => { if (_colaPdfAts.get(clave) === actual) _colaPdfAts.delete(clave); });
+  return actual;
+}
+
+// Después de cada firma: si ya firmaron trabajadores, coordinador y SST se genera el PDF;
+// si el PDF ya existía, se regenera y reemplaza (mismo registro de Maestro_docEmpresa).
+async function alFirmarAts(idAts) {
+  try {
+    const [[estado]] = await pool.execute(
+      `SELECT a.url_pdf, a.fecha_firma_coordinador, a.fecha_firma_sst,
+              (SELECT COUNT(*) FROM Dynamic_ats_trabajadores t WHERE t.id_ats = a.id_ats AND t.estado_firma <> 'ACEPTADA') AS pendientes
+       FROM Dynamic_ats a WHERE a.id_ats = ?`,
+      [idAts]
+    );
+    if (!estado) return;
+    const completo = Number(estado.pendientes) === 0 && estado.fecha_firma_coordinador && estado.fecha_firma_sst;
+    if (completo || estado.url_pdf) await generarPdfAts(idAts);
+  } catch (err) {
+    console.warn(`[atsService] No se pudo generar el PDF del ATS ${idAts} después de la firma:`, err.message);
+  }
+}
+
+async function notaSoporteAts() {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT `Seccion`, `Concepto`, `Parametro` FROM `Config_Parametros` WHERE `Modulo` = 'sst'"
+    );
+    const fila = rows.find((r) => String(r.Seccion).trim().toUpperCase() === 'ATS' && r.Concepto === 'Anotación en el PDF para firmas pendientes de ATS');
+    if (fila && String(fila.Parametro || '').trim()) return String(fila.Parametro).trim();
+  } catch (_) { /* valor por defecto */ }
+  return 'Soportado por correo electrónico';
 }
 
 module.exports = {
