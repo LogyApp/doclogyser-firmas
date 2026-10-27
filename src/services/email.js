@@ -2108,7 +2108,7 @@ ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
 
 async function enviarEmailFirmaAtsTrabajador({ email, nombreTrabajador, operacion, muelle, vigencia, urlFirma }) {
   if (!email) return;
-  const asunto = `Firma de Análisis de Trabajo Seguro (ATS) — Muelle ${muelle || ''}`;
+  const asunto = `Firma de Análisis de Trabajo Seguro (ATS) — ${operacion}${muelle ? ` — Muelle ${muelle}` : ''}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
@@ -2122,11 +2122,11 @@ async function enviarEmailFirmaAtsTrabajador({ email, nombreTrabajador, operacio
           <tr style="background:#f8f9fb">
             <td style="padding:8px 12px;color:#888;width:35%">Operación</td>
             <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${operacion}</td>
-          </tr>
+          </tr>${muelle ? `
           <tr>
             <td style="padding:8px 12px;color:#888">Muelle / Ubicación</td>
             <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${muelle}</td>
-          </tr>
+          </tr>` : ''}
           <tr style="background:#f8f9fb">
             <td style="padding:8px 12px;color:#888">Vigencia</td>
             <td style="padding:8px 12px;color:#1a1a2e">${vigencia}</td>
@@ -2160,7 +2160,7 @@ async function enviarEmailFirmaAtsTrabajador({ email, nombreTrabajador, operacio
 
 async function enviarEmailFirmaAtsCoordinador({ email, nombreCoordinador, operacion, muelle, vigencia, urlFirma }) {
   if (!email) return;
-  const asunto = `Firma Requerida: ATS Operación ${operacion} — Muelle ${muelle || ''}`;
+  const asunto = `Firma Requerida: ATS Operación ${operacion}${muelle ? ` — Muelle ${muelle}` : ''}`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#f4f4f4;padding:24px">
       ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
@@ -2173,11 +2173,11 @@ async function enviarEmailFirmaAtsCoordinador({ email, nombreCoordinador, operac
           <tr style="background:#f8f9fb">
             <td style="padding:8px 12px;color:#888;width:35%">Operación</td>
             <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${operacion}</td>
-          </tr>
+          </tr>${muelle ? `
           <tr>
             <td style="padding:8px 12px;color:#888">Muelle / Ubicación</td>
             <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${muelle}</td>
-          </tr>
+          </tr>` : ''}
           <tr style="background:#f8f9fb">
             <td style="padding:8px 12px;color:#888">Vigencia</td>
             <td style="padding:8px 12px;color:#1a1a2e">${vigencia}</td>
@@ -2224,11 +2224,11 @@ async function enviarEmailFirmaAtsSst({ email, nombreSst, operacion, muelle, vig
           <tr style="background:#f8f9fb">
             <td style="padding:8px 12px;color:#888;width:35%">Operación</td>
             <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${operacion}</td>
-          </tr>
+          </tr>${muelle ? `
           <tr>
             <td style="padding:8px 12px;color:#888">Muelle / Ubicación</td>
             <td style="padding:8px 12px;font-weight:700;color:#1a1a2e">${muelle}</td>
-          </tr>
+          </tr>` : ''}
           <tr style="background:#f8f9fb">
             <td style="padding:8px 12px;color:#888">Vigencia</td>
             <td style="padding:8px 12px;color:#1a1a2e">${vigencia}</td>

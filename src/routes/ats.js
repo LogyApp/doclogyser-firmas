@@ -18,11 +18,23 @@ const {
   firmarSstAts,
   generarPdfAts
 } = require('../services/atsService');
-const {
-  enviarEmailFirmaAtsTrabajador,
-  enviarEmailFirmaAtsCoordinador,
-  enviarEmailFirmaAtsSst
-} = require('../services/email');
+const { enviarSolicitudesFirmaAts } = require('../services/atsNotificaciones');
+const { obtenerFirmaBase64Reciente } = require('../services/storage');
+
+function baseUrl(req) {
+  return process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+function normalizar(v) {
+  return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+}
+
+// ¿El usuario que está en el panel es el coordinador o el responsable SST de este ATS?
+function esFirmante(acceso, id, nombre) {
+  const u = normalizar(acceso.usuarioId);
+  const n = normalizar(acceso.usuarioNombre);
+  return (!!u && normalizar(id) === u) || (!!n && normalizar(nombre) === n);
+}
 
 const router = express.Router();
 
@@ -109,6 +121,10 @@ router.get('/api/registro/:id', async (req, res) => {
     if (!detalle) {
       return res.status(404).json({ error: 'Registro ATS no encontrado o fuera de su alcance' });
     }
+    detalle.firmaDirecta = {
+      coordinador: esFirmante(acceso, detalle.coordinador_operacion_id, detalle.coordinador_operacion_nombre),
+      sst: esFirmante(acceso, detalle.responsable_sst_id, detalle.responsable_sst_nombre),
+    };
     res.json(detalle);
   } catch (err) {
     console.error('[ats] GET /api/registro/:id error:', err);
@@ -255,6 +271,12 @@ router.post('/api/registro', async (req, res) => {
     if (!acceso) return;
 
     const result = await crearRegistroAts(req.body, acceso);
+    // Correo de solicitud de firma a trabajadores, coordinador y responsable SST
+    try {
+      result.correos = await enviarSolicitudesFirmaAts(result.id_ats, baseUrl(req));
+    } catch (errMail) {
+      console.error('[ats] Error enviando correos de firma:', errMail.message);
+    }
     res.json(result);
   } catch (err) {
     console.error('[ats] POST /api/registro error:', err);
@@ -269,6 +291,14 @@ router.put('/api/registro/:id', async (req, res) => {
     if (!acceso) return;
 
     const result = await actualizarRegistroAts(req.params.id, req.body, acceso);
+    // Correo solo a los trabajadores agregados en esta edición
+    if (result.nuevosItems && result.nuevosItems.length) {
+      try {
+        result.correos = await enviarSolicitudesFirmaAts(req.params.id, baseUrl(req), { items: result.nuevosItems, coordinador: false, sst: false });
+      } catch (errMail) {
+        console.error('[ats] Error enviando correos de firma:', errMail.message);
+      }
+    }
     res.json(result);
   } catch (err) {
     console.error('[ats] PUT /api/registro/:id error:', err);
@@ -293,7 +323,7 @@ router.delete('/api/registro/:id', async (req, res) => {
   }
 });
 
-// Generar PDF del ATS con firmas listas que estén en el sistema (requiere al menos una firma)
+// Generar (o regenerar y reemplazar) el PDF del ATS
 router.post('/api/registro/:id/generar-pdf', async (req, res) => {
   try {
     const acceso = await validarAccesoATS(req, res);
@@ -304,18 +334,8 @@ router.post('/api/registro/:id/generar-pdf', async (req, res) => {
       return res.status(404).json({ error: 'Registro ATS no encontrado o fuera de su alcance' });
     }
 
-    const trabFirmados = (detalle.trabajadores || []).filter(t => t.estado_firma === 'ACEPTADA').length;
-    const coordFirmado = !!detalle.fecha_firma_coordinador;
-    const sstFirmado = !!detalle.fecha_firma_sst;
-    const totalFirmas = trabFirmados + (coordFirmado ? 1 : 0) + (sstFirmado ? 1 : 0);
-
-    if (totalFirmas === 0) {
-      return res.status(400).json({
-        error: 'No hay ninguna firma lista en el sistema. Debe haber al menos una firma registrada para poder generar el PDF.'
-      });
-    }
-
-    const result = await generarPdfAts(req.params.id, acceso, true);
+    // Quien no haya firmado aparece con la anotación de soporte por correo electrónico
+    const result = await generarPdfAts(req.params.id, acceso);
     res.json(result);
   } catch (err) {
     console.error('[ats] POST /api/registro/:id/generar-pdf error:', err);
@@ -327,155 +347,43 @@ router.post('/api/registro/:id/generar-pdf', async (req, res) => {
 // NOTIFICACIONES POR CORREO
 // ══════════════════════════════════════════════════════════════════════════
 
-// Notificar a un trabajador individual para que firme
+// Reenviar correo de firma: un trabajador, el coordinador, el responsable SST o todos los pendientes.
+// Cada envío queda con su fecha (soporte por correo en el PDF).
+async function notificarAts(req, res, idAts, opciones, descripcion) {
+  try {
+    const acceso = await validarAccesoATS(req, res);
+    if (!acceso) return;
+    const detalle = await obtenerDetalleAts(idAts, acceso);
+    if (!detalle) return res.status(404).json({ error: 'Registro ATS no encontrado o fuera de su alcance' });
+
+    const r = await enviarSolicitudesFirmaAts(idAts, baseUrl(req), opciones);
+    if (r.deshabilitado) return res.status(400).json({ error: 'Las notificaciones de correo de ATS están deshabilitadas (Config_Parametros).' });
+    const enviados = r.trabajadores.enviados + (r.coordinador ? 1 : 0) + (r.sst ? 1 : 0);
+    if (!enviados) {
+      return res.status(400).json({ error: `No se envió ningún correo (${descripcion}: sin correo registrado o ya firmó).` });
+    }
+    const sinCorreo = r.trabajadores.sinCorreo + (r.coordinador === false ? 1 : 0) + (r.sst === false ? 1 : 0);
+    res.json({ ok: true, enviados, sinCorreo, mensaje: `Correo enviado (${enviados})${sinCorreo ? ` · ${sinCorreo} sin correo registrado` : ''}` });
+  } catch (err) {
+    console.error('[ats] Error enviando correo de firma:', err);
+    res.status(500).json({ error: err.message || 'Error al enviar correo' });
+  }
+}
+
 router.post('/api/notificar-trabajador/:idItem', async (req, res) => {
-  try {
-    const acceso = await validarAccesoATS(req, res);
-    if (!acceso) return;
-
-    const [tRows] = await pool.execute(`
-      SELECT
-        t.*,
-        a.regional,
-        a.operacion,
-        a.muelle_ubicacion,
-        DATE_FORMAT(a.vigencia_desde, '%d/%m/%Y') AS f_desde,
-        DATE_FORMAT(a.vigencia_hasta, '%d/%m/%Y') AS f_hasta,
-        COALESCE(t.email, s.Email) AS email_final
-      FROM Dynamic_ats_trabajadores t
-      JOIN Dynamic_ats a ON a.id_ats = t.id_ats
-      LEFT JOIN \`Maestro_Segmentación\` s ON s.Identificación = t.identificacion
-      WHERE t.id_item = ?
-    `, [req.params.idItem]);
-
-    if (!tRows.length) return res.status(404).json({ error: 'Trabajador no encontrado' });
-    const trab = tRows[0];
-
-    if (!trab.email_final) {
-      return res.status(400).json({ error: 'El trabajador no tiene correo electrónico registrado.' });
-    }
-
-    const host = req.get('host');
-    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-    const urlFirma = `${protocol}://${host}/ats/firmar?token=${trab.token_firma}`;
-
-    await enviarEmailFirmaAtsTrabajador({
-      email: trab.email_final,
-      nombreTrabajador: trab.nombre_trabajador,
-      operacion: trab.operacion,
-      muelle: trab.muelle_ubicacion,
-      vigencia: `${trab.f_desde} a ${trab.f_hasta}`,
-      urlFirma
-    });
-
-    res.json({ ok: true, mensaje: `Correo enviado a ${trab.email_final}` });
-  } catch (err) {
-    console.error('[ats] POST /api/notificar-trabajador error:', err);
-    res.status(500).json({ error: err.message || 'Error al enviar correo' });
-  }
+  const [rows] = await pool.execute('SELECT id_ats FROM Dynamic_ats_trabajadores WHERE id_item = ?', [req.params.idItem]);
+  if (!rows.length) return res.status(404).json({ error: 'Trabajador no encontrado' });
+  return notificarAts(req, res, rows[0].id_ats, { items: [req.params.idItem], coordinador: false, sst: false }, 'trabajador');
 });
 
-// Notificar al coordinador para que firme
-router.post('/api/notificar-coordinador/:id', async (req, res) => {
-  try {
-    const acceso = await validarAccesoATS(req, res);
-    if (!acceso) return;
+router.post('/api/notificar-coordinador/:id', (req, res) =>
+  notificarAts(req, res, req.params.id, { items: 'ninguno', coordinador: true, sst: false }, 'coordinador'));
 
-    const [rows] = await pool.execute(`
-      SELECT
-        a.*,
-        DATE_FORMAT(a.vigencia_desde, '%d/%m/%Y') AS f_desde,
-        DATE_FORMAT(a.vigencia_hasta, '%d/%m/%Y') AS f_hasta
-      FROM Dynamic_ats a
-      WHERE a.id_ats = ?
-    `, [req.params.id]);
+router.post('/api/notificar-sst/:id', (req, res) =>
+  notificarAts(req, res, req.params.id, { items: 'ninguno', coordinador: false, sst: true }, 'responsable SST'));
 
-    if (!rows.length) return res.status(404).json({ error: 'ATS no encontrado' });
-    const ats = rows[0];
-
-    let email = ats.coordinador_operacion_email;
-    if (!email && ats.coordinador_operacion_nombre) {
-      const [uRows] = await pool.execute(
-        'SELECT Email FROM Maestro_Usuarios WHERE Nombre = ? LIMIT 1',
-        [ats.coordinador_operacion_nombre]
-      );
-      if (uRows.length && uRows[0].Email) email = uRows[0].Email;
-    }
-
-    if (!email) {
-      return res.status(400).json({ error: 'El coordinador no tiene correo registrado.' });
-    }
-
-    const host = req.get('host');
-    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-    const urlFirma = `${protocol}://${host}/ats/firmar?tipo=coordinador&token=${ats.token_coordinador}`;
-
-    await enviarEmailFirmaAtsCoordinador({
-      email,
-      nombreCoordinador: ats.coordinador_operacion_nombre,
-      operacion: ats.operacion,
-      muelle: ats.muelle_ubicacion,
-      vigencia: `${ats.f_desde} a ${ats.f_hasta}`,
-      urlFirma
-    });
-
-    res.json({ ok: true, mensaje: `Correo enviado al coordinador: ${email}` });
-  } catch (err) {
-    console.error('[ats] POST /api/notificar-coordinador error:', err);
-    res.status(500).json({ error: err.message || 'Error al enviar correo' });
-  }
-});
-
-// Notificar al Responsable SST para que firme
-router.post('/api/notificar-sst/:id', async (req, res) => {
-  try {
-    const acceso = await validarAccesoATS(req, res);
-    if (!acceso) return;
-
-    const [rows] = await pool.execute(`
-      SELECT
-        a.*,
-        DATE_FORMAT(a.vigencia_desde, '%d/%m/%Y') AS f_desde,
-        DATE_FORMAT(a.vigencia_hasta, '%d/%m/%Y') AS f_hasta
-      FROM Dynamic_ats a
-      WHERE a.id_ats = ?
-    `, [req.params.id]);
-
-    if (!rows.length) return res.status(404).json({ error: 'ATS no encontrado' });
-    const ats = rows[0];
-
-    let email = ats.responsable_sst_email;
-    if (!email && ats.responsable_sst_id) {
-      const [uRows] = await pool.execute(
-        'SELECT Email FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
-        [ats.responsable_sst_id]
-      );
-      if (uRows.length && uRows[0].Email) email = uRows[0].Email;
-    }
-
-    if (!email) {
-      return res.status(400).json({ error: 'El responsable SST no tiene correo registrado.' });
-    }
-
-    const host = req.get('host');
-    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-    const urlFirma = `${protocol}://${host}/ats/firmar?tipo=sst&token=${ats.token_sst}`;
-
-    await enviarEmailFirmaAtsSst({
-      email,
-      nombreSst: ats.responsable_sst_nombre,
-      operacion: ats.operacion,
-      muelle: ats.muelle_ubicacion,
-      vigencia: `${ats.f_desde} a ${ats.f_hasta}`,
-      urlFirma
-    });
-
-    res.json({ ok: true, mensaje: `Correo enviado al responsable SST: ${email}` });
-  } catch (err) {
-    console.error('[ats] POST /api/notificar-sst error:', err);
-    res.status(500).json({ error: err.message || 'Error al enviar correo' });
-  }
-});
+router.post('/api/registro/:id/notificar-pendientes', (req, res) =>
+  notificarAts(req, res, req.params.id, { items: 'pendientes', coordinador: true, sst: true }, 'pendientes'));
 
 // ══════════════════════════════════════════════════════════════════════════
 // FIRMA PÚBLICA (TRABAJADOR, COORDINADOR, SST)
@@ -500,6 +408,9 @@ router.get('/api/firmar-info', async (req, res) => {
         WHERE a.token_coordinador = ?
       `, [token]);
       if (!rows.length) return res.status(404).json({ error: 'Token de coordinador no válido' });
+      const [[c]] = await pool.execute('SELECT coordinador_operacion_id, coordinador_operacion_nombre FROM Dynamic_ats WHERE token_coordinador = ?', [token]);
+      rows[0].firmaReciente = rows[0].fecha_firma ? null
+        : await obtenerFirmaUsuarioPorColaborador(c.coordinador_operacion_id || c.coordinador_operacion_nombre).catch(() => null);
       return res.json(rows[0]);
     }
 
@@ -516,6 +427,9 @@ router.get('/api/firmar-info', async (req, res) => {
         WHERE a.token_sst = ?
       `, [token]);
       if (!rows.length) return res.status(404).json({ error: 'Token de responsable SST no válido' });
+      const [[r]] = await pool.execute('SELECT responsable_sst_id, responsable_sst_nombre FROM Dynamic_ats WHERE token_sst = ?', [token]);
+      rows[0].firmaReciente = rows[0].fecha_firma ? null
+        : await obtenerFirmaUsuarioPorColaborador(r.responsable_sst_id || r.responsable_sst_nombre).catch(() => null);
       return res.json(rows[0]);
     }
 
@@ -541,6 +455,8 @@ router.get('/api/firmar-info', async (req, res) => {
     `, [token]);
 
     if (!tRows.length) return res.status(404).json({ error: 'Enlace de firma no encontrado o inválido' });
+    tRows[0].firmaReciente = tRows[0].estado_firma === 'ACEPTADA' ? null
+      : await obtenerFirmaBase64Reciente(tRows[0].identificacion).catch(() => null);
     res.json(tRows[0]);
   } catch (err) {
     console.error('[ats] GET /api/firmar-info error:', err);
@@ -564,9 +480,9 @@ router.post('/api/firmar-trabajador', async (req, res) => {
 // Procesar firma coordinador
 router.post('/api/firmar-coordinador', async (req, res) => {
   try {
-    const { token, id_ats, firmaBase64 } = req.body;
-    const tokenOrId = token || id_ats;
-    const result = await firmarCoordinadorAts(tokenOrId, { firmaBase64 });
+    const { token, firmaBase64, aceptarExistente } = req.body;
+    if (!token) return res.status(400).json({ error: 'Enlace de firma no válido' });
+    const result = await firmarCoordinadorAts(token, { firmaBase64: aceptarExistente ? null : firmaBase64 });
     res.json(result);
   } catch (err) {
     console.error('[ats] POST /api/firmar-coordinador error:', err);
@@ -577,13 +493,41 @@ router.post('/api/firmar-coordinador', async (req, res) => {
 // Procesar firma SST
 router.post('/api/firmar-sst', async (req, res) => {
   try {
-    const { token, id_ats, firmaBase64 } = req.body;
-    const tokenOrId = token || id_ats;
-    const result = await firmarSstAts(tokenOrId, { firmaBase64 });
+    const { token, firmaBase64, aceptarExistente } = req.body;
+    if (!token) return res.status(400).json({ error: 'Enlace de firma no válido' });
+    const result = await firmarSstAts(token, { firmaBase64: aceptarExistente ? null : firmaBase64 });
     res.json(result);
   } catch (err) {
     console.error('[ats] POST /api/firmar-sst error:', err);
     res.status(400).json({ error: err.message || 'Error al procesar firma SST' });
+  }
+});
+
+// Firma desde el panel de SST con la firma registrada: solo el propio coordinador o
+// el propio responsable SST del ATS.
+router.post('/api/registro/:id/firmar-directo', async (req, res) => {
+  try {
+    const acceso = await validarAccesoATS(req, res);
+    if (!acceso) return;
+    const detalle = await obtenerDetalleAts(req.params.id, acceso);
+    if (!detalle) return res.status(404).json({ error: 'Registro ATS no encontrado o fuera de su alcance' });
+    const tipo = String(req.query.tipo || (req.body || {}).tipo || '').toLowerCase();
+    if (tipo === 'coordinador') {
+      if (!esFirmante(acceso, detalle.coordinador_operacion_id, detalle.coordinador_operacion_nombre)) {
+        return res.status(403).json({ error: 'Solo el coordinador de la operación puede firmar como coordinador.' });
+      }
+      return res.json(await firmarCoordinadorAts(detalle.id_ats, {}, { validadoComoFirmante: true }));
+    }
+    if (tipo === 'sst') {
+      if (!esFirmante(acceso, detalle.responsable_sst_id, detalle.responsable_sst_nombre)) {
+        return res.status(403).json({ error: 'Solo el responsable SST del ATS puede firmar como SST.' });
+      }
+      return res.json(await firmarSstAts(detalle.id_ats, {}, { validadoComoFirmante: true }));
+    }
+    res.status(400).json({ error: 'Tipo de firma inválido' });
+  } catch (err) {
+    console.error('[ats] POST /api/registro/:id/firmar-directo error:', err);
+    res.status(400).json({ error: err.message || 'Error al registrar la firma' });
   }
 });
 
