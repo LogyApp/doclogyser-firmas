@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Tema (Claro/Oscuro/Sistema): fija data-theme antes del primer pintado. El acento lo aplica theme.js. -->
+<script>
+  (function () {
+    try {
+      var p = JSON.parse(localStorage.getItem('logyser-ui-prefs') || 'null');
+      var tema = (p && (p.tema === 'claro' || p.tema === 'oscuro')) ? p.tema
+        : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
+      document.documentElement.setAttribute('data-theme', tema);
+    } catch (e) {}
+  })();
+</script>
+<link rel="stylesheet" href="/css/theme-tokens.css?v=1">
+<title>Configuración — LOG&amp;SER</title>
+<link rel="icon" type="image/png" href="https://storage.googleapis.com/logyser-recibo-public/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --radius: var(--radius-md); }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', sans-serif; background-color: var(--bg); color: var(--text);
+    line-height: 1.5; display: flex; min-height: 100vh; overflow: hidden;
+  }
+
+  /* ── Sidebar (mismo layout que Nómina/SST) ── */
+  .sidebar {
+    width: 280px; background: var(--primary); color: var(--text-inverse);
+    display: flex; flex-direction: column; flex-shrink: 0; height: 100vh;
+    position: fixed; left: 0; top: 0; z-index: 100;
+    border-right: 1px solid rgba(255,255,255,.08); box-shadow: 4px 0 15px rgba(0,11,89,.08);
+  }
+  .sidebar-brand {
+    padding: 18px 12px; border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex; justify-content: space-between; align-items: center; position: relative; gap: 6px;
+  }
+  .brand-lockup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 10px; flex-shrink: 0; }
+  .brand-lockup img.brand-logo-app { display: block; object-fit: contain; height: 30px; }
+  .brand-logo-company-crop { width: 133px; height: 34px; overflow: hidden; position: relative; }
+  .brand-logo-company-crop img { position: absolute; left: -64px; top: -65px; width: 268px; height: 178px; max-width: none; }
+  .brand-divider { width: 80%; height: 1.5px; background: rgba(255,255,255,.22); }
+  .nav-list { list-style: none; padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .nav-item {
+    position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px;
+    color: rgba(255,255,255,.65); font-weight: 500; font-size: .9rem; cursor: pointer; transition: all .18s;
+  }
+  .nav-icon { width: 18px; height: 18px; color: rgba(255,255,255,.5); flex-shrink: 0; }
+  .nav-item:hover { color: var(--text-inverse); background: rgba(255,255,255,.06); }
+  .nav-item.active { color: var(--text-inverse); background: rgba(255,255,255,.12); font-weight: 600; }
+  .nav-item.active .nav-icon { color: var(--accent); }
+  .nav-item.active::before { content: ''; position: absolute; left: 0; top: 25%; height: 50%; width: 3px; background: var(--accent); border-radius: 8px; }
+
+  /* ── Contenido ── */
+  .wrapper { margin-left: 280px; flex: 1; min-width: 0; padding: 24px; height: 100vh; overflow-y: auto; }
+  .page-hd { margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .page-title { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+  .page-sub { font-size: .84rem; color: var(--text-muted); margin-top: 2px; max-width: 760px; }
+  .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: 0 1px 6px rgba(0,0,0,.06); padding: 16px 18px; margin-bottom: 16px; border: 1px solid var(--border); }
+  .filtros-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .campo label { display: block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+  .campo select, .campo input, .campo textarea {
+    width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px;
+    font: inherit; font-size: .88rem; background: var(--card-bg); color: var(--text);
+  }
+  .campo textarea { resize: vertical; min-height: 70px; }
+  .campo select:focus, .campo input:focus, .campo textarea:focus { outline: none; border-color: var(--accent); }
+  .campo small { display: block; color: var(--text-muted); font-size: .74rem; margin-top: 4px; }
+  .barra { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .contador { font-size: .8rem; color: var(--text-muted); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 7px; font: inherit; font-size: .86rem; font-weight: 700; cursor: pointer; border: 1.5px solid transparent; }
+  .btn-primario { background: var(--accent); color: var(--accent-contrast); }
+  .btn-primario:hover { background: var(--accent-dark); }
+  .btn-primario:disabled { background: var(--border-strong); cursor: not-allowed; }
+  .btn-secundario { background: var(--bg-elevated); color: var(--text); border-color: var(--border); }
+  .btn-secundario:hover { background: var(--border); }
+  .btn-peligro { background: var(--danger); color: #fff; }
+  .btn-peligro:hover { background: var(--danger-dark); }
+  .btn-mini { padding: 4px 9px; font-size: .74rem; border-radius: 5px; }
+  .btn-limpiar { background: none; border: 1.5px solid var(--border); color: var(--text-muted); padding: 7px 12px; border-radius: 6px; font-size: .8rem; cursor: pointer; align-self: end; }
+
+  /* Tabla con encabezado fijo */
+  .table-container { max-height: calc(100vh - 290px); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card-bg); }
+  table.tabla { border-collapse: collapse; width: 100%; min-width: 980px; }
+  table.tabla thead th {
+    background: var(--bg-elevated); color: var(--text); font-size: .74rem; text-transform: uppercase; letter-spacing: .4px;
+    font-weight: 700; text-align: left; padding: 10px 12px; position: sticky; top: 0; z-index: 5;
+    box-shadow: inset 0 -1px 0 var(--border); cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  table.tabla thead th.no-sort { cursor: default; }
+  table.tabla tbody td { padding: 8px 12px; font-size: .84rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.tabla tbody tr { cursor: pointer; transition: background .12s; }
+  table.tabla tbody tr:hover { background: var(--accent-soft); }
+  .td-acciones { white-space: nowrap; width: 1%; }
+  .td-acciones .btn + .btn { margin-left: 4px; }
+  .td-largo { max-width: 340px; overflow-wrap: anywhere; }
+  .td-desc { min-width: 260px; max-width: 360px; color: var(--text-muted); font-size: .8rem !important; }
+  .td-desc > div { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .td-roles { min-width: 360px; max-width: 460px; }
+  .td-url { white-space: nowrap; font-size: .78rem !important; }
+  .sort-ind { font-size: .7rem; color: var(--text-muted); margin-left: 4px; }
+  .vacio { text-align: center; padding: 36px 16px; color: var(--text-muted); }
+  .chip { display: inline-block; padding: 2px 8px; margin: 1px 3px 1px 0; border-radius: 999px; font-size: .72rem; font-weight: 600; background: var(--accent-soft); color: var(--accent-dark); white-space: nowrap; }
+  .chip-todos { background: var(--success-soft); color: var(--success-dark); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .72rem; font-weight: 700; background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap; }
+  .bool-si { color: var(--success-dark); font-weight: 700; }
+  .bool-no { color: var(--danger); font-weight: 700; }
+
+  /* Selector de roles (como Parámetros de Requisiciones) */
+  .roles-sel { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .rol-opt {
+    padding: 4px 11px; font: inherit; font-size: .78rem; border-radius: 16px; border: 1px solid var(--border-strong);
+    background: var(--bg-elevated); color: var(--text-muted); cursor: pointer; transition: all .15s ease;
+  }
+  .rol-opt.sel { background: var(--primary); color: var(--text-inverse); border-color: var(--primary); font-weight: 700; }
+  .rol-opt.todos.sel { background: var(--success); border-color: var(--success); }
+  .rol-opt:disabled { cursor: not-allowed; opacity: .85; }
+  .roles-acciones { display: flex; gap: 10px; margin-top: 8px; font-size: .76rem; }
+  .roles-acciones button { background: none; border: none; color: var(--accent-dark); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+  .btn-grupo { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn-grupo-opt { padding: 7px 14px; border-radius: 6px; border: 1.5px solid var(--border); background: var(--card-bg); color: var(--text-muted); font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; }
+  .btn-grupo-opt.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); }
+
+  /* Ventanas */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; align-items: center; justify-content: center; padding: 18px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--card-bg); border-radius: 10px; width: 100%; max-width: 680px; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.3); }
+  .modal-header { background: var(--primary); color: var(--text-inverse); padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: .95rem; gap: 10px; }
+  .modal-header button { background: rgba(255,255,255,.15); border: none; color: var(--text-inverse); padding: 6px 14px; border-radius: 6px; font-size: .82rem; cursor: pointer; }
+  .modal-body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .modal-footer .espacio { flex: 1; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .nota { background: var(--warning-soft); color: var(--warning-dark); border-radius: 7px; padding: 9px 12px; font-size: .8rem; }
+  .error-form { display: none; color: var(--danger); font-weight: 600; font-size: .85rem; }
+  .confirm-detalle { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; font-size: .84rem; overflow-wrap: anywhere; }
+  .confirm-detalle div + div { margin-top: 3px; }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 3000; padding: 11px 18px; border-radius: 8px; color: #fff; font-weight: 600; font-size: .88rem; box-shadow: 0 6px 20px rgba(0,0,0,.25); display: none; max-width: 92vw; }
+  .toast.ok { background: var(--success); }
+  .toast.error { background: var(--danger); }
+  .toast.aviso { background: var(--warning-dark); }
+
+  /* ── Móvil ── */
+  .mobile-header {
+    display: none; align-items: center; justify-content: space-between; background: var(--primary); color: var(--text-inverse);
+    padding: 6px 12px; position: sticky; top: 0; z-index: 90; box-shadow: 0 2px 8px rgba(0,0,0,.15); min-height: 48px;
+  }
+  .mobile-header-left { display: flex; align-items: center; gap: 8px; }
+  .mobile-menu-btn { background: none; border: none; color: var(--text-inverse); font-size: 1.45rem; cursor: pointer; padding: 2px 4px; line-height: 1; }
+  .mobile-logo-app { height: 24px; width: auto; object-fit: contain; }
+  .mobile-title { font-weight: 700; font-size: .92rem; }
+  .mobile-profile-btn { background: transparent; border: none; padding: 0; cursor: pointer; display: flex; border-radius: 50%; }
+  .mobile-profile-thumb { width: 33px; height: 33px; border-radius: 50%; border: 2px solid rgba(255,255,255,.9); object-fit: cover; background: var(--card-bg); }
+  .mobile-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 95; }
+  .mobile-backdrop.open { display: block; }
+  @media (max-width: 900px) {
+    body { flex-direction: column; overflow: visible; height: auto; }
+    .mobile-header { display: flex; }
+    .sidebar { transform: translateX(-100%); transition: transform .2s ease; }
+    .sidebar.open { transform: translateX(0); }
+    .wrapper { margin-left: 0; padding: 12px; height: auto; min-height: calc(100vh - 48px); overflow-y: visible; }
+    .filtros-grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .modal-overlay { padding: 0; }
+    .modal { max-width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+    .table-container { max-height: calc(100vh - 200px); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="mobile-backdrop" id="mobile-backdrop" onclick="toggleMobileSidebar()"></div>
+  <header class="mobile-header">
+    <div class="mobile-header-left">
+      <button type="button" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Abrir Menú">&#9776;</button>
+      <img class="mobile-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+    </div>
+    <div class="mobile-title"><span id="mobileHeaderTitle">Configuración</span></div>
+    <div>
+      <button type="button" class="mobile-profile-btn" onclick="if (window.abrirPerfilCorporativo) abrirPerfilCorporativo();" aria-label="Mi perfil y firma" title="Mi perfil y firma">
+        <img class="mobile-profile-thumb" id="mobileProfileThumb" src="https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png" alt="Foto de perfil">
+      </button>
+    </div>
+  </header>
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-lockup">
+        <img class="brand-logo-app" src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logo%20LogyApp.png" alt="LogyApp">
+        <div class="brand-divider"></div>
+        <div class="brand-logo-company-crop">
+          <img src="https://storage.googleapis.com/logyser-recursos-corporativos/Imagenes/Logyser%20sin%20Nit.png" alt="Logyser">
+        </div>
+      </div>
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item" id="navParametros" onclick="switchTab('parametros')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+        <span>Parámetros</span>
+      </li>
+      <li class="nav-item" id="navVisual" onclick="switchTab('visual')" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Visual</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="wrapper">
+
+    <!-- ══════════════ Pestaña: Parámetros (Config_Parametros) ══════════════ -->
+    <div id="panelParametros" style="display:none">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Configuración · Parámetros</div>
+          <div class="page-sub">Reglas de negocio de todos los módulos (tabla Config_Parametros): roles con permiso, interruptores, límites y destinatarios.</div>
+        </div>
+        <button type="button" class="btn btn-primario" id="btnAgregarParametro" style="display:none" onclick="abrirModalParametro()">+ Agregar parámetro</button>
+      </div>
+      <div class="card">
+        <div class="filtros-grid">
+          <div class="campo"><label>Módulo</label><select id="fParModulo" onchange="onFiltroParModulo()"></select></div>
+          <div class="campo"><label>Sección</label><select id="fParSeccion" onchange="renderParametros()"></select></div>
+          <div class="campo"><label>Condición</label><select id="fParCondicion" onchange="renderParametros()"></select></div>
+          <div class="campo"><label>Buscar</label><input type="search" id="fParTexto" placeholder="Concepto, valor o descripción" oninput="renderParametros()"></div>
+        </div>
+      </div>
+      <div class="barra">
+        <div class="contador" id="parContador">Cargando…</div>
+        <button type="button" class="btn-limpiar" onclick="limpiarFiltrosPar()">Limpiar filtros</button>
+      </div>
+      <div class="table-container">
+        <table class="tabla">
+          <thead><tr>
+            <th class="no-sort">Acciones</th>
+            <th data-col="modulo" onclick="ordenar('par', 'modulo')">Módulo</th>
+            <th data-col="seccion" onclick="ordenar('par', 'seccion')">Sección</th>
+            <th data-col="concepto" onclick="ordenar('par', 'concepto')">Concepto</th>
+            <th data-col="condicion" onclick="ordenar('par', 'condicion')">Condición</th>
+            <th data-col="parametro" onclick="ordenar('par', 'parametro')">Parámetro</th>
+            <th data-col="descripcion" onclick="ordenar('par', 'descripcion')">Descripción</th>
+          </tr></thead>
+          <tbody id="parBody"><tr><td colspan="7" class="vacio">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════ Pestaña: Visual (Maestro_Menu) ══════════════ -->
+    <div id="panelVisual" style="display:none">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Configuración · Visual</div>
+          <div class="page-sub">Quién ve cada pestaña de cada módulo y el menú OTROS (tabla Maestro_Menu). Una fila por Módulo, Sección y nivel de Acceso.</div>
+        </div>
+        <button type="button" class="btn btn-primario" id="btnAgregarMenu" style="display:none" onclick="abrirModalMenu()">+ Agregar fila</button>
+      </div>
+      <div class="card">
+        <div class="filtros-grid">
+          <div class="campo"><label>Módulo</label><select id="fMenModulo" onchange="onFiltroMenModulo()"></select></div>
+          <div class="campo"><label>Sección</label><select id="fMenSeccion" onchange="renderMenu()"></select></div>
+          <div class="campo"><label>Rol</label><select id="fMenRol" onchange="renderMenu()"></select></div>
+          <div class="campo"><label>Buscar</label><input type="search" id="fMenTexto" placeholder="Etiqueta, Url o descripción" oninput="renderMenu()"></div>
+        </div>
+      </div>
+      <div class="barra">
+        <div class="contador" id="menContador">Cargando…</div>
+        <button type="button" class="btn-limpiar" onclick="limpiarFiltrosMen()">Limpiar filtros</button>
+      </div>
+      <div class="table-container">
+        <table class="tabla">
+          <thead><tr>
+            <th class="no-sort">Acciones</th>
+            <th data-col="modulo" onclick="ordenar('men', 'modulo')">Módulo</th>
+            <th data-col="seccion" onclick="ordenar('men', 'seccion')">Sección</th>
+            <th data-col="acceso" onclick="ordenar('men', 'acceso')">Acceso</th>
+            <th data-col="rol" onclick="ordenar('men', 'rol')">Roles</th>
+            <th data-col="etiqueta" onclick="ordenar('men', 'etiqueta')">Etiqueta</th>
+            <th data-col="url" onclick="ordenar('men', 'url')">Url</th>
+            <th data-col="orden" onclick="ordenar('men', 'orden')">Orden</th>
+            <th data-col="icono" onclick="ordenar('men', 'icono')">Icono</th>
+            <th data-col="descripcion" onclick="ordenar('men', 'descripcion')">Descripción</th>
+          </tr></thead>
+          <tbody id="menBody"><tr><td colspan="10" class="vacio">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ Ventana: agregar / editar parámetro ══════════════ -->
+  <div class="modal-overlay" id="modalParametro">
+    <div class="modal">
+      <div class="modal-header"><span id="parTitulo">Agregar parámetro</span><button type="button" onclick="cerrarModal('modalParametro')">&#10005; Cerrar</button></div>
+      <form class="modal-body" id="formParametro" onsubmit="event.preventDefault(); guardarParametro();">
+        <div class="grid-3">
+          <div class="campo"><label>Módulo *</label><input id="parModulo" list="dlModulosPar" maxlength="50" required></div>
+          <div class="campo"><label>Sección *</label><input id="parSeccion" list="dlSeccionesPar" maxlength="50" required onfocus="llenarDatalistSecciones('par')"></div>
+          <div class="campo"><label>Condición *</label><input id="parCondicion" list="dlCondiciones" maxlength="50" required onchange="pintarEditorParametro()"></div>
+        </div>
+        <div class="campo"><label>Concepto *</label><input id="parConcepto" maxlength="150" required></div>
+        <div class="nota" id="parNotaClave" style="display:none">El sistema busca cada parámetro por <strong>Módulo, Sección y Concepto</strong>. Si cambias alguno de esos tres en una fila que ya existe, el código dejará de encontrarla y usará su valor por defecto.</div>
+        <div class="campo"><label>Parámetro</label><div id="parEditor"></div></div>
+        <div class="campo">
+          <label>Descripción <span id="parDescObl">*</span></label>
+          <textarea id="parDescripcion" maxlength="500" placeholder="Para qué sirve, qué controla y qué pasa si se deja vacío" oninput="document.getElementById('parDescCont').textContent = this.value.length + ' / 500'"></textarea>
+          <small id="parDescCont">0 / 500</small>
+        </div>
+        <div class="error-form" id="parError"></div>
+        <button type="submit" style="display:none"></button>
+      </form>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-peligro" id="btnEliminarParametro" style="display:none" onclick="confirmarEliminarParametro()">Eliminar</button>
+        <span class="espacio"></span>
+        <button type="button" class="btn btn-secundario" onclick="cerrarModal('modalParametro')">Cancelar</button>
+        <button type="button" class="btn btn-primario" id="btnGuardarParametro" onclick="guardarParametro()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ Ventana: agregar / editar fila del menú ══════════════ -->
+  <div class="modal-overlay" id="modalMenu">
+    <div class="modal">
+      <div class="modal-header"><span id="menTitulo">Agregar fila</span><button type="button" onclick="cerrarModal('modalMenu')">&#10005; Cerrar</button></div>
+      <form class="modal-body" id="formMenu" onsubmit="event.preventDefault(); guardarMenu();">
+        <div class="grid-2">
+          <div class="campo"><label>Módulo *</label><input id="menModulo" list="dlModulosMen" maxlength="50" required></div>
+          <div class="campo"><label>Sección *</label><input id="menSeccion" list="dlSeccionesMen" maxlength="100" required onfocus="llenarDatalistSecciones('men')"></div>
+        </div>
+        <div class="campo">
+          <label>Acceso *</label>
+          <select id="menAcceso" required>
+            <option value="1">1 · Todo (todas las regionales y operaciones)</option>
+            <option value="2">2 · Su regional</option>
+            <option value="3">3 · Sus operaciones</option>
+            <option value="4">4 · Todo, solo categorías del acceso restringido</option>
+            <option value="5">5 · Su regional, solo categorías del acceso restringido</option>
+            <option value="6">6 · Sus operaciones, solo categorías del acceso restringido</option>
+          </select>
+        </div>
+        <div class="campo"><label>Roles *</label><div id="menRoles"></div><small>"Todos" aplica a cualquier usuario registrado, sin importar su rol.</small></div>
+        <div class="grid-2">
+          <div class="campo"><label>Etiqueta</label><input id="menEtiqueta" maxlength="150" placeholder="Nombre en el menú OTROS"></div>
+          <div class="campo"><label>Url</label><input id="menUrl" maxlength="300" placeholder="/modulo?tab=pestana"><small>Vacía: la fila da permiso pero no sale en el menú OTROS.</small></div>
+        </div>
+        <div class="grid-2">
+          <div class="campo"><label>Orden</label><input id="menOrden" type="number" step="1"></div>
+          <div class="campo"><label>Icono</label><input id="menIcono" maxlength="300" placeholder="Ej: ▣"></div>
+        </div>
+        <div class="campo">
+          <label>Descripción</label>
+          <textarea id="menDescripcion" maxlength="500" placeholder="Qué se puede hacer en esta pestaña"></textarea>
+        </div>
+        <div class="error-form" id="menError"></div>
+        <button type="submit" style="display:none"></button>
+      </form>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-peligro" id="btnEliminarMenu" style="display:none" onclick="confirmarEliminarMenu()">Eliminar</button>
+        <span class="espacio"></span>
+        <button type="button" class="btn btn-secundario" onclick="cerrarModal('modalMenu')">Cancelar</button>
+        <button type="button" class="btn btn-primario" id="btnGuardarMenu" onclick="guardarMenu()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ Ventana: confirmar eliminación ══════════════ -->
+  <div class="modal-overlay" id="modalConfirmar">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header"><span id="confTitulo">¿Eliminar?</span><button type="button" onclick="cerrarModal('modalConfirmar')">&#10005; Cerrar</button></div>
+      <div class="modal-body">
+        <div id="confMensaje"></div>
+        <div class="confirm-detalle" id="confDetalle"></div>
+        <div class="error-form" id="confError"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="espacio"></span>
+        <button type="button" class="btn btn-secundario" onclick="cerrarModal('modalConfirmar')">Cancelar</button>
+        <button type="button" class="btn btn-peligro" id="btnConfirmarEliminar">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="dlModulosPar"></datalist>
+  <datalist id="dlSeccionesPar"></datalist>
+  <datalist id="dlCondiciones"></datalist>
+  <datalist id="dlModulosMen"></datalist>
+  <datalist id="dlSeccionesMen"></datalist>
+  <div class="toast" id="toast"></div>
+
+<script>
+  const CONFIG = __CONFIG__;
+  const PERM = CONFIG.permisos;
+  const U = encodeURIComponent(CONFIG.usuarioId);
+  const CONDICIONES_BASE = ['Rol', 'Booleano', 'Número', 'Filas', 'Porcentaje', 'Hora', 'Texto', 'Lista', 'Correo', 'Cargo', 'Operación', 'Regional', 'Mes'];
+  const ACCESOS = { 1: 'Todo', 2: 'Regional', 3: 'Operaciones', 4: 'Todo · restringido', 5: 'Regional · restringido', 6: 'Operaciones · restringido' };
+
+  const _st = {
+    tab: null, roles: [],
+    par: { datos: [], cargado: false, orden: { col: 'modulo', dir: 1 }, editando: null, rolesSel: [] },
+    men: { datos: [], cargado: false, orden: { col: 'modulo', dir: 1 }, editando: null, rolesSel: [] },
+  };
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function norm(v) { return String(v == null ? '' : v).normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase(); }
+  function listaRoles(v) { return String(v == null ? '' : v).split(',').map(s => s.trim()).filter(Boolean); }
+  const unicos = arr => [...new Map(arr.filter(Boolean).map(x => [norm(x), x])).values()].sort((a, b) => a.localeCompare(b, 'es'));
+
+  let _toastTimer = null;
+  function toast(msg, tipo = 'ok', ms = 3500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${tipo}`;
+    t.style.display = 'block';
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => { t.style.display = 'none'; }, ms);
+  }
+
+  async function api(metodo, url, body) {
+    const sep = url.includes('?') ? '&' : '?';
+    const res = await fetch(`${url}${sep}usuario=${U}`, {
+      method: metodo,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let data = null;
+    try { data = await res.json(); } catch {}
+    if (!res.ok) throw new Error((data && data.error) || `Error ${res.status}`);
+    return data;
+  }
+
+  // ── Navegación ──────────────────────────────────────────────────────────
+  function toggleMobileSidebar(forzar) {
+    const sb = document.getElementById('sidebar');
+    const abrir = forzar !== undefined ? forzar : !sb.classList.contains('open');
+    sb.classList.toggle('open', abrir);
+    document.getElementById('mobile-backdrop').classList.toggle('open', abrir);
+  }
+
+  function switchTab(tab) {
+    if (!PERM[tab] || !PERM[tab].ver) return;
+    _st.tab = tab;
+    document.getElementById('navParametros').classList.toggle('active', tab === 'parametros');
+    document.getElementById('navVisual').classList.toggle('active', tab === 'visual');
+    document.getElementById('panelParametros').style.display = tab === 'parametros' ? 'block' : 'none';
+    document.getElementById('panelVisual').style.display = tab === 'visual' ? 'block' : 'none';
+    document.getElementById('mobileHeaderTitle').textContent = tab === 'parametros' ? 'Parámetros' : 'Visual';
+    const url = new URL(location.href);
+    url.searchParams.set('tab', tab);
+    history.replaceState(history.state, '', url);
+    if (tab === 'parametros' && !_st.par.cargado) cargarParametros();
+    if (tab === 'visual' && !_st.men.cargado) cargarMenu();
+    toggleMobileSidebar(false);
+  }
+
+  // ── Ventanas ────────────────────────────────────────────────────────────
+  function abrirModal(id) {
+    const el = document.getElementById(id);
+    el.classList.add('open');
+    el._backEntry = registrarModalBack(() => cerrarModal(id, true));
+  }
+  function cerrarModal(id, desdeAtras) {
+    const el = document.getElementById(id);
+    if (!el.classList.contains('open')) return;
+    el.classList.remove('open');
+    if (!desdeAtras) cerrarModalBack(el._backEntry);
+    el._backEntry = null;
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const abierto = [...document.querySelectorAll('.modal-overlay.open')].pop();
+    if (abierto) cerrarModal(abierto.id);
+  });
+
+  function mostrarError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  // ── Ordenar y filtros ───────────────────────────────────────────────────
+  function ordenar(cual, col) {
+    const o = _st[cual].orden;
+    o.dir = o.col === col ? -o.dir : 1;
+    o.col = col;
+    cual === 'par' ? renderParametros() : renderMenu();
+  }
+  function aplicarOrden(cual, filas) {
+    const { col, dir } = _st[cual].orden;
+    const num = col === 'acceso' || col === 'orden';
+    return filas.sort((a, b) => {
+      const x = a[col], y = b[col];
+      const r = num ? (Number(x ?? 9999) - Number(y ?? 9999)) : String(x ?? '').localeCompare(String(y ?? ''), 'es', { sensitivity: 'base' });
+      return r * dir || a.id - b.id;
+    });
+  }
+  function pintarIndicadores(panelId, cual) {
+    const { col, dir } = _st[cual].orden;
+    document.querySelectorAll(`#${panelId} thead th[data-col]`).forEach(th => {
+      th.querySelector('.sort-ind')?.remove();
+      if (th.dataset.col === col) th.insertAdjacentHTML('beforeend', `<span class="sort-ind">${dir > 0 ? '▲' : '▼'}</span>`);
+    });
+  }
+  function llenarSelect(id, valores, etiquetaTodos) {
+    const sel = document.getElementById(id);
+    const actual = sel.value;
+    sel.innerHTML = `<option value="">${etiquetaTodos}</option>` + valores.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    if (valores.some(v => v === actual)) sel.value = actual;
+  }
+  function llenarDatalist(id, valores) {
+    document.getElementById(id).innerHTML = valores.map(v => `<option value="${esc(v)}">`).join('');
+  }
+  function llenarDatalistSecciones(cual) {
+    const modulo = norm(document.getElementById(cual === 'par' ? 'parModulo' : 'menModulo').value);
+    const datos = _st[cual].datos.filter(d => !modulo || norm(d.modulo) === modulo);
+    llenarDatalist(cual === 'par' ? 'dlSeccionesPar' : 'dlSeccionesMen', unicos(datos.map(d => d.seccion)));
+  }
+
+  // ── Selector de roles ───────────────────────────────────────────────────
+  // cual: 'par' | 'men'; bloqueado: rol que no se puede quitar (Sistema en el propio módulo Configuración)
+  function pintarRoles(contenedorId, cual, conTodos, bloqueado) {
+    const st = _st[cual];
+    const seleccion = st.rolesSel;
+    const opciones = unicos([..._st.roles, ...seleccion.filter(r => norm(r) !== 'todos')]);
+    const esSel = r => seleccion.some(s => norm(s) === norm(r));
+    const boton = (rol, clase = '') => {
+      const fijo = bloqueado && norm(rol) === norm(bloqueado) && esSel(rol);
+      return `<button type="button" class="rol-opt ${clase} ${esSel(rol) ? 'sel' : ''}" ${fijo ? 'disabled title="No se puede quitar: se perdería el acceso a Configuración"' : ''}
+        onclick="toggleRol('${contenedorId}', '${cual}', ${conTodos}, '${esc(bloqueado || '')}', '${esc(rol).replace(/\\/g, '\\\\')}')">${esSel(rol) ? '✓ ' : '+ '}${esc(rol)}</button>`;
+    };
+    document.getElementById(contenedorId).innerHTML = `
+      <div class="roles-sel">${conTodos ? boton('Todos', 'todos') : ''}${opciones.map(r => boton(r)).join('')}</div>
+      <div class="roles-acciones"><span style="color:var(--text-muted)">${seleccion.length} seleccionado(s)</span>
+        <button type="button" onclick="limpiarRoles('${contenedorId}', '${cual}', ${conTodos}, '${esc(bloqueado || '')}')">Quitar todos</button></div>`;
+  }
+  function toggleRol(contenedorId, cual, conTodos, bloqueado, rol) {
+    const st = _st[cual];
+    const i = st.rolesSel.findIndex(r => norm(r) === norm(rol));
+    if (i >= 0) {
+      if (bloqueado && norm(rol) === norm(bloqueado)) return;
+      st.rolesSel.splice(i, 1);
+    } else {
+      st.rolesSel.push(rol);
+    }
+    pintarRoles(contenedorId, cual, conTodos, bloqueado);
+  }
+  function limpiarRoles(contenedorId, cual, conTodos, bloqueado) {
+    const st = _st[cual];
+    st.rolesSel = bloqueado ? st.rolesSel.filter(r => norm(r) === norm(bloqueado)) : [];
+    pintarRoles(contenedorId, cual, conTodos, bloqueado);
+  }
+  function chipsRoles(texto) {
+    const roles = listaRoles(texto);
+    if (!roles.length) return '<span style="color:var(--text-muted)">—</span>';
+    return roles.map(r => `<span class="chip ${norm(r) === 'todos' ? 'chip-todos' : ''}">${esc(r)}</span>`).join('');
+  }
+
+  async function cargarRoles() {
+    try { _st.roles = await api('GET', '/configuracion/api/roles'); } catch (e) { _st.roles = []; }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Parámetros (Config_Parametros)
+  // ══════════════════════════════════════════════════════════════════════
+  async function cargarParametros() {
+    document.getElementById('parContador').textContent = 'Cargando…';
+    try {
+      _st.par.datos = await api('GET', '/configuracion/api/parametros');
+      _st.par.cargado = true;
+      const d = _st.par.datos;
+      llenarSelect('fParModulo', unicos(d.map(x => x.modulo)), 'Todos los módulos');
+      onFiltroParModulo(true);
+      llenarSelect('fParCondicion', unicos(d.map(x => x.condicion)), 'Todas');
+      llenarDatalist('dlModulosPar', unicos(d.map(x => x.modulo)));
+      llenarDatalist('dlCondiciones', unicos([...CONDICIONES_BASE, ...d.map(x => x.condicion)]));
+      renderParametros();
+    } catch (e) {
+      document.getElementById('parContador').textContent = '';
+      document.getElementById('parBody').innerHTML = `<tr><td colspan="7" class="vacio">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function onFiltroParModulo(sinRender) {
+    const m = norm(document.getElementById('fParModulo').value);
+    llenarSelect('fParSeccion', unicos(_st.par.datos.filter(x => !m || norm(x.modulo) === m).map(x => x.seccion)), 'Todas las secciones');
+    if (sinRender !== true) renderParametros();
+  }
+  function limpiarFiltrosPar() {
+    ['fParModulo', 'fParCondicion', 'fParTexto'].forEach(id => { document.getElementById(id).value = ''; });
+    onFiltroParModulo();
+  }
+
+  const DIAS_SEMANA_OPCIONES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  function esParametroDiasSemana(concepto, condicion) {
+    const c = norm(concepto), cd = norm(condicion);
+    if (cd === 'booleano' || c.includes('festivo')) return false;
+    return c.includes('conteo de dias') || cd === 'días' || cd === 'dias';
+  }
+
+  function valorParametroHtml(p) {
+    const c = norm(p.condicion);
+    if (esParametroDiasSemana(p.concepto, p.condicion)) {
+      const dias = listaRoles(p.parametro);
+      if (!dias.length) return '<span style="color:var(--text-muted)">(sin días seleccionados)</span>';
+      return dias.map(d => `<span class="chip" style="background:var(--accent-soft); color:var(--accent-dark); border-color:var(--accent); font-weight:700;">✓ ${esc(d)}</span>`).join(' ');
+    }
+    if (c === 'rol') return chipsRoles(p.parametro);
+    if (c === 'booleano') {
+      const isSi = ['1', 'true', 'si', 'habilitado'].includes(norm(p.parametro));
+      if (norm(p.concepto).includes('festivos')) {
+        return isSi
+          ? '<span class="bool-si" title="Los festivos se suman al conteo del proceso">✓ Sí (Suman al conteo)</span>'
+          : '<span class="bool-no" title="Los festivos se descuentan (no suman)">✕ No (Se descuentan)</span>';
+      }
+      return isSi ? '<span class="bool-si">✓ Habilitado</span>' : '<span class="bool-no">✕ Deshabilitado</span>';
+    }
+    if (c === 'porcentaje') return `${esc(p.parametro)} %`;
+    return p.parametro === '' ? '<span style="color:var(--text-muted)">(vacío)</span>' : esc(p.parametro);
+  }
+
+  function renderParametros() {
+    const fm = norm(document.getElementById('fParModulo').value);
+    const fs = norm(document.getElementById('fParSeccion').value);
+    const fc = norm(document.getElementById('fParCondicion').value);
+    const ft = norm(document.getElementById('fParTexto').value);
+    const filas = aplicarOrden('par', _st.par.datos.filter(p =>
+      (!fm || norm(p.modulo) === fm) && (!fs || norm(p.seccion) === fs) && (!fc || norm(p.condicion) === fc)
+      && (!ft || norm(`${p.concepto} ${p.parametro} ${p.descripcion}`).includes(ft))));
+    document.getElementById('parContador').textContent = `${filas.length} de ${_st.par.datos.length} parámetros`;
+    pintarIndicadores('panelParametros', 'par');
+    const puedeEditar = PERM.parametros.editar, puedeEliminar = PERM.parametros.eliminar;
+    document.getElementById('parBody').innerHTML = filas.length ? filas.map(p => `
+      <tr onclick="abrirModalParametro(${p.id})">
+        <td class="td-acciones">
+          <button type="button" class="btn btn-secundario btn-mini" onclick="event.stopPropagation(); abrirModalParametro(${p.id})">${puedeEditar ? 'Editar' : 'Ver'}</button>${puedeEliminar ? `<button type="button" class="btn btn-peligro btn-mini" onclick="event.stopPropagation(); confirmarEliminarParametro(${p.id})">Eliminar</button>` : ''}
+        </td>
+        <td>${esc(p.modulo)}</td>
+        <td>${esc(p.seccion)}</td>
+        <td class="td-largo"><strong>${esc(p.concepto)}</strong></td>
+        <td><span class="tag">${esc(p.condicion)}</span></td>
+        <td class="td-largo">${valorParametroHtml(p)}</td>
+        <td class="td-desc"><div title="${esc(p.descripcion)}">${esc(p.descripcion)}</div></td>
+      </tr>`).join('') : '<tr><td colspan="7" class="vacio">No hay parámetros con estos filtros.</td></tr>';
+  }
+
+  // Editor del valor según la condición
+  function pintarEditorParametro() {
+    const p = _st.par;
+    const cond = norm(document.getElementById('parCondicion').value);
+    const editor = document.getElementById('parEditor');
+    const valorActual = p.valorTemporal ?? '';
+    const conceptoInput = document.getElementById('parConcepto')?.value || '';
+    if (esParametroDiasSemana(conceptoInput, cond)) {
+      if (!p.diasSel) p.diasSel = listaRoles(valorActual);
+      const chips = DIAS_SEMANA_OPCIONES.map(dia => {
+        const esSel = p.diasSel.some(d => norm(d) === norm(dia));
+        return `<button type="button" class="rol-opt ${esSel ? 'sel' : ''}" style="padding:6px 14px; font-size:0.86rem; border-radius:8px;" onclick="toggleDiaConfig('${esc(dia)}')">${esSel ? '✓ ' : '+ '}${esc(dia)}</button>`;
+      }).join('');
+      editor.innerHTML = `<div class="roles-sel" style="display:flex; flex-wrap:wrap; gap:8px;">${chips}</div>
+        <div class="roles-acciones" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:0.78rem;">
+          <span style="color:var(--text-muted); font-weight:600;">${p.diasSel.length} día(s) seleccionado(s)</span>
+          <div style="display:flex; gap:10px;">
+            <button type="button" onclick="setDiasRapidosConfig(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'])">Lunes a Viernes</button>
+            <button type="button" onclick="setDiasRapidosConfig(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'])">Lunes a Sábado</button>
+            <button type="button" onclick="setDiasRapidosConfig(DIAS_SEMANA_OPCIONES)">Todos</button>
+            <button type="button" style="color:var(--danger);" onclick="setDiasRapidosConfig([])">Limpiar</button>
+          </div>
+        </div>`;
+      return;
+    }
+    if (cond === 'rol') {
+      if (!p.rolesSel.length && valorActual) p.rolesSel = listaRoles(valorActual);
+      const modulo = norm(document.getElementById('parModulo').value);
+      pintarRoles('parEditor', 'par', false, modulo === 'configuracion' ? 'Sistema' : '');
+      return;
+    }
+    if (cond === 'booleano') {
+      const si = ['1', 'true', 'si', 'habilitado'].includes(norm(valorActual));
+      const conc = norm(document.getElementById('parConcepto')?.value || '');
+      const esFestivos = conc.includes('festivo');
+      const btnSi = esFestivos ? '✓ Sí (1) — Los festivos cuentan en el proceso' : '✓ Habilitado (1)';
+      const btnNo = esFestivos ? '✕ No (0) — Los festivos NO cuentan (se descuentan)' : '✕ Deshabilitado (0)';
+      editor.innerHTML = `<div class="btn-grupo">
+        <button type="button" class="btn-grupo-opt ${si ? 'sel' : ''}" data-bool="1" onclick="elegirBooleano('1')">${btnSi}</button>
+        <button type="button" class="btn-grupo-opt ${si ? '' : 'sel'}" data-bool="0" onclick="elegirBooleano('0')">${btnNo}</button></div>
+        ${esFestivos ? '<small style="display:block; color:var(--text-muted); font-size:0.75rem; margin-top:6px;">Sí suma los días festivos al proceso (cuentan como transcurridos). No los excluye del conteo.</small>' : ''}`;
+      p.valorTemporal = si ? '1' : '0';
+      return;
+    }
+    if (cond === 'numero' || cond === 'filas') {
+      editor.innerHTML = `<input type="number" id="parValor" min="0" step="1" value="${esc(valorActual)}" style="max-width:220px">`;
+    } else if (cond === 'porcentaje') {
+      editor.innerHTML = `<div style="display:flex; align-items:center; gap:6px; max-width:220px"><input type="number" id="parValor" min="0" max="100" step="1" value="${esc(valorActual)}"><strong>%</strong></div>`;
+    } else if (cond === 'hora') {
+      editor.innerHTML = `<input type="time" id="parValor" value="${esc(valorActual)}" style="max-width:220px">`;
+    } else {
+      const ayuda = ['lista', 'cargo', 'operacion', 'regional', 'correo'].includes(cond) ? '<small>Si son varios, sepáralos con coma.</small>' : '';
+      editor.innerHTML = `<textarea id="parValor" rows="3">${esc(valorActual)}</textarea>${ayuda}`;
+    }
+    document.getElementById('parValor').addEventListener('input', e => { p.valorTemporal = e.target.value; });
+  }
+  function elegirBooleano(v) {
+    _st.par.valorTemporal = v;
+    document.querySelectorAll('#parEditor [data-bool]').forEach(b => b.classList.toggle('sel', b.dataset.bool === v));
+  }
+  function toggleDiaConfig(dia) {
+    const st = _st.par;
+    if (!st.diasSel) st.diasSel = [];
+    const idx = st.diasSel.findIndex(d => norm(d) === norm(dia));
+    if (idx >= 0) st.diasSel.splice(idx, 1);
+    else st.diasSel.push(dia);
+    pintarEditorParametro();
+  }
+  function setDiasRapidosConfig(lista) {
+    _st.par.diasSel = [...lista];
+    pintarEditorParametro();
+  }
+
+  function abrirModalParametro(id) {
+    const p = id ? _st.par.datos.find(x => x.id === id) : null;
+    const puedeEditar = PERM.parametros.editar;
+    if (!p && !puedeEditar) return;
+    const st = _st.par;
+    st.editando = p ? p.id : null;
+    st.valorTemporal = p ? p.parametro : '';
+    st.rolesSel = p && norm(p.condicion) === 'rol' ? listaRoles(p.parametro) : [];
+    st.diasSel = p && esParametroDiasSemana(p.concepto, p.condicion) ? listaRoles(p.parametro) : [];
+    const fm = document.getElementById('fParModulo').value, fs = document.getElementById('fParSeccion').value;
+    document.getElementById('parTitulo').textContent = p ? (puedeEditar ? 'Editar parámetro' : 'Ver parámetro') : 'Agregar parámetro';
+    document.getElementById('parModulo').value = p ? p.modulo : fm;
+    document.getElementById('parSeccion').value = p ? p.seccion : fs;
+    document.getElementById('parCondicion').value = p ? p.condicion : 'Rol';
+    document.getElementById('parConcepto').value = p ? p.concepto : '';
+    document.getElementById('parDescripcion').value = p ? p.descripcion : '';
+    document.getElementById('parDescCont').textContent = `${(p ? p.descripcion : '').length} / 500`;
+    document.getElementById('parDescObl').style.display = p ? 'none' : 'inline';
+    document.getElementById('parNotaClave').style.display = p ? 'block' : 'none';
+    document.getElementById('btnEliminarParametro').style.display = p && PERM.parametros.eliminar ? 'inline-flex' : 'none';
+    document.getElementById('btnGuardarParametro').style.display = puedeEditar ? 'inline-flex' : 'none';
+    mostrarError('parError', '');
+    pintarEditorParametro();
+    if (!puedeEditar) document.querySelectorAll('#formParametro input, #formParametro textarea, #formParametro button').forEach(el => { el.disabled = true; });
+    abrirModal('modalParametro');
+  }
+
+  function valorEditorParametro() {
+    const cond = norm(document.getElementById('parCondicion').value);
+    const conc = document.getElementById('parConcepto')?.value || '';
+    if (esParametroDiasSemana(conc, cond)) return (_st.par.diasSel || []).join(', ');
+    if (cond === 'rol') return _st.par.rolesSel.join(', ');
+    if (cond === 'booleano') return _st.par.valorTemporal || '0';
+    const el = document.getElementById('parValor');
+    return el ? el.value.trim() : '';
+  }
+
+  async function guardarParametro() {
+    const body = {
+      modulo: document.getElementById('parModulo').value.trim(),
+      seccion: document.getElementById('parSeccion').value.trim(),
+      concepto: document.getElementById('parConcepto').value.trim(),
+      condicion: document.getElementById('parCondicion').value.trim(),
+      parametro: valorEditorParametro(),
+      descripcion: document.getElementById('parDescripcion').value.trim(),
+    };
+    const id = _st.par.editando;
+    if (!body.modulo || !body.seccion || !body.concepto || !body.condicion) return mostrarError('parError', 'Módulo, Sección, Concepto y Condición son obligatorios.');
+    if (!id && !body.descripcion) return mostrarError('parError', 'La descripción es obligatoria: explica para qué sirve el parámetro.');
+    const btn = document.getElementById('btnGuardarParametro');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    mostrarError('parError', '');
+    try {
+      await api(id ? 'PUT' : 'POST', `/configuracion/api/parametros${id ? '/' + id : ''}`, body);
+      cerrarModal('modalParametro');
+      toast(id ? 'Parámetro actualizado.' : 'Parámetro creado.');
+      await cargarParametros();
+    } catch (e) {
+      mostrarError('parError', e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar';
+    }
+  }
+
+  function confirmarEliminarParametro(id) {
+    const p = _st.par.datos.find(x => x.id === (id || _st.par.editando));
+    if (!p) return;
+    pedirConfirmacion({
+      titulo: '¿Eliminar parámetro?',
+      mensaje: 'Se borrará esta fila de Config_Parametros. El código usará su valor por defecto (el comportamiento anterior) hasta que la vuelvas a crear.',
+      detalle: `<div><strong>${esc(p.modulo)} · ${esc(p.seccion)}</strong></div><div>${esc(p.concepto)}</div><div>Valor: ${esc(p.parametro) || '(vacío)'}</div>`,
+      accion: async () => {
+        await api('DELETE', `/configuracion/api/parametros/${p.id}`);
+        cerrarModal('modalParametro');
+        toast('Parámetro eliminado.');
+        await cargarParametros();
+      },
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Visual (Maestro_Menu)
+  // ══════════════════════════════════════════════════════════════════════
+  async function cargarMenu() {
+    document.getElementById('menContador').textContent = 'Cargando…';
+    try {
+      _st.men.datos = await api('GET', '/configuracion/api/menu');
+      _st.men.cargado = true;
+      const d = _st.men.datos;
+      llenarSelect('fMenModulo', unicos(d.map(x => x.modulo)), 'Todos los módulos');
+      onFiltroMenModulo(true);
+      llenarSelect('fMenRol', unicos([..._st.roles, ...d.flatMap(x => listaRoles(x.rol))].filter(r => norm(r) !== 'todos')), 'Todos los roles');
+      llenarDatalist('dlModulosMen', unicos(d.map(x => x.modulo)));
+      renderMenu();
+    } catch (e) {
+      document.getElementById('menContador').textContent = '';
+      document.getElementById('menBody').innerHTML = `<tr><td colspan="10" class="vacio">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function onFiltroMenModulo(sinRender) {
+    const m = norm(document.getElementById('fMenModulo').value);
+    llenarSelect('fMenSeccion', unicos(_st.men.datos.filter(x => !m || norm(x.modulo) === m).map(x => x.seccion)), 'Todas las secciones');
+    if (sinRender !== true) renderMenu();
+  }
+  function limpiarFiltrosMen() {
+    ['fMenModulo', 'fMenRol', 'fMenTexto'].forEach(id => { document.getElementById(id).value = ''; });
+    onFiltroMenModulo();
+  }
+
+  function renderMenu() {
+    const fm = norm(document.getElementById('fMenModulo').value);
+    const fs = norm(document.getElementById('fMenSeccion').value);
+    const fr = norm(document.getElementById('fMenRol').value);
+    const ft = norm(document.getElementById('fMenTexto').value);
+    const filas = aplicarOrden('men', _st.men.datos.filter(m =>
+      (!fm || norm(m.modulo) === fm) && (!fs || norm(m.seccion) === fs)
+      && (!fr || listaRoles(m.rol).some(r => norm(r) === fr || norm(r) === 'todos'))
+      && (!ft || norm(`${m.etiqueta} ${m.url} ${m.descripcion}`).includes(ft))));
+    document.getElementById('menContador').textContent = `${filas.length} de ${_st.men.datos.length} filas${fr ? ' (incluye las filas con "Todos")' : ''}`;
+    pintarIndicadores('panelVisual', 'men');
+    const puedeEditar = PERM.visual.editar, puedeEliminar = PERM.visual.eliminar;
+    document.getElementById('menBody').innerHTML = filas.length ? filas.map(m => `
+      <tr onclick="abrirModalMenu(${m.id})">
+        <td class="td-acciones">
+          <button type="button" class="btn btn-secundario btn-mini" onclick="event.stopPropagation(); abrirModalMenu(${m.id})">${puedeEditar ? 'Editar' : 'Ver'}</button>${puedeEliminar ? `<button type="button" class="btn btn-peligro btn-mini" onclick="event.stopPropagation(); confirmarEliminarMenu(${m.id})">Eliminar</button>` : ''}
+        </td>
+        <td>${esc(m.modulo)}</td>
+        <td><strong>${esc(m.seccion)}</strong></td>
+        <td><span class="tag" title="${esc(ACCESOS[m.acceso] || '')}">${esc(m.acceso)} · ${esc(ACCESOS[m.acceso] || '')}</span></td>
+        <td class="td-roles">${chipsRoles(m.rol)}</td>
+        <td>${esc(m.etiqueta)}</td>
+        <td class="td-url">${esc(m.url)}</td>
+        <td>${m.orden == null ? '' : esc(m.orden)}</td>
+        <td>${esc(m.icono)}</td>
+        <td class="td-desc"><div title="${esc(m.descripcion)}">${esc(m.descripcion)}</div></td>
+      </tr>`).join('') : '<tr><td colspan="10" class="vacio">No hay filas con estos filtros.</td></tr>';
+  }
+
+  function bloqueadoMenu() {
+    return norm(document.getElementById('menModulo').value) === 'configuracion' ? 'Sistema' : '';
+  }
+
+  function abrirModalMenu(id) {
+    const m = id ? _st.men.datos.find(x => x.id === id) : null;
+    const puedeEditar = PERM.visual.editar;
+    if (!m && !puedeEditar) return;
+    const st = _st.men;
+    st.editando = m ? m.id : null;
+    st.rolesSel = m ? listaRoles(m.rol) : [];
+    const fm = document.getElementById('fMenModulo').value, fs = document.getElementById('fMenSeccion').value;
+    document.getElementById('menTitulo').textContent = m ? (puedeEditar ? 'Editar fila del menú' : 'Ver fila del menú') : 'Agregar fila al menú';
+    document.getElementById('menModulo').value = m ? m.modulo : fm;
+    document.getElementById('menSeccion').value = m ? m.seccion : fs;
+    document.getElementById('menAcceso').value = m ? String(m.acceso) : '1';
+    document.getElementById('menEtiqueta').value = m ? m.etiqueta : '';
+    document.getElementById('menUrl').value = m ? m.url : '';
+    document.getElementById('menOrden').value = m && m.orden != null ? m.orden : '';
+    document.getElementById('menIcono').value = m ? m.icono : '';
+    document.getElementById('menDescripcion').value = m ? m.descripcion : '';
+    document.getElementById('btnEliminarMenu').style.display = m && PERM.visual.eliminar ? 'inline-flex' : 'none';
+    document.getElementById('btnGuardarMenu').style.display = puedeEditar ? 'inline-flex' : 'none';
+    mostrarError('menError', '');
+    pintarRoles('menRoles', 'men', true, bloqueadoMenu());
+    if (!puedeEditar) document.querySelectorAll('#formMenu input, #formMenu select, #formMenu textarea, #formMenu button').forEach(el => { el.disabled = true; });
+    abrirModal('modalMenu');
+  }
+
+  async function guardarMenu() {
+    const body = {
+      modulo: document.getElementById('menModulo').value.trim(),
+      seccion: document.getElementById('menSeccion').value.trim(),
+      acceso: Number(document.getElementById('menAcceso').value),
+      rol: _st.men.rolesSel.join(', '),
+      etiqueta: document.getElementById('menEtiqueta').value.trim(),
+      url: document.getElementById('menUrl').value.trim(),
+      orden: document.getElementById('menOrden').value.trim(),
+      icono: document.getElementById('menIcono').value.trim(),
+      descripcion: document.getElementById('menDescripcion').value.trim(),
+    };
+    if (!body.modulo || !body.seccion) return mostrarError('menError', 'Módulo y Sección son obligatorios.');
+    if (!body.rol) return mostrarError('menError', 'Selecciona al menos un rol.');
+    const id = _st.men.editando;
+    const btn = document.getElementById('btnGuardarMenu');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    mostrarError('menError', '');
+    try {
+      const r = await api(id ? 'PUT' : 'POST', `/configuracion/api/menu${id ? '/' + id : ''}`, body);
+      cerrarModal('modalMenu');
+      if (r.avisos && r.avisos.length) toast(`Guardado. Ojo: ${r.avisos.join(' ')}`, 'aviso', 8000);
+      else toast(id ? 'Fila actualizada.' : 'Fila creada.');
+      await cargarMenu();
+    } catch (e) {
+      mostrarError('menError', e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Guardar';
+    }
+  }
+
+  function confirmarEliminarMenu(id) {
+    const m = _st.men.datos.find(x => x.id === (id || _st.men.editando));
+    if (!m) return;
+    pedirConfirmacion({
+      titulo: '¿Eliminar fila del menú?',
+      mensaje: 'Los roles de esta fila dejarán de ver la pestaña con este nivel de acceso (salvo que estén en otra fila de la misma sección).',
+      detalle: `<div><strong>${esc(m.modulo)} · ${esc(m.seccion)}</strong> · Acceso ${esc(m.acceso)} (${esc(ACCESOS[m.acceso] || '')})</div><div>Roles: ${esc(m.rol)}</div>`,
+      accion: async () => {
+        await api('DELETE', `/configuracion/api/menu/${m.id}`);
+        cerrarModal('modalMenu');
+        toast('Fila eliminada.');
+        await cargarMenu();
+      },
+    });
+  }
+
+  // ── Confirmación ────────────────────────────────────────────────────────
+  function pedirConfirmacion({ titulo, mensaje, detalle, accion }) {
+    document.getElementById('confTitulo').textContent = titulo;
+    document.getElementById('confMensaje').textContent = mensaje;
+    document.getElementById('confDetalle').innerHTML = detalle;
+    mostrarError('confError', '');
+    const btn = document.getElementById('btnConfirmarEliminar');
+    btn.onclick = async () => {
+      btn.disabled = true; btn.textContent = 'Eliminando…';
+      try {
+        await accion();
+        cerrarModal('modalConfirmar');
+      } catch (e) {
+        mostrarError('confError', e.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Sí, eliminar';
+      }
+    };
+    abrirModal('modalConfirmar');
+  }
+
+  // ── Inicio ──────────────────────────────────────────────────────────────
+  (async function init() {
+    if (PERM.parametros.ver) document.getElementById('navParametros').style.display = 'flex';
+    if (PERM.visual.ver) document.getElementById('navVisual').style.display = 'flex';
+    if (PERM.parametros.editar) document.getElementById('btnAgregarParametro').style.display = 'inline-flex';
+    if (PERM.visual.editar) document.getElementById('btnAgregarMenu').style.display = 'inline-flex';
+    // Al cambiar el módulo en la ventana, Sistema queda fijo si es el propio módulo Configuración
+    document.getElementById('menModulo').addEventListener('change', () => pintarRoles('menRoles', 'men', true, bloqueadoMenu()));
+    document.getElementById('parModulo').addEventListener('change', () => { if (norm(document.getElementById('parCondicion').value) === 'rol') pintarEditorParametro(); });
+    await cargarRoles();
+    const pedida = norm(new URLSearchParams(location.search).get('tab'));
+    const destino = (PERM[pedida] && PERM[pedida].ver) ? pedida : (PERM.parametros.ver ? 'parametros' : 'visual');
+    switchTab(destino);
+  })();
+</script>
+<script src="/js/theme.js" defer></script>
+<script src="/js/app-launcher-profile.js?v=20261027a" defer></script>
+<script src="/js/ticket-boton.js" defer></script>
+<script src="/js/modal-back.js" defer></script>
+</body>
+</html>

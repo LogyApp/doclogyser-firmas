@@ -3649,7 +3649,7 @@
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div id="mr-contacto-wrap" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
               <div class="form-group">
                 <label>Teléfono</label>
                 <input type="text" id="mr-telefono" placeholder="Teléfono de contacto">
@@ -3682,6 +3682,16 @@
             <textarea id="mr-observaciones" rows="2" style="width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:inherit; color:var(--text); resize:vertical;"></textarea>
           </div>
 
+          <!-- Servicios del recibo nuevo: se guardan junto con el recibo al presionar Crear Recibo -->
+          <div id="mr-servicios-wrap" style="display:none; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; background: var(--bg-elevated);">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+              <label style="font-size: 0.78rem; font-weight:700; color:var(--text); text-transform:uppercase; margin:0;">Servicios del recibo</label>
+              <button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="agregarServicioPendienteRecibo()">➕ Agregar Servicio</button>
+            </div>
+            <div id="mr-servicios-lista"></div>
+            <small id="mr-servicios-nota" style="color: var(--text-muted); font-size: 0.76rem; display:block; margin-top:6px;"></small>
+          </div>
+
         </form>
       </div>
 
@@ -3703,7 +3713,7 @@
       </div>
 
       <div class="modal-body">
-        <form id="form-servicio" onsubmit="event.preventDefault(); guardarServicio();">
+        <form id="form-servicio" novalidate onsubmit="event.preventDefault(); guardarServicio();">
 
           <div class="form-group" id="ms-idrecibo-wrap">
             <label>Recibo</label>
@@ -3734,7 +3744,7 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group autocomplete-wrapper">
               <label>Transportadora</label>
-              <input type="text" id="ms-transportadora-input" placeholder="Buscar o crear..." autocomplete="off" oninput="buscarTransportadora(this.value)">
+              <input type="text" id="ms-transportadora-input" placeholder="Escriba o seleccione..." autocomplete="off" oninput="msTransportadoraId = null; buscarTransportadora(this.value)" onfocus="buscarTransportadora(this.value)">
               <div class="autocomplete-list" id="ms-transportadora-list"></div>
             </div>
             <div class="form-group">
@@ -3745,7 +3755,7 @@
 
           <div class="form-group autocomplete-wrapper">
             <label>Proveedor (puede elegir varios)</label>
-            <input type="text" id="ms-proveedor-input" placeholder="Buscar o crear..." autocomplete="off" oninput="buscarProveedor(this.value)">
+            <input type="text" id="ms-proveedor-input" placeholder="Escriba o seleccione..." autocomplete="off" oninput="buscarProveedor(this.value)" onfocus="buscarProveedor(this.value)">
             <div class="autocomplete-list" id="ms-proveedor-list"></div>
             <div id="ms-proveedor-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
           </div>
@@ -3753,7 +3763,7 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group autocomplete-wrapper">
               <label>Placa</label>
-              <input type="text" id="ms-pl1-input" placeholder="Buscar o crear..." autocomplete="off" oninput="buscarPlaca(this.value)">
+              <input type="text" id="ms-pl1-input" placeholder="Escriba o seleccione..." autocomplete="off" oninput="msPl1Id = null; document.getElementById('ms-pl1-info').textContent = ''; buscarPlaca(this.value)" onfocus="buscarPlaca(this.value)">
               <div class="autocomplete-list" id="ms-pl1-list"></div>
               <small id="ms-pl1-info" style="color: var(--text-muted); font-size: 0.78rem;"></small>
             </div>
@@ -3770,11 +3780,11 @@
             </div>
             <div class="form-group">
               <label>Cantidad</label>
-              <input type="number" id="ms-cantidad" step="0.001" min="0">
+              <input type="number" id="ms-cantidad" step="1" min="0">
             </div>
             <div class="form-group">
               <label>Valor Unitario</label>
-              <input type="number" id="ms-valor-unitario" step="0.001" min="0">
+              <input type="number" id="ms-valor-unitario" step="1" min="0">
             </div>
           </div>
 
@@ -3837,7 +3847,7 @@
 
           <div class="form-group autocomplete-wrapper">
             <label>Auxiliares</label>
-            <input type="text" id="ms-auxiliares-input" placeholder="Buscar trabajador activo..." autocomplete="off" oninput="buscarAuxiliar(this.value)">
+            <input type="text" id="ms-auxiliares-input" placeholder="Escriba o seleccione un trabajador activo..." autocomplete="off" oninput="buscarAuxiliar(this.value)" onfocus="buscarAuxiliar(this.value)">
             <div class="autocomplete-list" id="ms-auxiliares-list"></div>
             <div id="ms-auxiliares-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
           </div>
@@ -4327,7 +4337,13 @@
         const navBloqueoEl = document.getElementById('navBloqueo');
         if (navBloqueoEl) navBloqueoEl.style.display = 'none';
       }
-      if (!CONFIG.tabs?.clientes_credito) {
+      // Cada subpestaña de Clientes se muestra según su Sección en Maestro_Menu; la pestaña
+      // Clientes aparece si el rol tiene al menos una.
+      SUBTABS_CLIENTES.forEach(s => {
+        const btn = document.getElementById('subtab-btn-' + s);
+        if (btn && !subTabClientesPermitida(s)) btn.style.display = 'none';
+      });
+      if (!subTabsClientesPermitidas().length) {
         const navClientesEl = document.getElementById('navClientes');
         if (navClientesEl) navClientesEl.style.display = 'none';
       }
@@ -4343,6 +4359,9 @@
           bloqueo: 'bloqueo', bloqueos: 'bloqueo', tickets: 'tickets', ticket: 'tickets',
         };
         if (!p.get('idservicio') && !p.get('idrecibo')) {
+          // Conservar la subpestaña pedida (?subtab=...), que esta vista inicial escribe en la dirección
+          const subInicial = (p.get('subtab') || '').toLowerCase().trim();
+          if (SUBTABS_CLIENTES.includes(subInicial)) activeSubTabClientes = subInicial;
           switchMainTab(TAB_INICIAL[(p.get('tab') || '').toLowerCase().trim()] || 'recibos', { soloVista: true });
         }
       }
@@ -4523,7 +4542,8 @@
       }
 
       // Cargar datos iniciales de forma resiliente
-      await Promise.allSettled([cargarServicios(), cargarMetricasServicios(), cargarBloqueos(), cargarClientes(), cargarPreseleccionadosInfo(), cargarTickets(), cargarMetricasTickets()]);
+      const cargarCredito = subTabClientesPermitida('credito');
+      await Promise.allSettled([cargarServicios(), cargarMetricasServicios(), cargarBloqueos(), cargarCredito && cargarClientes(), cargarCredito && cargarPreseleccionadosInfo(), cargarTickets(), cargarMetricasTickets()]);
 
       // Listeners de ordenamiento en tabla de servicios
       document.querySelectorAll('#tabla-servicios thead th[data-sort]').forEach(th => {
@@ -4724,7 +4744,7 @@
     function switchMainTab(tab, { soloVista = false } = {}) {
       if (tab === 'tickets' && !CONFIG.tabs?.tickets) tab = 'servicios';
       if (tab === 'bloqueo' && !CONFIG.tabs?.bloqueo) tab = 'servicios';
-      if ((tab === 'clientescredito' || tab === 'clientes') && !CONFIG.tabs?.clientes_credito) tab = 'servicios';
+      if ((tab === 'clientescredito' || tab === 'clientes') && !subTabsClientesPermitidas().length) tab = 'servicios';
 
       if (tab === 'clientescredito') {
         activeSubTabClientes = 'credito';
@@ -4803,9 +4823,23 @@
       }
     }
 
+    // Subpestañas de Clientes y la Sección de Maestro_Menu (facturacion) que da acceso a cada una
+    const SUBTABS_CLIENTES = ['clientes', 'credito', 'transportadoras', 'proveedores', 'placas'];
+    const TAB_SUBTAB_CLIENTES = {
+      clientes: 'clientes', credito: 'clientes_credito', transportadoras: 'transportadoras',
+      proveedores: 'proveedores', placas: 'placas',
+    };
+    function subTabClientesPermitida(subtab) {
+      return !!CONFIG.tabs?.[TAB_SUBTAB_CLIENTES[subtab]];
+    }
+    function subTabsClientesPermitidas() {
+      return SUBTABS_CLIENTES.filter(subTabClientesPermitida);
+    }
+
     function switchSubTabClientes(subtab) {
-      const validas = ['clientes', 'credito', 'transportadoras', 'proveedores', 'placas'];
-      if (!validas.includes(subtab)) subtab = 'clientes';
+      const validas = SUBTABS_CLIENTES;
+      const permitidas = subTabsClientesPermitidas();
+      if (!permitidas.includes(subtab)) subtab = permitidas[0] || 'clientes';
       activeSubTabClientes = subtab;
 
       validas.forEach(s => {
@@ -4833,14 +4867,14 @@
         makeTableResizable(document.getElementById('tabla-placas'));
       }
 
-      if (!maestroClientesCargados) cargarMaestroClientes();
-      if (!allClientes || !allClientes.length) {
+      if (!maestroClientesCargados && permitidas.includes('clientes')) cargarMaestroClientes();
+      if ((!allClientes || !allClientes.length) && permitidas.includes('credito')) {
         cargarClientes();
         cargarPreseleccionadosInfo();
       }
-      if (!transportadorasCargadas) cargarTransportadoras();
-      if (!proveedoresCargados) cargarProveedores();
-      if (!placasCargadas) cargarPlacas();
+      if (!transportadorasCargadas && permitidas.includes('transportadoras')) cargarTransportadoras();
+      if (!proveedoresCargados && permitidas.includes('proveedores')) cargarProveedores();
+      if (!placasCargadas && permitidas.includes('placas')) cargarPlacas();
     }
 
     function toggleFiltrosCat(prefix) {
@@ -9567,11 +9601,75 @@
         document.getElementById('mr-reteica').checked = r.ReteICA === 'V';
       } else {
         setModalidadRecibo(null, true);
+        prellenarRegionalOperacionRecibo();
       }
+
+      mrServiciosPendientes = [];
+      document.getElementById('mr-servicios-wrap').style.display = (modo === 'crear') ? 'block' : 'none';
+      renderServiciosPendientesRecibo();
 
       const overlayRecibo = document.getElementById('modal-recibo-overlay');
       overlayRecibo.classList.add('open');
       overlayRecibo._backEntry = registrarModalBack(() => cerrarModalRecibo());
+    }
+
+    // Recibo nuevo: los roles que no ven todo (acceso 2 o 3) llegan con su Regional, y quien
+    // solo ve una Operación llega también con esa Operación.
+    function prellenarRegionalOperacionRecibo() {
+      const regSel = document.getElementById('mr-regional');
+      const regionales = CONFIG.regionalesFiltro || [];
+      const operaciones = Object.entries(CONFIG.opsPorRegional || {})
+        .flatMap(([regional, ops]) => (ops || []).map(op => ({ regional, op })));
+
+      if (operaciones.length === 1) {
+        regSel.value = operaciones[0].regional;
+        onModalRecioRegionalChange(operaciones[0].op);
+        return;
+      }
+      if (CONFIG.sinFiltro) return;
+      const regional = regionales.length === 1 ? regionales[0]
+        : (regionales.includes(CONFIG.regional) ? CONFIG.regional : '');
+      if (regional) {
+        regSel.value = regional;
+        onModalRecioRegionalChange();
+      }
+    }
+
+    // ── Servicios de un recibo que aún no se ha guardado ──
+    // Se arman con el mismo formulario de servicio y se envían uno a uno al crear el recibo.
+    let mrServiciosPendientes = []; // [{ fd: FormData, resumen }]
+
+    function agregarServicioPendienteRecibo() {
+      if (!document.getElementById('mr-operacion').value) return alert('Seleccione primero la Operación del recibo.');
+      if (!modalRecibo.modoActual) return alert('Seleccione primero la Modalidad del recibo (RECAUDO o CREDITO).');
+      abrirModalServicio('pendiente');
+    }
+
+    function quitarServicioPendienteRecibo(indice) {
+      mrServiciosPendientes.splice(indice, 1);
+      renderServiciosPendientesRecibo();
+    }
+
+    function renderServiciosPendientesRecibo() {
+      const lista = document.getElementById('mr-servicios-lista');
+      const nota = document.getElementById('mr-servicios-nota');
+      const hay = mrServiciosPendientes.length > 0;
+      const emoji = { Green: '🟢', Yellow: '🟡', Red: '🔴' };
+      lista.innerHTML = hay
+        ? mrServiciosPendientes.map((s, i) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--border); border-radius:6px; margin-bottom:6px; background:var(--card-bg); font-size:0.84rem;">
+            <span>${emoji[s.resumen.estado] || ''} ${esc(s.resumen.descripcion)}${s.resumen.valor ? ` — <strong>$${formatMiles(s.resumen.valor)}</strong>` : ''}</span>
+            <button type="button" onclick="quitarServicioPendienteRecibo(${i})" style="background:none; border:none; cursor:pointer; font-size:0.95rem;" title="Quitar">🗑️</button>
+          </div>`).join('')
+        : '<div style="color:var(--text-muted); font-size:0.82rem;">Sin servicios. Puede agregarlos ahora o después de crear el recibo.</div>';
+      nota.textContent = hay
+        ? 'Se guardarán junto con el recibo al presionar Crear Recibo. Para cambiar Regional, Operación o Modalidad, quite primero los servicios.'
+        : '';
+
+      // Los servicios se armaron para esta Operación y Modalidad: no se cambian mientras haya servicios
+      ['mr-regional', 'mr-operacion', 'btn-mr-modalidad-recaudo', 'btn-mr-modalidad-credito']
+        .forEach(id => { document.getElementById(id).disabled = hay; });
+      mostrarCamposReciboSegunServicios();
     }
 
     function cerrarModalRecibo() {
@@ -9606,16 +9704,22 @@
       document.getElementById('btn-mr-modalidad-credito').classList.toggle('sel', modalidad === 'CREDITO');
       document.getElementById('mr-bloque-credito').style.display = (modalidad === 'CREDITO') ? 'block' : 'none';
       document.getElementById('mr-bloque-recaudo').style.display = (modalidad === 'RECAUDO') ? 'block' : 'none';
-      document.getElementById('mr-retenciones-wrap').style.display = (modalidad === 'RECAUDO') ? 'block' : 'none';
-
-      if (modalidad === 'RECAUDO') {
-        const hayServicios = mrServiciosCount > 0;
-        document.getElementById('mr-cliente-sin-servicios').style.display = hayServicios ? 'none' : 'block';
-        document.getElementById('mr-cliente-con-servicios').style.display = hayServicios ? 'block' : 'none';
-      }
+      mostrarCamposReciboSegunServicios();
 
       if (!silencioso && modalidad === 'CREDITO') cargarCategoriasModalRecibo();
       if (!silencioso) recalcularSugerenciaRetenciones();
+    }
+
+    // RECAUDO: Retenciones, Teléfono y Email solo se muestran cuando el recibo tiene servicios
+    // (guardados o agregados en el formulario); el Cliente solo con servicios ya guardados.
+    function mostrarCamposReciboSegunServicios() {
+      const recaudo = modalRecibo.modoActual === 'RECAUDO';
+      const hayGuardados = mrServiciosCount > 0;
+      const hayServicios = hayGuardados || mrServiciosPendientes.length > 0;
+      document.getElementById('mr-retenciones-wrap').style.display = (recaudo && hayServicios) ? 'block' : 'none';
+      document.getElementById('mr-contacto-wrap').style.display = hayServicios ? 'grid' : 'none';
+      document.getElementById('mr-cliente-sin-servicios').style.display = hayGuardados ? 'none' : 'block';
+      document.getElementById('mr-cliente-con-servicios').style.display = hayGuardados ? 'block' : 'none';
     }
 
     function onModalRecioClienteFacturarChange() {
@@ -9817,6 +9921,23 @@
         const data = await resp.json();
 
         if (resp.ok && data.ok) {
+          if (modo === 'crear' && mrServiciosPendientes.length) {
+            btn.textContent = 'Guardando servicios...';
+            const fallidos = [];
+            for (const [i, s] of mrServiciosPendientes.entries()) {
+              try {
+                const r = await fetch(`/facturacion/api/recibos/${encodeURIComponent(data.idRecibo)}/servicios?usuario=${encodeURIComponent(CONFIG.usuario)}`, { method: 'POST', body: s.fd });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok || !d.ok) fallidos.push(`${i + 1}. ${s.resumen.descripcion}: ${d.error || 'no se pudo guardar'}`);
+              } catch (e) {
+                fallidos.push(`${i + 1}. ${s.resumen.descripcion}: error de conexión`);
+              }
+            }
+            mrServiciosPendientes = [];
+            if (fallidos.length) {
+              alert('El recibo se creó, pero estos servicios no se guardaron; agréguelos desde el detalle del recibo:\n\n' + fallidos.join('\n'));
+            }
+          }
           cerrarModalRecibo();
           await Promise.all([cargarRecibos(), cargarMetricasRecibos()]);
           if (modo === 'crear') {
@@ -9909,12 +10030,19 @@
       return `${pad(h)}:${pad(m)}:${pad(s)}`;
     }
 
+    // modo 'pendiente': servicio de un recibo que aún no se ha guardado (formulario Agregar Recibo)
     async function abrirModalServicio(modo, idServicio) {
-      if (!reciboDetalleActual) return;
+      const pendiente = modo === 'pendiente';
+      if (!pendiente && !reciboDetalleActual) return;
       modalServicio.modo = modo;
-      modalServicio.idRecibo = reciboDetalleActual.recibo.IdRecibo;
+      modalServicio.idRecibo = pendiente ? null : reciboDetalleActual.recibo.IdRecibo;
       modalServicio.idServicio = idServicio || null;
-      msContexto = {
+      msContexto = pendiente ? {
+        operacion: document.getElementById('mr-operacion').value,
+        modalidad: modalRecibo.modoActual,
+        clienteAFacturar: document.getElementById('mr-cliente-facturar').value || null,
+        nit: null
+      } : {
         operacion: reciboDetalleActual.recibo['Operación'],
         modalidad: reciboDetalleActual.recibo.Modalidad,
         clienteAFacturar: reciboDetalleActual.recibo['Cliente a Facturar'],
@@ -9924,8 +10052,8 @@
       const existente = (modo === 'editar') ? (reciboDetalleActual.servicios || []).find(s => s.IdServicio === idServicio) : null;
       msServicioExistente = existente || null;
 
-      document.getElementById('ms-titulo').textContent = (modo === 'crear') ? '➕ Agregar Servicio' : `✏️ Editar Servicio — ${idServicio}`;
-      document.getElementById('btn-guardar-servicio').textContent = (modo === 'crear') ? 'Crear Servicio' : 'Guardar Cambios';
+      document.getElementById('ms-titulo').textContent = (modo === 'editar') ? `✏️ Editar Servicio — ${idServicio}` : '➕ Agregar Servicio';
+      document.getElementById('btn-guardar-servicio').textContent = { crear: 'Crear Servicio', pendiente: 'Agregar al Recibo' }[modo] || 'Guardar Cambios';
 
       msTransportadoraId = existente ? existente.Transportadora : null;
       msProveedorSeleccionados = [];
@@ -9958,7 +10086,7 @@
       document.getElementById('ms-hora-inicio').value = existente?.['Hora Inicio'] ? toDatetimeLocalBogota(existente['Hora Inicio']) : ahoraDatetimeLocalBogota();
       document.getElementById('ms-fecha-transferencia').value = existente?.['Fecha Transferencia'] ? toDatetimeLocalBogota(existente['Fecha Transferencia']) : ahoraDatetimeLocalBogota();
 
-      document.getElementById('ms-idrecibo-info').textContent = (reciboDetalleActual.recibo['Consecutivo Recibo'] || modalServicio.idRecibo) + ' — ' + (msContexto.operacion || '');
+      document.getElementById('ms-idrecibo-info').textContent = (pendiente ? 'Recibo nuevo (sin guardar)' : (reciboDetalleActual.recibo['Consecutivo Recibo'] || modalServicio.idRecibo)) + ' — ' + (msContexto.operacion || '');
       const puedeReasignar = modo === 'editar' && ROLES_EDITAR_IDRECIBO_SERVICIO_FRONT.includes(CONFIG.rol);
       const selRecibo = document.getElementById('ms-idrecibo-select');
       if (puedeReasignar) {
@@ -10101,7 +10229,7 @@
     function onDuracionServicioChange() {
       const duracion = document.getElementById('ms-duracion').value;
       const horaFinalInput = document.getElementById('ms-hora-final');
-      if (!duracion || duracion === 'Otro') {
+      if (duracion === 'Otro') {
         horaFinalInput.disabled = false;
         if (!horaFinalInput.value) horaFinalInput.value = ahoraDatetimeLocalBogota();
       } else {
@@ -10139,7 +10267,7 @@
     function buscarTransportadora(q) {
       clearTimeout(msSearchTransportadoraTimeout);
       const listEl = document.getElementById('ms-transportadora-list');
-      if (!q || q.trim().length < 2) { listEl.style.display = 'none'; return; }
+      q = q || '';
       msSearchTransportadoraTimeout = setTimeout(async () => {
         try {
           const resp = await fetch(`/facturacion/api/transportadoras/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
@@ -10150,7 +10278,8 @@
           nuevoRow.style.cssText = 'font-weight:700; color:var(--accent);';
           nuevoRow.textContent = `+ Nuevo "${q.trim()}"`;
           nuevoRow.onclick = () => crearTransportadoraNueva(q.trim());
-          listEl.appendChild(nuevoRow);
+          if (q.trim() && !data.some(t => String(t.transportadora).toUpperCase() === q.trim().toUpperCase())) listEl.appendChild(nuevoRow);
+          if (!data.length && !q.trim()) { listEl.style.display = 'none'; return; }
           data.forEach(t => {
             const row = document.createElement('div');
             row.className = 'autocomplete-item';
@@ -10186,7 +10315,7 @@
     function buscarProveedor(q) {
       clearTimeout(msSearchProveedorTimeout);
       const listEl = document.getElementById('ms-proveedor-list');
-      if (!q || q.trim().length < 2) { listEl.style.display = 'none'; return; }
+      q = q || '';
       msSearchProveedorTimeout = setTimeout(async () => {
         try {
           const resp = await fetch(`/facturacion/api/proveedores/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
@@ -10197,7 +10326,8 @@
           nuevoRow.style.cssText = 'font-weight:700; color:var(--accent);';
           nuevoRow.textContent = `+ Nuevo "${q.trim()}"`;
           nuevoRow.onclick = () => crearProveedorNuevo(q.trim());
-          listEl.appendChild(nuevoRow);
+          if (q.trim() && !data.some(p => String(p.proveedor).toUpperCase() === q.trim().toUpperCase())) listEl.appendChild(nuevoRow);
+          if (!data.length && !q.trim()) { listEl.style.display = 'none'; return; }
           data.forEach(p => {
             if (msProveedorSeleccionados.some(sel => sel.id === p.id)) return;
             const row = document.createElement('div');
@@ -10205,8 +10335,10 @@
             row.textContent = p.proveedor;
             row.onclick = () => {
               agregarProveedorChip(p);
-              document.getElementById('ms-proveedor-input').value = '';
-              listEl.style.display = 'none';
+              const input = document.getElementById('ms-proveedor-input');
+              input.value = '';
+              input.focus();
+              buscarProveedor('');
             };
             listEl.appendChild(row);
           });
@@ -10251,7 +10383,7 @@
     function buscarPlaca(q) {
       clearTimeout(msSearchPlacaTimeout);
       const listEl = document.getElementById('ms-pl1-list');
-      if (!q || q.trim().length < 2) { listEl.style.display = 'none'; return; }
+      q = q || '';
       msSearchPlacaTimeout = setTimeout(async () => {
         try {
           const resp = await fetch(`/facturacion/api/placas/buscar?usuario=${encodeURIComponent(CONFIG.usuario)}&q=${encodeURIComponent(q)}`);
@@ -10262,7 +10394,8 @@
           nuevoRow.style.cssText = 'font-weight:700; color:var(--accent);';
           nuevoRow.textContent = `+ Nueva Placa "${q.trim().toUpperCase()}"`;
           nuevoRow.onclick = () => crearPlacaNueva(q.trim().toUpperCase());
-          listEl.appendChild(nuevoRow);
+          if (q.trim() && !data.some(p => String(p.placa).toUpperCase() === q.trim().toUpperCase())) listEl.appendChild(nuevoRow);
+          if (!data.length && !q.trim()) { listEl.style.display = 'none'; return; }
           data.forEach(p => {
             const row = document.createElement('div');
             row.className = 'autocomplete-item';
@@ -10289,7 +10422,10 @@
       try {
         const resp = await fetch(`/facturacion/api/placas?usuario=${encodeURIComponent(CONFIG.usuario)}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ placa, idRecibo: modalServicio.idRecibo, nit })
+          body: JSON.stringify({
+            placa, idRecibo: modalServicio.idRecibo, nit,
+            modalidad: msContexto.modalidad, clienteAFacturar: msContexto.clienteAFacturar
+          })
         });
         const data = await resp.json();
         if (resp.ok && data.ok) {
@@ -10308,7 +10444,7 @@
     function buscarAuxiliar(q) {
       clearTimeout(msSearchAuxiliarTimeout);
       const listEl = document.getElementById('ms-auxiliares-list');
-      if (!q || q.trim().length < 2) { listEl.style.display = 'none'; return; }
+      q = q || '';
       msSearchAuxiliarTimeout = setTimeout(async () => {
         try {
           const params = new URLSearchParams({ usuario: CONFIG.usuario, operacion: msContexto.operacion || '', q });
@@ -10323,8 +10459,10 @@
             row.onclick = () => {
               msAuxiliaresSeleccionados.push(a.trabajador);
               renderAuxiliaresChips();
-              document.getElementById('ms-auxiliares-input').value = '';
-              listEl.style.display = 'none';
+              const input = document.getElementById('ms-auxiliares-input');
+              input.value = '';
+              input.focus();
+              buscarAuxiliar('');
             };
             listEl.appendChild(row);
           });
@@ -10332,6 +10470,23 @@
         } catch (e) {}
       }, 250);
     }
+    // Listas desplegables del formulario de servicio: se cierran al hacer clic fuera. En
+    // Transportadora y Placa solo vale un valor escogido de la lista; si quedó texto suelto se borra.
+    document.addEventListener('mousedown', (e) => {
+      [
+        ['ms-transportadora-input', 'ms-transportadora-list', () => msTransportadoraId],
+        ['ms-proveedor-input', 'ms-proveedor-list', null],
+        ['ms-pl1-input', 'ms-pl1-list', () => msPl1Id],
+        ['ms-auxiliares-input', 'ms-auxiliares-list', null],
+      ].forEach(([inputId, listId, seleccionado]) => {
+        const input = document.getElementById(inputId);
+        const lista = document.getElementById(listId);
+        if (!input || !lista || input.contains(e.target) || lista.contains(e.target)) return;
+        lista.style.display = 'none';
+        if (seleccionado ? !seleccionado() : true) input.value = '';
+      });
+    });
+
     function quitarAuxiliarChip(nombre) {
       msAuxiliaresSeleccionados = msAuxiliaresSeleccionados.filter(x => x !== nombre);
       renderAuxiliaresChips();
@@ -10346,7 +10501,7 @@
     }
 
     async function guardarServicio() {
-      if (!modalServicio.idRecibo) return;
+      if (!modalServicio.idRecibo && modalServicio.modo !== 'pendiente') return;
 
       const formaDePago = (msContexto.modalidad === 'CREDITO') ? 3 : msFormaPagoActual;
 
@@ -10407,6 +10562,29 @@
         if (idReciboSel.style.display !== 'none' && idReciboSel.value) {
           fd.append('idRecibo', idReciboSel.value);
         }
+      }
+
+      // Recibo aún sin guardar: el servicio queda en la lista del formulario del recibo
+      if (modalServicio.modo === 'pendiente') {
+        const textoSel = (selector) => (document.querySelector(selector)?.textContent || '').trim();
+        const cantidad = parseFloat(document.getElementById('ms-cantidad').value);
+        const valorUnitario = parseFloat(document.getElementById('ms-valor-unitario').value);
+        const descripcion = [textoSel('.ms-area-btn.sel'), textoSel('.ms-actividad-btn.sel'), document.getElementById('ms-pl1-input').value.trim()]
+          .filter(Boolean).join(' · ') || 'Servicio';
+        if (!isNaN(cantidad) && !isNaN(valorUnitario) && cantidad * valorUnitario > 3000000) {
+          return alert('El Valor Base (Cantidad x Valor Unitario) no puede superar $3.000.000.');
+        }
+        mrServiciosPendientes.push({
+          fd,
+          resumen: {
+            estado: msEstadoActual,
+            descripcion,
+            valor: (!isNaN(cantidad) && !isNaN(valorUnitario)) ? cantidad * valorUnitario : 0,
+          },
+        });
+        cerrarModalServicio();
+        renderServiciosPendientesRecibo();
+        return;
       }
 
       const btn = document.getElementById('btn-guardar-servicio');

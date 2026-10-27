@@ -79,6 +79,7 @@ const MODULOS_MENU = [
   ['clouddocs', 'Cloud Docs'],
   ['inventario', 'Inventario'],
   ['directorio', 'Directorio Corporativo'],
+  ['configuracion', 'Configuración'],
 ];
 
 // Módulos y enlaces del menú OTROS para un rol: [{ modulo, nombre, icono, items: [{ etiqueta, url }] }]

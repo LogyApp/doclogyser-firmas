@@ -3,8 +3,8 @@
   const usuario = params.get('usuario') || (window.CONFIG && window.CONFIG.usuarioId) || (window.APP_CONFIG && window.APP_CONFIG.usuarioId) || 'Sistema';
 
   const currentModule = window.location.pathname.split('/').filter(Boolean)[0] || '';
-  const homeModules = new Set(['nomina', 'facturacion', 'sst', 'talenthub', 'cloud-docs', 'inventario', 'directorio-corporativo', 'cajaoperativa']);
-  const NOMBRE_MODULO = { nomina: 'Nómina', facturacion: 'Facturación', sst: 'SST', talenthub: 'TalentHub', 'cloud-docs': 'Cloud Docs', inventario: 'Inventario', 'directorio-corporativo': 'Directorio Corporativo', cajaoperativa: 'Caja Operativa' };
+  const homeModules = new Set(['nomina', 'facturacion', 'sst', 'talenthub', 'cloud-docs', 'inventario', 'directorio-corporativo', 'cajaoperativa', 'configuracion']);
+  const NOMBRE_MODULO = { nomina: 'Nómina', facturacion: 'Facturación', sst: 'SST', talenthub: 'TalentHub', 'cloud-docs': 'Cloud Docs', inventario: 'Inventario', 'directorio-corporativo': 'Directorio Corporativo', cajaoperativa: 'Caja Operativa', configuracion: 'Configuración' };
   const defaultPhoto = 'https://storage.googleapis.com/logyser-recursos-corporativos/firmas-corporativas/fotos-empleados/usuario.png';
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   let profile = null;

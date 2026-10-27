@@ -109,12 +109,19 @@ router.get('/', async (req, res) => {
     const accesoBloqueo = await computarAccesoFacturacion(usuario, 'Bloqueo_datos');
     const accesoClientes = await computarAccesoFacturacion(usuario, 'Clientes_credito');
     const accesoTickets = await computarAccesoFacturacion(usuario, 'Tickets');
+    // Subpestañas de la pestaña Clientes: cada una con su Sección en Maestro_Menu (facturacion)
+    const accesoMaestroClientes = await computarAccesoFacturacion(usuario, 'Clientes');
+    const accesoProveedor = await computarAccesoFacturacion(usuario, 'Proveedor');
+    const accesoTransportadora = await computarAccesoFacturacion(usuario, 'Transportadora');
+    const accesoPlacas = await computarAccesoFacturacion(usuario, 'Placas');
+    const accesoPestanaClientes = accesoMaestroClientes || accesoClientes || accesoProveedor
+      || accesoTransportadora || accesoPlacas;
 
-    if (!accesoServicios && !accesoRecibos && !accesoBloqueo && !accesoClientes) {
+    if (!accesoServicios && !accesoRecibos && !accesoBloqueo && !accesoPestanaClientes) {
       return res.status(403).send(paginaError('Usuario no autorizado para el módulo de Facturación'));
     }
 
-    const base = accesoServicios || accesoRecibos || accesoBloqueo || accesoClientes;
+    const base = accesoServicios || accesoRecibos || accesoBloqueo || accesoPestanaClientes;
     const cfgServiciosMasivo = await obtenerConfigServiciosMasivo(base.rol);
     const template = fs.readFileSync(FACTURACION_HTML, 'utf8');
 
@@ -134,6 +141,7 @@ router.get('/', async (req, res) => {
       usuarioNombre: base.usuarioNombre,
       rol: base.rol,
       regional: base.regional,
+      sinFiltro: base.sinFiltro,
       operacion: base.operacion,
       regionalesFiltro: Object.keys(base.opsPorRegional).sort(),
       opsPorRegional: base.opsPorRegional,
@@ -151,6 +159,10 @@ router.get('/', async (req, res) => {
         bloqueo: resumenAcceso(accesoBloqueo),
         clientes_credito: resumenAcceso(accesoClientes),
         tickets: resumenAcceso(accesoTickets),
+        clientes: resumenAcceso(accesoMaestroClientes),
+        proveedores: resumenAcceso(accesoProveedor),
+        transportadoras: resumenAcceso(accesoTransportadora),
+        placas: resumenAcceso(accesoPlacas),
       }
     }).replace(/<\/script>/gi, '<\\/script>');
 
@@ -428,9 +440,7 @@ router.get('/api/maestro-clientes', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [rows] = await pool.query(`
@@ -680,9 +690,7 @@ router.get('/api/maestro-transportadoras', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [[rows], [counts]] = await Promise.all([
@@ -756,9 +764,7 @@ router.post('/api/maestro-transportadoras/unificar-duplicados', async (req, res)
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     let grupos = Array.isArray(req.body.grupos) ? req.body.grupos : [];
@@ -816,9 +822,7 @@ router.post('/api/maestro-transportadoras/convertir-mayusculas', async (req, res
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -842,9 +846,7 @@ router.post('/api/maestro-transportadoras/eliminar-masivo', async (req, res) => 
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -893,9 +895,7 @@ router.post('/api/maestro-transportadoras/eliminar-reemplazar', async (req, res)
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -951,9 +951,7 @@ router.get('/api/maestro-transportadoras/analisis-textos-servicios', async (req,
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -1022,9 +1020,7 @@ router.post('/api/maestro-transportadoras/ejecutar-normalizacion-textos', async 
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -1089,9 +1085,7 @@ router.get('/api/maestro-transportadoras/:id/servicios', async (req, res) => {
     const { id } = req.params;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [rows] = await pool.query(`
@@ -1139,9 +1133,7 @@ router.get('/api/maestro-proveedores', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [[rows], [counts]] = await Promise.all([
@@ -1215,9 +1207,7 @@ router.post('/api/maestro-proveedores/unificar-duplicados', async (req, res) => 
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     let grupos = Array.isArray(req.body.grupos) ? req.body.grupos : [];
@@ -1275,9 +1265,7 @@ router.post('/api/maestro-proveedores/convertir-mayusculas', async (req, res) =>
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -1301,9 +1289,7 @@ router.post('/api/maestro-proveedores/eliminar-masivo', async (req, res) => {
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -1352,9 +1338,7 @@ router.post('/api/maestro-proveedores/eliminar-reemplazar', async (req, res) => 
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -1410,9 +1394,7 @@ router.get('/api/maestro-proveedores/analisis-textos-servicios', async (req, res
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -1481,9 +1463,7 @@ router.post('/api/maestro-proveedores/ejecutar-normalizacion-textos', async (req
     const { usuario } = req.query;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     if (!(await puedeDepurarMaestros(acceso.rol))) {
@@ -1548,9 +1528,7 @@ router.get('/api/maestro-proveedores/:id/servicios', async (req, res) => {
     const { id } = req.params;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
 
-    const acceso = (await computarAccesoFacturacion(usuario, 'Clientes_credito'))
-      || (await computarAccesoFacturacion(usuario, 'Servicios'))
-      || (await computarAccesoFacturacion(usuario, 'Recibos'));
+    const acceso = await accesoMaestrosClientes(usuario);
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
     const [rows] = await pool.query(`
@@ -5323,10 +5301,12 @@ router.get('/api/transportadoras/buscar', async (req, res) => {
     const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const qLike = `%${(q || '').trim()}%`;
+    // Lista desplegable del formulario de servicio: sin texto muestra las primeras; primero
+    // las que empiezan por lo escrito y luego las que lo contienen.
+    const texto = (q || '').trim();
     const [rows] = await pool.execute(
-      'SELECT ID as id, Transportadora as transportadora FROM Maestro_Transportadora WHERE Transportadora LIKE ? ORDER BY Transportadora ASC LIMIT 25',
-      [qLike]
+      'SELECT ID as id, Transportadora as transportadora FROM Maestro_Transportadora WHERE Transportadora LIKE ? ORDER BY (Transportadora LIKE ?) DESC, Transportadora ASC LIMIT 50',
+      [`%${texto}%`, `${texto}%`]
     );
     res.json(rows);
   } catch (err) {
@@ -5365,10 +5345,11 @@ router.get('/api/proveedores/buscar', async (req, res) => {
     const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const qLike = `%${(q || '').trim()}%`;
+    // Lista desplegable del formulario de servicio (mismo criterio que transportadoras)
+    const texto = (q || '').trim();
     const [rows] = await pool.execute(
-      'SELECT ID as id, Proveedor as proveedor FROM Maestro_Proveedor WHERE Proveedor LIKE ? ORDER BY Proveedor ASC LIMIT 25',
-      [qLike]
+      'SELECT ID as id, Proveedor as proveedor FROM Maestro_Proveedor WHERE Proveedor LIKE ? ORDER BY (Proveedor LIKE ?) DESC, Proveedor ASC LIMIT 50',
+      [`%${texto}%`, `${texto}%`]
     );
     res.json(rows);
   } catch (err) {
@@ -5407,16 +5388,17 @@ router.get('/api/placas/buscar', async (req, res) => {
     const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
 
-    const qLike = `%${(q || '').trim().toUpperCase()}%`;
+    // Lista desplegable del formulario de servicio (mismo criterio que transportadoras)
+    const texto = (q || '').trim().toUpperCase();
     const [rows] = await pool.execute(
       `SELECT mp.ID as id, mp.Placa as placa, mp.\`Tipo Cliente\` as tipoCliente,
               mp.\`Cliente Credito\` as clienteCredito, mp.Nit as nit, mc.\`Razón social\` as razonSocial
        FROM Maestro_Placas mp
        LEFT JOIN Maestro_Clientes mc ON mc.\`Código\` = mp.Nit
        WHERE mp.Placa LIKE ?
-       ORDER BY mp.Placa ASC, mp.\`Fecha Registro\` DESC
-       LIMIT 30`,
-      [qLike]
+       ORDER BY (mp.Placa LIKE ?) DESC, mp.Placa ASC, mp.\`Fecha Registro\` DESC
+       LIMIT 50`,
+      [`%${texto}%`, `${texto}%`]
     );
     res.json(rows);
   } catch (err) {
@@ -5430,15 +5412,23 @@ router.get('/api/placas/buscar', async (req, res) => {
 router.post('/api/placas', async (req, res) => {
   try {
     const { usuario } = req.query;
-    const { placa, idRecibo, nit } = req.body;
+    const { placa, idRecibo, nit, modalidad, clienteAFacturar } = req.body;
     if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
     const acceso = await computarAccesoFacturacion(usuario, 'Servicios') || await computarAccesoFacturacion(usuario, 'Recibos');
     if (!acceso) return res.status(403).json({ error: 'No autorizado' });
     if (!placa || !placa.trim()) return res.status(400).json({ error: 'La Placa es obligatoria.' });
-    if (!idRecibo) return res.status(400).json({ error: 'idRecibo requerido' });
 
-    const contexto = await obtenerContextoRecibo(idRecibo);
-    if (!contexto) return res.status(404).json({ error: 'Recibo no encontrado' });
+    // Servicio de un recibo que aún no se ha guardado (formulario Agregar Recibo): la
+    // Modalidad y el Cliente a Facturar llegan del formulario en vez del recibo.
+    let contexto;
+    if (idRecibo) {
+      contexto = await obtenerContextoRecibo(idRecibo);
+      if (!contexto) return res.status(404).json({ error: 'Recibo no encontrado' });
+    } else {
+      const modalidadForm = String(modalidad || '').toUpperCase();
+      if (!['RECAUDO', 'CREDITO'].includes(modalidadForm)) return res.status(400).json({ error: 'idRecibo o Modalidad requerido' });
+      contexto = { modalidad: modalidadForm, clienteAFacturar: clienteAFacturar || null };
+    }
 
     const tipoCliente = (contexto.modalidad === 'CREDITO') ? 'CREDITO' : 'CONTADO';
     const clienteCredito = (tipoCliente === 'CREDITO') ? contexto.clienteAFacturar : null;
@@ -5468,7 +5458,8 @@ router.get('/api/auxiliares/buscar', async (req, res) => {
 
     const qLike = `%${(q || '').trim()}%`;
     const [rows] = await pool.execute(
-      "SELECT DISTINCT Trabajador as trabajador FROM `Maestro_Vinculación` WHERE Estado = 'Activo' AND `Operación` = ? AND Trabajador LIKE ? ORDER BY Trabajador ASC LIMIT 30",
+      // Trabajadores activos de la Operación del recibo
+      "SELECT DISTINCT Trabajador as trabajador FROM `Maestro_Segmentación` WHERE Estado = 'Activo' AND `Operación` = ? AND Trabajador LIKE ? ORDER BY Trabajador ASC LIMIT 300",
       [operacion, qLike]
     );
     res.json(rows);

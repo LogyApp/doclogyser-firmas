@@ -50,12 +50,18 @@ Se trabaja **por ramas**, nunca directo en `main`.
   en un archivo `.sql` dentro de `migraciones/`, con fecha en el nombre
   (`AAAA-MM-DD_descripcion.sql`) y escrito para poder ejecutarse más de una vez
   (`INSERT ... WHERE NOT EXISTS`, `INSERT IGNORE`, `CREATE TABLE IF NOT EXISTS`).
-- La IA ejecuta la migración en la base de datos (ya no se corre desde Cloud Shell), pero
-  **solo cuando William lo confirme**, y siempre revisando antes qué hace el archivo.
-  La base es la de **producción**: lo que se ejecute es real.
-- Si la migración **borra o cambia datos, columnas o tablas** (`DROP`, `DELETE`, `UPDATE`,
-  `TRUNCATE`, `ALTER ... DROP`), avísale a William qué se pierde y espera su confirmación
-  expresa antes de ejecutarla. Antes de borrar una tabla, guarda una copia de respaldo.
+- La IA ejecuta la migración en la base de datos (ya no se corre desde Cloud Shell),
+  siempre revisando antes qué hace el archivo. La base es la de **producción**: lo que se
+  ejecute es real.
+- **Desde el PC local (flujo A), la IA tiene autorización para agregar o editar** sin
+  esperar confirmación: crear tablas o columnas (`CREATE TABLE`, `ALTER ... ADD`,
+  `ALTER ... MODIFY`), insertar filas (`INSERT`) y editar filas (`UPDATE` con `WHERE`
+  preciso). Antes de un `UPDATE` o `ALTER ... MODIFY`, revisa cuántas filas o qué datos
+  afecta; después, cuéntale a William qué cambió.
+- Para **borrar** (`DROP`, `DELETE`, `TRUNCATE`, `ALTER ... DROP`) o cualquier cambio que haga
+  perder datos, avísale a William qué se pierde y espera su confirmación expresa antes de
+  ejecutarlo. Antes de borrar una tabla, guarda una copia de respaldo.
+- Desde el celular (flujo B) no se ejecuta nada en la base sin confirmación de William.
 - Después de ejecutarla, verifica el resultado (filas insertadas, comparativo) y cuéntaselo.
 
 ## 3. Configuración en tablas, no en el código
