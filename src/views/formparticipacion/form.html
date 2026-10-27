@@ -486,7 +486,8 @@
   async function cargarAsistenciaParaEditar(id) {
     showLoading('Cargando datos del formato...');
     try {
-      const res = await fetch(`/participacion/api/asistencia/${id}`);
+      const res = await fetch(`/participacion/api/asistencia/${id}?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'No autorizado');
       const data = await res.json();
 
       document.getElementById('form-tema').value = data.tema;
@@ -496,6 +497,7 @@
       document.getElementById('form-lugar').value = data.lugar;
       document.getElementById('form-objetivo').value = data.objetivo;
 
+      asistentesOriginales = new Set(data.items.map(i => String(i.id_vinculacion)));
       formAsistentes = data.items.map(i => ({
         id_vinculacion: i.id_vinculacion,
         Trabajador: i.nombre_trabajador,
@@ -517,12 +519,26 @@
   }
 
   // ════════ GUARDAR FORMULARIO ════════
+  // Asistentes que ya tenía el formato al editar (a ellos no se les vuelve a enviar el correo)
+  let asistentesOriginales = new Set();
+
   async function guardarAsistencia(e) {
     e.preventDefault();
 
     if (!formAsistentes.length) {
       showToast('Por favor selecciona al menos un asistente.', 'error');
       return;
+    }
+
+    // Aviso: al guardar se envía un correo a los asistentes para que firmen.
+    if (CONFIG.notificacionesHabilitadas !== false) {
+      const nuevos = formAsistentes.filter(x => !asistentesOriginales.has(String(x.id_vinculacion))).length;
+      if (nuevos > 0) {
+        const msg = selectedAsistenciaId
+          ? `Se enviará un correo electrónico a ${nuevos} asistente(s) nuevo(s) para solicitar su firma. ¿Desea continuar?`
+          : `Al guardar se enviará un correo electrónico a los ${nuevos} trabajador(es) relacionados para solicitar su firma de asistencia. ¿Desea continuar?`;
+        if (!confirm(msg)) return;
+      }
     }
 
     const payload = {
@@ -552,7 +568,8 @@
       const resData = await res.json();
 
       if (resData.ok) {
-        showToast('Formato de asistencia guardado exitosamente.');
+        const c = resData.correos || {};
+        showToast('Formato guardado.' + (c.enviados ? ` Correo de firma enviado a ${c.enviados} asistente(s).` : '') + (c.sinCorreo ? ` ${c.sinCorreo} sin correo registrado.` : ''));
         setTimeout(() => volverAlListado(), 1000);
       } else {
         showToast(resData.error || 'Error al guardar.', 'error');

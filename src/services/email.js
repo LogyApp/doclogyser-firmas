@@ -1284,24 +1284,29 @@ ${encabezadoLogo('#8e44ad')}
   await transporter.sendMail(mailOpts);
 }
 
-async function enviarEmailAsistencia({ email, trabajador, tema, fecha, lugar, urlDoc }) {
-  const asunto = `Registro de Asistencia a Capacitación: ${tema}`;
+// Solicitud de firma del Registro de Asistencia (SST > Participación). Va al trabajador.
+async function enviarEmailAsistencia({ email, trabajador, tema, fecha, lugar, urlFirma, urlDoc }) {
+  const enlace = urlFirma || urlDoc;
+  const nombre = String(trabajador || '').includes(' ** ') ? String(trabajador).split(' ** ').pop().trim() : trabajador;
+  const asunto = `Firma su registro de asistencia: ${tema} — LOG&SER`;
   const cuerpo = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
 ${encabezadoLogo(COLOR_ENCABEZADO_AZUL)}
       <div style="padding:24px;background:#fff;border:1px solid #eee">
         <h2 style="color:#1a1a2e;margin-top:0">Registro de Asistencia</h2>
-        <p style="color:#555">Hola <strong>${trabajador}</strong>,</p>
-        <p style="color:#555">Se ha registrado su asistencia a la capacitación sobre: <strong>${tema}</strong>.</p>
+        <p style="color:#555">Hola <strong>${nombre}</strong>,</p>
+        <p style="color:#555">Usted fue registrado como asistente a la siguiente actividad. Por favor confirme su asistencia con su firma digital.</p>
         <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:.93rem">
           <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888;width:40%">Tema</td><td style="padding:8px 12px;font-weight:bold">${tema}</td></tr>
           <tr><td style="padding:8px 12px;color:#888">Fecha</td><td style="padding:8px 12px">${formatFecha(fecha)}</td></tr>
           <tr style="background:#f8f9fb"><td style="padding:8px 12px;color:#888">Lugar</td><td style="padding:8px 12px">${lugar}</td></tr>
         </table>
-        ${urlDoc ? `
+        ${enlace ? `
         <div style="margin-top:24px;text-align:center">
-          <a href="${urlDoc}" target="_blank" style="background:#8e44ad;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;font-weight:bold;display:inline-block">Ver Documento de Asistencia</a>
-        </div>` : ''}
+          <a href="${enlace}" target="_blank" style="background:${COLOR_ENCABEZADO_AZUL};color:white;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;display:inline-block">✍️ Firmar mi asistencia</a>
+        </div>
+        <p style="color:#999;font-size:.78rem;margin-top:18px;line-height:1.5">Si el botón no funciona, copie este enlace en su navegador:<br><span style="color:#1a5fa8;word-break:break-all">${enlace}</span></p>
+        <p style="color:#999;font-size:.78rem;line-height:1.5">Este correo queda como soporte de su participación en la actividad.</p>` : ''}
       </div>
       ${FOOTER}
     </div>`;

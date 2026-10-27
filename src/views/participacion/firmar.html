@@ -154,6 +154,14 @@
     infoAsistente.innerText = `${CONFIG.identificacion} - ${limpiarNombreConId(CONFIG.nombre_trabajador)}`;
     infoCargo.innerText = CONFIG.cargo;
 
+    // Ya firmó antes con este enlace
+    if (CONFIG.yaFirmo) {
+      vistaFirma.style.display = 'none';
+      vistaExito.style.display = 'block';
+      vistaExito.querySelector('h2').innerText = 'Ya registraste tu firma';
+      return;
+    }
+
     // Verificar firma prefirmada
     if (CONFIG.firmaBase64) {
       prefilledBox.innerHTML = `<img src="${CONFIG.firmaBase64}" alt="Firma registrada">`;
@@ -198,7 +206,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id_item_asistencia: CONFIG.id_item_asistencia,
+          token: CONFIG.token,
           aceptarExistente: true
         })
       });
@@ -207,7 +215,8 @@
         vistaFirma.style.display = 'none';
         vistaExito.style.display = 'block';
       } else {
-        alert('Error al aceptar firma. Intente nuevamente.');
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Error al aceptar firma. Intente nuevamente.');
       }
     } catch (err) {
       console.error(err);
@@ -304,7 +313,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id_item_asistencia: CONFIG.id_item_asistencia,
+          token: CONFIG.token,
           firmaBase64: dataUrl,
           aceptarExistente: false
         })
@@ -314,7 +323,8 @@
         vistaFirma.style.display = 'none';
         vistaExito.style.display = 'block';
       } else {
-        alert('Error al guardar firma. Intente nuevamente.');
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Error al guardar firma. Intente nuevamente.');
       }
     } catch (err) {
       console.error(err);
