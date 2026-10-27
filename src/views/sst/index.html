@@ -3169,7 +3169,7 @@
           <p class="tab-subtitle">Registro y control de firmas de asistentes en capacitaciones y charlas</p>
         </div>
         <div class="tab-actions">
-          <button class="btn btn-accent" onclick="abrirModalCrear('participacion')">
+          <button class="btn btn-accent" id="btn-crear-part" onclick="abrirModalCrear('participacion')">
             <span>➕</span> Nueva Asistencia
           </button>
         </div>
@@ -5154,6 +5154,8 @@
       if (btnCrearIns && CONFIG.inspeccionesConfig && !CONFIG.inspeccionesConfig.puedeRegistrar) {
         btnCrearIns.style.display = 'none';
       }
+      const btnCrearPart = document.getElementById('btn-crear-part');
+      if (btnCrearPart && CONFIG.permisosParticipacion && !CONFIG.permisosParticipacion.crear) btnCrearPart.style.display = 'none';
       ['ev', 'cap', 'pc', 'csst', 'ats'].forEach(modulo => {
         const btn = document.getElementById('btn-crear-' + modulo);
         if (btn && !permisoSst(modulo, 'crear')) btn.style.display = 'none';
@@ -6932,41 +6934,36 @@
           evidenciasHtml = '<div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; margin-top: 6px;">Sin fotos de evidencia registradas.</div>';
         }
 
-        // 2. Acciones globales (Creador o Sistema)
-        const esCreadorOSistema = (data.usuario === CONFIG.usuarioId || CONFIG.rol === 'Sistema');
-        const esAutorizadoEliminar = ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol);
+        // 2. Acciones globales: permisos que calcula el servidor (Config_Parametros sst / Participación;
+        //    quien creó el formato siempre puede gestionarlo).
+        const permisosPart = data.permisos || {};
+        const pendientesFirma = (data.items || []).filter(i => i.estado_firma !== 'FIRMADA').length;
 
         let accionesGlobalesHtml = '';
-        if (esCreadorOSistema) {
-          const btnPdfText = data.url_doc ? '🔄 Regenerar PDF (Solo Firmas Listas)' : '⚙️ Generar PDF (Solo Firmas Listas)';
+        if (permisosPart.generar) {
+          const btnPdfText = data.url_doc ? '🔄 Regenerar PDF' : '⚙️ Generar PDF';
           accionesGlobalesHtml += `
-            <button class="btn btn-sm" onclick="generarPDFParticipacion(${data.id_asistencia}, true)" style="background: var(--accent); color: var(--accent-contrast); border: none; font-weight: 600;">
+            <button class="btn btn-sm" onclick="generarPDFParticipacion(${data.id_asistencia}, ${pendientesFirma})" style="background: var(--accent); color: var(--accent-contrast); border: none; font-weight: 600;">
               ${btnPdfText}
             </button>
           `;
-
-          if (!data.url_doc) {
-            accionesGlobalesHtml += `
-              <button class="btn btn-primary btn-sm" onclick="notificarTodosParticipacion(${data.id_asistencia})">
-                ✉️ Enviar Correo a Todos
-              </button>
-              <button class="btn btn-secondary btn-sm" onclick="abrirEditarParticipacion(${data.id_asistencia})">
-                ✏️ Editar Formato
-              </button>
-            `;
-          } else {
-            accionesGlobalesHtml += `
-              <button class="btn btn-primary btn-sm" disabled style="opacity: 0.5; pointer-events: none;">
-                ✉️ Enviar Correo a Todos
-              </button>
-              <button class="btn btn-secondary btn-sm" disabled style="opacity: 0.5; pointer-events: none;">
-                ✏️ Editar Formato
-              </button>
-            `;
-          }
+        }
+        if (permisosPart.enlaces && pendientesFirma > 0) {
+          accionesGlobalesHtml += `
+            <button class="btn btn-primary btn-sm" onclick="notificarTodosParticipacion(${data.id_asistencia})">
+              ✉️ Reenviar correo a los ${pendientesFirma} sin firma
+            </button>
+          `;
+        }
+        if (permisosPart.editar) {
+          accionesGlobalesHtml += `
+            <button class="btn btn-secondary btn-sm" onclick="abrirEditarParticipacion(${data.id_asistencia})">
+              ✏️ Editar Formato
+            </button>
+          `;
         }
 
-        if (esAutorizadoEliminar && !data.url_doc) {
+        if (permisosPart.eliminar) {
           accionesGlobalesHtml += `
             <button class="btn btn-sm" onclick="confirmarEliminarRegistro('part', '${data.id_asistencia}')" style="background: var(--danger); color: var(--text-inverse); border: none; font-weight: 600;">
               🗑️ Eliminar Registro
@@ -6976,7 +6973,7 @@
 
         // 3. Asistentes
         const items = data.items || data.asistentes || [];
-        const esAutorizadoControl = (data.usuario === CONFIG.usuarioId || ['Sistema', 'AdmSst', 'LiderSst'].includes(CONFIG.rol));
+        const esAutorizadoControl = !!permisosPart.enlaces;
 
         let asistentesHtml = '';
         if (items.length) {
@@ -6987,12 +6984,13 @@
             }
 
             let badgeFirma = '';
-            if (ast.estado_firma === 'ACEPTADA') {
-              badgeFirma = '<span class="status-badge badge-firma-aceptada">✓ Aceptada</span>';
-            } else if (ast.estado_firma === 'PREFILLED') {
-              badgeFirma = '<span class="status-badge badge-firma-prefilled">Firma Prellenada</span>';
+            const fmtFechaHora = v => v ? String(v).replace('T', ' ').slice(0, 16) : '';
+            if (ast.estado_firma === 'FIRMADA') {
+              badgeFirma = '<span class="status-badge badge-firma-aceptada">✓ Firmó</span>';
+            } else if (ast.estado_firma === 'CORREO_ENVIADO') {
+              badgeFirma = `<span class="status-badge badge-firma-prefilled" title="Correo enviado ${fmtFechaHora(ast.fecha_envio_correo)}">✉️ Correo enviado</span>`;
             } else {
-              badgeFirma = '<span class="status-badge badge-firma-sin">Sin Firma</span>';
+              badgeFirma = '<span class="status-badge badge-firma-sin">Sin firma</span>';
             }
 
             let controlButtons = '';
@@ -7003,51 +7001,33 @@
                 celParam = '57' + celParam;
               }
 
-              const urlFirmaLink = `${window.location.origin}/participacion/firmar?item=${ast.id_item_asistencia}`;
+              const urlFirmaLink = ast.enlace_firma || '';
               const msgWaText = encodeURIComponent(`Hola, por favor ingresa al siguiente enlace para verificar y firmar digitalmente tu asistencia a la actividad sobre "${data.tema}": ${urlFirmaLink}`);
 
               const safeNombre = cleanNombre.replace(/'/g, "\\'");
               const safeEmail = (ast.email || '').replace(/'/g, "\\'");
               const safeCel = (ast.celular || '').replace(/'/g, "\\'");
+              const sinEnlace = 'disabled style="opacity:0.45; pointer-events:none;"';
 
-              if (data.url_doc) {
-                controlButtons = `
-                  <div class="ast-actions-grid">
-                    <button class="btn-ast-action btn-ast-datos" onclick="abrirModalContactoParticipacion('${ast.identificacion}', '${safeNombre}', '${safeCel}', '${safeEmail}')">
-                      ✏️ Datos
-                    </button>
-                    <button class="btn-ast-action btn-ast-whatsapp" disabled style="opacity:0.45; pointer-events:none;">
-                      📲 WhatsApp
-                    </button>
-                    <button class="btn-ast-action btn-ast-email" disabled style="opacity:0.45; pointer-events:none;">
-                      ✉️ Correo
-                    </button>
-                    <button class="btn-ast-action btn-ast-copy" disabled style="opacity:0.45; pointer-events:none;">
-                      📋 Copiar
-                    </button>
-                  </div>
-                `;
-              } else {
-                const waUrl = celParam ? `https://wa.me/${celParam}?text=${msgWaText}` : '#';
-                const waDisabled = celParam ? '' : 'disabled style="opacity:0.45; pointer-events:none;" title="Sin celular registrado"';
+              const waUrl = celParam && urlFirmaLink ? `https://wa.me/${celParam}?text=${msgWaText}` : '#';
+              const waDisabled = celParam && urlFirmaLink ? '' : `${sinEnlace} title="${urlFirmaLink ? 'Sin celular registrado' : 'Ya firmó'}"`;
 
-                controlButtons = `
-                  <div class="ast-actions-grid">
-                    <button class="btn-ast-action btn-ast-datos" onclick="abrirModalContactoParticipacion('${ast.identificacion}', '${safeNombre}', '${safeCel}', '${safeEmail}')">
-                      ✏️ Datos
-                    </button>
-                    <a href="${waUrl}" target="_blank" class="btn-ast-action btn-ast-whatsapp" ${waDisabled}>
-                      📲 WhatsApp
-                    </a>
-                    <button class="btn-ast-action btn-ast-email" onclick="notificarIndividualParticipacion(${ast.id_item_asistencia})">
-                      ✉️ Correo
-                    </button>
-                    <button class="btn-ast-action btn-ast-copy" onclick="copiarPortapapeles('${urlFirmaLink}')">
-                      📋 Copiar
-                    </button>
-                  </div>
-                `;
-              }
+              controlButtons = `
+                <div class="ast-actions-grid">
+                  <button class="btn-ast-action btn-ast-datos" onclick="abrirModalContactoParticipacion('${ast.identificacion}', '${safeNombre}', '${safeCel}', '${safeEmail}')">
+                    ✏️ Datos
+                  </button>
+                  <a href="${waUrl}" target="_blank" class="btn-ast-action btn-ast-whatsapp" ${waDisabled}>
+                    📲 WhatsApp
+                  </a>
+                  <button class="btn-ast-action btn-ast-email" ${urlFirmaLink ? `onclick="notificarIndividualParticipacion(${ast.id_item_asistencia})"` : sinEnlace}>
+                    ✉️ Correo
+                  </button>
+                  <button class="btn-ast-action btn-ast-copy" ${urlFirmaLink ? `onclick="copiarPortapapeles('${urlFirmaLink}')"` : sinEnlace}>
+                    📋 Copiar
+                  </button>
+                </div>
+              `;
             }
 
             return `
@@ -7181,7 +7161,7 @@
       if (!selectedAsistenciaId) return;
       showLoading('Enviando correo al asistente...');
       try {
-        const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/enviar-notificacion`, {
+        const res = await fetch(`/participacion/api/asistencia/${selectedAsistenciaId}/enviar-notificacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id_item_asistencia: idItemAsistencia })
@@ -7189,6 +7169,7 @@
         const data = await res.json();
         if (res.ok) {
           showToast('Notificación individual enviada con éxito', 'success');
+          abrirDetalleParticipacion(selectedAsistenciaId);
         } else {
           showToast(data.error || 'Error al enviar notificación', 'error');
         }
@@ -7203,14 +7184,15 @@
     async function notificarTodosParticipacion(idAsistencia) {
       showLoading('Enviando correos a todos los asistentes...');
       try {
-        const res = await fetch(`/participacion/api/asistencia/${idAsistencia}/enviar-notificacion`, {
+        const res = await fetch(`/participacion/api/asistencia/${idAsistencia}/enviar-notificacion?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enviarATodos: true })
         });
         const data = await res.json();
         if (res.ok) {
-          showToast(`Notificaciones enviadas a ${data.enviados || 0} asistentes`, 'success');
+          showToast(`Correo enviado a ${data.enviados || 0} asistente(s)` + (data.sinCorreo ? ` · ${data.sinCorreo} sin correo registrado` : ''), 'success');
+          abrirDetalleParticipacion(idAsistencia);
         } else {
           showToast(data.error || 'Error al enviar notificaciones', 'error');
         }
@@ -7223,23 +7205,26 @@
     }
 
     // ═════ GENERACIÓN DE PDF (PARTICIPACIÓN) ═════
-    async function generarPDFParticipacion(id, force = false) {
+    async function generarPDFParticipacion(id, pendientes = 0) {
       if (currentEvidenciasCount === 0) {
         if (!confirm('¿Confirma que no desea poner foto de evidencia para esta actividad?')) {
           return;
         }
       }
+      if (pendientes > 0 && !confirm(`${pendientes} asistente(s) aún no han firmado. En el PDF aparecerán con la anotación de soporte por correo electrónico. Si luego firman, el PDF se reemplaza solo. ¿Desea generarlo?`)) {
+        return;
+      }
       showLoading('Generando documento PDF de asistencia...');
       try {
-        const res = await fetch(`/participacion/api/asistencia/${id}/generar-pdf`, {
+        const res = await fetch(`/participacion/api/asistencia/${id}/generar-pdf?usuario=${encodeURIComponent(CONFIG.usuarioId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ force })
+          body: JSON.stringify({})
         });
         const data = await res.json();
 
         if (res.ok && data.ok) {
-          showToast('PDF generado y guardado en carpetas de asistentes con éxito', 'success');
+          showToast(`PDF generado (${data.firmados} de ${data.total} con firma) y guardado en documentos de la empresa`, 'success');
           abrirDetalleParticipacion(id);
           cargarParticipaciones();
         } else {

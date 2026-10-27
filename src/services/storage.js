@@ -145,6 +145,26 @@ async function subirPDFGeneralAsistencia(idAsistencia, formattedDate, bufferPdf)
   return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
 }
 
+// Firma guardada en el bucket de firmas, a partir de su URL pública → data URL (base64).
+// Solo acepta objetos del bucket de firmas.
+async function descargarFirmaBase64PorUrl(url) {
+  const parsed = new URL(String(url || ''));
+  const partes = parsed.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  if (parsed.hostname !== 'storage.googleapis.com' || partes[0] !== BUCKET_FIRMAS || partes.length < 2) {
+    throw new Error('La firma no pertenece al bucket de firmas.');
+  }
+  const [buffer] = await storage.bucket(BUCKET_FIRMAS).file(partes.slice(1).join('/')).download();
+  return `data:image/png;base64,${buffer.toString('base64')}`;
+}
+
+// Registro de Asistencia (SST > Participación): talenthub_central/general/REGASIS.{id}.{timestamp}.pdf
+async function subirPDFRegistroAsistencia(idAsistencia, bufferPdf) {
+  const nombre = `general/REGASIS.${idAsistencia}.${Date.now()}.pdf`;
+  const file = storage.bucket(BUCKET_PDFS).file(nombre);
+  await file.save(bufferPdf, { contentType: 'application/pdf' });
+  return `https://storage.googleapis.com/${BUCKET_PDFS}/${nombre}`;
+}
+
 async function subirPDFPruebaConsumo(identificacion, formattedDate, bufferPdf) {
   const nombre = `${identificacion}/${identificacion}.CPC.${formattedDate}.pdf`;
   const file = storage.bucket(BUCKET_PDFS).file(nombre);
@@ -391,6 +411,8 @@ module.exports = {
   subirPDFCertificadoRetiro,
   subirPDFEvaluacionRetiro,
   subirPDFAstAsistencia,
+  descargarFirmaBase64PorUrl,
+  subirPDFRegistroAsistencia,
   subirPDFGeneralAsistencia,
   subirPDFPruebaConsumo,
   subirPDFDescuentoNomina,
