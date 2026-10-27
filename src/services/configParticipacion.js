@@ -31,7 +31,7 @@ const DEFAULTS = {
   [P.ENLACES]:   'Sistema, AdmSst, LiderSst',
   [P.HABILITAR]: '1',
   [P.CODIGO]:    'SST-F-003',
-  [P.VERSION]:   '02',
+  [P.VERSION]:   '03',
   [P.FECHA]:     '28/05/2026',
   [P.NOTA]:      'Soportado por correo electrónico',
 };

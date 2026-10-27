@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Registro de Participantes — LOG&SER</title>
+<style>
+  @page { size: letter; margin: 16mm 15mm 18mm 15mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #0f172a; background: #ffffff; font-size: 9.2pt; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Encabezado */
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #000b59; margin-bottom: 14px; }
+  .header-left { max-width: 60%; }
+  .company-name { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.3px; text-transform: uppercase; }
+  .company-meta { font-size: 8pt; color: #64748b; margin-top: 2px; line-height: 1.35; }
+  .header-right { text-align: right; }
+  .logo-img { height: 48px; max-width: 190px; object-fit: contain; }
+  .doc-badge { display: inline-block; background: #eef2ff; color: #000b59; font-size: 7.5pt; font-weight: 700; padding: 3px 8px; border-radius: 4px; margin-top: 4px; border: 1px solid #c7d2fe; letter-spacing: 0.4px; }
+
+  /* Título */
+  .doc-title-bar { text-align: center; margin-bottom: 14px; }
+  .doc-title { font-size: 13pt; font-weight: 800; color: #000b59; letter-spacing: 0.5px; text-transform: uppercase; }
+  .doc-subtitle { font-size: 8pt; color: #64748b; margin-top: 2px; }
+
+  /* Tarjeta de datos clave */
+  .metrics-card { display: flex; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .metric-item { flex: 1; padding: 10px 14px; border-right: 1px solid #e2e8f0; }
+  .metric-item:last-child { border-right: none; }
+  .metric-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .metric-value-primary { font-size: 13pt; font-weight: 800; color: #f55400; letter-spacing: -0.3px; }
+  .metric-value { font-size: 10pt; font-weight: 700; color: #000b59; }
+  .metric-sub { font-size: 7.5pt; color: #94a3b8; margin-top: 1px; }
+
+  /* Secciones */
+  .section-block { margin-bottom: 12px; }
+  .section-title { font-size: 8.5pt; font-weight: 700; color: #000b59; text-transform: uppercase; letter-spacing: 0.6px; display: flex; align-items: center; gap: 6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; }
+  .section-title::before { content: ''; display: inline-block; width: 4px; height: 12px; background: #f55400; border-radius: 2px; }
+
+  /* Datos */
+  .data-grid { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; font-size: 8.5pt; }
+  .data-grid td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .data-grid tr:last-child td { border-bottom: none; }
+  .data-grid tr:nth-child(even) td { background: #fafafa; }
+  .data-label { width: 22%; font-weight: 600; color: #64748b; border-right: 1px solid #f1f5f9; }
+  .data-val { font-weight: 600; color: #0f172a; text-align: justify; }
+
+  /* Tabla de asistentes */
+  .doc-table { width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; font-size: 8pt; }
+  .doc-table thead { display: table-header-group; }
+  .doc-table th { background: #000b59; color: #ffffff; font-weight: 700; text-align: left; padding: 5px 8px; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.4px; }
+  .doc-table td { padding: 4px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+  .doc-table tr { page-break-inside: avoid; }
+  .doc-table tbody tr:nth-child(even) td { background: #fafafa; }
+  .col-num { width: 5%; text-align: center; color: #64748b; }
+  .col-firma { width: 24%; text-align: center; }
+  .firma-img { max-height: 34px; max-width: 150px; object-fit: contain; display: block; margin: 0 auto; }
+  .firma-nota { display: inline-block; font-size: 7pt; color: #475569; font-style: italic; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 6px; line-height: 1.3; }
+  .resumen { font-size: 7.5pt; color: #64748b; margin-top: 5px; }
+
+  /* Recuadro de soporte */
+  .statement-box { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3.5px solid #000b59; border-radius: 6px; padding: 9px 12px; margin-top: 10px; margin-bottom: 14px; page-break-inside: avoid; }
+  .statement-header { font-size: 8pt; font-weight: 700; color: #000b59; text-transform: uppercase; margin-bottom: 3px; letter-spacing: 0.3px; }
+  .statement-text { font-size: 8pt; color: #334155; text-align: justify; line-height: 1.4; }
+
+  /* Evidencias */
+  .evidencias-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .evidencia { width: calc(33.333% - 6px); height: 120px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; background: #f8fafc; page-break-inside: avoid; }
+  .evidencia img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Firma del responsable */
+  .signature-container { margin-top: 10px; page-break-inside: avoid; }
+  .signature-card { width: 280px; margin: 0 auto; text-align: center; }
+  .sig-img-wrap { height: 70px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 4px; }
+  .sig-img { max-height: 65px; max-width: 240px; object-fit: contain; }
+  .sig-line { border-top: 1.5px solid #000b59; margin-bottom: 5px; }
+  .sig-name { font-size: 9pt; font-weight: 700; color: #000b59; text-transform: uppercase; }
+  .sig-details { font-size: 7.5pt; color: #64748b; line-height: 1.35; }
+
+  /* Pie de página */
+  .doc-footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; font-size: 7pt; color: #94a3b8; page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+  <header class="doc-header">
+    <div class="header-left">
+      <div class="company-name">Apoyo Logístico y Operativo S.A.S.</div>
+      <div class="company-meta">NIT. 900.318.733-1 &bull; Dg. 74B # 33A - 51 &bull; Medellín, Colombia</div>
+    </div>
+    <div class="header-right">
+      <img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img">
+      <div><span class="doc-badge">{{codigo_formato}} &bull; VERSIÓN {{version_formato}} &bull; {{fecha_formato}}</span></div>
+      <div><span class="doc-badge">REGISTRO N° {{id_asistencia}}</span></div>
+    </div>
+  </header>
+
+  <div class="doc-title-bar">
+    <h1 class="doc-title">Registro de Participantes</h1>
+    <p class="doc-subtitle">Registro de asistencia a actividades de Seguridad y Salud en el Trabajo</p>
+  </div>
+
+  <div class="metrics-card">
+    <div class="metric-item">
+      <div class="metric-label">Fecha de la actividad</div>
+      <div class="metric-value">{{fecha}}</div>
+      <div class="metric-sub">De {{hora_inicial}} a {{hora_final}}</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Lugar</div>
+      <div class="metric-value">{{lugar}}</div>
+      <div class="metric-sub">Duración: {{duracion}} h</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-label">Asistentes</div>
+      <div class="metric-value-primary">{{total_asistentes}}</div>
+      <div class="metric-sub">{{resumen_firmas}}</div>
+    </div>
+  </div>
+
+  <section class="section-block">
+    <div class="section-title">Información de la Actividad</div>
+    <table class="data-grid">
+      <tr><td class="data-label">Tema:</td><td class="data-val"><strong>{{tema}}</strong></td></tr>
+      <tr><td class="data-label">Objetivo:</td><td class="data-val">{{objetivo}}</td></tr>
+      <tr><td class="data-label">Responsable:</td><td class="data-val">{{nombre_responsable}} &bull; {{cargo_responsable}}</td></tr>
+    </table>
+  </section>
+
+  <section class="section-block">
+    <div class="section-title">Asistentes Registrados</div>
+    <table class="doc-table">
+      <thead>
+        <tr>
+          <th class="col-num">#</th>
+          <th>Nombres y apellidos</th>
+          <th style="width: 14%;">Cédula</th>
+          <th style="width: 22%;">Cargo</th>
+          <th class="col-firma" style="text-align: center;">Firma</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{filas_asistentes}}
+      </tbody>
+    </table>
+    <p class="resumen">{{resumen_detalle}}</p>
+  </section>
+
+  <section class="statement-box">
+    <div class="statement-header">Soporte de la participación</div>
+    <p class="statement-text">
+      La participación de los asistentes en esta actividad se respalda con su firma digital registrada en la plataforma.
+      A quienes no firmaron se les envió un correo electrónico con la invitación a firmar, que queda como soporte de su
+      participación (Ley 527 de 1999 sobre mensajes de datos), junto con la evidencia fotográfica de la actividad.
+    </p>
+  </section>
+
+  <div class="signature-container">
+    <div class="signature-card">
+      <div class="sig-img-wrap">{{firma_responsable_html}}</div>
+      <div class="sig-line"></div>
+      <div class="sig-name">{{nombre_responsable}}</div>
+      <div class="sig-details">{{cargo_responsable}}<br>Responsable del registro</div>
+    </div>
+  </div>
+
+  {{seccion_evidencias}}
+
+  <footer class="doc-footer">
+    <span>Apoyo Logístico y Operativo S.A.S. &bull; Registro de Participantes</span>
+    <span>Certificación electrónica bajo Ley 527 de 1999</span>
+    <span>Generado el {{fecha_generacion}}</span>
+  </footer>
+
+</body>
+</html>

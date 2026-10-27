@@ -13,6 +13,7 @@ const {
   subirEvidenciaAsistencia,
 } = require('../services/storage');
 const { generarPDFDesdeHTML } = require('../services/renderer');
+const { LOGO_BASE64 } = require('../services/assets');
 const { resolverRutaFirmaResponsable } = require('../services/firmaPathResolver');
 const { computarAccesoSst } = require('../services/accesoSst');
 const { normalizar } = require('../services/maestroMenu');
@@ -187,6 +188,76 @@ async function enviarSolicitudesFirma(idAsistencia, base, idsItems = null) {
 }
 
 // ── PDF ─────────────────────────────────────────────────────────────────────
+// Diseño: plantilla 'registro_asistencia' de Maestro_Plantillas (mismo estilo del PDF de
+// Cesantías). Si no existe o está inactiva, se usa el diseño anterior escrito aquí.
+const NOMBRE_PLANTILLA = 'registro_asistencia';
+
+function fechaHoraBogotaTexto(d = new Date()) {
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
+async function armarHtmlDesdePlantilla({ asistencia, asistentes, evidencias, formato, firmaResponsableBase64, firmados, porCorreo }) {
+  let plantilla = null;
+  try {
+    const [rows] = await pool.execute(
+      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1',
+      [NOMBRE_PLANTILLA]
+    );
+    plantilla = rows.length ? rows[0].contenido_html : null;
+  } catch (err) {
+    console.warn('[participacion] No se pudo leer la plantilla registro_asistencia:', err.message);
+  }
+  if (!plantilla) return null;
+
+  const filas = asistentes.map((ast, idx) => `
+        <tr>
+          <td class="col-num">${idx + 1}</td>
+          <td><strong>${esc(nombreLimpio(ast.nombre_trabajador))}</strong></td>
+          <td>${esc(ast.identificacion)}</td>
+          <td>${esc(ast.cargo)}</td>
+          <td class="col-firma">${ast.firmaBase64
+            ? `<img src="${ast.firmaBase64}" class="firma-img" alt="Firma">`
+            : `<span class="firma-nota">${esc(ast.anotacion)}</span>`}</td>
+        </tr>`).join('');
+
+  const seccionEvidencias = evidencias.length ? `
+  <section class="section-block" style="page-break-inside: avoid; break-inside: avoid;">
+    <div class="section-title">Evidencia Fotográfica</div>
+    <div class="evidencias-grid">
+      ${evidencias.map((ev) => `<div class="evidencia"><img src="${esc(ev.url_evidencia)}" alt="Evidencia"></div>`).join('')}
+    </div>
+  </section>` : '';
+
+  const total = asistentes.length;
+  const datos = {
+    logo_src: LOGO_BASE64,
+    codigo_formato: esc(formato.codigo),
+    version_formato: esc(formato.version),
+    fecha_formato: esc(formato.fecha),
+    id_asistencia: esc(asistencia.id_asistencia),
+    fecha: esc(formatFechaEspanol(asistencia.fecha)),
+    hora_inicial: esc(String(asistencia.hora_inicial || '').slice(0, 5)),
+    hora_final: esc(String(asistencia.hora_final || '').slice(0, 5)),
+    lugar: esc(asistencia.lugar),
+    duracion: esc(String(asistencia.duracion || '').slice(0, 5)),
+    total_asistentes: total,
+    resumen_firmas: `${firmados} con firma${porCorreo ? ` · ${porCorreo} por correo` : ''}`,
+    resumen_detalle: `Asistentes: ${total} · Con firma digital: ${firmados}${porCorreo ? ` · ${esc(formato.nota)}: ${porCorreo}` : ''}${total - firmados - porCorreo > 0 ? ` · Sin correo registrado: ${total - firmados - porCorreo}` : ''}`,
+    tema: esc(asistencia.tema),
+    objetivo: esc(asistencia.objetivo) || '—',
+    nombre_responsable: esc(nombreLimpio(asistencia.nombre_responsable)) || '—',
+    cargo_responsable: esc(asistencia.cargo_responsable) || '—',
+    filas_asistentes: filas,
+    seccion_evidencias: seccionEvidencias,
+    firma_responsable_html: firmaResponsableBase64 ? `<img src="${firmaResponsableBase64}" class="sig-img" alt="Firma">` : '',
+    fecha_generacion: fechaHoraBogotaTexto(),
+  };
+  return plantilla.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, clave) => (Object.prototype.hasOwnProperty.call(datos, clave) ? String(datos[clave]) : ''));
+}
+
 // Un PDF por formato, guardado en talenthub_central/general y registrado en
 // Maestro_docEmpresa (TipoDocumento 89). Al regenerarlo se reemplaza el registro.
 // Asistentes sin firma: anotación de soporte por correo electrónico.
@@ -379,7 +450,14 @@ async function _generarPDFAsistencia(id, { usuarioId } = {}) {
     </html>
   `;
 
-  const pdfBuffer = await generarPDFDesdeHTML(htmlCompleto);
+  const [evidencias] = await pool.execute(
+    'SELECT url_evidencia FROM Dynamic_formato_evidencias WHERE id_asistencia = ? ORDER BY id_evidencia',
+    [id]
+  );
+  const htmlPlantilla = await armarHtmlDesdePlantilla({
+    asistencia, asistentes: asistentesConFirma, evidencias, formato, firmaResponsableBase64, firmados, porCorreo,
+  });
+  const pdfBuffer = await generarPDFDesdeHTML(htmlPlantilla || htmlCompleto);
   const urlGeneral = await subirPDFRegistroAsistencia(id, pdfBuffer);
 
   // Registro en Maestro_docEmpresa (se reemplaza al regenerar)
