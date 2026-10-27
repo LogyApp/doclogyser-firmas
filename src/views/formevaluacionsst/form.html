@@ -300,8 +300,11 @@
     // Set user info
     document.getElementById('user-badge').textContent = `Usuario: ${CONFIG.usuarioNombre} (${CONFIG.rol})`;
 
-    // Default date to today
-    document.getElementById('input-fecha').value = new Date().toISOString().slice(0, 10);
+    // Default date to today (Bogotá) and restrict future dates
+    const hoyBogota = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+    const inputFechaEl = document.getElementById('input-fecha');
+    inputFechaEl.value = hoyBogota;
+    inputFechaEl.max = hoyBogota;
 
     // References
     const selectReg = document.getElementById('select-regional');
@@ -463,6 +466,12 @@
       const dateVal = document.getElementById('input-fecha').value;
       const tipoVal = document.getElementById('select-tipo').value;
       const sendMail = document.getElementById('check-correo').checked;
+
+      const hoyActual = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      if (dateVal && dateVal > hoyActual) {
+        alert('La fecha de evaluación no puede ser superior a hoy.');
+        return;
+      }
 
       if (!formTrabajadores.length) {
         alert('Debe seleccionar al menos un colaborador');

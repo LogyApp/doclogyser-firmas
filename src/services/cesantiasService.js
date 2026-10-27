@@ -1161,6 +1161,7 @@ async function generarYGuardarPDFCesantias(idCesantia, usuario = 'sistema') {
     : `<div style="height: 60px; line-height: 60px; color: #94a3b8; font-style: italic;">Pendiente de firma</div>`;
 
   const datosReemplazo = {
+    logo_src: LOGO_BASE64,
     id_solicitud: sol.Id,
     monto_solicitado: formatearMoneda(sol.monto_solicitado),
     fondo_cesantias: sol.fondo_cesantias || '—',
@@ -1191,7 +1192,9 @@ async function generarYGuardarPDFCesantias(idCesantia, usuario = 'sistema') {
   }
 
   // Generar buffer PDF con Puppeteer
-  const pdfBuffer = await generarPDFDesdeHTML(htmlFinal);
+  const pdfBuffer = await generarPDFDesdeHTML(htmlFinal, {
+    margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+  });
 
   // Subir a GCS en talenthub_central/[identificacion]/[identificacion].RCES.yyyymmddhhmmss.pdf
   const pdfUrl = await subirPDFCesantiasSolicitud(tra.identificacion, pdfBuffer);

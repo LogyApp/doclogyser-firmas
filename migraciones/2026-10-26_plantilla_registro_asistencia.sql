@@ -13,7 +13,7 @@ SELECT 'registro_asistencia', 'Dynamic_formato_asistencia', 'id_asistencia', 'ge
 <meta charset="utf-8">
 <title>Registro de Participantes — LOG&SER</title>
 <style>
-  @page { size: letter; margin: 16mm 15mm 18mm 15mm; }
+  @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -21,19 +21,20 @@ SELECT 'registro_asistencia', 'Dynamic_formato_asistencia', 'id_asistencia', 'ge
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Encabezado */
-  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #000b59; margin-bottom: 14px; }
-  .header-left { max-width: 60%; }
-  .company-name { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.3px; text-transform: uppercase; }
-  .company-meta { font-size: 8pt; color: #64748b; margin-top: 2px; line-height: 1.35; }
-  .header-right { text-align: right; }
-  .logo-img { height: 48px; max-width: 190px; object-fit: contain; }
-  .doc-badge { display: inline-block; background: #eef2ff; color: #000b59; font-size: 7.5pt; font-weight: 700; padding: 3px 8px; border-radius: 4px; margin-top: 4px; border: 1px solid #c7d2fe; letter-spacing: 0.4px; }
-
-  /* Título */
-  .doc-title-bar { text-align: center; margin-bottom: 14px; }
-  .doc-title { font-size: 13pt; font-weight: 800; color: #000b59; letter-spacing: 0.5px; text-transform: uppercase; }
-  .doc-subtitle { font-size: 8pt; color: #64748b; margin-top: 2px; }
+  /* Encabezado compacto 3 columnas */
+  .doc-header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; border: 1px solid #cbd5e1; }
+  .doc-header-table td { border: 1px solid #cbd5e1; vertical-align: middle; }
+  .header-logo-cell { width: 24%; text-align: center; padding: 8px 10px; background: #ffffff; }
+  .logo-img { height: 46px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto; }
+  .header-title-cell { width: 56%; background: #e6edf7; color: #000b59; text-align: center; padding: 10px 14px; }
+  .doc-title { font-size: 11pt; font-weight: 800; color: #000b59; letter-spacing: 0.4px; text-transform: uppercase; line-height: 1.25; }
+  .doc-subtitle { font-size: 8pt; font-weight: 700; color: #c2410c; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .doc-subdetail { font-size: 7pt; color: #475569; font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .header-meta-cell { width: 20%; padding: 6px 10px; font-size: 8pt; text-align: center; background: #f8fafc; color: #1e293b; line-height: 1.35; }
+  .meta-code { font-weight: 800; color: #000b59; font-size: 8.5pt; }
+  .meta-ver { color: #334155; }
+  .meta-date { color: #64748b; font-size: 7.5pt; }
+  .meta-id { margin-top: 2px; font-size: 7.5pt; color: #000b59; font-weight: 800; }
 
   /* Tarjeta de datos clave */
   .metrics-card { display: flex; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
@@ -95,22 +96,24 @@ SELECT 'registro_asistencia', 'Dynamic_formato_asistencia', 'id_asistencia', 'ge
 </head>
 <body>
 
-  <header class="doc-header">
-    <div class="header-left">
-      <div class="company-name">Apoyo Logístico y Operativo S.A.S.</div>
-      <div class="company-meta">NIT. 900.318.733-1 &bull; Dg. 74B # 33A - 51 &bull; Medellín, Colombia</div>
-    </div>
-    <div class="header-right">
-      <img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img">
-      <div><span class="doc-badge">{{codigo_formato}} &bull; VERSIÓN {{version_formato}} &bull; {{fecha_formato}}</span></div>
-      <div><span class="doc-badge">REGISTRO N° {{id_asistencia}}</span></div>
-    </div>
-  </header>
-
-  <div class="doc-title-bar">
-    <h1 class="doc-title">Registro de Participantes</h1>
-    <p class="doc-subtitle">Registro de asistencia a actividades de Seguridad y Salud en el Trabajo</p>
-  </div>
+  <table class="doc-header-table">
+    <tr>
+      <td class="header-logo-cell">
+        <img src="{{logo_src}}" alt="LOG&amp;SER" class="logo-img">
+      </td>
+      <td class="header-title-cell">
+        <div class="doc-title">REGISTRO DE PARTICIPANTES</div>
+        <div class="doc-subtitle">REGISTRO DE ASISTENCIA A ACTIVIDADES SST</div>
+        <div class="doc-subdetail">SISTEMA DE GESTIÓN DE SEGURIDAD Y SALUD EN EL TRABAJO</div>
+      </td>
+      <td class="header-meta-cell">
+        <div class="meta-code">{{codigo_formato}}</div>
+        <div class="meta-ver">Versión: {{version_formato}}</div>
+        <div class="meta-date">{{fecha_formato}}</div>
+        <div class="meta-id">ID: #{{id_asistencia}}</div>
+      </td>
+    </tr>
+  </table>
 
   <div class="metrics-card">
     <div class="metric-item">

@@ -1,5 +1,23 @@
-const { generarPDF } = require('./renderer');
+const pool = require('./db');
+const { generarPDF, generarPDFDesdeHTML } = require('./renderer');
 const { LOGO_BASE64, ACTO_INSEGURO_1_BASE64, ACTO_INSEGURO_2_BASE64 } = require('./assets');
+
+const NOMBRE_PLANTILLA = 'evaluacion_sst';
+
+const FORMATO_DEFAULTS = {
+  codigo: 'F-SST-001',
+  version: '03',
+  fecha: '28/05/2026',
+};
+
+function esc(val) {
+  if (val === null || val === undefined) return '';
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function formatFechaCO(fecha) {
   if (!fecha) return '';
@@ -9,11 +27,196 @@ function formatFechaCO(fecha) {
   return d.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+function fechaHoraBogotaTexto(d = new Date()) {
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
 function limpiarNombre(n) {
   if (!n) return '';
   const p = String(n).split(' ** ');
   return (p.length > 1 ? p[1] : n).trim();
 }
+
+async function obtenerFormatoEvaluacion() {
+  const formato = { ...FORMATO_DEFAULTS };
+  try {
+    const [rows] = await pool.execute(
+      "SELECT Concepto, Parametro FROM Config_Parametros WHERE Modulo = 'sst' AND Seccion = 'Evaluación SST'"
+    );
+    for (const r of rows) {
+      const c = String(r.Concepto || '').trim();
+      const v = String(r.Parametro || '').trim();
+      if (!v) continue;
+      if (c === 'Código del formato de evaluación SST') formato.codigo = v;
+      else if (c === 'Versión del formato de evaluación SST') formato.version = v;
+      else if (c === 'Fecha del formato de evaluación SST') formato.fecha = v;
+    }
+  } catch (err) {
+    console.warn('[evsstPdfGenerator] No se pudieron leer parámetros de formato, se usan valores por defecto:', err.message);
+  }
+  return formato;
+}
+
+function armarCuestionarioHtml(ev, p9Selections) {
+  const opt = (checked, texto) => `
+      <div class="q-option${checked ? ' selected' : ''}">
+        <span class="q-check">${checked ? '&#10003;' : ''}</span>
+        <span>${texto}</span>
+      </div>`;
+
+  const preg = (titulo, opcionesHtml) => `
+    <div class="q-card">
+      <div class="q-title">${titulo}</div>
+      <div class="q-options">${opcionesHtml}</div>
+    </div>`;
+
+  const q1Img1Sel = ev.p1 === 'Imagen 1';
+  const q1Img2Sel = ev.p1 === 'Imagen 2';
+  const q1Html = `
+    <div class="q-card">
+      <div class="q-title">1. Indique cuál de las siguientes imágenes es un acto inseguro:</div>
+      <div class="q1-images">
+        <div class="q1-img-card${q1Img1Sel ? ' selected' : ''}">
+          <img src="${ACTO_INSEGURO_1_BASE64}" alt="Acto Inseguro 1">
+          ${opt(q1Img1Sel, 'Imagen 1')}
+        </div>
+        <div class="q1-img-card${q1Img2Sel ? ' selected' : ''}">
+          <img src="${ACTO_INSEGURO_2_BASE64}" alt="Acto Inseguro 2">
+          ${opt(q1Img2Sel, 'Imagen 2')}
+        </div>
+      </div>
+    </div>`;
+
+  return [
+    q1Html,
+    preg('2. Que es un accidente de trabajo', [
+      opt(ev.p2 === 'a', 'a. Es todo suceso repentino que sobrevenga por causa o con ocasión del trabajo.'),
+      opt(ev.p2 === 'b', 'b. Puede producir en el trabajador una lesión orgánica, una perturbación funcional, una invalidez o la muerte.'),
+      opt(ev.p2 === 'c', 'c. A y B son correctas.'),
+      opt(ev.p2 === 'd', 'd. Solo la A es correcta.'),
+    ].join('')),
+    preg('3. ¿Qué significa la sigla SGSST?', [
+      opt(ev.p3 === 'a', 'a. Sistema de Gestión de Seguridad y Salud en la operación'),
+      opt(ev.p3 === 'b', 'b. Sistema General de Servicios de Salud y Trabajo.'),
+      opt(ev.p3 === 'c', 'c. Servicio de Gestión de Seguridad Social y Trabajo.'),
+      opt(ev.p3 === 'd', 'd. Sistema de Gestión de Seguridad y Salud en el trabajo'),
+    ].join('')),
+    preg('4. ¿Qué es Enfermedad Laboral?', [
+      opt(ev.p4 === 'a', 'a. Enfermedad causada por el trabajo'),
+      opt(ev.p4 === 'b', 'b. Enfermedad hereditaria.'),
+      opt(ev.p4 === 'c', 'c. Enfermedad adquirida en vacaciones.'),
+      opt(ev.p4 === 'd', 'd. Enfermedad sin relación con el trabajo.'),
+      opt(ev.p4 === 'e', 'e. Enfermedad por mala alimentación.'),
+    ].join('')),
+    preg('5. Que accidentes puedo sufrir en mi lugar de trabajo', [
+      opt(ev.p5 === 'a', 'a. Caídas, golpes, heridas, contusiones'),
+      opt(ev.p5 === 'b', 'b. Dolor de estómago, estrés, fatigas.'),
+      opt(ev.p5 === 'c', 'c. Ninguna de las anteriores.'),
+    ].join('')),
+    preg('6. ¿Cuál es su ARL y en cuánto tiempo se reporta un accidente de trabajo?', [
+      opt(ev.p6 === 'a', 'a. ARL: Seguros Bolívar, reporte en 48 horas.'),
+      opt(ev.p6 === 'b', 'b. ARL: Sura, reporte en 15 días.'),
+      opt(ev.p6 === 'c', 'c. ARL: Colmena, reporte en 30 días.'),
+      opt(ev.p6 === 'd', 'd. ARL: Positiva, reporte 48 días'),
+    ].join('')),
+    preg('7. Que es el COPASST.', [
+      opt(ev.p7 === 'a', 'a. Es una medida preventiva del acoso laboral.'),
+      opt(ev.p7 === 'b', 'b. Es un organismo de promoción y vigilancia de las normas y reglamentos de Seguridad y salud en el trabajo dentro de la empresa.'),
+      opt(ev.p7 === 'c', 'c. A y B son correctas'),
+    ].join('')),
+    preg('8. Que es el Comité de Convivencia', [
+      opt(ev.p8 === 'a', 'a. Es una medida preventiva del acoso laboral.'),
+      opt(ev.p8 === 'b', 'b. Es un comité para dirigir las rutas de evacuación'),
+      opt(ev.p8 === 'c', 'c. Fomenta estilos de vida saludables'),
+      opt(ev.p8 === 'd', 'd. A y C son correctas'),
+    ].join('')),
+    preg('9. Describa algunos riesgos a los que se encuentra expuesto en su lugar de trabajo:', [
+      opt(p9Selections.includes('Riesgo locativo'), 'Riesgo locativo (caídas, golpes, superficies irregulares).'),
+      opt(p9Selections.includes('Riesgo biomecánico'), 'Riesgo biomecánico (levantamiento y manipulación de cargas).'),
+      opt(p9Selections.includes('Riesgo físico'), 'Riesgo físico (ruido, iluminación, temperatura).'),
+      opt(p9Selections.includes('Riesgo químico'), 'Riesgo químico (combustibles, sustancias químicas, polvo).'),
+      opt(p9Selections.includes('Riesgo de tránsito'), 'Riesgo de tránsito (desplazamiento de vehículos y montacargas).'),
+      opt(p9Selections.includes('Riesgo psicosocial'), 'Riesgo psicosocial (estrés laboral, carga de trabajo).'),
+    ].join('')),
+    preg('10. ¿Qué debe hacer si es víctima o testigo de una situación de acoso sexual en el trabajo?', [
+      opt(ev.p10 === 'a', 'a. Informar la situación a los canales establecidos por la empresa.'),
+      opt(ev.p10 === 'b', 'b. Ignorar la situación.'),
+      opt(ev.p10 === 'c', 'c. Compartir la situación con otros compañeros sin reportarla.'),
+    ].join('')),
+    preg('11. En materia de seguridad vial, ¿cuál de las siguientes acciones es obligatoria?', [
+      opt(ev.p11 === 'a', 'a. No estar certificado como operador'),
+      opt(ev.p11 === 'b', 'b. Exceder los límites de velocidad para llegar más rápido'),
+      opt(ev.p11 === 'c', 'c. Cumplir las normas de tránsito y conducir de manera segura'),
+      opt(ev.p11 === 'd', 'd. Utilizar el celular mientras conduce.'),
+    ].join('')),
+    preg('12. ¿Qué establece la Política de Seguridad y Salud en el Trabajo de la empresa?', [
+      opt(ev.p12 === 'a', 'a. El aumento de la producción sin importar los riesgos laborales.'),
+      opt(ev.p12 === 'b', 'b. El compromiso de prevenir accidentes de trabajo y enfermedades laborales.'),
+      opt(ev.p12 === 'c', 'c. La aplicación de amonestaciones a todos los trabajadores.'),
+      opt(ev.p12 === 'd', 'd. Reducir las horas extras.'),
+    ].join('')),
+    preg('13. En caso de una emergencia, ¿qué debe hacer primero?', [
+      opt(ev.p13 === 'a', 'a. Seguir la ruta de evacuación y dirigirse al punto de encuentro.'),
+      opt(ev.p13 === 'b', 'b. Continuar trabajando hasta recibir otra instrucción.'),
+      opt(ev.p13 === 'c', 'c. Salir corriendo sin seguir las indicaciones.'),
+    ].join('')),
+  ].join('\n');
+}
+
+async function armarHtmlDesdePlantilla({ ev, vin, evaluadorNombre, p9Selections }) {
+  let plantilla = null;
+  try {
+    const [rows] = await pool.execute(
+      'SELECT contenido_html FROM Maestro_Plantillas WHERE nombre_proceso = ? AND activo = 1 ORDER BY version DESC LIMIT 1',
+      [NOMBRE_PLANTILLA]
+    );
+    plantilla = rows.length ? rows[0].contenido_html : null;
+  } catch (err) {
+    console.warn('[evsstPdfGenerator] No se pudo leer la plantilla evaluacion_sst:', err.message);
+  }
+  if (!plantilla) return null;
+
+  const formato = await obtenerFormatoEvaluacion();
+  const isInduccion = ev.tipo === 'Inducción';
+  const isAprobado = ev.resultado === 'APROBADO';
+  const puntaje = ev.puntaje !== null && ev.puntaje !== undefined ? ev.puntaje : 0;
+  const fechaFmt = formatFechaCO(ev.fecha);
+
+  const resultadoHtml = isAprobado
+    ? '<span class="badge-aprobado">APROBADO</span>'
+    : '<span class="badge-no-aprobado">NO APROBADO</span>';
+
+  const firmaTrabajadorHtml = ev.firma_trabajador
+    ? `<img src="${esc(ev.firma_trabajador)}" class="sig-img" alt="Firma">`
+    : '<span class="firma-nota">No firmó dentro del plazo de 48 horas</span>';
+
+  const datos = {
+    logo_src: LOGO_BASE64,
+    codigo_formato: esc(formato.codigo),
+    version_formato: esc(formato.version),
+    fecha_formato: esc(formato.fecha),
+    id_evaluacion: esc(ev.id_evaluacion || '—'),
+    fecha: esc(fechaFmt || '—'),
+    tipo_evaluacion: esc(ev.tipo || 'Inducción'),
+    subtipo_detalle: isInduccion ? 'Ingreso / Inducción SST' : 'Actualización / Reinducción SST',
+    puntaje: esc(puntaje),
+    resultado_html: resultadoHtml,
+    nombre_trabajador: esc(limpiarNombre(vin && vin.Trabajador)) || '—',
+    identificacion: esc(ev.identificacion) || '—',
+    nombre_evaluador: esc(limpiarNombre(evaluadorNombre)) || '—',
+    cuestionario_html: armarCuestionarioHtml(ev, p9Selections),
+    firma_trabajador_html: firmaTrabajadorHtml,
+    fecha_generacion: fechaHoraBogotaTexto(),
+  };
+
+  return plantilla.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, clave) => (
+    Object.prototype.hasOwnProperty.call(datos, clave) ? String(datos[clave]) : ''
+  ));
+}
+
 
 async function renderPDF(ev, vin, evaluadorNombre) {
   const isInduccion = ev.tipo === 'Inducción';
@@ -37,7 +240,14 @@ async function renderPDF(ev, vin, evaluadorNombre) {
     }
   }
 
-  // Check signature status
+  const htmlPlantilla = await armarHtmlDesdePlantilla({ ev, vin, evaluadorNombre, p9Selections });
+  if (htmlPlantilla) {
+    return generarPDFDesdeHTML(htmlPlantilla, {
+      margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+    });
+  }
+
+  // Check signature status (respaldo si la plantilla está inactiva)
   let firmaHtml = '';
   if (ev.firma_trabajador) {
     firmaHtml = `<img src="${ev.firma_trabajador}" style="max-height: 80px; max-width: 250px; display: block; margin: 4px auto;" />`;

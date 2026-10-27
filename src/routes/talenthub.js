@@ -827,7 +827,8 @@ router.get('/api/requisiciones/catalogos', async (req, res) => {
     const puedeEscogerResponsableVacio = rolPermitidoEnParametro(rol, paramsConfig['Escoger responsables area de Selección en Requisición']);
     const puedeEditarResponsableAsignado = rolPermitidoEnParametro(rol, paramsConfig['Editar responsables area de Selección en Requisición']);
     const puedeAgregarIntegridad = rolPermitidoEnParametro(rol, paramsConfig['Agregar Registros a Integridad']);
-    const puedeEditarParametros = rolPermitidoEnParametro(rol, paramsConfig['Editar parametros de Requisiciones']);
+    const puedeEditarParametros = (acceso.secciones && acceso.secciones.includes('Requisiciones_Parametros')) ||
+      rolPermitidoEnParametro(rol, paramsConfig['Editar parametros de Requisiciones']);
 
     // 1. Fecha Desde por defecto (mínima fecha de la quincena actual en Maestro_Fechas) si el rol no tiene excepción
     const noAplicaFiltroFechaDesde = rolPermitidoEnParametro(rol, paramsConfig['No aplica el filtro de FECHA DESDE']);
@@ -2052,40 +2053,140 @@ router.put('/api/requisiciones/:id', async (req, res) => {
   }
 });
 
-// 6. GET /api/parametros/requisiciones
-// Lista los parámetros de la sección Requisiciones (excepto editar parámetros) y roles de Config_Rol
-router.get('/api/parametros/requisiciones', async (req, res) => {
+// 6. GET /api/parametros (y /api/parametros/requisiciones para compatibilidad)
+// Lista todos los parámetros del módulo TalentHub y catálogo de roles
+router.get(['/api/parametros', '/api/parametros/requisiciones'], async (req, res) => {
   try {
-    const { usuario } = req.query;
-    const acceso = await computarAccesoTalenthub(usuario, 'Requisiciones');
+    const { usuario, seccion } = req.query;
+    const acceso = await computarAccesoTalenthub(usuario, 'Parametros');
     if (!acceso) {
       return res.status(403).json({ error: 'No autorizado.' });
     }
 
-    const [rows] = await pool.execute(
-      `SELECT id, Modulo, Seccion, Concepto, Condicion, Parametro 
-       FROM Config_Parametros 
-       WHERE Modulo = 'talenthub' AND Seccion = 'Requisiciones' AND Concepto != 'Editar parametros de Requisiciones'
-       ORDER BY id ASC`
-    );
+    const tienePermiso = (acceso.secciones && (acceso.secciones.includes('Parametros') || acceso.secciones.includes('Requisiciones_Parametros'))) ||
+      rolPermitidoEnParametro(acceso.rol, 'CoorSelección, Sistema');
+    if (!tienePermiso) {
+      return res.status(403).json({ error: 'No tienes permiso para acceder a los Parámetros de TalentHub.' });
+    }
 
-    const [roles] = await pool.execute(
-      'SELECT DISTINCT Rol FROM Config_Rol ORDER BY Rol ASC'
-    );
+    let sql = 'SELECT id, Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion FROM Config_Parametros WHERE Modulo = ?';
+    const params = ['talenthub'];
+    if (seccion) {
+      sql += ' AND Seccion = ?';
+      params.push(seccion);
+    }
+    sql += ' ORDER BY Seccion ASC, Concepto ASC';
+
+    const [rows] = await pool.execute(sql, params);
+    const [roles] = await pool.execute('SELECT DISTINCT Rol FROM Config_Rol ORDER BY Rol ASC');
 
     res.json({
       ok: true,
       parametros: rows,
-      roles: roles.map(r => r.Rol).filter(Boolean).filter(r => r.trim().toLowerCase() !== 'sistema')
+      roles: roles.map(r => r.Rol).filter(Boolean)
     });
   } catch (err) {
-    console.error('[talenthub] GET /api/parametros/requisiciones:', err);
+    console.error('[talenthub] GET /api/parametros:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 7. POST /api/parametros/requisiciones
-// Guarda los parámetros modificados validando que el rol tenga permiso en "Editar parametros de Requisiciones"
+// 6.1 PUT /api/parametros/:id (y /api/parametros/requisiciones/:id para compatibilidad)
+// Modifica un parámetro individual (valor y descripción)
+router.put(['/api/parametros/:id', '/api/parametros/requisiciones/:id'], async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { usuario, parametro, descripcion } = req.body;
+    const acceso = await computarAccesoTalenthub(usuario, 'Parametros');
+    if (!acceso) {
+      return res.status(403).json({ error: 'No autorizado.' });
+    }
+
+    const tienePermiso = (acceso.secciones && (acceso.secciones.includes('Parametros') || acceso.secciones.includes('Requisiciones_Parametros'))) ||
+      rolPermitidoEnParametro(acceso.rol, 'CoorSelección, Sistema');
+    if (!tienePermiso) {
+      return res.status(403).json({ error: 'Solo los roles autorizados (CoorSelección, Sistema) pueden modificar los parámetros de TalentHub.' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT id, Modulo, Seccion, Concepto, Condicion, Parametro, Descripcion FROM Config_Parametros WHERE id = ? AND Modulo = ?',
+      [id, 'talenthub']
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Parámetro no encontrado en TalentHub.' });
+    }
+
+    const row = rows[0];
+    let finalParam = String(parametro == null ? '' : parametro).trim();
+
+    // Validaciones según condición
+    const condicionNorm = (row.Condicion || '').trim().toLowerCase();
+    if (condicionNorm === 'porcentaje') {
+      if (!/^(100|[1-9]?\d)$/.test(finalParam)) {
+        return res.status(400).json({ error: `"${row.Concepto}" debe ser un número entero entre 0 y 100.` });
+      }
+      const numVal = parseInt(finalParam, 10);
+      const paramsConfig = await obtenerParametrosTalenthub();
+      if (row.Concepto === 'Porcentaje semáforo amarillo SLA') {
+        const verdeVal = parseInt(paramsConfig['Porcentaje semáforo verde SLA'] ?? '80', 10);
+        if (numVal > verdeVal) {
+          return res.status(400).json({ error: 'El porcentaje del semáforo amarillo no puede ser mayor que el del verde.' });
+        }
+      } else if (row.Concepto === 'Porcentaje semáforo verde SLA') {
+        const amarilloVal = parseInt(paramsConfig['Porcentaje semáforo amarillo SLA'] ?? '50', 10);
+        if (numVal < amarilloVal) {
+          return res.status(400).json({ error: 'El porcentaje del semáforo verde no puede ser menor que el del amarillo.' });
+        }
+      }
+    } else if (condicionNorm === 'hora') {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(finalParam)) {
+        return res.status(400).json({ error: `"${row.Concepto}" debe ser una hora válida en formato HH:mm (por ejemplo 12:00).` });
+      }
+    } else if (condicionNorm === 'filas') {
+      if (!(/^\d+$/.test(finalParam) && Number(finalParam) >= 1 && Number(finalParam) <= 1000000)) {
+        return res.status(400).json({ error: `"${row.Concepto}" debe ser un número entero entre 1 y 1.000.000.` });
+      }
+    } else if (condicionNorm === 'número' || condicionNorm === 'numero') {
+      if (!/^\d+$/.test(finalParam) || Number(finalParam) < 0) {
+        return res.status(400).json({ error: `"${row.Concepto}" debe ser un número entero positivo.` });
+      }
+    } else if (condicionNorm === 'booleano') {
+      if (!['0', '1', 'true', 'false'].includes(finalParam.toLowerCase())) {
+        finalParam = finalParam === '1' || finalParam.toLowerCase() === 'true' ? '1' : '0';
+      } else {
+        finalParam = ['1', 'true'].includes(finalParam.toLowerCase()) ? '1' : '0';
+      }
+    } else if (condicionNorm === 'rol') {
+      const dbRoles = (row.Parametro || '').split(',').map(s => s.trim());
+      const hasSistema = dbRoles.some(r => r.toLowerCase() === 'sistema');
+      if (hasSistema) {
+        const newRoles = finalParam.split(',').map(s => s.trim()).filter(Boolean);
+        if (!newRoles.some(r => r.toLowerCase() === 'sistema')) {
+          newRoles.unshift('Sistema');
+        }
+        finalParam = newRoles.join(', ');
+      }
+    }
+
+    const nuevaDesc = descripcion !== undefined ? String(descripcion).trim() : row.Descripcion;
+    if (nuevaDesc && nuevaDesc.length > 500) {
+      return res.status(400).json({ error: 'La descripción admite como máximo 500 caracteres.' });
+    }
+
+    await pool.execute(
+      'UPDATE Config_Parametros SET Parametro = ?, Descripcion = ? WHERE id = ? AND Modulo = ?',
+      [finalParam, nuevaDesc, id, 'talenthub']
+    );
+
+    console.log(`[talenthub-parametros] Parámetro id=${id} ("${row.Concepto}" - ${row.Seccion}) actualizado por ${acceso.usuarioId}: "${finalParam}"`);
+    res.json({ ok: true, mensaje: 'Parámetro actualizado exitosamente.' });
+  } catch (err) {
+    console.error('[talenthub] PUT /api/parametros/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 router.post('/api/parametros/requisiciones', async (req, res) => {
   try {
     const { usuario, parametros } = req.body;

@@ -35,6 +35,10 @@ function formatTimestamp() {
   return `${yy}${mm}${dd}${hh}${ss}`;
 }
 
+function hoyBogotaStr() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+}
+
 async function registrarDocumentoTrabajador(identificacion, urlDoc, usuarioId, tipoDocumento, prefijo) {
   try {
     const [vinRows] = await pool.execute(
@@ -446,6 +450,10 @@ router.post('/api/crear', async (req, res) => {
       return res.status(400).json({ error: 'Todos los campos obligatorios deben ser diligenciados' });
     }
 
+    if (String(fecha).slice(0, 10) > hoyBogotaStr()) {
+      return res.status(400).json({ error: 'La fecha de evaluación no puede ser superior a hoy.' });
+    }
+
     const accesoCrear = await computarAccesoSst(usuario, SECCION_MENU_SST);
     if (!accesoCrear || !(await rolPuedeSst(accesoCrear.rol, SECCION_MENU_SST, 'crear'))) {
       return res.status(403).json({ error: 'No autorizado para crear evaluaciones.' });
@@ -516,6 +524,10 @@ router.post('/api/crear-masivo', async (req, res) => {
 
     if (!fecha || !identificaciones || !identificaciones.length || !tipo || !usuario) {
       return res.status(400).json({ error: 'Todos los campos obligatorios deben ser diligenciados' });
+    }
+
+    if (String(fecha).slice(0, 10) > hoyBogotaStr()) {
+      return res.status(400).json({ error: 'La fecha de evaluación no puede ser superior a hoy.' });
     }
 
     const accesoCrearMasivo = await computarAccesoSst(usuario, SECCION_MENU_SST);
@@ -814,6 +826,145 @@ router.post('/api/reenviar-firma', async (req, res) => {
   }
 });
 
+// Helper: regenera el PDF de una evaluación SST ya completada/firmada y actualiza url_doc
+async function regenerarPdfEvaluacion(evActualizado, oldUrlDoc) {
+  const [vinRows] = await pool.execute(
+    `SELECT Trabajador, \`Id Vinculación\`, Regional, \`Operación\`, Estado, \`Fecha de Ingreso\`
+     FROM \`Maestro_Vinculación\`
+     WHERE Identificación = ?
+     ORDER BY \`Fecha de Ingreso\` DESC LIMIT 1`,
+    [evActualizado.identificacion]
+  );
+  const vin = vinRows.length ? vinRows[0] : { Trabajador: evActualizado.identificacion };
+
+  const [uRows] = await pool.execute(
+    'SELECT Nombre FROM Maestro_Usuarios WHERE ID = ? LIMIT 1',
+    [evActualizado.usuario]
+  );
+  const evaluadorNombre = uRows.length ? uRows[0].Nombre : evActualizado.usuario;
+
+  const pdfBuffer = await renderPDF(evActualizado, vin, evaluadorNombre);
+  const timestamp = formatTimestamp();
+  const nuevoUrlDoc = await subirPDFEvaluacionSST(evActualizado.identificacion, timestamp, pdfBuffer);
+
+  await pool.execute(
+    'UPDATE Maestro_evaluacionsst SET url_doc = ? WHERE id_evaluacion = ?',
+    [nuevoUrlDoc, evActualizado.id_evaluacion]
+  );
+
+  if (oldUrlDoc) {
+    const [updRes] = await pool.execute(
+      "UPDATE Maestro_docTrabajador SET Doc = ? WHERE Identificación = ? AND Prefijo = 'EVSST' AND Doc = ?",
+      [nuevoUrlDoc, evActualizado.identificacion, oldUrlDoc]
+    );
+    if (!updRes.affectedRows) {
+      await registrarDocumentoTrabajador(evActualizado.identificacion, nuevoUrlDoc, evActualizado.usuario, 73, 'EVSST');
+    }
+  } else {
+    await registrarDocumentoTrabajador(evActualizado.identificacion, nuevoUrlDoc, evActualizado.usuario, 73, 'EVSST');
+  }
+
+  return nuevoUrlDoc;
+}
+
+// ═════ API: PUT /api/evaluacion/:id (Editar y regenerar PDF) ═════
+router.put('/api/evaluacion/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.body.usuario || req.query.usuario;
+    const { fecha, tipo } = req.body;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+    if (!fecha || !tipo) {
+      return res.status(400).json({ error: 'Fecha y tipo de evaluación son obligatorios.' });
+    }
+    if (String(fecha).slice(0, 10) > hoyBogotaStr()) {
+      return res.status(400).json({ error: 'La fecha de evaluación no puede ser superior a hoy.' });
+    }
+
+    const acceso = await computarAccesoEVSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM Maestro_evaluacionsst WHERE id_evaluacion = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Evaluación no encontrada' });
+    }
+    const ev = rows[0];
+    const estaFirmado = !!(ev.url_doc || ev.firma_trabajador);
+
+    if (estaFirmado) {
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'editarFirmado'))) {
+        return res.status(403).json({ error: 'Tu rol no tiene permiso para editar y regenerar el PDF de una evaluación ya firmada.' });
+      }
+    } else if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'crear'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para editar evaluaciones.' });
+    }
+
+    await pool.execute(
+      'UPDATE Maestro_evaluacionsst SET fecha = ?, tipo = ? WHERE id_evaluacion = ?',
+      [String(fecha).slice(0, 10), tipo, id]
+    );
+
+    let urlDoc = ev.url_doc;
+    if (estaFirmado) {
+      const evActualizado = { ...ev, fecha: String(fecha).slice(0, 10), tipo };
+      urlDoc = await regenerarPdfEvaluacion(evActualizado, ev.url_doc);
+    }
+
+    res.json({ ok: true, id_evaluacion: id, fecha: String(fecha).slice(0, 10), tipo, url_doc: urlDoc });
+  } catch (err) {
+    console.error('[evaluacionsst] PUT /api/evaluacion/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═════ API: POST /api/evaluacion/:id/regenerar-pdf ═════
+router.post('/api/evaluacion/:id/regenerar-pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuario = req.body.usuario || req.query.usuario;
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Parámetro usuario requerido' });
+    }
+
+    const acceso = await computarAccesoEVSST(usuario);
+    if (!acceso) {
+      return res.status(403).json({ error: 'Usuario no autenticado o no autorizado' });
+    }
+
+    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'editarFirmado'))) {
+      return res.status(403).json({ error: 'Tu rol no tiene permiso para regenerar el PDF de una evaluación firmada.' });
+    }
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM Maestro_evaluacionsst WHERE id_evaluacion = ? LIMIT 1',
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Evaluación no encontrada' });
+    }
+    const ev = rows[0];
+
+    if (!ev.url_doc && !ev.firma_trabajador) {
+      return res.status(400).json({ error: 'Esta evaluación aún no ha sido respondida ni firmada.' });
+    }
+
+    const urlDoc = await regenerarPdfEvaluacion(ev, ev.url_doc);
+    res.json({ ok: true, id_evaluacion: id, url_doc: urlDoc });
+  } catch (err) {
+    console.error('[evaluacionsst] POST /api/evaluacion/:id/regenerar-pdf:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═════ API: DELETE /api/evaluacion/:id ═════
 router.delete('/api/evaluacion/:id', async (req, res) => {
   try {
@@ -831,33 +982,41 @@ router.delete('/api/evaluacion/:id', async (req, res) => {
 
     // 1. Verificar si existe la evaluación y su estado de firma
     const [rows] = await pool.execute(
-      'SELECT usuario, url_doc, firma_trabajador FROM Maestro_evaluacionsst WHERE id_evaluacion = ? LIMIT 1',
+      'SELECT identificacion, usuario, url_doc, firma_trabajador FROM Maestro_evaluacionsst WHERE id_evaluacion = ? LIMIT 1',
       [id]
     );
     if (!rows.length) {
       return res.status(404).json({ error: 'Evaluación no encontrada' });
     }
     const ev = rows[0];
+    const estaFirmado = !!(ev.url_doc || ev.firma_trabajador);
 
-    // 2. Solo se puede eliminar si NO está firmado
-    if (ev.url_doc || ev.firma_trabajador) {
-      return res.status(400).json({ error: 'No se puede eliminar un registro que ya ha sido firmado o completado.' });
-    }
+    if (estaFirmado) {
+      // 2a. Si ya está firmado/generado el PDF, solo los roles en "Roles que pueden eliminar evaluaciones firmadas en SST"
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminarFirmado'))) {
+        return res.status(403).json({ error: 'No se puede eliminar un registro que ya ha sido firmado o completado.' });
+      }
+      if (ev.url_doc) {
+        await pool.execute(
+          "DELETE FROM Maestro_docTrabajador WHERE Identificación = ? AND Prefijo = 'EVSST' AND Doc = ?",
+          [ev.identificacion, ev.url_doc]
+        );
+      }
+    } else {
+      // 2b. Si NO está firmado, aplica "Roles que pueden eliminar evaluaciones en SST"
+      if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
+        return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
+      }
 
-    // 3. Rol Sistema puede eliminar cualquier registro no firmado; los demás solo si fue creado por su propio usuario
-    // Rol con permiso de eliminar en la pestaña (Config_Parametros, sst / pestaña)
-    if (!(await rolPuedeSst(acceso.rol, SECCION_MENU_SST, 'eliminar'))) {
-      return res.status(403).json({ error: 'Tu rol no tiene permiso para eliminar estos registros.' });
-    }
+      const esSistema = acceso.rol === 'Sistema';
+      const creador = String(ev.usuario || '').trim().toLowerCase();
+      const usuSolicitante = String(usuario).trim().toLowerCase();
+      const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
+      const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
 
-    const esSistema = acceso.rol === 'Sistema';
-    const creador = String(ev.usuario || '').trim().toLowerCase();
-    const usuSolicitante = String(usuario).trim().toLowerCase();
-    const nombreSolicitante = String(acceso.usuarioNombre || '').trim().toLowerCase();
-    const esPropio = creador && (creador === usuSolicitante || creador === nombreSolicitante);
-
-    if (!esSistema && !esPropio) {
-      return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
+      if (!esSistema && !esPropio) {
+        return res.status(403).json({ error: 'Solo puedes eliminar registros creados por tu propio usuario.' });
+      }
     }
 
     await pool.execute('DELETE FROM Maestro_evaluacionsst WHERE id_evaluacion = ?', [id]);

@@ -457,7 +457,9 @@ async function _generarPDFAsistencia(id, { usuarioId } = {}) {
   const htmlPlantilla = await armarHtmlDesdePlantilla({
     asistencia, asistentes: asistentesConFirma, evidencias, formato, firmaResponsableBase64, firmados, porCorreo,
   });
-  const pdfBuffer = await generarPDFDesdeHTML(htmlPlantilla || htmlCompleto);
+  const pdfBuffer = await generarPDFDesdeHTML(htmlPlantilla || htmlCompleto, {
+    margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
+  });
   const urlGeneral = await subirPDFRegistroAsistencia(id, pdfBuffer);
 
   // Registro en Maestro_docEmpresa (se reemplaza al regenerar)

@@ -4219,6 +4219,38 @@
     </div>
   </div>
 
+  <!-- Modal Editar Evaluación SST -->
+  <div class="modal-overlay" id="modal-editar-ev" onclick="if(event.target === this) cerrarModalEditarEvaluacion();">
+    <div class="modal-content" style="max-width: 460px; width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text);">✏️ Editar Evaluación SST</div>
+        <button type="button" class="modal-close" onclick="cerrarModalEditarEvaluacion()" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-editar-ev" onsubmit="guardarEdicionEvaluacion(event)">
+        <input type="hidden" id="modal-editar-ev-id">
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Trabajador</label>
+          <input type="text" id="modal-editar-ev-trabajador" readonly style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Fecha de Evaluación *</label>
+          <input type="date" id="modal-editar-ev-fecha" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+        </div>
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Tipo de Evaluación *</label>
+          <select id="modal-editar-ev-tipo" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.88rem; outline: none;">
+            <option value="Inducción">Inducción</option>
+            <option value="Reinducción">Reinducción</option>
+          </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="cerrarModalEditarEvaluacion()">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm">💾 Guardar y Regenerar PDF</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal Editar Contacto Asistente (Participación) -->
   <div class="modal-overlay" id="modal-contacto-part">
     <div class="modal-content" style="max-width: 480px; width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); padding: 24px; position: relative;">
@@ -5649,6 +5681,9 @@
 
     function puedeEliminarRegistro(item, modulo) {
       if (!item) return false;
+      if (modulo === 'ev' && (item.url_doc || item.firma_trabajador)) {
+        return permisoSst('ev', 'eliminarFirmado');
+      }
       // Solo se puede eliminar si NO está firmado
       if (item.url_doc) return false;
       if (modulo !== 'part' && item.firma_trabajador) return false;
@@ -6315,6 +6350,23 @@
       if (row) row.classList.add('selected');
 
       const fechaFmt = item.fecha ? item.fecha.slice(0, 10).split('-').reverse().join('/') : '—';
+      let fechaRegFmt = '—';
+      if (item.fecha_registro) {
+        const dReg = new Date(item.fecha_registro);
+        if (!isNaN(dReg)) {
+          fechaRegFmt = dReg.toLocaleString('es-CO', {
+            timeZone: 'America/Bogota',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+        } else {
+          fechaRegFmt = String(item.fecha_registro).replace('T', ' ').slice(0, 16);
+        }
+      }
       const nombre = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
       const cedula = item.identificacion || '—';
 
@@ -6353,6 +6405,19 @@
             <a href="${item.url_doc}" target="_blank" class="btn btn-accent btn-sm">
               📄 Abrir Evaluación Firmada (PDF)
             </a>
+            ${permisoSst('ev', 'editarFirmado') ? `
+              <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarEvaluacion('${item.id_evaluacion}')">
+                ✏️ Editar Evaluación
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="regenerarPDFEvaluacion('${item.id_evaluacion}')">
+                🔄 Regenerar PDF
+              </button>
+            ` : ''}
+            ${puedeEliminarRegistro(item, 'ev') ? `
+              <button class="btn btn-sm" onclick="confirmarEliminarRegistro('ev', '${item.id_evaluacion}')" style="background:var(--danger); color:var(--text-inverse); border:none; margin-top:8px;">
+                🗑️ Eliminar Registro
+              </button>
+            ` : ''}
           </div>
         `;
       }
@@ -6372,6 +6437,7 @@
         <div class="detail-section">
           <div class="detail-section-title">Evaluación</div>
           <div class="detail-row"><span class="label">Fecha:</span><span class="value">${fechaFmt}</span></div>
+          <div class="detail-row"><span class="label">Fecha de Registro:</span><span class="value">${fechaRegFmt}</span></div>
           <div class="detail-row"><span class="label">Tipo:</span><span class="value">${item.tipo || 'Inducción'}</span></div>
           <div class="detail-row"><span class="label">Puntaje:</span><span class="value" style="color:var(--accent-hover);">${item.puntaje !== null && item.puntaje !== undefined ? item.puntaje + ' / 13' : 'Pendiente respuesta'}</span></div>
           <div class="detail-row"><span class="label">Resultado:</span><span class="value">${item.url_doc ? item.resultado : 'Pendiente de firma'}</span></div>
@@ -6401,6 +6467,86 @@
         else showToast(data.error || 'No se pudo enviar', 'error');
       } catch (e) {
         showToast('Error de red', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function abrirModalEditarEvaluacion(id) {
+      const item = (dataStore.ev || []).find(x => String(x.id_evaluacion) === String(id));
+      if (!item) return;
+      const hoyStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      document.getElementById('modal-editar-ev-id').value = item.id_evaluacion;
+      document.getElementById('modal-editar-ev-trabajador').value = limpiarNombreTrabajador(item.nombre_trabajador || item.Trabajador);
+      const fechaInput = document.getElementById('modal-editar-ev-fecha');
+      fechaInput.max = hoyStr;
+      fechaInput.value = item.fecha ? String(item.fecha).slice(0, 10) : hoyStr;
+      document.getElementById('modal-editar-ev-tipo').value = item.tipo || 'Inducción';
+      const modalEl = document.getElementById('modal-editar-ev');
+      modalEl.style.display = 'flex';
+      modalEl._backEntry = registrarModalBack(() => cerrarModalEditarEvaluacion());
+    }
+
+    function cerrarModalEditarEvaluacion() {
+      const modalEl = document.getElementById('modal-editar-ev');
+      if (!modalEl) return;
+      modalEl.style.display = 'none';
+      cerrarModalBack(modalEl._backEntry);
+      modalEl._backEntry = null;
+    }
+
+    async function guardarEdicionEvaluacion(e) {
+      e.preventDefault();
+      const id = document.getElementById('modal-editar-ev-id').value;
+      const fecha = document.getElementById('modal-editar-ev-fecha').value;
+      const tipo = document.getElementById('modal-editar-ev-tipo').value;
+      const hoyStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+      if (fecha > hoyStr) {
+        showToast('La fecha de evaluación no puede ser superior a hoy', 'error');
+        return;
+      }
+      showLoading('Guardando cambios y regenerando PDF...');
+      try {
+        const res = await fetch(`/evaluacionsst/api/evaluacion/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fecha, tipo, usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          cerrarModalEditarEvaluacion();
+          showToast('Evaluación actualizada y PDF regenerado exitosamente', 'success');
+          await cargarEvaluaciones();
+          abrirDetalleEvaluacion(id);
+        } else {
+          showToast(data.error || 'Error al actualizar la evaluación', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al actualizar la evaluación', 'error');
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function regenerarPDFEvaluacion(id) {
+      if (!confirm('¿Desea regenerar el PDF de esta evaluación con el diseño actual de la plantilla?')) return;
+      showLoading('Regenerando documento PDF...');
+      try {
+        const res = await fetch(`/evaluacionsst/api/evaluacion/${encodeURIComponent(id)}/regenerar-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: CONFIG.usuarioId })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showToast('PDF regenerado exitosamente', 'success');
+          await cargarEvaluaciones();
+          abrirDetalleEvaluacion(id);
+        } else {
+          showToast(data.error || 'Error al regenerar el PDF', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al regenerar el PDF', 'error');
       } finally {
         hideLoading();
       }

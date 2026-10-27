@@ -1,18 +1,47 @@
 // Cálculo único del cumplimiento SLA de Requisiciones (tabla y detalle usan esta misma lógica).
 //
 // Reglas:
-//  - El conteo inicia el día de la requisición si se registró antes de la hora de corte;
-//    si fue después (en la tarde), inicia al día siguiente.
-//  - Si el día de inicio es domingo o festivo (Maestro_Fechas.Estado = 'Festivo'),
-//    se corre al siguiente día hábil.
-//  - Desde el inicio se cuentan días calendario hasta la fecha de ingreso (o hasta hoy si está pendiente),
-//    descontando los días en que la requisición estuvo SUSPENDIDA.
+//  - El conteo inicia el día de la requisición si se registró antes de la hora de corte (12:00 por defecto);
+//    si fue después (en la tarde), pasa al día siguiente.
+//  - Si el día cae en un día no habilitado en la lista de días de proceso (Config_Parametros)
+//    o en un festivo (si no se deben sumar), avanza hasta el siguiente día de proceso hábil.
+//  - El conteo de días de proceso acumula exclusivamente los días habilitados en la configuración,
+//    descontando suspensiones y festivos (según el interruptor de festivos).
 //  - Si la fecha de ingreso es anterior a la fecha de la requisición, el aspirante queda en "revisar".
 const pool = require('./db');
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const CACHE_FESTIVOS_MS = 10 * 60 * 1000;
 let _festivosCache = { set: null, cargado: 0 };
+
+const DIAS_SEMANA_MAP = {
+  0: 'domingo',
+  1: 'lunes',
+  2: 'martes',
+  3: 'miercoles',
+  4: 'jueves',
+  5: 'viernes',
+  6: 'sabado'
+};
+
+function normalizarDia(txt) {
+  return String(txt || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function parsearDiasPermitidos(raw) {
+  if (!raw || typeof raw !== 'string') {
+    return new Set(['lunes', 'martes', 'miercoles', 'jueves', 'viernes']);
+  }
+  const partes = raw.split(',').map(s => normalizarDia(s)).filter(Boolean);
+  if (!partes.length) {
+    return new Set(['lunes', 'martes', 'miercoles', 'jueves', 'viernes']);
+  }
+  return new Set(partes);
+}
 
 function hoyBogota() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
@@ -39,20 +68,44 @@ async function obtenerFestivos() {
   return _festivosCache.set;
 }
 
+function esDiaDeProceso(dia, diasPermitidosSet, festivosSet, sumarFestivos) {
+  const ymd = aYmd(dia);
+  const esFestivo = festivosSet && festivosSet.has(ymd);
+
+  // Si es festivo y la configuración indica NO sumarlos, no es día de proceso
+  if (esFestivo && !sumarFestivos) {
+    return false;
+  }
+
+  const diaSemanaNum = new Date(dia * DIA_MS).getUTCDay();
+  const nombreDia = DIAS_SEMANA_MAP[diaSemanaNum];
+  return diasPermitidosSet.has(nombreDia);
+}
+
+// Mantener por compatibilidad
 function esDiaHabil(dia, festivos) {
   const domingo = new Date(dia * DIA_MS).getUTCDay() === 0;
   return !domingo && !festivos.has(aYmd(dia));
 }
 
 // fechaRequisicion: 'YYYY-MM-DD HH:mm' (hora Bogotá). horaCorte: 'HH:mm'.
-function calcularInicioConteo(fechaRequisicion, horaCorte, festivos) {
+function calcularInicioConteo(fechaRequisicion, horaCorte, diasPermitidosSet, festivosSet, sumarFestivos) {
   const str = String(fechaRequisicion || '');
   if (!/^\d{4}-\d{2}-\d{2}/.test(str)) return null;
   let dia = aDia(str);
   const hora = str.substring(11, 16);
-  if (hora && hora >= horaCorte) dia += 1;
-  // Tope de seguridad por si el calendario estuviera mal cargado
-  for (let i = 0; i < 30 && !esDiaHabil(dia, festivos); i++) dia += 1;
+  if (hora && hora >= (horaCorte || '12:00')) dia += 1;
+
+  // Si no se pasaron conjuntos nuevos, recurrir al comportamiento base (para compatibilidad de tests antiguos)
+  if (!diasPermitidosSet) {
+    for (let i = 0; i < 30 && !esDiaHabil(dia, festivosSet || new Set()); i++) dia += 1;
+    return dia;
+  }
+
+  // Avanzar hasta encontrar el primer día hábil según los días de proceso configurados
+  for (let i = 0; i < 30 && !esDiaDeProceso(dia, diasPermitidosSet, festivosSet, sumarFestivos); i++) {
+    dia += 1;
+  }
   return dia;
 }
 
@@ -68,23 +121,57 @@ function diasSuspendidos(suspensiones, desde, hasta, hoy) {
 }
 
 // Evalúa un aspirante. Devuelve { estado: 'cumple'|'nocumple'|'pendiente'|'revisar', dias, diasSuspendidos }
-function evaluarAspirante({ fechaRequisicion, inicioConteo, fechaIngreso, suspensiones, limite, hoy }) {
+function evaluarAspirante({ fechaRequisicion, inicioConteo, fechaIngreso, suspensiones, limite, diasPermitidosSet, festivosSet, sumarFestivos, hoy }) {
   if (inicioConteo === null) return { estado: 'pendiente', dias: null, diasSuspendidos: 0 };
   const fechaReqDia = aDia(fechaRequisicion);
+  const fechaFin = fechaIngreso ? aDia(fechaIngreso) : hoy;
 
-  if (fechaIngreso) {
-    const ingreso = aDia(fechaIngreso);
-    if (ingreso < fechaReqDia) {
-      return { estado: 'revisar', dias: null, diasSuspendidos: 0 };
-    }
-    const susp = diasSuspendidos(suspensiones, inicioConteo, ingreso, hoy);
-    const dias = Math.max(0, ingreso - inicioConteo - susp);
-    return { estado: dias <= limite ? 'cumple' : 'nocumple', dias, diasSuspendidos: susp };
+  if (fechaIngreso && fechaFin < fechaReqDia) {
+    return { estado: 'revisar', dias: null, diasSuspendidos: 0 };
   }
 
-  const susp = diasSuspendidos(suspensiones, inicioConteo, hoy, hoy);
-  const dias = Math.max(0, hoy - inicioConteo - susp);
-  return { estado: 'pendiente', dias, diasSuspendidos: susp };
+  // Si no se proporcionó conjunto de días permitidos, usar resta de calendario clásica (compatibilidad)
+  if (!diasPermitidosSet) {
+    if (fechaIngreso) {
+      const susp = diasSuspendidos(suspensiones, inicioConteo, fechaFin, hoy);
+      const dias = Math.max(0, fechaFin - inicioConteo - susp);
+      return { estado: dias <= limite ? 'cumple' : 'nocumple', dias, diasSuspendidos: susp };
+    }
+    const susp = diasSuspendidos(suspensiones, inicioConteo, hoy, hoy);
+    const dias = Math.max(0, hoy - inicioConteo - susp);
+    return { estado: 'pendiente', dias, diasSuspendidos: susp };
+  }
+
+  let diasProceso = 0;
+  let suspTotal = 0;
+
+  for (let d = inicioConteo; d < fechaFin; d++) {
+    const estaSuspendido = (suspensiones || []).some(s => {
+      const ini = aDia(s.inicio);
+      const fin = s.fin ? aDia(s.fin) : (hoy + 1);
+      return d >= ini && d < fin;
+    });
+
+    if (estaSuspendido) {
+      suspTotal++;
+    } else if (esDiaDeProceso(d, diasPermitidosSet, festivosSet, sumarFestivos)) {
+      diasProceso++;
+    }
+  }
+
+  if (fechaIngreso) {
+    return {
+      estado: diasProceso <= limite ? 'cumple' : 'nocumple',
+      dias: diasProceso,
+      diasSuspendidos: suspTotal
+    };
+  }
+
+  return {
+    estado: 'pendiente',
+    dias: diasProceso,
+    diasSuspendidos: suspTotal
+  };
 }
 
 // Resumen por requisición para la píldora semafórica
@@ -117,9 +204,20 @@ function leerConfigSla(paramsConfig) {
   const verde = parseInt(paramsConfig['Porcentaje semáforo verde SLA']);
   const amarillo = parseInt(paramsConfig['Porcentaje semáforo amarillo SLA']);
   const horaCorte = String(paramsConfig['Hora de corte inicio conteo SLA'] || '').trim();
+
+  // Días de la semana que se contabilizan
+  const rawDias = paramsConfig['Conteo de Dias del proceso de Requisición'];
+  const diasPermitidos = parsearDiasPermitidos(rawDias);
+
+  // Interruptor para sumar festivos en el conteo de días (1: sí se suman, 0: se descuentan)
+  const rawFestivos = paramsConfig['Tener en cuenta festivos en el conteo de dias del proceso'];
+  const sumarFestivos = ['1', 'true', 'si', 'sí', 'habilitado'].includes(String(rawFestivos || '').toLowerCase().trim());
+
   return {
     limite,
     horaCorte: /^\d{2}:\d{2}$/.test(horaCorte) ? horaCorte : '12:00',
+    diasPermitidos,
+    sumarFestivos,
     umbrales: {
       verde: Number.isFinite(verde) ? verde : 80,
       amarillo: Number.isFinite(amarillo) ? amarillo : 50
@@ -150,14 +248,20 @@ async function obtenerSuspensiones(idsRequisicion) {
 // aspirantesPorReq: Map(IdRequisicion → [{ fecha_ingreso: 'YYYY-MM-DD'|null, ... }])
 // Devuelve Map(IdRequisicion → { inicioConteo, diasSuspendidosTotal, evaluaciones[], resumen })
 async function calcularSlaRequisiciones(requisiciones, aspirantesPorReq, paramsConfig) {
-  const cfg = leerConfigSla(paramsConfig);
+  const cfg = leerConfigSla(paramsConfig || {});
   const festivos = await obtenerFestivos();
   const suspensionesPorReq = await obtenerSuspensiones(requisiciones.map(r => r.IdRequisicion));
   const hoy = aDia(hoyBogota());
   const resultado = new Map();
 
   for (const r of requisiciones) {
-    const inicioConteo = calcularInicioConteo(r.fechaRequisicion, cfg.horaCorte, festivos);
+    const inicioConteo = calcularInicioConteo(
+      r.fechaRequisicion,
+      cfg.horaCorte,
+      cfg.diasPermitidos,
+      festivos,
+      cfg.sumarFestivos
+    );
     const suspensiones = suspensionesPorReq.get(r.IdRequisicion) || [];
     const evaluaciones = (aspirantesPorReq.get(r.IdRequisicion) || []).map(a => evaluarAspirante({
       fechaRequisicion: r.fechaRequisicion,
@@ -165,8 +269,12 @@ async function calcularSlaRequisiciones(requisiciones, aspirantesPorReq, paramsC
       fechaIngreso: a.fecha_ingreso || null,
       suspensiones,
       limite: cfg.limite,
+      diasPermitidosSet: cfg.diasPermitidos,
+      festivosSet: festivos,
+      sumarFestivos: cfg.sumarFestivos,
       hoy
     }));
+
     resultado.set(r.IdRequisicion, {
       inicioConteo: inicioConteo === null ? null : aYmd(inicioConteo),
       suspendidaActualmente: suspensiones.some(s => !s.fin),
@@ -181,6 +289,8 @@ async function calcularSlaRequisiciones(requisiciones, aspirantesPorReq, paramsC
 module.exports = {
   calcularSlaRequisiciones,
   leerConfigSla,
+  parsearDiasPermitidos,
+  esDiaDeProceso,
   // Exportadas para pruebas
   calcularInicioConteo,
   evaluarAspirante,

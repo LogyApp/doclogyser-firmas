@@ -1486,6 +1486,42 @@
         font-size: .76rem !important;
       }
     }
+
+    /* ── Subnavegación estilo Nómina/Configuración ── */
+    .bio-subnav {
+      display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 12px;
+    }
+    .bio-subnav-btn {
+      display: flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 8px;
+      background: var(--bg-elevated); color: var(--text-muted); font-weight: 600; font-size: .85rem; border: none; cursor: pointer; transition: all .15s;
+    }
+    .bio-subnav-btn:hover { background: var(--border); color: var(--text); }
+    .bio-subnav-btn.active { background: var(--accent); color: var(--accent-contrast); box-shadow: 0 2px 6px var(--accent-soft); }
+
+    /* ── Tabla y componentes Parámetros Requisiciones ── */
+    .tabla-parametros tbody tr { cursor: pointer; transition: background .12s ease; }
+    .tabla-parametros tbody tr:hover { background: var(--accent-soft); }
+    .tabla-parametros tbody td { padding: 10px 14px; font-size: .85rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .tabla-parametros th { user-select: none; }
+    .chip { display: inline-block; padding: 2px 8px; margin: 1px 3px 1px 0; border-radius: 999px; font-size: .72rem; font-weight: 600; background: var(--accent-soft); color: var(--accent-dark); white-space: nowrap; }
+    .chip-sistema { background: var(--primary-soft, rgba(0,11,89,0.1)); color: var(--primary); font-weight: 700; }
+    .tag-cond { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .72rem; font-weight: 700; background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap; }
+    .bool-si { color: var(--success); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+    .bool-no { color: var(--danger); font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+
+    /* Selector de roles en modal */
+    .roles-sel { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; max-height: 220px; overflow-y: auto; padding: 4px 2px; }
+    .rol-opt {
+      padding: 4px 11px; font: inherit; font-size: .78rem; border-radius: 16px; border: 1px solid var(--border-strong);
+      background: var(--bg-elevated); color: var(--text-muted); cursor: pointer; transition: all .15s ease;
+    }
+    .rol-opt.sel { background: var(--primary); color: var(--text-inverse); border-color: var(--primary); font-weight: 700; }
+    .rol-opt:disabled { cursor: not-allowed; opacity: .85; }
+    .roles-acciones { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: .76rem; }
+    .roles-acciones button { background: none; border: none; color: var(--accent-dark); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+    .btn-grupo { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-grupo-opt { padding: 8px 16px; border-radius: 6px; border: 1.5px solid var(--border); background: var(--card-bg); color: var(--text-muted); font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .15s ease; }
+    .btn-grupo-opt.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); }
   </style>
 </head>
 <body>
@@ -1677,7 +1713,6 @@
 
     <!-- ── SECCIÓN: REQUISICIONES DE PERSONAL ────────────────────────────────── -->
     <div id="tabContentRequisiciones" style="display: none;">
-
       <!-- Card Filtros Plegables con Conteos y Chips de Estado (como Inventario) -->
       <div class="filter-panel" id="panelFiltrosRequisiciones">
         <div class="filter-panel-header" onclick="toggleFiltrosRequisiciones()">
@@ -1849,7 +1884,69 @@
           </table>
         </div>
       </div>
+    </div>
 
+    <!-- ── SECCIÓN: PARÁMETROS DEL MÓDULO TALENTHUB ─────────────────────────── -->
+    <div id="tabContentParametros" style="display: none;">
+      <div class="card" style="margin-bottom:14px; padding:16px 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+          <div>
+            <div style="font-size:1.15rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px;">
+              <span>⚙️</span> Parámetros del Módulo TalentHub
+            </div>
+            <div style="font-size:0.83rem; color:var(--text-muted); margin-top:2px;">
+              Reglas de negocio y configuración de TalentHub (tabla <code>Config_Parametros</code>): roles autorizados, SLA, límites e interruptores.
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.8rem;" onclick="cargarParametrosTalenthubTabla()">
+            <span>↻ Actualizar</span>
+          </button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 200px 200px 1fr auto; gap:12px; align-items:end;">
+          <div class="campo">
+            <label style="display:block; font-size:0.78rem; font-weight:600; color:var(--text-muted); margin-bottom:5px;">Sección</label>
+            <select id="filtroParamSeccion" class="input-field" style="width:100%; padding:8px 10px; font-size:0.86rem;" onchange="filtrarParametrosTabla()">
+              <option value="">Todas las secciones</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label style="display:block; font-size:0.78rem; font-weight:600; color:var(--text-muted); margin-bottom:5px;">Condición</label>
+            <select id="filtroParamCondicion" class="input-field" style="width:100%; padding:8px 10px; font-size:0.86rem;" onchange="filtrarParametrosTabla()">
+              <option value="">Todas las condiciones</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label style="display:block; font-size:0.78rem; font-weight:600; color:var(--text-muted); margin-bottom:5px;">Buscar</label>
+            <input type="search" id="filtroParamTexto" class="input-field" style="width:100%; padding:8px 10px; font-size:0.86rem;" placeholder="Buscar por concepto, rol, valor o descripción..." oninput="filtrarParametrosTabla()">
+          </div>
+          <div>
+            <button type="button" class="btn btn-outline" style="padding:8px 14px; font-size:0.82rem;" onclick="limpiarFiltrosParametrosTabla()">Limpiar filtros</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:0.82rem; color:var(--text-muted); padding:0 2px;">
+        <div id="lblContadorParametros">Cargando parámetros...</div>
+      </div>
+
+      <div class="table-container" style="max-height: calc(100vh - 270px); overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card-bg);">
+        <table class="tabla-parametros" style="width:100%; border-collapse:collapse; min-width:920px;">
+          <thead>
+            <tr style="background:var(--bg-elevated); color:var(--text); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.4px; font-weight:700; position:sticky; top:0; z-index:5; box-shadow:inset 0 -1px 0 var(--border);">
+              <th style="padding:10px 14px; text-align:left; width:80px;">Acción</th>
+              <th style="padding:10px 14px; text-align:left; width:130px; cursor:pointer;" onclick="ordenarParametrosTabla('Seccion')">Sección <span id="sort_par_Seccion" style="font-size:0.7rem; color:var(--text-muted);"></span></th>
+              <th style="padding:10px 14px; text-align:left; width:280px; cursor:pointer;" onclick="ordenarParametrosTabla('Concepto')">Concepto <span id="sort_par_Concepto" style="font-size:0.7rem; color:var(--text-muted);">▲</span></th>
+              <th style="padding:10px 14px; text-align:left; width:110px; cursor:pointer;" onclick="ordenarParametrosTabla('Condicion')">Condición <span id="sort_par_Condicion" style="font-size:0.7rem; color:var(--text-muted);"></span></th>
+              <th style="padding:10px 14px; text-align:left; cursor:pointer;" onclick="ordenarParametrosTabla('Parametro')">Parámetro / Roles <span id="sort_par_Parametro" style="font-size:0.7rem; color:var(--text-muted);"></span></th>
+              <th style="padding:10px 14px; text-align:left; width:340px;">Descripción</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyParametrosTalenthub">
+            <tr><td colspan="6" style="text-align:center; padding:36px; color:var(--text-muted);">Cargando parámetros...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- ── SECCIÓN: ASPIRANTES Y HOJAS DE VIDA ────────────────────────────────── -->
@@ -2481,28 +2578,42 @@
     </div>
   </div>
 
-  <!-- ── MODAL: PARÁMETROS DE REQUISICIONES ──────────────────────────────── -->
-  <div class="modal-backdrop" id="modalParametrosRequisiciones" style="z-index: 1060;">
-    <div class="modal-box modal-box-lg" style="max-width: 720px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; padding:0;">
-      <div class="modal-hdr" style="padding:16px 22px; border-bottom:1.5px solid var(--border); margin-bottom:0; flex-shrink:0;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <h3 style="color:var(--text); margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
-              <span>⚙️</span> Parámetros de Requisiciones
-            </h3>
-            <p style="margin:4px 0 0; font-size:0.82rem; color:var(--text-muted);">
-              Ajusta los roles permitidos y límites de días para el flujo de requisiciones en la base de datos.
-            </p>
-          </div>
-          <button type="button" class="btn btn-outline" style="padding:4px 9px;" onclick="cerrarModales()">✕</button>
+  <!-- ── MODAL: EDITAR PARÁMETRO DE REQUISICIONES (ESTILO CONFIGURACIÓN) ── -->
+  <div class="modal-backdrop" id="modalEditarParametroReq" style="z-index: 2100;">
+    <div class="modal-box" style="max-width: 660px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; padding:0; border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,0.35);">
+      <div class="modal-hdr" style="padding:14px 20px; background:var(--primary); color:var(--text-inverse); margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.1rem;">⚙️</span>
+          <h3 style="color:var(--text-inverse); margin:0; font-size:1rem; font-weight:700;" id="modalParamEditTitulo">Editar Parámetro</h3>
         </div>
+        <button type="button" style="background:rgba(255,255,255,0.18); border:none; color:var(--text-inverse); padding:5px 12px; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;" onclick="cerrarModalEditarParametroReq()">✕ Cerrar</button>
       </div>
-      <div class="modal-body" id="bodyParametrosRequisiciones" style="padding:18px 22px; overflow-y:auto; flex:1; margin-bottom:0;">
-        <div style="text-align:center; padding:24px; color:var(--text-muted);">Cargando parámetros...</div>
+      <div class="modal-body" style="padding:20px; overflow-y:auto; flex:1; margin-bottom:0; display:flex; flex-direction:column; gap:16px;">
+        <div style="background:var(--bg-elevated); padding:12px 14px; border-radius:8px; border:1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <div style="font-weight:700; color:var(--text); font-size:0.95rem;" id="modalParamEditConcepto">—</div>
+            <span class="tag-cond" id="modalParamEditCondicion">—</span>
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-bottom:6px;">Valor del Parámetro</label>
+          <div id="modalParamEditorContainer"></div>
+        </div>
+
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-bottom:6px;">
+            Descripción explicativa
+          </label>
+          <textarea id="modalParamEditDescripcion" rows="3" maxlength="500" class="input-field" style="width:100%; resize:vertical; font-size:0.86rem; line-height:1.4;" placeholder="Explica qué controla este parámetro..." oninput="document.getElementById('lblModalParamDescCount').textContent = this.value.length + ' / 500'"></textarea>
+          <div style="text-align:right; font-size:0.74rem; color:var(--text-muted); margin-top:4px;" id="lblModalParamDescCount">0 / 500</div>
+        </div>
+
+        <div id="modalParamEditError" style="display:none; padding:10px 14px; border-radius:6px; background:var(--danger-soft, #fee2e2); color:var(--danger, #dc2626); font-size:0.84rem; font-weight:600;"></div>
       </div>
-      <div class="modal-ftr" style="padding:12px 22px; border-top:1px solid var(--border); background:var(--bg-elevated); flex-shrink:0;">
-        <button type="button" class="btn btn-outline" onclick="cerrarModales()">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnGuardarParametrosReq" onclick="guardarParametrosRequisiciones()">💾 Guardar Parámetros</button>
+      <div class="modal-ftr" style="padding:12px 20px; border-top:1px solid var(--border); background:var(--bg-elevated); display:flex; justify-content:flex-end; gap:10px;">
+        <button type="button" class="btn btn-outline" onclick="cerrarModalEditarParametroReq()">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarParametroReqModal" onclick="guardarParametroReqDesdeModal()">💾 Guardar</button>
       </div>
     </div>
   </div>
@@ -2877,7 +2988,8 @@
       Requisiciones:    { icon: '📋', title: 'Requisiciones de Personal', subtitle: 'Solicitudes y seguimiento de vacantes laborales' },
       Aspirantes:       { icon: '👥', title: 'Aspirantes & Hojas de Vida', subtitle: 'Catálogo de aspirantes, fases y pruebas de selección' },
       Sociodemografica: { icon: '📊', title: 'Sociodemográfica y Vinculación', subtitle: 'Consolidado sociodemográfico y formalización contractual' },
-      Integridad:       { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' }
+      Integridad:       { icon: '🛡️', title: 'Integridad de Identificación', subtitle: 'Purga segura en cascada, corrección de cédula y auditoría oficial' },
+      Parametros:       { icon: '⚙️', title: 'Parámetros del Módulo', subtitle: 'Reglas de negocio y configuración de TalentHub (tabla Config_Parametros)' }
     };
 
     let trabajadorActual = null;
@@ -2937,7 +3049,8 @@
       Requisiciones: 'Requisiciones',
       Aspirantes: 'Aspirantes & Hojas de Vida',
       Sociodemografica: 'Sociodemográfica',
-      Integridad: 'Integridad'
+      Integridad: 'Integridad',
+      Parametros: 'Parámetros'
     };
 
     function actualizarTituloMovilTalenthub(tabName) {
@@ -2997,7 +3110,7 @@
       }
       const btnHeaderParametros = document.getElementById('btnHeaderParametrosReq');
       if (btnHeaderParametros) {
-        btnHeaderParametros.style.display = (tabName === 'Requisiciones' && _reqCatalogos?.permisos?.puedeEditarParametros) ? 'inline-flex' : 'none';
+        btnHeaderParametros.style.display = 'none';
       }
       const btnHeaderReporte = document.getElementById('btnHeaderReporteReq');
       if (btnHeaderReporte) {
@@ -3009,7 +3122,7 @@
       const navList = document.getElementById('sidebarNavList');
       navList.innerHTML = '';
 
-      const secciones = CONFIG.secciones || ['Requisiciones', 'Aspirantes', 'Sociodemografica'];
+      const secciones = (CONFIG.secciones || ['Requisiciones', 'Aspirantes', 'Sociodemografica']).filter(sec => TAB_META[sec]);
 
       secciones.forEach(sec => {
         const meta = TAB_META[sec] || { icon: '❖', title: sec };
@@ -3051,6 +3164,8 @@
       document.getElementById('tabContentRequisiciones').style.display = 'none';
       document.getElementById('tabContentAspirantes').style.display = 'none';
       document.getElementById('tabContentSociodemografica').style.display = 'none';
+      const elTabParam = document.getElementById('tabContentParametros');
+      if (elTabParam) elTabParam.style.display = 'none';
 
       // Actualizar encabezado
       const meta = TAB_META[tabName] || { icon: '❖', title: tabName, subtitle: '' };
@@ -3073,6 +3188,8 @@
         inicializarRequisiciones();
       } else if (tabName === 'Aspirantes') {
         inicializarAspirantes();
+      } else if (tabName === 'Parametros') {
+        cargarParametrosTalenthubTabla();
       }
 
       // Actualizar URL sin recargar
@@ -5309,213 +5426,526 @@
       }
     }
 
-    async function abrirModalParametrosRequisiciones() {
-      const body = document.getElementById('bodyParametrosRequisiciones');
-      if (body) {
-        body.innerHTML = '<div style="text-align:center; padding:28px; color:var(--text-muted);"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando parámetros...</div>';
-      }
-      const elParamsReq = document.getElementById('modalParametrosRequisiciones');
-      elParamsReq.style.display = 'flex';
-      elParamsReq._backEntry = registrarModalBack(() => cerrarModales());
+    // ══════════════════════════════════════════════════════════════════════════════
+    // PESTAÑA TALENTHUB · PARÁMETROS (ESTILO MÓDULO CONFIGURACIÓN)
+    // ══════════════════════════════════════════════════════════════════════════════
+    let _parametrosTalenthubData = [];
+    let _parametroTalenthubEditando = null;
+    let _modalRolesSel = [];
+    let _modalBooleanoVal = '1';
+    let _modalTempValor = '';
+    let _parSortCol = 'Concepto';
+    let _parSortDir = 1;
+
+    async function cargarParametrosTalenthubTabla() {
+      const lblContador = document.getElementById('lblContadorParametros');
+      const tbody = document.getElementById('tbodyParametrosTalenthub');
+      if (lblContador) lblContador.textContent = 'Cargando parámetros...';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:36px; color:var(--text-muted);"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando parámetros...</td></tr>';
 
       try {
-        const res = await fetch(`/talenthub/api/parametros/requisiciones?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
+        const res = await fetch(`/talenthub/api/parametros?usuario=${encodeURIComponent(CONFIG.usuarioId)}`);
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          if (body) body.innerHTML = `<div style="color:var(--danger); padding:20px; text-align:center;">${esc(data.error || 'Error al cargar parámetros')}</div>`;
+          if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="color:var(--danger); padding:24px; text-align:center;">${esc(data.error || 'Error al cargar parámetros')}</td></tr>`;
+          if (lblContador) lblContador.textContent = '';
           return;
         }
 
-        _parametrosReqData = data.parametros || [];
+        _parametrosTalenthubData = data.parametros || [];
         _rolesDisponibles = data.roles || [];
-        renderBodyParametrosRequisiciones();
+
+        // Llenar select de secciones
+        const selSec = document.getElementById('filtroParamSeccion');
+        if (selSec) {
+          const actualSec = selSec.value;
+          const seccionesUnicas = [...new Set(_parametrosTalenthubData.map(p => p.Seccion).filter(Boolean))].sort();
+          selSec.innerHTML = '<option value="">Todas las secciones</option>' +
+            seccionesUnicas.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+          if (seccionesUnicas.includes(actualSec)) selSec.value = actualSec;
+        }
+
+        // Llenar select de condiciones
+        const selCond = document.getElementById('filtroParamCondicion');
+        if (selCond) {
+          const actualCond = selCond.value;
+          const condicionesUnicas = [...new Set(_parametrosTalenthubData.map(p => p.Condicion).filter(Boolean))].sort();
+          selCond.innerHTML = '<option value="">Todas las condiciones</option>' +
+            condicionesUnicas.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+          if (condicionesUnicas.includes(actualCond)) selCond.value = actualCond;
+        }
+
+        filtrarParametrosTabla();
       } catch (err) {
         console.error('[TalentHub] Error al cargar parámetros:', err);
-        if (body) body.innerHTML = '<div style="color:var(--danger); padding:20px; text-align:center;">Error de red al consultar parámetros.</div>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="color:var(--danger); padding:24px; text-align:center;">Error de red al consultar parámetros.</td></tr>';
+        if (lblContador) lblContador.textContent = '';
       }
     }
 
-    function renderBodyParametrosRequisiciones() {
-      const body = document.getElementById('bodyParametrosRequisiciones');
-      if (!body) return;
+    const DIAS_SEMANA_OPCIONES = [
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo'
+    ];
 
-      if (!_parametrosReqData.length) {
-        body.innerHTML = '<div style="text-align:center; padding:24px; color:var(--text-muted);">No hay parámetros configurados para Requisiciones.</div>';
+    function esParametroDiasSemana(p) {
+      if (!p) return false;
+      const c = String(p.Concepto || '').toLowerCase();
+      const cond = String(p.Condicion || '').toLowerCase();
+      if (cond === 'booleano' || c.includes('festivo')) return false;
+      return c.includes('conteo de dias') || c.includes('conteo de días') || cond === 'días' || cond === 'dias';
+    }
+
+    function valorParametroFormateado(p) {
+      const cond = String(p.Condicion || '').trim().toLowerCase();
+      const val = String(p.Parametro == null ? '' : p.Parametro).trim();
+      const concepto = String(p.Concepto || '').trim().toLowerCase();
+
+      if (esParametroDiasSemana(p)) {
+        const dias = val.split(',').map(s => s.trim()).filter(Boolean);
+        if (!dias.length) return '<span style="color:var(--text-muted); font-size:0.8rem;">(sin días seleccionados)</span>';
+        return dias.map(d => `<span class="chip" style="background:var(--accent-soft); color:var(--accent-dark); border-color:var(--accent); font-weight:700;">✓ ${esc(d)}</span>`).join(' ');
+      }
+
+      if (cond === 'rol') {
+        const roles = val.split(',').map(s => s.trim()).filter(Boolean);
+        if (!roles.length) return '<span style="color:var(--text-muted); font-size:0.8rem;">(sin roles asignados)</span>';
+        return roles.map(r => {
+          const isSistema = r.toLowerCase() === 'sistema';
+          return `<span class="chip ${isSistema ? 'chip-sistema' : ''}">${esc(r)}</span>`;
+        }).join('');
+      }
+      if (cond === 'booleano') {
+        const isSi = ['1', 'true', 'habilitado', 'si', 'sí'].includes(val.toLowerCase());
+        if (concepto.includes('festivos')) {
+          return isSi
+            ? '<span class="bool-si" title="Los días festivos se suman al conteo del proceso">✓ Sí (Suman al conteo)</span>'
+            : '<span class="bool-no" title="Los días festivos se descuentan (no suman)">✕ No (Se descuentan)</span>';
+        }
+        return isSi
+          ? '<span class="bool-si">✓ Habilitado</span>'
+          : '<span class="bool-no">✕ Deshabilitado</span>';
+      }
+      if (cond === 'porcentaje') {
+        return `<strong>${esc(val)} %</strong>`;
+      }
+      if (cond === 'hora') {
+        return `<span>⏰ <strong>${esc(val)}</strong> hrs</span>`;
+      }
+      if (val === '') return '<span style="color:var(--text-muted); font-style:italic;">(vacío)</span>';
+      return `<span>${esc(val)}</span>`;
+    }
+
+    function filtrarParametrosTabla() {
+      const secFiltro = (document.getElementById('filtroParamSeccion')?.value || '').trim().toLowerCase();
+      const condFiltro = (document.getElementById('filtroParamCondicion')?.value || '').trim().toLowerCase();
+      const txtFiltro = (document.getElementById('filtroParamTexto')?.value || '').trim().toLowerCase();
+      const tbody = document.getElementById('tbodyParametrosTalenthub');
+      const lblContador = document.getElementById('lblContadorParametros');
+      if (!tbody) return;
+
+      let filas = [..._parametrosTalenthubData];
+
+      if (secFiltro) {
+        filas = filas.filter(p => String(p.Seccion || '').toLowerCase() === secFiltro);
+      }
+      if (condFiltro) {
+        filas = filas.filter(p => String(p.Condicion || '').toLowerCase() === condFiltro);
+      }
+      if (txtFiltro) {
+        filas = filas.filter(p => {
+          const s = String(p.Seccion || '').toLowerCase();
+          const c = String(p.Concepto || '').toLowerCase();
+          const v = String(p.Parametro || '').toLowerCase();
+          const d = String(p.Descripcion || '').toLowerCase();
+          return s.includes(txtFiltro) || c.includes(txtFiltro) || v.includes(txtFiltro) || d.includes(txtFiltro);
+        });
+      }
+
+      // Ordenamiento
+      filas.sort((a, b) => {
+        let va = String(a[_parSortCol] || '').toLowerCase();
+        let vb = String(b[_parSortCol] || '').toLowerCase();
+        return _parSortDir * va.localeCompare(vb, 'es', { numeric: true });
+      });
+
+      if (lblContador) {
+        lblContador.textContent = `Mostrando ${filas.length} de ${_parametrosTalenthubData.length} parámetros configurados`;
+      }
+
+      if (!filas.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">No se encontraron parámetros con los filtros aplicados.</td></tr>';
         return;
       }
 
-      let html = '<div style="display:flex; flex-direction:column; gap:16px;">';
-
-      _parametrosReqData.forEach((p, idx) => {
-        const concepto = esc(p.Concepto);
-        const condicion = p.Condicion;
-        const parametroVal = p.Parametro || '';
-
-        html += `
-          <div style="background: var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-              <div>
-                <div style="font-weight:700; font-size:0.92rem; color:var(--text);">${concepto}</div>
-                <div style="font-size:0.76rem; color:var(--text-muted);">Condición: <strong>${esc(condicion)}</strong></div>
-              </div>
-              <span class="tag-badge tag-badge-primary" style="font-size:0.7rem;">${esc(p.Modulo)} · ${esc(p.Seccion)}</span>
-            </div>
-        `;
-
-        if (condicion === 'Rol') {
-          const rolesSeleccionados = parametroVal.split(',').map(s => s.trim().toLowerCase());
-          const rolesVisibles = _rolesDisponibles.filter(r => r.trim().toLowerCase() !== 'sistema');
-          const chipsHtml = rolesVisibles.map(rol => {
-            const rolTrim = rol.trim();
-            const isChecked = rolesSeleccionados.includes(rolTrim.toLowerCase());
-            const activeStyle = isChecked
-              ? 'background:var(--primary); color: var(--text-inverse); border-color:var(--primary); font-weight:700;'
-              : 'background:var(--bg-elevated); color:var(--text-muted); border-color:var(--border-strong);';
-            return `
-              <button type="button" class="btn" style="padding:4px 10px; font-size:0.78rem; border-radius:16px; border:1px solid; transition:all 0.15s ease; ${activeStyle}"
-                      onclick="toggleRolParametro(${idx}, '${esc(rolTrim)}')">
-                ${isChecked ? '✓ ' : '+ '}${esc(rolTrim)}
-              </button>
-            `;
-          }).join('');
-
-          html += `
-            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
-              ${chipsHtml}
-            </div>
-          `;
-        } else if (condicion === 'Número') {
-          html += `
-            <div style="margin-top:8px; max-width:200px;">
-              <input type="number" class="input-field" min="1" max="365" value="${esc(parametroVal)}" 
-                     onchange="actualizarNumeroParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
-              <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Días límite para cumplimiento del proceso</small>
-            </div>
-          `;
-        } else if (condicion === 'Porcentaje') {
-          html += `
-            <div style="margin-top:8px; max-width:200px;">
-              <div style="display:flex; align-items:center; gap:6px;">
-                <input type="number" class="input-field" min="0" max="100" step="1" value="${esc(parametroVal)}"
-                       onchange="actualizarNumeroParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
-                <span style="font-weight:700; color:var(--text-muted);">%</span>
-              </div>
-              <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Porcentaje mínimo de aspirantes contratados en tiempo</small>
-            </div>
-          `;
-        } else if (condicion === 'Filas') {
-          html += `
-            <div style="margin-top:8px; max-width:200px;">
-              <input type="number" class="input-field" min="1" max="1000000" step="1" value="${esc(parametroVal)}"
-                     onchange="actualizarNumeroParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
-              <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Máximo de filas permitidas en el reporte</small>
-            </div>
-          `;
-        } else if (condicion === 'Hora') {
-          html += `
-            <div style="margin-top:8px; max-width:200px;">
-              <input type="time" class="input-field" value="${esc(parametroVal)}"
-                     onchange="actualizarTextoParametro(${idx}, this.value)" style="font-size:0.9rem; padding:6px 10px;">
-              <small style="display:block; color:var(--text-muted); font-size:0.72rem; margin-top:4px;">Desde esta hora el conteo inicia al día siguiente</small>
-            </div>
-          `;
-        } else if (condicion === 'Booleano') {
-          const isHabilitado = ['1', 'true', 'habilitado', 'si', 'sí'].includes(String(parametroVal).trim().toLowerCase());
-          html += `
-            <div style="margin-top:8px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-              <select class="input-field" style="font-size:0.88rem; padding:6px 12px; max-width:200px; font-weight:700; border-color:${isHabilitado ? 'var(--success)' : 'var(--danger)'};"
-                      onchange="actualizarBooleanoParametro(${idx}, this.value)">
-                <option value="1" ${isHabilitado ? 'selected' : ''}>✓ Habilitado</option>
-                <option value="0" ${!isHabilitado ? 'selected' : ''}>✕ Deshabilitado</option>
-              </select>
-              <small style="color:var(--text-muted); font-size:0.75rem;">
-                ${isHabilitado ? '<span style="color:var(--success); font-weight:700;">Habilitado</span> (notificaciones activas)' : '<span style="color:var(--danger); font-weight:700;">Deshabilitado</span> (notificaciones suspendidas)'}
-              </small>
-            </div>
-          `;
-        } else {
-          html += `
-            <div style="margin-top:8px;">
-              <input type="text" class="input-field" value="${esc(parametroVal)}" 
-                     onchange="actualizarTextoParametro(${idx}, this.value)" style="font-size:0.85rem;">
-            </div>
-          `;
-        }
-
-        html += `</div>`;
-      });
-
-      html += '</div>';
-      body.innerHTML = html;
+      tbody.innerHTML = filas.map(p => `
+        <tr onclick="abrirModalEditarParametroTalenthub(${p.id})">
+          <td style="white-space:nowrap;">
+            <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.75rem; border-radius:6px;" onclick="event.stopPropagation(); abrirModalEditarParametroTalenthub(${p.id})">
+              ✏️ Editar
+            </button>
+          </td>
+          <td>
+            <span class="tag-cond" style="background:var(--accent-soft); color:var(--accent-dark); border-color:transparent;">${esc(p.Seccion)}</span>
+          </td>
+          <td>
+            <div style="font-weight:700; color:var(--text); font-size:0.88rem;">${esc(p.Concepto)}</div>
+          </td>
+          <td>
+            <span class="tag-cond">${esc(p.Condicion)}</span>
+          </td>
+          <td style="max-width:320px; line-height:1.6;">
+            ${valorParametroFormateado(p)}
+          </td>
+          <td style="color:var(--text-muted); font-size:0.8rem; max-width:340px; line-height:1.35;">
+            <div title="${esc(p.Descripcion || '')}">${esc(p.Descripcion || '—')}</div>
+          </td>
+        </tr>
+      `).join('');
     }
 
-    function actualizarBooleanoParametro(paramIdx, val) {
-      const p = _parametrosReqData[paramIdx];
-      if (p) {
-        p.Parametro = String(val);
-        renderBodyParametrosRequisiciones();
-      }
-    }
-
-    function toggleRolParametro(paramIdx, rol) {
-      if (rol.trim().toLowerCase() === 'sistema') return; // Proteger Sistema de manipulaciones
-      const p = _parametrosReqData[paramIdx];
-      if (!p) return;
-      let roles = (p.Parametro || '').split(',').map(s => s.trim()).filter(Boolean);
-      const rolLower = rol.toLowerCase();
-      const existIdx = roles.findIndex(r => r.toLowerCase() === rolLower);
-      if (existIdx >= 0) {
-        roles.splice(existIdx, 1);
+    function ordenarParametrosTabla(col) {
+      if (_parSortCol === col) {
+        _parSortDir = -_parSortDir;
       } else {
-        roles.push(rol);
+        _parSortCol = col;
+        _parSortDir = 1;
       }
-      p.Parametro = roles.join(', ');
-      renderBodyParametrosRequisiciones();
+      ['Seccion', 'Concepto', 'Condicion', 'Parametro'].forEach(c => {
+        const span = document.getElementById('sort_par_' + c);
+        if (span) span.textContent = (c === col) ? (_parSortDir > 0 ? '▲' : '▼') : '';
+      });
+      filtrarParametrosTabla();
     }
 
-    function actualizarNumeroParametro(paramIdx, val) {
-      const p = _parametrosReqData[paramIdx];
-      if (p) p.Parametro = String(val || '0').trim();
+    function limpiarFiltrosParametrosTabla() {
+      const selSec = document.getElementById('filtroParamSeccion');
+      const selCond = document.getElementById('filtroParamCondicion');
+      const txt = document.getElementById('filtroParamTexto');
+      if (selSec) selSec.value = '';
+      if (selCond) selCond.value = '';
+      if (txt) txt.value = '';
+      filtrarParametrosTabla();
     }
 
-    function actualizarTextoParametro(paramIdx, val) {
-      const p = _parametrosReqData[paramIdx];
-      if (p) p.Parametro = String(val || '').trim();
+    // Modal de edición emergente estilo Configuración
+    let _modalDiasSel = [];
+
+    function abrirModalEditarParametroTalenthub(id) {
+      const p = _parametrosTalenthubData.find(x => x.id === id);
+      if (!p) return;
+      _parametroTalenthubEditando = p;
+
+      document.getElementById('modalParamEditTitulo').textContent = 'Editar Parámetro';
+      document.getElementById('modalParamEditConcepto').textContent = `${p.Seccion} · ${p.Concepto}`;
+      document.getElementById('modalParamEditCondicion').textContent = p.Condicion || '—';
+
+      const txtDesc = document.getElementById('modalParamEditDescripcion');
+      if (txtDesc) {
+        txtDesc.value = p.Descripcion || '';
+        document.getElementById('lblModalParamDescCount').textContent = (p.Descripcion || '').length + ' / 500';
+      }
+
+      const errEl = document.getElementById('modalParamEditError');
+      if (errEl) errEl.style.display = 'none';
+
+      const cond = String(p.Condicion || '').trim().toLowerCase();
+      const valActual = String(p.Parametro == null ? '' : p.Parametro).trim();
+      _modalTempValor = valActual;
+      _modalDiasSel = [];
+
+      if (esParametroDiasSemana(p)) {
+        _modalDiasSel = valActual ? valActual.split(',').map(s => s.trim()).filter(Boolean) : [];
+      } else if (cond === 'rol') {
+        _modalRolesSel = valActual ? valActual.split(',').map(s => s.trim()).filter(Boolean) : [];
+      } else if (cond === 'booleano') {
+        _modalBooleanoVal = ['1', 'true', 'si', 'sí', 'habilitado'].includes(valActual.toLowerCase()) ? '1' : '0';
+      }
+
+      renderModalParamEditor(p);
+
+      const elModal = document.getElementById('modalEditarParametroReq');
+      if (elModal) {
+        elModal.style.display = 'flex';
+        elModal._backEntry = registrarModalBack(() => cerrarModalEditarParametroReq());
+      }
     }
 
-    async function guardarParametrosRequisiciones() {
-      const btn = document.getElementById('btnGuardarParametrosReq');
+    function renderModalParamEditor(p) {
+      const container = document.getElementById('modalParamEditorContainer');
+      if (!container) return;
+      const cond = String(p.Condicion || '').trim().toLowerCase();
+
+      if (esParametroDiasSemana(p)) {
+        const chips = DIAS_SEMANA_OPCIONES.map(dia => {
+          const normDia = dia.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+          const esSel = _modalDiasSel.some(d => d.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === normDia);
+          return `
+            <button type="button" class="rol-opt ${esSel ? 'sel' : ''}" style="padding:7px 14px; font-size:0.86rem; border-radius:8px;" onclick="toggleDiaModal('${esc(dia)}')">
+              ${esSel ? '✓ ' : '+ '}${esc(dia)}
+            </button>
+          `;
+        }).join('');
+
+        container.innerHTML = `
+          <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:8px;">
+            Marca con checklist los días de la semana que se contabilizarán en los días de proceso de requisición y SLA:
+          </div>
+          <div class="roles-sel" style="display:flex; flex-wrap:wrap; gap:8px;">${chips}</div>
+          <div class="roles-acciones" style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:0.78rem; flex-wrap:wrap; gap:8px;">
+            <span style="color:var(--text-muted); font-weight:600;">${_modalDiasSel.length} día(s) seleccionado(s)</span>
+            <div style="display:flex; gap:10px;">
+              <button type="button" style="background:none; border:none; color:var(--accent-dark); font-weight:700; cursor:pointer;" onclick="setDiasRapidosModal(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'])">Lunes a Viernes</button>
+              <button type="button" style="background:none; border:none; color:var(--accent-dark); font-weight:700; cursor:pointer;" onclick="setDiasRapidosModal(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'])">Lunes a Sábado</button>
+              <button type="button" style="background:none; border:none; color:var(--accent-dark); font-weight:700; cursor:pointer;" onclick="setDiasRapidosModal(DIAS_SEMANA_OPCIONES)">Todos</button>
+              <button type="button" style="background:none; border:none; color:var(--danger); font-weight:600; cursor:pointer;" onclick="setDiasRapidosModal([])">Limpiar</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (cond === 'rol') {
+        const tieneSistema = (p.Parametro || '').toLowerCase().includes('sistema');
+        const roles = [..._rolesDisponibles];
+        _modalRolesSel.forEach(r => {
+          if (!roles.some(x => x.toLowerCase() === r.toLowerCase())) roles.push(r);
+        });
+
+        const chips = roles.map(rol => {
+          const esSel = _modalRolesSel.some(s => s.toLowerCase() === rol.toLowerCase());
+          const esSistemaFijo = tieneSistema && rol.toLowerCase() === 'sistema';
+          return `
+            <button type="button" class="rol-opt ${esSel ? 'sel' : ''}" ${esSistemaFijo ? 'disabled title="El rol Sistema es requerido por seguridad y no se puede desmarcar"' : ''} onclick="toggleRolModal('${esc(rol)}')">
+              ${esSel ? '✓ ' : '+ '}${esc(rol)}
+            </button>
+          `;
+        }).join('');
+
+        container.innerHTML = `
+          <div class="roles-sel">${chips}</div>
+          <div class="roles-acciones">
+            <span style="color:var(--text-muted); font-weight:600;">${_modalRolesSel.length} rol(es) seleccionado(s)</span>
+            <button type="button" onclick="limpiarRolesModal(${tieneSistema})">Quitar todos</button>
+          </div>
+        `;
+        return;
+      }
+
+      if (cond === 'booleano') {
+        const isSi = _modalBooleanoVal === '1';
+        const concepto = String(p.Concepto || '').toLowerCase();
+        const esFestivos = concepto.includes('festivos');
+
+        const btnSiTxt = esFestivos ? '✓ Sí (1) — Los festivos cuentan en el proceso' : '✓ Habilitado (1)';
+        const btnNoTxt = esFestivos ? '✕ No (0) — Los festivos NO cuentan (se descuentan)' : '✕ Deshabilitado (0)';
+        const ayudaTxt = esFestivos
+          ? 'Sí suma los días festivos al proceso (cuentan como transcurridos). No los excluye del conteo.'
+          : 'Habilitado activa el comportamiento configurado; deshabilitado lo suspende temporalmente.';
+
+        container.innerHTML = `
+          <div class="btn-grupo">
+            <button type="button" class="btn-grupo-opt ${isSi ? 'sel' : ''}" onclick="elegirBooleanoModal('1')">
+              ${btnSiTxt}
+            </button>
+            <button type="button" class="btn-grupo-opt ${!isSi ? 'sel' : ''}" onclick="elegirBooleanoModal('0')">
+              ${btnNoTxt}
+            </button>
+          </div>
+          <small style="display:block; color:var(--text-muted); font-size:0.75rem; margin-top:6px;">
+            ${ayudaTxt}
+          </small>
+        `;
+        return;
+      }
+
+      if (cond === 'porcentaje') {
+        container.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; max-width:200px;">
+            <input type="number" id="inputModalParamValor" class="input-field" min="0" max="100" step="1" value="${esc(_modalTempValor)}" style="font-size:0.95rem; font-weight:700;">
+            <span style="font-size:1.1rem; font-weight:800; color:var(--text-muted);">%</span>
+          </div>
+        `;
+        return;
+      }
+
+      if (cond === 'hora') {
+        container.innerHTML = `
+          <div style="max-width:200px;">
+            <input type="time" id="inputModalParamValor" class="input-field" value="${esc(_modalTempValor)}" style="font-size:0.95rem; font-weight:700;">
+          </div>
+        `;
+        return;
+      }
+
+      if (cond === 'filas' || cond === 'número' || cond === 'numero') {
+        container.innerHTML = `
+          <div style="max-width:220px;">
+            <input type="number" id="inputModalParamValor" class="input-field" min="0" step="1" value="${esc(_modalTempValor)}" style="font-size:0.95rem; font-weight:700;">
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <textarea id="inputModalParamValor" class="input-field" rows="3" style="width:100%; font-size:0.88rem;">${esc(_modalTempValor)}</textarea>
+      `;
+    }
+
+    function toggleDiaModal(dia) {
+      const normTarget = dia.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const idx = _modalDiasSel.findIndex(d => d.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === normTarget);
+      if (idx >= 0) {
+        _modalDiasSel.splice(idx, 1);
+      } else {
+        _modalDiasSel.push(dia);
+      }
+      renderModalParamEditor(_parametroTalenthubEditando);
+    }
+
+    function setDiasRapidosModal(lista) {
+      _modalDiasSel = [...lista];
+      renderModalParamEditor(_parametroTalenthubEditando);
+    }
+
+    function toggleRolModal(rol) {
+      const idx = _modalRolesSel.findIndex(r => r.toLowerCase() === rol.toLowerCase());
+      if (idx >= 0) {
+        if (_parametroTalenthubEditando && (_parametroTalenthubEditando.Parametro || '').toLowerCase().includes('sistema') && rol.toLowerCase() === 'sistema') {
+          return;
+        }
+        _modalRolesSel.splice(idx, 1);
+      } else {
+        _modalRolesSel.push(rol);
+      }
+      renderModalParamEditor(_parametroTalenthubEditando);
+    }
+
+    function limpiarRolesModal(mantenerSistema) {
+      if (mantenerSistema) {
+        _modalRolesSel = _modalRolesSel.filter(r => r.toLowerCase() === 'sistema');
+        if (!_modalRolesSel.length) _modalRolesSel = ['Sistema'];
+      } else {
+        _modalRolesSel = [];
+      }
+      renderModalParamEditor(_parametroTalenthubEditando);
+    }
+
+    function elegirBooleanoModal(val) {
+      _modalBooleanoVal = String(val);
+      renderModalParamEditor(_parametroTalenthubEditando);
+    }
+
+    function cerrarModalEditarParametroReq() {
+      const el = document.getElementById('modalEditarParametroReq');
+      if (el) cerrarModalConBack(el);
+      _parametroTalenthubEditando = null;
+    }
+
+    async function guardarParametroReqDesdeModal() {
+      if (!_parametroTalenthubEditando) return;
+      const p = _parametroTalenthubEditando;
+      const cond = String(p.Condicion || '').trim().toLowerCase();
+      let valorFinal = '';
+
+      if (esParametroDiasSemana(p)) {
+        if (!_modalDiasSel.length) {
+          const errEl = document.getElementById('modalParamEditError');
+          if (errEl) {
+            errEl.textContent = 'Debes seleccionar al menos un día de la semana para el conteo de días del proceso.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+        valorFinal = _modalDiasSel.join(', ');
+      } else if (cond === 'rol') {
+        valorFinal = _modalRolesSel.join(', ');
+      } else if (cond === 'booleano') {
+        valorFinal = _modalBooleanoVal;
+      } else {
+        const inp = document.getElementById('inputModalParamValor');
+        valorFinal = inp ? inp.value.trim() : '';
+      }
+
+      const descFinal = (document.getElementById('modalParamEditDescripcion')?.value || '').trim();
+      const errEl = document.getElementById('modalParamEditError');
+      const btn = document.getElementById('btnGuardarParametroReqModal');
+
+      if (errEl) errEl.style.display = 'none';
+
+      // Validación de Porcentaje
+      if (cond === 'porcentaje') {
+        const n = parseInt(valorFinal, 10);
+        if (isNaN(n) || n < 0 || n > 100) {
+          if (errEl) {
+            errEl.textContent = 'El porcentaje debe ser un número entero entre 0 y 100.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+      }
+
+      // Validación de Hora
+      if (cond === 'hora') {
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(valorFinal)) {
+          if (errEl) {
+            errEl.textContent = 'Ingresa una hora válida en formato HH:mm (ej: 12:00).';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+      }
+
       if (btn) {
         btn.disabled = true;
         btn.textContent = 'Guardando...';
       }
 
       try {
-        const res = await fetch('/talenthub/api/parametros/requisiciones', {
-          method: 'POST',
+        const res = await fetch(`/talenthub/api/parametros/${p.id}`, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             usuario: CONFIG.usuarioId,
-            parametros: _parametrosReqData
+            parametro: valorFinal,
+            descripcion: descFinal
           })
         });
+
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          showToast(data.error || 'Error al guardar parámetros.', 'error');
+          if (errEl) {
+            errEl.textContent = data.error || 'Error al guardar el parámetro.';
+            errEl.style.display = 'block';
+          }
           return;
         }
 
-        showToast('Parámetros guardados y aplicados correctamente.', 'success');
-        cerrarModales();
-        await cargarCatalogosRequisiciones();
-        await cargarRequisiciones();
+        showToast('Parámetro actualizado exitosamente.', 'success');
+        cerrarModalEditarParametroReq();
+
+        p.Parametro = valorFinal;
+        p.Descripcion = descFinal;
+        filtrarParametrosTabla();
+
+        if (p.Seccion === 'Requisiciones') {
+          await cargarCatalogosRequisiciones();
+        }
       } catch (err) {
-        console.error('[TalentHub] Error al guardar parámetros:', err);
-        showToast('Error de red al guardar parámetros.', 'error');
+        console.error('[TalentHub] Error al guardar parámetro:', err);
+        if (errEl) {
+          errEl.textContent = 'Error de conexión con el servidor.';
+          errEl.style.display = 'block';
+        }
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.textContent = '💾 Guardar Parámetros';
+          btn.textContent = '💾 Guardar';
         }
       }
     }
@@ -6751,7 +7181,7 @@
       cerrarModalConBack(document.getElementById('modalDetalleRequisicion'));
       cerrarModalConBack(document.getElementById('modalFormRequisicion'));
       cerrarModalConBack(document.getElementById('modalVincularAspirante'));
-      cerrarModalConBack(document.getElementById('modalParametrosRequisiciones'));
+      cerrarModalConBack(document.getElementById('modalEditarParametroReq'));
       cerrarModalConBack(document.getElementById('modalReporteRequisiciones'));
       cerrarModalConBack(document.getElementById('modalFichaAspirante'));
     }

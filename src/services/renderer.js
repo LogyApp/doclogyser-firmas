@@ -77,13 +77,15 @@ async function generarPDF(htmlContenido, options = {}) {
   }
 }
 
-async function generarPDFDesdeHTML(htmlCompleto) {
+async function generarPDFDesdeHTML(htmlCompleto, options = {}) {
   const page = await nuevaPagina();
   try {
     await page.setContent(htmlCompleto, { waitUntil: 'networkidle2', timeout: 30000 });
     const buffer = await page.pdf({
       format: 'A4',
       printBackground: true,
+      preferCSSPageSize: true,
+      ...options,
     });
     return buffer;
   } finally {

@@ -14,6 +14,8 @@ const PERMISOS_SST = {
     clave: 'ev',
     crear: 'Roles que pueden crear evaluaciones en SST',
     eliminar: 'Roles que pueden eliminar evaluaciones en SST',
+    editarFirmado: 'Roles que pueden editar y regenerar PDF de evaluaciones firmadas en SST',
+    eliminarFirmado: 'Roles que pueden eliminar evaluaciones firmadas en SST',
   },
   'Capacitación SST': {
     clave: 'cap',
@@ -42,6 +44,8 @@ const DEFECTO_POR_ACCION = {
   crear: ROLES_ESCRITURA_ANTERIOR,
   eliminar: ROLES_ESCRITURA_ANTERIOR,
   plantillas: 'LiderSst, Sistema',
+  editarFirmado: 'Sistema',
+  eliminarFirmado: 'Sistema',
 };
 
 async function leerParametros() {
@@ -83,13 +87,13 @@ async function autorizarAccionSst(usuario, seccion, accion) {
   return (await rolPuedeSst(acceso.rol, seccion, accion)) ? acceso : null;
 }
 
-// Permisos del rol para la pantalla: { ev: { crear, eliminar }, cap: { crear, eliminar, plantillas }, ... }
+// Permisos del rol para la pantalla: { ev: { crear, eliminar, editarFirmado, eliminarFirmado }, cap: { crear, eliminar, plantillas }, ... }
 async function permisosSstDelRol(rol) {
   const filas = await leerParametros();
   const permisos = {};
   Object.entries(PERMISOS_SST).forEach(([seccion, def]) => {
     permisos[def.clave] = {};
-    ['crear', 'eliminar', 'plantillas'].forEach((accion) => {
+    ['crear', 'eliminar', 'plantillas', 'editarFirmado', 'eliminarFirmado'].forEach((accion) => {
       if (def[accion]) permisos[def.clave][accion] = rolEn(rolesDe(filas, seccion, accion), rol);
     });
   });
